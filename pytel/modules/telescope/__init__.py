@@ -1,0 +1,1 @@
+from .dummytelescope import DummyTelescope

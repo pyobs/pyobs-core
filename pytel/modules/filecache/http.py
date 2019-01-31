@@ -6,6 +6,7 @@ import uuid
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 import time
+from typing import Union
 import tornado.ioloop
 import tornado.web
 import tornado.gen
@@ -16,11 +17,22 @@ log = logging.getLogger(__name__)
 
 
 class MainHandler(tornado.web.RequestHandler):
+    """The request handler for the HTTP filecache."""
+
     def initialize(self):
+        """Initializes the handler (instead of in the constructor)"""
+
+        # create a thread pool executor
         self.executor = ThreadPoolExecutor(max_workers=30)
 
     @tornado.gen.coroutine
-    def post(self, dummy):
+    def post(self, dummy: str):
+        """Handle incoming file.
+
+        Args:
+            dummy: Name of incoming file.
+        """
+
         # try to find a filename
         filename = None
 
@@ -47,7 +59,13 @@ class MainHandler(tornado.web.RequestHandler):
             self.finish(bytes(filename, 'utf-8'))
 
     @tornado.gen.coroutine
-    def get(self, filename):
+    def get(self, filename: str):
+        """Handle download request.
+
+        Args:
+            filename: Name of file to download.
+        """
+
         # fetch data
         data = yield self.executor.submit(self.application.fetch, filename)
         if data is None:
@@ -61,33 +79,50 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
+"""Type for entry in the file cache."""
 CacheEntry = namedtuple('CacheEntry', 'filename data time')
 
 
 class HttpFileCacheServer(PytelModule, tornado.web.Application):
-    def __init__(self, port: int = 37075, path: str = None, cache_size: int = 25, *args, **kwargs):
-        PytelModule.__init__(self, path=path, thread_funcs=self._http, restart_threads=False, *args, **kwargs)
+    """A file cache based on a HTTP server."""
+
+    def __init__(self, port: int = 37075, cache_size: int = 25, *args, **kwargs):
+        """Initializes file cache.
+
+        Args:
+            port: Port for HTTP server.
+            cache_size: Size of file cache, i.e. number of files to cache.
+        """
+        PytelModule.__init__(self, thread_funcs=self._http, restart_threads=False, *args, **kwargs)
+
+        # init tornado web server
         tornado.web.Application.__init__(self, [
             (r"/(.*)", MainHandler),
         ])
+
+        # store stuff
         self._io_loop = None
         self._cache = []
         self._lock = threading.RLock()
         self._is_listening = False
         self._port = port
-        self._path = path
         self._cache_size = cache_size
 
     def close(self):
-        #self._io_loop.stop()
+        """Close server."""
+
+        # close io loop and parent
         self._io_loop.add_callback(self._io_loop.stop)
         PytelModule.close(self)
 
     @property
-    def opened(self):
+    def opened(self) -> bool:
+        """Whether the server is started."""
         return self._is_listening
 
     def _http(self):
+        """Thread function for the web server."""
+
         # create io loop
         asyncio.set_event_loop(asyncio.new_event_loop())
         self._io_loop = tornado.ioloop.IOLoop.current()
@@ -101,10 +136,22 @@ class HttpFileCacheServer(PytelModule, tornado.web.Application):
         self._is_listening = True
         self._io_loop.start()
 
-    def store(self, data: bytearray, filename: str = None):
+    def store(self, data: bytearray, filename: str = None) -> str:
+        """Store an incoming file.
+
+        Args:
+            data: Data to store.
+            filename: Filename to store as.
+
+        Returns:
+            Filename in cache.
+        """
+
+        # acquire lock on cache
         with self._lock:
             # no filename given?
             if filename is None:
+                # create a unique filename
                 filename = str(uuid.uuid4())
 
             # store it
@@ -119,7 +166,17 @@ class HttpFileCacheServer(PytelModule, tornado.web.Application):
             # finally, filename
             return filename
 
-    def fetch(self, filename: str):
+    def fetch(self, filename: str) -> Union[None, bytearray]:
+        """Send a file to the requesting client.
+
+        Args:
+            filename: Name of file to send.
+
+        Returns:
+            Data of file.
+        """
+
+        # acquire lock on cache
         with self._lock:
             # find file in cache and return it
             for entry in self._cache:

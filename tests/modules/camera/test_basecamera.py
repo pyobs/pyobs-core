@@ -3,7 +3,7 @@ import numpy as np
 import threading
 
 from pytel.comm.dummy import DummyComm
-from pytel.modules.environment import Environment
+from pytel.environment import Environment
 from pytel.modules.camera import BaseCamera
 
 

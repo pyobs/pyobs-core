@@ -1,5 +1,6 @@
 import time
 from collections import namedtuple
+from typing import Any
 
 
 class DataCache(object):
@@ -17,7 +18,7 @@ class DataCache(object):
         self._entries = []
         self._size = size
 
-    def __setitem__(self, name: str, data: bytearray):
+    def __setitem__(self, name: str, data: Any):
         """Set new item in the cache.
 
         Args:
@@ -37,7 +38,7 @@ class DataCache(object):
             # pick first
             self._entries = self._entries[:self._size]
 
-    def __getitem__(self, name: str) -> bytearray:
+    def __getitem__(self, name: str) -> Any:
         """Retrieve data from the cache.
 
         Args:

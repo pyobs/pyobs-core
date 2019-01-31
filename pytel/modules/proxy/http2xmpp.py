@@ -215,10 +215,19 @@ class DownloadFileHandler(tornado.web.RequestHandler):
 
 @tornado_auth_required
 class PreviewHandler(tornado.web.RequestHandler):
+    """Handle preview images."""
+
+    """File cache."""
     _preview_cache = DataCache()
 
     @tornado.gen.coroutine
-    def get(self, filename):
+    def get(self, filename: str):
+        """Send preview image for requested file.
+
+        Args:
+            filename: Name of image to get preview for.
+        """
+
         # not in headers cache already?
         if filename not in self._preview_cache:
             try:
@@ -249,10 +258,19 @@ class PreviewHandler(tornado.web.RequestHandler):
 
 @tornado_auth_required
 class HeadersHandler(tornado.web.RequestHandler):
+    """Handle header requests."""
+
+    """Data cache."""
     _headers_cache = DataCache()
 
     @tornado.gen.coroutine
     def get(self, filename):
+        """Send FITS headers for requested file.
+
+        Args:
+            filename: Name of image to get fits headers for.
+        """
+
         # not in headers cache already?
         if filename not in self._headers_cache:
             try:
@@ -283,8 +301,16 @@ class HeadersHandler(tornado.web.RequestHandler):
 
 @tornado_auth_required
 class AngularHandler(tornado.web.RequestHandler):
+    """Handle web requests for an Angular web app."""
+
     @tornado.gen.coroutine
-    def get(self, path):
+    def get(self, path: str):
+        """Send file.
+
+        Args:
+            path: Path to requested file.
+        """
+
         # default
         if path == '' or path not in self.application.files:
             path = self.application.base_href + 'index.html'
@@ -305,10 +331,24 @@ class AngularHandler(tornado.web.RequestHandler):
 
 
 class HTTP2XMPP(PytelModule, tornado.web.Application):
+    """HTTP to XMPP proxy server."""
+
     def __init__(self, port: int = 37077, auth: dict = None, ignore_log: list = None, base_href: str = '/pytel/',
                  web_config: dict = None, public_html: str = None, *args, **kwargs):
-        self.executor = ThreadPoolExecutor(max_workers=30)
+        """Initialize new proxy server.
+
+        Args:
+            port: Port for HTTP server.
+            auth: Authentication module for HTTP.
+            ignore_log: List of regular expression for methods that should NOT be logged.
+            base_href: base_href for web app.
+            web_config: Configuration for Angular web app.
+            public_html: Path to Angular web app.
+        """
         PytelModule.__init__(self, thread_funcs=self._http, *args, **kwargs)
+
+        # create thread pool executor
+        self.executor = ThreadPoolExecutor(max_workers=30)
 
         # store
         self._port = port
@@ -359,17 +399,28 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
 
     @property
     def auth_handlers(self):
+        """Return authentification handlers."""
         return self._auth_handlers
 
     @property
     def login_handler(self):
+        """Return login handlers."""
         return self._login_handler
 
     @property
     def base_href(self):
+        """Return base href."""
         return self._base_href
 
-    def _load_static_files(self, path, rel_path=''):
+    def _load_static_files(self, path: str, rel_path: str = ''):
+        """Load static files from path.
+
+        Args:
+            path: Path to look for static files.
+            rel_path: Relative path on web server.
+        """
+
+        # walk directory
         for x in os.listdir(path):
             # get full and relative path
             full = os.path.join(path, x)
@@ -385,12 +436,25 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
                     self.files[self._base_href + rel] = f.read()
 
     def _load_web_config(self, web_config: dict, base_href: str):
+        """Load web app configuration.
+
+        Args:
+            web_config: Dictionary of filename->config configuration files.
+            base_href: Base href.
+        """
+
+        # actually got a web config?
         if web_config:
+            # loop them
             for name, config in web_config.items():
+                # get web file name
                 filename = os.path.join(base_href, name)
+                # store config
                 self.files[filename] = json.dumps(config)
 
     def _http(self):
+        """Thread function for the web server."""
+
         # create io loop
         asyncio.set_event_loop(asyncio.new_event_loop())
         self._io_loop = tornado.ioloop.IOLoop.current()
@@ -404,18 +468,35 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
         self._io_loop.start()
 
     def close(self):
-        #self._io_loop.stop()
+        """Close server."""
+
+        # close io loop and parent
         self._io_loop.add_callback(self._io_loop.stop)
         PytelModule.close(self)
 
-    def call_method(self, user, method, *args, **kwargs):
+    def call_method(self, client: str, method: str, *args, **kwargs):
+        """Call a method.
+
+        Args:
+            client: Client to call method on.
+            method: Method to call.
+            *args, **kwargs: Parameters for method.
+
+        Returns:
+            Method result.
+
+        Raises:
+            JsonRpcMethodNotFoundException: If method was not found.
+            JsonRpcInternalErrorException: If something else went wrong.
+        """
+
         # call method
         try:
             # get proxy
             with self._lock:
-                if user not in self._proxies:
-                    self._proxies[user] = self.comm[user]
-                proxy = self._proxies[user]
+                if client not in self._proxies:
+                    self._proxies[client] = self.comm[client]
+                proxy = self._proxies[client]
 
             # execute it
             return proxy.execute(method, *args, **kwargs)
@@ -427,7 +508,13 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
             logging.exception('Something went wrong.')
             raise JsonRpcInternalErrorException(e)
 
-    def get_modules(self):
+    def get_modules(self) -> list:
+        """Get a list of all available modules/clients.
+
+        Returns:
+            List of modules.
+        """
+
         modules = []
         for mod in self.comm.clients:
             # get proxy
@@ -447,4 +534,8 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
         return modules
 
     def ping(self):
+        """Ping function."""
         return 'pong'
+
+
+__all__ = ['HTTP2XMPP']

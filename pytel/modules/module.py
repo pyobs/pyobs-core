@@ -56,7 +56,7 @@ def timeout(func_timeout: Union[str, int, None] = None):
 
 
 class PytelModule:
-    def __init__(self, name=None, comm=None, environment=None, database=None, thread_funcs=None,
+    def __init__(self, name=None, comm=None, vfs=None, environment=None, database=None, thread_funcs=None,
                  restart_threads=True, *args, **kwargs):
 
         # an event that will be fired when closing the module
@@ -72,6 +72,7 @@ class PytelModule:
 
         # some linked object
         self._comm = comm
+        self._vfs = vfs
         self._environment = environment
         self._db = database
 
@@ -95,6 +96,10 @@ class PytelModule:
     @property
     def comm(self):
         return self._comm
+
+    @property
+    def vfs(self):
+        return self._vfs
 
     @property
     def db(self):
@@ -273,7 +278,7 @@ class PytelModule:
         if APP():
             APP().quit()
         else:
-            log.error('No app given, cannot quit.')
+            self.closing.set()
 
     def open_file(self, filename: str, mode: str, compression: bool = None):
         """Open a file. The handling class is chosen depending on the vfs root in the filename.
@@ -286,11 +291,7 @@ class PytelModule:
         Returns:
             (BaseFile) File object for given file.
         """
-        if APP() and APP().vfs:
-            return APP().vfs.open_file(filename, mode, compression)
-        else:
-            log.error('Trying to open file, but no VFS provided in config...')
-            return None
+        return self._vfs.open_file(filename, mode, compression)
 
 
 __all__ = ['PytelModule', 'timeout']

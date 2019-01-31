@@ -49,7 +49,7 @@ class Application:
             self._comm = DummyComm()
 
         # create module to publish
-        self._module = get_object(module, comm=self._comm, environment=self._environment, db=self._db)
+        self._module = get_object(module, comm=self._comm, vfs=self._vfs, environment=self._environment, db=self._db)
 
         # link all together
         self._comm.module = self._module
@@ -128,10 +128,6 @@ class Application:
     def quit(self):
         """Quit application."""
         self.closing.set()
-
-    @property
-    def vfs(self):
-        return self._vfs
 
 
 APP = lambda: Application.instance()

@@ -6,7 +6,7 @@ class ITelescope(IStatus):
         """Initialize telescope.
 
         Returns:
-            (bool) Success
+            Success or not.
         """
         raise NotImplementedError
 
@@ -14,16 +14,32 @@ class ITelescope(IStatus):
         """Park telescope.
 
         Returns:
-            (bool) Success
+            Success or not.
         """
         raise NotImplementedError
 
     def track(self, ra: float, dec: float, *args, **kwargs) -> bool:
-        """starts tracking on given coordinates"""
+        """Starts tracking on given coordinates.
+
+        Args:
+            ra: RA in deg to track.
+            dec: Dec in deg to track.
+
+        Returns:
+            Success or not.
+        """
         raise NotImplementedError
 
     def move(self, alt: float, az: float, *args, **kwargs) -> bool:
-        """moves to given coordinates"""
+        """Moves to given coordinates.
+
+        Args:
+            alt: Alt in deg to move to.
+            az: Az in deg to move to.
+
+        Returns:
+            Success or not.
+        """
         raise NotImplementedError
 
     def offset(self, dalt: float, daz: float, *args, **kwargs) -> bool:
@@ -36,7 +52,11 @@ class ITelescope(IStatus):
         raise NotImplementedError
 
     def reset_offset(self, *args, **kwargs) -> bool:
-        """Reset Alt/Az offset."""
+        """Reset Alt/Az offset.
+
+        Returns:
+            Success or not.
+        """
         raise NotImplementedError
 
     def status(self, *args, **kwargs) -> dict:

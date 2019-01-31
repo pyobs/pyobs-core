@@ -2,22 +2,16 @@ import datetime
 import functools
 import logging
 from typing import Union
-
 import pytz
 from astropy.coordinates import EarthLocation, Longitude, SkyCoord, ICRS, get_sun, AltAz
-#from astropy.time import Time
 from pytel.utils.time import Time
-
-from pytel import PytelModule
 
 
 log = logging.getLogger(__name__)
 
 
-class Environment(PytelModule):
+class Environment:
     def __init__(self, timezone: str = 'utc', location: Union[dict, EarthLocation] = None, *args, **kwargs):
-        PytelModule.__init__(self, *args, **kwargs)
-
         # get timezone
         self._timezone = pytz.timezone(timezone)
         log.info('Using timezone %s.', timezone)

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.io.fits import Header
 from pytel.utils.time import Time
-from pytel.modules.environment import Environment
+from pytel.environment import Environment
 
 
 log = logging.getLogger(__name__)

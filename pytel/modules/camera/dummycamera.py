@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 
 
 class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
+    """A dummy camera for testing."""
+
     def __init__(self, readout_time: float = 2, sim: dict = None, *args, **kwargs):
         """Creates a new dummy cammera.
 

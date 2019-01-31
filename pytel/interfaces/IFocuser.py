@@ -3,11 +3,22 @@ from .IStatus import IStatus
 
 class IFocuser(IStatus):
     def set_focus(self, focus: float, *args, **kwargs) -> bool:
-        """sets focus"""
+        """Sets new focus.
+
+        Args:
+            focus: New focus value.
+
+        Returns:
+            Success or not.
+        """
         raise NotImplementedError
 
     def get_focus(self, *args, **kwargs) -> float:
-        """returns focus"""
+        """Return current focus.
+
+        Returns:
+            Current focus.
+        """
         raise NotImplementedError
 
     def status(self, *args, **kwargs) -> dict:

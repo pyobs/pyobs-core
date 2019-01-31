@@ -65,6 +65,7 @@ class BaseTelescope(PytelModule, ITelescope):
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
+            abort_event: Event that gets triggered when movement should be aborted.
 
         Returns:
             Success or not.
@@ -104,6 +105,7 @@ class BaseTelescope(PytelModule, ITelescope):
         Args:
             alt: Alt in deg to move to.
             az: Az in deg to move to.
+            abort_event: Event that gets triggered when movement should be aborted.
 
         Returns:
             Success or not.

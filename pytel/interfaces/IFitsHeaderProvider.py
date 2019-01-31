@@ -3,7 +3,11 @@ from .interface import *
 
 class IFitsHeaderProvider(Interface):
     def get_fits_headers(self, *args, **kwargs) -> dict:
-        """get FITS header for the saved status of the telescope"""
+        """Returns FITS header for the current status of the telescope.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
         raise NotImplementedError
 
 

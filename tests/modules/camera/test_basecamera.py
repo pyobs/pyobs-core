@@ -1,7 +1,6 @@
 from astropy.io import fits
 import numpy as np
 import threading
-from datetime import datetime
 
 from pytel.comm.dummy import DummyComm
 from pytel.modules.environment import Environment
@@ -107,10 +106,14 @@ class DummyCam(BaseCamera):
         self.status_during_expose = None
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+        # store current status
         self.status_during_expose = self.get_status()
-        hdr = fits.Header()
-        hdr['DATE-OBS'] = '2019-01-31T03:00:00.000'
-        return fits.ImageHDU(np.zeros((100, 100)), header=hdr)
+
+        # wait for exposure
+        abort_event.wait(exposure_time / 1000.)
+
+        # if abort event was set, return None, otherwise an image
+        return None if abort_event.is_set() else fits.ImageHDU(np.zeros((100, 100)))
 
 
 def test_expose():
@@ -134,6 +137,32 @@ def test_expose():
 
     # status must be idle again
     assert 'idle' == camera.get_status()
+
+    # close camera
+    camera.close()
+
+
+def test_abort():
+    """Do a dummy exposure."""
+
+    # create comm and environment
+    comm = DummyComm()
+    environment = Environment(timezone='utc',
+                              location={'longitude': 20.810808, 'latitude': -32.375823, 'elevation': 1798.})
+
+    # open camera
+    camera = DummyCam(filenames=None, comm=comm, environment=environment)
+    camera.open()
+
+    # expose
+    thread = threading.Thread(target=camera.expose, kwargs={'exposure_time':10000, 'image_type': 'object'})
+    thread.start()
+
+    # abort
+    assert camera.abort()
+
+    # thread should be closed
+    assert False == thread.is_alive()
 
     # close camera
     camera.close()

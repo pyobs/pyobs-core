@@ -50,7 +50,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
         # multi-threading
         self._expose_lock = threading.Lock()
-        self._expose_abort = threading.Event()
+        self.expose_abort = threading.Event()
 
     def open(self) -> bool:
         """Open module."""
@@ -250,7 +250,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
-        hdu = self._expose(exposure_time, open_shutter, abort_event=self._expose_abort)
+        hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
         if hdu is None:
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
@@ -351,7 +351,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             # loop count
             images = []
             self._exposures_left = count
-            while self._exposures_left > 0 and not self._expose_abort.is_set():
+            while self._exposures_left > 0 and not self.expose_abort.is_set():
                 if count > 1:
                     log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
 
@@ -397,14 +397,14 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # set abort event
         log.info('Aborting current image and sequence...')
         self._exposures_left = 0
-        self._expose_abort.set()
+        self.expose_abort.set()
 
         # do camera-specific abort
         aborted = self._abort_exposure()
 
         # wait for lock and unset event
-        acquired = self._expose_lock.acquire(blocking=False)
-        self._expose_abort.clear()
+        acquired = self._expose_lock.acquire(blocking=True, timeout=5.)
+        self.expose_abort.clear()
         if acquired:
             self._expose_lock.release()
             return aborted

@@ -5,6 +5,7 @@ import time
 from typing import Union, Type
 from py_expression_eval import Parser
 
+from pytel.object import get_object
 from pytel.application import APP
 
 
@@ -55,7 +56,7 @@ def timeout(func_timeout: Union[str, int, None] = None):
 
 
 class PytelModule:
-    def __init__(self, name=None, comm=None, environment=None, db=None, thread_funcs=None,
+    def __init__(self, name=None, comm=None, environment=None, database=None, thread_funcs=None,
                  restart_threads=True, *args, **kwargs):
 
         # an event that will be fired when closing the module
@@ -72,7 +73,7 @@ class PytelModule:
         # some linked object
         self._comm = comm
         self._environment = environment
-        self._db = db
+        self._db = database
 
         # opened?
         self._opened = False
@@ -94,6 +95,14 @@ class PytelModule:
     @property
     def comm(self):
         return self._comm
+
+    @property
+    def db(self):
+        return self._db
+
+    @property
+    def environment(self):
+        return self._environment
 
     def proxy(self, name_or_object: Union[str, 'PytelModule'], obj_type: Type['PytelModule']) -> 'PytelModule':
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
@@ -137,14 +146,6 @@ class PytelModule:
         else:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
-
-    @property
-    def environment(self):
-        return self._environment
-
-    @property
-    def db(self):
-        return self._db
 
     @staticmethod
     def _thread_func(target):

@@ -124,6 +124,7 @@ class Comm(PytelModule):
         if sender in self._proxies:
             del self._proxies[sender]
 
+    @property
     def clients(self) -> list:
         """Returns list of currently connected clients.
 

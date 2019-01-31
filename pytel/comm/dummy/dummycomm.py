@@ -14,6 +14,7 @@ class DummyComm(Comm):
         """Creates a new dummy comm."""
         Comm.__init__(self, *args, **kwargs)
 
+    @property
     def clients(self):
         """Always return zero clients."""
         return []

@@ -70,6 +70,11 @@ def format_filename(hdr: Header, fmt: str, environment: Environment = None, file
     Returns:
         (str) Filename
     """
+
+    # no DATE-OBS or IMAGETYP?
+    if 'DATE-OBS' not in hdr or 'IMAGETYP' not in hdr:
+        log.error('Either DATE-OBS or IMAGETYP not in FITS header. Cannot format filename.')
+        return None
     
     # get date-obs of image
     date_obs = Time(hdr['DATE-OBS'])

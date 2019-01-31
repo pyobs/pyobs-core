@@ -53,6 +53,9 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         self._expose_abort = threading.Event()
 
     def open(self) -> bool:
+        """Open module."""
+
+        # open parent class
         if not PytelModule.open(self):
             return False
 
@@ -63,18 +66,43 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # success
         return True
 
-    @property
-    def exposure_time_left(self):
+    def get_status(self, *args, **kwargs) -> str:
+        """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
+
+        Returns:
+            Current status of camera.
+        """
+        return self._camera_status.value
+
+    def get_exposure_time_left(self, *args, **kwargs) -> float:
+        """Returns the remaining exposure time on the current exposure in ms.
+
+        Returns:
+            Remaining exposure time in ms.
+        """
+
+        # if we're not exposing, there is nothing left
         if self._exposure is None:
             return 0.
+
+        # calculate difference between start of exposure and now, and return in ms
         diff = self._exposure[0] + datetime.timedelta(milliseconds=self._exposure[1]) - datetime.datetime.utcnow()
         return int(diff.total_seconds() * 1000)
 
-    @property
-    def exposure_progress(self):
+    def get_exposure_progress(self, *args, **kwargs) -> float:
+        """Returns the progress of the current exposure in percent.
+
+        Returns:
+            Progress of the current exposure in percent.
+        """
+
+        # if we're not exposing, there is no progress
         if self._exposure is None:
             return 0.
+
+        # calculate difference between start of exposure and now
         diff = datetime.datetime.utcnow() - self._exposure[0]
+
         # zero exposure time?
         if self._exposure[1] == 0.:
             return 100.
@@ -84,9 +112,23 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             return min(percentage, 100.)
 
     def _add_fits_headers(self, hdr: fits.Header):
+        """Add FITS header keywords to the given FITS header.
+
+        Args:
+            hdr: FITS header to add keywords to.
+        """
+
         # convenience function to return value of keyword
         def v(k):
             return hdr[k][0] if isinstance(k, list) or isinstance(k, tuple) else hdr[k]
+
+        # we definitely need a DATE-OBS and IMAGETYP!!
+        if 'DATE-OBS' not in hdr:
+            log.warning('No DATE-OBS found in FITS header, adding NO further information!')
+            return
+        if 'IMAGETYP' not in hdr:
+            log.warning('No IMAGETYP found in FITS header, adding NO further information!')
+            return
 
         # get date obs
         date_obs = Time(hdr['DATE-OBS'])
@@ -106,7 +148,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             log.warning('Could not calculate CDELT1/CDELT2 (DET-PIXL/TEL-FOCL/DET-BIN1/DET-BIN2 missing).')
 
         # do we have a location?
-        if self.environment.location:
+        if self.environment and self.environment.location:
             loc = self.environment.location
             # add location of telescope
             hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
@@ -117,10 +159,11 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             # hdr['LST'] = (self.environment.lst(date_obs).to_string(unit=u.hour, sep=':'))
 
         # day of observation start
-        hdr['DAY-OBS'] = self.environment.night_obs(date_obs).strftime('%Y-%m-%d')
+        if self.environment:
+            hdr['DAY-OBS'] = self.environment.night_obs(date_obs).strftime('%Y-%m-%d')
 
         # only add all this stuff for OBJECT images
-        if hdr['IMAGETYP'] in 'object':
+        if hdr['IMAGETYP'] in ['object', 'light']:
             # projection
             hdr['CTYPE1'] = ('RA---TAN', 'RA in tangent plane projection')
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
@@ -156,13 +199,41 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             else:
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
 
-    def _fetch_fits_headers(self, client):
+    def _fetch_fits_headers(self, client: IFitsHeaderProvider) -> dict:
+        """Fetch FITS headers from a given IFitsHeaderProvider.
+
+        Args:
+            client: A IFitsHeaderProvider to fetch headers from.
+
+        Returns:
+            New FITS header keywords.
+        """
         return self.comm.execute(client, 'get_fits_headers')
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+        """Actually do the exposure, should be implemented by derived classes.
+
+        Args:
+            exposure_time: The requested exposure time in ms.
+            open_shutter: Whether or not to open the shutter.
+            abort_event: Event that gets triggered when exposure should be aborted.
+
+        Returns:
+            The actual image.
+        """
         raise NotImplementedError
 
     def __expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool) -> (fits.PrimaryHDU, str):
+        """Wrapper for a single exposure.
+
+        Args:
+            exposure_time: The requested exposure time in ms.
+            open_shutter: Whether or not to open the shutter.
+            broadcast: Whether or not the new image should be broadcasted.
+
+        Returns:
+            Tuple of the image itself and its filename.
+        """
         # get clients that provide fits headers
         clients = self.comm.clients_with_interface(IFitsHeaderProvider)
 
@@ -183,7 +254,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         if hdu is None:
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
-            return None, None, None
+            return None, None
 
         # add image type
         hdu.header['IMAGETYP'] = image_type.value
@@ -212,8 +283,15 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
                 for key, value in headers.items():
                     hdu.header[key] = tuple(value)
 
+        # don't want to save?
+        if self._filenames is None:
+            return hdu, None
+
         # create a temporary filename
         filename = format_filename(hdu.header, self._filenames, self.environment)
+        if filename is None:
+            log.error('Cannot save image.')
+            return None, None
 
         # upload file
         try:
@@ -222,7 +300,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
                 hdu.writeto(cache)
         except FileNotFoundError:
             log.error('Could not upload image.')
-            return None, None, None
+            return None, None
 
         # broadcast image path
         if broadcast:
@@ -235,11 +313,11 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # return image and unique
         self._exposure = None
         log.info('Finished image %s.', filename)
-        return hdu, filename, filename
+        return hdu, filename
 
     @timeout('(exposure_time+10000)*count')
-    def expose(self, exposure_time: int, image_type: str, count: int = 1,
-               broadcast: bool = True, *args, **kwargs) -> Union[str, list]:
+    def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
+               *args, **kwargs) -> Union[str, list]:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -278,14 +356,20 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
                     log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
 
                 # expose
-                _, filename, url = self.__expose(exposure_time, image_type, broadcast)
-                if filename is None:
+                hdu, filename = self.__expose(exposure_time, image_type, broadcast)
+                if hdu is None:
                     log.error('Could not take image.')
                 else:
-                    images.append(url)
+                    if filename is None:
+                        log.warning('Image has not been saved, so cannot be retrieved by filename.')
+                    else:
+                        images.append(filename)
 
                 # finished
                 self._exposures_left -= 1
+
+            # we should be idle again
+            self._camera_status = ICamera.CameraStatus.IDLE
 
             # return id
             self._exposures_left = 0
@@ -296,13 +380,18 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             self._expose_lock.release()
 
     def _abort_exposure(self) -> bool:
+        """Abort the running exposure. Should be implemented by derived class.
+
+        Returns:
+            Success or not.
+        """
         return True
 
     def abort(self, *args, **kwargs) -> bool:
         """Aborts the current exposure and sequence.
 
         Returns:
-            bool: True if successful, otherwise False.
+            Success or not.
         """
 
         # set abort event
@@ -327,17 +416,30 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         """Aborts the current sequence after current exposure.
 
         Returns:
-            bool: True if successful, otherwise False.
+            Success or not.
         """
         if self._exposures_left > 1:
             log.info('Aborting sequence of images...')
         self._exposures_left = 0
 
     def status(self, *args, **kwargs) -> dict:
+        """Returns current status of camera.
+
+        Returns:
+            A dictionary that should contain at least the following fields:
+
+            ICamera
+                Status (str):               Current status of camera.
+                ExposureTimeLeft (float):   Time in seconds left before finished current action (expose/readout).
+                ExposuresLeft (int):        Number of remaining exposures.
+                Progress (float):           Percentage of how much of current action (expose/readout) is finished.
+                LastImage (str):            Reference to last image taken.
+        """
+
         # get values
         if self._camera_status == ICamera.CameraStatus.EXPOSING:
-            time_left = self.exposure_time_left
-            progress = self.exposure_progress
+            time_left = self.get_exposure_time_left()
+            progress = self.get_exposure_progress()
         else:
             time_left = None
             progress = 100. if self._camera_status == ICamera.CameraStatus.READOUT else 0.
@@ -355,7 +457,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
-        """Calculates and sets the BIASSEC and TRIMSEC areas
+        """Calculates and sets the BIASSEC and TRIMSEC areas.
 
         Args:
             hdr:    FITS header (in/out)
@@ -417,6 +519,12 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c2)
 
     def _handle_bad_weather_event(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+        """Abort exposure if a bad weather event occurs.
+
+        Args:
+            event: The bad weather event.
+            sender: Who sent it.
+        """
         log.warning('Received bad weather event, shutting down.')
         self.abort()
 

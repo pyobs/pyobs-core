@@ -17,15 +17,17 @@ log = logging.getLogger(__name__)
 
 
 class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
-    def __init__(self, sim: dict = None, *args, **kwargs):
+    def __init__(self, readout_time: float = 2, sim: dict = None, *args, **kwargs):
         """Creates a new dummy cammera.
 
         Args:
+            readout_time: Readout time in seconds.
             sim: Dictionary with config for image simulator.
         """
-        BaseCamera.__init__(self, thread_funcs=self._status, *args, **kwargs)
+        BaseCamera.__init__(self, thread_funcs=self._cooling_thread, *args, **kwargs)
 
         # store
+        self._redout_time = readout_time
         self._sim = sim if sim is not None else {}
         if 'images' not in self._sim:
             self._sim['images'] = None
@@ -38,35 +40,44 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         self._exposing = True
 
         # locks
-        self._statusLock = RLock()
+        self._coolingLock = RLock()
 
         # simulator
         self._sim_images = sorted(glob.glob(self._sim['images'])) if self._sim['images'] else None
 
-        # create thread function
-        self._status = {}
-        self._lock = RLock()
-
-    def _status(self):
+    def _cooling_thread(self):
         while not self.closing.is_set():
-            with self._statusLock:
-                # config
-                c = self._cooling
+            with self._coolingLock:
+                # adjust temperature
+                delta = self._cooling['Temperatures']['CCD'] - self._cooling['SetPoint']
+                self._cooling['Temperatures']['CCD'] -= delta * 0.05
 
-            # adjust temperature
-            delta = c['Temperatures']['CCD'] - c['SetPoint']
-            c['Temperatures']['CCD'] -= delta * 0.05
-
-            # cooling power
-            c['Power'] = (60. - c['Temperatures']['CCD']) / 70. * 100.
+                # cooling power
+                self._cooling['Power'] = (60. - self._cooling['Temperatures']['CCD']) / 70. * 100.
 
             # sleep for 1 second
-            self.closing.wait(1.0)
+            self.closing.wait(1)
 
     def get_full_frame(self, *args, **kwargs) -> dict:
+        """Returns full size of CCD.
+
+        Returns:
+            Dictionary with left, top, width, and height set.
+        """
         return {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+        """Actually do the exposure.
+
+        Args:
+            exposure_time: The requested exposure time in ms.
+            open_shutter: Whether or not to open the shutter.
+            abort_event: Event that gets triggered when exposure should be aborted.
+
+        Returns:
+            The actual image.
+        """
+
         # set exposure time
         log.info('Setting exposure time to {0:d}ms...'.format(exposure_time))
 
@@ -86,7 +97,7 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
 
         # readout
         self._camera_status = ICamera.CameraStatus.READOUT
-        time.sleep(2.)
+        time.sleep(self._redout_time)
 
         # random image or pre-defined?
         if self._sim_images:
@@ -121,28 +132,68 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         """Aborts the current exposure.
 
         Returns:
-            bool: True if successful, otherwise False.
+            Success or not.
         """
         self._exposing = False
         return True
 
     def get_window(self, *args, **kwargs) -> dict:
+        """Returns the camera window.
+
+        Returns:
+            Dictionary with left, top, width, and height set.
+        """
         return self._window
 
-    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs) -> bool:
+    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs) -> bool:
+        """Set the camera window.
+
+        Args:
+            left: X offset of window.
+            top: Y offset of window.
+            width: Width of window.
+            height: Height of window.
+
+        Returns:
+            Success or not.
+        """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._window = {'left': left, 'top': top, 'width': width, 'height': height}
         return True
 
-    def get_binning(self, *args, **kwargs):
+    def get_binning(self, *args, **kwargs) -> dict:
+        """Returns the camera binning.
+
+        Returns:
+            Dictionary with x and y.
+        """
         return self._binning
 
-    def set_binning(self, x: int, y: int, *args, **kwargs):
+    def set_binning(self, x: int, y: int, *args, **kwargs) -> bool:
+        """Set the camera binning.
+
+        Args:
+            x: X binning.
+            y: Y binning.
+
+        Returns:
+            Success or not.
+        """
         log.info("Set binning to %dx%d.", x, y)
         self._binning = {'x': x, 'y': y}
         return True
 
     def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs) -> bool:
+        """Enables/disables cooling and sets setpoint.
+
+        Args:
+            enabled: Enable or disable cooling.
+            setpoint: Setpoint in celsius for the cooling.
+
+        Returns:
+            Success or not.
+        """
+
         # log
         if enabled:
             log.info('Enabling cooling with a setpoint of %.2f°C.', setpoint)
@@ -150,7 +201,7 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
             log.info('Disabling cooling.')
 
         # set
-        with self._statusLock:
+        with self._coolingLock:
             self._cooling = {
                 'Enabled': enabled,
                 'SetPoint': setpoint,
@@ -160,11 +211,17 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         return True
 
     def status(self, *args, **kwargs) -> dict:
+        """Returns status of camera.
+
+        Returns:
+            Current status as dictionary.
+        """
+        
         # get status from parent
         status = super().status()
 
         # add more
-        with self._statusLock:
+        with self._coolingLock:
             status['ICooling'] = dict(self._cooling)
         return status
 

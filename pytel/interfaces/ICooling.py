@@ -23,11 +23,11 @@ class ICooling(IStatus):
         """Enables/disables cooling and sets setpoint.
 
         Args:
-            enabled (bool): Enable or disable cooling.
-            setpoint (float): Setpoint in celsius for the cooling.
+            enabled: Enable or disable cooling.
+            setpoint: Setpoint in celsius for the cooling.
 
         Returns:
-            bool: True if successful, otherwise False.
+            Success or not.
         """
         raise NotImplementedError
 

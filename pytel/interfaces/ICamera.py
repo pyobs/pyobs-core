@@ -21,6 +21,14 @@ class ICamera(IStatus, IAbortable):
         OBJECT = 'object'
         FLAT = 'flat'
 
+    def get_status(self, *args, **kwargs) -> str:
+        """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
+
+        Returns:
+            Current status of camera.
+        """
+        raise NotImplementedError
+
     def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
                *args, **kwargs) -> Union[str, list]:
         """Starts exposure and returns reference to image.
@@ -52,15 +60,32 @@ class ICamera(IStatus, IAbortable):
         """
         raise NotImplementedError
 
+    def get_exposure_time_left(self, *args, **kwargs) -> float:
+        """Returns the remaining exposure time on the current exposure in ms.
+
+        Returns:
+            Remaining exposure time in ms.
+        """
+        raise NotImplementedError
+
+    def get_exposure_progress(self, *args, **kwargs) -> float:
+        """Returns the progress of the current exposure in percent.
+
+        Returns:
+            Progress of the current exposure in percent.
+        """
+        raise NotImplementedError
+
     def status(self, *args, **kwargs) -> dict:
         """Returns current status of camera.
 
         Returns:
-            dict: A dictionary that should contain at least the following fields:
+            A dictionary that should contain at least the following fields:
 
             ICamera
                 status (str):               Current status of camera.
                 ExposureTimeLeft (float):   Time in seconds left before finished current action (expose/readout).
+                ExposuresLeft (int):        Number of remaining exposures.
                 Progress (float):           Percentage of how much of current action (expose/readout) is finished.
                 LastImage (str):            Reference to last image taken.
         """

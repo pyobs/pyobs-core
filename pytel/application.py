@@ -18,9 +18,7 @@ class Application:
 
     _instance = None
 
-    def __init__(self, vfs=None, comm=None, environment=None, database=None, module=None, plugins=None,
-                 *args, **kwargs):
-
+    def __init__(self, vfs=None, comm=None, environment=None, database=None, module=None, plugins=None, *args, **kwargs):
         # closing event
         self.closing = threading.Event()
 
@@ -61,8 +59,8 @@ class Application:
         if plugins:
             for cfg in plugins.values():
                 plg = get_object(cfg)
-                plg.comm = self._comm
-                plg.environment = self._environment
+                plg._comm = self._comm
+                plg._environment = self._environment
                 self._plugins.append(plg)
 
         # set "singleton"
@@ -103,6 +101,7 @@ class Application:
 
     def close(self):
         """Close application and all connected modules."""
+        PytelModule.close(self)
 
         # close everything
         log.info('Closing plugins...')
@@ -110,12 +109,14 @@ class Application:
             plg.close()
         log.info('Closing module...')
         self._module.close()
+
+        # close comm and db
         if self._comm:
             log.info('Closing comm...')
             self._comm.close()
-        if self._db:
+        if self.db:
             log.info('Closing database...')
-            self._db.close()
+            self.db.close()
 
         # done closing
         log.info('Finished closing all modules.')
@@ -128,18 +129,6 @@ class Application:
     def quit(self):
         """Quit application."""
         self.closing.set()
-
-    @property
-    def comm(self):
-        return self._comm
-
-    @property
-    def environment(self):
-        return self._environment
-
-    @property
-    def db(self):
-        return self._db
 
     @property
     def vfs(self):

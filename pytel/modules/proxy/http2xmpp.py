@@ -1,16 +1,11 @@
 import asyncio
-import base64
 import inspect
 import json
 import logging
 import os
 import re
-import shutil
 import threading
-import time
-from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
-
 import tornado.gen
 import tornado.ioloop
 import tornado.web
@@ -19,63 +14,29 @@ from astropy.io import fits
 from pytel import PytelModule
 from pytel.object import get_object
 from pytel.comm import RemoteException
+from pytel.utils.cache import DataCache
 from pytel.utils.fits import create_preview
+from pytel.auth import tornado_auth_required
 
 log = logging.getLogger(__name__)
 
 
-def auth_required(handler_class):
-    def wrap_execute(handler_execute):
-        def handle_auth(handler, kwargs):
-            # get auth handlers
-            auth_handlers = handler.application.auth_handlers
-            if not auth_handlers:
-                # if none are found, allow access
-                return True
-
-            # loop auth handlers
-            success = False
-            for auth_handler in auth_handlers:
-                if auth_handler.check_login(request_handler=handler):
-                    # successful login
-                    success = True
-                    break
-
-            # no success?
-            if not success:
-                # get login handler
-                login_handler = handler.application.login_handler
-                if login_handler is not None:
-                    login_handler(handler)
-                else:
-                    # just throw an 401
-                    handler.set_status(401)
-                    handler._transforms = []
-                    handler.write('Access denied')
-                    handler.finish()
-                    return False
-
-            # finished
-            return success
-
-        def _execute(self, transforms, *args, **kwargs):
-            if not handle_auth(self, kwargs):
-                return False
-            return handler_execute(self, transforms, *args, **kwargs)
-
-        return _execute
-
-    handler_class._execute = wrap_execute(handler_class._execute)
-    return handler_class
-
-
 class JsonRpcException(Exception):
-    def __init__(self, error_code, message):
+    """Base class for JSON RPC exceptions."""
+
+    def __init__(self, error_code: int, message: str):
+        """Initializes new exception.
+
+        Args:
+            error_code: The JSON RPC error code.
+            message: Error message.
+        """
         self.error_code = error_code
         self.message = message
 
     @property
     def error(self):
+        """Return the JSON for this exception."""
         return {
             'jsonrpc': '2.0',
             'error': {'code': self.error_code, 'message': self.message},
@@ -84,16 +45,19 @@ class JsonRpcException(Exception):
 
 
 class JsonRpcParseErrorException(JsonRpcException):
+    """Exception that is thrown when JSON cannot be parsed."""
     def __init__(self):
         JsonRpcException.__init__(self, -32700, 'Parse error')
 
 
 class JsonRpcInvalidRequestException(JsonRpcException):
+    """Exception that is thrown when the request is invalid."""
     def __init__(self):
         JsonRpcException.__init__(self, -32600, 'Invalid request')
 
 
 class JsonRpcMethodNotFoundException(JsonRpcException):
+    """Exception that is thrown when the requested method does not exist."""
     def __init__(self, name=None):
         if name:
             JsonRpcException.__init__(self, -32601, 'Method "%s" not found' % name)
@@ -102,11 +66,13 @@ class JsonRpcMethodNotFoundException(JsonRpcException):
 
 
 class JsonRpcInvalidParamsException(JsonRpcException):
+    """Exception that is thrown when the request contains invalid parameters for the method."""
     def __init__(self):
         JsonRpcException.__init__(self, -32602, 'Invalid params')
 
 
 class JsonRpcInternalErrorException(JsonRpcException):
+    """Exception that is thrown on all other errors, mostly includes the thrown exception."""
     def __init__(self, e: Exception):
         # get class for exception
         class_name = e.__class__.__module__ + "." + e.__class__.__name__
@@ -117,23 +83,32 @@ class JsonRpcInternalErrorException(JsonRpcException):
         JsonRpcException.__init__(self, -32603, error_msg)
 
 
-@auth_required
+@tornado_auth_required
 class JsonRpcHandler(tornado.web.RequestHandler):
+    """Tornado reqest handler for JSON RPC calls."""
+
     def initialize(self, executor):
+        """Initializes the handler (instead of in the constructor).
+
+        Args:
+            executor: A thread pool executor to use.
+        """
         self.executor = executor
 
     @tornado.gen.coroutine
     def post(self):
+        """Handle JSON RPC call."""
+
+        # better safe than sorry...
         try:
             # get body and decode JSON
             try:
-                jsonrpc = json.loads(self.request.body.decode('utf-8'))
+                rpc = json.loads(self.request.body.decode('utf-8'))
             except json.JSONDecodeError:
                 raise JsonRpcParseErrorException
 
             # we require some fields
-            if 'jsonrpc' not in jsonrpc or jsonrpc['jsonrpc'] != '2.0' \
-                    or 'method' not in jsonrpc or 'id' not in jsonrpc:
+            if 'jsonrpc' not in rpc or rpc['jsonrpc'] != '2.0' or 'method' not in rpc or 'id' not in rpc:
                 raise JsonRpcInvalidRequestException
 
             # server methods start with an underscore
@@ -143,17 +118,17 @@ class JsonRpcHandler(tornado.web.RequestHandler):
             }
 
             # get parameters
-            params = jsonrpc['params'] if 'params' in jsonrpc and jsonrpc['params'] is not None else {}
+            params = rpc['params'] if 'params' in rpc and rpc['params'] is not None else {}
 
             # log
-            if not any([regexp.match(jsonrpc['method']) for regexp in self.application.regexp_ignore_log]):
+            if not any([regexp.match(rpc['method']) for regexp in self.application.regexp_ignore_log]):
                 log.info('(id#%d) Invoking %s(%s)...',
-                         jsonrpc['id'], jsonrpc['method'], str(params)[1:-1] if params else '')
+                         rpc['id'], rpc['method'], str(params)[1:-1] if params else '')
 
             # is it a server method?
-            if jsonrpc['method'] in server_methods:
+            if rpc['method'] in server_methods:
                 # get method and signature
-                method = server_methods[jsonrpc['method']]
+                method = server_methods[rpc['method']]
                 signature = inspect.signature(method)
 
                 # bind parameters
@@ -165,14 +140,14 @@ class JsonRpcHandler(tornado.web.RequestHandler):
 
             else:
                 # split into method and module
-                mod, method = jsonrpc['method'].split('.')
+                mod, method = rpc['method'].split('.')
 
                 # try to run method
                 response = yield self.executor.submit(self.application.call_method, mod, method, **params)
 
             # build response body
-            log.info('(id#%d) Sending response: %s', jsonrpc['id'], str(response))
-            response_body = {'jsonrpc': '2.0', 'result': response, 'id': jsonrpc['id']}
+            log.info('(id#%d) Sending response: %s', rpc['id'], str(response))
+            response_body = {'jsonrpc': '2.0', 'result': response, 'id': rpc['id']}
 
             # send response
             self.set_header('Content-Disposition', 'attachment; filename="image.json')
@@ -188,13 +163,22 @@ class JsonRpcHandler(tornado.web.RequestHandler):
                 # finish stream
                 yield self.flush()
             finally:
+                # give up...
                 pass
 
 
-@auth_required
+@tornado_auth_required
 class DownloadFileHandler(tornado.web.RequestHandler):
+    """Handle download of files."""
+
     @tornado.gen.coroutine
-    def get(self, filename):
+    def get(self, filename: str):
+        """Send requested file.
+
+        Args:
+            filename: Name of file to send.
+        """
+
         # get data
         try:
             log.info('Sending file %s...', filename)
@@ -229,42 +213,9 @@ class DownloadFileHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(404)
 
 
-class Cache(object):
-    Entry = namedtuple('Entry', 'time filename data')
-
-    def __init__(self, size=10):
-        self._entries = []
-        self._size = size
-
-    def __setitem__(self, filename, data):
-        # append
-        self._entries.append(Cache.Entry(time.time(), filename, data))
-
-        # too many entries?
-        if len(self._entries) > self._size:
-            # sort by time diff
-            now = time.time()
-            self._entries.sort(key=lambda e: now - e.time)
-
-            # pick first
-            self._entries = self._entries[:self._size]
-
-    def __getitem__(self, filename):
-        for e in self._entries:
-            if e.filename == filename:
-                return e.data
-        raise IndexError
-
-    def __contains__(self, filename):
-        for e in self._entries:
-            if e.filename == filename:
-                return True
-        return False
-
-
-@auth_required
+@tornado_auth_required
 class PreviewHandler(tornado.web.RequestHandler):
-    _preview_cache = Cache()
+    _preview_cache = DataCache()
 
     @tornado.gen.coroutine
     def get(self, filename):
@@ -296,9 +247,9 @@ class PreviewHandler(tornado.web.RequestHandler):
         yield self.flush()
 
 
-@auth_required
+@tornado_auth_required
 class HeadersHandler(tornado.web.RequestHandler):
-    _headers_cache = Cache()
+    _headers_cache = DataCache()
 
     @tornado.gen.coroutine
     def get(self, filename):
@@ -330,7 +281,7 @@ class HeadersHandler(tornado.web.RequestHandler):
         yield self.flush()
 
 
-@auth_required
+@tornado_auth_required
 class AngularHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self, path):

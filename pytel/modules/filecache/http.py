@@ -12,6 +12,7 @@ import tornado.web
 import tornado.gen
 
 from pytel import PytelModule
+from pytel.utils.cache import DataCache
 
 log = logging.getLogger(__name__)
 
@@ -79,10 +80,6 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-"""Type for entry in the file cache."""
-CacheEntry = namedtuple('CacheEntry', 'filename data time')
-
-
 class HttpFileCacheServer(PytelModule, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
@@ -102,7 +99,7 @@ class HttpFileCacheServer(PytelModule, tornado.web.Application):
 
         # store stuff
         self._io_loop = None
-        self._cache = []
+        self._cache = DataCache(cache_size)
         self._lock = threading.RLock()
         self._is_listening = False
         self._port = port
@@ -155,13 +152,7 @@ class HttpFileCacheServer(PytelModule, tornado.web.Application):
                 filename = str(uuid.uuid4())
 
             # store it
-            self._cache.append(CacheEntry(filename=filename, data=data, time=time.time()))
-
-            # too many entries?
-            if len(self._cache) > self._cache_size:
-                # first sort cache by time and truncate to latest X elements
-                self._cache.sort(key=lambda c: c.time)
-                self._cache = self._cache[-self._cache_size:]
+            self._cache[filename] = data
 
             # finally, filename
             return filename
@@ -179,12 +170,7 @@ class HttpFileCacheServer(PytelModule, tornado.web.Application):
         # acquire lock on cache
         with self._lock:
             # find file in cache and return it
-            for entry in self._cache:
-                if entry.filename == filename:
-                    return entry.data
-
-        # if we came here, no file has been found
-        return None
+            return self._cache[filename] if filename in self._cache else None
 
 
 __all__ = ['HttpFileCacheServer']

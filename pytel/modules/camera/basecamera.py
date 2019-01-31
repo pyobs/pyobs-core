@@ -89,6 +89,14 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         diff = self._exposure[0] + datetime.timedelta(milliseconds=self._exposure[1]) - datetime.datetime.utcnow()
         return int(diff.total_seconds() * 1000)
 
+    def get_exposures_left(self, *args, **kwargs) -> int:
+        """Returns the remaining exposures.
+
+        Returns:
+            Remaining exposures
+        """
+        return self._exposures_left
+
     def get_exposure_progress(self, *args, **kwargs) -> float:
         """Returns the progress of the current exposure in percent.
 
@@ -104,7 +112,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure[1] == 0.:
+        if self._exposure[1] == 0. or self._camera_status == ICamera.CameraStatus.READOUT:
             return 100.
         else:
             # return max of 100
@@ -436,21 +444,13 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
                 LastImage (str):            Reference to last image taken.
         """
 
-        # get values
-        if self._camera_status == ICamera.CameraStatus.EXPOSING:
-            time_left = self.get_exposure_time_left()
-            progress = self.get_exposure_progress()
-        else:
-            time_left = None
-            progress = 100. if self._camera_status == ICamera.CameraStatus.READOUT else 0.
-
         # return status
         return {
             'ICamera': {
-                'Status': self._camera_status.value,
-                'ExposureTimeLeft': time_left,
-                'ExposuresLeft': self._exposures_left,
-                'Progress': progress,
+                'Status': self.get_status(),
+                'ExposureTimeLeft': self.get_exposure_time_left(),
+                'ExposuresLeft': self.get_exposures_left(),
+                'Progress': self.get_exposure_progress(),
                 'LastImage': self._last_image['filename'] if self._last_image else None,
             }
         }

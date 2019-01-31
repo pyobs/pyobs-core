@@ -2,9 +2,9 @@ import inspect
 import logging
 import queue
 from typing import Any
+import threading
 
 import pytel.interfaces
-from pytel import PytelModule
 from pytel.events import Event, LogEvent
 from pytel.events.clientdisconnected import ClientDisconnectedEvent
 from .proxy import Proxy
@@ -15,12 +15,12 @@ from .commlogging import CommLoggingHandler
 log = logging.getLogger(__name__)
 
 
-class Comm(PytelModule):
+class Comm:
     """Base class for all Comm modules in pytel."""
 
     def __init__(self, *args, **kwargs):
         """Creates a comm module."""
-        PytelModule.__init__(self, thread_funcs=self._logging, *args, **kwargs)
+
         self.ident = None
         self._proxies = {}
         self.module = None
@@ -33,6 +33,10 @@ class Comm(PytelModule):
         handler = CommLoggingHandler(self)
         log.addHandler(handler)
 
+        # logging thread
+        self._closing = threading.Event()
+        self._logging_thread = threading.Thread(target=self._logging)
+
     def open(self) -> bool:
         """Open module.
 
@@ -40,9 +44,8 @@ class Comm(PytelModule):
             Success or not.
         """
 
-        # open parent class
-        if not PytelModule.open(self):
-            return False
+        # start logging thread
+        self._logging_thread.start()
 
         # open variables cache
         self.variables.open()
@@ -56,8 +59,9 @@ class Comm(PytelModule):
     def close(self):
         """Close module."""
 
-        # close parent
-        PytelModule.close(self)
+        # close thread
+        self._closing.set()
+        self._logging_thread.join()
 
         # close variables cache
         self.variables.close()
@@ -247,7 +251,7 @@ class Comm(PytelModule):
         """Background thread for handling the logging."""
 
         # run until closing
-        while not self.closing.is_set():
+        while not self._closing.is_set():
             # do we have a message in the queue?
             while not self._log_queue.empty():
                 # get item and send it
@@ -255,7 +259,7 @@ class Comm(PytelModule):
                 self.send_event(entry)
 
             # sleep a little
-            self.closing.wait(1)
+            self._closing.wait(1)
 
     def log_message(self, entry: LogEvent):
         """Send a log message to other clients.

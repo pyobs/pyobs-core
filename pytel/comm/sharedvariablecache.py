@@ -1,7 +1,11 @@
+import threading
 import time
+import logging
 
-from pytel import PytelModule
 from pytel.events import VariableChangedEvent, VariablesUpdateEvent
+
+
+log = logging.getLogger(__name__)
 
 
 class SharedVariable:
@@ -45,12 +49,18 @@ class SharedVariable:
         return True
 
 
-class SharedVariableCache(PytelModule):
+class SharedVariableCache:
     """A cache for variables shared among modules."""
 
-    def __init__(self, *args, **kwargs):
-        """Create a new variable cache."""
-        PytelModule.__init__(self, thread_funcs=self._var_update, *args, **kwargs)
+    def __init__(self, comm: 'Comm'):
+        """Create a new variable cache.
+
+        Args:
+            comm: The Comm object to use.
+        """
+
+        # store comm
+        self._comm = comm
 
         # list of variables and values
         self._variables = {}
@@ -58,19 +68,26 @@ class SharedVariableCache(PytelModule):
         # callback methods on value changes.
         self._on_change = {}
 
-    def open(self) -> bool:
-        """Open module"""
+        # update thread
+        self._closing = threading.Event()
+        self._update_thread = threading.Thread(target=self._var_update)
 
-        # open parent class
-        if not PytelModule.open(self):
-            return False
+    def open(self):
+        """Open cache."""
 
         # register events
-        self.comm.register_event(VariableChangedEvent, self._handle_variable_change)
-        self.comm.register_event(VariablesUpdateEvent, self._handle_variables_update)
+        self._comm.register_event(VariableChangedEvent, self._handle_variable_change)
+        self._comm.register_event(VariablesUpdateEvent, self._handle_variables_update)
 
-        # success
-        return True
+        # start update thread
+        self._update_thread.start()
+
+    def close(self):
+        """Close cache."""
+
+        # request quit and join thread
+        self._closing.set()
+        self._update_thread.join()
 
     def __getitem__(self, item: str):
         """Returns the value of a variable.
@@ -181,16 +198,16 @@ class SharedVariableCache(PytelModule):
     def _var_update(self):
         """Periodically send variable values."""
 
-        while not self.closing.is_set():
+        while not self._closing.is_set():
             # fetch all local variables
             vars = {k: v.value for k, v in self._variables.items() if v.source is None}
 
             # send event
             if vars:
-                self.comm.send_event(VariablesUpdateEvent(vars))
+                self._comm.send_event(VariablesUpdateEvent(vars))
 
             # wait a little
-            self.closing.wait(10)
+            self._closing.wait(10)
 
 
 __all__ = ['SharedVariableCache']

@@ -101,7 +101,6 @@ class Application:
 
     def close(self):
         """Close application and all connected modules."""
-        PytelModule.close(self)
 
         # close everything
         log.info('Closing plugins...')
@@ -114,9 +113,9 @@ class Application:
         if self._comm:
             log.info('Closing comm...')
             self._comm.close()
-        if self.db:
+        if self._db:
             log.info('Closing database...')
-            self.db.close()
+            self._db.close()
 
         # done closing
         log.info('Finished closing all modules.')

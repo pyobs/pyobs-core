@@ -60,6 +60,14 @@ class ICamera(IStatus, IAbortable):
         """
         raise NotImplementedError
 
+    def get_exposures_left(self, *args, **kwargs) -> int:
+        """Returns the remaining exposures.
+
+        Returns:
+            Remaining exposures
+        """
+        raise NotImplementedError
+
     def get_exposure_time_left(self, *args, **kwargs) -> float:
         """Returns the remaining exposure time on the current exposure in ms.
 

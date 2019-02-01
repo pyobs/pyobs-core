@@ -1,5 +1,4 @@
 import os
-
 import pytest
 
 from pytel.vfs import LocalFile
@@ -12,7 +11,7 @@ def test_read_file():
     # open file
     filename = os.path.basename(__file__)
     with LocalFile(filename, 'r', root=root) as f:
-        assert f.readline() == b'import os\n'
+        assert f.readline() == b'import os' + bytes(os.linesep, 'utf-8')
 
 
 def test_file_not_found():

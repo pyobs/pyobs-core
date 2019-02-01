@@ -1,5 +1,6 @@
 import io
 import tarfile
+import os
 
 from pytel import Application
 from pytel.vfs.tarfile import TarFile
@@ -37,4 +38,4 @@ def test_tarfile(monkeypatch):
 
             # extract file
             fd = tar.extractfile('testing.py')
-            assert fd.readline() == b'import io\n'
+            assert fd.readline() == b'import io' + bytes(os.linesep, 'utf-8')

@@ -1,6 +1,8 @@
 import io
 import subprocess
 import logging
+import os
+import gzip
 
 
 log = logging.getLogger(__name__)
@@ -15,11 +17,17 @@ class GzipReader(io.RawIOBase):
         self._fd = fd
         self._close_fd = close_fd
 
+        # does gzip exist?
+        use_shell = os.path.exists('/bin/gzip')
+
         # read and compress raw stream
-        p = subprocess.run(['/bin/gzip', '-d'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, input=fd.read())
-        if len(p.stderr) > 1:
-            raise RuntimeError('Error from gzip: %s', p.stderr)
-        self._buffer = p.stdout
+        if use_shell:
+            p = subprocess.run(['/bin/gzip', '-d'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, input=fd.read())
+            if len(p.stderr) > 1:
+                raise RuntimeError('Error from gzip: %s', p.stderr)
+            self._buffer = p.stdout
+        else:
+            self._buffer = gzip.decompress(fd.read())
 
     def readable(self):
         return True
@@ -73,6 +81,9 @@ class GzipWriter(io.RawIOBase):
         self._fd = fd
         self._close_fd = close_fd
 
+        # does gzip exist?
+        self._use_shell = os.path.exists('/bin/gzip')
+
     def writable(self):
         return True
 
@@ -81,10 +92,13 @@ class GzipWriter(io.RawIOBase):
 
     def flush(self):
         # write compressed data
-        p = subprocess.run(['/bin/gzip'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, input=self._buffer)
-        if len(p.stderr) > 1:
-            raise RuntimeError('Error from gzip: %s', p.stderr)
-        self._fd.write(p.stdout)
+        if self._use_shell:
+            p = subprocess.run(['/bin/gzip'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, input=self._buffer)
+            if len(p.stderr) > 1:
+                raise RuntimeError('Error from gzip: %s', p.stderr)
+            self._fd.write(p.stdout)
+        else:
+            self._fd.write(gzip.compress(self._buffer))
 
         # reset buffer
         self._buffer = b''

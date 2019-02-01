@@ -20,4 +20,4 @@ def test_read_file():
     # open file
     filename = '/local/' + os.path.basename(__file__)
     with vfs.open_file(filename, 'r') as f:
-        assert f.readline() == b'import os\n'
+        assert f.readline() == b'import os' + bytes(os.linesep, 'utf-8')

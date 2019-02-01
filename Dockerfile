@@ -7,7 +7,5 @@ COPY . /pytel
 
 WORKDIR /pytel
 RUN python setup.py install
-RUN dir
-RUN dir /
 
 CMD ["bin/pytel", "-l", "/pytel.log", "/pytel.yaml"]

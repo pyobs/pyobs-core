@@ -6,19 +6,24 @@ from pytel.object import get_object
 log = logging.getLogger(__name__)
 
 
-class Singleton(object):
-    _shared_state = {}
-
-    def __init__(self):
-        self.__dict__ = self._shared_state
-
-
 class Application:
     """The Application class is the default type for top-level pytel objects."""
 
     _instance = None
 
-    def __init__(self, vfs=None, comm=None, environment=None, database=None, module=None, plugins=None, *args, **kwargs):
+    def __init__(self, vfs=None, comm=None, environment=None, database=None, module=None, plugins=None,
+                 *args, **kwargs):
+        """Create a new application.
+
+        Args:
+            vfs: A handler for the virtual file system.
+            comm: The comm object to use.
+            environment: The environment.
+            database: Database to use
+            module: The module to run within the application.
+            plugins: Plugins to run along with the modules.
+        """
+
         # closing event
         self.closing = threading.Event()
 
@@ -67,7 +72,8 @@ class Application:
         Application._instance = self
 
     @staticmethod
-    def instance():
+    def instance() -> 'Application':
+        """Get single instance of application."""
         return Application._instance
 
     def open(self) -> bool:
@@ -130,7 +136,8 @@ class Application:
         self.closing.set()
 
 
-APP = lambda: Application.instance()
+def APP():
+    return Application.instance()
 
 
 __all__ = ['Application', 'APP']

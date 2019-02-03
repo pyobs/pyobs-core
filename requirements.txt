@@ -1,3 +1,4 @@
+sqlalchemy
 paramiko
 pandas
 matplotlib

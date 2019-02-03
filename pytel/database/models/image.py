@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+from typing import Union
 
 from astropy.io import fits
 
@@ -183,41 +184,75 @@ class Image(Base):
         self.data_mean = header['DATAMEAN']
 
     @staticmethod
-    def add_from_fits(filename: str, environment: 'Environment') -> 'Image':
+    def add_from_fits(filename: str, header: fits.Header, environment: 'Environment') -> Union['Image', None]:
         """Add Image from a given FITS file.
 
         Args:
-            session: SQLalchemy session to use.
-            filename: Name of file to add.
+            filename: Archive name of file to add.
+            header: FITS header of file to add.
             environment: Environment to use.
 
         Returns:
             The new Image in the database.
         """
+        from ..database import session_context
+        from . import Project, Task, Night, Observation
 
-        # init
-        basename = os.path.basename(filename)
+        # don't want to raise exceptions
+        with session_context() as session:
+            # get night of observation
+            if 'DATE-OBS' not in header:
+                raise ValueError('No DATE-OBS in FITS header.')
+            night_obs = environment.night_obs(Time(header['DATE-OBS']))
 
-        # get header
-        header = fits.getheader(filename)
+            # get project
+            if 'PROJECT' not in header:
+                log.error('No PROJECT in FITS header.')
+            project = Project.get_by_name(session, header['PROJECT'])
+            if project is None:
+                project = Project(header['PROJECT'])
+                session.add(project)
 
-        # create path in archive
-        date_obs = Time(header['DATE-OBS'])
-        night_obs = environment.night_obs(date_obs)
-        tel = header['TELESCOP'].lower()
-        archive_filename = os.path.join(tel, night_obs.strftime("%Y%m%d"), 'raw', basename)
+            # get task
+            if 'TASK' not in header:
+                log.error('No TASK in FITS header.')
+            task = Task.get_by_name(session, header['TASK'])
+            if task is None:
+                task = Task(header['TASK'])
+                session.add(task)
+            task.project = project
 
-        # create or update image
-        image = session.query(Image).filter(Image.filename == archive_filename).first()
-        if not image:
-            image = Image()
-            image.filename = archive_filename
+            # get night from database
+            night = session.query(Night).filter(Night.night == night_obs).first()
+            if night is None:
+                night = Night(night_obs)
+                session.add(night)
 
-        # load fits headers
-        image.add_fits_header(session, header)
+            # get observation
+            if 'OBS' not in header:
+                log.error('No OBS in FITS header.')
+            observation = Observation.get_by_name(session, header['OBS'])
+            if observation is None:
+                observation = Observation(header['OBS'])
+                session.add(observation)
+            observation.night = night
+            observation.task = task
 
-        # finished
-        return image
+            # create or update image
+            image = session.query(Image).filter(Image.filename == filename).first()
+            if image is None:
+                image = Image()
+                image.filename = filename
+                session.add(image)
+
+            # load fits headers
+            image.add_fits_header(session, header)
+
+            # add image to observation
+            observation.add_image(session, image, environment)
+
+            # finished
+            return image
 
 
 __all__ = ['Image', 'ImageType']

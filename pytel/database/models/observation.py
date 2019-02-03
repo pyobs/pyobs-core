@@ -2,28 +2,34 @@ import logging
 from enum import Enum
 from typing import Union
 
+from astropy.io import fits
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, Session
 
 from .base import Base
 from .night import Night
+from .task import Task
+from .table import GetByNameMixin
 
 log = logging.getLogger(__name__)
 
 
-class Observation(Base):
+class Observation(Base, GetByNameMixin):
     """A observation, i.e. a collection of images."""
     __tablename__ = 'pytel_observation'
 
     id = Column(Integer, comment='Unique ID of observation', primary_key=True)
     night_id = Column(Integer, ForeignKey(Night.id), comment='ID of night')
     name = Column(String(30), comment='Name of observation', unique=True, nullable=False)
-    task_id = Column(Integer, comment='ID of task in database')
-    task_name = Column(String(40), comment='Unique name of task')
+    task_id = Column(Integer, ForeignKey(Task.id), comment='ID of task in database')
     start_time = Column(DateTime, comment='Date and time of start of observation')
 
     night = relationship(Night, back_populates='observations')
+    task = relationship(Task, back_populates='observations')
     images = relationship("Image", lazy='dynamic')
+
+    def __init__(self, name: str):
+        self.name = name
 
     def add_image(self, session: Session, image: 'Image', environment: 'Environment'):
         """Add a new image to this observation.

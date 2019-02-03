@@ -1,4 +1,4 @@
-from pytel.database import Database, session
+from pytel.database import Database
 import sqlalchemy as sa
 
 

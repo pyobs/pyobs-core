@@ -4,12 +4,13 @@ from sqlalchemy.orm import relationship
 
 from .base import Base
 from .project import Project
+from .table import GetByNameMixin
 
 
 log = logging.getLogger(__name__)
 
 
-class Task(Base):
+class Task(Base, GetByNameMixin):
     """A single task in the database."""
     __tablename__ = 'pytel_task'
 
@@ -18,7 +19,11 @@ class Task(Base):
     project_id = Column(Integer, ForeignKey(Project.id), comment='Project this tasks belongs to')
 
     project = relationship(Project, back_populates='tasks')
+    observations = relationship("Observation", lazy='dynamic')
     UniqueConstraint('name', 'project_id')
+
+    def __init__(self, name):
+        self.name = name
 
 
 __all__ = ['Task']

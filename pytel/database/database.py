@@ -66,7 +66,7 @@ class Database:
 
 
 @contextmanager
-def session():
+def session_context():
     """Provide a transactional scope around a series of operations."""
 
     # get session
@@ -81,4 +81,4 @@ def session():
         session.close()
 
 
-__all__ = ['Database', 'session']
+__all__ = ['Database', 'session_context']

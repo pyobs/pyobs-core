@@ -12,7 +12,7 @@ def get_object(config_or_object: Union[dict, 'spexxyObject'], object_class=None,
         (New) object (created from config) that optionally passed class check.
 
     Raises:
-        ValueError: If the object does not match the given class.
+        TypeError: If the object does not match the given class.
     """
 
     if config_or_object is None:
@@ -29,7 +29,7 @@ def get_object(config_or_object: Union[dict, 'spexxyObject'], object_class=None,
 
     # do we need a type check and does the given object pass?
     if object_class is not None and not isinstance(obj, object_class):
-        raise ValueError('Provided object is not of requested type %s.' % object_class.__name__)
+        raise TypeError('Provided object is not of requested type %s.' % object_class.__name__)
     return obj
 
 

@@ -1,6 +1,9 @@
 import logging
+from enum import Enum
+from typing import Union
+
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session
 
 from .base import Base
 from .night import Night
@@ -9,6 +12,7 @@ log = logging.getLogger(__name__)
 
 
 class Observation(Base):
+    """A observation, i.e. a collection of images."""
     __tablename__ = 'pytel_observation'
 
     id = Column(Integer, comment='Unique ID of observation', primary_key=True)
@@ -21,7 +25,15 @@ class Observation(Base):
     night = relationship(Night, back_populates='observations')
     images = relationship("Image", lazy='dynamic')
 
-    def add_image(self, session, image, environment):
+    def add_image(self, session: Session, image: 'Image', environment: 'Environment'):
+        """Add a new image to this observation.
+
+        Args:
+            session: SQLalchemy session to use.
+            image: Image to add.
+            environment: Environment to use.
+        """
+
         # set observation
         image.observation = self
 
@@ -43,13 +55,13 @@ class Observation(Base):
             night.reduced = 0
             self.night = night
 
-    def _images(self, session, image_types, reduction_level: int):
+    def _images(self, session: Session, image_types: Union[list, str, Enum], reduction_level: int) -> list:
         """Return list of (un)reduced images of given type in this observation.
 
         Args:
-            session (Session): SQLAlchemy session to query data from.
-            image_types (list|str|Enum): Single string or ImageType or list of them.
-            reduction_level (int): Reduction level.
+            session: SQLAlchemy session to query data from.
+            image_types: Single string or ImageType or list of them.
+            reduction_level: Reduction level.
 
         Returns:
              List of images.
@@ -63,24 +75,24 @@ class Observation(Base):
         from .image import Image
         return self.images.filter(Image.image_type.in_(image_types)).filter(Image.reduction_level == reduction_level)
 
-    def raw_images(self, session, image_types):
+    def raw_images(self, session: Session, image_types: Union[list, str, Enum]) -> list:
         """Return list of raw images of given type in this observation.
 
         Args:
-            session (Session): SQLAlchemy session to query data from.
-            image_types (list|str|Enum): Single string or ImageType or list of them.
+            session: SQLAlchemy session to query data from.
+            image_types: Single string or ImageType or list of them.
 
         Returns:
              List of raw images.
         """
         return self._images(session, image_types, reduction_level=0)
 
-    def reduced_images(self, session, image_types):
+    def reduced_images(self, session: Session, image_types: Union[list, str, Enum]) -> list:
         """Return list of reduced images of given type in this observation.
 
         Args:
-            session (Session): SQLAlchemy session to query data from.
-            image_types (list|str|Enum): Single string or ImageType or list of them.
+            session: SQLAlchemy session to query data from.
+            image_types: Single string or ImageType or list of them.
 
         Returns:
              List of reduced images.
@@ -88,4 +100,4 @@ class Observation(Base):
         return self._images(session, image_types, reduction_level=1)
 
 
-__all__= ['Observation']
+__all__ = ['Observation']

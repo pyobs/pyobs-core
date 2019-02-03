@@ -5,6 +5,7 @@ from .table import GetByNameMixin
 
 
 class Telescope(Base, GetByNameMixin):
+    """A telescope."""
     __tablename__ = 'pytel_telescope'
 
     id = Column(Integer, comment='Unique ID of telescope', primary_key=True)
@@ -14,4 +15,4 @@ class Telescope(Base, GetByNameMixin):
         self.name = name
 
 
-__all__= ['Telescope']
+__all__ = ['Telescope']

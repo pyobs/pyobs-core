@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 
 class Task(Base):
+    """A single task in the database."""
     __tablename__ = 'pytel_task'
 
     id = Column(Integer, comment='Unique ID of task', primary_key=True)
@@ -20,4 +21,4 @@ class Task(Base):
     UniqueConstraint('name', 'project_id')
 
 
-__all__= ['Task']
+__all__ = ['Task']

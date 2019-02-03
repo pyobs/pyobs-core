@@ -1,6 +1,9 @@
 import logging
 import math
 import os
+
+from astropy.io import fits
+
 from pytel.utils.time import Time
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Table
 from sqlalchemy.orm import relationship, Session
@@ -12,6 +15,7 @@ from .observation import Observation
 
 log = logging.getLogger(__name__)
 
+"""Define connections between images, mainly used for reduction."""
 image_relation = Table(
     "pytel_image_relation", Base.metadata,
     Column("image_id", Integer, ForeignKey("pytel_image.id"), index=True),
@@ -20,6 +24,7 @@ image_relation = Table(
 
 
 class ImageType(object):
+    """Available image types."""
     bias = 'bias'
     dark = 'dark'
     flat = 'flat'
@@ -28,6 +33,7 @@ class ImageType(object):
 
 
 class Image(Base):
+    """A single image."""
     __tablename__ = 'pytel_image'
 
     id = Column(Integer, comment='Unique ID of image', primary_key=True)
@@ -72,6 +78,13 @@ class Image(Base):
                             backref="parents")
 
     def delete(self, session: Session, archive_path: str):
+        """Delete an image from the database and filesystem.
+
+        Args:
+            session: SQLalchemy session to use.
+            archive_path: Archive path for images, i.e. where to find the images.
+        """
+
         # delete file, if exists
         filename = os.path.join(archive_path, self.filename)
         if os.path.exists(filename):
@@ -170,9 +183,23 @@ class Image(Base):
         self.data_mean = header['DATAMEAN']
 
     @staticmethod
-    def add_from_fits(session, filename: str, header, environment):
+    def add_from_fits(session, filename: str, environment: 'Environment') -> 'Image':
+        """Add Image from a given FITS file.
+
+        Args:
+            session: SQLalchemy session to use.
+            filename: Name of file to add.
+            environment: Environment to use.
+
+        Returns:
+            The new Image in the database.
+        """
+
         # init
         basename = os.path.basename(filename)
+
+        # get header
+        header = fits.getheader(filename)
 
         # create path in archive
         date_obs = Time(header['DATE-OBS'])

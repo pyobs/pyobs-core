@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 
 class Project(Base):
+    """A project."""
     __tablename__ = 'pytel_project'
 
     id = Column(Integer, comment='Unique ID of project', primary_key=True)
@@ -17,4 +18,4 @@ class Project(Base):
     tasks = relationship("Task", lazy='dynamic')
 
 
-__all__= ['Project']
+__all__ = ['Project']

@@ -183,7 +183,7 @@ class Image(Base):
         self.data_mean = header['DATAMEAN']
 
     @staticmethod
-    def add_from_fits(session, filename: str, environment: 'Environment') -> 'Image':
+    def add_from_fits(filename: str, environment: 'Environment') -> 'Image':
         """Add Image from a given FITS file.
 
         Args:

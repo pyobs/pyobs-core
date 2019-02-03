@@ -8,7 +8,7 @@ from pytel.utils.fits import format_filename
 from sqlalchemy import func
 
 from pytel import PytelModule
-from pytel.database.models import Image, Observation, Night, Telescope, Instrument
+from pytel.database import session_context, Image, Observation, Night, Telescope, Instrument
 from pytel.interfaces import IImageDB
 from pytel.modules import timeout
 
@@ -76,7 +76,7 @@ class ImageDB(PytelModule, IImageDB):
         """
 
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # find observation
             if 'OBS' not in hdu.header:
                 log.error('Could not find observation name OBS in FITS header.')
@@ -242,7 +242,7 @@ class ImageDB(PytelModule, IImageDB):
         """
 
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # base query
             query = session.query(func.count(Observation.id.distinct()))
 
@@ -279,7 +279,7 @@ class ImageDB(PytelModule, IImageDB):
         """
 
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # basic query
             query = session.query(Observation.id, Observation.name, Observation.task_name, Observation.start_time,
                                   func.date_format(Observation.start_time, '%Y-%m-%d %H:%I:%S').label('start_time'),
@@ -444,7 +444,7 @@ class ImageDB(PytelModule, IImageDB):
         """
 
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # base query
             query = session.query(func.count(Image.id.distinct()))
 
@@ -496,7 +496,7 @@ class ImageDB(PytelModule, IImageDB):
         """
 
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # base query
             query = session.query(Image.filename, func.concat(self._vfs_root).label('scheme'),
                                   Image.image_type, Image.binning, Image.filter,
@@ -539,7 +539,7 @@ class ImageDB(PytelModule, IImageDB):
             List of telescope names.
         """
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # base query
             query = session.query(Telescope.name).order_by(Telescope.id.asc())
 
@@ -553,7 +553,7 @@ class ImageDB(PytelModule, IImageDB):
             List of instrument names.
         """
         # open a session
-        with self.db.session() as session:
+        with session_context() as session:
             # base query
             query = session.query(Instrument.name).order_by(Instrument.id.asc())
 

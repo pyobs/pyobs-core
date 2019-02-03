@@ -2,6 +2,7 @@ import logging
 import threading
 
 from pytel.object import get_object
+from pytel.database import Database
 
 log = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class Application:
 
     _instance = None
 
-    def __init__(self, vfs=None, comm=None, environment=None, database=None, module=None, plugins=None,
+    def __init__(self, vfs=None, comm=None, environment=None, database: str = None, module=None, plugins=None,
                  *args, **kwargs):
         """Create a new application.
 
@@ -19,10 +20,13 @@ class Application:
             vfs: A handler for the virtual file system.
             comm: The comm object to use.
             environment: The environment.
-            database: Database to use
+            database: Database connection string.
             module: The module to run within the application.
             plugins: Plugins to run along with the modules.
         """
+
+        # store
+        self._db_connect = database
 
         # closing event
         self.closing = threading.Event()
@@ -33,12 +37,6 @@ class Application:
         else:
             from pytel.vfs import VirtualFileSystem
             self._vfs = VirtualFileSystem()
-
-        # create database
-        if database:
-            self._db = get_object(database)
-        else:
-            self._db = None
 
         # create environment
         self._environment = None
@@ -54,7 +52,7 @@ class Application:
             self._comm = DummyComm()
 
         # create module to publish
-        self._module = get_object(module, comm=self._comm, vfs=self._vfs, environment=self._environment, db=self._db)
+        self._module = get_object(module, comm=self._comm, vfs=self._vfs, environment=self._environment)
 
         # link all together
         self._comm.module = self._module
@@ -77,12 +75,13 @@ class Application:
         return Application._instance
 
     def open(self) -> bool:
-        """Open application module and, if exist, database, comm, and plugin modules."""
+        """Open application module and, if exist, comm, and plugin modules."""
 
-        # open db
-        if self._db:
-            log.info('Opening database...')
-            self._db.open()
+        # connect database
+        if self._db_connect:
+            if not Database.connect(self._db_connect):
+                log.error('Could not open database.')
+                return False
 
         # open comm
         if self._comm:
@@ -115,13 +114,10 @@ class Application:
         log.info('Closing module...')
         self._module.close()
 
-        # close comm and db
+        # close comm
         if self._comm:
             log.info('Closing comm...')
             self._comm.close()
-        if self._db:
-            log.info('Closing database...')
-            self._db.close()
 
         # done closing
         log.info('Finished closing all modules.')

@@ -56,7 +56,7 @@ def timeout(func_timeout: Union[str, int, None] = None):
 
 
 class PytelModule:
-    def __init__(self, name=None, comm=None, vfs=None, environment=None, database=None, thread_funcs=None,
+    def __init__(self, name=None, comm=None, vfs=None, environment=None, thread_funcs=None,
                  restart_threads=True, *args, **kwargs):
 
         # an event that will be fired when closing the module
@@ -74,7 +74,6 @@ class PytelModule:
         self._comm = comm
         self._vfs = vfs
         self._environment = environment
-        self._db = database
 
         # opened?
         self._opened = False
@@ -100,10 +99,6 @@ class PytelModule:
     @property
     def vfs(self):
         return self._vfs
-
-    @property
-    def db(self):
-        return self._db
 
     @property
     def environment(self):

@@ -10,51 +10,41 @@ log = logging.getLogger(__name__)
 
 
 class Database:
-    """Implements database methods for pytel."""
+    # global variables
+    engine = None
+    metadata = None
+    session_maker = None
 
-    def __init__(self, connect: str = None, table_prefix: str = 'pytel_', *args, **kwargs):
+    @staticmethod
+    def connect(connect: str = None, *args, **kwargs):
         """Create a new database connection.
 
         Args:
             connect: Connection string.
-            table_prefix: Prefix for all pytel database tables.
         """
-
-        # init
-        self._engine = None
-        self._metadata = None
-        self._session = None
-        self._connect = connect
-        self._table_prefix = table_prefix
-
-    def open(self):
-        """Open database connection."""
 
         # create engine
         log.info('Connecting to database...')
-        self._engine = create_engine(self._connect, pool_size=100, pool_recycle=3600)
-        self._engine.echo = False
-        event.listen(self._engine, 'checkout', Database._checkout_listener)
+        Database.engine = create_engine(connect, pool_size=100, pool_recycle=3600)
+        Database.engine.echo = False
+        event.listen(Database.engine, 'checkout', Database._checkout_listener)
 
         # and metadata
-        self._metadata = MetaData(self._engine)
+        Database.metadata = MetaData(Database.engine)
 
         # and session
-        self._session = sessionmaker(bind=self._engine)
+        Database.session_maker = sessionmaker(bind=Database.engine)
+
+        # and tables
+        Database.create_tables()
 
         # success
         return True
 
-    def create_tables(self):
+    @staticmethod
+    def create_tables():
         """Create tables in database."""
-
-        # create tables
-        Base.metadata.create_all(self._engine, checkfirst=True)
-
-    def run(self):
-        """This is just for running the Database object standalone for creating the database.
-        All we do is creating the tables."""
-        self.create_tables()
+        Base.metadata.create_all(Database.engine, checkfirst=True)
 
     @staticmethod
     def _checkout_listener(dbapi_con, con_record, con_proxy):
@@ -74,18 +64,21 @@ class Database:
             else:
                 raise
 
-    @contextmanager
-    def session(self):
-        """Provide a transactional scope around a series of operations."""
-        session = self._session()
-        try:
-            yield session
-            session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+
+@contextmanager
+def session():
+    """Provide a transactional scope around a series of operations."""
+
+    # get session
+    session = Database.session_maker()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
-__all__ = ['Database']
+__all__ = ['Database', 'session']

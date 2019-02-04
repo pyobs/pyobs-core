@@ -184,7 +184,7 @@ class Image(Base):
         self.data_mean = header['DATAMEAN']
 
     @staticmethod
-    def add_from_fits(filename: str, header: fits.Header, environment: 'Environment') -> Union['Image', None]:
+    def add_from_fits(filename: str, header: fits.Header, environment: 'Environment') -> bool:
         """Add Image from a given FITS file.
 
         Args:
@@ -193,7 +193,7 @@ class Image(Base):
             environment: Environment to use.
 
         Returns:
-            The new Image in the database.
+            Success or not.
         """
         from ..database import session_context
         from . import Project, Task, Night, Observation
@@ -202,12 +202,14 @@ class Image(Base):
         with session_context() as session:
             # get night of observation
             if 'DATE-OBS' not in header:
-                raise ValueError('No DATE-OBS in FITS header.')
+                log.error('No DATE-OBS in FITS header.')
+                return False
             night_obs = environment.night_obs(Time(header['DATE-OBS']))
 
             # get project
             if 'PROJECT' not in header:
                 log.error('No PROJECT in FITS header.')
+                return False
             project = Project.get_by_name(session, header['PROJECT'])
             if project is None:
                 project = Project(header['PROJECT'])
@@ -216,6 +218,7 @@ class Image(Base):
             # get task
             if 'TASK' not in header:
                 log.error('No TASK in FITS header.')
+                return False
             task = Task.get_by_name(session, header['TASK'])
             if task is None:
                 task = Task(header['TASK'])
@@ -231,6 +234,7 @@ class Image(Base):
             # get observation
             if 'OBS' not in header:
                 log.error('No OBS in FITS header.')
+                return False
             observation = Observation.get_by_name(session, header['OBS'])
             if observation is None:
                 observation = Observation(header['OBS'])
@@ -252,7 +256,7 @@ class Image(Base):
             observation.add_image(session, image, environment)
 
             # finished
-            return image
+            return True
 
 
 __all__ = ['Image', 'ImageType']

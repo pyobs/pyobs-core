@@ -1,3 +1,4 @@
+pyinotify
 sqlalchemy
 paramiko
 pandas

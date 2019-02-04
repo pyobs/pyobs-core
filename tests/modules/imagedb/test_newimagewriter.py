@@ -9,7 +9,7 @@ from pytel.events import NewImageEvent
 def test_newimage():
     # we need a VFS and Comm
     vfs = VirtualFileSystem(roots={'input': {'class': 'pytel.vfs.TempFile'},
-                                   'output': {'class': 'pytel.vfs.LocalFile', 'root': '/tmp/pytel/output/'}})
+                                   'output': {'class': 'pytel.vfs.MemoryFile'}})
     comm = DummyComm()
 
     # create NewImageWriter

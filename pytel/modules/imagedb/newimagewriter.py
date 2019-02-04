@@ -34,12 +34,12 @@ class NewImageWriter(PytelModule):
         # subscribe to channel with new images
         if self._new_images_channel:
             log.info('Subscribing to new image events...')
-            self.comm.register_event(NewImageEvent, self._process_new_image_event)
+            self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
         # success
         return True
 
-    def _process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs) -> bool:
+    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:

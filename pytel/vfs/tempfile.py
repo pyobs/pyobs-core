@@ -8,7 +8,8 @@ log = logging.getLogger(__name__)
 
 
 class TempFile(FileIO):
-    def __init__(self, name=None, mode='r', prefix=None, suffix=None, root: str = '/tmp/pytel/', *args, **kwargs):
+    def __init__(self, name=None, mode='r', prefix=None, suffix=None, root: str = '/tmp/pytel/', mkdir: bool = True,
+                 *args, **kwargs):
         # no root given?
         if root is None:
             raise ValueError('No root directory given.')

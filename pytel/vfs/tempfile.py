@@ -8,8 +8,20 @@ log = logging.getLogger(__name__)
 
 
 class TempFile(FileIO):
-    def __init__(self, name=None, mode='r', prefix=None, suffix=None, root: str = '/tmp/pytel/', mkdir: bool = True,
-                 *args, **kwargs):
+    """A temporary file."""
+
+    def __init__(self, name: str = None, mode: str = 'r', prefix: str = None, suffix: str = None,
+                 root: str = '/tmp/pytel/', mkdir: bool = True, *args, **kwargs):
+        """Open/create a temp file.
+
+        Args:
+            name: Name of file.
+            mode: Open mode.
+            prefix: Prefix for automatic filename creation in write mode.
+            suffix: Suffix for automatic filename creation in write mode.
+            root: Temp directory.
+            mkdir: Whether to automatically create directories.
+        """
         # no root given?
         if root is None:
             raise ValueError('No root directory given.')
@@ -48,6 +60,8 @@ class TempFile(FileIO):
         FileIO.__init__(self, full_name, mode)
 
     def close(self):
+        """Close file."""
+
         # close file
         FileIO.close(self)
 

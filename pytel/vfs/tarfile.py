@@ -10,7 +10,17 @@ log = logging.getLogger(__name__)
 
 
 class TarFile:
-    def __init__(self, name=None, mode='rb', source: str = None, *args, **kwargs):
+    """Write a TAR file from a list of input files."""
+
+    def __init__(self, name: str = None, mode: str = 'rb', source: str = None, *args, **kwargs):
+        """Open/create a new TAR file.
+
+        Args:
+            name: Name of file.
+            mode: Open mode.
+            source: An object that provides a list of filenames to write into the TAR file.
+        """
+
         # get app
         self.app = Application.instance()
 
@@ -55,7 +65,16 @@ class TarFile:
                 # add file
                 self._tarfile.addfile(info, fileobj=bio)
 
-    def read(self, size=-1) -> bytes:
+    def read(self, size: int = -1) -> bytes:
+        """Read from the stream.
+
+        Args:
+            size: Number of bytes to read.
+
+        Returns:
+            Read bytes.
+        """
+
         # not enough bytes in the buffer?
         while len(self._files) > 0 and (size == -1 or len(self._buffer) < size):
             # get next file and add it
@@ -80,12 +99,15 @@ class TarFile:
         return data
 
     def close(self):
+        """Close file."""
         self._tarfile.close()
 
     def __enter__(self):
+        """Enter with block."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit with block."""
         self.close()
 
 

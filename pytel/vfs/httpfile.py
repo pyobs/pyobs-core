@@ -8,7 +8,19 @@ log = logging.getLogger(__name__)
 
 
 class HttpFile(io.RawIOBase):
-    def __init__(self, name, mode='r', download: str = None, upload: str = None, *args, **kwargs):
+    """Wraps a file on a HTTP server that can be accessed via GET/POST.
+    Especially useful in combination with :class:`pytel.modules.filecache,http.HttpFileCacheServer`."""
+
+    def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None, *args, **kwargs):
+        """Creates a new HTTP file.
+
+        Args:
+            name: Name of file.
+            mode: Open mode (r/w).
+            download: Base URL for downloading files. If None, no read access possible.
+            upload: Base URL for uploading files. If None, no write access possible.
+        """
+
         # init
         io.RawIOBase.__init__(self)
 
@@ -36,6 +48,12 @@ class HttpFile(io.RawIOBase):
             self._download()
 
     def _download(self):
+        """For read access, download the file into a local buffer.
+
+        Raises:
+            FileNotFoundError: If file could not be found.
+        """
+
         try:
             # define URL
             url = urljoin(self._download_path, self._filename)
@@ -56,9 +74,19 @@ class HttpFile(io.RawIOBase):
             raise FileNotFoundError
 
     def readable(self):
+        """File is readable if it was opened in 'r' mode."""
         return 'r' in self._mode
 
-    def read(self, size=-1):
+    def read(self, size: int = -1):
+        """Read number of bytes from stream.
+
+        Args:
+            size: Number of bytes to read. Read until end, if -1.
+
+        Returns:
+            Read bytes.
+        """
+
         # check size
         if size == -1:
             data = self._buffer
@@ -72,9 +100,17 @@ class HttpFile(io.RawIOBase):
         return data
 
     def seekable(self):
+        """Stream is seekable."""
         return True
 
-    def seek(self, offset, whence=io.SEEK_SET):
+    def seek(self, offset: int, whence=io.SEEK_SET):
+        """Seek in stream.
+
+        Args:
+            offset: Offset to move.
+            whence: Origin of move, i.e. beginning, current position, or end of stream.
+        """
+
         # set offset
         if whence == io.SEEK_SET:
             self._pos = offset
@@ -87,18 +123,28 @@ class HttpFile(io.RawIOBase):
         self._pos = max(0, min(len(self) - 1, self._pos))
 
     def tell(self):
+        """Give current position on stream."""
         return self._pos
 
     def __len__(self):
+        """Length of stream buffer."""
         return len(self._buffer)
 
     def writable(self):
+        """File is writable if it was opened in 'w' mode."""
         return 'w' in self._mode
 
-    def write(self, b):
+    def write(self, b: bytearray):
+        """Write data into the stream.
+
+        Args:
+            b: Bytes of data to write.
+        """
         self._buffer += b
 
     def close(self):
+        """Close stream."""
+
         # write it?
         if self.writable() and self._open:
             self._upload()
@@ -110,6 +156,8 @@ class HttpFile(io.RawIOBase):
         io.RawIOBase.close(self)
 
     def _upload(self):
+        """If in write mode, actually send the file to the HTTP server."""
+
         # filename given?
         headers = {}
         if self._filename is not None:
@@ -132,6 +180,7 @@ class HttpFile(io.RawIOBase):
 
     @property
     def closed(self):
+        """Whether the stream is closed."""
         return not self._open
 
 

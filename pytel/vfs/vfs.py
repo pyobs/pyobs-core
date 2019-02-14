@@ -10,7 +10,16 @@ log = logging.getLogger(__name__)
 
 
 class VirtualFileSystem:
+    """Base for a virtual file system."""
+
     def __init__(self, roots: dict = None, compression: dict = None, *args, **kwargs):
+        """Create a new VFS.
+
+        Args:
+            roots: Dictionary containing roots.
+            compression: Dictionary containing files that should be compressed.
+        """
+
         # store
         self._roots = {} if roots is None else roots
         self._compression = {'.gz': '/bin/gzip'} if compression is None else compression

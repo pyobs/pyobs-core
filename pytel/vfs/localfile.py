@@ -3,7 +3,18 @@ import os
 
 
 class LocalFile(FileIO):
-    def __init__(self, name, mode='r', root: str = None, mkdir: bool = True, *args, **kwargs):
+    """Wraps a local file with the virtual file system."""
+
+    def __init__(self, name: str, mode: str = 'r', root: str = None, mkdir: bool = True, *args, **kwargs):
+        """Open a local file.
+
+        Args:
+            name: Name of file.
+            mode: Open mode.
+            root: Root to prefix name with for absolute path in filesystem.
+            mkdir: Whether or not to create non-existing paths automatically.
+        """
+
         # no root given?
         if root is None:
             raise ValueError('No root directory given.')

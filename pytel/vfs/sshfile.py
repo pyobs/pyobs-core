@@ -1,12 +1,29 @@
-from io import FileIO
 import os
 import paramiko
 import paramiko.sftp
 
 
 class SSHFile(paramiko.SFTPFile):
-    def __init__(self, name, mode='r', bufsize=-1, hostname: str = None, port: int = 22, username: str = None,
-                 password: str = None, keyfile: str = None, root: str = None, mkdir: str = None, *args, **kwargs):
+    """VFS wrapper for a file that can be accessed over a SFTP connection."""
+
+    def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: str = None, port: int = 22,
+                 username: str = None, password: str = None, keyfile: str = None, root: str = None, mkdir: str = None,
+                 *args, **kwargs):
+        """Open/create a file over a SSH connection.
+
+        Args:
+            name: Name of file.
+            mode: Open mode.
+            bufsize: Size of buffer size for SFTP connection.
+            hostname: Name of host to connect to.
+            port: Port on host to connect to.
+            username: Username to log in on host.
+            password: Password for username.
+            keyfile: Path to SSH key on local machine.
+            root: Root directory on host.
+            mkdir: Whether or not to automatically create directories.
+        """
+
         # no root given?
         if root is None:
             raise ValueError('No root directory given.')
@@ -56,14 +73,5 @@ class SSHFile(paramiko.SFTPFile):
         # init FileIO
         paramiko.SFTPFile.__init__(self, self._sftp, handle, mode, bufsize)
 
-    @classmethod
-    def default_config(cls):
-        cfg = super(SSHFile, cls).default_config()
-        cfg['hostname'] = None
-        cfg['port'] = 22
-        cfg['username'] = None
-        cfg['password'] = None
-        cfg['keyfile'] = None
-        cfg['root'] = None
-        cfg['mkdir'] = True
-        return cfg
+
+__all__ = ['SSHFile']

@@ -1,12 +1,14 @@
 import logging
 import os
-from io import IOBase
 
 from pytel.object import get_object
-from .gzippipe import GzipReader, GzipWriter
 
 
 log = logging.getLogger(__name__)
+
+
+class VFSFile:
+    pass
 
 
 class VirtualFileSystem:
@@ -51,7 +53,7 @@ class VirtualFileSystem:
         # return it
         return root, filename
 
-    def open_file(self, filename: str, mode: str, compression: bool = None) -> IOBase:
+    def open_file(self, filename: str, mode: str, compression: bool = None) -> VFSFile:
         """Open a file. The handling class is chosen depending on the rootse in the filename.
 
         Args:
@@ -62,6 +64,7 @@ class VirtualFileSystem:
         Returns:
             (IOBase) File like object for given file.
         """
+        from .gzippipe import GzipReader, GzipWriter
 
         # split root
         root, filename = VirtualFileSystem.split_root(filename)
@@ -85,4 +88,4 @@ class VirtualFileSystem:
         return fd
 
 
-__all__ = ['VirtualFileSystem']
+__all__ = ['VirtualFileSystem', 'VFSFile']

@@ -1,8 +1,10 @@
 from io import FileIO
 import os
 
+from .vfs import VFSFile
 
-class LocalFile(FileIO):
+
+class LocalFile(VFSFile, FileIO):
     """Wraps a local file with the virtual file system."""
 
     def __init__(self, name: str, mode: str = 'r', root: str = None, mkdir: bool = True, *args, **kwargs):
@@ -37,3 +39,6 @@ class LocalFile(FileIO):
 
         # init FileIO
         FileIO.__init__(self, full_path, mode)
+
+
+__all__ = ['LocalFile']

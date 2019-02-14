@@ -1,11 +1,13 @@
 import io
 import logging
 
+from .vfs import VFSFile
+
 
 log = logging.getLogger(__name__)
 
 
-class MemoryFile(io.RawIOBase):
+class MemoryFile(VFSFile, io.RawIOBase):
     """A file stored in memory."""
 
     """Global buffer."""

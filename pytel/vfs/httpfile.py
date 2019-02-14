@@ -3,11 +3,13 @@ from urllib.parse import urljoin
 import logging
 import requests
 
+from .vfs import VFSFile
+
 
 log = logging.getLogger(__name__)
 
 
-class HttpFile(io.RawIOBase):
+class HttpFile(VFSFile, io.RawIOBase):
     """Wraps a file on a HTTP server that can be accessed via GET/POST.
     Especially useful in combination with :class:`pytel.modules.filecache,http.HttpFileCacheServer`."""
 

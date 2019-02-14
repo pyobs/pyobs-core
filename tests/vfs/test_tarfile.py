@@ -38,4 +38,4 @@ def test_tarfile(monkeypatch):
 
             # extract file
             fd = tar.extractfile('testing.py')
-            assert fd.readline() == b'import io' + bytes(os.linesep, 'utf-8')
+            assert fd.readline() == b'import logging' + bytes(os.linesep, 'utf-8')

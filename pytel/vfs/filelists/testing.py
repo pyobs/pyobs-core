@@ -1,13 +1,12 @@
-import io
 import logging
-import os
-import tarfile
+
+from .filelist import FileList
 
 
 log = logging.getLogger(__name__)
 
 
-class TestingFileList:
+class TestingFileList(FileList):
     def __init__(self, *args, **kwargs):
         pass
 

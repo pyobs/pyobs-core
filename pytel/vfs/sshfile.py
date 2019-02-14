@@ -2,8 +2,10 @@ import os
 import paramiko
 import paramiko.sftp
 
+from .vfs import VFSFile
 
-class SSHFile(paramiko.SFTPFile):
+
+class SSHFile(VFSFile, paramiko.SFTPFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
 
     def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: str = None, port: int = 22,

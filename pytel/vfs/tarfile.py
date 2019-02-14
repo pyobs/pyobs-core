@@ -5,14 +5,16 @@ import tarfile
 
 from pytel import Application
 from pytel.object import get_object
+from .vfs import VFSFile
+from .filelists import FileList
 
 log = logging.getLogger(__name__)
 
 
-class TarFile:
+class TarFile(VFSFile):
     """Write a TAR file from a list of input files."""
 
-    def __init__(self, name: str = None, mode: str = 'rb', source: str = None, *args, **kwargs):
+    def __init__(self, name: str = None, mode: str = 'rb', source: FileList = None, *args, **kwargs):
         """Open/create a new TAR file.
 
         Args:

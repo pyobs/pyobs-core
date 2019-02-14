@@ -4,11 +4,13 @@ import logging
 import os
 import gzip
 
+from .vfs import VFSFile
+
 
 log = logging.getLogger(__name__)
 
 
-class GzipReader(io.RawIOBase):
+class GzipReader(VFSFile, io.RawIOBase):
     """A pipe object that takes a file-like object as input and acts itself like a stream,
     decompressing data on the fly."""
 
@@ -102,7 +104,7 @@ class GzipReader(io.RawIOBase):
             self._fd.close()
 
 
-class GzipWriter(io.RawIOBase):
+class GzipWriter(VFSFile, io.RawIOBase):
     """A pipe object that takes a file-like object as input and acts itself like a stream,
     compressing data on the fly."""
 

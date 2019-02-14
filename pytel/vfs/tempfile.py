@@ -3,11 +3,13 @@ from io import FileIO
 from tempfile import NamedTemporaryFile
 import logging
 
+from .vfs import VFSFile
+
 
 log = logging.getLogger(__name__)
 
 
-class TempFile(FileIO):
+class TempFile(VFSFile, FileIO):
     """A temporary file."""
 
     def __init__(self, name: str = None, mode: str = 'r', prefix: str = None, suffix: str = None,

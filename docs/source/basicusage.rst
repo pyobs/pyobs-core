@@ -92,6 +92,6 @@ In case the module is supposed to communicate with others, we need another modul
 
     comm:
       class: pytel.comm.xmpp.XmppComm
-      pid: some_module@my.domain.com
+      jid: some_module@my.domain.com
 
 More details about this can be found in the :doc:`comm` section.

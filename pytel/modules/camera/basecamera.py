@@ -34,6 +34,10 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         """
         PytelModule.__init__(self, *args, **kwargs)
 
+        # check
+        if self.comm is None:
+            log.warning('No comm module given, will not be able to signal new images!')
+
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
         if 'OBSERVER' not in self._fits_headers:
@@ -60,8 +64,9 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             return False
 
         # subscribe to events
-        self.comm.register_event(NewImageEvent)
-        self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
+        if self.comm:
+            self.comm.register_event(NewImageEvent)
+            self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
 
         # success
         return True
@@ -242,16 +247,17 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         Returns:
             Tuple of the image itself and its filename.
         """
-        # get clients that provide fits headers
-        clients = self.comm.clients_with_interface(IFitsHeaderProvider)
+        if self.comm:
+            # get clients that provide fits headers
+            clients = self.comm.clients_with_interface(IFitsHeaderProvider)
 
-        # create and run a threads in which the fits headers are fetched
-        fits_header_threads = {}
-        for client in clients:
-            log.info('Requesting FITS headers from %s...', client)
-            thread = ThreadWithReturnValue(target=self._fetch_fits_headers, args=(client,), name='headers_' + client)
-            thread.start()
-            fits_header_threads[client] = thread
+            # create and run a threads in which the fits headers are fetched
+            fits_header_threads = {}
+            for client in clients:
+                log.info('Requesting FITS headers from %s...', client)
+                thread = ThreadWithReturnValue(target=self._fetch_fits_headers, args=(client,), name='headers_' + client)
+                thread.start()
+                fits_header_threads[client] = thread
 
         # open the shutter?
         open_shutter = image_type in [ICamera.ImageType.OBJECT, ICamera.ImageType.FLAT]
@@ -311,7 +317,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             return None, None
 
         # broadcast image path
-        if broadcast:
+        if broadcast and self.comm:
             log.info('Broadcasting image ID...')
             self.comm.send_event(NewImageEvent(filename))
 

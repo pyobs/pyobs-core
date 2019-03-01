@@ -1,7 +1,14 @@
-from .IStatus import IStatus
+from .IMotionDevice import IMotionDevice
 
 
-class ITelescope(IStatus):
+class ITelescope(IMotionDevice):
+    """
+    Generic interface for an astronomical telescope.
+
+    Other interfaces to be implemented:
+        (none)
+    """
+
     def init(self, *args, **kwargs) -> bool:
         """Initialize telescope.
 

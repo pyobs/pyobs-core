@@ -1,7 +1,7 @@
-from .interface import *
+from .IMotionDevice import IMotionDevice
 
 
-class IFilters(Interface):
+class IFilters(IMotionDevice):
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
 

@@ -1,11 +1,25 @@
-from .IStatus import IStatus
+from .IMotionDevice import IMotionDevice
 
 
-class IRoof(IStatus):
-    """Base interface for all interfaces that have to provide some sort of status."""
+class IRoof(IMotionDevice):
+    """
+    Base interface for all observatory enclosures.
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns status of object in form of a dictionary. See other interfaces for details."""
+    Other interfaces to be implemented:
+        IStatus
+            Status
+    """
+
+    def open_roof(self, *args, **kwargs) -> bool:
+        """ Transition from PARKED to IDLE/POSITIONED """
+        raise NotImplementedError
+
+    def close_roof(self, *args, **kwargs) -> bool:
+        """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
+        raise NotImplementedError
+
+    def halt_roof(self, *args, **kwargs) -> bool:
+        """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
         raise NotImplementedError
 
 

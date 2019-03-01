@@ -1,7 +1,13 @@
-from .IStatus import IStatus
+from .IMotionDevice import IMotionDevice
 
 
-class IFocuser(IStatus):
+class IFocuser(IMotionDevice):
+    """Generic focussing device with states corresponding to IMotionDevice.MotionState.
+
+    Other interfaces to be implemented:
+        (none)
+    """
+
     def set_focus(self, focus: float, *args, **kwargs) -> bool:
         """Sets new focus.
 

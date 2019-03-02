@@ -14,6 +14,5 @@ tornado
 sleekxmpp
 py_expression_eval
 colour
-PyQt5
 requests
 #python-prctl

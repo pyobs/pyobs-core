@@ -7,4 +7,4 @@ COPY . /pytel
 WORKDIR /pytel
 RUN python setup.py install
 
-ENTRYPOINT ["bin/pytel", "-l", "/pytel.log", "/pytel.yaml"]
+ENTRYPOINT ["bin/pytel", "/pytel.yaml"]

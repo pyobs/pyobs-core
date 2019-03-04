@@ -10,4 +10,4 @@ RUN python setup.py install
 RUN rm -rf /src
 
 # set entry point
-ENTRYPOINT ["bin/pytel", "/pytel.yaml"]
+ENTRYPOINT ["/usr/local/bin/pytel", "/pytel.yaml"]

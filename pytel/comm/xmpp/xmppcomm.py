@@ -196,7 +196,7 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        return self._rpc.call(client, method, *args)
+        return self._rpc.call(self._get_full_client_name(client), method, *args)
 
     def _got_online(self, msg):
         """If a new client connects, add it to list.

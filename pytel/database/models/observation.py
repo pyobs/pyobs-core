@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship, Session
 
 from .base import Base
 from .night import Night
-from .task import Task
 from .table import GetByNameMixin
 
 log = logging.getLogger(__name__)
@@ -21,11 +20,10 @@ class Observation(Base, GetByNameMixin):
     id = Column(Integer, comment='Unique ID of observation', primary_key=True)
     night_id = Column(Integer, ForeignKey(Night.id), comment='ID of night')
     name = Column(String(30), comment='Name of observation', unique=True, nullable=False)
-    task_id = Column(Integer, ForeignKey(Task.id), comment='ID of task in database')
+    task_name = Column(Integer, comment='Name of task')
     start_time = Column(DateTime, comment='Date and time of start of observation')
 
     night = relationship(Night, back_populates='observations')
-    task = relationship(Task, back_populates='observations')
     images = relationship("Image", lazy='dynamic')
 
     def __init__(self, name: str):

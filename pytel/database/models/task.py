@@ -15,7 +15,7 @@ class Task(Base, GetByNameMixin):
     __tablename__ = 'pytel_task'
 
     id = Column(Integer, comment='Unique ID of task', primary_key=True)
-    name = Column(String(50), comment='Name of task.')
+    name = Column(String(50), comment='Name of task.', unique=True)
     project_id = Column(Integer, ForeignKey(Project.id), comment='Project this tasks belongs to')
 
     project = relationship(Project, back_populates='tasks')

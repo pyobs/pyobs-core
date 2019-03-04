@@ -9,5 +9,5 @@ setup(
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',
     packages=find_packages(include=['pytel', 'pytel.*']),
-    scripts=['bin/pytel', 'bin/pyteld', 'bin/pytel-supervisor']
+    scripts=['bin/pytel', 'bin/pyteld']
 )

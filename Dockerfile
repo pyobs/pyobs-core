@@ -1,10 +1,13 @@
-FROM python:3.6
+FROM python:3.6-stretch
 
-COPY requirements.txt /
-RUN pip install -r /requirements.txt
-
-COPY . /pytel
-WORKDIR /pytel
+# install pytel
+COPY . /src
+WORKDIR /src
+RUN pip install -r requirements.txt
 RUN python setup.py install
 
+# clean up
+RUN rm -rf /src
+
+# set entry point
 ENTRYPOINT ["bin/pytel", "/pytel.yaml"]

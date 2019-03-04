@@ -2,9 +2,9 @@
 import signal
 import threading
 import matplotlib
-matplotlib.use('Agg')
 import argparse
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 from io import IOBase, StringIO
 import re
@@ -12,8 +12,9 @@ import sys
 import yaml
 
 from pytel.object import get_object
-from pytel.modules import PytelModule
-from pytel.utils.logger import setup_logger
+
+
+matplotlib.use('Agg')
 
 
 class PytelYamlLoader(yaml.Loader):
@@ -89,13 +90,35 @@ def start_daemon(pid_file=None, *args, **kwargs):
         run(*args, **kwargs)
 
 
-def run(config=None, log_file=None, log_level='info', gui=False, *args, **kwargs):
-    # logging level
-    log_level = logging._nameToLevel[log_level.upper()]
+def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=False, *args, **kwargs):
+    # formatter for logging
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
 
-    # logger
-    log_file = log_file if log_file else config.replace('.yaml', '.log')
-    setup_logger(log_file, stdout=True, level=log_level)
+    # handlers
+    handlers = []
+
+    # stdout
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    handlers.append(stream_handler)
+
+    # file
+    if log_file is not None:
+        if log_rotate:
+            file_handler = TimedRotatingFileHandler(log_file, when='W0')
+        else:
+            file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler.setFormatter(formatter)
+        handlers.append(file_handler)
+
+    # basic setup
+    logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))
+    logging.captureWarnings(True)
+
+    # disable tornado logger
+    logging.getLogger('tornado.access').disabled = True
+
+    # get pytel logger
     log = logging.getLogger('pytel')
 
     # hack threading to set thread names on OS level
@@ -170,8 +193,8 @@ def main():
     parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
                         default='info')
     parser.add_argument('-l', '--log-file', type=str, help='file to write log into')
+    parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically')
     parser.add_argument('-p', '--pid-file', type=str)
-
     parser.add_argument('--gui', action='store_true', help='run in a GUI instead of a terminal')
     args = parser.parse_args()
 

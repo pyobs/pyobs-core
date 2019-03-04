@@ -182,9 +182,10 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
 
             # centre pixel
+            print(self._centre)
             if self._centre is not None:
-                hdr['DET-CPX1'] = (self._centre[0], 'x-pixel on mechanical axis in unbinned image')
-                hdr['DET-CPX2'] = (self._centre[1], 'y-pixel on mechanical axis in unbinned image')
+                hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
+                hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
             else:
                 log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 

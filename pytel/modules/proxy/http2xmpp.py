@@ -526,7 +526,7 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
             # append only, if at least one interface is implemented
             if len(proxy.interfaces) > 0:
                 modules.append({
-                    'module': mod[:mod.find('@')],
+                    'module': mod,
                     'name': 'Test',
                     'interfaces': [i.__name__ for i in proxy.interfaces]
                 })

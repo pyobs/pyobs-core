@@ -227,7 +227,7 @@ class XmppComm(Comm):
         Returns:
             (list) List of currently connected clients.
         """
-        return self._online_clients
+        return [c[:c.find('@')] for c in self._online_clients]
 
     @property
     def client(self) -> XmppClient:

@@ -132,7 +132,9 @@ def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=Fals
     # create application
     log.info('Creating objects...')
     app = get_object(cfg)
-    if not app.open():
+    try:
+        app.open()
+    except:
         log.error('Could not initialize app.')
         app.close()
         sys.exit(1)

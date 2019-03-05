@@ -2,15 +2,15 @@ from .interface import *
 
 
 class ICameraBinning(Interface):
-    def set_binning(self, x: int, y: int, *args, **kwargs) -> bool:
+    def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
 
         Args:
             x: X binning.
             y: Y binning.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         raise NotImplementedError
 

@@ -2,9 +2,8 @@ from .interface import *
 
 
 class IAutoFocus(Interface):
-    def auto_focus(self, count: int, step: float, guess: float, exposure_time: int, *args, **kwargs) \
-            -> bool:
-        """Perform an auto-focus series and sets the best focus.
+    def auto_focus(self, count: int, step: float, guess: float, exposure_time: int, *args, **kwargs) -> float:
+        """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
         step size. With count=3, step=1 and guess=10, this takes images at the following focus values:
@@ -17,7 +16,10 @@ class IAutoFocus(Interface):
             exposure_time: Exposure time for images.
 
         Returns:
-            Success or not.
+            Obtained best focus model.
+
+        Raises:
+            ValueError: If focus could not be obtained.
         """
         raise NotImplementedError
 

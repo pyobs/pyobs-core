@@ -35,31 +35,31 @@ class BaseTelescope(PytelModule, ITelescope):
         """
         return {}
 
-    def init(self, *args, **kwargs) -> bool:
+    def init(self, *args, **kwargs):
         """Initialize telescope.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If telescope could not be initialized.
         """
         raise NotImplementedError
 
-    def park(self, *args, **kwargs) -> bool:
+    def park(self, *args, **kwargs):
         """Park telescope.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If telescope could not be parked.
         """
         raise NotImplementedError
 
-    def reset_offset(self, *args, **kwargs) -> bool:
+    def reset_offset(self, *args, **kwargs):
         """Reset Alt/Az offset.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If offset could not be reset.
         """
         raise NotImplementedError
 
-    def _track(self, ra: float, dec: float, abort_event: threading.Event) -> bool:
+    def _track(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -67,22 +67,22 @@ class BaseTelescope(PytelModule, ITelescope):
             dec: Dec in deg to track.
             abort_event: Event that gets triggered when movement should be aborted.
 
-        Returns:
-            Success or not.
+        Raises:
+            Exception: On any error.
         """
 
         raise NotImplementedError
 
     @timeout(60000)
-    def track(self, ra: float, dec: float, *args, **kwargs) -> bool:
+    def track(self, ra: float, dec: float, *args, **kwargs):
         """Starts tracking on given coordinates.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If telescope could not track.
         """
 
         # acquire lock
@@ -90,16 +90,19 @@ class BaseTelescope(PytelModule, ITelescope):
             # track telescope
             return self._track(ra, dec, abort_event=self._abort_move)
 
-    def offset(self, dalt: float, daz: float, *args, **kwargs) -> bool:
+    def offset(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
         Args:
             dalt: Altitude offset in degrees.
             daz: Azimuth offset in degrees.
+
+        Raises:
+            ValueError: If offset could not be set.
         """
         raise NotImplementedError
 
-    def _move(self, alt: float, az: float, abort_event: threading.Event) -> bool:
+    def _move(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -107,20 +110,20 @@ class BaseTelescope(PytelModule, ITelescope):
             az: Az in deg to move to.
             abort_event: Event that gets triggered when movement should be aborted.
 
-        Returns:
-            Success or not.
+        Raises:
+            Exception: On error.
         """
         raise NotImplementedError
 
-    def move(self, alt: float, az: float, *args, **kwargs) -> bool:
+    def move(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
         Args:
             alt: Alt in deg to move to.
             az: Az in deg to move to.
 
-        Returns:
-            Success or not.
+        Raises:
+            Exception: On error.
         """
 
         # acquire lock

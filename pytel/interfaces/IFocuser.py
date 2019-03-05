@@ -1,21 +1,21 @@
-from .IMotionDevice import IMotionDevice
+from .IMoving import IMoving
 
 
-class IFocuser(IMotionDevice):
+class IFocuser(IMoving):
     """Generic focussing device with states corresponding to IMotionDevice.MotionState.
 
     Other interfaces to be implemented:
         (none)
     """
 
-    def set_focus(self, focus: float, *args, **kwargs) -> bool:
+    def set_focus(self, focus: float, *args, **kwargs):
         """Sets new focus.
 
         Args:
             focus: New focus value.
 
-        Returns:
-            Success or not.
+        Raises:
+            InterruptedError: If focus was interrupted.
         """
         raise NotImplementedError
 

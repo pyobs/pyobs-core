@@ -1,7 +1,7 @@
-from .IMotionDevice import IMotionDevice
+from .IMoving import IMoving
 
 
-class IRoof(IMotionDevice):
+class IRoof(IMoving):
     """
     Base interface for all observatory enclosures.
 
@@ -10,15 +10,15 @@ class IRoof(IMotionDevice):
             Status
     """
 
-    def open_roof(self, *args, **kwargs) -> bool:
+    def open_roof(self, *args, **kwargs):
         """ Transition from PARKED to IDLE/POSITIONED """
         raise NotImplementedError
 
-    def close_roof(self, *args, **kwargs) -> bool:
+    def close_roof(self, *args, **kwargs):
         """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
         raise NotImplementedError
 
-    def halt_roof(self, *args, **kwargs) -> bool:
+    def halt_roof(self, *args, **kwargs):
         """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
         raise NotImplementedError
 

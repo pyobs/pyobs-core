@@ -37,10 +37,9 @@ class NewImageWatcher(PytelModule):
         if isinstance(self._copy_to, str):
             self._copy_to = [self._copy_to]
 
-    def open(self) -> bool:
-        """Open image watcher."""
-        if not PytelModule.open(self):
-            return False
+    def open(self):
+        """Open module."""
+        PytelModule.open(self)
 
         # start watching directory
         if self._watchpath:
@@ -49,9 +48,6 @@ class NewImageWatcher(PytelModule):
             wm.add_watch(self._watchpath, pyinotify.IN_CLOSE_WRITE)
             self._observer = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
             self._observer.start()
-
-        # success
-        return True
 
     def close(self):
         """Close image watcher."""

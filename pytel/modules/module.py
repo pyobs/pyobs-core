@@ -154,7 +154,9 @@ class PytelModule:
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
-    def open(self) -> bool:
+    def open(self):
+        """Open module."""
+
         # start threads and watchdog
         for thread, target in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
@@ -164,7 +166,6 @@ class PytelModule:
 
         # success
         self._opened = True
-        return True
 
     @property
     def opened(self):

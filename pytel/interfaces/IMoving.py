@@ -28,7 +28,7 @@ class MotionStatus(enum.Enum):
     UNKNOWN = 'unknown'
 
 
-class IMotionDevice(IStatus):
+class IMoving(IStatus):
     """
     Basic interface for all devices that move.
 
@@ -42,10 +42,10 @@ class IMotionDevice(IStatus):
         Returns:
             dict: A dictionary that should contain at least the following fields:
 
-            IMotionDevice
+            IMoving
                 Status (str):               Current motion status of device.
         """
         raise NotImplementedError
 
 
-__all__ = ['IMotionDevice']
+__all__ = ['IMoving']

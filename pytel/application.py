@@ -74,21 +74,17 @@ class Application:
         """Get single instance of application."""
         return Application._instance
 
-    def open(self) -> bool:
+    def open(self):
         """Open application module and, if exist, comm, and plugin modules."""
 
         # connect database
         if self._db_connect:
-            if not Database.connect(self._db_connect):
-                log.error('Could not open database.')
-                return False
+            Database.connect(self._db_connect)
 
         # open comm
         if self._comm:
             log.info('Opening comm...')
-            if not self._comm.open():
-                log.error('Could not open comm.')
-                return False
+            self._comm.open()
 
         # open module
         log.info('Opening module...')
@@ -102,7 +98,6 @@ class Application:
 
         # success
         log.info('Started successfully.')
-        return True
 
     def close(self):
         """Close application and all connected modules."""

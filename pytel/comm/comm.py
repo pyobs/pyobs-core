@@ -37,12 +37,8 @@ class Comm:
         self._closing = threading.Event()
         self._logging_thread = threading.Thread(target=self._logging)
 
-    def open(self) -> bool:
-        """Open module.
-
-        Returns:
-            Success or not.
-        """
+    def open(self):
+        """Open module."""
 
         # start logging thread
         self._logging_thread.start()
@@ -52,9 +48,6 @@ class Comm:
 
         # some events
         self.register_event(ClientDisconnectedEvent, self._client_disconnected)
-
-        # success
-        return True
 
     def close(self):
         """Close module."""

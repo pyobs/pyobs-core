@@ -129,7 +129,7 @@ class RPC(object):
 
         except Exception as e:
             # something else went wrong
-            log.exception('Error during call to %s: %s', pmethod, str(e))
+            #log.exception('Error during call to %s: %s', pmethod, str(e))
             fault = dict()
             fault['code'] = 500
             fault['string'] = str(e)

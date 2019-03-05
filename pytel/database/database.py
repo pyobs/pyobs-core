@@ -38,9 +38,6 @@ class Database:
         # and tables
         Database.create_tables()
 
-        # success
-        return True
-
     @staticmethod
     def create_tables():
         """Create tables in database."""

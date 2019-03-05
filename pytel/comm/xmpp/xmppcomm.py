@@ -85,10 +85,7 @@ class XmppComm(Comm):
         Returns:
             Whether opening was successful.
         """
-
-        # open parent class
-        if not super().open():
-            return False
+        Comm.open(self)
 
         # create RPC handler
         self._rpc = RPC(self._xmpp, self.module)

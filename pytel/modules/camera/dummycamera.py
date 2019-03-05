@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from datetime import datetime
-from threading import RLock, Thread
+from threading import RLock
 
 import numpy as np
 from astropy.io import fits
@@ -68,8 +68,8 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
-        """Actually do the exposure.
+    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+        """Actually do the exposure, should be implemented by derived classes.
 
         Args:
             exposure_time: The requested exposure time in ms.
@@ -78,6 +78,9 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
 
         Returns:
             The actual image.
+
+        Raises:
+            ValueError: If exposure was not successful.
         """
 
         # set exposure time
@@ -93,7 +96,7 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 self._camera_status = ICamera.CameraStatus.IDLE
-                return None
+                raise ValueError('Exposure was aborted.')
             time.sleep(exposure_time / 1000. / steps)
         self._exposing = False
 
@@ -130,14 +133,13 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         self._camera_status = ICamera.CameraStatus.IDLE
         return hdu
 
-    def _abort_exposure(self) -> bool:
-        """Aborts the current exposure.
+    def _abort_exposure(self):
+        """Abort the running exposure. Should be implemented by derived class.
 
         Returns:
             Success or not.
         """
         self._exposing = False
-        return True
 
     def get_window(self, *args, **kwargs) -> dict:
         """Returns the camera window.
@@ -147,7 +149,7 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._window
 
-    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs) -> bool:
+    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
         """Set the camera window.
 
         Args:
@@ -156,12 +158,11 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
             width: Width of window.
             height: Height of window.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._window = {'left': left, 'top': top, 'width': width, 'height': height}
-        return True
 
     def get_binning(self, *args, **kwargs) -> dict:
         """Returns the camera binning.
@@ -171,29 +172,28 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._binning
 
-    def set_binning(self, x: int, y: int, *args, **kwargs) -> bool:
+    def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
 
         Args:
             x: X binning.
             y: Y binning.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         log.info("Set binning to %dx%d.", x, y)
         self._binning = {'x': x, 'y': y}
-        return True
 
-    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs) -> bool:
+    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
         """Enables/disables cooling and sets setpoint.
 
         Args:
             enabled: Enable or disable cooling.
             setpoint: Setpoint in celsius for the cooling.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If cooling could not be set.
         """
 
         # log
@@ -210,7 +210,6 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
                 'Power': self._cooling['Power'],
                 'Temperatures': self._cooling['Temperatures']
             }
-        return True
 
     def status(self, *args, **kwargs) -> dict:
         """Returns status of camera.

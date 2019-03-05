@@ -56,20 +56,14 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
 
-    def open(self) -> bool:
+    def open(self):
         """Open module."""
-
-        # open parent class
-        if not PytelModule.open(self):
-            return False
+        PytelModule.open(self)
 
         # subscribe to events
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
-
-        # success
-        return True
 
     def get_status(self, *args, **kwargs) -> str:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
@@ -223,7 +217,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         """
         return self.comm.execute(client, 'get_fits_headers')
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -233,6 +227,9 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
         Returns:
             The actual image.
+
+        Raises:
+            ValueError: If exposure was not successful.
         """
         raise NotImplementedError
 
@@ -246,6 +243,9 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
         Returns:
             Tuple of the image itself and its filename.
+
+        Raises:
+            ValueError: If exposure was not successful.
         """
         if self.comm:
             # get clients that provide fits headers
@@ -264,11 +264,11 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
-        hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-        if hdu is None:
+        try:
+            hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
+        finally:
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
-            return None, None
 
         # add image type
         hdu.header['IMAGETYP'] = image_type.value
@@ -304,8 +304,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # create a temporary filename
         filename = format_filename(hdu.header, self._filenames, self.environment)
         if filename is None:
-            log.error('Cannot save image.')
-            return None, None
+            raise ValueError('Cannot save image.')
 
         # upload file
         try:
@@ -313,8 +312,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
                 log.info('Uploading image to file server...')
                 hdu.writeto(cache)
         except FileNotFoundError:
-            log.error('Could not upload image.')
-            return None, None
+            raise ValueError('Could not upload image.')
 
         # broadcast image path
         if broadcast and self.comm:
@@ -347,8 +345,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # acquire lock
         log.info('Acquiring exclusive lock on camera...')
         if not self._expose_lock.acquire(blocking=False):
-            log.error('Could not acquire camera lock for expose().')
-            return None
+            raise ValueError('Could not acquire camera lock for expose().')
 
         # make sure that we relase the lock
         try:
@@ -393,15 +390,15 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             log.info('Releasing exclusive lock on camera...')
             self._expose_lock.release()
 
-    def _abort_exposure(self) -> bool:
+    def _abort_exposure(self):
         """Abort the running exposure. Should be implemented by derived class.
 
         Returns:
             Success or not.
         """
-        return True
+        pass
 
-    def abort(self, *args, **kwargs) -> bool:
+    def abort(self, *args, **kwargs):
         """Aborts the current exposure and sequence.
 
         Returns:
@@ -421,12 +418,11 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         self.expose_abort.clear()
         if acquired:
             self._expose_lock.release()
-            return aborted
-        else:
-            log.error('Could not abort exposure.')
-            return False
 
-    def abort_sequence(self, *args, **kwargs) -> bool:
+        if not aborted or not acquired:
+            raise ValueError('Could not abort exposure.')
+
+    def abort_sequence(self, *args, **kwargs):
         """Aborts the current sequence after current exposure.
 
         Returns:

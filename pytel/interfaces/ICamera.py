@@ -44,19 +44,19 @@ class ICamera(IStatus, IAbortable):
         """
         raise NotImplementedError
 
-    def abort(self, *args, **kwargs) -> bool:
+    def abort(self, *args, **kwargs):
         """Aborts the current exposure and sequence.
 
-        Returns:
-            bool: True if successful, otherwise False.
+        Raises:
+            ValueError: If exposure could not be aborted.
         """
         raise NotImplementedError
 
-    def abort_sequence(self, *args, **kwargs) -> bool:
+    def abort_sequence(self, *args, **kwargs):
         """Aborts the current sequence after current exposure.
 
-        Returns:
-            bool: True if successful, otherwise False.
+        Raises:
+            ValueError: If sequemce could not be aborted.
         """
         raise NotImplementedError
 

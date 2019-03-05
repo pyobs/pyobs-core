@@ -40,7 +40,7 @@ class ImageDB(PytelModule, IImageDB):
         self._vfs_root = vfs_root
 
     @timeout(60000)
-    def add_image(self, filename: str, *args, **kwargs) -> Union[str, None]:
+    def add_image(self, filename: str, *args, **kwargs) ->str:
         """Add a new image to the database.
 
         Args:
@@ -48,23 +48,23 @@ class ImageDB(PytelModule, IImageDB):
 
         Returns:
             (str) Archive filename
+
+        Raises:
+            FileNotFoundError: If file could not be found.
+            ValueError: On other errors.
         """
 
         # download image
         log.info('Downloading image from %s...', filename)
-        try:
-            with self.open_file(filename, 'rb', compression=False) as f:
-                tmp = fits.open(f)
-                hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-                tmp.close()
-        except FileNotFoundError:
-            log.error('Could not download image.')
-            return None
+        with self.open_file(filename, 'rb', compression=False) as f:
+            tmp = fits.open(f)
+            hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
+            tmp.close()
 
         # add image
         return self._add_image(os.path.basename(filename), hdu)
 
-    def _add_image(self, filename: str, hdu) -> Union[str, None]:
+    def _add_image(self, filename: str, hdu) -> str:
         """Actually add image to database.
 
         Args:
@@ -73,14 +73,16 @@ class ImageDB(PytelModule, IImageDB):
 
         Returns:
             Archive filename
+
+        Raises:
+            ValueError: if adding image failed.
         """
 
         # open a session
         with session_context() as session:
             # find observation
             if 'OBS' not in hdu.header:
-                log.error('Could not find observation name OBS in FITS header.')
-                return None
+                raise ValueError('Could not find observation name OBS in FITS header.')
             observation_name = hdu.header['OBS']
 
             # find or create observation
@@ -91,14 +93,12 @@ class ImageDB(PytelModule, IImageDB):
 
                 # get night of observation
                 if 'DATE-OBS' not in hdu.header:
-                    log.warning('Could not fetch DATE-OBS, skipping...')
-                    return None
+                    raise ValueError('Could not fetch DATE-OBS, skipping...')
                 night_obs = self.environment.night_obs(Time(hdu.header['DATE-OBS']))
 
                 # get task name
                 if 'TASK' not in hdu.header:
-                    log.warning('Could not fetch name of task, skipping...')
-                    return None
+                    raise ValueError('Could not fetch name of task, skipping...')
                 task_name = hdu.header['TASK']
 
                 # get night from database
@@ -135,12 +135,8 @@ class ImageDB(PytelModule, IImageDB):
 
             # write file
             log.info('Writing file to disk as %s...', archive_filename)
-            try:
-                with self.open_file(archive_filename, 'wb') as f:
-                    hdu.writeto(f, overwrite=True)
-            except FileNotFoundError:
-                log.error('Could not write FITS file.')
-                return None
+            with self.open_file(archive_filename, 'wb') as f:
+                hdu.writeto(f, overwrite=True)
 
             # finished
             log.info('Finished.')

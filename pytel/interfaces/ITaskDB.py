@@ -1,4 +1,3 @@
-#from astropy.time import Time
 from pytel.utils.time import Time
 
 from .interface import *
@@ -24,22 +23,15 @@ class ITaskDB(Interface):
         """
         raise NotImplementedError
 
-    def run_task(self, task_id: str, *args, **kwargs) -> bool:
+    def run_task(self, task_id: str, *args, **kwargs):
         """Run a task.
 
         Args:
             task_id (str): Unique ID of task to run.
-
-        Returns:
-            (bool) Success.
         """
 
-    def abort_task(self, *args, **kwargs) -> bool:
-        """Abort current task.
-
-        Returns:
-            (bool) Success.
-        """
+    def abort_task(self, *args, **kwargs):
+        """Abort current task."""
         raise NotImplementedError
 
 

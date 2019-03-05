@@ -22,9 +22,9 @@ class StandAlone(PytelModule):
         self._message = message
         self._interval = interval
 
-    def open(self) -> bool:
+    def open(self):
         """Open module."""
-        return PytelModule.open(self)
+        PytelModule.open(self)
 
     def close(self):
         """Close module."""

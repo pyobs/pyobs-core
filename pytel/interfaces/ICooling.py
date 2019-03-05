@@ -19,15 +19,15 @@ class ICooling(IStatus):
         """
         raise NotImplementedError
 
-    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs) -> bool:
+    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
         """Enables/disables cooling and sets setpoint.
 
         Args:
             enabled: Enable or disable cooling.
             setpoint: Setpoint in celsius for the cooling.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If cooling could not be set.
         """
         raise NotImplementedError
 

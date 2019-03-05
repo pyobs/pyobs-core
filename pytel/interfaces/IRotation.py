@@ -1,8 +1,8 @@
-from .IMotionDevice import IMotionDevice
+from .IMoving import IMoving
 
 
-class IRotation(IMotionDevice):
-    def set_rotation(self, angle, *args, **kwargs) -> bool:
+class IRotation(IMoving):
+    def set_rotation(self, angle, *args, **kwargs):
         """ Sets the rotation angle to the given value in degrees. """
         raise NotImplementedError
 
@@ -10,7 +10,7 @@ class IRotation(IMotionDevice):
         """ Returns the current rotation angle. """
         raise NotImplementedError
 
-    def track(self, ra: float, dec: float, *args, **kwargs) -> bool:
+    def track(self, ra: float, dec: float, *args, **kwargs):
         """ Tracks the position angle of a rotator for an alt-az telescope. """
         raise NotImplementedError
 

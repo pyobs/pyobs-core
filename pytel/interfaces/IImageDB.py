@@ -53,7 +53,7 @@ class IImageDB(Interface):
     class IImageDBError(Exception):
         pass
 
-    def add_image(self, filename: str, *args, **kwargs) -> str:
+    def add_image(self, filename: str, *args, **kwargs) ->str:
         """Add a new image to the database.
 
         Args:
@@ -61,6 +61,9 @@ class IImageDB(Interface):
 
         Returns:
             (str) Archive filename
+
+        Raises:
+            FileNotFoundError: If file could not be found.
         """
         raise NotImplementedError
 

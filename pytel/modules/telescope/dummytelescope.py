@@ -93,16 +93,16 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         # finish
         return hdr
 
-    def _track(self, ra: float, dec: float, abort_event: threading.Event) -> bool:
-        """Actually starts tracking on given coordinates.
+    def _track(self, ra: float, dec: float, abort_event: threading.Event):
+        """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
             abort_event: Event that gets triggered when movement should be aborted.
 
-        Returns:
-            Success or not.
+        Raises:
+            Exception: On any error.
         """
 
         # start slewing
@@ -118,7 +118,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             # abort?
             if abort_event.is_set():
                 self.telescope_status = BaseTelescope.Status.IDLE
-                return False
+                raise ValueError('Movement was aborted.')
 
             # move
             self._position['ra'] = ira + i * dra
@@ -132,9 +132,8 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._position['dec'] = dec
         self.telescope_status = BaseTelescope.Status.TRACKING
         log.info('Reached destination')
-        return True
 
-    def _move(self, alt: float, az: float, abort_event: threading.Event) -> bool:
+    def _move(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -142,8 +141,8 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             az: Az in deg to move to.
             abort_event: Event that gets triggered when movement should be aborted.
 
-        Returns:
-            Success or not.
+        Raises:
+            Exception: On error.
         """
         pass
 
@@ -156,14 +155,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         return self._focus
 
     @timeout(60000)
-    def set_focus(self, focus: float, *args, **kwargs) -> bool:
+    def set_focus(self, focus: float, *args, **kwargs):
         """Sets new focus.
 
         Args:
             focus: New focus value.
 
-        Returns:
-            Success or not.
+        Raises:
+            InterruptedError: If focus was interrupted.
         """
 
         # acquire lock
@@ -174,24 +173,21 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             for i in range(300):
                 # abort?
                 if self._abort_focus.is_set():
-                    return False
+                    raise InterruptedError('Setting focus was interrupted.')
 
                 # move focus and sleep a little
                 self._focus = ifoc + i * dfoc
                 time.sleep(0.01)
             self._focus = focus
 
-            # success
-            return True
-
-    def set_optimal_focus(self, *args, **kwargs) -> bool:
+    def set_optimal_focus(self, *args, **kwargs):
         """Sets optimal focus.
 
-        Returns:
-            Success or not.
+        Raises:
+            InterruptedError: If focus was interrupted.
         """
         log.info('Setting optimal focus...')
-        return self.set_focus(42.0)
+        self.set_focus(42.0)
 
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
@@ -209,65 +205,63 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         return self._filter
 
-    def set_filter(self, filter_name: str, *args, **kwargs) -> bool:
+    def set_filter(self, filter_name: str, *args, **kwargs):
         """Set the current filter.
 
         Args:
             filter_name: Name of filter to set.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         logging.info('Setting filter to %s', filter_name)
         self._filter = filter_name
-        return True
 
     @timeout(60000)
-    def init(self, *args, **kwargs) -> bool:
+    def init(self, *args, **kwargs):
         """Initialize telescope.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If telescope could not be initialized.
         """
 
         # INIT, wait a little, then IDLE
         self.telescope_status = BaseTelescope.Status.INITPARK
         time.sleep(5.)
         self.telescope_status = BaseTelescope.Status.IDLE
-        return True
 
     @timeout(60000)
-    def park(self, *args, **kwargs) -> bool:
+    def park(self, *args, **kwargs):
         """Park telescope.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If telescope could not be parked.
         """
 
         # PARK, wait a little, then PARKED
         self.telescope_status = BaseTelescope.Status.INITPARK
         time.sleep(5.)
         self.telescope_status = BaseTelescope.Status.PARKED
-        return True
 
-    def reset_offset(self, *args, **kwargs) -> bool:
+    def reset_offset(self, *args, **kwargs):
         """Reset Alt/Az offset.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If offset could not be reset.
         """
         log.info("Resetting offsets")
-        return True
 
-    def offset(self, dalt: float, daz: float, *args, **kwargs) -> bool:
+    def offset(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
         Args:
             dalt: Altitude offset in degrees.
             daz: Azimuth offset in degrees.
+
+        Raises:
+            ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
-        return True
 
 
 __all__ = ['DummyTelescope']

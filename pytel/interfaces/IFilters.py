@@ -1,7 +1,7 @@
-from .IMotionDevice import IMotionDevice
+from .IMoving import IMoving
 
 
-class IFilters(IMotionDevice):
+class IFilters(IMoving):
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
 
@@ -10,14 +10,14 @@ class IFilters(IMotionDevice):
         """
         raise NotImplementedError
 
-    def set_filter(self, filter_name: str, *args, **kwargs) -> bool:
+    def set_filter(self, filter_name: str, *args, **kwargs):
         """Set the current filter.
 
         Args:
             filter_name: Name of filter to set.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         raise NotImplementedError
 

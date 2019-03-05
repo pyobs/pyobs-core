@@ -10,7 +10,7 @@ class ICameraWindow(Interface):
         """
         raise NotImplementedError
 
-    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs) -> bool:
+    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
         """Set the camera window.
 
         Args:
@@ -19,8 +19,8 @@ class ICameraWindow(Interface):
             width: Width of window.
             height: Height of window.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If binning could not be set.
         """
         raise NotImplementedError
 

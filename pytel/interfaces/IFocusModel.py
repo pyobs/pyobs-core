@@ -2,11 +2,11 @@ from .IStatus import IStatus
 
 
 class IFocusModel(IStatus):
-    def set_optimal_focus(self, *args, **kwargs) -> bool:
+    def set_optimal_focus(self, *args, **kwargs):
         """Sets optimal focus.
 
-        Returns:
-            Success or not.
+        Raises:
+            InterruptedError: If focus was interrupted.
         """
         raise NotImplementedError
 

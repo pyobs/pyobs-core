@@ -21,6 +21,7 @@ class Observation(Base, GetByNameMixin):
     night_id = Column(Integer, ForeignKey(Night.id), comment='ID of night')
     name = Column(String(30), comment='Name of observation', unique=True, nullable=False)
     task_name = Column(Integer, comment='Name of task')
+    project_name = Column(Integer, comment='Name of project')
     start_time = Column(DateTime, comment='Date and time of start of observation')
 
     night = relationship(Night, back_populates='observations')

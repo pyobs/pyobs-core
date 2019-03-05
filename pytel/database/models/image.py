@@ -206,24 +206,15 @@ class Image(Base):
                 return False
             night_obs = environment.night_obs(Time(header['DATE-OBS']))
 
-            # get project
+            # get project and task
             if 'PROJECT' not in header:
                 log.error('No PROJECT in FITS header.')
                 return False
-            project = Project.get_by_name(session, header['PROJECT'])
-            if project is None:
-                project = Project(header['PROJECT'])
-                session.add(project)
-
-            # get task
+            project_name = header['PROJECT']
             if 'TASK' not in header:
                 log.error('No TASK in FITS header.')
                 return False
-            task = Task.get_by_name(session, header['TASK'])
-            if task is None:
-                task = Task(header['TASK'])
-                session.add(task)
-            task.project = project
+            task_name = header['TASK']
 
             # get night from database
             night = session.query(Night).filter(Night.night == night_obs).first()
@@ -240,7 +231,8 @@ class Image(Base):
                 observation = Observation(header['OBS'])
                 session.add(observation)
             observation.night = night
-            observation.task = task
+            observation.task_name = task_name
+            observation.project_name = project_name
 
             # create or update image
             image = session.query(Image).filter(Image.filename == filename).first()

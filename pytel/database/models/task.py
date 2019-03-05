@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session
 
 from .base import Base
 from .project import Project
@@ -19,7 +19,7 @@ class Task(Base, GetByNameMixin):
     project_id = Column(Integer, ForeignKey(Project.id), comment='Project this tasks belongs to')
 
     project = relationship(Project, back_populates='tasks')
-    #observations = relationship("Observation", lazy='dynamic')
+    observations = relationship('Observation', foreign_keys=[name], primaryjoin='Task.name == Observation.task_name')
     UniqueConstraint('name', 'project_id')
 
     def __init__(self, name):

@@ -2,7 +2,6 @@ import logging
 from enum import Enum
 from typing import Union
 
-from astropy.io import fits
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, Session
 
@@ -26,6 +25,9 @@ class Observation(Base, GetByNameMixin):
 
     night = relationship(Night, back_populates='observations')
     images = relationship("Image", lazy='dynamic')
+    task = relationship("Task", foreign_keys=[task_name], primaryjoin='Observation.task_name == Task.name')
+    project = relationship("Project", foreign_keys=[project_name],
+                           primaryjoin='Observation.project_name == Project.name')
 
     def __init__(self, name: str):
         self.name = name

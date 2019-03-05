@@ -44,16 +44,6 @@ def test_add_from_fits():
         assert obs is not None
         assert obs.name == 'Observation'
 
-        # a task with name 'Task'
-        task = session.query(Task).first()
-        assert task is not None
-        assert task.name == 'Task'
-
-        # a project with name 'Project'
-        project = session.query(Project).first()
-        assert project is not None
-        assert project.name == 'Project'
-
         # check some entries in image
         image = session.query(Image).first()
         assert image.exp_time == 100

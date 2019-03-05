@@ -19,7 +19,7 @@ class Task(Base, GetByNameMixin):
     project_id = Column(Integer, ForeignKey(Project.id), comment='Project this tasks belongs to')
 
     project = relationship(Project, back_populates='tasks')
-    observations = relationship("Observation", lazy='dynamic')
+    #observations = relationship("Observation", lazy='dynamic')
     UniqueConstraint('name', 'project_id')
 
     def __init__(self, name):

@@ -393,8 +393,8 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
     def _abort_exposure(self):
         """Abort the running exposure. Should be implemented by derived class.
 
-        Returns:
-            Success or not.
+        Raises:
+            ValueError: If an error occured.
         """
         pass
 

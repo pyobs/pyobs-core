@@ -411,15 +411,14 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         self.expose_abort.set()
 
         # do camera-specific abort
-        aborted = self._abort_exposure()
+        self._abort_exposure()
 
         # wait for lock and unset event
         acquired = self._expose_lock.acquire(blocking=True, timeout=5.)
         self.expose_abort.clear()
         if acquired:
             self._expose_lock.release()
-
-        if not aborted or not acquired:
+        else:
             raise ValueError('Could not abort exposure.')
 
     def abort_sequence(self, *args, **kwargs):

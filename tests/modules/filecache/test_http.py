@@ -8,7 +8,7 @@ from pytel.modules.filecache import HttpFileCacheServer
 def test_upload_download():
     # create server
     server = HttpFileCacheServer(port=37075)
-    assert server.open() is True
+    server.open()
 
     # wait for server to start listening
     for i in range(5):

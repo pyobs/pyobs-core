@@ -1,3 +1,4 @@
+import pytest
 from astropy.io import fits
 import numpy as np
 import threading
@@ -112,8 +113,12 @@ class DummyCam(BaseCamera):
         # wait for exposure
         abort_event.wait(exposure_time / 1000.)
 
-        # if abort event was set, return None, otherwise an image
-        return None if abort_event.is_set() else fits.ImageHDU(np.zeros((100, 100)))
+        # raise exception, if aborted
+        if abort_event.is_set():
+            raise ValueError('Exposure was aborted.')
+
+        # return image
+        return fits.ImageHDU(np.zeros((100, 100)))
 
 
 def test_expose():
@@ -154,12 +159,16 @@ def test_abort():
     camera = DummyCam(filenames=None, comm=comm, environment=environment)
     camera.open()
 
+    def expose():
+        with pytest.raises(ValueError):
+            camera.expose(exposure_time=1000, image_type='object')
+
     # expose
-    thread = threading.Thread(target=camera.expose, kwargs={'exposure_time':10000, 'image_type': 'object'})
+    thread = threading.Thread(target=expose)
     thread.start()
 
     # abort
-    assert camera.abort()
+    camera.abort()
 
     # thread should be closed
     assert False == thread.is_alive()

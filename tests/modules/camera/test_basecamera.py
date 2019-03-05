@@ -42,7 +42,7 @@ def test_add_fits_headers():
                               location={'longitude': 20.810808, 'latitude': -32.375823, 'elevation': 1798.})
 
     # open camera
-    centre = (100, 100)
+    centre = {'x': 100, 'y': 100}
     rotation = 42
     camera = BaseCamera(centre=centre, rotation=rotation, comm=comm, environment=environment)
     camera.open()
@@ -64,8 +64,8 @@ def test_add_fits_headers():
     assert environment.location.lat.degree == hdr['LATITUDE']
     assert 'RA---TAN' == hdr['CTYPE1']
     assert 'DEC--TAN' == hdr['CTYPE2']
-    assert centre[0] == hdr['DET-CPX1']
-    assert centre[1] == hdr['DET-CPX2']
+    assert centre['x'] == hdr['DET-CPX1']
+    assert centre['y'] == hdr['DET-CPX2']
     assert 'PC1_1' in hdr
     assert 'PC2_1' in hdr
     assert 'PC1_2' in hdr

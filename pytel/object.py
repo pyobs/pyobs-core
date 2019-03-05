@@ -1,7 +1,7 @@
 from typing import Union
 
 
-def get_object(config_or_object: Union[dict, 'spexxyObject'], object_class=None, *args, **kwargs) -> object:
+def get_object(config_or_object: Union[dict, object], object_class=None, *args, **kwargs) -> object:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:

@@ -1,5 +1,6 @@
 import logging
 import os
+from astropy.io import fits
 
 from pytel.object import get_object
 
@@ -86,6 +87,22 @@ class VirtualFileSystem:
 
         # return it
         return fd
+
+    def download_fits_image(self, filename) -> fits.PrimaryHDU:
+        """Convenience function that wraps around open_file() to download a FITS file and put it into a astropy FITS
+        structure.
+
+        Args:
+            filename: Name of file to download.
+
+        Returns:
+            A PrimaryHDU containing the FITS file.
+        """
+        with self.open_file(filename, 'rb') as f:
+            tmp = fits.open(f)
+            hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
+            tmp.close()
+            return hdu
 
 
 __all__ = ['VirtualFileSystem', 'VFSFile']

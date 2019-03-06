@@ -21,6 +21,10 @@ class TaskFactoryBase:
         self.environment = environment
         self.vfs = vfs
 
+    def update_tasks(self):
+        """Update list of tasks."""
+        pass
+
     def list(self) -> list:
         """List all tasks from this factory.
 

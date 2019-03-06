@@ -31,6 +31,10 @@ class Task:
         """Return the VFS."""
         return self._vfs
 
+    def name(self):
+        """Return name of task."""
+        raise NotImplementedError
+
     def __call__(self):
         """Run the task."""
         raise NotImplementedError

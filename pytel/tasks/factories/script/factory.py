@@ -1,8 +1,12 @@
 import glob
 import os
+import importlib.util
+import logging
 
 from pytel.tasks import TaskFactoryBase, Task
-from .task import ScriptTask
+
+
+log = logging.getLogger(__name__)
 
 
 class ScriptTaskFactory(TaskFactoryBase):
@@ -18,6 +22,38 @@ class ScriptTaskFactory(TaskFactoryBase):
 
         # store
         self._path = path
+        self._tasks = {}
+
+        # get list of tasks
+        self.update_tasks()
+
+    def update_tasks(self):
+        """Update list of tasks."""
+
+        # get all files in directory and loop them
+        log.info('Updating script tasks in directory %s...', self._path)
+        for filename in sorted(glob.glob(os.path.join(self._path, '*.py'))):
+            # load module specs
+            spec = importlib.util.spec_from_file_location('task', filename)
+
+            # get module
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+
+            # __task__ given?
+            if not hasattr(mod, '__task__'):
+                log.warning('No __task__ found in %s.', filename)
+                continue
+
+            # does it inherit from Task?
+            if not issubclass(mod.__task__, Task):
+                raise ValueError('Task in %s is not of type "Task".', filename)
+
+            # instantiate it
+            task = self.create_task(mod.__task__)
+
+            # get name and store it
+            self._tasks[task.name()] = task
 
     def list(self) -> list:
         """List all tasks from this factory.
@@ -26,11 +62,8 @@ class ScriptTaskFactory(TaskFactoryBase):
             List of all tasks.
         """
 
-        # get all files in directory
-        files = sorted(glob.glob(os.path.join(self._path, '*.py')))
-
-        # get basenames and script extensions
-        return [os.path.splitext(os.path.basename(f))[0] for f in files]
+        # return all task names
+        return sorted(self._tasks.keys())
 
     def get(self, name: str) -> Task:
         """Returns a single task from the factory.
@@ -45,15 +78,12 @@ class ScriptTaskFactory(TaskFactoryBase):
             ValueError: If task with given name does not exist.
         """
 
-        # build full filename
-        filename = os.path.join(self._path, name + '.py')
-
         # does it exist?
-        if not os.path.exists(filename):
+        if name not in self._tasks:
             raise ValueError('Task of given name does not exist.')
 
-        # return task
-        return self.create_task(ScriptTask, filename)
+        # return it
+        return self._tasks[name]
 
 
 __all__ = ['ScriptTaskFactory']

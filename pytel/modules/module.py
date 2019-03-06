@@ -104,7 +104,7 @@ class PytelModule:
     def environment(self):
         return self._environment
 
-    def proxy(self, name_or_object: Union[str, 'PytelModule'], obj_type: Type['PytelModule']) -> 'PytelModule':
+    def proxy(self, name_or_object: Union[str, 'PytelModule'], obj_type: Type) -> Union['pytelModule', 'Proxy']:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

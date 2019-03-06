@@ -29,9 +29,9 @@ class Comm:
         # cache for shared variables
         self.variables = SharedVariableCache(comm=self)
 
-        # connect log
+        # add handler to global logger
         handler = CommLoggingHandler(self)
-        log.addHandler(handler)
+        logging.getLogger().addHandler(handler)
 
         # logging thread
         self._closing = threading.Event()

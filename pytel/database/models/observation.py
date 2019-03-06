@@ -20,14 +20,11 @@ class Observation(Base, GetByNameMixin):
     night_id = Column(Integer, ForeignKey(Night.id), comment='ID of night')
     name = Column(String(30), comment='Name of observation', unique=True, nullable=False)
     task_name = Column(Integer, comment='Name of task')
-    project_name = Column(Integer, comment='Name of project')
     start_time = Column(DateTime, comment='Date and time of start of observation')
 
     night = relationship(Night, back_populates='observations')
     images = relationship("Image", lazy='dynamic')
     task = relationship("Task", foreign_keys=[task_name], primaryjoin='Observation.task_name == Task.name')
-    project = relationship("Project", foreign_keys=[project_name],
-                           primaryjoin='Observation.project_name == Project.name')
 
     def __init__(self, name: str):
         self.name = name

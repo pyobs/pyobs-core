@@ -219,7 +219,7 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         """
         
         # get status from parent
-        status = super().status()
+        status = BaseCamera.status(self)
 
         # add more
         with self._coolingLock:

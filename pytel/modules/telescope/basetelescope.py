@@ -1,5 +1,6 @@
 import threading
-from enum import Enum
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from pytel.interfaces import ITelescope
 from pytel import PytelModule
@@ -10,18 +11,12 @@ from pytel.utils.threads import LockWithAbort
 class BaseTelescope(PytelModule, ITelescope):
     """Base class for telescopes."""
 
-    class Status(Enum):
-        """Telescope status values."""
-        PARKED = 'parked'
-        INITPARK = 'initpark'
-        IDLE = 'idle'
-        SLEWING = 'slewing'
-        TRACKING = 'tracking'
-        ERROR = 'error'
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, fits_headers: dict = None, *args, **kwargs):
         """Initialize a new base telescope."""
         PytelModule.__init__(self, *args, **kwargs)
+
+        # additional fits headers
+        self._fits_headers = fits_headers if fits_headers is not None else {}
 
         # some multi-threading stuff
         self._lock_moving = threading.Lock()
@@ -33,7 +28,30 @@ class BaseTelescope(PytelModule, ITelescope):
         Returns:
             dict: A dictionary with status values.
         """
-        return {}
+
+        # init status
+        status = {'ITelescope': {}}
+
+        # get current telescope status
+        status['ITelescope']['Status'] = self.get_motion_status()
+
+        # get position
+        status['ITelescope']['Position'] = {}
+        try:
+            ra, dec = self.get_ra_dec()
+            status['ITelescope']['Position']['RA'] = ra
+            status['ITelescope']['Position']['Dec'] = dec
+        except NotImplementedError:
+            pass
+        try:
+            alt, az = self.get_alt_az()
+            status['ITelescope']['Position']['Alt'] = alt
+            status['ITelescope']['Position']['Az'] = az
+        except NotImplementedError:
+            pass
+
+        # finished
+        return status
 
     def init(self, *args, **kwargs):
         """Initialize telescope.
@@ -130,6 +148,73 @@ class BaseTelescope(PytelModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
             return self._move(alt, az, abort_event=self._abort_move)
+
+    def get_fits_headers(self, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of the telescope.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # define base header
+        hdr = {}
+
+        """
+            'CRVAL1': ('POSITION.EQUATORIAL.RA_J2000', 'Right ascension of telescope [degrees]'),
+            'CRVAL2': ('POSITION.EQUATORIAL.DEC_J2000', 'Declination of telescope [degrees]'),
+            'TEL-RA': ('POSITION.EQUATORIAL.RA_J2000', 'Right ascension of telescope [degrees]'),
+            'TEL-DEC': ('POSITION.EQUATORIAL.DEC_J2000', 'Declination of telescope [degrees]'),
+            'TEL-ZD': ('POSITION.HORIZONTAL.ZD', 'Telescope zenith distance [degrees]'),
+            'TEL-ALT': ('POSITION.HORIZONTAL.ALT', 'Telescope altitude [degrees]'),
+            'TEL-AZ': ('POSITION.HORIZONTAL.AZ', 'Telescope azimuth [degrees]'),
+            'TEL-FOCU': ('POSITION.INSTRUMENTAL.FOCUS.REALPOS', 'Focus position [mm]'),
+            'TEL-ROT': ('POSITION.INSTRUMENTAL.DEROTATOR[2].REALPOS', 'Derotator instrumental position at end [deg]'),
+            'DEROTOFF': ('POINTING.SETUP.DEROTATOR.OFFSET', 'Derotator offset [deg]'),
+            'AZOFF': ('POSITION.INSTRUMENTAL.AZ.OFFSET', 'Azimuth offset'),
+            'ALTOFF': ('POSITION.INSTRUMENTAL.ZD.OFFSET', 'Altitude offset')
+        """
+        # positions
+        try:
+            ra, dec = self.get_ra_dec()
+            hdr['TEL-RA'] = (ra, 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (dec, 'Declination of telescope [degrees]')
+        except NotImplementedError:
+            pass
+        try:
+            alt, az = self.get_alt_az()
+            hdr['TEL-ALT'] = (alt, 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (az, 'Telescope azimuth [degrees]')
+        except NotImplementedError:
+            pass
+
+        # calculate missing parts
+        # TODO
+        if 'TEL-ALT' in hdr and 'TEL-RA' not in hdr:
+            hdr['TEL-RA'] = (0., 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (0., 'Declination of telescope [degrees]')
+        if 'TEL-RA' in hdr and 'TEL-ALT' not in hdr:
+            hdr['TEL-ALT'] = (0., 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (0., 'Telescope azimuth [degrees]')
+
+        # derived headers
+        hdr['CRVAL1'] = hdr['TEL-RA']
+        hdr['CRVAL2'] = hdr['TEL-DEC']
+        hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
+        # hdr['AIRMASS'] = ...
+
+        # create sky coordinates
+        c = SkyCoord(ra=hdr['TEL-RA'][0] * u.deg, dec=hdr['TEL-DEC'][0] * u.deg, frame='icrs')
+
+        # convert to sexagesimal
+        hdr['RA'] = (str(c.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
+        hdr['DEC'] = (str(c.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
+
+        # add static fits headers
+        for key, value in self._fits_headers.items():
+            hdr[key] = tuple(value)
+
+        # finish
+        return hdr
 
 
 __all__ = ['BaseTelescope']

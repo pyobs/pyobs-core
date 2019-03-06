@@ -35,6 +35,15 @@ class IMoving(IStatus):
         TRACKING = 'tracking'
         UNKNOWN = 'unknown'
 
+    def get_motion_status(self) -> str:
+        """Returns current motion status.
+
+        Returns:
+            A string from the Status enumerator.
+        """
+        raise NotImplementedError
+
+
     def status(self, *args, **kwargs) -> dict:
         """Returns current status of the motion device.
 

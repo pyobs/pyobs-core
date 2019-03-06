@@ -87,5 +87,21 @@ class ITelescope(IMoving):
         """
         raise NotImplementedError
 
+    def get_ra_dec(self) -> (float, float):
+        """Returns current RA and Dec.
+
+        Returns:
+            Tuple of current RA and Dec in degrees.
+        """
+        raise NotImplementedError
+
+    def get_alt_az(self) -> (float, float):
+        """Returns current Alt and Az.
+
+        Returns:
+            Tuple of current Alt and Az in degrees.
+        """
+        raise NotImplementedError
+
 
 __all__ = ['ITelescope']

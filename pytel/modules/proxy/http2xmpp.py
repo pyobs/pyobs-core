@@ -502,7 +502,8 @@ class HTTP2XMPP(PytelModule, tornado.web.Application):
             return proxy.execute(method, *args, **kwargs)
         except RemoteException:
             # not possible
-            raise JsonRpcMethodNotFoundException
+            logging.exception('Something went wrong.')
+            raise JsonRpcMethodNotFoundException(client + '.' + method)
         except Exception as e:
             # log error
             logging.exception('Something went wrong.')

@@ -1,10 +1,8 @@
 import logging
 import threading
 import time
-from astropy.coordinates import SkyCoord
-from astropy import units as u
 
-from pytel.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel
+from pytel.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMoving
 from pytel.modules.telescope.basetelescope import BaseTelescope
 from pytel.modules import timeout
 from pytel.utils.threads import LockWithAbort
@@ -27,7 +25,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._filter = 'V'
 
         # init status
-        self.telescope_status = BaseTelescope.Status.PARKED
+        self.telescope_status = IMoving.Status.PARKED
 
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
@@ -44,16 +42,9 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         s = super().status(*args, **kwargs)
 
         # telescope
-        s['ITelescope'] = {
-            'Status': self.telescope_status.value,
-            'Position': {
-                'RA': self._position['ra'],
-                'Dec': self._position['dec']
-            },
-            'Temperatures': {
-                'M1': 17.,
-                'M2': 18.
-            }
+        s['ITelescope']['Temperatures'] = {
+            'M1': 17.,
+            'M2': 18.
         }
 
         # focus
@@ -69,30 +60,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         # finished
         return s
 
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
-
-        Returns:
-            Dictionary containing FITS headers.
-        """
-
-        # define base header
-        hdr = {
-            'OBJRA': (self._position['ra'], 'Declination of object [degrees]'),
-            'OBJDEC': (self._position['dec'], 'Right ascension of object [degrees]'),
-            'TEL-FOCU': (self._focus, 'Focus position [mm]')
-        }
-
-        # create sky coordinates
-        c = SkyCoord(ra=hdr['OBJRA'][0] * u.deg, dec=hdr['OBJDEC'][0] * u.deg, frame='icrs')
-
-        # convert to sexagesimal
-        hdr['RA'] = (str(c.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
-        hdr['DEC'] = (str(c.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
-
-        # finish
-        return hdr
-
     def _track(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
@@ -107,17 +74,17 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # start slewing
         log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
-        self.telescope_status = BaseTelescope.Status.SLEWING
+        self.telescope_status = IMoving.Status.SLEWING
 
         # simulate slew
         ira = self._position['ra'] * 1.
         idec = self._position['dec'] * 1.
-        dra = (ra - ira) / 1000.
-        ddec = (dec - idec) / 1000.
-        for i in range(1000):
+        dra = (ra - ira) / 100.
+        ddec = (dec - idec) / 100.
+        for i in range(100):
             # abort?
             if abort_event.is_set():
-                self.telescope_status = BaseTelescope.Status.IDLE
+                self.telescope_status = IMoving.Status.IDLE
                 raise ValueError('Movement was aborted.')
 
             # move
@@ -125,12 +92,12 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             self._position['dec'] = idec + i * ddec
 
             # sleep a little
-            abort_event.wait(1.)
+            abort_event.wait(0.1)
 
         # finish slewing
         self._position['ra'] = ra
         self._position['dec'] = dec
-        self.telescope_status = BaseTelescope.Status.TRACKING
+        self.telescope_status = IMoving.Status.TRACKING
         log.info('Reached destination')
 
     def _move(self, alt: float, az: float, abort_event: threading.Event):
@@ -226,9 +193,9 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
 
         # INIT, wait a little, then IDLE
-        self.telescope_status = BaseTelescope.Status.INITPARK
+        self.telescope_status = IMoving.Status.INITIALIZING
         time.sleep(5.)
-        self.telescope_status = BaseTelescope.Status.IDLE
+        self.telescope_status = IMoving.Status.IDLE
 
     @timeout(60000)
     def park(self, *args, **kwargs):
@@ -239,9 +206,9 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
 
         # PARK, wait a little, then PARKED
-        self.telescope_status = BaseTelescope.Status.INITPARK
+        self.telescope_status = IMoving.Status.INITIALIZING
         time.sleep(5.)
-        self.telescope_status = BaseTelescope.Status.PARKED
+        self.telescope_status = IMoving.Status.PARKED
 
     def reset_offset(self, *args, **kwargs):
         """Reset Alt/Az offset.
@@ -262,6 +229,22 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
+
+    def get_motion_status(self) -> str:
+        """Returns current motion status.
+
+        Returns:
+            A string from the Status enumerator.
+        """
+        return self.telescope_status.value
+
+    def get_ra_dec(self) -> (float, float):
+        """Returns current RA and Dec.
+
+        Returns:
+            Tuple of current RA and Dec in degrees.
+        """
+        return self._position['ra'], self._position['dec']
 
 
 __all__ = ['DummyTelescope']

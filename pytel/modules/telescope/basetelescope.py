@@ -160,34 +160,20 @@ class BaseTelescope(PytelModule, ITelescope):
         hdr = {}
 
         # positions
-        try:
-            ra, dec = self.get_ra_dec()
-            coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs')
-        except NotImplementedError:
-            coords_ra_dec = None
-        try:
-            alt, az = self.get_alt_az()
-            coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
-        except NotImplementedError:
-            coords_alt_az = None
-
-        # calculate missing RA/DEC and/or ALT/AZ
-        if coords_ra_dec is None and coords_alt_az is not None:
-            coords_ra_dec = self.environment.to_radec(coords_alt_az)
-        if coords_alt_az is None and coords_ra_dec is not None:
-            coords_alt_az = self.environment.to_altaz(coords_ra_dec)
+        ra, dec = self.get_ra_dec()
+        coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs')
+        alt, az = self.get_alt_az()
+        coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
 
         # set coordinate headers
-        if coords_ra_dec:
-            hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
-            hdr['CRVAL1'] = hdr['TEL-RA']
-            hdr['CRVAL2'] = hdr['TEL-DEC']
-        if coords_alt_az:
-            hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
-            hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-            hdr['AIRMASS'] = (coords_alt_az.secz.value, 'airmass of observation start')
+        hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
+        hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
+        hdr['CRVAL1'] = hdr['TEL-RA']
+        hdr['CRVAL2'] = hdr['TEL-DEC']
+        hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
+        hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
+        hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
+        hdr['AIRMASS'] = (coords_alt_az.secz.value, 'airmass of observation start')
 
         # convert to sexagesimal
         hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')

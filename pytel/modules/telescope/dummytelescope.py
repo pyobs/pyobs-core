@@ -1,6 +1,8 @@
 import logging
 import threading
 import time
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from pytel.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMoving
 from pytel.modules.telescope.basetelescope import BaseTelescope
@@ -245,6 +247,16 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             Tuple of current RA and Dec in degrees.
         """
         return self._position['ra'], self._position['dec']
+
+    def get_alt_az(self) -> (float, float):
+        """Returns current Alt and Az.
+
+        Returns:
+            Tuple of current Alt and Az in degrees.
+        """
+        coords = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
+        alt_az = self.environment.to_altaz(coords)
+        return alt_az.alt.degree, alt_az.az.degree
 
     def get_fits_headers(self, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of the telescope.

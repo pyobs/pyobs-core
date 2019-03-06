@@ -81,9 +81,20 @@ class Environment:
         # return zenith position
         return SkyCoord(lst, self._location.lat, frame=ICRS)
 
-    @functools.lru_cache()
-    def to_altaz(self, coords: SkyCoord, time: Time):
-        return coords.transform_to(AltAz(obstime=time, location=self.location))
+    def now(self) -> Time:
+        return Time.now()
+
+    def to_altaz(self, radec: SkyCoord, time: Time = None):
+        if time is None:
+            time = Time.now()
+        return radec.transform_to(AltAz(obstime=time, location=self.location))
+
+    def to_radec(self, altaz: SkyCoord, time: Time = None):
+        if time is None:
+            time = Time.now()
+        altaz.location = self.location
+        altaz.obstime = time
+        return altaz.icrs
 
     @functools.lru_cache()
     def sun(self, time: Time, altaz=True):

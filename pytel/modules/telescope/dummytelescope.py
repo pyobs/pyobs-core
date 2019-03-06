@@ -246,5 +246,24 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         return self._position['ra'], self._position['dec']
 
+    def get_fits_headers(self, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of the telescope.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # fetch from BaseTelescope
+        hdr = BaseTelescope.get_fits_headers(self)
+
+        # focus
+        hdr['TEL-FOCU'] = (self._focus, 'Focus position [mm]')
+
+        # filter
+        hdr['FILTER'] = (self._filter, 'Focus position [mm]')
+
+        # finished
+        return hdr
+
 
 __all__ = ['DummyTelescope']

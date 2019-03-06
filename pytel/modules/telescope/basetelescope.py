@@ -159,55 +159,39 @@ class BaseTelescope(PytelModule, ITelescope):
         # define base header
         hdr = {}
 
-        """
-            'CRVAL1': ('POSITION.EQUATORIAL.RA_J2000', 'Right ascension of telescope [degrees]'),
-            'CRVAL2': ('POSITION.EQUATORIAL.DEC_J2000', 'Declination of telescope [degrees]'),
-            'TEL-RA': ('POSITION.EQUATORIAL.RA_J2000', 'Right ascension of telescope [degrees]'),
-            'TEL-DEC': ('POSITION.EQUATORIAL.DEC_J2000', 'Declination of telescope [degrees]'),
-            'TEL-ZD': ('POSITION.HORIZONTAL.ZD', 'Telescope zenith distance [degrees]'),
-            'TEL-ALT': ('POSITION.HORIZONTAL.ALT', 'Telescope altitude [degrees]'),
-            'TEL-AZ': ('POSITION.HORIZONTAL.AZ', 'Telescope azimuth [degrees]'),
-            'TEL-FOCU': ('POSITION.INSTRUMENTAL.FOCUS.REALPOS', 'Focus position [mm]'),
-            'TEL-ROT': ('POSITION.INSTRUMENTAL.DEROTATOR[2].REALPOS', 'Derotator instrumental position at end [deg]'),
-            'DEROTOFF': ('POINTING.SETUP.DEROTATOR.OFFSET', 'Derotator offset [deg]'),
-            'AZOFF': ('POSITION.INSTRUMENTAL.AZ.OFFSET', 'Azimuth offset'),
-            'ALTOFF': ('POSITION.INSTRUMENTAL.ZD.OFFSET', 'Altitude offset')
-        """
         # positions
         try:
             ra, dec = self.get_ra_dec()
-            hdr['TEL-RA'] = (ra, 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (dec, 'Declination of telescope [degrees]')
+            coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs')
         except NotImplementedError:
-            pass
+            coords_ra_dec = None
         try:
             alt, az = self.get_alt_az()
-            hdr['TEL-ALT'] = (alt, 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (az, 'Telescope azimuth [degrees]')
+            coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
         except NotImplementedError:
-            pass
+            coords_alt_az = None
 
-        # calculate missing parts
-        # TODO
-        if 'TEL-ALT' in hdr and 'TEL-RA' not in hdr:
-            hdr['TEL-RA'] = (0., 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (0., 'Declination of telescope [degrees]')
-        if 'TEL-RA' in hdr and 'TEL-ALT' not in hdr:
-            hdr['TEL-ALT'] = (0., 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (0., 'Telescope azimuth [degrees]')
+        # calculate missing RA/DEC and/or ALT/AZ
+        if coords_ra_dec is None and coords_alt_az is not None:
+            coords_ra_dec = self.environment.to_radec(coords_alt_az)
+        if coords_alt_az is None and coords_ra_dec is not None:
+            coords_alt_az = self.environment.to_altaz(coords_ra_dec)
 
-        # derived headers
-        hdr['CRVAL1'] = hdr['TEL-RA']
-        hdr['CRVAL2'] = hdr['TEL-DEC']
-        hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-        # hdr['AIRMASS'] = ...
-
-        # create sky coordinates
-        c = SkyCoord(ra=hdr['TEL-RA'][0] * u.deg, dec=hdr['TEL-DEC'][0] * u.deg, frame='icrs')
+        # set coordinate headers
+        if coords_ra_dec:
+            hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
+            hdr['CRVAL1'] = hdr['TEL-RA']
+            hdr['CRVAL2'] = hdr['TEL-DEC']
+        if coords_alt_az:
+            hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
+            hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
+            hdr['AIRMASS'] = (coords_alt_az.secz.value, 'airmass of observation start')
 
         # convert to sexagesimal
-        hdr['RA'] = (str(c.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
-        hdr['DEC'] = (str(c.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
+        hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
+        hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

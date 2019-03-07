@@ -2,8 +2,8 @@ import io
 import tarfile
 import os
 
-from pytel import Application
-from pytel.vfs.tarfile import TarFile
+from pyobs import Application
+from pyobs.vfs.tarfile import TarFile
 
 
 class MonkeyVFS:
@@ -22,7 +22,7 @@ def test_tarfile(monkeypatch):
     monkeypatch.setattr(Application, 'instance', lambda: MonkeyApp())
 
     # create config
-    source = {'class': 'pytel.vfs.filelists.TestingFileList'}
+    source = {'class': 'pyobs.vfs.filelists.TestingFileList'}
 
     # open file
     with io.BytesIO() as bio:

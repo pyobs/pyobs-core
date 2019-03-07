@@ -1,6 +1,6 @@
 import requests
 
-from pytel.vfs import HttpFile
+from pyobs.vfs import HttpFile
 
 
 class Response:

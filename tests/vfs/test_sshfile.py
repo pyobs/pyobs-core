@@ -1,6 +1,6 @@
 import pytest
 
-from pytel.vfs import SSHFile
+from pyobs.vfs import SSHFile
 
 
 nossh = pytest.mark.skipif(

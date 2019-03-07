@@ -1,37 +1,36 @@
-# pytel
+pyobs
+=====
 
-## Installation
+Quick start
+-----------
 
-The easiest way for installing pytel on a production system is running "python setup.py install" for each module. 
-Sometimes a more controlled environment with its own build directory is preferred, so here we go.
+Clone the repository:
 
-1. Create directories:
-```bash
-mkdir -p ~/pytel/src
-```
+    git clone https://github.com/thusser/pytel-core.git
+    cd pytel-core
 
-2. Check out all the required modules from gitlab:
-```bash
-cd ~/pytel/src
-git clone https://gitlab.gwdg.de/thusser/pytel pytel
-git clone https://gitlab.gwdg.de/thusser/pytel-http pytel-http
-```
+Create a virtual environment (or skip this step if you want to have pyobs available globally):
 
-3. Link the pull-and-build script:
-```bash
-cd ~/pytel
-ln -s src/pytel/bin/pull_and_build.sh .
-```
+    python3 -m venv venv
+    source venv/bin/activate
+    
+Install dependencies:
 
-4. Build pytel:
-```bash
-cd ~/pytel
-./pull_and_build.sh
-```
+    pip install -r requirements
+    
+Install pyobs:
 
-5. Add pathes to ~/.bashrc:
-```bash
-# pytel
-export PYTHONPATH=$PYTHONPATH:~/pytel/build/lib/python3.6/site-packages
-export PATH=$PATH:~/pytel/build/bin
-```
+    python setup.py install
+
+Create a test configuration test.yaml:
+
+    class: pyobs.Application
+
+    module:
+      class: pyobs.modules.test.StandAlone
+      message: Hello world
+      interval: 10
+      
+And run it:
+   
+    pyobs test.yaml

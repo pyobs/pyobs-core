@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=source
 set BUILDDIR=build
-set SPHINXPROJ=pytel
+set SPHINXPROJ=pyobs
 
 if "%1" == "" goto help
 

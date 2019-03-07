@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from pytel.vfs import LocalFile
+from pyobs.vfs import LocalFile
 
 
 def test_read_file():

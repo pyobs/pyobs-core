@@ -1,37 +1,37 @@
-Installing pytel
+Installing pyobs
 ****************
 
-For installing, you first have to clone the pytel repository::
+For installing, you first have to clone the pyobs repository::
 
-    git clone git@gitlab.gwdg.de:thusser/pytel.git pytel
+    git clone git@gitlab.gwdg.de:thusser/pyobs.git pyobs
 
 Then you can simply install it::
 
-    cd pytel
+    cd pyobs
     python setup.py install
 
 Recommended environment
 =======================
 
-For using all features of pytel, it is recommended to use a standardized installation.
+For using all features of pyobs, it is recommended to use a standardized installation.
 You first have to create a new user. On Linux systems, this usually works like this (as root)::
 
-    adduser pytel --home /opt/pytel
+    adduser pyobs --home /opt/pyobs
 
-Note that we've set the user's home directory to /opt/pytel.
+Note that we've set the user's home directory to /opt/pyobs.
 
-Change into the new user, and checkout and install pytel::
+Change into the new user, and checkout and install pyobs::
 
-    su pytel
-    mkdir /opt/pytel/src
-    cd /opt/pytel/src
-    git clone git@gitlab.gwdg.de:thusser/pytel.git pytel
+    su pyobs
+    mkdir /opt/pyobs/src
+    cd /opt/pyobs/src
+    git clone git@gitlab.gwdg.de:thusser/pyobs.git pyobs
 
 Now create new directories for configuration files, log files and PID files::
 
-    mkdir /opt/pytel/config
-    mkdir /opt/pytel/log
-    mkdir /opt/pytel/run
+    mkdir /opt/pyobs/config
+    mkdir /opt/pyobs/log
+    mkdir /opt/pyobs/run
 
 
 Docker
@@ -39,8 +39,8 @@ Docker
 
 Build Docker image::
 
-    docker build --tag=pytel .
+    docker build --tag=pyobs .
 
 And run it::
 
-    docker run -v $(pwd)/camera.yaml:/pytel.yaml -v $(pwd)/camera.log:/pytel.log pytel
+    docker run -v $(pwd)/camera.yaml:/pyobs.yaml -v $(pwd)/camera.log:/pyobs.log pyobs

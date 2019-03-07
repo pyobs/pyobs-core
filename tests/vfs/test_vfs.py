@@ -2,14 +2,14 @@ import os
 
 import pytest
 
-from pytel.vfs import VirtualFileSystem
+from pyobs.vfs import VirtualFileSystem
 
 
 def test_read_file():
     # create config
     roots = {
         'local': {
-            'class': 'pytel.vfs.LocalFile',
+            'class': 'pyobs.vfs.LocalFile',
             'root': os.path.dirname(__file__)
         }
     }

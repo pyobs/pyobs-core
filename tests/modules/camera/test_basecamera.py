@@ -3,9 +3,9 @@ from astropy.io import fits
 import numpy as np
 import threading
 
-from pytel.comm.dummy import DummyComm
-from pytel.environment import Environment
-from pytel.modules.camera import BaseCamera
+from pyobs.comm.dummy import DummyComm
+from pyobs.environment import Environment
+from pyobs.modules.camera import BaseCamera
 
 
 def test_open_close():

@@ -1,6 +1,6 @@
 import os
 
-from pytel.vfs import TempFile
+from pyobs.vfs import TempFile
 
 
 def test_write_file():

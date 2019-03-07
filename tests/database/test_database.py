@@ -1,4 +1,4 @@
-from pytel.database import Database
+from pyobs.database import Database
 import sqlalchemy as sa
 
 
@@ -10,5 +10,5 @@ def test_create():
     table_names = sa.inspect(Database.engine).get_table_names()
 
     # check a few
-    assert 'pytel_image' in table_names
-    assert 'pytel_task' in table_names
+    assert 'pyobs_image' in table_names
+    assert 'pyobs_task' in table_names

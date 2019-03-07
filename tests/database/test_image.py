@@ -1,8 +1,8 @@
 from astropy.io import fits
 import datetime
 
-from pytel import Environment
-from pytel.database import Database, Image, session_context, Night, Observation, Task, Project
+from pyobs import Environment
+from pyobs.database import Database, Image, session_context, Night, Observation, Task, Project
 
 
 def test_add_from_fits():

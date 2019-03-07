@@ -3,7 +3,7 @@ import gzip
 from astropy.io import fits
 import numpy as np
 
-from pytel.vfs import GzipReader, GzipWriter
+from pyobs.vfs import GzipReader, GzipWriter
 
 
 def test_decompress():

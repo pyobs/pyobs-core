@@ -1,4 +1,4 @@
-from pytel.vfs import MemoryFile
+from pyobs.vfs import MemoryFile
 
 
 def test_memfile():

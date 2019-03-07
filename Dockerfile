@@ -1,6 +1,6 @@
 FROM python:3.6-stretch
 
-# install pytel
+# install pyobs
 COPY . /src
 WORKDIR /src
 RUN pip install -r requirements.txt
@@ -10,4 +10,4 @@ RUN python setup.py install
 RUN rm -rf /src
 
 # set entry point
-ENTRYPOINT ["/usr/local/bin/pytel", "/pytel.yaml"]
+ENTRYPOINT ["/usr/local/bin/pyobs", "/pyobs.yaml"]

@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+import signal
+import threading
+import matplotlib
+import argparse
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import os
+from io import IOBase, StringIO
+import re
+import sys
+import yaml
+
+from pyobs.object import get_object
+
+
+matplotlib.use('Agg')
+
+
+class pyobsYamlLoader(yaml.Loader):
+    def __init__(self, *args, **kwargs):
+        super(pyobsYamlLoader, self).__init__(*args, **kwargs)
+
+        # add constructors
+        self.add_constructor('!include', self._include)
+
+        # check root
+        if 'root' in kwargs:
+            self.root = kwargs['root']
+        elif isinstance(self.stream, IOBase):
+            #self.root = os.path.dirname(self.stream.name)
+            pass
+        else:
+            self.root = os.path.curdir
+
+    def _include(self, loader, node):
+        """
+        Handles "!include path/to/foo.yml" directives in config
+        files.  When constructed with a file object, the root path for includes
+        defaults to the directory containing the file, otherwise to the current
+        working directory. In either case, the root path can be overridden by the
+        `root` keyword argument.
+
+        When an included file F contain its own !include directive, the path is
+        relative to F's location.
+        """
+        old_root = self.root
+        filename = os.path.join(self.root, loader.construct_scalar(node))
+        self.root = os.path.dirname(filename)
+        data = yaml.load(open(filename, 'r'))
+        self.root = old_root
+        return data
+
+
+def hack_threading():
+    """Bad hack to set thread name on OS level."""
+    try:
+        import prctl
+
+        def set_thread_name(name):
+            prctl.set_name(name)
+
+        def _thread_name_hack(self):
+            set_thread_name(self.name)
+            threading.Thread.__bootstrap_original__(self)
+
+        threading.Thread.__bootstrap_original__ = threading.Thread._bootstrap
+        threading.Thread._bootstrap = _thread_name_hack
+
+    except ImportError:
+        log = logging.getLogger('pyobs')
+        log.warning('prctl module is not installed. You will not be able to see thread names')
+
+        def set_thread_name(name):
+            pass
+
+
+def start_daemon(pid_file=None, *args, **kwargs):
+    import daemon
+    from daemon import pidfile
+
+    # get run directory
+    run_dir = os.path.dirname(pid_file)
+
+    # This launches the daemon in its context
+    with daemon.DaemonContext(
+            working_directory=run_dir,
+            umask=0o002,
+            pidfile=pidfile.TimeoutPIDLockFile(pid_file)) as context:
+        run(*args, **kwargs)
+
+
+def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=False, *args, **kwargs):
+    # formatter for logging
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
+
+    # handlers
+    handlers = []
+
+    # stdout
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    handlers.append(stream_handler)
+
+    # file
+    if log_file is not None:
+        if log_rotate:
+            file_handler = TimedRotatingFileHandler(log_file, when='W0')
+        else:
+            file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler.setFormatter(formatter)
+        handlers.append(file_handler)
+
+    # basic setup
+    logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))
+    logging.captureWarnings(True)
+
+    # disable tornado logger
+    logging.getLogger('tornado.access').disabled = True
+
+    # get pyobs logger
+    log = logging.getLogger('pyobs')
+
+    # hack threading to set thread names on OS level
+    hack_threading()
+
+    # load config
+    log.info('Loading configuration from {0:s}...'.format(config))
+    with StringIO(pre_process_yaml(config)) as f:
+        cfg = yaml.load(f, pyobsYamlLoader)
+
+    # create application
+    log.info('Creating objects...')
+    app = get_object(cfg)
+    try:
+        app.open()
+    except:
+        log.error('Could not initialize app.')
+        app.close()
+        sys.exit(1)
+
+    # run it
+    if gui:
+        # import Qt stuff
+        from PyQt5.QtWidgets import QApplication
+        from pyobs.gui.clientgui import ClientGui
+
+        # create Qt app and loop
+        qapp = QApplication(sys.argv)
+
+        # show main window
+        wnd = ClientGui()
+        wnd.show()
+
+        # run
+        qapp.exec()
+    else:
+        # add signal handler
+        def signal_handler(signum, frame):
+            app.quit()
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+
+        # run app
+        app.run()
+
+    # close
+    app.close()
+
+    # finished
+    log.info('Finished shutting down.')
+
+
+def pre_process_yaml(config):
+    # read config
+    with open(config, 'r') as f:
+        content = f.read()
+
+    # get path of config
+    path = os.path.dirname(os.path.abspath(config))
+
+    # find all include statements
+    matches = re.findall('(\{include (.*)\})', content)
+    for match, filename in matches:
+        content = content.replace(match, pre_process_yaml(os.path.join(path, filename)))
+
+    # return new yaml
+    return content
+
+
+def main():
+    # argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config', type=str, help='Configuration file')
+    parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
+                        default='info')
+    parser.add_argument('-l', '--log-file', type=str, help='file to write log into')
+    parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically')
+    parser.add_argument('-p', '--pid-file', type=str)
+    parser.add_argument('--gui', action='store_true', help='run in a GUI instead of a terminal')
+    args = parser.parse_args()
+
+    # --gui and --pid-file don't work together
+    if args.gui and args.pid_file:
+        print('--gui and --pid-file cannot be used together.')
+        return
+
+    # get full path of config
+    args.config = os.path.abspath(args.config)
+
+    # run it
+    if args.pid_file:
+        start_daemon(**vars(args))
+    else:
+        run(**vars(args))
+
+
+if __name__ == '__main__':
+    main()

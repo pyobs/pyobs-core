@@ -1,16 +1,16 @@
 import time
 
-from pytel.vfs import VirtualFileSystem
-from pytel.comm.dummy import DummyComm
-from pytel.modules.imagedb import NewImageWriter
-from pytel.events import NewImageEvent
+from pyobs.vfs import VirtualFileSystem
+from pyobs.comm.dummy import DummyComm
+from pyobs.modules.imagedb import NewImageWriter
+from pyobs.events import NewImageEvent
 
 
 """
 def test_newimage():
     # we need a VFS and Comm
-    vfs = VirtualFileSystem(roots={'input': {'class': 'pytel.vfs.TempFile'},
-                                   'output': {'class': 'pytel.vfs.MemoryFile'}})
+    vfs = VirtualFileSystem(roots={'input': {'class': 'pyobs.vfs.TempFile'},
+                                   'output': {'class': 'pyobs.vfs.MemoryFile'}})
     comm = DummyComm()
 
     # create NewImageWriter

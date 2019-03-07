@@ -1,8 +1,8 @@
 import time
 import requests
 
-from pytel import PytelModule
-from pytel.modules.filecache import HttpFileCacheServer
+from pyobs import PyObsModule
+from pyobs.modules.filecache import HttpFileCacheServer
 
 
 def test_upload_download():
@@ -28,11 +28,11 @@ def test_upload_download():
     assert(res.content == b'Hello world')
 
     # upload file via url
-    requests.post('http://localhost:37075/test2.txt', b'pytel is great')
+    requests.post('http://localhost:37075/test2.txt', b'pyobs is great')
 
     # download file
     res = requests.get('http://localhost:37075/test2.txt')
-    assert (res.content == b'pytel is great')
+    assert (res.content == b'pyobs is great')
 
     # uploading without filename should fail
     res = requests.post('http://localhost:37075/', b'So bad')

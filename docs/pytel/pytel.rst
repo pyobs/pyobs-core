@@ -1,3 +1,3 @@
-.. automodule:: pytel
+.. automodule:: pyobs
     :members:
     :show-inheritance:

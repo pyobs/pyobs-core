@@ -1,7 +1,7 @@
-from .IMoving import IMoving
+from .IMotion import IMotion
 
 
-class IRotation(IMoving):
+class IRotation(IMotion):
     def set_rotation(self, angle, *args, **kwargs):
         """ Sets the rotation angle to the given value in degrees. """
         raise NotImplementedError

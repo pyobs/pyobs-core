@@ -12,7 +12,7 @@ from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IImageDB import IImageDB
-from .IMoving import IMoving
+from .IMotion import IMotion
 from .IRoof import IRoof
 from .IStatus import IStatus
 from .IStoppable import IStoppable

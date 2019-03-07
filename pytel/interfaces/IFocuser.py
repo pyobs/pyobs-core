@@ -1,7 +1,7 @@
-from .IMoving import IMoving
+from .IMotion import IMotion
 
 
-class IFocuser(IMoving):
+class IFocuser(IMotion):
     """Generic focussing device with states corresponding to IMotionDevice.MotionState.
 
     Other interfaces to be implemented:

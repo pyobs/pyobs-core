@@ -4,7 +4,7 @@ import time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pytel.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMoving
+from pytel.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMotion
 from pytel.modules.telescope.basetelescope import BaseTelescope
 from pytel.modules import timeout
 from pytel.utils.threads import LockWithAbort
@@ -27,7 +27,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._filter = 'V'
 
         # init status
-        self.telescope_status = IMoving.Status.PARKED
+        self.telescope_status = IMotion.Status.PARKED
 
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
@@ -76,7 +76,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # start slewing
         log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
-        self.telescope_status = IMoving.Status.SLEWING
+        self.telescope_status = IMotion.Status.SLEWING
 
         # simulate slew
         ira = self._position['ra'] * 1.
@@ -86,7 +86,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         for i in range(100):
             # abort?
             if abort_event.is_set():
-                self.telescope_status = IMoving.Status.IDLE
+                self.telescope_status = IMotion.Status.IDLE
                 raise ValueError('Movement was aborted.')
 
             # move
@@ -99,7 +99,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         # finish slewing
         self._position['ra'] = ra
         self._position['dec'] = dec
-        self.telescope_status = IMoving.Status.TRACKING
+        self.telescope_status = IMotion.Status.TRACKING
         log.info('Reached destination')
 
     def _move(self, alt: float, az: float, abort_event: threading.Event):
@@ -195,9 +195,9 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
 
         # INIT, wait a little, then IDLE
-        self.telescope_status = IMoving.Status.INITIALIZING
+        self.telescope_status = IMotion.Status.INITIALIZING
         time.sleep(5.)
-        self.telescope_status = IMoving.Status.IDLE
+        self.telescope_status = IMotion.Status.IDLE
 
     @timeout(60000)
     def park(self, *args, **kwargs):
@@ -208,9 +208,9 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
 
         # PARK, wait a little, then PARKED
-        self.telescope_status = IMoving.Status.INITIALIZING
+        self.telescope_status = IMotion.Status.INITIALIZING
         time.sleep(5.)
-        self.telescope_status = IMoving.Status.PARKED
+        self.telescope_status = IMotion.Status.PARKED
 
     def reset_offset(self, *args, **kwargs):
         """Reset Alt/Az offset.

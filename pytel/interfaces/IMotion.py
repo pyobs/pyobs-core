@@ -3,7 +3,7 @@ from enum import Enum
 from .IStatus import IStatus
 
 
-class IMoving(IStatus):
+class IMotion(IStatus):
     """
     Basic interface for all devices that move.
 
@@ -56,4 +56,4 @@ class IMoving(IStatus):
         raise NotImplementedError
 
 
-__all__ = ['IMoving']
+__all__ = ['IMotion']

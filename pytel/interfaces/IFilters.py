@@ -1,7 +1,7 @@
-from .IMoving import IMoving
+from .IMotion import IMotion
 
 
-class IFilters(IMoving):
+class IFilters(IMotion):
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
 

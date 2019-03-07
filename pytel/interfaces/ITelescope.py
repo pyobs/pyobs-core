@@ -1,7 +1,7 @@
-from .IMoving import IMoving
+from .IMotion import IMotion
 
 
-class ITelescope(IMoving):
+class ITelescope(IMotion):
     """
     Generic interface for an astronomical telescope.
 

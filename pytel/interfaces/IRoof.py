@@ -1,7 +1,7 @@
-from .IMoving import IMoving
+from .IMotion import IMotion
 
 
-class IRoof(IMoving):
+class IRoof(IMotion):
     """
     Base interface for all observatory enclosures.
 

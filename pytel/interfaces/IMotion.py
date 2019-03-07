@@ -43,14 +43,13 @@ class IMotion(IStatus):
         """
         raise NotImplementedError
 
-
     def status(self, *args, **kwargs) -> dict:
         """Returns current status of the motion device.
 
         Returns:
             dict: A dictionary that should contain at least the following fields:
 
-            IMoving
+            IMotion
                 Status (str):               Current motion status of device.
         """
         raise NotImplementedError

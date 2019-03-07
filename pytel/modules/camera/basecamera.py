@@ -65,7 +65,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
 
-    def get_status(self, *args, **kwargs) -> str:
+    def get_exposure_status(self, *args, **kwargs) -> str:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -448,7 +448,7 @@ class BaseCamera(PytelModule, ICamera, IAbortable):
         # return status
         return {
             'ICamera': {
-                'Status': self.get_status(),
+                'Status': self.get_exposure_status(),
                 'ExposureTimeLeft': self.get_exposure_time_left(),
                 'ExposuresLeft': self.get_exposures_left(),
                 'Progress': self.get_exposure_progress(),

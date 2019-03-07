@@ -108,7 +108,7 @@ class DummyCam(BaseCamera):
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
         # store current status
-        self.status_during_expose = self.get_status()
+        self.status_during_expose = self.get_exposure_status()
 
         # wait for exposure
         abort_event.wait(exposure_time / 1000.)
@@ -134,14 +134,14 @@ def test_expose():
     camera.open()
 
     # status must be idle
-    assert 'idle' == camera.get_status()
+    assert 'idle' == camera.get_exposure_status()
 
     # expose
     camera.expose(exposure_time=0, image_type='object')
     assert 'exposing' == camera.status_during_expose
 
     # status must be idle again
-    assert 'idle' == camera.get_status()
+    assert 'idle' == camera.get_exposure_status()
 
     # close camera
     camera.close()

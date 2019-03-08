@@ -67,7 +67,6 @@ class HttpFile(VFSFile, io.RawIOBase):
         try:
             # define URL
             url = urljoin(self._download_path, self._filename)
-            print(url)
 
             # do request
             r = requests.get(url, stream=True, auth=self._auth)

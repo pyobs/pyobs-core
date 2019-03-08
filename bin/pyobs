@@ -135,7 +135,7 @@ def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=Fals
     try:
         app.open()
     except:
-        log.error('Could not initialize app.')
+        log.exception('Could not initialize app.')
         app.close()
         sys.exit(1)
 

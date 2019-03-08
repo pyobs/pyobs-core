@@ -13,7 +13,8 @@ class HttpFile(VFSFile, io.RawIOBase):
     """Wraps a file on a HTTP server that can be accessed via GET/POST.
     Especially useful in combination with :class:`pyobs.modules.filecache,http.HttpFileCacheServer`."""
 
-    def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None, *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None,
+                 username: str = None, password: str = None, *args, **kwargs):
         """Creates a new HTTP file.
 
         Args:
@@ -21,10 +22,17 @@ class HttpFile(VFSFile, io.RawIOBase):
             mode: Open mode (r/w).
             download: Base URL for downloading files. If None, no read access possible.
             upload: Base URL for uploading files. If None, no write access possible.
+            username: Username for accessing the HTTP server.
+            password: Password for accessing the HTTP server.
         """
 
         # init
         io.RawIOBase.__init__(self)
+
+        # auth
+        self._auth = None
+        if username is not None and password is not None:
+            self._auth = (username, password)
 
         # filename is not allowed to start with a / or contain ..
         if name.startswith('/') or '..' in name:
@@ -59,9 +67,10 @@ class HttpFile(VFSFile, io.RawIOBase):
         try:
             # define URL
             url = urljoin(self._download_path, self._filename)
+            print(url)
 
             # do request
-            r = requests.get(url, stream=True)
+            r = requests.get(url, stream=True, auth=self._auth)
 
         except requests.exceptions.ConnectionError:
             log.error('Could not connect to filecache.')
@@ -71,6 +80,9 @@ class HttpFile(VFSFile, io.RawIOBase):
         if r.status_code == 200:
             # get data and return it
             self._buffer = r.content
+        elif r.status_code == 401:
+            log.error('Wrong credentials for downloading file.')
+            raise FileNotFoundError
         else:
             log.error('Could not download file from filecache.')
             raise FileNotFoundError
@@ -167,8 +179,12 @@ class HttpFile(VFSFile, io.RawIOBase):
 
         # send data and return image ID
         try:
-            r = requests.post(self._upload_path, data=self._buffer, headers=headers)
-            if r.status_code != 200:
+            r = requests.post(self._upload_path, data=self._buffer, headers=headers, auth=self._auth)
+            print(r.status_code)
+            if r.status_code == 401:
+                log.error('Wrong credentials for uploading file.')
+                raise FileNotFoundError
+            elif r.status_code != 200:
                 log.error('Could not upload file to filecache.')
                 raise FileNotFoundError
 

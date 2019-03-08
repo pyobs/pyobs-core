@@ -8,7 +8,7 @@ from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusMode
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
-
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -113,7 +113,17 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         Raises:
             Exception: On error.
         """
-        pass
+
+        # alt/az coordinates to ra/dec
+        coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
+                          location=self.environment.location, frame='altaz')
+        icrs = coords.icrs
+
+        # track
+        self._track(icrs.ra.degree, icrs.dec.degree, abort_event)
+
+        # set telescope to idle
+        self.telescope_status = IMotion.Status.IDLE
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.

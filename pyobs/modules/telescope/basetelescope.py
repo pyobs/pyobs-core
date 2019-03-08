@@ -132,6 +132,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
         raise NotImplementedError
 
+    @timeout(60000)
     def move(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 

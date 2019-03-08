@@ -88,7 +88,6 @@ class BaseTelescope(PyObsModule, ITelescope):
         Raises:
             Exception: On any error.
         """
-
         raise NotImplementedError
 
     @timeout(60000)

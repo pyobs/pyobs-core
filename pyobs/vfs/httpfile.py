@@ -179,7 +179,6 @@ class HttpFile(VFSFile, io.RawIOBase):
         # send data and return image ID
         try:
             r = requests.post(self._upload_path, data=self._buffer, headers=headers, auth=self._auth)
-            print(r.status_code)
             if r.status_code == 401:
                 log.error('Wrong credentials for uploading file.')
                 raise FileNotFoundError

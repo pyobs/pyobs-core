@@ -121,6 +121,15 @@ def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=Fals
     # get pyobs logger
     log = logging.getLogger('pyobs')
 
+    if gui:
+        # import Qt stuff
+        from PyQt5.QtWidgets import QApplication
+        from pyobs.utils.modulegui import ModuleGui
+
+        # create Qt app and window
+        qapp = QApplication(sys.argv)
+        wnd = ModuleGui()
+
     # hack threading to set thread names on OS level
     hack_threading()
 
@@ -141,18 +150,8 @@ def run(config=None, log_file=None, log_level='info', log_rotate=False, gui=Fals
 
     # run it
     if gui:
-        # import Qt stuff
-        from PyQt5.QtWidgets import QApplication
-        from pyobs.gui.clientgui import ClientGui
-
-        # create Qt app and loop
-        qapp = QApplication(sys.argv)
-
-        # show main window
-        wnd = ClientGui()
+        # run qt application
         wnd.show()
-
-        # run
         qapp.exec()
     else:
         # add signal handler

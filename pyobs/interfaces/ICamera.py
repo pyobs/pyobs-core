@@ -8,7 +8,7 @@ from .IAbortable import IAbortable
 class ICamera(IStatus, IAbortable):
     """Basic interface for all cameras."""
 
-    class CameraStatus(enum.Enum):
+    class ExposureStatus(enum.Enum):
         """Enumerator for camera status."""
         IDLE = 'idle'
         EXPOSING = 'exposing'

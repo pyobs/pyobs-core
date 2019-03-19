@@ -1,4 +1,5 @@
 from .badweather import BadWeatherEvent
+from .exposurestatuschanged import ExposureStatusChangedEvent
 from .event import Event
 from .log import LogEvent
 from .newimage import NewImageEvent

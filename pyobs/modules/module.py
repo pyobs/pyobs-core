@@ -1,7 +1,6 @@
 import inspect
 import logging
 import threading
-import time
 from typing import Union, Type
 from py_expression_eval import Parser
 
@@ -9,7 +8,6 @@ from pyobs import Environment
 from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
-from pyobs.application import APP
 from pyobs.vfs import VirtualFileSystem
 
 

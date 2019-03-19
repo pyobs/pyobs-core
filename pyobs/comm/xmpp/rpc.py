@@ -2,11 +2,12 @@ import logging
 from threading import RLock
 import sleekxmpp
 import sleekxmpp.exceptions
-from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
+from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault
 
 from pyobs.modules import PyObsModule
 from pyobs.comm.exceptions import *
 from pyobs.utils.threads import Future
+from .xep_0009.binding import xml2py, py2xml
 
 
 log = logging.getLogger(__name__)

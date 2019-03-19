@@ -2,7 +2,6 @@ import io
 import tarfile
 import os
 
-from pyobs import Application
 from pyobs.vfs.tarfile import TarFile
 
 
@@ -18,15 +17,15 @@ class MonkeyApp:
 
 
 def test_tarfile(monkeypatch):
-    # monkey patch
-    monkeypatch.setattr(Application, 'instance', lambda: MonkeyApp())
+    # vfs
+    vfs = MonkeyVFS()
 
     # create config
     source = {'class': 'pyobs.vfs.filelists.TestingFileList'}
 
     # open file
     with io.BytesIO() as bio:
-        with TarFile('test.tar', 'rb', source=source) as f:
+        with TarFile('test.tar', 'rb', source=source, vfs=vfs) as f:
             bio.write(f.read())
         zip_data = bio.getvalue()
 

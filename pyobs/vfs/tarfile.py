@@ -3,9 +3,8 @@ import logging
 import os
 import tarfile
 
-from pyobs import Application
 from pyobs.object import get_object
-from .vfs import VFSFile
+from .vfs import VFSFile, VirtualFileSystem
 from .filelists import FileList
 
 log = logging.getLogger(__name__)
@@ -14,7 +13,8 @@ log = logging.getLogger(__name__)
 class TarFile(VFSFile):
     """Write a TAR file from a list of input files."""
 
-    def __init__(self, name: str = None, mode: str = 'rb', source: FileList = None, *args, **kwargs):
+    def __init__(self, name: str = None, mode: str = 'rb', source: FileList = None, vfs: VirtualFileSystem = None,
+                 *args, **kwargs):
         """Open/create a new TAR file.
 
         Args:
@@ -23,8 +23,8 @@ class TarFile(VFSFile):
             source: An object that provides a list of filenames to write into the TAR file.
         """
 
-        # get app
-        self.app = Application.instance()
+        # store vfs
+        self.vfs = vfs
 
         # mode?
         if mode != 'rb':
@@ -57,7 +57,7 @@ class TarFile(VFSFile):
         Args:
             filename (str): Name of file to add
         """
-        with self.app.vfs.open_file(filename, 'rb') as fin:
+        with self.vfs.open_file(filename, 'rb') as fin:
             # load file into a BytesIO
             with io.BytesIO(fin.read()) as bio:
                 # create tar info

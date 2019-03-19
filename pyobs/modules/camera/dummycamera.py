@@ -9,6 +9,7 @@ from threading import RLock
 import numpy as np
 from astropy.io import fits
 
+from pyobs.events import ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 
@@ -16,7 +17,7 @@ from pyobs.modules.camera.basecamera import BaseCamera
 log = logging.getLogger(__name__)
 
 
-class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
+class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
     """A dummy camera for testing."""
 
     def __init__(self, readout_time: float = 2, sim: dict = None, *args, **kwargs):
@@ -89,19 +90,21 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
         # do exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self._camera_status = ICamera.CameraStatus.EXPOSING
+        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.EXPOSING))
+        self._camera_status = ICamera.ExposureStatus.EXPOSING
         self._exposing = True
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._camera_status = ICamera.CameraStatus.IDLE
+                self._camera_status = ICamera.ExposureStatus.IDLE
                 raise ValueError('Exposure was aborted.')
             time.sleep(exposure_time / 1000. / steps)
         self._exposing = False
 
         # readout
-        self._camera_status = ICamera.CameraStatus.READOUT
+        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.READOUT))
+        self._camera_status = ICamera.ExposureStatus.READOUT
         time.sleep(self._redout_time)
 
         # random image or pre-defined?
@@ -130,7 +133,8 @@ class DummyCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICooling):
 
         # finished
         log.info('Exposure finished.')
-        self._camera_status = ICamera.CameraStatus.IDLE
+        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.IDLE))
+        self._camera_status = ICamera.ExposureStatus.IDLE
         return hdu
 
     def _abort_exposure(self):

@@ -49,7 +49,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # init camera
         self._last_image = None
         self._exposure = None
-        self._camera_status = ICamera.CameraStatus.IDLE
+        self._camera_status = ICamera.ExposureStatus.IDLE
         self._exposures_left = 0
 
         # multi-threading
@@ -111,7 +111,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure[1] == 0. or self._camera_status == ICamera.CameraStatus.READOUT:
+        if self._exposure[1] == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
             return 100.
         else:
             # return max of 100
@@ -353,11 +353,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 image_type = ICamera.ImageType(image_type)
 
             # are we exposing?
-            if self._camera_status != ICamera.CameraStatus.IDLE:
+            if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
-
-            # make sure that camera is never in IDLE status until finished
-            self._camera_status = ICamera.CameraStatus.EXPOSING
 
             # loop count
             images = []
@@ -378,9 +375,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
                 # finished
                 self._exposures_left -= 1
-
-            # we should be idle again
-            self._camera_status = ICamera.CameraStatus.IDLE
 
             # return id
             self._exposures_left = 0

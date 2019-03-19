@@ -21,7 +21,6 @@ class Comm:
     def __init__(self, *args, **kwargs):
         """Creates a comm module."""
 
-        self.ident = None
         self._proxies = {}
         self.module = None
         self._log_queue = queue.Queue()
@@ -120,6 +119,11 @@ class Comm:
         # if a client disconnects, we remove its proxy
         if sender in self._proxies:
             del self._proxies[sender]
+
+    @property
+    def name(self) -> str:
+        """Name of this client."""
+        raise NotImplementedError
 
     @property
     def clients(self) -> list:

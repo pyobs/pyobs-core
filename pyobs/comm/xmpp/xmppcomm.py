@@ -129,6 +129,11 @@ class XmppComm(Comm):
         # disconnect from xmpp server
         self._xmpp.disconnect()
 
+    @property
+    def name(self) -> str:
+        """Name of this client."""
+        return self._jid
+
     def _failed_auth(self, event):
         """Authentification failed.
 

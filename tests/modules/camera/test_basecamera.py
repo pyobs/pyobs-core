@@ -5,6 +5,7 @@ import threading
 
 from pyobs.comm.dummy import DummyComm
 from pyobs.environment import Environment
+from pyobs.interfaces import ICamera
 from pyobs.modules.camera import BaseCamera
 
 
@@ -104,11 +105,10 @@ class DummyCam(BaseCamera):
 
     def __init__(self, *args, **kwargs):
         BaseCamera.__init__(self, *args, **kwargs)
-        self.status_during_expose = None
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
-        # store current status
-        self.status_during_expose = self.get_exposure_status()
+        # exposing
+        self._camera_status = ICamera.ExposureStatus.EXPOSING
 
         # wait for exposure
         abort_event.wait(exposure_time / 1000.)
@@ -116,6 +116,9 @@ class DummyCam(BaseCamera):
         # raise exception, if aborted
         if abort_event.is_set():
             raise ValueError('Exposure was aborted.')
+
+        # idle
+        self._camera_status = ICamera.ExposureStatus.IDLE
 
         # return image
         return fits.ImageHDU(np.zeros((100, 100)))
@@ -138,7 +141,6 @@ def test_expose():
 
     # expose
     camera.expose(exposure_time=0, image_type='object')
-    assert 'exposing' == camera.status_during_expose
 
     # status must be idle again
     assert 'idle' == camera.get_exposure_status()

@@ -5,8 +5,12 @@ import time
 from typing import Union, Type
 from py_expression_eval import Parser
 
+from pyobs import Environment
+from pyobs.comm import Comm
+from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.application import APP
+from pyobs.vfs import VirtualFileSystem
 
 
 log = logging.getLogger(__name__)
@@ -56,8 +60,23 @@ def timeout(func_timeout: Union[str, int, None] = None):
 
 
 class PyObsModule:
-    def __init__(self, name=None, comm=None, vfs=None, environment=None, thread_funcs=None,
-                 restart_threads=True, *args, **kwargs):
+    """Base class for all pyobs modules."""
+
+    def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
+                 environment: Union[Environment, dict] = None, database: str = None, plugins: list = None,
+                 thread_funcs: list = None, restart_threads: bool = True, *args, **kwargs):
+        """Initializes a new pyobs module.
+
+        Args:
+            name: Name of module.
+            comm: Comm object to use (either object itself or configuration)
+            vfs: VFS to use (either object or config)
+            environment: Environment to use (either object or config)
+            database: Database connection string
+            plugins: List of plugins to start.
+            thread_funcs: Functions to start in a separate thread.
+            restart_threads: Whether to automatically restart threads when they quit.
+        """
 
         # an event that will be fired when closing the module
         self.closing = threading.Event()
@@ -70,10 +89,43 @@ class PyObsModule:
         self._methods = {}
         self._get_interfaces_and_methods()
 
-        # some linked object
-        self._comm = comm
-        self._vfs = vfs
-        self._environment = environment
+        # store
+        self._db_connect = database
+
+        # closing event
+        self.closing = threading.Event()
+
+        # create vfs
+        if vfs:
+            self.vfs = get_object(vfs)
+        else:
+            from pyobs.vfs import VirtualFileSystem
+            self.vfs = VirtualFileSystem()
+
+        # create environment
+        self.environment = None
+        if environment:
+            self.environment = get_object(environment)
+
+        # create comm module
+        self.comm = None
+        if comm:
+            self.comm = get_object(comm)
+        else:
+            from pyobs.comm.dummy import DummyComm
+            self.comm = DummyComm()
+
+        # link all together
+        self.comm.module = self
+
+        # plugins
+        self._plugins = []
+        if plugins:
+            for cfg in plugins.values():
+                plg = get_object(cfg)
+                plg._comm = self.comm
+                plg._environment = self.environment
+                self._plugins.append(plg)
 
         # opened?
         self._opened = False
@@ -92,17 +144,61 @@ class PyObsModule:
                              for t in thread_funcs}
             self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    @property
-    def comm(self):
-        return self._comm
+    def open(self):
+        """Open module."""
+
+        # connect database
+        if self._db_connect:
+            Database.connect(self._db_connect)
+
+        # open comm
+        if self.comm:
+            log.info('Opening comm...')
+            self.comm.open()
+
+        # open plugins
+        if self._plugins:
+            log.info('Opening plugins...')
+            for plg in self._plugins:
+                plg.open()
+
+        # start threads and watchdog
+        for thread, target in self._threads.items():
+            log.info('Starting thread for %s...', target.__name__)
+            thread.start()
+        if self._watchdog:
+            self._watchdog.start()
+
+        # success
+        self._opened = True
+
+        # success
+        log.info('Started successfully.')
 
     @property
-    def vfs(self):
-        return self._vfs
+    def opened(self):
+        return self._opened
 
-    @property
-    def environment(self):
-        return self._environment
+    def close(self):
+        """Close module."""
+
+        # request closing of object (used for long-running methods)
+        self.closing.set()
+
+        # join watchdog and then all threads
+        if self._watchdog and self._watchdog.is_alive():
+            self._watchdog.join()
+        [t.join() for t in self._threads.keys() if t.is_alive()]
+
+        # close plugins
+        log.info('Closing plugins...')
+        for plg in self._plugins:
+            plg.close()
+
+        # close comm
+        if self.comm:
+            log.info('Closing comm...')
+            self.comm.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type) -> object:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
@@ -149,38 +245,19 @@ class PyObsModule:
 
     @staticmethod
     def _thread_func(target):
+        """Run given function.
+
+        Args:
+            target: Function to run.
+        """
         try:
             target()
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
-    def open(self):
-        """Open module."""
-
-        # start threads and watchdog
-        for thread, target in self._threads.items():
-            log.info('Starting thread for %s...', target.__name__)
-            thread.start()
-        if self._watchdog:
-            self._watchdog.start()
-
-        # success
-        self._opened = True
-
-    @property
-    def opened(self):
-        return self._opened
-
-    def close(self):
-        # request closing of object (used for long-running methods)
-        self.closing.set()
-
-        # join watchdog and then all threads
-        if self._watchdog and self._watchdog.is_alive():
-            self._watchdog.join()
-        [t.join() for t in self._threads.keys() if t.is_alive()]
-
     def _watchdog_func(self):
+        """Watchdog thread that tries to restart threads if they quit."""
+
         while not self.closing.is_set():
             # get dead threads
             dead = {thread: target for thread, target in self._threads.items() if not thread.is_alive()}
@@ -211,8 +288,14 @@ class PyObsModule:
             raise InterruptedError
         return True
 
+    def run(self):
+        """Main loop for application."""
+        while not self.closing.is_set():
+            self.closing.wait(1)
+
     @property
     def name(self):
+        """Name of module."""
         return self._name
 
     def implements(self, interface):
@@ -221,13 +304,16 @@ class PyObsModule:
 
     @property
     def interfaces(self):
+        """List of implemented interfaces."""
         return self._interfaces
 
     @property
     def methods(self):
+        """List of methods."""
         return self._methods
 
     def _get_interfaces_and_methods(self):
+        """List interfaces and methods of this module."""
         import pyobs.interfaces
 
         # get interfaces
@@ -252,29 +338,9 @@ class PyObsModule:
                     # fill dict of name->(method, signature)
                     self._methods[method_name] = (func, signature)
 
-        # remove interfaces that are implemented by others
-        """
-        to_delete = []
-        for i1 in self._interfaces:
-            for i2 in self._interfaces:
-                if i1 != i2 and issubclass(i1, i2):
-                    # i1 implements i2, so remove i2
-                    to_delete.append(i2)
-        for d in list(set(to_delete)):
-            self._interfaces.remove(d)
-        """
-
-    def _sleep_long(self, sec):
-        while sec > 0:
-            time.sleep(1)
-            sec -= 1
-            self.check_running()
-
     def quit(self):
-        if APP():
-            APP().quit()
-        else:
-            self.closing.set()
+        """Quit module."""
+        self.closing.set()
 
     def open_file(self, filename: str, mode: str, compression: bool = None):
         """Open a file. The handling class is chosen depending on the vfs root in the filename.
@@ -287,7 +353,7 @@ class PyObsModule:
         Returns:
             (BaseFile) File object for given file.
         """
-        return self._vfs.open_file(filename, mode, compression)
+        return self.vfs.open_file(filename, mode, compression)
 
 
 __all__ = ['PyObsModule', 'timeout']

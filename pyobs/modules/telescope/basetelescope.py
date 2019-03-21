@@ -2,7 +2,8 @@ import threading
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope
+from pyobs.events import MotionStatusChangedEvent
+from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -21,6 +22,31 @@ class BaseTelescope(PyObsModule, ITelescope):
         # some multi-threading stuff
         self._lock_moving = threading.Lock()
         self._abort_move = threading.Event()
+
+        # status
+        self._motion_status = IMotion.Status.IDLE
+
+    def open(self):
+        """Open module."""
+        PyObsModule.open(self)
+
+        # subscribe to events
+        if self.comm:
+            self.comm.register_event(MotionStatusChangedEvent)
+
+    def _change_motion_status(self, status: IMotion.Status):
+        """Change motion status and send event,
+
+        Args:
+            status: New motion status.
+        """
+
+        # send event, if it changed
+        if self._motion_status != status:
+            self.comm.send_event(MotionStatusChangedEvent(self._motion_status, status))
+
+        # set it
+        self._camera_status = status
 
     def status(self, *args, **kwargs) -> dict:
         """Returns current status.

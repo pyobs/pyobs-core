@@ -242,13 +242,16 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
 
-    def get_motion_status(self) -> str:
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
         """Returns current motion status.
+
+        Args:
+            device: Name of device to get status for, or None.
 
         Returns:
             A string from the Status enumerator.
         """
-        return self.telescope_status.value
+        return self.telescope_status
 
     def get_ra_dec(self) -> (float, float):
         """Returns current RA and Dec.

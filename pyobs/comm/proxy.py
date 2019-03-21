@@ -101,9 +101,7 @@ class Proxy:
         response = self._comm.execute(self._client, method, *ba.args[1:])
 
         # cast response to real types
-        a = response_cast_from_simple(response, signature)
-        print(response, a)
-        return a
+        return response_cast_from_simple(response, signature)
 
     def execute_safely(self, method, *args, **kwargs):
         """Execute a method on the remote client, but check signature first.

@@ -35,7 +35,7 @@ class IMotion(IStatus):
         TRACKING = 'tracking'
         UNKNOWN = 'unknown'
 
-    def get_motion_status(self, device: str = None) -> str:
+    def get_motion_status(self, device: str = None) -> Status:
         """Returns current motion status.
 
         Args:

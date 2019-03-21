@@ -9,7 +9,7 @@ from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
 from pyobs import PyObsModule
-from pyobs.events import BadWeatherEvent, NewImageEvent
+from pyobs.events import BadWeatherEvent, NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
 from pyobs.utils.threads import ThreadWithReturnValue
@@ -63,7 +63,22 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # subscribe to events
         if self.comm:
             self.comm.register_event(NewImageEvent)
+            self.comm.register_event(ExposureStatusChangedEvent)
             self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
+
+    def _change_exposure_status(self, status: ICamera.ExposureStatus):
+        """Change exposure status and send event,
+
+        Args:
+            status: New exposure status.
+        """
+
+        # send event, if it changed
+        if self._camera_status != status:
+            self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, status))
+
+        # set it
+        self._camera_status = status
 
     def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.

@@ -2,12 +2,11 @@ import logging
 from threading import RLock
 import sleekxmpp
 import sleekxmpp.exceptions
-from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault
+from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 
 from pyobs.modules import PyObsModule
 from pyobs.comm.exceptions import *
 from pyobs.utils.threads import Future
-from .xep_0009.binding import xml2py, py2xml
 
 
 log = logging.getLogger(__name__)
@@ -98,7 +97,7 @@ class RPC(object):
                     method, signature = self._methods[pmethod]
                 except KeyError:
                     log.error("No handler available for %s!", pmethod)
-                    self._client.plugin['xep_0009']._item_not_found(iq).send()
+                    self._client.plugin['xep_0009'].item_not_found(iq).send()
                     return
 
             # bind parameters
@@ -115,7 +114,8 @@ class RPC(object):
                     response.send()
 
             # call method
-            return_value = method(**ba.arguments)
+            #return_value = method(**ba.arguments)
+            return_value = self._handler.execute(pmethod, *params)
             return_value = () if return_value is None else (return_value,)
 
             # send response
@@ -126,15 +126,15 @@ class RPC(object):
             fault = dict()
             fault['code'] = 500
             fault['string'] = ie.get_message()
-            self._client.plugin['xep_0009']._send_fault(iq, fault2xml(fault))
+            self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
         except Exception as e:
             # something else went wrong
-            #log.exception('Error during call to %s: %s', pmethod, str(e))
+            # log.exception('Error during call to %s: %s', pmethod, str(e))
             fault = dict()
             fault['code'] = 500
             fault['string'] = str(e)
-            self._client.plugin['xep_0009']._send_fault(iq, fault2xml(fault))
+            self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
     def _on_jabber_rpc_method_response(self, iq):
         """Received a response for a method call.

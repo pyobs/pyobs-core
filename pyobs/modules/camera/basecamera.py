@@ -328,15 +328,15 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         return hdu, filename
 
     @timeout('(exposure_time+10000)*count')
-    def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
+    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
                *args, **kwargs) -> Union[str, list]:
         """Starts exposure and returns reference to image.
 
         Args:
-            exposure_time (int): Exposure time in seconds.
-            image_type (str, ImageType): Type of image.
-            count (int): Number of images to take.
-            broadcast (bool): Broadcast existence of image.
+            exposure_time: Exposure time in seconds.
+            image_type: Type of image.
+            count: Number of images to take.
+            broadcast: Broadcast existence of image.
 
         Returns:
             str/list: Reference to the image that was taken or list of references, if count>1.
@@ -347,11 +347,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if not self._expose_lock.acquire(blocking=False):
             raise ValueError('Could not acquire camera lock for expose().')
 
-        # make sure that we relase the lock
+        # make sure that we release the lock
         try:
-            if isinstance(image_type, str):
-                image_type = ICamera.ImageType(image_type)
-
             # are we exposing?
             if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')

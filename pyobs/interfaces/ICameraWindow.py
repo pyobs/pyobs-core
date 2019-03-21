@@ -2,11 +2,11 @@ from .interface import *
 
 
 class ICameraWindow(Interface):
-    def get_full_frame(self, *args, **kwargs) -> dict:
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
         """Returns full size of CCD.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         raise NotImplementedError
 
@@ -24,11 +24,11 @@ class ICameraWindow(Interface):
         """
         raise NotImplementedError
 
-    def get_window(self, *args, **kwargs) -> dict:
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
         """Returns the camera window.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         raise NotImplementedError
 

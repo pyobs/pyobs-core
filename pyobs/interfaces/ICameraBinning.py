@@ -14,11 +14,11 @@ class ICameraBinning(Interface):
         """
         raise NotImplementedError
 
-    def get_binning(self, *args, **kwargs) -> dict:
+    def get_binning(self, *args, **kwargs) -> (int, int):
         """Returns the camera binning.
 
         Returns:
-            Dictionary with x and y.
+            Tuple with x and y.
         """
         raise NotImplementedError
 

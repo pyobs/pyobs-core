@@ -36,8 +36,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # init camera
-        self._window = {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
-        self._binning = {'x': 1, 'y': 1}
+        self._window = (50, 0, 2048, 2064)
+        self._binning = (1, 1)
         self._cooling = {'Enabled': True, 'SetPoint': -10., 'Power': 80,
                          'Temperatures':  {'CCD': 0.0, 'Backplate': 3.14}}
         self._exposing = True
@@ -61,13 +61,13 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             # sleep for 1 second
             self.closing.wait(1)
 
-    def get_full_frame(self, *args, **kwargs) -> dict:
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
         """Returns full size of CCD.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
-        return {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
+        return 50, 0, 2048, 2064
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
@@ -115,18 +115,17 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 hdu = fits.PrimaryHDU(data=f[0].data, header=f[0].header)
 
         else:
-            wnd = self.get_window()
-            data = np.random.rand(int(wnd['height'] / self._binning['y']),
-                                  int(wnd['width'] / self._binning['x'])) * 100.
+            left, top, width, height = self.get_window()
+            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
             hdu = fits.PrimaryHDU(data.astype('uint16'))
             hdu.header['EXPTIME'] = exposure_time / 1000.
 
         # add headers
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning['x'], 'Binning factor used on X axis')
-        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning['y'], 'Binning factor used on Y axis')
-        hdu.header['XORGSUBF'] = (self._window['left'], 'Subframe origin on X axis')
-        hdu.header['YORGSUBF'] = (self._window['top'], 'Subframe origin on Y axis')
+        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning[0], 'Binning factor used on X axis')
+        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning[1], 'Binning factor used on Y axis')
+        hdu.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
+        hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
         self.set_biassec_trimsec(hdu.header, 50, 0, 2048, 2064)
@@ -145,11 +144,11 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, *args, **kwargs) -> dict:
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
         """Returns the camera window.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         return self._window
 
@@ -166,13 +165,13 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
-        self._window = {'left': left, 'top': top, 'width': width, 'height': height}
+        self._window = (left, top, width, height)
 
-    def get_binning(self, *args, **kwargs) -> dict:
+    def get_binning(self, *args, **kwargs) -> (int, int):
         """Returns the camera binning.
 
         Returns:
-            Dictionary with x and y.
+            Tuple with x and y.
         """
         return self._binning
 
@@ -187,7 +186,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set binning to %dx%d.", x, y)
-        self._binning = {'x': x, 'y': y}
+        self._binning = (x, y)
 
     def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
         """Enables/disables cooling and sets setpoint.

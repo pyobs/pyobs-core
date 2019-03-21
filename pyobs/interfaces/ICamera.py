@@ -29,7 +29,7 @@ class ICamera(IStatus, IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
+    def expose(self, exposure_time: int, image_type: ImageType, count: int = 1, broadcast: bool = True,
                *args, **kwargs) -> Union[str, list]:
         """Starts exposure and returns reference to image.
 

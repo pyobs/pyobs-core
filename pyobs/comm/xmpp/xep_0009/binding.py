@@ -24,6 +24,7 @@ THE SOFTWARE.
 from sleekxmpp.xmlstream import ET
 from sleekxmpp.plugins.xep_0009.binding import rpcbase64, rpctime
 import logging
+from enum import Enum
 
 
 log = logging.getLogger(__name__)
@@ -88,6 +89,10 @@ def _py2xml(*args):
                 member.append(_py2xml(x[y]))
                 struct.append(member)
             val.append(struct)
+        elif isinstance(x, Enum):
+            string = ET.Element("{%s}string" % _namespace)
+            string.text = x.value
+            val.append(string)
         return val
 
 

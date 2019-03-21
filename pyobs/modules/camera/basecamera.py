@@ -65,13 +65,13 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
 
-    def get_exposure_status(self, *args, **kwargs) -> str:
+    def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
             Current status of camera.
         """
-        return self._camera_status.value
+        return self._camera_status
 
     def get_exposure_time_left(self, *args, **kwargs) -> float:
         """Returns the remaining exposure time on the current exposure in ms.

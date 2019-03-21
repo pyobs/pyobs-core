@@ -21,7 +21,7 @@ class ICamera(IStatus, IAbortable):
         OBJECT = 'object'
         FLAT = 'flat'
 
-    def get_exposure_status(self, *args, **kwargs) -> str:
+    def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:

@@ -137,13 +137,13 @@ def test_expose():
     camera.open()
 
     # status must be idle
-    assert 'idle' == camera.get_exposure_status()
+    assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()
 
     # expose
     camera.expose(exposure_time=0, image_type='object')
 
     # status must be idle again
-    assert 'idle' == camera.get_exposure_status()
+    assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()
 
     # close camera
     camera.close()

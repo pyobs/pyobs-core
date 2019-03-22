@@ -52,7 +52,7 @@ class BaseTelescope(PyObsModule, ITelescope):
             self.comm.send_event(MotionStatusChangedEvent(self._motion_status, status))
 
         # set it
-        self._camera_status = status
+        self._motion_status = status
 
     def status(self, *args, **kwargs) -> dict:
         """Returns current status.
@@ -192,6 +192,17 @@ class BaseTelescope(PyObsModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
             return self._move(alt, az, abort_event=self._abort_move)
+
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
+        """Returns current motion status.
+
+        Args:
+            device: Name of device to get status for, or None.
+
+        Returns:
+            A string from the Status enumerator.
+        """
+        return self._motion_status
 
     def get_fits_headers(self, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of the telescope.

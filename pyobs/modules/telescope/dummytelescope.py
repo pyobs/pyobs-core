@@ -27,9 +27,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._focus = 52.
         self._filter = 'V'
 
-        # init status
-        self.telescope_status = IMotion.Status.PARKED
-
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
         self._abort_focus = threading.Event()
@@ -248,17 +245,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
-
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
-        """
-        return self.telescope_status
 
     def get_ra_dec(self) -> (float, float):
         """Returns current RA and Dec.

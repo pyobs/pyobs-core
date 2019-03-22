@@ -20,7 +20,7 @@ class ICameraWindow(Interface):
             height: Height of window.
 
         Raises:
-            ValueError: If binning could not be set.
+            ValueError: If window could not be set.
         """
         raise NotImplementedError
 

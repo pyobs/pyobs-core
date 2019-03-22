@@ -9,7 +9,6 @@ from threading import RLock
 import numpy as np
 from astropy.io import fits
 
-from pyobs.events import ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 
@@ -210,6 +209,19 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 'Power': self._cooling['Power'],
                 'Temperatures': self._cooling['Temperatures']
             }
+
+    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):
+        """Returns the current status for the cooling.
+
+        Returns:
+            Tuple containing:
+                Enabled (bool):         Whether the cooling is enabled
+                SetPoint (float):       Setpoint for the cooling in celsius.
+                Power (float):          Current cooling power in percent or None.
+                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
+        """
+        c = self._cooling
+        return c['Enabled'], c['SetPoint'], c['Power'], c['Temperatures']
 
     def status(self, *args, **kwargs) -> dict:
         """Returns status of camera.

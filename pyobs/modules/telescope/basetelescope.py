@@ -12,12 +12,18 @@ from pyobs.utils.threads import LockWithAbort
 class BaseTelescope(PyObsModule, ITelescope):
     """Base class for telescopes."""
 
-    def __init__(self, fits_headers: dict = None, *args, **kwargs):
-        """Initialize a new base telescope."""
+    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
+        """Initialize a new base telescope.
+
+        Args:
+            fits_headers: Additional FITS headers to send.
+            min_altitude: Minimal altitude for telescope.
+        """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # additional fits headers
+        # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
+        self._min_altitude = min_altitude
 
         # some multi-threading stuff
         self._lock_moving = threading.Lock()
@@ -128,6 +134,14 @@ class BaseTelescope(PyObsModule, ITelescope):
             ValueError: If telescope could not track.
         """
 
+        # to alt/az
+        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, 'icrs')
+        alt_az = self.environment.to_altaz(ra_dec)
+
+        # check altitude
+        if alt_az.alt.degree < self._min_altitude:
+            raise ValueError('Destination altitude below limit.')
+
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
@@ -169,6 +183,10 @@ class BaseTelescope(PyObsModule, ITelescope):
         Raises:
             Exception: On error.
         """
+
+        # check altitude
+        if alt < self._min_altitude:
+            raise ValueError('Destination altitude below limit.')
 
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):

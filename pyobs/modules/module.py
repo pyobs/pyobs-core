@@ -10,7 +10,7 @@ from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
-from pyobs.utils.types import request_cast_from_simple, response_cast_to_simple
+from pyobs.utils.types import cast_bound_arguments_to_simple, cast_response_to_simple
 
 
 log = logging.getLogger(__name__)
@@ -382,13 +382,13 @@ class PyObsModule:
         ba.apply_defaults()
 
         # cast to types requested by method
-        request_cast_from_simple(ba, signature)
+        cast_bound_arguments_to_simple(ba, signature)
 
         # call method
         response = func(**ba.arguments)
 
         # finished
-        return response_cast_to_simple(response)
+        return cast_response_to_simple(response)
 
 
 __all__ = ['PyObsModule', 'timeout']

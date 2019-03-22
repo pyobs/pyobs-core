@@ -1,7 +1,7 @@
 import inspect
 import types
 
-from pyobs.utils.types import request_cast_to_simple, response_cast_from_simple
+from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_real
 
 
 class Proxy:
@@ -95,13 +95,13 @@ class Proxy:
         ba.apply_defaults()
 
         # cast to simple types
-        request_cast_to_simple(ba)
+        cast_bound_arguments_to_real(ba)
 
         # do request
         response = self._comm.execute(self._client, method, *ba.args[1:])
 
         # cast response to real types
-        return response_cast_from_simple(response, signature)
+        return cast_response_to_real(response, signature)
 
     def execute_safely(self, method, *args, **kwargs):
         """Execute a method on the remote client, but check signature first.

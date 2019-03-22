@@ -140,7 +140,7 @@ def test_expose():
     assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()
 
     # expose
-    camera.expose(exposure_time=0, image_type='object')
+    camera.expose(exposure_time=0, image_type=ICamera.ImageType.OBJECT)
 
     # status must be idle again
     assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()

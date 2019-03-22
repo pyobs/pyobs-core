@@ -31,6 +31,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._lock_focus = threading.Lock()
         self._abort_focus = threading.Event()
 
+    def open(self):
+        """Open module."""
+        BaseTelescope.open(self)
+
+        # subscribe to events
+        if self.comm:
+            self.comm.register_event(FilterChangedEvent)
+
     def status(self, *args, **kwargs) -> dict:
         """Returns current status.
 

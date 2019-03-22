@@ -10,7 +10,7 @@ class ICameraWindow(Interface):
         """
         raise NotImplementedError
 
-    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
         """Set the camera window.
 
         Args:

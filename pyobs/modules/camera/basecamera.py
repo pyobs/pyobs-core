@@ -344,7 +344,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
     @timeout('(exposure_time+10000)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> Union[str, list]:
+               *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -354,7 +354,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             broadcast: Broadcast existence of image.
 
         Returns:
-            str/list: Reference to the image that was taken or list of references, if count>1.
+            List of references to the image that was taken.
         """
 
         # acquire lock
@@ -390,7 +390,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
             # return id
             self._exposures_left = 0
-            return None if len(images) == 0 else images[0] if len(images) == 1 else images
+            return images
 
         finally:
             log.info('Releasing exclusive lock on camera...')

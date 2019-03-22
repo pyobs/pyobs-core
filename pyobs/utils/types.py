@@ -51,8 +51,6 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
     # tuple or single value?
     if type(annotation) == tuple:
         return tuple([annot(res) for res, annot in zip(response, annotation)])
-    if type(annotation) == typing.Union:
-        return response
     else:
         return response if annotation == Parameter.empty else annotation(response)
 

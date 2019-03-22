@@ -30,7 +30,7 @@ class ICamera(IStatus, IAbortable):
         raise NotImplementedError
 
     def expose(self, exposure_time: int, image_type: ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> Union[str, list]:
+               *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -40,7 +40,7 @@ class ICamera(IStatus, IAbortable):
             broadcast: Broadcast existence of image.
 
         Returns:
-            str/list: Reference to the image that was taken or list of references, if count>1.
+            List of references to the image that was taken.
         """
         raise NotImplementedError
 

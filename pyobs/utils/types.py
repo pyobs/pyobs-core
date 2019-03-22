@@ -18,8 +18,6 @@ def cast_bound_arguments_to_simple(bound_arguments: BoundArguments, signature: S
 
         # cast to type, if exists
         bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
-        if key == 'exposure_time':
-            bound_arguments.arguments[key] = 2000
 
 
 def cast_bound_arguments_to_real(bound_signature: BoundArguments):

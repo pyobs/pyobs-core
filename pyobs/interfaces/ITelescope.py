@@ -1,4 +1,3 @@
-from pyobs.interfaces.IMotion import Status
 from .IMotion import IMotion
 
 
@@ -86,7 +85,7 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def get_motion_status(self, device: str = None) -> Status:
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
         """Returns current motion status.
 
         Args:

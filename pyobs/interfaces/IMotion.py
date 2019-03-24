@@ -1,9 +1,9 @@
 from enum import Enum
 
-from .IStatus import IStatus
+from .interface import Interface
 
 
-class IMotion(IStatus):
+class IMotion(Interface):
     """
     Basic interface for all devices that move.
 
@@ -43,17 +43,6 @@ class IMotion(IStatus):
 
         Returns:
             A string from the Status enumerator.
-        """
-        raise NotImplementedError
-
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status of the motion device.
-
-        Returns:
-            dict: A dictionary that should contain at least the following fields:
-
-            IMotion
-                Status (str):               Current motion status of device.
         """
         raise NotImplementedError
 

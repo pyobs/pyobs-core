@@ -442,31 +442,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             log.info('Aborting sequence of images...')
         self._exposures_left = 0
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status of camera.
-
-        Returns:
-            A dictionary that should contain at least the following fields:
-
-            ICamera
-                Status (str):               Current status of camera.
-                ExposureTimeLeft (float):   Time in seconds left before finished current action (expose/readout).
-                ExposuresLeft (int):        Number of remaining exposures.
-                Progress (float):           Percentage of how much of current action (expose/readout) is finished.
-                LastImage (str):            Reference to last image taken.
-        """
-
-        # return status
-        return {
-            'ICamera': {
-                'Status': self.get_exposure_status(),
-                'ExposureTimeLeft': self.get_exposure_time_left(),
-                'ExposuresLeft': self.get_exposures_left(),
-                'Progress': self.get_exposure_progress(),
-                'LastImage': self._last_image['filename'] if self._last_image else None,
-            }
-        }
-
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
         """Calculates and sets the BIASSEC and TRIMSEC areas.

@@ -27,13 +27,14 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status.
-        Returns:
-            dict: A dictionary that should contain at least the following fields:
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
+        """Returns current motion status.
 
-                IFocuser:
-                    Focus (float):  Current focus value.
+        Args:
+            device: Name of device to get status for, or None.
+
+        Returns:
+            A string from the Status enumerator.
         """
         raise NotImplementedError
 

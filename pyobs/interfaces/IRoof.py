@@ -2,13 +2,7 @@ from .IMotion import IMotion
 
 
 class IRoof(IMotion):
-    """
-    Base interface for all observatory enclosures.
-
-    Other interfaces to be implemented:
-        IStatus
-            Status
-    """
+    """Base interface for all observatory enclosures."""
 
     def open_roof(self, *args, **kwargs):
         """ Transition from PARKED to IDLE/POSITIONED """

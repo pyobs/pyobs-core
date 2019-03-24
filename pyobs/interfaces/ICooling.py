@@ -1,7 +1,7 @@
-from .IStatus import IStatus
+from .interface import Interface
 
 
-class ICooling(IStatus):
+class ICooling(Interface):
     """Interface for all devices that allow for some kind of cooling."""
 
     def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):

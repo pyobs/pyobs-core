@@ -59,37 +59,6 @@ class BaseTelescope(PyObsModule, ITelescope):
         # set it
         self._motion_status = status
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status.
-
-        Returns:
-            dict: A dictionary with status values.
-        """
-
-        # init status
-        status = {'ITelescope': {}}
-
-        # get current telescope status
-        status['ITelescope']['Status'] = self.get_motion_status()
-
-        # get position
-        status['ITelescope']['Position'] = {}
-        try:
-            ra, dec = self.get_ra_dec()
-            status['ITelescope']['Position']['RA'] = ra
-            status['ITelescope']['Position']['Dec'] = dec
-        except NotImplementedError:
-            pass
-        try:
-            alt, az = self.get_alt_az()
-            status['ITelescope']['Position']['Alt'] = alt
-            status['ITelescope']['Position']['Az'] = az
-        except NotImplementedError:
-            pass
-
-        # finished
-        return status
-
     def init(self, *args, **kwargs):
         """Initialize telescope.
 

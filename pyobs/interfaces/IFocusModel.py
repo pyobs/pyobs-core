@@ -1,7 +1,7 @@
-from .IStatus import IStatus
+from .interface import Interface
 
 
-class IFocusModel(IStatus):
+class IFocusModel(Interface):
     def set_optimal_focus(self, *args, **kwargs):
         """Sets optimal focus.
 

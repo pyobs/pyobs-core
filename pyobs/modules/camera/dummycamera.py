@@ -223,20 +223,5 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         c = self._cooling
         return c['Enabled'], c['SetPoint'], c['Power'], c['Temperatures']
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns status of camera.
-
-        Returns:
-            Current status as dictionary.
-        """
-        
-        # get status from parent
-        status = BaseCamera.status(self)
-
-        # add more
-        with self._coolingLock:
-            status['ICooling'] = dict(self._cooling)
-        return status
-
 
 __all__ = ['DummyCamera']

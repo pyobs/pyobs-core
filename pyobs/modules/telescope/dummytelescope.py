@@ -39,35 +39,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status.
-
-        Returns:
-            dict: A dictionary with status values.
-        """
-
-        # get status
-        s = super().status(*args, **kwargs)
-
-        # telescope
-        s['ITelescope']['Temperatures'] = {
-            'M1': 17.,
-            'M2': 18.
-        }
-
-        # focus
-        s['IFocuser'] = {
-            'Focus': self._focus
-        }
-
-        # filter
-        s['IFilter'] = {
-            'Filter': self._filter
-        }
-
-        # finished
-        return s
-
     def _track(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 

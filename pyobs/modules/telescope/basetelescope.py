@@ -1,12 +1,16 @@
 import threading
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+import logging
 
-from pyobs.events import MotionStatusChangedEvent
+from pyobs.events import MotionStatusChangedEvent, BadWeatherEvent
 from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
+
+
+log = logging.getLogger(__name__)
 
 
 class BaseTelescope(PyObsModule, ITelescope):
@@ -39,6 +43,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         # subscribe to events
         if self.comm:
             self.comm.register_event(MotionStatusChangedEvent)
+            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
     def _change_motion_status(self, status: IMotion.Status):
         """Change motion status and send event,
@@ -240,6 +245,16 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # finish
         return hdr
+
+    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+        """Abort exposure if a bad weather event occurs.
+
+        Args:
+            event: The bad weather event.
+            sender: Who sent it.
+        """
+        log.warning('Received bad weather event, shutting down.')
+        self.park()
 
 
 __all__ = ['BaseTelescope']

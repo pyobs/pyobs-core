@@ -64,7 +64,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
-            self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
+            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -530,7 +530,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
             hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c2)
 
-    def _handle_bad_weather_event(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.
 
         Args:

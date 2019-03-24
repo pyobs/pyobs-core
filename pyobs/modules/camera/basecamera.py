@@ -310,7 +310,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             if headers:
                 log.info('Adding additional FITS headers from %s...' % client)
                 for key, value in headers.items():
-                    hdu.header[key] = tuple(value)
+                    # if value is not a string, it may be a list of value and comment
+                    if type(value) is list:
+                        # convert list to tuple
+                        hdu.header[key] = tuple(value)
+                    else:
+                        hdu.header[key] = value
 
         # don't want to save?
         if self._filenames is None:

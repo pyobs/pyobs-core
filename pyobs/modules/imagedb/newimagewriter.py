@@ -72,7 +72,13 @@ class NewImageWriter(PyObsModule):
                 continue
 
             # output filename
-            output = format_filename(hdu, self._filenames, self.environment, filename) if self._filenames else filename
+            output = filename
+            if self._filenames:
+                try:
+                    output = format_filename(hdu, self._filenames, self.environment, filename)
+                except KeyError as e:
+                    log.error('Could not format filename: %s', e)
+                    continue
 
             # add path to output filename
             output = os.path.join(self._root, os.path.basename(output))

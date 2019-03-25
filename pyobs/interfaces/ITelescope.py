@@ -69,24 +69,6 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status.
-
-        Returns:
-            dict: A dictionary that should contain at least the following fields:
-
-                ITelescope:
-                    Status (str):       Current status of telescope (IDLE, SLEWING, etc)
-                    Position:
-                        RA (float):     Right ascension [degrees]
-                        Dec (float):    Declination [degrees]
-                        Alt (float):    Altitude [degrees]
-                        Az (float):     Azimuth [degrees]
-                    Temperatures:
-                        <sensor>: float
-        """
-        raise NotImplementedError
-
     def get_ra_dec(self) -> (float, float):
         """Returns current RA and Dec.
 
@@ -100,6 +82,17 @@ class ITelescope(IMotion):
 
         Returns:
             Tuple of current Alt and Az in degrees.
+        """
+        raise NotImplementedError
+
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
+        """Returns current motion status.
+
+        Args:
+            device: Name of device to get status for, or None.
+
+        Returns:
+            A string from the Status enumerator.
         """
         raise NotImplementedError
 

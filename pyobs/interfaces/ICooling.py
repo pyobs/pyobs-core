@@ -1,21 +1,18 @@
-from .IStatus import IStatus
+from .interface import Interface
 
 
-class ICooling(IStatus):
+class ICooling(Interface):
     """Interface for all devices that allow for some kind of cooling."""
 
-    def status(self, *args, **kwargs) -> dict:
+    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):
         """Returns the current status for the cooling.
 
         Returns:
-            dict: A dictionary that should contain at least the following fields:
-
-                ICooling:
-                    Enabled (bool):         Whether the cooling is enabled
-                    SetPoint (float):       Setpoint for the cooling in celsius.
-                    Power (float):          Current cooling power in percent or None.
-                    Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
-                        <sensor> (float):   Sensor value
+            Tuple containing:
+                Enabled (bool):         Whether the cooling is enabled
+                SetPoint (float):       Setpoint for the cooling in celsius.
+                Power (float):          Current cooling power in percent or None.
+                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
         """
         raise NotImplementedError
 

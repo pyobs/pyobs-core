@@ -1,9 +1,9 @@
 from enum import Enum
 
-from .IStatus import IStatus
+from .interface import Interface
 
 
-class IWeather(IStatus):
+class IWeather(Interface):
     class Sensors(Enum):
         TEMPERATURE = 'temp'
         HUMIDITY = 'humid'
@@ -14,7 +14,7 @@ class IWeather(IStatus):
         SKYTEMP = 'skytemp'
         DEWPOINT = 'dewpoint'
 
-    def status(self, *args, **kwargs) -> dict:
+    def get_weather_status(self, *args, **kwargs) -> dict:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 

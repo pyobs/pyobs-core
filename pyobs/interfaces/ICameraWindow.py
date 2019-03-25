@@ -2,15 +2,15 @@ from .interface import *
 
 
 class ICameraWindow(Interface):
-    def get_full_frame(self, *args, **kwargs) -> dict:
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
         """Returns full size of CCD.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         raise NotImplementedError
 
-    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
         """Set the camera window.
 
         Args:
@@ -20,15 +20,15 @@ class ICameraWindow(Interface):
             height: Height of window.
 
         Raises:
-            ValueError: If binning could not be set.
+            ValueError: If window could not be set.
         """
         raise NotImplementedError
 
-    def get_window(self, *args, **kwargs) -> dict:
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
         """Returns the camera window.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         raise NotImplementedError
 

@@ -1,57 +1,63 @@
 import threading
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+import logging
 
-from pyobs.interfaces import ITelescope
+from pyobs.events import MotionStatusChangedEvent, BadWeatherEvent
+from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 
 
+log = logging.getLogger(__name__)
+
+
 class BaseTelescope(PyObsModule, ITelescope):
     """Base class for telescopes."""
 
-    def __init__(self, fits_headers: dict = None, *args, **kwargs):
-        """Initialize a new base telescope."""
+    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
+        """Initialize a new base telescope.
+
+        Args:
+            fits_headers: Additional FITS headers to send.
+            min_altitude: Minimal altitude for telescope.
+        """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # additional fits headers
+        # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
+        self._min_altitude = min_altitude
 
         # some multi-threading stuff
         self._lock_moving = threading.Lock()
         self._abort_move = threading.Event()
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status.
+        # status
+        self._motion_status = IMotion.Status.IDLE
 
-        Returns:
-            dict: A dictionary with status values.
+    def open(self):
+        """Open module."""
+        PyObsModule.open(self)
+
+        # subscribe to events
+        if self.comm:
+            self.comm.register_event(MotionStatusChangedEvent)
+            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
+
+    def _change_motion_status(self, status: IMotion.Status):
+        """Change motion status and send event,
+
+        Args:
+            status: New motion status.
         """
 
-        # init status
-        status = {'ITelescope': {}}
+        # send event, if it changed
+        if self._motion_status != status:
+            self.comm.send_event(MotionStatusChangedEvent(self._motion_status, status))
 
-        # get current telescope status
-        status['ITelescope']['Status'] = self.get_motion_status()
-
-        # get position
-        status['ITelescope']['Position'] = {}
-        try:
-            ra, dec = self.get_ra_dec()
-            status['ITelescope']['Position']['RA'] = ra
-            status['ITelescope']['Position']['Dec'] = dec
-        except NotImplementedError:
-            pass
-        try:
-            alt, az = self.get_alt_az()
-            status['ITelescope']['Position']['Alt'] = alt
-            status['ITelescope']['Position']['Az'] = az
-        except NotImplementedError:
-            pass
-
-        # finished
-        return status
+        # set it
+        self._motion_status = status
 
     def init(self, *args, **kwargs):
         """Initialize telescope.
@@ -102,6 +108,14 @@ class BaseTelescope(PyObsModule, ITelescope):
             ValueError: If telescope could not track.
         """
 
+        # to alt/az
+        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, 'icrs')
+        alt_az = self.environment.to_altaz(ra_dec)
+
+        # check altitude
+        if alt_az.alt.degree < self._min_altitude:
+            raise ValueError('Destination altitude below limit.')
+
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
@@ -144,10 +158,25 @@ class BaseTelescope(PyObsModule, ITelescope):
             Exception: On error.
         """
 
+        # check altitude
+        if alt < self._min_altitude:
+            raise ValueError('Destination altitude below limit.')
+
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
             return self._move(alt, az, abort_event=self._abort_move)
+
+    def get_motion_status(self, device: str = None) -> IMotion.Status:
+        """Returns current motion status.
+
+        Args:
+            device: Name of device to get status for, or None.
+
+        Returns:
+            A string from the Status enumerator.
+        """
+        return self._motion_status
 
     def get_fits_headers(self, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of the telescope.
@@ -185,6 +214,16 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # finish
         return hdr
+
+    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+        """Abort exposure if a bad weather event occurs.
+
+        Args:
+            event: The bad weather event.
+            sender: Who sent it.
+        """
+        log.warning('Received bad weather event, shutting down.')
+        self.park()
 
 
 __all__ = ['BaseTelescope']

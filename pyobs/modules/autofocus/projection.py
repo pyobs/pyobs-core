@@ -103,7 +103,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             self.check_running()
             try:
                 image_type = ICamera.ImageType.OBJECT.value
-                filename = camera.expose(exposure_time=exposure_time, image_type=image_type, count=1)
+                filename = camera.expose(exposure_time=exposure_time, image_type=image_type, count=1)[0]
             except RemoteException:
                 log.error('Could not take image.')
 

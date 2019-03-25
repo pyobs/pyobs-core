@@ -9,7 +9,6 @@ from threading import RLock
 import numpy as np
 from astropy.io import fits
 
-from pyobs.events import ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 
@@ -36,8 +35,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # init camera
-        self._window = {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
-        self._binning = {'x': 1, 'y': 1}
+        self._window = (50, 0, 2048, 2064)
+        self._binning = (1, 1)
         self._cooling = {'Enabled': True, 'SetPoint': -10., 'Power': 80,
                          'Temperatures':  {'CCD': 0.0, 'Backplate': 3.14}}
         self._exposing = True
@@ -61,13 +60,13 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             # sleep for 1 second
             self.closing.wait(1)
 
-    def get_full_frame(self, *args, **kwargs) -> dict:
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
         """Returns full size of CCD.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
-        return {'left': 50, 'top': 0, 'width': 2048, 'height': 2064}
+        return 50, 0, 2048, 2064
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
@@ -90,21 +89,19 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # do exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.EXPOSING))
-        self._camera_status = ICamera.ExposureStatus.EXPOSING
+        self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
         self._exposing = True
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._camera_status = ICamera.ExposureStatus.IDLE
+                self._change_exposure_status(ICamera.ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
             time.sleep(exposure_time / 1000. / steps)
         self._exposing = False
 
         # readout
-        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.READOUT))
-        self._camera_status = ICamera.ExposureStatus.READOUT
+        self._change_exposure_status(ICamera.ExposureStatus.READOUT)
         time.sleep(self._redout_time)
 
         # random image or pre-defined?
@@ -115,26 +112,24 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 hdu = fits.PrimaryHDU(data=f[0].data, header=f[0].header)
 
         else:
-            wnd = self.get_window()
-            data = np.random.rand(int(wnd['height'] / self._binning['y']),
-                                  int(wnd['width'] / self._binning['x'])) * 100.
+            left, top, width, height = self.get_window()
+            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
             hdu = fits.PrimaryHDU(data.astype('uint16'))
             hdu.header['EXPTIME'] = exposure_time / 1000.
 
         # add headers
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning['x'], 'Binning factor used on X axis')
-        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning['y'], 'Binning factor used on Y axis')
-        hdu.header['XORGSUBF'] = (self._window['left'], 'Subframe origin on X axis')
-        hdu.header['YORGSUBF'] = (self._window['top'], 'Subframe origin on Y axis')
+        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning[0], 'Binning factor used on X axis')
+        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning[1], 'Binning factor used on Y axis')
+        hdu.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
+        hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
         self.set_biassec_trimsec(hdu.header, 50, 0, 2048, 2064)
 
         # finished
         log.info('Exposure finished.')
-        self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, ICamera.ExposureStatus.IDLE))
-        self._camera_status = ICamera.ExposureStatus.IDLE
+        self._change_exposure_status(ICamera.ExposureStatus.IDLE)
         return hdu
 
     def _abort_exposure(self):
@@ -145,11 +140,11 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, *args, **kwargs) -> dict:
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
         """Returns the camera window.
 
         Returns:
-            Dictionary with left, top, width, and height set.
+            Tuple with left, top, width, and height set.
         """
         return self._window
 
@@ -166,13 +161,13 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
-        self._window = {'left': left, 'top': top, 'width': width, 'height': height}
+        self._window = (left, top, width, height)
 
-    def get_binning(self, *args, **kwargs) -> dict:
+    def get_binning(self, *args, **kwargs) -> (int, int):
         """Returns the camera binning.
 
         Returns:
-            Dictionary with x and y.
+            Tuple with x and y.
         """
         return self._binning
 
@@ -187,7 +182,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set binning to %dx%d.", x, y)
-        self._binning = {'x': x, 'y': y}
+        self._binning = (x, y)
 
     def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
         """Enables/disables cooling and sets setpoint.
@@ -215,20 +210,18 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 'Temperatures': self._cooling['Temperatures']
             }
 
-    def status(self, *args, **kwargs) -> dict:
-        """Returns status of camera.
+    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):
+        """Returns the current status for the cooling.
 
         Returns:
-            Current status as dictionary.
+            Tuple containing:
+                Enabled (bool):         Whether the cooling is enabled
+                SetPoint (float):       Setpoint for the cooling in celsius.
+                Power (float):          Current cooling power in percent or None.
+                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
         """
-        
-        # get status from parent
-        status = BaseCamera.status(self)
-
-        # add more
-        with self._coolingLock:
-            status['ICooling'] = dict(self._cooling)
-        return status
+        c = self._cooling
+        return c['Enabled'], c['SetPoint'], c['Power'], c['Temperatures']
 
 
 __all__ = ['DummyCamera']

@@ -14,7 +14,6 @@ from .IFocuser import IFocuser
 from .IImageDB import IImageDB
 from .IMotion import IMotion
 from .IRoof import IRoof
-from .IStatus import IStatus
 from .IStoppable import IStoppable
 from .ITaskDB import ITaskDB
 from .ITelescope import ITelescope

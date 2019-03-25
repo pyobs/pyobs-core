@@ -1,6 +1,8 @@
 import inspect
 import types
 
+from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_real
+
 
 class Proxy:
     """A proxy for remote pyobs modules."""
@@ -92,8 +94,14 @@ class Proxy:
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
 
-        # do request and return future
-        return self._comm.execute(self._client, method, *ba.args[1:])
+        # cast to simple types
+        cast_bound_arguments_to_real(ba)
+
+        # do request
+        response = self._comm.execute(self._client, method, *ba.args[1:])
+
+        # cast response to real types
+        return cast_response_to_real(response, signature)
 
     def execute_safely(self, method, *args, **kwargs):
         """Execute a method on the remote client, but check signature first.

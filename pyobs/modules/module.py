@@ -1,7 +1,8 @@
 import inspect
 import logging
 import threading
-from typing import Union, Type
+from enum import Enum
+from typing import Union, Type, Any
 from py_expression_eval import Parser
 
 from pyobs import Environment
@@ -9,6 +10,7 @@ from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
+from pyobs.utils.types import cast_bound_arguments_to_simple, cast_response_to_simple
 
 
 log = logging.getLogger(__name__)
@@ -352,6 +354,41 @@ class PyObsModule:
             (BaseFile) File object for given file.
         """
         return self.vfs.open_file(filename, mode, compression)
+
+    def execute(self, method, *args, **kwargs) -> Any:
+        """Execute a local method safely with type conversion
+
+        All incoming variables in args and kwargs must be of simple type (i.e. int, float, str, bool, tuple) and will
+        be converted to the requested type automatically. All outgoing variables are converted to simple types
+        automatically as well.
+
+        Args:
+            method: Name of method to execute.
+            *args: Parameters for method.
+            **kwargs: Parameters for method.
+
+        Returns:
+            Response from method call.
+
+        Raises:
+            KeyError: If method does not exist.
+        """
+
+        # get method and signature (may raise KeyError)
+        func, signature = self.methods[method]
+
+        # bind parameters
+        ba = signature.bind(*args, **kwargs)
+        ba.apply_defaults()
+
+        # cast to types requested by method
+        cast_bound_arguments_to_simple(ba, signature)
+
+        # call method
+        response = func(**ba.arguments)
+
+        # finished
+        return cast_response_to_simple(response)
 
 
 __all__ = ['PyObsModule', 'timeout']

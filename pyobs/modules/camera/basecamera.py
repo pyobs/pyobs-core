@@ -9,7 +9,7 @@ from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
 from pyobs import PyObsModule
-from pyobs.events import BadWeatherEvent, NewImageEvent
+from pyobs.events import BadWeatherEvent, NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
 from pyobs.utils.threads import ThreadWithReturnValue
@@ -63,7 +63,22 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # subscribe to events
         if self.comm:
             self.comm.register_event(NewImageEvent)
-            self.comm.register_event(BadWeatherEvent, self._handle_bad_weather_event)
+            self.comm.register_event(ExposureStatusChangedEvent)
+            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
+
+    def _change_exposure_status(self, status: ICamera.ExposureStatus):
+        """Change exposure status and send event,
+
+        Args:
+            status: New exposure status.
+        """
+
+        # send event, if it changed
+        if self._camera_status != status:
+            self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, status))
+
+        # set it
+        self._camera_status = status
 
     def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
@@ -295,7 +310,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             if headers:
                 log.info('Adding additional FITS headers from %s...' % client)
                 for key, value in headers.items():
-                    hdu.header[key] = tuple(value)
+                    # if value is not a string, it may be a list of value and comment
+                    if type(value) is list:
+                        # convert list to tuple
+                        hdu.header[key] = tuple(value)
+                    else:
+                        hdu.header[key] = value
 
         # don't want to save?
         if self._filenames is None:
@@ -328,18 +348,18 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         return hdu, filename
 
     @timeout('(exposure_time+10000)*count')
-    def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> Union[str, list]:
+    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
+               *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.
 
         Args:
-            exposure_time (int): Exposure time in seconds.
-            image_type (str, ImageType): Type of image.
-            count (int): Number of images to take.
-            broadcast (bool): Broadcast existence of image.
+            exposure_time: Exposure time in seconds.
+            image_type: Type of image.
+            count: Number of images to take.
+            broadcast: Broadcast existence of image.
 
         Returns:
-            str/list: Reference to the image that was taken or list of references, if count>1.
+            List of references to the image that was taken.
         """
 
         # acquire lock
@@ -347,11 +367,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if not self._expose_lock.acquire(blocking=False):
             raise ValueError('Could not acquire camera lock for expose().')
 
-        # make sure that we relase the lock
+        # make sure that we release the lock
         try:
-            if isinstance(image_type, str):
-                image_type = ICamera.ImageType(image_type)
-
             # are we exposing?
             if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
@@ -378,7 +395,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
             # return id
             self._exposures_left = 0
-            return None if len(images) == 0 else images[0] if len(images) == 1 else images
+            return images
 
         finally:
             log.info('Releasing exclusive lock on camera...')
@@ -424,31 +441,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self._exposures_left > 1:
             log.info('Aborting sequence of images...')
         self._exposures_left = 0
-
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status of camera.
-
-        Returns:
-            A dictionary that should contain at least the following fields:
-
-            ICamera
-                Status (str):               Current status of camera.
-                ExposureTimeLeft (float):   Time in seconds left before finished current action (expose/readout).
-                ExposuresLeft (int):        Number of remaining exposures.
-                Progress (float):           Percentage of how much of current action (expose/readout) is finished.
-                LastImage (str):            Reference to last image taken.
-        """
-
-        # return status
-        return {
-            'ICamera': {
-                'Status': self.get_exposure_status(),
-                'ExposureTimeLeft': self.get_exposure_time_left(),
-                'ExposuresLeft': self.get_exposures_left(),
-                'Progress': self.get_exposure_progress(),
-                'LastImage': self._last_image['filename'] if self._last_image else None,
-            }
-        }
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
@@ -513,7 +505,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
             hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c2)
 
-    def _handle_bad_weather_event(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.
 
         Args:

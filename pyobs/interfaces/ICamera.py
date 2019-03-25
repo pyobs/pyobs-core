@@ -1,11 +1,9 @@
 import enum
-from typing import Union
 
-from .IStatus import IStatus
 from .IAbortable import IAbortable
 
 
-class ICamera(IStatus, IAbortable):
+class ICamera(IAbortable):
     """Basic interface for all cameras."""
 
     class ExposureStatus(enum.Enum):
@@ -29,8 +27,8 @@ class ICamera(IStatus, IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, exposure_time: int, image_type: str, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> Union[str, list]:
+    def expose(self, exposure_time: int, image_type: ImageType, count: int = 1, broadcast: bool = True,
+               *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -40,7 +38,7 @@ class ICamera(IStatus, IAbortable):
             broadcast: Broadcast existence of image.
 
         Returns:
-            str/list: Reference to the image that was taken or list of references, if count>1.
+            List of references to the image that was taken.
         """
         raise NotImplementedError
 
@@ -81,21 +79,6 @@ class ICamera(IStatus, IAbortable):
 
         Returns:
             Progress of the current exposure in percent.
-        """
-        raise NotImplementedError
-
-    def status(self, *args, **kwargs) -> dict:
-        """Returns current status of camera.
-
-        Returns:
-            A dictionary that should contain at least the following fields:
-
-            ICamera
-                status (str):               Current status of camera.
-                ExposureTimeLeft (float):   Time in seconds left before finished current action (expose/readout).
-                ExposuresLeft (int):        Number of remaining exposures.
-                Progress (float):           Percentage of how much of current action (expose/readout) is finished.
-                LastImage (str):            Reference to last image taken.
         """
         raise NotImplementedError
 

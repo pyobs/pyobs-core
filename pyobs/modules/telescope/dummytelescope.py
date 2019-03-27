@@ -52,7 +52,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
 
         # start slewing
-        log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
         self._change_motion_status(IMotion.Status.SLEWING)
 
         # simulate slew
@@ -77,7 +76,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._position['ra'] = ra
         self._position['dec'] = dec
         self._change_motion_status(IMotion.Status.TRACKING)
-        log.info('Reached destination')
 
     def _move(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.

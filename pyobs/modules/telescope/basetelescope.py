@@ -1,5 +1,5 @@
 import threading
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
@@ -109,7 +109,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
 
         # to alt/az
-        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, 'icrs')
+        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, ICRS)
         alt_az = self.environment.to_altaz(ra_dec)
 
         # check altitude
@@ -119,7 +119,9 @@ class BaseTelescope(PyObsModule, ITelescope):
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
+            log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
             return self._track(ra, dec, abort_event=self._abort_move)
+            log.info('Reached destination')
 
     def offset(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
@@ -165,7 +167,9 @@ class BaseTelescope(PyObsModule, ITelescope):
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
+            log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
             return self._move(alt, az, abort_event=self._abort_move)
+            log.info('Reached destination')
 
     def get_motion_status(self, device: str = None) -> IMotion.Status:
         """Returns current motion status.
@@ -190,9 +194,9 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # positions
         ra, dec = self.get_ra_dec()
-        coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs')
+        coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
         alt, az = self.get_alt_az()
-        coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
+        coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
 
         # set coordinate headers
         hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')

@@ -109,7 +109,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
 
         # to alt/az
-        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, ICRS)
+        ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
         alt_az = self.environment.to_altaz(ra_dec)
 
         # check altitude

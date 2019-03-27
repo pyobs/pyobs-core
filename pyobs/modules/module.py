@@ -385,7 +385,10 @@ class PyObsModule:
         cast_bound_arguments_to_simple(ba, signature)
 
         # call method
-        response = func(**ba.arguments)
+        try:
+            response = func(**ba.arguments)
+        except:
+            log.exception('Error on remote procedure call.')
 
         # finished
         return cast_response_to_simple(response)

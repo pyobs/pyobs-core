@@ -293,10 +293,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         for key, value in self._fits_headers.items():
             hdu.header[key] = tuple(value)
 
-        # add more fits headers
-        log.info("Adding FITS headers...")
-        self._add_fits_headers(hdu.header)
-
         # get fits headers from other clients
         for client, thread in fits_header_threads.items():
             # join thread
@@ -317,6 +313,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                         hdu.header[key] = tuple(value)
                     else:
                         hdu.header[key] = value
+
+        # add more fits headers
+        log.info("Adding FITS headers...")
+        self._add_fits_headers(hdu.header)
 
         # don't want to save?
         if self._filenames is None:

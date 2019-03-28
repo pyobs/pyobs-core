@@ -23,7 +23,7 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 filenames: str = '/cache/pyobs_{date}T{time}{type}.fits.gz', *args, **kwargs):
+                 filenames: str = '/cache/pyobs_{DATE-OBS|date}T{DATE-OBS|time}{IMAGETYP}.fits.gz', *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:

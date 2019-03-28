@@ -137,7 +137,6 @@ class FilenameFormatter:
         date_obs = Time(self.header[key])
         return date_obs.datetime.strftime(fmt)
 
-
     def _format_date(self, key, delimiter='-'):
         fmt = '%Y' + delimiter + '%m' + delimiter + '%d'
         date_obs = Time(self.header[key])

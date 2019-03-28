@@ -206,7 +206,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
         hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
         hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-        hdr['AIRMASS'] = (coords_alt_az.secz.value, 'airmass of observation start')
+        hdr['AIRMASS'] = (coords_alt_az.secz.value, 'Airmass of observation start')
 
         # convert to sexagesimal
         hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')

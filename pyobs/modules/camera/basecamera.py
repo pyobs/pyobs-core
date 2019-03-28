@@ -175,6 +175,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             # add location of telescope
             hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
             hdr['LATITUDE'] = (loc.lat.degree, 'Latitude of the telescope [deg N]')
+            hdr['HEIGHT'] = (loc.height, 'Altitude of the telescope [m]')
 
             # add local sidereal time
             # TODO: takes too long, try something different?

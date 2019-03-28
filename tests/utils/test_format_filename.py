@@ -12,33 +12,33 @@ def env():
 
 
 def test_default(env):
-    # test format and hdu
-    fmt = '/cache/pyobs_{date}T{time}{type}.fits.gz'
     hdr = fits.Header()
 
     # convert, should throw a KeyError
     with pytest.raises(KeyError):
-        filename = format_filename(hdr, fmt, env, 'test.fits')
+        format_filename(hdr, 'image_{FILTER}.fits', env)
 
-    # add date-obs and convert
-    hdr['DATE-OBS'] = '2019-03-26T19:46:23.000'
-    with pytest.raises(KeyError):
-        filename = format_filename(hdr, fmt, env, 'test.fits')
+    # add filter
+    hdr['FILTER'] = 'clear'
+    filename = format_filename(hdr, 'image_{FILTER}.fits', env)
+    assert 'image_clear.fits' == filename
 
-    # add image type and convert
-    hdr['IMAGETYP'] = 'DARK'
-    filename = format_filename(hdr, fmt, env, 'test.fits')
-    assert '/cache/pyobs_2019-03-26T19-46-23_DARK.fits.gz' == filename
+    """
+    hdr = fits.Header({'DATE-OBS': '2019-03-26T19:46:23.000'})
+    filename = format_filename(hdr, '{DATE-OBS}', env)
+    print(filename)
+    filename = format_filename(hdr, '{DATE-OBS|time}', env)
+    print(filename)
+    filename = format_filename(hdr, '{DATE-OBS|time:-}', env)
+    print(filename)
+    filename = format_filename(hdr, '{DATE-OBS|date:-}', env)
+    print(filename)
+    filename = format_filename(hdr, '{DATE-OBS|night}', env)
+    print(filename)
 
-
-def test_fits_headers(env):
-    # test header
-    hdr = fits.Header({'TELESCOP': 'monet'})
-
-    # case must match
-    with pytest.raises(KeyError):
-        format_filename(hdr, '{telescop}_test.fits', env, 'test.fits')
-
-    # this should work
-    filename = format_filename(hdr, '{TELESCOP}_test.fits', env, 'test.fits')
-    assert 'monet_test.fits' == filename
+    hdr['IMAGETYP'] = 'dark'
+    hdr['FILTER'] = 'clear'
+    fmt = '/cache/pyobs_{DATE-OBS|date}T{DATE-OBS|time:-}_{IMAGETYP}{FILTER|filter}.fits.gz'
+    filename = format_filename(hdr, fmt, env)
+    print(filename)
+    """

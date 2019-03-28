@@ -23,22 +23,33 @@ def test_default(env):
     filename = format_filename(hdr, 'image_{FILTER}.fits', env)
     assert 'image_clear.fits' == filename
 
-    """
-    hdr = fits.Header({'DATE-OBS': '2019-03-26T19:46:23.000'})
-    filename = format_filename(hdr, '{DATE-OBS}', env)
-    print(filename)
-    filename = format_filename(hdr, '{DATE-OBS|time}', env)
-    print(filename)
-    filename = format_filename(hdr, '{DATE-OBS|time:-}', env)
-    print(filename)
-    filename = format_filename(hdr, '{DATE-OBS|date:-}', env)
-    print(filename)
-    filename = format_filename(hdr, '{DATE-OBS|night}', env)
-    print(filename)
 
+def test_date_obs(env):
+    hdr = fits.Header({'DATE-OBS': '2019-03-26T19:46:23.000'})
+
+    assert '2019-03-26T19:46:23.000' == format_filename(hdr, '{DATE-OBS}', env)
+    assert '19:46:23' == format_filename(hdr, '{DATE-OBS|time}', env)
+    assert '19-46-23' == format_filename(hdr, '{DATE-OBS|time:-}', env)
+    assert '2019-03-26' == format_filename(hdr, '{DATE-OBS|date}', env)
+    assert '20190326' == format_filename(hdr, '{DATE-OBS|night}', env)
+
+
+def test_filter(env):
+    hdr = fits.Header({'IMAGETYP': 'light', 'FILTER': 'clear'})
+
+    # for dark/bias no filter should be added
     hdr['IMAGETYP'] = 'dark'
     hdr['FILTER'] = 'clear'
-    fmt = '/cache/pyobs_{DATE-OBS|date}T{DATE-OBS|time:-}_{IMAGETYP}{FILTER|filter}.fits.gz'
-    filename = format_filename(hdr, fmt, env)
-    print(filename)
-    """
+    assert 'image_dark.fits' == format_filename(hdr, 'image_{IMAGETYP}{FILTER|filter}.fits', env)
+
+    # for light it should
+    hdr['IMAGETYP'] = 'light'
+    assert 'image_light_clear.fits' == format_filename(hdr, 'image_{IMAGETYP}{FILTER|filter}.fits', env)
+
+
+def test_string(env):
+    hdr = fits.Header({'EXPID': 5})
+
+    # format number
+    assert 'exp5' == format_filename(hdr, 'exp{EXPID|string:d}', env)
+    assert 'exp0005' == format_filename(hdr, 'exp{EXPID|string:04d}', env)

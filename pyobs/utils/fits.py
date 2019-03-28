@@ -75,17 +75,18 @@ class FilenameFormatter:
             'time': self._format_time,
             'date': self._format_date,
             'night': self._format_night,
-            'filter': self._format_filter
+            'filter': self._format_filter,
+            'string': self._format_string
         }
 
-    def __call__(self, fmt: str):
+    def __call__(self, fmt: str) -> str:
         """Formats a filename given a format template and a FITS header.
 
         Args:
-            fmt (str): Filename format.
+            fmt: Filename format.
 
         Returns:
-            (str) Filename
+            Formatted filename.
 
         Raises:
             KeyError: If either keyword could not be found in header or method could not be found.
@@ -107,7 +108,19 @@ class FilenameFormatter:
         # finished
         return output
 
-    def _format_placeholder(self, placeholder):
+    def _format_placeholder(self, placeholder: str) -> str:
+        """Format a given placeholder.
+
+        Args:
+            placeholder: Placeholder to format.
+
+        Returns:
+            Formatted placeholder.
+
+        Raises:
+            KeyError: If method or FITS header keyword don't exist.
+        """
+
         # remove curly brackets
         key = placeholder[1:-1]
         method = None
@@ -132,27 +145,77 @@ class FilenameFormatter:
             # call method and replace
             return func(key, *params)
 
-    def _format_time(self, key, delimiter=':'):
+    def _format_time(self, key: str, delimiter: str = ':') -> str:
+        """Formats time using the given delimiter.
+
+       Args:
+           key: The name of the FITS header key to use.
+           delimiter: Delimiter for time formatting.
+
+       Returns:
+           Formatted string.
+       """
         fmt = '%H' + delimiter + '%M' + delimiter + '%S'
         date_obs = Time(self.header[key])
         return date_obs.datetime.strftime(fmt)
 
-    def _format_date(self, key, delimiter='-'):
+    def _format_date(self, key: str, delimiter: str = '-') -> str:
+        """Formats date using the given delimiter.
+
+        Args:
+            key: The name of the FITS header key to use.
+            delimiter: Delimiter for date formatting.
+
+        Returns:
+            Formatted string.
+        """
         fmt = '%Y' + delimiter + '%m' + delimiter + '%d'
         date_obs = Time(self.header[key])
         return date_obs.datetime.strftime(fmt)
 
-    def _format_night(self, key, delimiter=''):
+    def _format_night(self, key: str, delimiter: str = '') -> str:
+        """Calculates night of DATE in given FITS keyword and format it using the given delimiter.
+
+        Args:
+            key: The name of the FITS header key to use.
+            delimiter: Delimiter for date formatting.
+
+        Returns:
+            Formatted string.
+        """
         date_obs = Time(self.header[key])
         night_obs = self.environment.night_obs(date_obs)
         return night_obs.strftime('%Y' + delimiter + '%m' + delimiter + '%d')
 
-    def _format_filter(self, key, image_type='IMAGETYP', separator='_'):
+    def _format_filter(self, key: str, image_type: str = 'IMAGETYP', prefix: str = '_') -> str:
+        """Formats a filter, prefixed by a given separator, only if the image type requires it.
+
+        Args:
+            key: The name of the FITS header key to use.
+            image_type: FITS header key for IMAGETYP.
+            prefix: Prefix to add to filter.
+
+        Returns:
+            Formatted string.
+        """
         it = self.header[image_type].lower()
-        if it in ['light', 'object']:
-            return separator + self.header[key]
+        if it in ['light', 'object', 'flat']:
+            return prefix + self.header[key]
         else:
             return ''
+
+    def _format_string(self, key: str, format: str) -> str:
+        """Formats a string using Python string substitution.
+
+        Args:
+            key: The name of the FITS header key to use.
+            format: A Python string format like %d, %05d, or %4.1f.
+
+        Returns:
+            Formatted string.
+        """
+        fmt = '%' + format
+        return fmt % self.header[key]
 
 
 def format_filename(hdr: Header, fmt: str, environment: Environment = None) -> str:

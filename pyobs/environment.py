@@ -56,7 +56,7 @@ class Environment:
         return utc_dt.astimezone(self._timezone)
 
     @functools.lru_cache()
-    def night_obs(self, time: Union[datetime.datetime, Time]) -> datetime.date:
+    def night_obs(self, time: Union[datetime.datetime, Time] = None) -> datetime.date:
         # None given?
         if time is None:
             time = Time.now()

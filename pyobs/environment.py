@@ -57,6 +57,9 @@ class Environment:
 
     @functools.lru_cache()
     def night_obs(self, time: Union[datetime.datetime, Time]) -> datetime.date:
+        # None given?
+        if time is None:
+            time = Time.now()
         # convert to Time
         if isinstance(time, Time):
             time = time.datetime

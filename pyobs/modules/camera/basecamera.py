@@ -5,6 +5,7 @@ import threading
 from typing import Union, Tuple
 import numpy as np
 from astropy.io import fits
+import astropy.units as u
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
@@ -178,8 +179,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             hdr['HEIGHT'] = (loc.height.value, 'Altitude of the telescope [m]')
 
             # add local sidereal time
-            # TODO: takes too long, try something different?
-            # hdr['LST'] = (self.environment.lst(date_obs).to_string(unit=u.hour, sep=':'))
+            hdr['LST'] = (self.environment.lst(date_obs).to_string(unit=u.hour, sep=':'))
 
         # day of observation start
         if self.environment:

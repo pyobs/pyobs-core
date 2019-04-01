@@ -368,7 +368,8 @@ class HTTP2XMPP(PyObsModule, tornado.web.Application):
         # load static files
         log.info('Loading static files...')
         self.files = {}
-        self._load_static_files(public_html)
+        if public_html is not None:
+            self._load_static_files(public_html)
 
         # overwrite config
         self._load_web_config(web_config, base_href)
@@ -379,9 +380,12 @@ class HTTP2XMPP(PyObsModule, tornado.web.Application):
             (href + r'jsonrpc', JsonRpcHandler, {'executor': self.executor}),
             (href + r'download/(.*)', DownloadFileHandler),
             (href + r'preview/(.*)', PreviewHandler),
-            (href + r'headers/(.*)', HeadersHandler),
-            (r'(.*)', AngularHandler)
+            (href + r'headers/(.*)', HeadersHandler)
         ]
+
+        # angular?
+        if public_html is not None:
+            routes.append((r'(.*)', AngularHandler))
 
         # add default route, if href is given
         if href is not None and len(href) > 0:

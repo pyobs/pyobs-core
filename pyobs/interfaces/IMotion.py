@@ -29,6 +29,7 @@ class IMotion(Interface):
         ERROR = 'error'
         IDLE = 'idle'
         INITIALIZING = 'initializing'
+        PARKING = 'parking'
         PARKED = 'parked'
         POSITIONED = 'positioned'
         SLEWING = 'slewing'

@@ -16,7 +16,7 @@ class BaseRoof(PyObsModule, IRoof):
         PyObsModule.__init__(self, *args, **kwargs)
 
         # status
-        self._motion_status = IMotion.Status.IDLE
+        self._motion_status = IMotion.Status.PARKED
 
     def open(self):
         """Open module."""

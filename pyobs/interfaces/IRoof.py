@@ -5,15 +5,15 @@ class IRoof(IMotion):
     """Base interface for all observatory enclosures."""
 
     def open_roof(self, *args, **kwargs):
-        """ Transition from PARKED to IDLE/POSITIONED """
+        """Open the roof."""
         raise NotImplementedError
 
     def close_roof(self, *args, **kwargs):
-        """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
+        """Close the roof."""
         raise NotImplementedError
 
     def halt_roof(self, *args, **kwargs):
-        """ Transition from IDLE/POSITIONED/TRACKING/SLEWING to PARKED """
+        """Stop roof."""
         raise NotImplementedError
 
 

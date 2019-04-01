@@ -106,6 +106,7 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         Raises:
             ValueError: If telescope could not track.
+            AcquireLockFailed: If current motion could not be aborted.
         """
 
         # to alt/az
@@ -120,7 +121,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
             log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
-            return self._track(ra, dec, abort_event=self._abort_move)
+            self._track(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
     def offset(self, dalt: float, daz: float, *args, **kwargs):
@@ -158,6 +159,7 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         Raises:
             Exception: On error.
+            AcquireLockFailed: If current motion could not be aborted.
         """
 
         # check altitude
@@ -168,7 +170,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
             log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
-            return self._move(alt, az, abort_event=self._abort_move)
+            self._move(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
     def get_motion_status(self, device: str = None) -> IMotion.Status:

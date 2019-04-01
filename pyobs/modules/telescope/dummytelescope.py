@@ -117,6 +117,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         Raises:
             InterruptedError: If focus was interrupted.
+            AcquireLockFailed: If current motion could not be aborted.
         """
 
         # acquire lock

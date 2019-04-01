@@ -30,7 +30,11 @@ class DummyRoof(BaseRoof, IRoof):
 
     @timeout(15000)
     def open_roof(self, *args, **kwargs):
-        """Open the roof."""
+        """Open the roof.
+
+        Raises:
+            AcquireLockFailed: If current motion could not be aborted.
+        """
 
         # already open?
         if self.open_percentage != 100:
@@ -63,7 +67,11 @@ class DummyRoof(BaseRoof, IRoof):
 
     @timeout(15000)
     def close_roof(self, *args, **kwargs):
-        """Close the roof."""
+        """Close the roof.
+
+        Raises:
+            AcquireLockFailed: If current motion could not be aborted.
+        """
 
         # already closed?
         if self.open_percentage != 0:
@@ -100,6 +108,9 @@ class DummyRoof(BaseRoof, IRoof):
 
         Args:
             device: Name of device to stop, or None for all.
+
+        Raises:
+            AcquireLockFailed: If current motion could not be aborted.
         """
 
         # change status

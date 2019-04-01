@@ -4,6 +4,10 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class AcquireLockFailed(Exception):
+    pass
+
+
 class LockWithAbort(object):
     """Tries to acquire a lock. If unsuccessful, it sets the event and tries again."""
     def __init__(self, lock, event):
@@ -12,7 +16,7 @@ class LockWithAbort(object):
         self.acquired = False
 
     def __enter__(self):
-        # first try to acquire lock without timeout, i.e. throw exception immediately, if it is locked
+        # first try to acquire lock without timeout
         self.acquired = self.lock.acquire(timeout=0.)
 
         # not successful?
@@ -25,7 +29,8 @@ class LockWithAbort(object):
 
             # still not successful?
             if not self.acquired:
-                return False
+                # raise exception
+                raise AcquireLockFailed()
 
         # got lock, so unset abort and remember that we were successful
         self.event.clear()
@@ -37,4 +42,4 @@ class LockWithAbort(object):
             self.acquired = False
 
 
-__all__ = ['LockWithAbort']
+__all__ = ['LockWithAbort', 'AcquireLockFailed']

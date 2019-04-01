@@ -1,10 +1,10 @@
-from .interface import Interface
+from .ITemperatures import ITemperatures
 
 
-class ICooling(Interface):
+class ICooling(ITemperatures):
     """Interface for all devices that allow for some kind of cooling."""
 
-    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):
+    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float):
         """Returns the current status for the cooling.
 
         Returns:
@@ -12,7 +12,6 @@ class ICooling(Interface):
                 Enabled (bool):         Whether the cooling is enabled
                 SetPoint (float):       Setpoint for the cooling in celsius.
                 Power (float):          Current cooling power in percent or None.
-                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
         """
         raise NotImplementedError
 

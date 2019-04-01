@@ -17,5 +17,6 @@ from .IRoof import IRoof
 from .IStoppable import IStoppable
 from .ITaskDB import ITaskDB
 from .ITelescope import ITelescope
+from .ITemperatures import ITemperatures
 from .IWeather import IWeather
 from .interface import *

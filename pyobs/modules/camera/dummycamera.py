@@ -221,7 +221,15 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
         """
         c = self._cooling
-        return c['Enabled'], c['SetPoint'], c['Power'], c['Temperatures']
+        return c['Enabled'], c['SetPoint'], c['Power']
+
+    def get_temperatures(self, *args, **kwargs) -> dict:
+        """Returns all temperatures measured by this module.
+
+        Returns:
+            Dict containing temperatures.
+        """
+        return self._cooling['Temperatures']
 
 
 __all__ = ['DummyCamera']

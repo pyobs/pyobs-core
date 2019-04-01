@@ -36,8 +36,6 @@ class DummyRoof(PyObsModule, IRoof):
             # send event
             self.comm.send_event(RoofOpenedEvent())
 
-        pass
-
     def close_roof(self, *args, **kwargs):
         """Close the roof."""
 

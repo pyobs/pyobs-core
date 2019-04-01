@@ -16,9 +16,5 @@ class IRoof(IMotion):
         """Get the percentage the roof is open."""
         raise NotImplementedError
 
-    def halt_roof(self, *args, **kwargs):
-        """Stop roof."""
-        raise NotImplementedError
-
 
 __all__ = ['IRoof']

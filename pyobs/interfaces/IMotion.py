@@ -47,5 +47,13 @@ class IMotion(Interface):
         """
         raise NotImplementedError
 
+    def stop_motion(self, device: str = None):
+        """Stop the motion.
+
+        Args:
+            device: Name of device to stop, or None for all.
+        """
+        raise NotImplementedError
+
 
 __all__ = ['IMotion']

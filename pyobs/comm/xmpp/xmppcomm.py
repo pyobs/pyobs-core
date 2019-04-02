@@ -209,7 +209,7 @@ class XmppComm(Comm):
 
         # append to list and send event
         self._online_clients.append(msg['from'].full)
-        self._send_event_to_module(ClientConnectedEvent(), msg['from'].full)
+        self._send_event_to_module(ClientConnectedEvent(), msg['from'].username)
 
     def _got_offline(self, msg):
         """If a new client disconnects, remove it from list.
@@ -220,7 +220,7 @@ class XmppComm(Comm):
 
         # remove from list and send event
         self._online_clients.remove(msg['from'].full)
-        self._send_event_to_module(ClientDisconnectedEvent(), msg['from'].full)
+        self._send_event_to_module(ClientDisconnectedEvent(), msg['from'].username)
 
     @property
     def clients(self):

@@ -1,4 +1,5 @@
 import logging
+import os
 
 from pyobs.events import LogEvent
 
@@ -21,7 +22,8 @@ class CommLoggingHandler(logging.Handler):
         Args:
             rec: Log record to send.
         """
-        entry = LogEvent(rec.created, rec.levelname, rec.pathname, rec.funcName,  rec.lineno, rec.msg % rec.args)
+        entry = LogEvent(rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName,  rec.lineno,
+                         rec.msg % rec.args)
         self._comm.log_message(entry)
 
 

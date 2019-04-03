@@ -18,41 +18,6 @@ from pyobs.comm.xmpp import XmppComm
 matplotlib.use('Agg')
 
 
-class pyobsYamlLoader(yaml.Loader):
-    def __init__(self, *args, **kwargs):
-        super(pyobsYamlLoader, self).__init__(*args, **kwargs)
-
-        # add constructors
-        self.add_constructor('!include', self._include)
-
-        # check root
-        if 'root' in kwargs:
-            self.root = kwargs['root']
-        elif isinstance(self.stream, IOBase):
-            #self.root = os.path.dirname(self.stream.name)
-            pass
-        else:
-            self.root = os.path.curdir
-
-    def _include(self, loader, node):
-        """
-        Handles "!include path/to/foo.yml" directives in config
-        files.  When constructed with a file object, the root path for includes
-        defaults to the directory containing the file, otherwise to the current
-        working directory. In either case, the root path can be overridden by the
-        `root` keyword argument.
-
-        When an included file F contain its own !include directive, the path is
-        relative to F's location.
-        """
-        old_root = self.root
-        filename = os.path.join(self.root, loader.construct_scalar(node))
-        self.root = os.path.dirname(filename)
-        data = yaml.load(open(filename, 'r'))
-        self.root = old_root
-        return data
-
-
 def hack_threading():
     """Bad hack to set thread name on OS level."""
     try:
@@ -138,7 +103,7 @@ def run(config=None, log_file: str = None, log_level: str = 'info', log_rotate: 
     # load config
     log.info('Loading configuration from {0:s}...'.format(config))
     with StringIO(pre_process_yaml(config)) as f:
-        cfg = yaml.load(f, pyobsYamlLoader)
+        cfg = yaml.load(f)
 
     # comm config
     username = os.environ['USERNAME'] if username is None and 'USERNAME' in os.environ else username

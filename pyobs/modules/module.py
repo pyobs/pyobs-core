@@ -69,7 +69,7 @@ class PyObsModule:
 
         Args:
             name: Name of module.
-            comm: Comm object to use (either object itself or configuration)
+            comm: Comm object to use
             vfs: VFS to use (either object or config)
             environment: Environment to use (either object or config)
             database: Database connection string
@@ -95,6 +95,10 @@ class PyObsModule:
         # closing event
         self.closing = threading.Event()
 
+        # connect comm module
+        self.comm = comm
+        self.comm.module = self
+
         # create vfs
         if vfs:
             self.vfs = get_object(vfs)
@@ -106,17 +110,6 @@ class PyObsModule:
         self.environment = None
         if environment:
             self.environment = get_object(environment)
-
-        # create comm module
-        self.comm = None
-        if comm:
-            self.comm = get_object(comm)
-        else:
-            from pyobs.comm.dummy import DummyComm
-            self.comm = DummyComm()
-
-        # link all together
-        self.comm.module = self
 
         # plugins
         self._plugins = []
@@ -150,11 +143,6 @@ class PyObsModule:
         # connect database
         if self._db_connect:
             Database.connect(self._db_connect)
-
-        # open comm
-        if self.comm:
-            log.info('Opening comm...')
-            self.comm.open()
 
         # open plugins
         if self._plugins:
@@ -194,11 +182,6 @@ class PyObsModule:
         log.info('Closing plugins...')
         for plg in self._plugins:
             plg.close()
-
-        # close comm
-        if self.comm:
-            log.info('Closing comm...')
-            self.comm.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type) -> object:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.

@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class RPC(object):
     """RPC wrapper around XEP0009."""
 
-    def __init__(self, client: sleekxmpp.ClientXMPP, handler: PyObsModule = None):
+    def __init__(self, client: sleekxmpp.ClientXMPP, handler):
         """Create a new RPC wrapper.
 
         Args:
@@ -28,7 +28,8 @@ class RPC(object):
         self._lock = RLock()
         self._futures = {}
         self._timeout = {}
-        self._handler = handler
+        self._handler = None
+        self._methods = {}
 
         # set up callbacks
         client.add_event_handler('jabber_rpc_method_call', self._on_jabber_rpc_method_call, threaded=True)
@@ -38,6 +39,19 @@ class RPC(object):
         client.add_event_handler('jabber_rpc_error', self._on_jabber_rpc_error)
 
         # register handler
+        self._methods = dict(handler.methods) if handler else {}
+
+    def set_handler(self, handler: PyObsModule = None):
+        """Set the handler for remote procedure calls to this client.
+
+        Args:
+            handler: Handler object.
+        """
+
+        # store handler
+        self._handler = handler
+
+        # update methods
         self._methods = dict(handler.methods) if handler else {}
 
     def call(self, target_jid, method, *args) -> Future:

@@ -22,7 +22,7 @@ class Comm:
         """Creates a comm module."""
 
         self._proxies = {}
-        self.module = None
+        self._module = None
         self._log_queue = queue.Queue()
 
         # cache for shared variables
@@ -35,6 +35,19 @@ class Comm:
         # logging thread
         self._closing = threading.Event()
         self._logging_thread = threading.Thread(target=self._logging)
+
+    @property
+    def module(self):
+        return self._module
+
+    @module.setter
+    def module(self, module):
+        # if we have a _set_module method, call it
+        if hasattr(self, '_set_module'):
+            self._set_module(module)
+
+        # store module
+        self._module = module
 
     def open(self):
         """Open module."""

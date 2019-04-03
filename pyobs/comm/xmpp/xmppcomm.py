@@ -79,6 +79,21 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
+    def _set_module(self, module):
+        """Called, when the module connected to this Comm changes.
+
+        Args:
+            module: The module.
+        """
+
+        # add features
+        if module:
+            for i in module.interfaces:
+                self._xmpp['xep_0030'].add_feature('pyobs:interface:%s' % i.__name__)
+
+        # update RPC
+        self._rpc.set_handler(module)
+
     def open(self) -> bool:
         """Open the connection to the XMPP server.
 
@@ -89,11 +104,6 @@ class XmppComm(Comm):
 
         # create RPC handler
         self._rpc = RPC(self._xmpp, self.module)
-
-        # add features
-        if self.module:
-            for i in self.module.interfaces:
-                self._xmpp['xep_0030'].add_feature('pyobs:interface:%s' % i.__name__)
 
         # server given?
         server = () if self._server is None else tuple(self._server.split(':'))
@@ -132,7 +142,7 @@ class XmppComm(Comm):
     @property
     def name(self) -> str:
         """Name of this client."""
-        return self._jid
+        return self._user
 
     def _failed_auth(self, event):
         """Authentification failed.

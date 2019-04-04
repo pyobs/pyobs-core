@@ -3,12 +3,17 @@ import matplotlib
 import argparse
 import os
 
-from pyobs.application import Application
+from pyobs.application import Application, GuiApplication
 
 matplotlib.use('Agg')
 
 
 def start_daemon(pid_file=None, *args, **kwargs):
+    """Start process as a daemon.
+
+    Args:
+        pid_file: Name of PID file.
+    """
     import daemon
     from daemon import pidfile
 
@@ -24,16 +29,33 @@ def start_daemon(pid_file=None, *args, **kwargs):
 
 
 def run(config=None, log_file: str = None, log_level: str = 'info', log_rotate: bool = False, gui: bool = False,
-        username: str = None, password: str = None, server: str = None, comm: str = None, *args, **kwargs):
+        username: str = None, password: str = None, server: str = None, comm: str = 'xmpp', *args, **kwargs):
+    """Run a pyobs application with the given options.
+
+    Args:
+        config: Name of config file, if any.
+        log_file: Name of file to log to, if any.
+        log_level: Logging level.
+        log_rotate: Whether or not to rotate the logs.
+        gui: Whether or not to show a GUI.
+        username: Username for server connection (or given in config or environment).
+        password: Password for server connection (or given in config or environment).
+        server: Server to connect to (or given in config or environment).
+        comm: Type of comm object to use (or given in config or environment), defaults to 'xmpp'.
+    """
+
+    # get app class
+    App = GuiApplication if gui else Application
+
     # create app
-    app = Application(log_file, log_level, log_rotate)
+    app = App(log_file, log_level, log_rotate)
 
     # run it
     app.run(config, username, password, server, comm)
 
 
 def main():
-    # argparse
+    # init argument parsing
     parser = argparse.ArgumentParser()
     parser.add_argument('config', type=str, help='Configuration file', nargs='?')
 

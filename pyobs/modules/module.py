@@ -96,7 +96,8 @@ class PyObsModule:
 
         # connect comm module
         self.comm = comm
-        self.comm.module = self
+        if comm:
+            self.comm.module = self
 
         # create vfs
         if vfs:

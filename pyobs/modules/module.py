@@ -1,11 +1,10 @@
 import inspect
 import logging
 import threading
-from enum import Enum
 from typing import Union, Type, Any
 from py_expression_eval import Parser
 
-from pyobs import Environment
+from pyobs.environment import Environment
 from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
@@ -160,9 +159,6 @@ class PyObsModule:
         # success
         self._opened = True
 
-        # success
-        log.info('Started successfully.')
-
     @property
     def opened(self):
         return self._opened
@@ -179,9 +175,10 @@ class PyObsModule:
         [t.join() for t in self._threads.keys() if t.is_alive()]
 
         # close plugins
-        log.info('Closing plugins...')
-        for plg in self._plugins:
-            plg.close()
+        if self._plugins:
+            log.info('Closing plugins...')
+            for plg in self._plugins:
+                plg.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type) -> object:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.

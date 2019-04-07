@@ -30,6 +30,7 @@ class Comm:
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
+        handler.setLevel(logging.INFO)
         logging.getLogger().addHandler(handler)
 
         # logging thread

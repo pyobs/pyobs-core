@@ -9,6 +9,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 import yaml
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.object import get_object
 from pyobs.modules import PyObsModule
 from pyobs.comm import Comm
@@ -191,8 +192,12 @@ class Application:
             # create comm object from command line or environment
             return XmppComm(jid=username, password=password, server=server)
         else:
-            # create comm object from config
-            return get_object(config['comm'])
+            if 'comm' in config:
+                # create comm object from config
+                return get_object(config['comm'])
+            else:
+                # create a dummy comm object
+                return DummyComm()
 
     def _get_network_config(self, comm: Comm, attempts=10, wait_time=10) -> dict:
         """Fetches a configuration for the module from the network.

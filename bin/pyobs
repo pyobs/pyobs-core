@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
+import locale
 import matplotlib
 import argparse
 import os
 
 from pyobs.application import Application, GuiApplication
 
+
+# set locale to en_US on all systems
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+
+# force matplotlib not to use a graphical interface
 matplotlib.use('Agg')
 
 

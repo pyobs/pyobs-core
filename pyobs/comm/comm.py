@@ -104,22 +104,19 @@ class Comm:
         if client is None:
             return None
 
-        # get full name
-        full_name = self._get_full_client_name(client)
-
         # exists?
-        if full_name not in self._proxies:
+        if client not in self._proxies:
             # get interfaces
-            interfaces = self._get_interfaces(full_name)
+            interfaces = self._get_interfaces(client)
             if interfaces is None:
                 return None
 
             # create new proxy
-            proxy = Proxy(self, full_name, interfaces)
-            self._proxies[full_name] = proxy
+            proxy = Proxy(self, client, interfaces)
+            self._proxies[client] = proxy
 
         # return proxy
-        return self._proxies[full_name]
+        return self._proxies[client]
 
     def _client_disconnected(self, event: ClientDisconnectedEvent, sender: str, *args, **kwargs):
         """Called when a client disconnects.

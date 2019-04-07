@@ -172,11 +172,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # log and send event
         if filter_name != self._filter:
+            # set it
             logging.info('Setting filter to %s', filter_name)
-            self.comm.send_event(FilterChangedEvent(filter_name))
+            time.sleep(3)
+            self._filter = filter_name
 
-        # set it
-        self._filter = filter_name
+            # send event
+            self.comm.send_event(FilterChangedEvent(filter_name))
+            logging.info('New filter set.')
 
     @timeout(60000)
     def init(self, *args, **kwargs):

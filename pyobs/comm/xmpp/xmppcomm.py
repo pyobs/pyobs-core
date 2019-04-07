@@ -360,7 +360,7 @@ class XmppComm(Comm):
 
         # create event and send it to module
         event = EventFactory.from_dict(json.loads(body))
-        self._send_event_to_module(event, msg['from'])
+        self._send_event_to_module(event, msg['from'].username)
 
     def _send_event_to_module(self, event: Event, from_client: str):
         """Send an event to all connected modules.

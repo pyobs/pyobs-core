@@ -182,9 +182,9 @@ class Application:
             A comm object.
         """
         # get comm config from command line or environment, if given
-        username = os.environ['USERNAME'] if username is None and 'USERNAME' in os.environ else username
-        password = os.environ['PASSWORD'] if password is None and 'PASSWORD' in os.environ else password
-        server = os.environ['SERVER'] if server is None and 'SERVER' in os.environ else server
+        username = os.environ['PYOBS_USERNAME'] if username is None and 'PYOBS_USERNAME' in os.environ else username
+        password = os.environ['PYOBS_PASSWORD'] if password is None and 'PYOBS_PASSWORD' in os.environ else password
+        server = os.environ['PYOBS_SERVER'] if server is None and 'PYOBS_SERVER' in os.environ else server
 
         # create comm object and return it
         if username and password and comm == 'xmpp':

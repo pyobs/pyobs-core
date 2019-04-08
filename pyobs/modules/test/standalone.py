@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 
 class StandAlone(PyObsModule):
-    """Example module without connectivity."""
+    """Example module that only logs the given message forever in the given interval."""
 
     def __init__(self, message: str = 'Hello world', interval: int = 10, *args, **kwargs):
         """Creates a new StandAlone object.
@@ -21,14 +21,6 @@ class StandAlone(PyObsModule):
         # store
         self._message = message
         self._interval = interval
-
-    def open(self):
-        """Open module."""
-        PyObsModule.open(self)
-
-    def close(self):
-        """Close module."""
-        PyObsModule.close(self)
 
     def _message(self):
         """Thread function for async processing."""

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyobs',
-    version='0.6',
+    version='0.7',
     description='robotic telescope software',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',

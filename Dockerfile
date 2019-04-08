@@ -10,4 +10,4 @@ RUN python setup.py install
 RUN rm -rf /src
 
 # set entry point
-ENTRYPOINT ["/usr/local/bin/pyobs", "/pyobs.yaml"]
+ENTRYPOINT ["/usr/local/bin/pyobs"]

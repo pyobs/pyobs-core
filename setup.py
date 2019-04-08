@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
-from pyobs.version import VERSION
 
 setup(
     name='pyobs',
-    version=VERSION,
+    version='0.6',
     description='robotic telescope software',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',

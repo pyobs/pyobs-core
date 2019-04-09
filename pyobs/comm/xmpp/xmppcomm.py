@@ -57,10 +57,10 @@ class XmppComm(Comm):
 
         # build jid
         if jid:
-            # set jid
-            self._jid = jid
+            # resource given in jid?
             if '/' not in jid:
                 jid += '/' + resource
+
             # get user/domain/resource and write it back to config
             m = re.match(r'([\w_\-\.]+)@([\w_\-\.]+)\/([\w_\-\.]+)', jid)
             if not m:
@@ -69,6 +69,10 @@ class XmppComm(Comm):
             self._user = m.group(1)
             self._domain = m.group(2)
             self._resource = m.group(3)
+
+            # set jid itself
+            self._jid = jid
+
         else:
             self._jid = '%s@%s/%s' % (self._user, self._domain, self._resource)
 

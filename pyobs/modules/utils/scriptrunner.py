@@ -30,8 +30,7 @@ class ScriptRunner(PyObsModule, IScriptRunner):
         proxies = {p: self.comm[p] for p in self.comm.clients}
 
         # execute it
-        print(script)
-        #exec(script, proxies)
+        exec(script, proxies)
 
 
 __all__ = ['ScriptRunner']

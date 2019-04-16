@@ -9,8 +9,7 @@ from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
-from pyobs.utils.types import cast_bound_arguments_to_simple, cast_response_to_simple
-
+from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
 
@@ -363,16 +362,16 @@ class PyObsModule:
         ba.apply_defaults()
 
         # cast to types requested by method
-        cast_bound_arguments_to_simple(ba, signature)
+        cast_bound_arguments_to_real(ba, signature)
 
-        # call method
         try:
+            # call method
             response = func(**ba.arguments)
+
+            # finished
+            return cast_response_to_simple(response)
         except:
             log.exception('Error on remote procedure call.')
-
-        # finished
-        return cast_response_to_simple(response)
 
 
 __all__ = ['PyObsModule', 'timeout']

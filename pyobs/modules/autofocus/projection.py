@@ -131,7 +131,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         focus = self._fit_focus()
 
         # check
-        if focus is None or focus[0] is None:
+        if focus is None or focus[0] is None or np.isnan(focus[0]):
             raise ValueError('Could not fit focus.')
 
         # log  and return it
@@ -212,7 +212,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             raise ValueError("New focus out of bounds: {0:.3f}+-{1:.3f}mm.".format(foc, err))
 
         # return it
-        return foc, err
+        return float(foc), float(err)
 
     @staticmethod
     def _window_function(arr, border=0):

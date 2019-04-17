@@ -3,9 +3,9 @@ import logging
 import re
 import threading
 from typing import Any
-
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
+import xml.sax.saxutils
 
 from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent
@@ -307,8 +307,15 @@ class XmppComm(Comm):
         Args:
             event (Event): Event to send
         """
+
+        # create stanza
         stanza = EventStanza()
-        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % json.dumps(event.to_json()))
+
+        # dump event to JSON and escape it
+        msg = xml.sax.saxutils.escape(event.to_json())
+
+        # set xml and send event
+        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % msg)
         self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__)
 
     def register_event(self, event_class, handler=None):
@@ -348,9 +355,9 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        # get node and body
-        # node = msg['pubsub_event']['items']['node']
-        body = msg['pubsub_event']['items']['item']['payload'].text
+        # get node and body, and unescape it
+        # node = msg['pubsub_event'][items']['node']
+        body = xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text)
 
         # do we have a <delay> element?
         delay = msg.findall('{urn:xmpp:delay}delay')

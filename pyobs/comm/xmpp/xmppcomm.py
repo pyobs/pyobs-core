@@ -312,10 +312,10 @@ class XmppComm(Comm):
         stanza = EventStanza()
 
         # dump event to JSON and escape it
-        msg = xml.sax.saxutils.escape(event.to_json())
+        body = xml.sax.saxutils.escape(json.dumps(event.to_json()))
 
         # set xml and send event
-        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % msg)
+        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
         self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__)
 
     def register_event(self, event_class, handler=None):
@@ -355,9 +355,9 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        # get node and body, and unescape it
+        # get body, unescape it, parse it
         # node = msg['pubsub_event'][items']['node']
-        body = xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text)
+        body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
 
         # do we have a <delay> element?
         delay = msg.findall('{urn:xmpp:delay}delay')
@@ -370,7 +370,7 @@ class XmppComm(Comm):
             return
 
         # create event and send it to module
-        event = EventFactory.from_dict(json.loads(body))
+        event = EventFactory.from_dict(body)
         self._send_event_to_module(event, msg['from'].username)
 
     def _send_event_to_module(self, event: Event, from_client: str):

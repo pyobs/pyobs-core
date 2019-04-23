@@ -35,7 +35,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # init camera
-        self._window = (50, 0, 2048, 2064)
+        self._full_frame = (50, 0, 2048, 2064)
+        self._window = self._full_frame
         self._binning = (1, 1)
         self._cooling = {'Enabled': True, 'SetPoint': -10., 'Power': 80,
                          'Temperatures':  {'CCD': 0.0, 'Backplate': 3.14}}
@@ -66,7 +67,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return 50, 0, 2048, 2064
+        return self._full_frame
 
     def _get_image(self, exp_time: float) -> fits.PrimaryHDU:
         """Actually get (i.e. simulate) the image."""
@@ -131,7 +132,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
-        self.set_biassec_trimsec(hdu.header, 50, 0, 2048, 2064)
+        self.set_biassec_trimsec(hdu.header, *self._full_frame)
 
         # finished
         log.info('Exposure finished.')

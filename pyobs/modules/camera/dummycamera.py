@@ -68,7 +68,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return 50, 0, 2048, 2064
 
-    def _get_image(self) -> fits.PrimaryHDU:
+    def _get_image(self, exp_time: float) -> fits.PrimaryHDU:
         """Actually get (i.e. simulate) the image."""
 
         # random image or pre-defined?
@@ -120,7 +120,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         time.sleep(self._redout_time)
 
         # get image
-        hdu = self._get_image()
+        hdu = self._get_image(exposure_time)
 
         # add headers
         hdu.header['EXPTIME'] = exposure_time / 1000.

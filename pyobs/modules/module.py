@@ -117,7 +117,10 @@ class PyObsModule:
             self.environment = get_object(environment)
 
         # observer
-        if isinstance(location, str):
+        if location is None:
+            log.warning('No location given, observer will not be available!')
+            self.observer = None
+        elif isinstance(location, str):
             self.observer = Observer.at_site(location, timezone=timezone)
         else:
             self.observer = Observer(longitude=location['longitude']*u.deg, latitude=location['latitude']*u.deg,

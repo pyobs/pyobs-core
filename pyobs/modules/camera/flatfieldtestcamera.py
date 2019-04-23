@@ -11,8 +11,8 @@ log = logging.getLogger(__name__)
 class FlatFieldTestCamera(DummyCamera):
     """A dummy camera for testing."""
 
-    def __init__(self, bias: float = 1000, noise: float = 10, radius: float = 5000,
-                 A: float = -1.32411, B: float = 3.943923, *args, **kwargs):
+    def __init__(self, bias: float = 1000, noise: float = 10,
+                 radius: float = 10000, A: float = -1.32411, B: float = 3.943923, *args, **kwargs):
         """Creates a new test cammera for flat fielding.
 
         Args:
@@ -23,6 +23,11 @@ class FlatFieldTestCamera(DummyCamera):
         """
         DummyCamera.__init__(self, *args, **kwargs)
 
+        # change full frame
+        self._full_frame = (0, 0, 700, 500)
+        self._window = self._full_frame
+
+        # init
         self.bias = bias
         self.noise = noise
         self.radius = radius
@@ -51,7 +56,6 @@ class FlatFieldTestCamera(DummyCamera):
 
         # get expected count level
         expected_counts = (30000 - self.bias) / exp_time_30000 * (exp_time / 1000)
-        print(expected_counts)
 
         # and scale
         data *= expected_counts
@@ -59,9 +63,11 @@ class FlatFieldTestCamera(DummyCamera):
         # add bias
         data += np.random.normal(self.bias, self.noise, data.shape)
 
+        # cut above 16bits
+        data[data > 2**16 - 1] = 2**16 - 1
+
         # return HDU
         return fits.PrimaryHDU(data.astype('uint16'))
-        #return fits.PrimaryHDU(data)
 
 
 __all__ = ['FlatFieldTestCamera']

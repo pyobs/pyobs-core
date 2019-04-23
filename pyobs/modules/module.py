@@ -2,6 +2,9 @@ import inspect
 import logging
 import threading
 from typing import Union, Type, Any
+
+from astroplan import Observer
+from astropy.coordinates import EarthLocation
 from py_expression_eval import Parser
 
 from pyobs.environment import Environment
@@ -61,8 +64,9 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 environment: Union[Environment, dict] = None, database: str = None, plugins: list = None,
-                 thread_funcs: list = None, restart_threads: bool = True, *args, **kwargs):
+                 environment: Union[Environment, dict] = None, timezone: str = 'utc', location: Union[str, dict] = None,
+                 database: str = None, plugins: list = None, thread_funcs: list = None, restart_threads: bool = True,
+                 *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
@@ -70,6 +74,8 @@ class PyObsModule:
             comm: Comm object to use
             vfs: VFS to use (either object or config)
             environment: Environment to use (either object or config)
+            timezone: Timezone at observatory.
+            location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
             database: Database connection string
             plugins: List of plugins to start.
             thread_funcs: Functions to start in a separate thread.
@@ -109,6 +115,13 @@ class PyObsModule:
         self.environment = None
         if environment:
             self.environment = get_object(environment)
+
+        # observer
+        if isinstance(location, str):
+            self.observer = Observer.at_site(location, timezone=timezone)
+        else:
+            self.observer = Observer(longitude=location['longitude']*u.deg, latitude=location['latitude']*u.deg,
+                                     elevation=location['elevation']*u.m, timezone=timezone)
 
         # plugins
         self._plugins = []

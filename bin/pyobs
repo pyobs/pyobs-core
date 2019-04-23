@@ -12,6 +12,8 @@ from pyobs.application import Application, GuiApplication
 
 
 # force matplotlib not to use a graphical interface
+from pyobs.utils.time import Time
+
 matplotlib.use('Agg')
 
 
@@ -93,8 +95,18 @@ def main():
     # show gui (here an environment variable doesn't really make sense, so we skip it)
     parser.add_argument('--gui', action='store_true', help='run in a GUI instead of a terminal')
 
+    # debug stuff
+    parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
+                        default=os.environ.get('PYOBS_DEBUG_TIME'))
+
     # parse args
     args = parser.parse_args()
+
+    # set debug time now
+    if args.debug_time is not None:
+        # calculate difference between now and given time
+        delta = Time(args.debug_time) - Time.now()
+        Time.set_offset_to_now(delta)
 
     # --gui and --pid-file don't work together
     if args.gui and args.pid_file:

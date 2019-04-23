@@ -68,6 +68,21 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return 50, 0, 2048, 2064
 
+    def _get_image(self) -> fits.PrimaryHDU:
+        """Actually get (i.e. simulate) the image."""
+
+        # random image or pre-defined?
+        if self._sim_images:
+            filename = self._sim_images.pop(0)
+            self._sim_images.append(filename)
+            with fits.open(filename, memmap=False) as f:
+                return fits.PrimaryHDU(data=f[0].data, header=f[0].header)
+
+        else:
+            left, top, width, height = self.get_window()
+            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
+            return fits.PrimaryHDU(data.astype('uint16'))
+
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
@@ -104,20 +119,11 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         self._change_exposure_status(ICamera.ExposureStatus.READOUT)
         time.sleep(self._redout_time)
 
-        # random image or pre-defined?
-        if self._sim_images:
-            filename = self._sim_images.pop(0)
-            self._sim_images.append(filename)
-            with fits.open(filename, memmap=False) as f:
-                hdu = fits.PrimaryHDU(data=f[0].data, header=f[0].header)
-
-        else:
-            left, top, width, height = self.get_window()
-            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
-            hdu = fits.PrimaryHDU(data.astype('uint16'))
-            hdu.header['EXPTIME'] = exposure_time / 1000.
+        # get image
+        hdu = self._get_image()
 
         # add headers
+        hdu.header['EXPTIME'] = exposure_time / 1000.
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
         hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning[0], 'Binning factor used on X axis')
         hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning[1], 'Binning factor used on Y axis')

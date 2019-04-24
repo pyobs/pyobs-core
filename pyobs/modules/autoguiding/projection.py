@@ -274,9 +274,9 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(hdr)
         lon, lat = w.all_pix2world(500, 500, 0)
-        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.environment.location)
+        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
         lon, lat = w.all_pix2world(500 + dx, 500 + dy, 0)
-        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.environment.location)
+        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
 
         # calculate offsets
         dra = radec2.ra.degree - radec1.ra.degree

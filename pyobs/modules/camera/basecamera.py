@@ -171,8 +171,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             log.warning('Could not calculate CDELT1/CDELT2 (DET-PIXL/TEL-FOCL/DET-BIN1/DET-BIN2 missing).')
 
         # do we have a location?
-        if self.environment and self.environment.location:
-            loc = self.environment.location
+        if self.location is not None:
+            loc = self.location
             # add location of telescope
             hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
             hdr['LATITUDE'] = (loc.lat.degree, 'Latitude of the telescope [deg N]')

@@ -1,7 +1,7 @@
 import inspect
 import types
 
-from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_real
+from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_real, cast_bound_arguments_to_simple
 
 
 class Proxy:
@@ -95,44 +95,13 @@ class Proxy:
         ba.apply_defaults()
 
         # cast to simple types
-        cast_bound_arguments_to_real(ba)
+        cast_bound_arguments_to_simple(ba)
 
         # do request
         response = self._comm.execute(self._client, method, *ba.args[1:])
 
         # cast response to real types
         return cast_response_to_real(response, signature)
-
-    def execute_safely(self, method, *args, **kwargs):
-        """Execute a method on the remote client, but check signature first.
-
-        Args:
-            method: Name of method to call.
-            *args: Parameters for  method call.
-            **kwargs: Parameters for method call.
-
-        Returns:
-            Result of method call.
-        """
-
-        # add 'self' to args
-        args = tuple([self] + list(args))
-
-        # get method signature and bind it
-        signature = inspect.signature(self._methods[method][0])
-        ba = signature.bind(*args, **kwargs)
-
-        # do type conversion
-        for p in ba.arguments:
-            if ba.arguments[p]:
-                # get type
-                typ = signature.parameters[p].annotation
-                # convert only, if one of these types
-                if typ in [int, float, bool]:
-                    ba.arguments[p] = typ(ba.arguments[p])
-
-        # do request and return future
-        return self._comm.execute(self._client, method, *ba.args[1:], **ba.kwargs)
 
     def _create_methods(self):
         """Create local methods for the remote client."""

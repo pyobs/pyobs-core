@@ -12,8 +12,7 @@ from pyobs.comm import Comm
 from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
-from pyobs.utils.types import cast_bound_arguments_to_simple, cast_response_to_simple
-
+from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
 
@@ -65,9 +64,9 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 environment: Union[Environment, dict] = None, timezone: str = 'utc',
-                 location: Union[dict, str] = None, database: str = None, plugins: list = None,
-                 thread_funcs: list = None, restart_threads: bool = True, *args, **kwargs):
+                 environment: Union[Environment, dict] = None, timezone: str = 'utc', location: Union[str, dict] = None,
+                 database: str = None, plugins: list = None, thread_funcs: list = None, restart_threads: bool = True,
+                 *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
@@ -75,9 +74,9 @@ class PyObsModule:
             comm: Comm object to use
             vfs: VFS to use (either object or config)
             environment: Environment to use (either object or config)
-            database: Database connection string
             timezone: Timezone at observatory.
-            location: Location of observatory, either by name or by dict containing longitude, latitude, and elevation.
+            location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
+            database: Database connection string
             plugins: List of plugins to start.
             thread_funcs: Functions to start in a separate thread.
             restart_threads: Whether to automatically restart threads when they quit.
@@ -391,16 +390,16 @@ class PyObsModule:
         ba.apply_defaults()
 
         # cast to types requested by method
-        cast_bound_arguments_to_simple(ba, signature)
+        cast_bound_arguments_to_real(ba, signature)
 
-        # call method
         try:
+            # call method
             response = func(**ba.arguments)
+
+            # finished
+            return cast_response_to_simple(response)
         except:
             log.exception('Error on remote procedure call.')
-
-        # finished
-        return cast_response_to_simple(response)
 
 
 __all__ = ['PyObsModule', 'timeout']

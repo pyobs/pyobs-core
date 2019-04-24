@@ -3,6 +3,9 @@ import logging
 import threading
 from typing import Union, Type, Any
 from py_expression_eval import Parser
+from astropy.coordinates import EarthLocation
+from astroplan import Observer
+import pytz
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
@@ -62,7 +65,8 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 environment: Union[Environment, dict] = None, database: str = None, plugins: list = None,
+                 environment: Union[Environment, dict] = None, timezone: str = 'utc',
+                 location: Union[dict, str] = None, database: str = None, plugins: list = None,
                  thread_funcs: list = None, restart_threads: bool = True, *args, **kwargs):
         """Initializes a new pyobs module.
 
@@ -72,6 +76,8 @@ class PyObsModule:
             vfs: VFS to use (either object or config)
             environment: Environment to use (either object or config)
             database: Database connection string
+            timezone: Timezone at observatory.
+            location: Location of observatory, either by name or by dict containing longitude, latitude, and elevation.
             plugins: List of plugins to start.
             thread_funcs: Functions to start in a separate thread.
             restart_threads: Whether to automatically restart threads when they quit.
@@ -110,6 +116,28 @@ class PyObsModule:
         self.environment = None
         if environment:
             self.environment = get_object(environment)
+
+        # timezone
+        self.timezone = pytz.timezone(timezone)
+        log.info('Using timezone %s.', timezone)
+
+        # location
+        if location is None:
+            self.location = None
+        elif isinstance(location, str):
+            self.location = EarthLocation.of_site(location)
+        elif isinstance(location, dict):
+            self.location = EarthLocation.from_geodetic(location['longitude'], location['latitude'],
+                                                        location['elevation'])
+        else:
+            raise ValueError('Unknown format for location.')
+
+        # create observer
+        self.observer = None
+        if self.location is not None:
+            log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
+                     self.location.lon, self.location.lat, self.location.height)
+            self.observer = Observer(location=self.location, timezone=timezone)
 
         # plugins
         self._plugins = []

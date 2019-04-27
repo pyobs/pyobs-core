@@ -1,15 +1,14 @@
 import io
 import logging
-import os
 import re
 
 import PIL
 import aplpy
 import matplotlib.pyplot as plt
+from astroplan import Observer
 from astropy.io import fits
 from astropy.io.fits import Header
 from pyobs.utils.time import Time
-from pyobs.environment import Environment
 
 
 log = logging.getLogger(__name__)
@@ -60,15 +59,15 @@ def create_preview(hdu: fits.PrimaryHDU, grid: bool = True, colorbar: bool = Tru
 
 
 class FilenameFormatter:
-    def __init__(self, hdr: Header, environment: Environment = None):
+    def __init__(self, hdr: Header, observer: Observer = None):
         """Initializes a new filename formatter.
 
         Args:
             hdr: FITS header to take values from.
-            environment: Environment to use.
+            observer: Observer to use.
         """
         self.header = hdr
-        self.environment = environment
+        self.observer = observer
 
         # define functions
         self.funcs = {
@@ -184,7 +183,7 @@ class FilenameFormatter:
             Formatted string.
         """
         date_obs = Time(self.header[key])
-        night_obs = self.environment.night_obs(date_obs)
+        night_obs = date_obs.night_obs(self.observer)
         return night_obs.strftime('%Y' + delimiter + '%m' + delimiter + '%d')
 
     def _format_filter(self, key: str, image_type: str = 'IMAGETYP', prefix: str = '_') -> str:
@@ -218,22 +217,22 @@ class FilenameFormatter:
         return fmt % self.header[key]
 
 
-def format_filename(hdr: Header, fmt: str, environment: Environment = None) -> str:
+def format_filename(hdr: Header, fmt: str, observer: Observer = None) -> str:
     """Formats a filename given a format template and a FITS header.
 
     Args:
-        hdr (Header): FITS header to take values from.
-        fmt (str): Filename format.
-        environment (Environment): An environment used for calculating night of observation.
+        hdr: FITS header to take values from.
+        fmt: Filename format.
+        observer: An observer used astronomical calculations.
 
     Returns:
-        (str) Filename
+        Filename
 
     Raises:
         KeyError: If either keyword could not be found in header or method could not be found.
     """
 
-    ff = FilenameFormatter(hdr, environment)
+    ff = FilenameFormatter(hdr, observer)
     return ff(fmt)
 
 

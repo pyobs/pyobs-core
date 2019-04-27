@@ -179,11 +179,11 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             hdr['HEIGHT'] = (loc.height.value, 'Altitude of the telescope [m]')
 
             # add local sidereal time
-            hdr['LST'] = (self.environment.lst(date_obs).to_string(unit=u.hour, sep=':'))
+            lst = self.observer.local_sidereal_time(date_obs)
+            hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
 
-        # day of observation start
-        if self.environment:
-            hdr['DAY-OBS'] = self.environment.night_obs(date_obs).strftime('%Y-%m-%d')
+        # date of night this observation is in
+        hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
         # only add all this stuff for OBJECT images
         if hdr['IMAGETYP'] in ['object', 'light']:
@@ -323,7 +323,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return hdu, None
 
         # create a temporary filename
-        filename = format_filename(hdu.header, self._filenames, self.environment)
+        filename = format_filename(hdu.header, self._filenames, self.observer)
         if filename is None:
             raise ValueError('Cannot save image.')
 

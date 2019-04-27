@@ -46,10 +46,10 @@ class Observation(Base, GetByNameMixin):
         # update observation start time
         if not self.start_time or image.date_obs < self.start_time:
             # set start time
-            self.start_time = Time(image.date_obs)
+            self.start_time = image.date_obs
 
             # get beginning of night
-            night_obs = self.start_time.night_obs(observer)
+            night_obs = Time(self.start_time).night_obs(observer)
 
             # get night
             night = session.query(Night).filter(Night.night == night_obs).first()

@@ -1,16 +1,16 @@
+from astroplan import Observer
 from astropy.io import fits
 import datetime
 
-from pyobs import Environment
-from pyobs.database import Database, Image, session_context, Night, Observation, Task, Project
+from pyobs.database import Database, Image, session_context, Night, Observation
 
 
 def test_add_from_fits():
     # create sqlite database in memory
     Database.connect('sqlite://')
 
-    # create environment
-    env = Environment(timezone='utc', location={'longitude': 20.8, 'latitude': -32.4, 'elevation': 1798.})
+    # create observer
+    observer = Observer.at_site('SAAO', timezone='utc')
 
     # create dummy header
     hdr = fits.Header({
@@ -27,7 +27,7 @@ def test_add_from_fits():
     })
 
     # add image
-    image = Image.add_from_fits('test.fits', hdr, env)
+    image = Image.add_from_fits('test.fits', hdr, observer)
 
     # got something?
     assert image is True

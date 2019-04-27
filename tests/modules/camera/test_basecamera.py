@@ -1,4 +1,5 @@
 import pytest
+from astroplan import Observer
 from astropy.io import fits
 import numpy as np
 import threading
@@ -38,15 +39,13 @@ def test_remaining():
 def test_add_fits_headers():
     """Check adding FITS headers. Only check for existence, only for some we check actual value."""
 
-    # create comm and environment
+    # create comm
     comm = DummyComm()
-    environment = Environment(timezone='utc',
-                              location={'longitude': 20.810808, 'latitude': -32.375823, 'elevation': 1798.})
 
     # open camera
     centre = {'x': 100, 'y': 100}
     rotation = 42
-    camera = BaseCamera(centre=centre, rotation=rotation, comm=comm, environment=environment)
+    camera = BaseCamera(centre=centre, rotation=rotation, comm=comm, location='SAAO')
     camera.open()
 
     # try empty header
@@ -62,8 +61,8 @@ def test_add_fits_headers():
     # now we should get some values
     assert 2000 == hdr['EQUINOX']
     assert '2019-01-30' == hdr['DAY-OBS']
-    assert environment.location.lon.degree == hdr['LONGITUD']
-    assert environment.location.lat.degree == hdr['LATITUDE']
+    assert camera.observer.location.lon.degree == hdr['LONGITUD']
+    assert camera.observer.location.lat.degree == hdr['LATITUDE']
     assert 'RA---TAN' == hdr['CTYPE1']
     assert 'DEC--TAN' == hdr['CTYPE2']
     assert centre['x'] == hdr['DET-CPX1']

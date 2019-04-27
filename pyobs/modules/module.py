@@ -64,7 +64,7 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 environment: Union[Environment, dict] = None, timezone: str = 'utc', location: Union[str, dict] = None,
+                 timezone: str = 'utc', location: Union[str, dict] = None,
                  database: str = None, plugins: list = None, thread_funcs: list = None, restart_threads: bool = True,
                  *args, **kwargs):
         """Initializes a new pyobs module.
@@ -73,7 +73,6 @@ class PyObsModule:
             name: Name of module.
             comm: Comm object to use
             vfs: VFS to use (either object or config)
-            environment: Environment to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
             database: Database connection string
@@ -111,11 +110,6 @@ class PyObsModule:
             from pyobs.vfs import VirtualFileSystem
             self.vfs = VirtualFileSystem()
 
-        # create environment
-        self.environment = None
-        if environment:
-            self.environment = get_object(environment)
-
         # timezone
         self.timezone = pytz.timezone(timezone)
         log.info('Using timezone %s.', timezone)
@@ -142,9 +136,9 @@ class PyObsModule:
         self._plugins = []
         if plugins:
             for cfg in plugins.values():
-                plg = get_object(cfg)
-                plg._comm = self.comm
-                plg._environment = self.environment
+                plg = get_object(cfg)   # Type: PyObsModule
+                plg.comm = self.comm
+                plg.observer = self.observer
                 self._plugins.append(plg)
 
         # opened?

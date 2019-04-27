@@ -3,6 +3,7 @@ import math
 import os
 from typing import Union
 
+from astroplan import Observer
 from astropy.io import fits
 
 from pyobs.utils.time import Time
@@ -184,13 +185,13 @@ class Image(Base):
         self.data_mean = header['DATAMEAN']
 
     @staticmethod
-    def add_from_fits(filename: str, header: fits.Header, environment: 'Environment') -> bool:
+    def add_from_fits(filename: str, header: fits.Header, observer: Observer) -> bool:
         """Add Image from a given FITS file.
 
         Args:
             filename: Archive name of file to add.
             header: FITS header of file to add.
-            environment: Environment to use.
+            observer: Observer to use.
 
         Returns:
             Success or not.
@@ -204,7 +205,8 @@ class Image(Base):
             if 'DATE-OBS' not in header:
                 log.error('No DATE-OBS in FITS header.')
                 return False
-            night_obs = environment.night_obs(Time(header['DATE-OBS']))
+            date_obs = Time(header['DATE-OBS'])
+            night_obs = date_obs.night_obs(observer)
 
             # get project and task
             if 'PROJECT' not in header:
@@ -245,7 +247,7 @@ class Image(Base):
             image.add_fits_header(session, header)
 
             # add image to observation
-            observation.add_image(session, image, environment)
+            observation.add_image(session, image, observer)
 
             # finished
             return True

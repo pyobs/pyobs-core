@@ -175,7 +175,7 @@ class NewImageWatcher(PyObsModule):
         # loop copy targets
         for target in self._copy_to:
             # format filename
-            filename = format_filename(fits_file[0].header, target, filename=filename, environment=self.environment)
+            filename = format_filename(fits_file[0].header, target, observer=self.observer)
             print("formated %s to %s" % (target, filename))
 
             # open and write output file

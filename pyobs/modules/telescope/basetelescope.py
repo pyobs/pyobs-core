@@ -8,7 +8,7 @@ from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
-
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
-        alt_az = self.environment.to_altaz(ra_dec)
+        alt_az = self.observer.altaz(Time.now(), ra_dec)
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:

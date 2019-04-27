@@ -94,7 +94,8 @@ class ImageDB(PyObsModule, IImageDB):
                 # get night of observation
                 if 'DATE-OBS' not in hdu.header:
                     raise ValueError('Could not fetch DATE-OBS, skipping...')
-                night_obs = self.environment.night_obs(Time(hdu.header['DATE-OBS']))
+                date_obs = Time(hdu.header['DATE-OBS'])
+                night_obs = date_obs.night_obs(self.observer)
 
                 # get task name
                 if 'TASK' not in hdu.header:
@@ -118,17 +119,17 @@ class ImageDB(PyObsModule, IImageDB):
 
             # create new filename?
             if self._pattern:
-                archive_filename = format_filename(hdu.header, self._pattern, self.environment, filename=filename)
+                archive_filename = format_filename(hdu.header, self._pattern, self.observer)
             else:
                 archive_filename = filename
 
             # create new image from FITS file
-            image = Image.add_from_fits(session, filename, self.environment)
+            image = Image.add_from_fits(filename, hdu.header, self.observer)
 
             # add to db
             log.info('Storing new image in database...')
             session.add(image)
-            observation.add_image(session, image, self.environment)
+            observation.add_image(session, image, self.observer)
 
             # set new filename root
             archive_filename = os.path.join(self._vfs_root, archive_filename)

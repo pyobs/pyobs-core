@@ -91,7 +91,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # alt/az coordinates to ra/dec
         coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
-                          location=self.environment.location, frame='altaz')
+                          location=self.location, frame='altaz')
         icrs = coords.icrs
 
         # track
@@ -241,8 +241,8 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        coords = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
-        alt_az = self.environment.to_altaz(coords)
+        ra_dec = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
+        alt_az = self.observer.altaz(Time.now(), ra_dec)
         return alt_az.alt.degree, alt_az.az.degree
 
     def get_fits_headers(self, *args, **kwargs) -> dict:

@@ -6,19 +6,19 @@ from .task import Task
 class TaskFactoryBase:
     """Base class for all task factories."""
 
-    def __init__(self, comm: 'Comm' = None, environment: 'Environment' = None, vfs: 'VirtualFileSystem' = None,
+    def __init__(self, comm: 'Comm' = None, observer: 'Observer' = None, vfs: 'VirtualFileSystem' = None,
                  *args, **kwargs):
         """Initialize a new TaskFactoryBase
 
         Args:
             comm: Comm object to use.
-            environment: Environment.
+            observer: Observer.
             vfs: Virtual File System
         """
 
         # store it
         self.comm = comm
-        self.environment = environment
+        self.observer = observer
         self.vfs = vfs
 
     def update_tasks(self):
@@ -60,7 +60,7 @@ class TaskFactoryBase:
         """
 
         # create and return task
-        return klass(*args, comm=self.comm, environment=self.environment, vfs=self.vfs, **kwargs)
+        return klass(*args, comm=self.comm, observer=self.observer, vfs=self.vfs, **kwargs)
 
 
 class TaskFactory(TaskFactoryBase):
@@ -73,7 +73,7 @@ class TaskFactory(TaskFactoryBase):
             # loop all factories
             for name, config in factories.items():
                 # create factory
-                self._factories[name] = get_object(config, comm=self.comm, environment=self.environment, vfs=self.vfs)
+                self._factories[name] = get_object(config, comm=self.comm, observer=self.observer, vfs=self.vfs)
 
     def list(self) -> list:
         """List all tasks from this factory.

@@ -2,9 +2,11 @@ import logging
 from enum import Enum
 from typing import Union
 
+from astroplan import Observer
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, Session
 
+from pyobs.utils.time import Time
 from .base import Base
 from .night import Night
 from .table import GetByNameMixin
@@ -29,13 +31,13 @@ class Observation(Base, GetByNameMixin):
     def __init__(self, name: str):
         self.name = name
 
-    def add_image(self, session: Session, image: 'Image', environment: 'Environment'):
+    def add_image(self, session: Session, image: 'Image', observer: Observer):
         """Add a new image to this observation.
 
         Args:
             session: SQLalchemy session to use.
             image: Image to add.
-            environment: Environment to use.
+            observer: Observer to use.
         """
 
         # set observation
@@ -44,10 +46,10 @@ class Observation(Base, GetByNameMixin):
         # update observation start time
         if not self.start_time or image.date_obs < self.start_time:
             # set start time
-            self.start_time = image.date_obs
+            self.start_time = Time(image.date_obs)
 
             # get beginning of night
-            night_obs = environment.night_obs(self.start_time)
+            night_obs = self.start_time.night_obs(observer)
 
             # get night
             night = session.query(Night).filter(Night.night == night_obs).first()

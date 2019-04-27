@@ -1,5 +1,8 @@
-from datetime import datetime
+import datetime
+
 import astropy.time
+import pytz
+from astroplan import Observer
 
 
 class Time(astropy.time.Time):
@@ -33,8 +36,30 @@ class Time(astropy.time.Time):
             such a subclass) at the current time.
         """
         # call `utcnow` immediately to be sure it's ASAP
-        dtnow = datetime.utcnow()
+        dtnow = datetime.datetime.utcnow()
         return cls(val=dtnow, format='datetime', scale='utc') + cls._now_offset
+
+    def night_obs(self, observer: Observer) -> datetime.date:
+        """Returns the night for this time, i.e. the date of the start of the current night.
+
+        Args:
+            observer: Observer object to use.
+
+        Returns:
+            Night for this time.
+        """
+
+        # convert to datetime
+        time = self.datetime
+
+        # get local datetime
+        utc_dt = pytz.utc.localize(time)
+        loc_dt = utc_dt.astimezone(observer.timezone)
+
+        # get night
+        if loc_dt.hour < 15:
+            loc_dt += datetime.timedelta(days=-1)
+        return loc_dt.date()
 
 
 __all__ = ['Time']

@@ -9,22 +9,6 @@ class ITelescope(IMotion):
         (none)
     """
 
-    def init(self, *args, **kwargs):
-        """Initialize telescope.
-
-        Raises:
-            ValueError: If telescope could not be initialized.
-        """
-        raise NotImplementedError
-
-    def park(self, *args, **kwargs):
-        """Park telescope.
-
-        Raises:
-            ValueError: If telescope could not be parked.
-        """
-        raise NotImplementedError
-
     def track(self, ra: float, dec: float, *args, **kwargs):
         """Starts tracking on given coordinates.
 
@@ -82,17 +66,6 @@ class ITelescope(IMotion):
 
         Returns:
             Tuple of current Alt and Az in degrees.
-        """
-        raise NotImplementedError
-
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
         """
         raise NotImplementedError
 

@@ -8,22 +8,6 @@ class IFocuser(IMotion):
         (none)
     """
 
-    def init(self, *args, **kwargs):
-        """Initialize device.
-
-        Raises:
-            ValueError: If device could not be initialized.
-        """
-        raise NotImplementedError
-
-    def park(self, *args, **kwargs):
-        """Park device.
-
-        Raises:
-            ValueError: If device could not be parked.
-        """
-        raise NotImplementedError
-
     def set_focus(self, focus: float, *args, **kwargs):
         """Sets new focus.
 
@@ -40,17 +24,6 @@ class IFocuser(IMotion):
 
         Returns:
             Current focus.
-        """
-        raise NotImplementedError
-
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
         """
         raise NotImplementedError
 

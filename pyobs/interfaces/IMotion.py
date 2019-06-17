@@ -36,6 +36,22 @@ class IMotion(Interface):
         TRACKING = 'tracking'
         UNKNOWN = 'unknown'
 
+    def init(self, *args, **kwargs):
+        """Initialize device.
+
+        Raises:
+            ValueError: If device could not be initialized.
+        """
+        raise NotImplementedError
+
+    def park(self, *args, **kwargs):
+        """Park device.
+
+        Raises:
+            ValueError: If device could not be parked.
+        """
+        raise NotImplementedError
+
     def get_motion_status(self, device: str = None) -> Status:
         """Returns current motion status.
 

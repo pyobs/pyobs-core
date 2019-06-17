@@ -34,7 +34,10 @@ def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Sig
         annotation = signature.parameters[key].annotation
 
         # special cases
-        if issubclass(annotation, Enum):
+        if value is None:
+            # keep None
+            bound_arguments.arguments[key] = value
+        elif issubclass(annotation, Enum):
             # cast to enum
             bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
         elif isinstance(value, str):

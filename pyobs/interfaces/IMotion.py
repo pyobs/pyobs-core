@@ -52,7 +52,7 @@ class IMotion(Interface):
         """
         raise NotImplementedError
 
-    def get_motion_status(self, device: str = None) -> Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> Status:
         """Returns current motion status.
 
         Args:
@@ -63,7 +63,7 @@ class IMotion(Interface):
         """
         raise NotImplementedError
 
-    def stop_motion(self, device: str = None):
+    def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.
 
         Args:

@@ -15,6 +15,7 @@ from .IFocuser import IFocuser
 from .IImageDB import IImageDB
 from .IMotion import IMotion
 from .IRoof import IRoof
+from .IRotation import IRotation
 from .IScriptRunner import IScriptRunner
 from .IStoppable import IStoppable
 from .ITaskDB import ITaskDB

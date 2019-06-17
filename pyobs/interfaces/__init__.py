@@ -1,6 +1,7 @@
 from .IAbortable import IAbortable
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
+from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .ICameraBinning import ICameraBinning
 from .ICameraWindow import ICameraWindow

@@ -2,6 +2,22 @@ from .IMotion import IMotion
 
 
 class IRotation(IMotion):
+    def init(self, *args, **kwargs):
+        """Initialize device.
+
+        Raises:
+            ValueError: If device could not be initialized.
+        """
+        raise NotImplementedError
+
+    def park(self, *args, **kwargs):
+        """Park device.
+
+        Raises:
+            ValueError: If device could not be parked.
+        """
+        raise NotImplementedError
+
     def set_rotation(self, angle, *args, **kwargs):
         """ Sets the rotation angle to the given value in degrees. """
         raise NotImplementedError

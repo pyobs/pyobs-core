@@ -1,4 +1,4 @@
-from pyobs.object import get_object
+from pyobs.object import get_object, get_class_from_string
 
 from .task import Task
 
@@ -51,13 +51,17 @@ class TaskFactoryBase:
         """Creates a new task.
 
         Args:
-            klass: Class of new task.
+            klass: Class (itself or its name) of new task.
             *args: Parameters for new task.
             **kwargs: Parameters for new task.
 
         Returns:
             The new task.
         """
+
+        # is class name given?
+        if isinstance(klass, str):
+            klass = get_class_from_string(klass)
 
         # create and return task
         return klass(*args, comm=self.comm, observer=self.observer, vfs=self.vfs, **kwargs)

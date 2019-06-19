@@ -264,5 +264,13 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         # finished
         return hdr
 
+    def stop_motion(self, device: str = None, *args, **kwargs):
+        """Stop the motion.
+
+        Args:
+            device: Name of device to stop, or None for all.
+        """
+        pass
+
 
 __all__ = ['DummyTelescope']

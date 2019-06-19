@@ -85,3 +85,7 @@ class Future(object):
         Returns async timeout.
         """
         return self._timeout
+
+    @staticmethod
+    def wait_all(futures: list):
+        return [fut.wait() for fut in futures]

@@ -222,17 +222,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             else:
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
 
-    def _fetch_fits_headers(self, client: IFitsHeaderProvider) -> dict:
-        """Fetch FITS headers from a given IFitsHeaderProvider.
-
-        Args:
-            client: A IFitsHeaderProvider to fetch headers from.
-
-        Returns:
-            New FITS header keywords.
-        """
-        return self.comm.execute(client, 'get_fits_headers')
-
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
@@ -268,12 +257,11 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             clients = self.comm.clients_with_interface(IFitsHeaderProvider)
 
             # create and run a threads in which the fits headers are fetched
-            fits_header_threads = {}
+            fits_header_futures = {}
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                thread = ThreadWithReturnValue(target=self._fetch_fits_headers, args=(client,), name='headers_' + client)
-                thread.start()
-                fits_header_threads[client] = thread
+                future = self.comm.execute(client, 'get_fits_headers')
+                fits_header_futures[client] = future
 
         # open the shutter?
         open_shutter = image_type in [ICamera.ImageType.OBJECT, ICamera.ImageType.FLAT]
@@ -294,14 +282,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             hdu.header[key] = tuple(value)
 
         # get fits headers from other clients
-        for client, thread in fits_header_threads.items():
+        for client, future in fits_header_futures.items():
             # join thread
             log.info('Fetching FITS headers from %s...', client)
-            headers = thread.join(10)
-
-            # still alive?
-            if thread.is_alive():
-                log.error('Could not receive fits headers from %s.' % client)
+            headers = future.wait()
 
             # add them to fits file
             if headers:

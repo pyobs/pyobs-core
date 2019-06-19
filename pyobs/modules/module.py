@@ -392,8 +392,8 @@ class PyObsModule:
 
             # finished
             return cast_response_to_simple(response)
-        except:
-            log.exception('Error on remote procedure call.')
+        except Exception as e:
+            log.exception('Error on remote procedure call: %s' % str(e))
 
 
 __all__ = ['PyObsModule', 'timeout']

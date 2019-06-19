@@ -2,6 +2,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.interfaces import ITelescope, IFocuser, ICamera
+from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from .task import StateMachineTask
 
@@ -44,11 +45,14 @@ class SimpleStateMachineTask(StateMachineTask):
         self._camera = self.comm[self._camera_name]         # type: ICamera
 
         # move telescope
-        self._telescope.track(self._coords.ra.degree, self._coords.dec.degree)
+        future_track = self._telescope.track(self._coords.ra.degree, self._coords.dec.degree)
 
         # get filter from first step and set it
         self._cur_step = 0
-        self._telescope.set_filter(self._steps[self._cur_step]['filter'])
+        future_filter = self._telescope.set_filter(self._steps[self._cur_step]['filter'])
+
+        # wait for both
+        Future.wait_all([future_track, future_filter])
 
     def __call__(self):
         """Do a step in the task."""
@@ -57,10 +61,11 @@ class SimpleStateMachineTask(StateMachineTask):
         step = self._steps[self._cur_step]
 
         # set filter
-        self._telescope.set_filter(step['filter'])
+        self._telescope.set_filter(step['filter']).wait()
 
         # do exposures
-        self._camera.expose(exposure_time=step['exptime'], image_type=ICamera.ImageType.OBJECT, count=step['count'])
+        self._camera.expose(exposure_time=step['exptime'], image_type=ICamera.ImageType.OBJECT,
+                            count=step['count']).wait()
 
         # go to next step
         self._cur_step += 1
@@ -71,7 +76,7 @@ class SimpleStateMachineTask(StateMachineTask):
         """Final steps for a task."""
 
         # stop telescope
-        self._telescope.stop_motion()
+        self._telescope.stop_motion().wait()
 
         # release proxies
         self._telescope = None

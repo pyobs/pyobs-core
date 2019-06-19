@@ -1,0 +1,67 @@
+import logging
+from typing import Union
+
+import numpy as np
+from astropy.io import fits
+from lmfit.models import GaussianModel
+from scipy import optimize, ndimage
+
+from pyobs.comm import RemoteException
+from pyobs.interfaces import IFocuser, ICamera
+from pyobs import PyObsModule, get_object
+from pyobs.modules import timeout
+from pyobs.tasks import TaskFactory
+from pyobs.utils.time import Time
+
+log = logging.getLogger(__name__)
+
+
+class StateMachineMastermind(PyObsModule):
+    """Mastermind that acts as a state machine."""
+
+    def __init__(self, tasks: dict, *args, **kwargs):
+        """Initialize a new auto focus system."""
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # storage for data
+        print(self.comm)
+        self._task_factory: TaskFactory = get_object(tasks, comm=self.comm)
+        print("ok")
+
+    def run(self):
+        self.closing.wait(5)
+
+        print("run")
+        while not self.closing.is_set():
+            # current task
+            cur_task = None
+
+            # find task that we want to run now
+            for name in self._task_factory.list():
+                task = self._task_factory.get(name)
+                if Time.now() in task:
+                    log.info('Task found: %s.', name)
+                    cur_task = task
+                    print(task._telescope_name)
+                    break
+            else:
+                # no task found
+                log.info('No task found.')
+                self.closing.wait(10)
+                continue
+
+            # init task
+            log.info('Initializing task...')
+            cur_task.start()
+
+            # steps
+            while Time.now() in cur_task:
+                log.info('Performing task step...')
+                cur_task()
+
+            # finish
+            log.info('Shutting down task...')
+            cur_task.stop()
+
+
+__all__ = ['StateMachineMastermind']

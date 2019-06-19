@@ -97,11 +97,10 @@ class Proxy:
         # cast to simple types
         cast_bound_arguments_to_simple(ba)
 
-        # do request
-        response = self._comm.execute(self._client, method, *ba.args[1:])
-
-        # cast response to real types
-        return cast_response_to_real(response, signature)
+        # do request and return future
+        future = self._comm.execute(self._client, method, *ba.args[1:])
+        future.set_signature(signature)
+        return future
 
     def _create_methods(self):
         """Create local methods for the remote client."""

@@ -1,3 +1,4 @@
+from typing import Union
 from pyobs.utils.time import Time
 from ...task import Task
 
@@ -15,8 +16,22 @@ class StateMachineTask(Task):
         Task.__init__(self, *args, **kwargs)
 
         # store start end end time
-        self._start = Time(start) if isinstance(start, str) else start
-        self._end = Time(end) if isinstance(end, str) else end
+        self._start = self._parse_time(start)
+        self._end = self._parse_time(end)
+
+    def _parse_time(self, t: Union[Time, str]):
+        """Parse a given time."""
+
+        # if it's a Time already, just return it
+        if isinstance(t, Time):
+            return t
+
+        # if it contains a whitespace or a "T", we assume that it contains a date
+        if ' ' in t or 'T' in t:
+            return Time(t)
+
+        # otherwise, add current date
+        return Time(Time.now().iso[:10] + ' ' + t)
 
     def __contains__(self, time: Time):
         """Whether the given time is in the interval of this task."""

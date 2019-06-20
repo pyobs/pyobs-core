@@ -24,14 +24,11 @@ class StateMachineMastermind(PyObsModule):
         PyObsModule.__init__(self, *args, **kwargs)
 
         # storage for data
-        print(self.comm)
         self._task_factory: TaskFactory = get_object(tasks, comm=self.comm)
-        print("ok")
 
     def run(self):
         self.closing.wait(5)
 
-        print("run")
         while not self.closing.is_set():
             # current task
             cur_task = None

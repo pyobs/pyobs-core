@@ -317,7 +317,7 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
 
         # move offset
         log.info('Moving telescope...')
-        telescope.offset(dalt, daz)
+        telescope.offset(dalt, daz).wait()
         log.info('Finished image.')
 
     def start(self, *args, **kwargs) -> bool:

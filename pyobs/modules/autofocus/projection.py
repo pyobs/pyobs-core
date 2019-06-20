@@ -65,17 +65,17 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser = self.proxy(self._focuser, IFocuser)   # type: IFocuser
+        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera = self.proxy(self._camera, ICamera)      # type: ICamera
+        camera: ICamera = self.proxy(self._camera, ICamera)
 
         # no guess given?
         if guess is None:
             # get focus
             try:
-                guess = focuser.get_focus()
+                guess = focuser.get_focus().wait()
             except RemoteException:
                 raise ValueError('Could not fetch current focus value.')
 
@@ -94,7 +94,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             log.info('Changing focus to %.2fmm...', foc)
             self.check_running()
             try:
-                focuser.set_focus(float(foc))
+                focuser.set_focus(float(foc)).wait()
             except RemoteException:
                 raise ValueError('Could not set new focus value.')
 
@@ -104,7 +104,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             try:
                 image_type = ICamera.ImageType.OBJECT.value
                 filename = camera.expose(exposure_time=exposure_time, image_type=image_type,
-                                         count=1, broadcast=False)[0]
+                                         count=1, broadcast=False).wait()[0]
             except RemoteException:
                 log.error('Could not take image.')
 

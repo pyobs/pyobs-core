@@ -45,10 +45,6 @@ class SimpleStateMachineTask(StateMachineTask):
         self._filters_name = filters
         self._filters = None
 
-    def __contains__(self, time: Time):
-        """Whether the given time is in the interval of this task."""
-        return self._start <= time < self._end
-
     def start(self):
         """Initial steps for a task."""
 

@@ -1,19 +1,19 @@
 class Task:
     """Base class for all tasks in the system."""
 
-    def __init__(self, comm: 'Comm' = None, environment: 'Environment' = None, vfs: 'VirtualFileSystem' = None,
+    def __init__(self, comm: 'Comm' = None, observer: 'Observer' = None, vfs: 'VirtualFileSystem' = None,
                  *args, **kwargs):
         """Initializes a new Task.
 
         Args:
             comm: Comm object for communicating with other modules.
-            environment: The environment to use
+            observer: The observer to use
             vfs: Virtual File System to use.
         """
 
         # store variables
         self._comm = comm
-        self._environment = environment
+        self._observer = observer
         self._vfs = vfs
 
     @property
@@ -22,9 +22,9 @@ class Task:
         return self._comm
 
     @property
-    def environment(self):
-        """Return the environment."""
-        return self._environment
+    def observer(self):
+        """Return the observer."""
+        return self._observer
 
     @property
     def vfs(self):

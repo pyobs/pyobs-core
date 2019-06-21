@@ -119,7 +119,7 @@ class NewImageWatcher(PyObsModule):
 
                 # send image to imagedb
                 log.info('Sending file to image database...')
-                archive_filename = imagedb.add_image(filename)
+                archive_filename = imagedb.add_image(filename).wait()
 
                 # check result
                 if archive_filename is not None:
@@ -176,7 +176,6 @@ class NewImageWatcher(PyObsModule):
         for target in self._copy_to:
             # format filename
             filename = format_filename(fits_file[0].header, target, observer=self.observer)
-            print("formated %s to %s" % (target, filename))
 
             # open and write output file
             log.info('Copying file to %s...', filename)
@@ -185,7 +184,7 @@ class NewImageWatcher(PyObsModule):
                     fits_file.writeto(out)
                 log.info('Copied successfully.')
             except:
-                log.error('Error while copying file.')
+                log.exception('Error while copying file.')
                 return False
 
         # success

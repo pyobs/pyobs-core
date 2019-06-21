@@ -61,7 +61,7 @@ class EventFactory(object):
         obj = cls()
         obj.data = obj_dict['data']
         obj.uuid = obj_dict['uuid']
-        obj.timestamp = obj_dict['timestamp']
+        obj.timestamp = obj_dict['timestamp'] if 'timestamp' in obj_dict else 0
         return obj
 
 

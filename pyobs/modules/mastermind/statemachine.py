@@ -25,6 +25,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
         self._task_factory: TaskFactory = get_object(tasks, comm=self.comm, observer=self.observer, vfs=self.vfs)
 
         # observation name and exposure number
+        self._task = None
         self._obs = None
         self._exp = None
 
@@ -43,6 +44,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
                 if Time.now() in task:
                     log.info('Task found: %s.', name)
                     cur_task = task
+                    self._task = name
                     break
             else:
                 # no task found
@@ -54,10 +56,10 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             self._exp = 0
 
             # send event
-            self.comm.send_event(TaskStartedEvent(name, self._obs))
+            self.comm.send_event(TaskStartedEvent(self._task, self._obs))
 
             # init task
-            log.info('Initializing task %s for observation %s...', name, self._obs)
+            log.info('Initializing task %s for observation %s...', self._task, self._obs)
             cur_task.start()
 
             # steps
@@ -76,7 +78,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             self._exp = None
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(name, self._obs))
+            self.comm.send_event(TaskFinishedEvent(self._task, self._obs))
 
     def _create_obs_name(self):
         """Create a new unique observation name."""
@@ -121,10 +123,11 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
         """
 
         # inside an observation?
-        if self._obs is not None and self._exp is not None:
+        if self._obs is not None and self._exp is not None and self._task is not None:
             return {
                 'OBS': (self._obs, 'Name of observation'),
-                'EXP': (self._exp, 'Number of exposure within observation')
+                'EXP': (self._exp, 'Number of exposure within observation'),
+                'TASK': (self._task, 'Name of task')
             }
         else:
             return {}

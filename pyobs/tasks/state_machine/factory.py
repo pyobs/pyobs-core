@@ -1,9 +1,10 @@
 import logging
 import yaml
+from astropy.time import TimeDelta
+import astropy.units as u
 
-from pyobs import get_object
 from pyobs.tasks import TaskFactoryBase, Task
-
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -18,9 +19,10 @@ class StateMachineTaskFactory(TaskFactoryBase):
         # store
         self._tasks = {}
         self._filename = filename
+        self._last_update = None
 
         # get list of tasks
-        self.update_tasks()
+        self._check_update()
 
     def update_tasks(self):
         """Update list of tasks."""
@@ -32,12 +34,26 @@ class StateMachineTaskFactory(TaskFactoryBase):
             self._tasks = {k: self.create_task(v['class'], **v) for k, v in tasks.items()}
             log.info('Found %d tasks.', len(self._tasks))
 
+    def _check_update(self):
+        """Regularly update task list."""
+
+        # update necessary?
+        if self._last_update is None or (Time.now() - self._last_update) > TimeDelta(1. * u.hour):
+            # do update
+            self.update_tasks()
+
+            # set time
+            self._last_update = Time.now()
+
     def list(self) -> list:
         """List all tasks from this factory.
 
         Returns:
             List of all tasks.
         """
+
+        # need to update tasks?
+        self._check_update()
 
         # return all task names
         return sorted(self._tasks.keys())
@@ -54,6 +70,9 @@ class StateMachineTaskFactory(TaskFactoryBase):
         Raises:
             ValueError: If task with given name does not exist.
         """
+
+        # need to update tasks?
+        self._check_update()
 
         # does it exist?
         if name not in self._tasks:

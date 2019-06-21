@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 from queue import Queue
+from typing import Union
 
 from pyobs import PyObsModule
 from pyobs.events import NewImageEvent
@@ -13,7 +14,7 @@ log = logging.getLogger(__name__)
 class NewImageWriter(PyObsModule):
     """Writes new images to disk."""
 
-    def __init__(self, new_images_channel: str = 'new_images', root: str = None, filenames: str = None,
+    def __init__(self, new_images_channel: str = 'new_images', root: str = None, filenames: Union[str, list] = None,
                  *args, **kwargs):
         """Creates a new image writer.
 

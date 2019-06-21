@@ -1,6 +1,7 @@
 import io
 import logging
 import re
+from typing import Union
 
 import PIL
 import aplpy
@@ -78,11 +79,11 @@ class FilenameFormatter:
             'string': self._format_string
         }
 
-    def __call__(self, fmt: str) -> str:
+    def __call__(self, fmt: Union[str, list]) -> str:
         """Formats a filename given a format template and a FITS header.
 
         Args:
-            fmt: Filename format.
+            fmt: Filename format or list of formats. If list is given, first valid one is used.
 
         Returns:
             Formatted filename.
@@ -91,21 +92,37 @@ class FilenameFormatter:
             KeyError: If either keyword could not be found in header or method could not be found.
         """
 
-        # find all placeholders in format
-        placeholders = re.findall('\{[\w\d_-]+(?:\|[\w\d_-]+(?:\:[\w\d_-]+)*)?\}', fmt)
-        if len(placeholders) == 0:
-            return fmt
+        # make fmt a list
+        if fmt is None:
+            return
+        if not isinstance(fmt, list):
+            fmt = [fmt]
 
-        # create output
-        output = fmt
+        # loop formats
+        for f in fmt:
+            try:
+                # find all placeholders in format
+                placeholders = re.findall('\{[\w\d_-]+(?:\|[\w\d_-]+(?:\:[\w\d_-]+)*)?\}', f)
+                if len(placeholders) == 0:
+                    return f
 
-        # loop all placeholders
-        for ph in placeholders:
-            # call method and replace
-            output = output.replace(ph, self._format_placeholder(ph))
+                # create output
+                output = f
 
-        # finished
-        return output
+                # loop all placeholders
+                for ph in placeholders:
+                    # call method and replace
+                    output = output.replace(ph, self._format_placeholder(ph))
+
+                # finished
+                return output
+
+            except KeyError:
+                # this format didn't work
+                pass
+
+        # still here?
+        raise KeyError('No valid format found.')
 
     def _format_placeholder(self, placeholder: str) -> str:
         """Format a given placeholder.
@@ -217,12 +234,12 @@ class FilenameFormatter:
         return fmt % self.header[key]
 
 
-def format_filename(hdr: Header, fmt: str, observer: Observer = None) -> str:
+def format_filename(hdr: Header, fmt: Union[str, list], observer: Observer = None) -> str:
     """Formats a filename given a format template and a FITS header.
 
     Args:
         hdr: FITS header to take values from.
-        fmt: Filename format.
+        fmt: Filename format or list of formats. If multiple formats are given, the first valid one is used.
         observer: An observer used astronomical calculations.
 
     Returns:

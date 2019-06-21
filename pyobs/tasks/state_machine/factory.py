@@ -32,7 +32,7 @@ class StateMachineTaskFactory(TaskFactoryBase):
 
             # create tasks
             self._tasks = {k: self.create_task(v['class'], **v) for k, v in tasks.items()}
-            log.info('Found %d tasks.', len(self._tasks))
+            log.info('Found %d task(s).', len(self._tasks))
 
     def _check_update(self):
         """Regularly update task list."""

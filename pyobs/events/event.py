@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 
 
@@ -7,14 +8,16 @@ class Event(object):
 
     def __init__(self):
         self.uuid = str(uuid.uuid4())
+        self.timestamp = time.time()
         self.data = None
 
     def to_json(self):
         """JSON representation of event."""
         return {
             'type': self.__class__.__name__,
-            'data': self.data,
-            'uuid': self.uuid
+            'timestamp': self.timestamp,
+            'uuid': self.uuid,
+            'data': self.data
         }
 
     def __str__(self):
@@ -26,7 +29,7 @@ class EventFactory(object):
     packages = [__package__]
 
     @staticmethod
-    def from_dict(obj_dict: dict):
+    def from_dict(obj_dict: dict) -> Event:
         """Create Event from a dictionary.
         
         Args:
@@ -58,6 +61,7 @@ class EventFactory(object):
         obj = cls()
         obj.data = obj_dict['data']
         obj.uuid = obj_dict['uuid']
+        obj.timestamp = obj_dict['timestamp']
         return obj
 
 

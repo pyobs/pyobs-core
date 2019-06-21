@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import threading
+import time
 from typing import Any
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
@@ -369,8 +370,14 @@ class XmppComm(Comm):
         if msg['from'] == self._xmpp.boundjid.bare:
             return
 
-        # create event and send it to module
+        # create event and check timestamp
         event = EventFactory.from_dict(body)
+        if time.time() - event.timestamp > 30:
+            # event is more than 30 seconds old, ignore it
+            # we do this do avoid resent events after a reconnect
+            return
+
+        # send it to module
         self._send_event_to_module(event, msg['from'].username)
 
     def _send_event_to_module(self, event: Event, from_client: str):

@@ -24,12 +24,13 @@ class StateMachineTaskFactory(TaskFactoryBase):
 
     def update_tasks(self):
         """Update list of tasks."""
-        with open(self._filename, 'r') as f:
+        with self.vfs.open_file(self._filename, 'r') as f:
             # load yaml
             tasks = yaml.load(f, Loader=yaml.FullLoader)
 
             # create tasks
             self._tasks = {k: self.create_task(v['class'], **v) for k, v in tasks.items()}
+            log.info('Found %d tasks.', len(self._tasks))
 
     def list(self) -> list:
         """List all tasks from this factory.

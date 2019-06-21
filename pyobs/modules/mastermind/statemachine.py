@@ -1,15 +1,6 @@
 import logging
-from typing import Union
 
-import numpy as np
-from astropy.io import fits
-from lmfit.models import GaussianModel
-from scipy import optimize, ndimage
-
-from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera
 from pyobs import PyObsModule, get_object
-from pyobs.modules import timeout
 from pyobs.tasks import TaskFactory
 from pyobs.utils.time import Time
 
@@ -45,7 +36,6 @@ class StateMachineMastermind(PyObsModule):
                     break
             else:
                 # no task found
-                log.info('No task found.')
                 self.closing.wait(10)
                 continue
 

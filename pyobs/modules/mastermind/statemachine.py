@@ -32,7 +32,6 @@ class StateMachineMastermind(PyObsModule):
                 if Time.now() in task:
                     log.info('Task found: %s.', name)
                     cur_task = task
-                    print(task._telescope_name)
                     break
             else:
                 # no task found

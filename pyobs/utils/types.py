@@ -64,9 +64,9 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
 
     # tuple or single value?
     if type(annotation) == tuple:
-        return tuple([annot(res) for res, annot in zip(response, annotation)])
+        return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
     else:
-        return response if annotation == Parameter.empty else annotation(response)
+        return response if annotation == Parameter.empty or response is None else annotation(response)
 
 
 def cast_response_to_simple(response: Any) -> Any:

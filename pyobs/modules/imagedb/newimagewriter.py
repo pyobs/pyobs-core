@@ -14,13 +14,12 @@ log = logging.getLogger(__name__)
 class NewImageWriter(PyObsModule):
     """Writes new images to disk."""
 
-    def __init__(self, new_images_channel: str = 'new_images', root: str = None, filenames: Union[str, list] = None,
+    def __init__(self, new_images_channel: str = 'new_images', filenames: Union[str, list] = None,
                  *args, **kwargs):
         """Creates a new image writer.
 
         Args:
             new_images_channel: Name of new images channel.
-            root: VFS root to write files to.
             filenames: If not None, create new filename from this pattern.
         """
         PyObsModule.__init__(self, thread_funcs=self._worker, *args, **kwargs)
@@ -28,7 +27,6 @@ class NewImageWriter(PyObsModule):
         # variables
         self._new_images_channel = new_images_channel
         self._filenames = filenames
-        self._root = root
         self._queue = Queue()
 
     def open(self):
@@ -80,9 +78,6 @@ class NewImageWriter(PyObsModule):
                 except KeyError as e:
                     log.error('Could not format filename: %s', e)
                     continue
-
-            # add path to output filename
-            output = os.path.join(self._root, os.path.basename(output))
 
             try:
                 # open output

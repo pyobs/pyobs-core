@@ -30,7 +30,7 @@ class NewImageWatcher(PyObsModule):
         self._watchpath = watchpath
         self._imagedb = get_object(imagedb)
         self._copy_to = [] if copy is None else copy
-        self._observer = None
+        self._notifier = None
         self._queue = Queue()
 
         # make a list of copy targets
@@ -46,17 +46,17 @@ class NewImageWatcher(PyObsModule):
             log.info('Start watching directory %s for changes...', self._watchpath)
             wm = pyinotify.WatchManager()
             wm.add_watch(self._watchpath, pyinotify.IN_CLOSE_WRITE)
-            self._observer = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
-            self._observer.start()
+            self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
+            self._notifier.start()
 
     def close(self):
         """Close image watcher."""
         PyObsModule.close(self)
 
         # stop watching
-        if self._observer:
+        if self._notifier:
             log.info('Stop watching directory...')
-            self._observer.stop()
+            self._notifier.stop()
 
     def add_image(self, filename: str):
         """Add an image to the image database.

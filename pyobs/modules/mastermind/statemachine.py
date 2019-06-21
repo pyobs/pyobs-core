@@ -1,6 +1,8 @@
 import logging
 
 from pyobs import PyObsModule, get_object
+from pyobs.events.taskfinished import TaskFinishedEvent
+from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.tasks import TaskFactory
 from pyobs.utils.time import Time
 
@@ -38,6 +40,9 @@ class StateMachineMastermind(PyObsModule):
                 self.closing.wait(10)
                 continue
 
+            # send event
+            self.comm.send_event(TaskStartedEvent(name))
+
             # init task
             log.info('Initializing task...')
             cur_task.start()
@@ -50,6 +55,9 @@ class StateMachineMastermind(PyObsModule):
             # finish
             log.info('Shutting down task...')
             cur_task.stop()
+
+            # send event
+            self.comm.send_event(TaskFinishedEvent(name))
 
 
 __all__ = ['StateMachineMastermind']

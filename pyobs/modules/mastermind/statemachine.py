@@ -57,7 +57,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             self.comm.send_event(TaskStartedEvent(name, self._obs))
 
             # init task
-            log.info('Initializing task...')
+            log.info('Initializing task %s for observation %s...', name, self._obs)
             cur_task.start()
 
             # steps

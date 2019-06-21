@@ -97,14 +97,10 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
         night = Time.now().night_obs(self.observer).strftime('%Y%m%d')
 
         # same night or not?
-        print(obs['night'], night)
-        print(obs)
         if obs['night'] == night:
-            print("same night")
             # same night, so increase number
             obs['number'] += 1
         else:
-            print("new night")
             # new night, start fresh
             obs = {'night': night, 'number': 0}
 

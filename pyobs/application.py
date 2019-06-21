@@ -216,7 +216,7 @@ class Application:
                 proxy = comm[client]  # type: IConfigProvider
 
                 # get config and return it
-                return proxy.get_config(comm.name)
+                return proxy.get_config(comm.name).wait()
 
             except FileNotFoundError:
                 # seems that this config provider doesn't have a config for this client

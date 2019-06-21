@@ -1,7 +1,7 @@
 import inspect
 import logging
 import threading
-from typing import Union, Type, Any
+from typing import Union, Type, Any, Callable
 from py_expression_eval import Parser
 from astropy.coordinates import EarthLocation
 from astroplan import Observer
@@ -65,8 +65,8 @@ class PyObsModule:
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
                  timezone: str = 'utc', location: Union[str, dict] = None,
-                 database: str = None, plugins: list = None, thread_funcs: list = None, restart_threads: bool = True,
-                 *args, **kwargs):
+                 database: str = None, plugins: list = None, thread_funcs: [list, Callable] = None,
+                 restart_threads: bool = True, *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:

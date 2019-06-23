@@ -86,7 +86,6 @@ class FlatsTask(StateMachineTask):
         logging.info('Sun is currently located at alt=%.2f°, az=%.2f°', sun.alt.degree, sun.az.degree)
 
         # get sweet spot for flat-fielding
-        az = sun.az.degree + 180
         altaz = SkyCoord(alt=80 * u.deg, az=sun.az + 180 * u.degree, obstime=Time.now(),
                          location=self.observer.location, frame='altaz')
         logging.info('Sweet spot for flat fielding is at alt=80°, az=%.2f°', altaz.az.degree)

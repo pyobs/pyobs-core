@@ -114,11 +114,11 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
         # inside an observation?
         if self._task is not None:
-            return {
-                'OBS': (self._obs, 'Name of observation'),
-                'EXP': (self._exp, 'Number of exposure within observation'),
-                'TASK': (self._task.name, 'Name of task')
-            }
+            hdr = self._task.get_fits_headers()
+            hdr['OBS'] = self._obs, 'Name of observation'
+            hdr['TASK'] = self._task.name, 'Name of task'
+            print(hdr)
+            return hdr
         else:
             return {}
 

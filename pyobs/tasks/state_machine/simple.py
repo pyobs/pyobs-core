@@ -60,6 +60,9 @@ class SimpleStateMachineTask(StateMachineTask):
         self._camera: ICamera = self.comm[self._camera_name]
         self._filters: IFilters = self.comm[self._filters_name]
 
+        # reset exposures
+        self._exposure = 0
+
         # move telescope
         log.info('Moving telescope to %s...', self._coords.to_string('hmsdms'))
         future_track = self._telescope.track(self._coords.ra.degree, self._coords.dec.degree)
@@ -93,7 +96,14 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # do exposures
         log.info('Exposing %d %s image(s) for %.2fs each...', step['count'], img_type.value, step['exptime'])
-        self._camera.expose(exposure_time=step['exptime'] * 1000., image_type=img_type, count=count).wait()
+        for i in range(count):
+            # do exposure
+            self._camera.expose(exposure_time=step['exptime'] * 1000., image_type=img_type).wait()
+            self._exposure += 1
+
+            # check running
+            if closing_event.is_set():
+                break
 
         # go to next step
         self._cur_step += 1

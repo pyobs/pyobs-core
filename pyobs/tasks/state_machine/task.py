@@ -26,6 +26,9 @@ class StateMachineTask(Task):
         self._start = self._parse_time(start)
         self._end = self._parse_time(end)
 
+        # exposure number
+        self._exposure = 0
+
         # state
         self._state = StateMachineTask.State.INIT
 
@@ -96,7 +99,11 @@ class StateMachineTask(Task):
         Returns:
             Dictionary containing FITS headers.
         """
-        return {}
+
+        if self._exposure is not None:
+            return {'EXP': (self._exposure, 'Number of exposure within observation')}
+        else:
+            return {}
 
 
 __all__ = ['StateMachineTask']

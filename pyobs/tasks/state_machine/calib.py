@@ -51,6 +51,7 @@ class CalibTask(StateMachineTask):
 
         # set exposures
         self._exposures_left = self._count
+        self._exposures = 0
 
         # change state
         self._state = StateMachineTask.State.RUNNING
@@ -68,6 +69,7 @@ class CalibTask(StateMachineTask):
         # do exposure
         log.info('Exposing %s image(s) for %.2fs...', img_type.value, self._exptime)
         self._camera.expose(exposure_time=self._exptime * 1000., image_type=img_type).wait()
+        self._exposure += 1
 
         # decrease exposure count and finish, if necessary
         self._exposures_left -= 1

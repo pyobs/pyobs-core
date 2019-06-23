@@ -78,6 +78,9 @@ class FlatsTask(StateMachineTask):
         self._camera: ICamera = self.comm[self._camera_name]
         self._filters: IFilters = self.comm[self._filters_name]
 
+        # reset exposures
+        self._exposure = 0
+
         # calculate Alt/Az position of sun
         sun = self.observer.sun_altaz(Time.now())
         logging.info('Sun is currently located at alt=%.2f°, az=%.2f°', sun.alt.degree, sun.az.degree)
@@ -134,6 +137,7 @@ class FlatsTask(StateMachineTask):
         # do exposures
         log.info('Exposing flat field for %.2fs each...', self._exptime)
         filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT).wait()
+        self._exposure += 1
 
         # download image
         try:

@@ -17,13 +17,14 @@ log = logging.getLogger(__name__)
 class CalibTask(StateMachineTask):
     """A calibration task for the state machine."""
 
-    def __init__(self, binning: Tuple = (1, 1), exptime: float = 0, camera: str = None,
+    def __init__(self, binning: Tuple = (1, 1), exptime: float = 0, count: int = None, camera: str = None,
                  *args, **kwargs):
         """Initializes a new Task.
 
         Args:
             binning: Binning for calibration.
             exptime: Exposure time.
+            count: Number of images to take.
             camera: Name of ICamera module to use.
         """
         StateMachineTask.__init__(self, *args, **kwargs)
@@ -31,6 +32,8 @@ class CalibTask(StateMachineTask):
         # store
         self._binning = binning
         self._exptime = exptime
+        self._count = count
+        self._exposures_left = None
 
         # camera
         self._camera_name = camera
@@ -45,6 +48,9 @@ class CalibTask(StateMachineTask):
 
         # get camera
         self._camera: ICamera = self.comm[self._camera_name]
+
+        # set exposures
+        self._exposures_left = self._count
 
         # change state
         self._state = StateMachineTask.State.RUNNING
@@ -62,6 +68,11 @@ class CalibTask(StateMachineTask):
         # do exposure
         log.info('Exposing %s image(s) for %.2fs...', img_type.value, self._exptime)
         self._camera.expose(exposure_time=self._exptime * 1000., image_type=img_type).wait()
+
+        # decrease exposure count and finish, if necessary
+        self._exposures_left -= 1
+        if self._exposures_left == 0:
+            self._finish()
 
     def _finish(self):
         """Final steps for a task."""

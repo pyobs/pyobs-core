@@ -1,3 +1,5 @@
+import threading
+from enum import Enum
 from typing import Union
 from pyobs.utils.time import Time
 from pyobs.tasks.task import Task
@@ -6,7 +8,12 @@ from pyobs.tasks.task import Task
 class StateMachineTask(Task):
     """Base class for all tasks for the state machine."""
 
-    def __init__(self, start=None, end=None, *args, **kwargs):
+    class State(Enum):
+        INIT = 'init'
+        RUNNING = 'running'
+        FINISHED = 'finished'
+
+    def __init__(self, *args, start=None, end=None, **kwargs):
         """Initializes a new Task.
 
         Args:
@@ -18,6 +25,9 @@ class StateMachineTask(Task):
         # store start end end time
         self._start = self._parse_time(start)
         self._end = self._parse_time(end)
+
+        # state
+        self._state = StateMachineTask.State.INIT
 
     def _parse_time(self, t: Union[Time, str]):
         """Parse a given time."""
@@ -37,13 +47,56 @@ class StateMachineTask(Task):
         """Whether the given time is in the interval of this task."""
         return self._start <= time < self._end
 
-    def start(self):
-        """Initial steps for a task."""
+    def __call__(self, closing_event: threading.Event, *args, **kwargs):
+        """Run the task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
+
+        # which state?
+        if self._state == StateMachineTask.State.INIT:
+            # init task
+            self._init(closing_event)
+        elif self._state == StateMachineTask.State.RUNNING:
+            # do step
+            self._step(closing_event)
+        else:
+            # just sleep a little
+            closing_event.wait(10)
+
+    def _init(self, closing_event: threading.Event):
+        """Init task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
         pass
 
-    def stop(self):
+    def _step(self, closing_event: threading.Event):
+        """Single step for a task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
+        pass
+
+    def _finish(self):
         """Final steps for a task."""
         pass
+
+    def finish(self):
+        """Final steps for a task."""
+        if self._state != StateMachineTask.State.FINISHED:
+            self._finish()
+
+    def get_fits_headers(self) -> dict:
+        """Returns FITS header for the current status of the telescope.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+        return {}
 
 
 __all__ = ['StateMachineTask']

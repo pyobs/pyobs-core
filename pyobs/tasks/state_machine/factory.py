@@ -31,7 +31,7 @@ class StateMachineTaskFactory(TaskFactoryBase):
             tasks = yaml.load(f, Loader=yaml.FullLoader)
 
             # create tasks
-            self._tasks = {k: self.create_task(v['class'], **v) for k, v in tasks.items()}
+            self._tasks = {k: self.create_task(k, v['class'], **v) for k, v in tasks.items()}
             log.info('Found %d task(s).', len(self._tasks))
 
     def _check_update(self):

@@ -1,3 +1,5 @@
+import threading
+
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.io import fits
@@ -19,11 +21,6 @@ log = logging.getLogger(__name__)
 
 class FlatsTask(StateMachineTask):
     """Take flat fields in a given filter."""
-
-    class State(Enum):
-        WAIT = 'wait'
-        PROGRESS = 'progress'
-        FINISHED = 'finished'
 
     def __init__(self, filter: str = None, binning: Tuple = (1, 1), bias: float = None, function: str = None,
                  target_adu: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
@@ -58,7 +55,7 @@ class FlatsTask(StateMachineTask):
         self._function = parser.parse(function)
 
         # state machine
-        self._state = FlatsTask.State.WAIT
+        self._waiting = True
         self._exptime = None
 
         # telescope and camera
@@ -69,8 +66,12 @@ class FlatsTask(StateMachineTask):
         self._filters_name = filters
         self._filters = None
 
-    def start(self):
-        """Initial steps for a task."""
+    def _init(self, closing_event: threading.Event):
+        """Init task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # get telescope and camera
         self._telescope: ITelescope = self.comm[self._telescope_name]
@@ -99,19 +100,20 @@ class FlatsTask(StateMachineTask):
         # wait for both
         Future.wait_all([future_track, future_filter])
 
-    def __call__(self):
-        """Do a step in the task."""
+    def _step(self, closing_event: threading.Event):
+        """Single step for a task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # which state are we in?
-        if self._state == FlatsTask.State.WAIT:
+        if self._waiting:
             # wait until time for flat fields has come
             self._wait()
-        elif self._state == FlatsTask.State.PROGRESS:
+        else:
             # actually take flats
             self._progress()
-        else:
-            # we're finished, so just sleep a little
-            time.sleep(10)
 
     def _wait(self):
         # get solar elevation and evaluate function
@@ -122,7 +124,7 @@ class FlatsTask(StateMachineTask):
         if self._min_exptime <= exptime <= self._max_exptime:
             # yes, change state
             log.info('Starting to take flat-fields...')
-            self._state = FlatsTask.State.PROGRESS
+            self._waiting = False
             self._exptime = exptime
         else:
             # sleep a little
@@ -158,9 +160,11 @@ class FlatsTask(StateMachineTask):
         else:
             # we're finished
             log.info('Left exposure time range for taking flats.')
-            self._state = FlatsTask.State.FINISHED
 
-    def stop(self):
+            # finish
+            self._finish()
+
+    def _finish(self):
         """Final steps for a task."""
 
         # stop telescope
@@ -174,6 +178,9 @@ class FlatsTask(StateMachineTask):
 
         # finished
         log.info('Finished task.')
+
+        # change state
+        self._state = StateMachineTask.State.FINISHED
 
 
 __all__ = ['FlatsTask']

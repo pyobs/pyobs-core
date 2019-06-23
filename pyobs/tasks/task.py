@@ -1,42 +1,32 @@
+import threading
+
+
 class Task:
     """Base class for all tasks in the system."""
 
-    def __init__(self, comm: 'Comm' = None, observer: 'Observer' = None, vfs: 'VirtualFileSystem' = None,
-                 *args, **kwargs):
+    def __init__(self, name: str = None, comm: 'Comm' = None, observer: 'Observer' = None,
+                 vfs: 'VirtualFileSystem' = None, *args, **kwargs):
         """Initializes a new Task.
 
         Args:
+            name: Name of task.
             comm: Comm object for communicating with other modules.
             observer: The observer to use
             vfs: Virtual File System to use.
         """
 
         # store variables
-        self._comm = comm
-        self._observer = observer
-        self._vfs = vfs
+        self.name = name
+        self.comm = comm
+        self.observer = observer
+        self.vfs = vfs
 
-    @property
-    def comm(self):
-        """Return the Comm object."""
-        return self._comm
+    def __call__(self, closing_event: threading.Event):
+        """Run the task.
 
-    @property
-    def observer(self):
-        """Return the observer."""
-        return self._observer
-
-    @property
-    def vfs(self):
-        """Return the VFS."""
-        return self._vfs
-
-    def name(self):
-        """Return name of task."""
-        raise NotImplementedError
-
-    def __call__(self):
-        """Run the task."""
+        Args:
+            closing_event: Event to be set when task should close.
+        """
         raise NotImplementedError
 
 

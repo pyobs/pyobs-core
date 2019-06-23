@@ -1,3 +1,5 @@
+import threading
+
 from pyobs.object import get_object, get_class_from_string
 
 from .task import Task
@@ -7,19 +9,21 @@ class TaskFactoryBase:
     """Base class for all task factories."""
 
     def __init__(self, comm: 'Comm' = None, observer: 'Observer' = None, vfs: 'VirtualFileSystem' = None,
-                 *args, **kwargs):
+                 closing_event: threading.Event = None, *args, **kwargs):
         """Initialize a new TaskFactoryBase
 
         Args:
             comm: Comm object to use.
             observer: Observer.
             vfs: Virtual File System
+            closing_event: Event to be set when task should terminates.
         """
 
         # store it
         self.comm = comm
         self.observer = observer
         self.vfs = vfs
+        self.closing = closing_event
 
     def update_tasks(self):
         """Update list of tasks."""
@@ -47,10 +51,11 @@ class TaskFactoryBase:
         """
         raise NotImplementedError
 
-    def create_task(self, klass, *args, **kwargs) -> Task:
+    def create_task(self, name, klass, *args, **kwargs) -> Task:
         """Creates a new task.
 
         Args:
+            name: Name of task.
             klass: Class (itself or its name) of new task.
             *args: Parameters for new task.
             **kwargs: Parameters for new task.
@@ -64,7 +69,7 @@ class TaskFactoryBase:
             klass = get_class_from_string(klass)
 
         # create and return task
-        return klass(*args, comm=self.comm, observer=self.observer, vfs=self.vfs, **kwargs)
+        return klass(name=name, comm=self.comm, observer=self.observer, vfs=self.vfs, *args, **kwargs)
 
 
 class TaskFactory(TaskFactoryBase):

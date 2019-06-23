@@ -1,3 +1,4 @@
+import threading
 from typing import Tuple
 
 from astropy.coordinates import SkyCoord
@@ -35,14 +36,25 @@ class CalibTask(StateMachineTask):
         self._camera_name = camera
         self._camera = None
 
-    def start(self):
-        """Initial steps for a task."""
+    def _init(self, closing_event: threading.Event):
+        """Init task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # get camera
         self._camera: ICamera = self.comm[self._camera_name]
 
-    def __call__(self):
-        """Do a step in the task."""
+        # change state
+        self._state = StateMachineTask.State.RUNNING
+
+    def _step(self, closing_event: threading.Event):
+        """Single step for a task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # get image type
         img_type = ICamera.ImageType.BIAS if self._exptime == 0 else ICamera.ImageType.DARK
@@ -51,7 +63,7 @@ class CalibTask(StateMachineTask):
         log.info('Exposing %s image(s) for %.2fs...', img_type.value, self._exptime)
         self._camera.expose(exposure_time=self._exptime * 1000., image_type=img_type).wait()
 
-    def stop(self):
+    def _finish(self):
         """Final steps for a task."""
 
         # release proxies
@@ -59,6 +71,9 @@ class CalibTask(StateMachineTask):
 
         # finished
         log.info('Finished task.')
+
+        # change state
+        self._state = StateMachineTask.State.FINISHED
 
 
 __all__ = ['CalibTask']

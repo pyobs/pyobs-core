@@ -22,7 +22,8 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
         PyObsModule.__init__(self, *args, **kwargs)
 
         # storage for data
-        self._task_factory: TaskFactory = get_object(tasks, comm=self.comm, observer=self.observer, vfs=self.vfs)
+        self._task_factory: TaskFactory = get_object(tasks, comm=self.comm, observer=self.observer, vfs=self.vfs,
+                                                     closing_event=self.closing)
 
         # observation name and exposure number
         self._task = None
@@ -35,16 +36,12 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
         # run until closed
         while not self.closing.is_set():
-            # current task
-            cur_task = None
-
             # find task that we want to run now
             for name in self._task_factory.list():
                 task: StateMachineTask = self._task_factory.get(name)
                 if Time.now() in task:
                     log.info('Task found: %s.', name)
-                    cur_task = task
-                    self._task = name
+                    self._task = task
                     break
             else:
                 # no task found
@@ -56,29 +53,22 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             self._exp = 0
 
             # send event
-            self.comm.send_event(TaskStartedEvent(self._task, self._obs))
+            self.comm.send_event(TaskStartedEvent(self._task.name, self._obs))
 
-            # init task
-            log.info('Initializing task %s for observation %s...', self._task, self._obs)
-            cur_task.start()
-
-            # steps
-            log.info('Performing task steps...')
-            while Time.now() in cur_task:
+            # run task
+            log.info('Running task %s for observation %s...', self._task.name, self._obs)
+            while Time.now() in self._task:
                 # do task step
-                cur_task()
-
-                # increase exposure counter
-                self._exp += 1
+                self._task(self.closing)
 
             # finish
             log.info('Shutting down task...')
-            cur_task.stop()
+            self._task.finish()
             self._obs = None
             self._exp = None
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(self._task, self._obs))
+            self.comm.send_event(TaskFinishedEvent(self._task.name, self._obs))
 
     def _create_obs_name(self):
         """Create a new unique observation name."""
@@ -123,11 +113,11 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
         """
 
         # inside an observation?
-        if self._obs is not None and self._exp is not None and self._task is not None:
+        if self._task is not None:
             return {
                 'OBS': (self._obs, 'Name of observation'),
                 'EXP': (self._exp, 'Number of exposure within observation'),
-                'TASK': (self._task, 'Name of task')
+                'TASK': (self._task.name, 'Name of task')
             }
         else:
             return {}

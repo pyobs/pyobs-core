@@ -1,3 +1,5 @@
+import threading
+
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import logging
@@ -45,8 +47,13 @@ class SimpleStateMachineTask(StateMachineTask):
         self._filters_name = filters
         self._filters = None
 
-    def start(self):
-        """Initial steps for a task."""
+    def _init(self, closing_event: threading.Event):
+        """Init task.
+
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # get telescope and camera
         self._telescope: ITelescope = self.comm[self._telescope_name]
@@ -65,8 +72,15 @@ class SimpleStateMachineTask(StateMachineTask):
         # wait for both
         Future.wait_all([future_track, future_filter])
 
-    def __call__(self):
-        """Do a step in the task."""
+        # change state
+        self._state = StateMachineTask.State.RUNNING
+
+    def _step(self, closing_event: threading.Event):
+        """Single step for a task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
 
         # get step
         step = self._steps[self._cur_step]
@@ -86,7 +100,7 @@ class SimpleStateMachineTask(StateMachineTask):
         if self._cur_step >= len(self._steps):
             self._cur_step = 0
 
-    def stop(self):
+    def _finish(self):
         """Final steps for a task."""
 
         # stop telescope
@@ -100,6 +114,9 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # finished
         log.info('Finished task.')
+
+        # change state
+        self._state = StateMachineTask.State.FINISHED
 
 
 __all__ = ['SimpleStateMachineTask']

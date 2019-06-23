@@ -38,6 +38,7 @@ class SimpleStateMachineTask(StateMachineTask):
         self._coords = SkyCoord(ra * u.deg, dec * u.deg, frame='icrs')
         self._steps = steps
         self._cur_step = 0
+        self._exposures_left = 0
 
         # telescope and camera
         self._telescope_name = telescope
@@ -69,8 +70,12 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # get filter from first step and set it
         self._cur_step = 0
-        log.info('Setting filter to %s...', self._steps[self._cur_step]['filter'])
-        future_filter = self._filters.set_filter(self._steps[self._cur_step]['filter'])
+        step = self._steps[self._cur_step]
+        log.info('Setting filter to %s...', step['filter'])
+        future_filter = self._filters.set_filter(step['filter'])
+
+        # number of exposures
+        self._exposures_left = step['count'] if 'count' in step else 1
 
         # wait for both
         Future.wait_all([future_track, future_filter])
@@ -90,25 +95,29 @@ class SimpleStateMachineTask(StateMachineTask):
         count = step['count'] if 'count' in step else 1
         img_type = ICamera.ImageType(step['type'].lower()) if 'type' in step else ICamera.ImageType.OBJECT
 
-        # set filter
-        log.info('Setting filter to %s...', step['filter'])
-        self._telescope.set_filter(step['filter']).wait()
-
         # do exposures
-        log.info('Exposing %d %s image(s) for %.2fs each...', step['count'], img_type.value, step['exptime'])
-        for i in range(count):
-            # do exposure
-            self._camera.expose(exposure_time=step['exptime'] * 1000., image_type=img_type).wait()
-            self._exposure += 1
+        log.info('Exposing %s image for %.2fs...', img_type.value, step['exptime'])
+        self._camera.expose(exposure_time=step['exptime'] * 1000., image_type=img_type).wait()
+        self._exposure += 1
+        self._exposures_left -= 1
 
-            # check running
-            if closing_event.is_set():
-                break
+        # exposures left?
+        if self._exposures_left == 0:
+            # go to next step
+            self._cur_step += 1
+            if self._cur_step >= len(self._steps):
+                # go back to first step
+                self._cur_step = 0
 
-        # go to next step
-        self._cur_step += 1
-        if self._cur_step >= len(self._steps):
-            self._cur_step = 0
+            # get step
+            step = self._steps[self._cur_step]
+
+            # set exposures left
+            self._exposures_left = step['count'] if 'count' in step else 1
+
+            # set filter
+            log.info('Setting filter to %s...', step['filter'])
+            self._telescope.set_filter(step['filter']).wait()
 
     def _finish(self):
         """Final steps for a task."""

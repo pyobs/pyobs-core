@@ -1,11 +1,15 @@
 import threading
+from astroplan import Observer
+
+from pyobs.comm import Comm
+from pyobs.vfs import VirtualFileSystem
 
 
 class Task:
     """Base class for all tasks in the system."""
 
-    def __init__(self, name: str = None, comm: 'Comm' = None, observer: 'Observer' = None,
-                 vfs: 'VirtualFileSystem' = None, *args, **kwargs):
+    def __init__(self, name: str = None, comm: Comm = None, observer: Observer = None,
+                 vfs: VirtualFileSystem = None, *args, **kwargs):
         """Initializes a new Task.
 
         Args:

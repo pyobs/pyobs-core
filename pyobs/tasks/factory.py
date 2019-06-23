@@ -1,6 +1,10 @@
 import threading
 
+from astroplan import Observer
+
+from pyobs.comm import Comm
 from pyobs.object import get_object, get_class_from_string
+from pyobs.vfs import VirtualFileSystem
 
 from .task import Task
 
@@ -8,7 +12,7 @@ from .task import Task
 class TaskFactoryBase:
     """Base class for all task factories."""
 
-    def __init__(self, comm: 'Comm' = None, observer: 'Observer' = None, vfs: 'VirtualFileSystem' = None,
+    def __init__(self, comm: Comm = None, observer: Observer = None, vfs: VirtualFileSystem = None,
                  closing_event: threading.Event = None, *args, **kwargs):
         """Initialize a new TaskFactoryBase
 

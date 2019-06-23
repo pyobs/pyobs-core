@@ -64,9 +64,22 @@ class StateMachineTask(Task):
         # otherwise, add current date
         return Time(Time.now().iso[:10] + ' ' + t)
 
-    def __contains__(self, time: Time):
-        """Whether the given time is in the interval of this task."""
-        return self._start <= time < self._end
+    def is_observable(self, time: Time) -> bool:
+        """Whether this task is observable at the given time.
+
+        Args:
+            time: Time to check.
+
+        Returns:
+            Observable or not.
+        """
+
+        # parent
+        if not Task.is_observable(self, time):
+            return False
+
+        # check time and state
+        return self._state != StateMachineTask.State.FINISHED and self._start <= time < self._end
 
     def __call__(self, closing_event: threading.Event, *args, **kwargs):
         """Run the task.
@@ -75,16 +88,19 @@ class StateMachineTask(Task):
             closing_event: Event to be set when task should close.
         """
 
-        # which state?
-        if self._state == StateMachineTask.State.INIT:
-            # init task
-            self._init(closing_event)
-        elif self._state == StateMachineTask.State.RUNNING:
-            # do step
-            self._step(closing_event)
-        else:
-            # just sleep a little
-            closing_event.wait(10)
+        # loop until not observable any more
+        while self.is_observable(Time.now()) and not closing_event.is_set() \
+                and self._state != StateMachineTask.State.FINISHED:
+            # which state?
+            if self._state == StateMachineTask.State.INIT:
+                # init task
+                self._init(closing_event)
+            elif self._state == StateMachineTask.State.RUNNING:
+                # do step
+                self._step(closing_event)
+
+        # finish it
+        self.finish()
 
     def _init(self, closing_event: threading.Event):
         """Init task.

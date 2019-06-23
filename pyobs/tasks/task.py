@@ -2,6 +2,7 @@ import threading
 from astroplan import Observer
 
 from pyobs.comm import Comm
+from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
 
 
@@ -24,6 +25,17 @@ class Task:
         self.comm = comm
         self.observer = observer
         self.vfs = vfs
+
+    def is_observable(self, time: Time) -> bool:
+        """Whether this task is observable at the given time.
+
+        Args:
+            time: Time to check.
+
+        Returns:
+            Observable or not.
+        """
+        return True
 
     def __call__(self, closing_event: threading.Event):
         """Run the task.

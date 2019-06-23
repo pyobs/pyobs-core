@@ -49,13 +49,20 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
         # run until closed
         while not self.closing.is_set():
+            # get now
+            now = Time.now()
+
             # find task that we want to run now
             for name in self._task_factory.list():
+                # get task
                 task: StateMachineTask = self._task_factory.get(name)
-                if Time.now() in task:
+
+                # is it observable?
+                if task.is_observable(now):
                     log.info('Task found: %s.', name)
                     self._task = task
                     break
+
             else:
                 # no task found
                 self.closing.wait(10)
@@ -70,13 +77,9 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
             # run task
             log.info('Running task %s for observation %s...', self._task.name, self._obs)
-            while Time.now() in self._task:
-                # do task step
-                self._task(self.closing)
+            self._task(self.closing)
 
             # finish
-            log.info('Shutting down task...')
-            self._task.finish()
             self._obs = None
             self._exp = None
 
@@ -130,7 +133,6 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             hdr = self._task.get_fits_headers()
             hdr['OBS'] = self._obs, 'Name of observation'
             hdr['TASK'] = self._task.name, 'Name of task'
-            print(hdr)
             return hdr
         else:
             return {}

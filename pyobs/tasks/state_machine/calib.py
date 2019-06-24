@@ -1,13 +1,9 @@
 import threading
+from enum import Enum
 from typing import Tuple
-
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IFocuser, ICamera, IFilters
-from pyobs.utils.threads import Future
-from pyobs.utils.time import Time
+from pyobs.interfaces import ICamera
 from .task import StateMachineTask
 
 
@@ -16,6 +12,11 @@ log = logging.getLogger(__name__)
 
 class CalibTask(StateMachineTask):
     """A calibration task for the state machine."""
+
+    class State(Enum):
+        INIT = 'init'
+        RUNNING = 'running'
+        FINISHED = 'finished'
 
     def __init__(self, binning: Tuple = (1, 1), exptime: float = 0, count: int = None, camera: str = None,
                  *args, **kwargs):
@@ -35,16 +36,33 @@ class CalibTask(StateMachineTask):
         self._count = count
         self._exposures_left = None
 
+        # state machine
+        self._state = CalibTask.State.INIT
+
         # camera
         self._camera_name = camera
         self._camera = None
 
-    def _init(self, closing_event: threading.Event):
-        """Init task.
+    def __call__(self, closing_event: threading.Event, *args, **kwargs):
+        """Run the task.
 
         Args:
             closing_event: Event to be set when task should close.
         """
+
+        # which state?
+        if self._state == CalibTask.State.INIT:
+            # init task
+            self._init()
+        elif self._state == CalibTask.State.RUNNING:
+            # take calib frames
+            self._step()
+        else:
+            # wait
+            closing_event.wait(10)
+
+    def _init(self):
+        """Init task."""
 
         # get camera
         self._camera: ICamera = self.comm[self._camera_name]
@@ -54,14 +72,10 @@ class CalibTask(StateMachineTask):
         self._exposures = 0
 
         # change state
-        self._state = StateMachineTask.State.RUNNING
+        self._state = CalibTask.State.RUNNING
 
-    def _step(self, closing_event: threading.Event):
-        """Single step for a task.
-
-        Args:
-            closing_event: Event to be set when task should close.
-        """
+    def _step(self):
+        """Single step for a task."""
 
         # get image type
         img_type = ICamera.ImageType.BIAS if self._exptime == 0 else ICamera.ImageType.DARK
@@ -74,10 +88,14 @@ class CalibTask(StateMachineTask):
         # decrease exposure count and finish, if necessary
         self._exposures_left -= 1
         if self._exposures_left == 0:
-            self._finish()
+            self.finish()
 
-    def _finish(self):
+    def finish(self):
         """Final steps for a task."""
+
+        # already finished?
+        if self._state == CalibTask.State.FINISHED:
+            return
 
         # release proxies
         self._camera = None
@@ -86,7 +104,7 @@ class CalibTask(StateMachineTask):
         log.info('Finished task.')
 
         # change state
-        self._state = StateMachineTask.State.FINISHED
+        self._state = CalibTask.State.FINISHED
 
 
 __all__ = ['CalibTask']

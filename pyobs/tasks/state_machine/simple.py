@@ -1,12 +1,12 @@
 import threading
+from enum import Enum
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IFocuser, ICamera, IFilters
+from pyobs.interfaces import ITelescope, ICamera, IFilters
 from pyobs.utils.threads import Future
-from pyobs.utils.time import Time
 from .task import StateMachineTask
 
 
@@ -15,6 +15,11 @@ log = logging.getLogger(__name__)
 
 class SimpleStateMachineTask(StateMachineTask):
     """A simple task for the state machine."""
+
+    class State(Enum):
+        INIT = 'init'
+        RUNNING = 'running'
+        FINISHED = 'finished'
 
     def __init__(self, ra: float = None, dec: float = None, steps: list = None, telescope: str = None,
                  camera: str = None, filters: str = None, *args, **kwargs):
@@ -40,6 +45,9 @@ class SimpleStateMachineTask(StateMachineTask):
         self._cur_step = 0
         self._exposures_left = 0
 
+        # state machine
+        self._state = SimpleStateMachineTask.State.INIT
+
         # telescope and camera
         self._telescope_name = telescope
         self._telescope = None
@@ -47,6 +55,24 @@ class SimpleStateMachineTask(StateMachineTask):
         self._camera = None
         self._filters_name = filters
         self._filters = None
+
+    def __call__(self, closing_event: threading.Event, *args, **kwargs):
+        """Run the task.
+
+        Args:
+            closing_event: Event to be set when task should close.
+        """
+
+        # which state?
+        if self._state == SimpleStateMachineTask.State.INIT:
+            # init task
+            self._init(closing_event)
+        elif self._state == SimpleStateMachineTask.State.RUNNING:
+            # take images
+            self._step(closing_event)
+        else:
+            # wait
+            closing_event.wait(10)
 
     def _init(self, closing_event: threading.Event):
         """Init task.
@@ -81,7 +107,7 @@ class SimpleStateMachineTask(StateMachineTask):
         Future.wait_all([future_track, future_filter])
 
         # change state
-        self._state = StateMachineTask.State.RUNNING
+        self._state = SimpleStateMachineTask.State.RUNNING
 
     def _step(self, closing_event: threading.Event):
         """Single step for a task.
@@ -92,7 +118,6 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # get step
         step = self._steps[self._cur_step]
-        count = step['count'] if 'count' in step else 1
         img_type = ICamera.ImageType(step['type'].lower()) if 'type' in step else ICamera.ImageType.OBJECT
 
         # do exposures
@@ -119,8 +144,12 @@ class SimpleStateMachineTask(StateMachineTask):
             log.info('Setting filter to %s...', step['filter'])
             self._telescope.set_filter(step['filter']).wait()
 
-    def _finish(self):
+    def finish(self):
         """Final steps for a task."""
+
+        # already finished?
+        if self._state == SimpleStateMachineTask.State.FINISHED:
+            return
 
         # stop telescope
         log.info('Stopping telescope...')
@@ -135,7 +164,7 @@ class SimpleStateMachineTask(StateMachineTask):
         log.info('Finished task.')
 
         # change state
-        self._state = StateMachineTask.State.FINISHED
+        self._state = SimpleStateMachineTask.State.FINISHED
 
 
 __all__ = ['SimpleStateMachineTask']

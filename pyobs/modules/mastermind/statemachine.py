@@ -77,7 +77,8 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
             # run task
             log.info('Running task %s for observation %s...', self._task.name, self._obs)
-            self._task(self.closing)
+            while self._task.is_observable(Time.now()):
+                self._task(self.closing)
 
             # finish
             self._obs = None

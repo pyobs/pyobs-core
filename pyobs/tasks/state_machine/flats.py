@@ -5,12 +5,11 @@ import astropy.units as u
 from astropy.io import fits
 import numpy as np
 import logging
-import time
 from enum import Enum
 from typing import Tuple
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, IFocuser, ICamera, IFilters
+from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from .task import StateMachineTask
@@ -22,8 +21,16 @@ log = logging.getLogger(__name__)
 class FlatsTask(StateMachineTask):
     """Take flat fields in a given filter."""
 
+    class State(Enum):
+        INIT = 'init'
+        WAITING = 'waiting'
+        TESTING = 'testing'
+        RUNNING = 'running'
+        FINISHED = 'finished'
+
     def __init__(self, filter: str = None, binning: Tuple = (1, 1), bias: float = None, function: str = None,
-                 target_adu: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
+                 target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
+                 test_frame: Tuple = (45, 45, 10, 10), counts_frame: Tuple = (0, 0, 100, 100),
                  telescope: str = None, camera: str = None, filters: str = None, *args, **kwargs):
         """Initializes a new Flats Task.
 
@@ -33,9 +40,12 @@ class FlatsTask(StateMachineTask):
             bias: Bias level for given binning.
             function: Function f(h) to describe ideal exposure time as a function of solar elevation h,
                 i.e. something like exp(-0.9*(h+3.9))
-            target_adu: Count rate to aim for.
+            target_count: Count rate to aim for.
             min_exptime: Minimum exposure time.
             max_exptime: Maximum exposure time.
+            test_frame: Tupel (left, top, width, height) in percent that describe the frame for on-sky testing.
+            counts_frame: Tupel (left, top, width, height) in percent that describe the frame for calculating mean
+                count rate.
             telescope: Name of ITelescope module to use.
             camera: Name of ICamera module to use.
             filters: Name of IFilters module to use.
@@ -46,16 +56,20 @@ class FlatsTask(StateMachineTask):
         self._filter = filter
         self._binning = binning
         self._bias = bias
-        self._target_adu = target_adu
+        self._target_count = target_count
         self._min_exptime = min_exptime
         self._max_exptime = max_exptime
+        self._test_frame = test_frame
+        self._counts_frame = counts_frame
 
         # parse function
         parser = Parser()
         self._function = parser.parse(function)
 
         # state machine
-        self._waiting = True
+        self._state = FlatsTask.State.INIT
+
+        # current exposure time
         self._exptime = None
 
         # telescope and camera
@@ -66,12 +80,32 @@ class FlatsTask(StateMachineTask):
         self._filters_name = filters
         self._filters = None
 
-    def _init(self, closing_event: threading.Event):
-        """Init task.
+    def __call__(self, closing_event: threading.Event, *args, **kwargs):
+        """Run the task.
 
         Args:
             closing_event: Event to be set when task should close.
         """
+
+        # which state?
+        if self._state == FlatsTask.State.INIT:
+            # init task
+            self._init()
+        elif self._state == FlatsTask.State.WAITING:
+            # wait until exposure time reaches good time
+            self._wait(closing_event)
+        elif self._state == FlatsTask.State.TESTING:
+            # do actual tests on sky for exposure time
+            self._flat_field(testing=True)
+        elif self._state == FlatsTask.State.RUNNING:
+            # take flat fields
+            self._flat_field(testing=False)
+        else:
+            # wait
+            closing_event.wait(10)
+
+    def _init(self):
+        """Init task."""
 
         # get telescope and camera
         self._telescope: ITelescope = self.comm[self._telescope_name]
@@ -102,22 +136,7 @@ class FlatsTask(StateMachineTask):
         # wait for both
         Future.wait_all([future_track, future_filter])
 
-    def _step(self, closing_event: threading.Event):
-        """Single step for a task.
-
-        Args:
-            closing_event: Event to be set when task should close.
-        """
-
-        # which state are we in?
-        if self._waiting:
-            # wait until time for flat fields has come
-            self._wait()
-        else:
-            # actually take flats
-            self._progress()
-
-    def _wait(self):
+    def _wait(self, closing_event: threading.Event):
         # get solar elevation and evaluate function
         sun = self.observer.sun_altaz(Time.now())
         exptime = self._function.evaluate({'h': sun.alt.degree})
@@ -130,9 +149,27 @@ class FlatsTask(StateMachineTask):
             self._exptime = exptime
         else:
             # sleep a little
-            time.sleep(10)
+            closing_event.wait(10)
 
-    def _progress(self):
+    def _flat_field(self, testing: bool = False):
+        # set binning
+        if isinstance(self._camera, ICameraBinning):
+            self._camera.set_binning(*self._binning)
+
+        # set window
+        if isinstance(self._camera, ICameraWindow):
+            # get full frame
+            left, top, width, height = self._camera.get_full_frame()
+
+            # if testing, take test frame, otherwise use full frame
+            if testing:
+                self._camera.set_window(int(left + self._test_frame[0] * width),
+                                        int(top + self._test_frame[1] * width),
+                                        int(self._test_frame[2] * width),
+                                        int(self._test_frame[3] * height))
+            else:
+                self._camera.set_window(left, top, width, height)
+
         # do exposures
         log.info('Exposing flat field for %.2fs each...', self._exptime)
         filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT).wait()
@@ -148,27 +185,43 @@ class FlatsTask(StateMachineTask):
             log.error('Could not download image.')
             return
 
+        # get data in counts frame
+        width, height = flat_field.data.shape
+        f = self._counts_frame
+        in_data = flat_field.data[int(f[0] * width):int((f[0] + f[2]) * width),
+                                  int(f[1] * height):int((f[1] + f[3]) * height)]
+
         # get mean
-        mean = np.mean(flat_field.data)
+        mean = np.mean(in_data)
         log.info('Got a flat field with %.2f counts.', mean)
 
         # calculate next exposure time
-        exptime = self._exptime / (mean - self._bias) * (self._target_adu - self._bias)
+        exptime = self._exptime / (mean - self._bias) * (self._target_count - self._bias)
         log.info('Calculated new exposure time to be %.2fs.', exptime)
 
-        # still in boundaries?
+        # in boundaries?
         if self._min_exptime <= exptime <= self._max_exptime:
-            # yes, keep going
-            self._exptime = exptime
+            # testing or flat-fielding?
+            if testing:
+                # go to actual flat fielding
+                self._state = FlatsTask.State.RUNNING
+            else:
+                # keep going
+                self._exptime = exptime
+
         else:
             # we're finished
             log.info('Left exposure time range for taking flats.')
 
             # finish
-            self._finish()
+            self.finish()
 
-    def _finish(self):
+    def finish(self):
         """Final steps for a task."""
+
+        # already finished?
+        if self._state == FlatsTask.State.FINISHED:
+            return
 
         # stop telescope
         log.info('Stopping telescope...')
@@ -183,7 +236,7 @@ class FlatsTask(StateMachineTask):
         log.info('Finished task.')
 
         # change state
-        self._state = StateMachineTask.State.FINISHED
+        self._state = FlatsTask.State.FINISHED
 
 
 __all__ = ['FlatsTask']

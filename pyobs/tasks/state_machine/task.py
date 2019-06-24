@@ -11,11 +11,6 @@ from pyobs.tasks.task import Task
 class StateMachineTask(Task):
     """Base class for all tasks for the state machine."""
 
-    class State(Enum):
-        INIT = 'init'
-        RUNNING = 'running'
-        FINISHED = 'finished'
-
     def __init__(self, *args, start=None, end=None, **kwargs):
         """Initializes a new Task.
 
@@ -31,9 +26,6 @@ class StateMachineTask(Task):
 
         # exposure number
         self._exposure = 0
-
-        # state
-        self._state = StateMachineTask.State.INIT
 
     def _parse_time(self, t: Union[Time, str]):
         """Parse a given time."""
@@ -74,58 +66,8 @@ class StateMachineTask(Task):
             Observable or not.
         """
 
-        # parent
-        if not Task.is_observable(self, time):
-            return False
-
         # check time and state
-        return self._state != StateMachineTask.State.FINISHED and self._start <= time < self._end
-
-    def __call__(self, closing_event: threading.Event, *args, **kwargs):
-        """Run the task.
-
-        Args:
-            closing_event: Event to be set when task should close.
-        """
-
-        # loop until not observable any more
-        while self.is_observable(Time.now()) and not closing_event.is_set() \
-                and self._state != StateMachineTask.State.FINISHED:
-            # which state?
-            if self._state == StateMachineTask.State.INIT:
-                # init task
-                self._init(closing_event)
-            elif self._state == StateMachineTask.State.RUNNING:
-                # do step
-                self._step(closing_event)
-
-        # finish it
-        self.finish()
-
-    def _init(self, closing_event: threading.Event):
-        """Init task.
-
-        Args:
-            closing_event: Event to be set when task should close.
-        """
-        pass
-
-    def _step(self, closing_event: threading.Event):
-        """Single step for a task.
-
-        Args:
-            closing_event: Event to be set when task should close.
-        """
-        pass
-
-    def _finish(self):
-        """Final steps for a task."""
-        pass
-
-    def finish(self):
-        """Final steps for a task."""
-        if self._state != StateMachineTask.State.FINISHED:
-            self._finish()
+        return Task.is_observable(self, time) and self._start <= time < self._end
 
     def get_fits_headers(self) -> dict:
         """Returns FITS header for the current status of the telescope.
@@ -138,6 +80,10 @@ class StateMachineTask(Task):
             return {'EXP': (self._exposure, 'Number of exposure within observation')}
         else:
             return {}
+
+    def finish(self):
+        """Final steps for a task."""
+        pass
 
 
 __all__ = ['StateMachineTask']

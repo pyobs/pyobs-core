@@ -20,7 +20,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
     def __init__(self, tasks: dict, *args, **kwargs):
         """Initialize a new auto focus system."""
-        PyObsModule.__init__(self, *args, **kwargs)
+        PyObsModule.__init__(self, thread_funcs=self._run_thread, *args, **kwargs)
 
         # storage for data
         self._task_factory: TaskFactory = get_object(tasks, comm=self.comm, observer=self.observer, vfs=self.vfs,
@@ -43,7 +43,7 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
             self.comm.register_event(RoofOpenedEvent, self._on_roof_opened)
             self.comm.register_event(RoofClosingEvent, self._on_roof_closing)
 
-    def run(self):
+    def _run_thread(self):
         # wait a little
         self.closing.wait(1)
 

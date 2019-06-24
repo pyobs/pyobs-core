@@ -128,6 +128,9 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # exposures left?
         if self._exposures_left == 0:
+            # remember filter
+            old_filter = step['filter']
+
             # go to next step
             self._cur_step += 1
             if self._cur_step >= len(self._steps):
@@ -141,8 +144,9 @@ class SimpleStateMachineTask(StateMachineTask):
             self._exposures_left = step['count'] if 'count' in step else 1
 
             # set filter
-            log.info('Setting filter to %s...', step['filter'])
-            self._telescope.set_filter(step['filter']).wait()
+            if old_filter != step['filter']:
+                log.info('Setting filter to %s...', step['filter'])
+                self._telescope.set_filter(step['filter']).wait()
 
     def finish(self):
         """Final steps for a task."""

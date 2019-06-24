@@ -135,6 +135,11 @@ class FlatsTask(StateMachineTask):
 
         # wait for both
         Future.wait_all([future_track, future_filter])
+        log.info('Finished initializing task.')
+
+        # change stats
+        log.info('Waiting for flat-field time...')
+        self._state = FlatsTask.State.WAITING
 
     def _wait(self, closing_event: threading.Event):
         # get solar elevation and evaluate function
@@ -144,8 +149,8 @@ class FlatsTask(StateMachineTask):
         # in boundaries?
         if self._min_exptime <= exptime <= self._max_exptime:
             # yes, change state
-            log.info('Starting to take flat-fields...')
-            self._waiting = False
+            log.info('Starting to take test flat-fields...')
+            self._state = FlatsTask.State.TESTING
             self._exptime = exptime
         else:
             # sleep a little
@@ -159,19 +164,19 @@ class FlatsTask(StateMachineTask):
         # set window
         if isinstance(self._camera, ICameraWindow):
             # get full frame
-            left, top, width, height = self._camera.get_full_frame()
+            left, top, width, height = self._camera.get_full_frame().wait()
 
             # if testing, take test frame, otherwise use full frame
             if testing:
-                self._camera.set_window(int(left + self._test_frame[0] * width),
-                                        int(top + self._test_frame[1] * width),
-                                        int(self._test_frame[2] * width),
-                                        int(self._test_frame[3] * height))
-            else:
-                self._camera.set_window(left, top, width, height)
+                left, top, width, height = int(left + self._test_frame[0] / 100 * width),\
+                                           int(top + self._test_frame[1] / 100 * width),\
+                                           int(self._test_frame[2] / 100 * width),\
+                                           int(self._test_frame[3] / 100 * height)
+            log.info('Set window to %dx%d at %d,%d', width, height, left, top)
+            self._camera.set_window(left, top, width, height).wait()
 
         # do exposures
-        log.info('Exposing flat field for %.2fs each...', self._exptime)
+        log.info('Exposing flat field for %.2fs...', self._exptime)
         filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT).wait()
         self._exposure += 1
 
@@ -188,8 +193,8 @@ class FlatsTask(StateMachineTask):
         # get data in counts frame
         width, height = flat_field.data.shape
         f = self._counts_frame
-        in_data = flat_field.data[int(f[0] * width):int((f[0] + f[2]) * width),
-                                  int(f[1] * height):int((f[1] + f[3]) * height)]
+        in_data = flat_field.data[int(f[0] / 100 * width):int((f[0] + f[2]) / 100 * width),
+                                  int(f[1] / 100 * height):int((f[1] + f[3]) / 100 * height)]
 
         # get mean
         mean = np.mean(in_data)
@@ -204,6 +209,7 @@ class FlatsTask(StateMachineTask):
             # testing or flat-fielding?
             if testing:
                 # go to actual flat fielding
+                log.info('Starting to store flat-fields...')
                 self._state = FlatsTask.State.RUNNING
             else:
                 # keep going

@@ -5,6 +5,7 @@ from .interface import Interface
 
 class IWeather(Interface):
     class Sensors(Enum):
+        TIME = 'time'
         TEMPERATURE = 'temp'
         HUMIDITY = 'humid'
         PRESSURE = 'press'

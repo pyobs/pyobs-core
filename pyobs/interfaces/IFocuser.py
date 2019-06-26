@@ -19,6 +19,17 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
+    def set_focus_offset(self, offset: float, *args, **kwargs):
+        """Sets focus offset.
+
+        Args:
+            offset: New focus offset.
+
+        Raises:
+            InterruptedError: If focus was interrupted.
+        """
+        raise NotImplementedError
+
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
 

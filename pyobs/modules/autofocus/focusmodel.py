@@ -63,7 +63,12 @@ class FocusModel(PyObsModule):
         # run until closed
         while not self.closing.is_set():
             # get focuser
-            focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+            try:
+                focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+            except ValueError:
+                log.warning('Could not connect to focuser.')
+                self.closing.wait(60)
+                continue
 
             # it must be in allowed state
             status = focuser.get_motion_status('IFocuser').wait()
@@ -90,10 +95,19 @@ class FocusModel(PyObsModule):
                 log.info('Fetching temperature from weather module...')
 
                 # get weather proxy
-                weather: IWeather = self.proxy(self._weather, IWeather)
+                try:
+                    weather: IWeather = self.proxy(self._weather, IWeather)
+                except ValueError:
+                    log.warning('Could not connect to weather module.')
+                    self.closing.wait(60)
+                    continue
 
                 # get all weather data
                 data = weather.get_weather_status().wait()
+                if IWeather.Sensors.TEMPERATURE.value not in data:
+                    log.warning('No temperature in weather data.')
+                    self.closing.wait(60)
+                    continue
 
                 # get temperature
                 variables['temp'] = data[IWeather.Sensors.TEMPERATURE.value]
@@ -117,6 +131,10 @@ class FocusModel(PyObsModule):
                     log.info('Received temperatures: %s', vars)
 
                 # store, what we need
+                if cfg['sensor'] not in module_temps[cfg['module']]:
+                    log.warning('Temperature for sensor %s not in data from module %s.', cfg['sensor'], cfg['module'])
+                    self.closing.wait(60)
+                    continue
                 variables[var] = module_temps[cfg['module']][cfg['sensor']]
 
             # log

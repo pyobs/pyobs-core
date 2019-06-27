@@ -18,13 +18,21 @@ log = logging.getLogger(__name__)
 class AutoFocusProjection(PyObsModule, IAutoFocus):
     """Module for auto-focusing a telescope."""
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], *args, **kwargs):
-        """Initialize a new auto focus system."""
+    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], offset: bool = False,
+                 *args, **kwargs):
+        """Initialize a new auto focus system.
+
+        Args:
+            focuser: Name of IFocuser.
+            camera: Name of ICamera.
+            offset: If True, offsets are used instead of absolute focus values.
+        """
         PyObsModule.__init__(self, *args, **kwargs)
 
         # store focuser and camera
         self._focuser = focuser
         self._camera = camera
+        self._offset = offset
 
         # storage for data
         self._data = []
@@ -41,7 +49,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
     @timeout(600000)
-    def auto_focus(self, count: int, step: float, guess: float, exposure_time: int, *args, **kwargs) -> (float, float):
+    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -51,7 +59,6 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         Args:
             count: Number of images to take on each side of the initial guess. Should be an odd number.
             step: Step size.
-            guess: Initial guess.
             exposure_time: Exposure time for images.
 
         Returns:
@@ -71,18 +78,21 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
 
-        # no guess given?
-        if guess is None:
-            # get focus
-            try:
+        # get focus as first guess
+        try:
+            if self._offset:
+                log.info('Using focus offset of 0mm as initial guess.')
+            else:
                 guess = focuser.get_focus().wait()
-            except RemoteException:
-                raise ValueError('Could not fetch current focus value.')
-
-            log.info('Current focus: %.2fmm', guess)
+                log.info('Using current focus of %.2fmm as initial guess.', guess)
+        except RemoteException:
+            raise ValueError('Could not fetch current focus value.')
 
         # define array of focus values to iterate
         focus_values = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
+
+        # define set_focus method
+        set_focus = focuser.set_focus_offset if self._offset else focuser.set_focus
 
         # reset
         self._data = []
@@ -94,7 +104,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             log.info('Changing focus to %.2fmm...', foc)
             self.check_running()
             try:
-                focuser.set_focus(float(foc)).wait()
+                set_focus(float(foc)).wait()
             except RemoteException:
                 raise ValueError('Could not set new focus value.')
 
@@ -136,7 +146,14 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             raise ValueError('Could not fit focus.')
 
         # log  and return it
-        log.info('Found new focus value of (%.3f+-%.3f) mm.', focus[0], focus[1])
+        if self._offset:
+            log.info('Setting new focus offset of (%.3f+-%.3f) mm.', focus[0], focus[1])
+            focuser.set_focus_offset(focus[0]).wait()
+        else:
+            log.info('Setting new focus value of (%.3f+-%.3f) mm.', focus[0], focus[1])
+            focuser.set_focus_offset(focus[0]).wait()
+
+        # return result
         return focus[0], focus[1]
 
     def _analyse_image(self, focus, data, backsub=True, xbad=None, ybad=None):

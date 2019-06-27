@@ -202,7 +202,7 @@ class PyObsModule:
             for plg in self._plugins:
                 plg.close()
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type) -> object:
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

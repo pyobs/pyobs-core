@@ -45,6 +45,7 @@ class FocusModel(PyObsModule):
         self._weather = weather
         self._interval = interval
         self._temperatures = temperatures
+        self._focuser_ready = True
 
         # model
         parser = Parser()
@@ -67,9 +68,19 @@ class FocusModel(PyObsModule):
             # it must be in allowed state
             status = focuser.get_motion_status('IFocuser').wait()
             if status not in allowed_states:
+                # log
+                if self._focuser_ready:
+                    log.info('Focuser not ready, waiting for it...')
+                    self._focuser_ready = False
+
                 # sleep a little and continue
                 self.closing.wait(10)
                 continue
+
+            # came from not ready state?
+            if not self._focuser_ready:
+                log.info('Focuser ready now, starting focus tracking...')
+                self._focuser_ready = True
 
             # variables for model evaluation
             variables = {}
@@ -117,7 +128,7 @@ class FocusModel(PyObsModule):
             focus = self._model.evaluate(variables)
 
             # set it
-            log.info('Setting optimum focus of %.2f...', focus)
+            log.info('Setting optimum focus of %.4f...', focus)
             focuser.set_focus(focus).wait()
             log.info('Done.')
 

@@ -2,7 +2,7 @@ from .interface import *
 
 
 class IAutoFocus(Interface):
-    def auto_focus(self, count: int, step: float, guess: float, exposure_time: int, *args, **kwargs) -> (float, float):
+    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -12,7 +12,6 @@ class IAutoFocus(Interface):
         Args:
             count: Number of images to take on each side of the initial guess. Should be an odd number.
             step: Step size.
-            guess: Initial guess.
             exposure_time: Exposure time for images.
 
         Returns:

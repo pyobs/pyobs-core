@@ -1,3 +1,4 @@
+import io
 import logging
 from py_expression_eval import Parser
 import pandas as pd
@@ -6,6 +7,7 @@ from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel
 from pyobs.events import FocusFoundEvent
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -46,8 +48,8 @@ class FocusModel(PyObsModule, IFocusModel):
     """
 
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
-                 model: str = None, coefficients: dict = None, update_model: bool = False,
-                 measurements: str = '/storage/focus_model.csv', min_measurements: int = 10,
+                 model: str = None, coefficients: dict = None, update: bool = False,
+                 measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10,
                  *args, **kwargs):
         """Initialize a focus model.
 
@@ -57,7 +59,7 @@ class FocusModel(PyObsModule, IFocusModel):
             interval: Interval for setting focus or None, if no regular setting of focus is required.
             model: Focus model to use.
             coefficients: Coefficients in model, mainly used when updating it.
-            update_model: Whether to update the model on new focus values.
+            update: Whether to update the model on new focus values.
             measurements: Path to file containing all focus measurements.
 
         """
@@ -71,7 +73,7 @@ class FocusModel(PyObsModule, IFocusModel):
         self._temperatures = temperatures
         self._focuser_ready = True
         self._coefficients = coefficients
-        self._update_model = update_model
+        self._update_model = update
         self._measurements_file = measurements
         self._min_measurements = min_measurements
 
@@ -85,8 +87,8 @@ class FocusModel(PyObsModule, IFocusModel):
         log.info('Found variables in model: %s', ', '.join(self._model.variables()))
 
         # update model now?
-        if update_model:
-            self._update_model()
+        if update:
+            self._calc_focus_model()
 
     def open(self):
         """Open module."""
@@ -239,6 +241,7 @@ class FocusModel(PyObsModule, IFocusModel):
             event: The event itself
             sender: The name of the sender.
         """
+        log.info('Received new focus of %.4f.', event.focus)
 
         # no update wanted?
         if not self._update_model:
@@ -247,18 +250,30 @@ class FocusModel(PyObsModule, IFocusModel):
         # collect values for model
         values = self._get_values()
 
+        # add focus and datetime
+        values['focus'] = event.focus
+        values['datetime'] = Time.now().isot
+
         try:
             # open file with previous measurements
             with self.open_file(self._measurements_file, 'r') as f:
                 # read data and append values
-                data = pd.read_csv(f, index_col=False).append(values)
-        except FileNotFoundError:
+                data = pd.read_csv(f, index_col=False).append(values, ignore_index=True)
+
+        except (FileNotFoundError, pd.errors.EmptyDataError):
             # use values as new dataframe with one entry
-            data = pd.DataFrame(values)
+            data = pd.DataFrame({k: [v] for k, v in values.items()})
+
+        except TypeError:
+            # wrong file format?
+            log.error('Possibly wrong file format for %s, please fix or delete it.', self._measurements_file)
+            return
 
         # write file back
         with self.open_file(self._measurements_file, 'w') as f:
-            data.to_csv(f, index=False)
+            with io.StringIO() as sio:
+                data.to_csv(sio, index=False)
+                f.write(sio.getvalue().encode('utf8'))
 
         # finally, calculate new model
         self._calc_focus_model()
@@ -273,14 +288,14 @@ class FocusModel(PyObsModule, IFocusModel):
         except FileNotFoundError:
             log.warning('Could not find file with previous measurements at %s.', self._measurements_file)
             return
+        except pd.errors.EmptyDataError:
+            data = pd.DataFrame({})
 
         # enough measurements?
         if len(data) < self._min_measurements:
             log.warning('Not enough measurements found for re-calculating model (%d<%d).',
                         len(data), self._min_measurements)
             return
-
-
 
 
 __all__ = ['FocusModel']

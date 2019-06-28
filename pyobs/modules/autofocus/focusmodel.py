@@ -4,6 +4,7 @@ from py_expression_eval import Parser
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel
+from pyobs.events import FocusFoundEvent
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +58,13 @@ class FocusModel(PyObsModule, IFocusModel):
         parser = Parser()
         self._model = parser.parse(model)
         log.info('Found variables in model: %s', ', '.join(self._model.variables()))
+
+    def open(self):
+        """Open module."""
+        PyObsModule.open(self)
+
+        # subscribe to events
+        self.comm.register_event(FocusFoundEvent, self._on_focus_found)
 
     def _run_thread(self):
         # wait a little
@@ -174,10 +182,7 @@ class FocusModel(PyObsModule, IFocusModel):
         """
 
         # get focuser
-        try:
-            focuser: IFocuser = self.proxy(self._focuser, IFocuser)
-        except ValueError:
-            log.warning('Could not connect to focuser.')
+        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get focus
         focus = self.get_optimal_focus()
@@ -186,6 +191,17 @@ class FocusModel(PyObsModule, IFocusModel):
         log.info('Setting optimal focus...')
         focuser.set_focus(focus).wait()
         log.info('Done.')
+
+    def _on_focus_found(self, event: FocusFoundEvent, sender: str):
+        """Receive FocusFoundEvent.
+
+        Args:
+            event: The event itself
+            sender: The name of the sender.
+        """
+        pass
+
+        # TODO: update model
 
 
 __all__ = ['FocusModel']

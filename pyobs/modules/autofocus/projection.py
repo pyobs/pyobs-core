@@ -8,6 +8,7 @@ from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus
+from pyobs.events import FocusFoundEvent
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 
@@ -40,6 +41,9 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
     def open(self):
         """Open module"""
         PyObsModule.open(self)
+
+        # register event
+        self.comm.register_event(FocusFoundEvent)
 
         # check focuser and camera
         try:
@@ -145,13 +149,21 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         if focus is None or focus[0] is None or np.isnan(focus[0]):
             raise ValueError('Could not fit focus.')
 
-        # log  and return it
+        # "absolute" will be the absolute focus value, i.e. focus+offset
+        absolute = None
+
+        # log and set focus
         if self._offset:
             log.info('Setting new focus offset of (%.3f+-%.3f) mm.', focus[0], focus[1])
+            absolute = focus[0] + focuser.get_focus().wait()
             focuser.set_focus_offset(focus[0]).wait()
         else:
             log.info('Setting new focus value of (%.3f+-%.3f) mm.', focus[0], focus[1])
-            focuser.set_focus_offset(focus[0]).wait()
+            absolute = focus[0] + focuser.get_focus_offset().wait()
+            focuser.set_focus(focus[0]).wait()
+
+        # send event
+        self.comm.send_event(FocusFoundEvent(absolute))
 
         # return result
         return focus[0], focus[1]

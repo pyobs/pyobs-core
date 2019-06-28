@@ -38,5 +38,12 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
+    def get_focus_offset(self, *args, **kwargs) -> float:
+        """Return current focus offset.
+
+        Returns:
+            Current focus offset.
+        """
+        raise NotImplementedError
 
 __all__ = ['IFocuser']

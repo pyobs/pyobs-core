@@ -118,6 +118,22 @@ class FocusModel(PyObsModule, IFocusModel):
             ValueError: If anything went wrong.
         """
 
+        # get values for variables
+        values = self._get_values()
+
+        # evaluate model
+        log.info('Evaluating model...')
+        focus = self._model.evaluate(values)
+        log.info('Found optimal focus of %.4f.', focus)
+        return focus
+
+    def _get_values(self) -> dict:
+        """Retrieve all required values for the model.
+
+        Returns:
+            Dictionary containing all values required by the model.
+        """
+
         # variables for model evaluation
         variables = {}
 
@@ -166,12 +182,7 @@ class FocusModel(PyObsModule, IFocusModel):
         # log
         vars = ', '.join(['%s=%.2f' % (k, v) for k, v in variables.items()])
         log.info('Found values for model: %s', vars)
-
-        # evaluate model
-        log.info('Evaluating model...')
-        focus = self._model.evaluate(variables)
-        log.info('Found optimal focus of %.4f.', focus)
-        return focus
+        return variables
 
     @timeout(60000)
     def set_optimal_focus(self, *args, **kwargs):

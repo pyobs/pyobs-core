@@ -70,9 +70,9 @@ class FocusModel(PyObsModule, IFocusModel):
         self._focuser = focuser
         self._weather = weather
         self._interval = interval
-        self._temperatures = temperatures
+        self._temperatures = temperatures = {} if temperatures is None else temperatures
         self._focuser_ready = True
-        self._coefficients = coefficients
+        self._coefficients = {} if coefficients is None else coefficients
         self._update_model = update
         self._measurements_file = measurements
         self._min_measurements = min_measurements
@@ -83,8 +83,18 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # model
         parser = Parser()
+        log.info('Parsing model: %s', model)
         self._model = parser.parse(model)
-        log.info('Found variables in model: %s', ', '.join(self._model.variables()))
+
+        # coefficients
+        if self._coefficients is not None and len(self._coefficients) > 0:
+            log.info('Found coefficients: %s', ', '.join(['%s=%.3f' % (k, v) for k, v in self._coefficients.items()]))
+
+        # variables
+        variables = self._model.variables()
+        for c in coefficients.keys():
+            variables.remove(c)
+        log.info('Found variables: %s', ', '.join(variables))
 
         # update model now?
         if update:
@@ -154,7 +164,7 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # evaluate model
         log.info('Evaluating model...')
-        focus = self._model.evaluate(values)
+        focus = self._model.evaluate({**values, **self._coefficients})
         log.info('Found optimal focus of %.4f.', focus)
         return focus
 

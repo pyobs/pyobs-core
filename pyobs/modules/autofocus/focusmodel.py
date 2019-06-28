@@ -39,7 +39,8 @@ class FocusModel(PyObsModule, IFocusModel):
             interval: Interval for setting focus.
 
         """
-        PyObsModule.__init__(self, thread_funcs=self._run_thread, restart_threads=False, *args, **kwargs)
+        PyObsModule.__init__(self, thread_funcs=self._run_thread if interval is not None and interval > 0 else None,
+                             *args, **kwargs)
 
         # store
         self._focuser = focuser

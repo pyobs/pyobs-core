@@ -2,6 +2,7 @@ import io
 import logging
 from py_expression_eval import Parser
 import pandas as pd
+import lmfit
 
 from pyobs import PyObsModule
 from pyobs.modules import timeout
@@ -291,6 +292,10 @@ class FocusModel(PyObsModule, IFocusModel):
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""
 
+        # no coefficients? no model...
+        if not self._coefficients:
+            return
+
         try:
             # open file with previous measurements and read data
             with self.open_file(self._measurements_file, 'r') as f:
@@ -306,6 +311,41 @@ class FocusModel(PyObsModule, IFocusModel):
             log.warning('Not enough measurements found for re-calculating model (%d<%d).',
                         len(data), self._min_measurements)
             return
+
+        # build parameters
+        params = lmfit.Parameters()
+        for c in self._coefficients.keys():
+            params.add(c, 0.)
+
+        # fit
+        log.info('Fitting coefficients...')
+        out = lmfit.minimize(self._residuals, params, args=(data,))
+
+        # print results
+        log.info('Found best coefficients:')
+        for p in out.params:
+            log.info('  %5s = %10.5f +- %8.5f', p, out.params[p].value, out.params[p].stderr)
+        log.info('Reduced chi squared: %.3f', out.redchi)
+
+        # store new coeffients
+        self._coefficients = dict(out.params.valuesdict())
+
+    def _residuals(self, x: lmfit.Parameters, data: pd.DataFrame):
+        """Fit method for model
+
+        Args:
+            x: Paramaters to evaluate.
+            data: Full data set.
+
+        Returns:
+
+        """
+
+        # calc model
+        model = [self._model.evaluate({**x.valuesdict(), **row}) for _, row in data.iterrows()]
+
+        # return residuals
+        return data['focus'] - model
 
 
 __all__ = ['FocusModel']

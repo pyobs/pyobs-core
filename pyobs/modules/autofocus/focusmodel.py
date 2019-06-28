@@ -252,7 +252,7 @@ class FocusModel(PyObsModule, IFocusModel):
             event: The event itself
             sender: The name of the sender.
         """
-        log.info('Received new focus of %.4f.', event.focus)
+        log.info('Received new focus of %.4f +- %.4f.', event.focus, event.error)
 
         # no update wanted?
         if not self._update_model:
@@ -263,6 +263,7 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # add focus and datetime
         values['focus'] = event.focus
+        values['error'] = event.error
         values['datetime'] = Time.now().isot
 
         try:
@@ -345,7 +346,7 @@ class FocusModel(PyObsModule, IFocusModel):
         model = [self._model.evaluate({**x.valuesdict(), **row}) for _, row in data.iterrows()]
 
         # return residuals
-        return data['focus'] - model
+        return (data['focus'] - model) / data['error']
 
 
 __all__ = ['FocusModel']

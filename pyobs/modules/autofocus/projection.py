@@ -163,7 +163,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             focuser.set_focus(focus[0]).wait()
 
         # send event
-        self.comm.send_event(FocusFoundEvent(absolute))
+        self.comm.send_event(FocusFoundEvent(absolute, focus[1]))
 
         # return result
         return focus[0], focus[1]

@@ -2,12 +2,12 @@ from .interface import Interface
 
 
 class IFocusModel(Interface):
-    def set_optimal_focus(self, *args, **kwargs):
-        """Sets optimal focus.
+    def get_optimal_focus(self, *args, **kwargs) -> float:
+        """Returns the optimal focus."""
+        raise NotImplementedError
 
-        Raises:
-            InterruptedError: If focus was interrupted.
-        """
+    def set_optimal_focus(self, *args, **kwargs):
+        """Sets optimal focus."""
         raise NotImplementedError
 
 

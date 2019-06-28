@@ -52,6 +52,7 @@ class FocusModel(PyObsModule, IFocusModel):
         # list of allowed focuser states for focussing:
         self._allowed_states = [IMotion.Status.IDLE, IMotion.Status.POSITIONED,
                                 IMotion.Status.SLEWING, IMotion.Status.TRACKING]
+
         # model
         parser = Parser()
         self._model = parser.parse(model)

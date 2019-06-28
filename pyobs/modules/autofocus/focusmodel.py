@@ -37,7 +37,7 @@ class FocusModel(PyObsModule, IFocusModel):
         Args:
             focuser: Name of focuser.
             weather: Name of weather station.
-            interval: Interval for setting focus.
+            interval: Interval for setting focus or None, if no regular setting of focus is required.
 
         """
         PyObsModule.__init__(self, thread_funcs=self._run_thread if interval is not None and interval > 0 else None,

@@ -75,14 +75,6 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
         raise NotImplementedError
 
-    def reset_offset(self, *args, **kwargs):
-        """Reset Alt/Az offset.
-
-        Raises:
-            ValueError: If offset could not be reset.
-        """
-        raise NotImplementedError
-
     def _track(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 

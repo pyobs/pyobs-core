@@ -1,4 +1,5 @@
 from .IAbortable import IAbortable
+from .IAltAzMount import IAltAzMount
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .ICalibrate import ICalibrate
@@ -9,6 +10,7 @@ from .IConfigProvider import IConfigProvider
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
+from .IEquitorialMount import IEquitorialMount
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFocusModel import IFocusModel

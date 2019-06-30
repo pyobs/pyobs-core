@@ -2,12 +2,7 @@ from .IMotion import IMotion
 
 
 class ITelescope(IMotion):
-    """
-    Generic interface for an astronomical telescope.
-
-    Other interfaces to be implemented:
-        (none)
-    """
+    """Generic interface for an astronomical telescope."""
 
     def track_radec(self, ra: float, dec: float, *args, **kwargs):
         """Starts tracking on given coordinates.
@@ -30,26 +25,6 @@ class ITelescope(IMotion):
 
         Raises:
             ValueError: If telescope could not move.
-        """
-        raise NotImplementedError
-
-    def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
-        """Move an Alt/Az offset, which will be reset on next call of track.
-
-        Args:
-            dalt: Altitude offset in degrees.
-            daz: Azimuth offset in degrees.
-
-        Raises:
-            ValueError: If offset could not be set.
-        """
-        raise NotImplementedError
-
-    def reset_offset(self, *args, **kwargs):
-        """Reset Alt/Az offset.
-
-        Raises:
-            ValueError: If offset could not be reset.
         """
         raise NotImplementedError
 

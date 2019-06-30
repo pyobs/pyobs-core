@@ -39,7 +39,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
 
-    def _track(self, ra: float, dec: float, abort_event: threading.Event):
+    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -77,7 +77,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         self._position['dec'] = dec
         self._change_motion_status(IMotion.Status.TRACKING)
 
-    def _move(self, alt: float, az: float, abort_event: threading.Event):
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -95,7 +95,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         icrs = coords.icrs
 
         # track
-        self._track(icrs.ra.degree, icrs.dec.degree, abort_event)
+        self._track_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 
         # set telescope to idle
         self._change_motion_status(IMotion.Status.IDLE)

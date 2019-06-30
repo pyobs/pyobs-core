@@ -75,7 +75,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
         raise NotImplementedError
 
-    def _track(self, ra: float, dec: float, abort_event: threading.Event):
+    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -113,7 +113,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
             log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
-            self._track(ra, dec, abort_event=self._abort_move)
+            self._track_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
     def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
@@ -128,7 +128,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
         raise NotImplementedError
 
-    def _move(self, alt: float, az: float, abort_event: threading.Event):
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -162,7 +162,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
             log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
-            self._move(alt, az, abort_event=self._abort_move)
+            self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
     def get_motion_status(self, device: str = None) -> IMotion.Status:

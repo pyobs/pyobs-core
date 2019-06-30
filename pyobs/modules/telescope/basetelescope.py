@@ -187,9 +187,9 @@ class BaseTelescope(PyObsModule, ITelescope):
         hdr = {}
 
         # positions
-        ra, dec = self.get_ra_dec()
+        ra, dec = self.get_radec()
         coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-        alt, az = self.get_alt_az()
+        alt, az = self.get_altaz()
         coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
 
         # set coordinate headers

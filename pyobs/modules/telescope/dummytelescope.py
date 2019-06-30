@@ -218,7 +218,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         return 0, 0
 
-    def get_ra_dec(self) -> (float, float):
+    def get_radec(self) -> (float, float):
         """Returns current RA and Dec.
 
         Returns:
@@ -226,7 +226,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         return self._position['ra'], self._position['dec']
 
-    def get_alt_az(self) -> (float, float):
+    def get_altaz(self) -> (float, float):
         """Returns current Alt and Az.
 
         Returns:

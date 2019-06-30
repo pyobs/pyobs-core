@@ -97,7 +97,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         raise NotImplementedError
 
     @timeout(60000)
-    def track(self, ra: float, dec: float, *args, **kwargs):
+    def track_radec(self, ra: float, dec: float, *args, **kwargs):
         """Starts tracking on given coordinates.
 
         Args:
@@ -124,7 +124,7 @@ class BaseTelescope(PyObsModule, ITelescope):
             self._track(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
-    def offset(self, dalt: float, daz: float, *args, **kwargs):
+    def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
         Args:
@@ -150,7 +150,7 @@ class BaseTelescope(PyObsModule, ITelescope):
         raise NotImplementedError
 
     @timeout(60000)
-    def move(self, alt: float, az: float, *args, **kwargs):
+    def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
         Args:

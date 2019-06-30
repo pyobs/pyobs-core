@@ -215,7 +215,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         log.info("Resetting offsets")
 
-    def offset(self, dalt: float, daz: float, *args, **kwargs):
+    def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
         Args:

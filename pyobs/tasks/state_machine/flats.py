@@ -127,7 +127,7 @@ class FlatsTask(StateMachineTask):
 
         # move telescope
         log.info('Moving telescope to %s...', radec.to_string('hmsdms'))
-        future_track = self._telescope.track(radec.ra.degree, radec.dec.degree)
+        future_track = self._telescope.track_radec(radec.ra.degree, radec.dec.degree)
 
         # get filter from first step and set it
         log.info('Setting filter to %s...', self._filter)

@@ -92,7 +92,7 @@ class SimpleStateMachineTask(StateMachineTask):
 
         # move telescope
         log.info('Moving telescope to %s...', self._coords.to_string('hmsdms'))
-        future_track = self._telescope.track(self._coords.ra.degree, self._coords.dec.degree)
+        future_track = self._telescope.track_radec(self._coords.ra.degree, self._coords.dec.degree)
 
         # get filter from first step and set it
         self._cur_step = 0

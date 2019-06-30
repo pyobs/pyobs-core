@@ -1,22 +1,19 @@
 import logging
 import threading
-import time
 from typing import Union
-
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord, ICRS, AltAz
+from astropy.coordinates import SkyCoord, AltAz
 from astropy.io import fits
 from astropy.time import Time
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
 from astropy.wcs import WCS
 import re
-import io
 
 from pyobs import PyObsModule
 from pyobs.events import NewImageEvent
-from pyobs.interfaces import ITelescope, IAutoGuiding, IStoppable
+from pyobs.interfaces import ITelescope, IAutoGuiding, IStoppable, IEquitorialMount, IAltAzMount
 from pyobs.utils.pid import PID
 
 
@@ -57,8 +54,8 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         self._last_header = None
         self._next_image = None
         self._enabled = True
-        self._pid_alt = None
-        self._pid_az = None
+        self._pid_ra = None
+        self._pid_dec = None
         self._lock = threading.Lock()
 
     def open(self):
@@ -165,8 +162,8 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         Kd = 0.83
 
         # reset
-        self._pid_alt = PID(Kp, Ki, Kd)
-        self._pid_az = PID(Kp, Ki, Kd)
+        self._pid_ra = PID(Kp, Ki, Kd)
+        self._pid_dec = PID(Kp, Ki, Kd)
 
     @staticmethod
     def _subtract_sky(data, frac=0.15, sbin=10):
@@ -231,7 +228,7 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         c1 = SkyCoord(ra=hdr['TEL-RA'] * u.deg, dec=hdr['TEL-DEC'] * u.deg, frame='icrs')
         c2 = SkyCoord(ra=self._ref_header['TEL-RA'] * u.deg, dec=self._ref_header['TEL-DEC'] * u.deg, frame='icrs')
         separation = c1.separation(c2).deg
-        if separation * 3600. > self.config['separation_reset']:
+        if separation * 3600. > self._separation_reset:
             log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
                             separation * 3600.)
             self._reset_guiding(sum_x, sum_y, hdr)
@@ -248,7 +245,7 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
             # check times
             t = Time(hdr['DATE-OBS'])
             t0 = Time(self._last_header['DATE-OBS'])
-            if (t - t0).sec > self.config['max_interval']:
+            if (t - t0).sec > self._max_interval:
                 log.warning('Time between current and last image is too large, resetting reference...')
                 self._reset_guiding(sum_x, sum_y, hdr)
                 return
@@ -281,44 +278,61 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         # calculate offsets
         dra = radec2.ra.degree - radec1.ra.degree
         ddec = radec2.dec.degree - radec1.dec.degree
-        log.info('Transformed to RA/Dec shift of dra=%.2f", ddec=%.2f".', dra * 3600., ddec * 3600.)
-
-        # transform both to Alt/AZ
-        altaz1 = radec1.transform_to(AltAz)
-        altaz2 = radec2.transform_to(AltAz)
-
-        # calculate offsets
-        dalt = altaz2.alt.degree - altaz1.alt.degree
-        daz = altaz2.az.degree - altaz1.az.degree
-        log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
         # too large?
-        max_offset = self.config['max_offset']
+        max_offset = self._max_offset
         if abs(dra * 3600.) > max_offset or abs(ddec * 3600.) > max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return
 
         # exposure time too large
-        if hdr['EXPTIME'] > self.config['max_exposure_time']:
+        if hdr['EXPTIME'] > self._max_exposure_time:
             log.warning('Exposure time too large, skipping auto-guiding for now...')
             return
 
         # push offset into PID
-        if self.config['pid']:
-            dalt = self._pid_alt.update(dalt)
-            daz = self._pid_az.update(daz)
-            log.info('PID results in Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+        if self._pid:
+            dra = self._pid_ra.update(dra)
+            ddec = self._pid_dec.update(ddec)
+            log.info('PID results in RA/Dec shift of dRA=%.2f", dDec=%.2f.', dra * 3600., ddec * 3600.)
 
         # get telescope
-        telescope = self.comm[self.config['telescope']]
+        telescope: ITelescope = self.comm[self._telescope]
         if not isinstance(telescope, ITelescope):
             log.error('Given telescope is not of type ITelescope, aborting.')
             return
 
-        # move offset
-        log.info('Moving telescope...')
-        telescope.offset_altaz(dalt, daz).wait()
-        log.info('Finished image.')
+        # is telescope on an equitorial mount?
+        if isinstance(telescope, IEquitorialMount):
+            # get current offset
+            cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
+
+            # move offset
+            log.info('Offsetting telescope...')
+            telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+            log.info('Finished image.')
+
+        elif isinstance(telescope, IAltAzMount):
+            # transform both to Alt/AZ
+            altaz1 = radec1.transform_to(AltAz)
+            altaz2 = radec2.transform_to(AltAz)
+
+            # calculate offsets
+            dalt = altaz2.alt.degree - altaz1.alt.degree
+            daz = altaz2.az.degree - altaz1.az.degree
+            log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+
+            # get current offset
+            cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
+
+            # move offset
+            log.info('Offsetting telescope...')
+            telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+            log.info('Finished image.')
+
+        else:
+            log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
 
     def start(self, *args, **kwargs) -> bool:
         """Starts/resets auto-guiding."""

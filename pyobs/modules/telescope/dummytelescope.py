@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMotion
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzMount
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -14,7 +14,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFocusModel):
+class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeaderProvider):
     """A dummy telescope for testing."""
 
     def __init__(self, *args, **kwargs):
@@ -135,15 +135,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
                 time.sleep(0.01)
             self._focus = focus
 
-    def set_optimal_focus(self, *args, **kwargs):
-        """Sets optimal focus.
-
-        Raises:
-            InterruptedError: If focus was interrupted.
-        """
-        log.info('Setting optimal focus...')
-        self.set_focus(42.0)
-
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
 
@@ -207,14 +198,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.PARKED)
 
-    def reset_offset(self, *args, **kwargs):
-        """Reset Alt/Az offset.
-
-        Raises:
-            ValueError: If offset could not be reset.
-        """
-        log.info("Resetting offsets")
-
     def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
@@ -226,6 +209,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
+
+    def get_offset_altaz(self, *args, **kwargs) -> (float, float):
+        """Get Alt/Az offset.
+
+        Returns:
+            Tuple with alt and az offsets.
+        """
+        return 0, 0
 
     def get_ra_dec(self) -> (float, float):
         """Returns current RA and Dec.

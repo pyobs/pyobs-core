@@ -4,7 +4,7 @@ from .interface import Interface
 class IEquitorialMount(Interface):
     """Telescopes on an equitorial mount should also implement this interface."""
 
-    def offset_radec(self, dra: float, ddec: float, *args, **kwargs):
+    def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.
 
         Args:
@@ -16,7 +16,7 @@ class IEquitorialMount(Interface):
         """
         raise NotImplementedError
 
-    def get_offset_radec(self, *args, **kwargs) -> (float, float):
+    def get_radec_offsets(self, *args, **kwargs) -> (float, float):
         """Get RA/Dec offset.
 
         Returns:

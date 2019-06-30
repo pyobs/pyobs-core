@@ -4,7 +4,7 @@ from .interface import Interface
 class IAltAzMount(Interface):
     """Telescopes on an altaz mount should also implement this interface."""
 
-    def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
+    def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset.
 
         Args:
@@ -16,7 +16,7 @@ class IAltAzMount(Interface):
         """
         raise NotImplementedError
 
-    def get_offset_altaz(self, *args, **kwargs) -> (float, float):
+    def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
         """Get Alt/Az offset.
 
         Returns:

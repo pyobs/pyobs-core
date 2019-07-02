@@ -268,11 +268,14 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
         else:
             log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
 
+        # get pixel in middle of image
+        cx, cy = (np.array(data.shape) / 2.).astype(np.int)
+
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(hdr)
-        lon, lat = w.all_pix2world(500, 500, 0)
+        lon, lat = w.all_pix2world(cx, cy, 0)
         radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
-        lon, lat = w.all_pix2world(500 + dx, 500 + dy, 0)
+        lon, lat = w.all_pix2world(cx + dx, cy + dy, 0)
         radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
 
         # calculate offsets

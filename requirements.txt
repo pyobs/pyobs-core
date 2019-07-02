@@ -1,3 +1,5 @@
+photutils
+scipy
 pyinotify
 sqlalchemy
 paramiko

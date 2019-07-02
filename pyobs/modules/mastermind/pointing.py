@@ -65,7 +65,7 @@ class PointingMastermind(PyObsModule):
 
             # try to find a good point
             radec, alt, az, dist = None, None, None, None
-            while len(todo) > 0:
+            while True:
                 # pick a random index and remove from list
                 alt, az = random.sample(todo, 1)[0]
                 todo.remove((alt, az))
@@ -91,11 +91,12 @@ class PointingMastermind(PyObsModule):
                 if dist < self._max_distance:
                     break
 
-            else:
-                # could not find a grid point
-                log.info('Could not find a suitable grid point, sleeping a little...')
-                self.closing.wait(10)
-                continue
+                # to do list empty?
+                if len(todo) == 0:
+                    # could not find a grid point
+                    log.info('Could not find a suitable grid point, resetting todo list for next entry...')
+                    todo = list(self._grid.index)
+                    continue
 
             # log finding
             log.info('Picked star at %s, which is %.1f degrees of the grid point at Alt=%.2f, Az=%.2f.',

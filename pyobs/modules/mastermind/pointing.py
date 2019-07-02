@@ -11,6 +11,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 # 20150607S-0189;-10 41 26.122;00 41 36.833;28 52 45.427;00 03 54.322;00 00 00.000;13 51 21.016;00 00 00.000;00 00 00.000;
+# Name;AZ;PMcorrAz;ZD;PMcorrZD;DEROT;DEROTOFF;DOME;DOMEOFF
 
 
 class PointingMastermind(PyObsModule):

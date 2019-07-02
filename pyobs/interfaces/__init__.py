@@ -1,4 +1,5 @@
 from .IAbortable import IAbortable
+from .IAcquisition import IAcquisition
 from .IAltAzMount import IAltAzMount
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding

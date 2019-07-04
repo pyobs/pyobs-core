@@ -6,6 +6,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs import PyObsModule
+from pyobs.interfaces import IAcquisition
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -18,7 +19,8 @@ class PointingMastermind(PyObsModule):
     """Mastermind that acts as a state machine."""
 
     def __init__(self, min_alt: int = 15, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
-                 catalog: str = '/pyobs/pointing_cat.csv', max_distance: float = 5, *args, **kwargs):
+                 catalog: str = '/pyobs/pointing_cat.csv', max_distance: float = 5, acquisition: str = 'acquisition',
+                 *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
@@ -29,12 +31,14 @@ class PointingMastermind(PyObsModule):
             finish: When this number in percent of points have been finished, terminate mastermind.
             catalog: Name of catalog file.
             max_distance: Maximum distance in degrees of catalog star to grid point.
+            acquisition: IAcquisition unit to use.
         """
         PyObsModule.__init__(self, thread_funcs=self._run_thread, restart_threads=False, *args, **kwargs)
 
         # store
         self._finish = 1. - finish / 100.
         self._max_distance = max_distance
+        self._acquisition = acquisition
 
         # read catalog
         with self.open_file(catalog, 'r') as f:
@@ -56,6 +60,10 @@ class PointingMastermind(PyObsModule):
         PyObsModule.open(self)
 
     def _run_thread(self):
+        # get acquisition unit
+        acquisition: IAcquisition = self.proxy(self._acquisition, IAcquisition)
+
+        # loop until finished
         while not self.closing.is_set():
             # get all entries without offset measurements
             todo = list(self._grid[~self._grid['done']].index)
@@ -65,7 +73,6 @@ class PointingMastermind(PyObsModule):
             log.info('Grid points left to do: %d', len(todo))
 
             # try to find a good point
-            radec, alt, az, dist = None, None, None, None
             while True:
                 # pick a random index and remove from list
                 alt, az = random.sample(todo, 1)[0]
@@ -99,17 +106,22 @@ class PointingMastermind(PyObsModule):
                     todo = list(self._grid.index)
                     continue
 
+            # create SkyCoord from target
+            radec = SkyCoord(target['ra'] * u.deg, target['dec'] * u.deg, frame='icrs')
+
             # log finding
             log.info('Picked star at %s, which is %.1f degrees of the grid point at Alt=%.2f, Az=%.2f.',
                      radec.to_string('hmsdms'), dist, alt, az)
 
-            # observe
+            # acquire target
+            try:
+                acquisition.acquire_target(radec.ra.degree, radec.dec.degree)
+            except ValueError:
+                log.info('Could not acquire target.')
+                continue
 
             # finished
             self._grid.loc[alt, az] = True
-
-
-            #self.closing.wait(1)
 
 
 __all__ = ['PointingMastermind']

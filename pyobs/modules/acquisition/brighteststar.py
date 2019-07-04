@@ -1,14 +1,14 @@
 import logging
 from typing import Union, Tuple
 import numpy as np
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, AltAz
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
 from astropy.wcs import WCS
 import astropy.units as u
 from photutils import DAOStarFinder
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquitorialMount, IAltAzMount
 from pyobs import PyObsModule
 from pyobs.utils.time import Time
 
@@ -19,7 +19,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
     """Module for acquiring telescope on brightest star in field."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera], exptime: int = 2000,
-                 target_pixel: Tuple = None, *args, **kwargs):
+                 target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1, *args, **kwargs):
         """Acquire on brightest star in field..
 
         Args:
@@ -27,6 +27,8 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
             camera: Name of ICamera.
             exptime: Exposure time in ms.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
+            attempts: Number of attempts before giving up.
+            tolerance: Tolerance in position to reach.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -37,6 +39,8 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         # store
         self._exptime = exptime
         self._target_pixel = target_pixel
+        self._attempts = attempts
+        self._tolerance = tolerance
 
     def open(self):
         """Open module"""
@@ -68,19 +72,66 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         # move telescope to ra/dev
         telescope.track_radec(ra, dec).wait()
 
-        # take image
-        filename = camera.expose(self._exptime, ICamera.ImageType.OBJECT, broadcast=False).wait()
+        # try given number of attempts
+        for a in range(self._attempts):
+            # take image
+            log.info('Exposing image for %.1f seconds...', self._exptime / 1000.)
+            filename = camera.expose(self._exptime, ICamera.ImageType.OBJECT, broadcast=False).wait()
 
-        # download image
-        log.info('Downloading image...')
-        with self.open_file(filename, 'rb') as f:
-            tmp = fits.open(f, memmap=False)
-            img = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-            tmp.close()
+            # download image
+            log.info('Downloading image...')
+            with self.open_file(filename, 'rb') as f:
+                tmp = fits.open(f, memmap=False)
+                img = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
+                tmp.close()
 
-        # get required shift in RA/Dec
-        dra, ddec = self._get_radec_shift(img)
-        log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
+            # get required shift in RA/Dec
+            radec1, radec2 = self._get_radec_shift(img)
+
+            # calculate offsets and return them
+            dra = radec2.ra.degree - radec1.ra.degree
+            ddec = radec2.dec.degree - radec1.dec.degree
+            dist = radec1.separation(radec2)
+            log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f, giving %.2f" in total.".',
+                     dra * 3600., ddec * 3600., dist * 3600.)
+
+            # get distance
+            if dist * 3600. < self._tolerance:
+                # we're finished!
+                log.info('Target successfully acquired.')
+                return
+
+            # is telescope on an equitorial mount?
+            if isinstance(telescope, IEquitorialMount):
+                # get current offset
+                cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
+
+                # move offset
+                log.info('Offsetting telescope...')
+                telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+
+            elif isinstance(telescope, IAltAzMount):
+                # transform both to Alt/AZ
+                altaz1 = radec1.transform_to(AltAz)
+                altaz2 = radec2.transform_to(AltAz)
+
+                # calculate offsets
+                dalt = altaz2.alt.degree - altaz1.alt.degree
+                daz = altaz2.az.degree - altaz1.az.degree
+                log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+
+                # get current offset
+                cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
+
+                # move offset
+                log.info('Offsetting telescope...')
+                telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+
+            else:
+                log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
+
+        # could not acquire target
+        raise ValueError('Could not acquire target within given tolerance.')
 
     def _get_radec_shift(self, img):
         # get target pixel
@@ -111,11 +162,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         radec_center = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=time, location=self.location)
         lon, lat = w.all_pix2world(target['xcentroid'], target['ycentroid'], 0)
         radec_target = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=time, location=self.location)
-
-        # calculate offsets and return them
-        dra = radec_target.ra.degree - radec_center.ra.degree
-        ddec = radec_target.dec.degree - radec_center.dec.degree
-        return dra, ddec
+        return radec_center, radec_target
 
 
 __all__ = ['BrightestStarAcquisition']

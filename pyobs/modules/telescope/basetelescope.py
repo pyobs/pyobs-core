@@ -116,18 +116,6 @@ class BaseTelescope(PyObsModule, ITelescope):
             self._track_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
-    def offset_altaz(self, dalt: float, daz: float, *args, **kwargs):
-        """Move an Alt/Az offset, which will be reset on next call of track.
-
-        Args:
-            dalt: Altitude offset in degrees.
-            daz: Azimuth offset in degrees.
-
-        Raises:
-            ValueError: If offset could not be set.
-        """
-        raise NotImplementedError
-
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 

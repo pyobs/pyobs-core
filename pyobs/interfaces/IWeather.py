@@ -14,6 +14,7 @@ class IWeather(Interface):
         RAIN = 'rain'
         SKYTEMP = 'skytemp'
         DEWPOINT = 'dewpoint'
+        PARTICLES = 'particles'
 
     def get_weather_status(self, *args, **kwargs) -> dict:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

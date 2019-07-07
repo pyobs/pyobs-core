@@ -19,5 +19,9 @@ class IWeather(Interface):
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
+    def is_weather_good(self, *args, **kwargs) -> bool:
+        """Whether the weather is good to observe."""
+        raise NotImplementedError
+
 
 __all__ = ['IWeather']

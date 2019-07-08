@@ -93,7 +93,7 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # variables
         variables = self._model.variables()
-        for c in coefficients.keys():
+        for c in self._coefficients.keys():
             variables.remove(c)
         log.info('Found variables: %s', ', '.join(variables))
 

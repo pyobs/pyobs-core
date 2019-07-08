@@ -203,8 +203,14 @@ class FlatsTask(StateMachineTask):
         mean = np.mean(in_data)
         log.info('Got a flat field with mean counts of %.2f.', mean)
 
+        # calculate factor for new exposure time
+        factor = (self._target_count - self._bias) / (mean - self._bias)
+
+        # limit factor to 0.5-1.5
+        factor = min(1.5, max(0.5, factor))
+
         # calculate next exposure time
-        exptime = self._exptime / (mean - self._bias) * (self._target_count - self._bias)
+        exptime = self._exptime * factor
         log.info('Calculated new exposure time to be %.2fs.', exptime)
 
         # in boundaries?
@@ -214,16 +220,23 @@ class FlatsTask(StateMachineTask):
                 # go to actual flat fielding
                 log.info('Starting to store flat-fields...')
                 self._state = FlatsTask.State.RUNNING
+
             else:
                 # keep going
                 self._exptime = exptime
 
         else:
-            # we're finished
-            log.info('Left exposure time range for taking flats.')
+            # testing or flat-fielding?
+            if testing:
+                # TODO: decide on sunset/sunrise, whether to wait or not
+                pass
 
-            # finish
-            self.finish()
+            else:
+                # we're finished
+                log.info('Left exposure time range for taking flats.')
+
+                # finish
+                self.finish()
 
     def finish(self):
         """Final steps for a task."""

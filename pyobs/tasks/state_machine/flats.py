@@ -160,7 +160,7 @@ class FlatsTask(StateMachineTask):
     def _flat_field(self, testing: bool = False):
         # set binning
         if isinstance(self._camera, ICameraBinning):
-            log.info('Setting camera binning to %dx%d...', **self._binning)
+            log.info('Setting camera binning to %dx%d...', *self._binning)
             self._camera.set_binning(*self._binning)
 
         # set window

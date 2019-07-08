@@ -145,6 +145,7 @@ class FlatsTask(StateMachineTask):
         # get solar elevation and evaluate function
         sun = self.observer.sun_altaz(Time.now())
         exptime = self._function.evaluate({'h': sun.alt.degree})
+        log.info('Calculated optimal exposure time of %.2fs at solar elevation of %.2f°.', exptime, sun.alt.degree)
 
         # in boundaries?
         if self._min_exptime <= exptime <= self._max_exptime:
@@ -159,6 +160,7 @@ class FlatsTask(StateMachineTask):
     def _flat_field(self, testing: bool = False):
         # set binning
         if isinstance(self._camera, ICameraBinning):
+            log.info('Setting camera binning to %dx%d...', **self._binning)
             self._camera.set_binning(*self._binning)
 
         # set window
@@ -172,7 +174,7 @@ class FlatsTask(StateMachineTask):
                                            int(top + self._test_frame[1] / 100 * width),\
                                            int(self._test_frame[2] / 100 * width),\
                                            int(self._test_frame[3] / 100 * height)
-            log.info('Set window to %dx%d at %d,%d', width, height, left, top)
+            log.info('Setting camera window to %dx%d at %d,%d...', width, height, left, top)
             self._camera.set_window(left, top, width, height).wait()
 
         # do exposures
@@ -182,6 +184,7 @@ class FlatsTask(StateMachineTask):
 
         # download image
         try:
+            log.info('Downloading image...')
             with self.vfs.open_file(filename[0], 'rb') as f:
                 tmp = fits.open(f, memmap=False)
                 flat_field = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
@@ -198,7 +201,7 @@ class FlatsTask(StateMachineTask):
 
         # get mean
         mean = np.mean(in_data)
-        log.info('Got a flat field with %.2f counts.', mean)
+        log.info('Got a flat field with mean counts of %.2f.', mean)
 
         # calculate next exposure time
         exptime = self._exptime / (mean - self._bias) * (self._target_count - self._bias)

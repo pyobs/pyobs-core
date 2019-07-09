@@ -1,0 +1,1 @@
+from .brighteststar import BrightestStarAcquisition

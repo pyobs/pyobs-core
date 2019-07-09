@@ -10,6 +10,7 @@ from photutils import DAOStarFinder
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquitorialMount, IAltAzMount
 from pyobs import PyObsModule
+from pyobs.modules import timeout
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
+    @timeout(300000)
     def acquire_target(self, ra: float, dec: float, *args, **kwargs):
         """Acquire target at given coordinates.
 
@@ -76,7 +78,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         for a in range(self._attempts):
             # take image
             log.info('Exposing image for %.1f seconds...', self._exptime / 1000.)
-            filename = camera.expose(self._exptime, ICamera.ImageType.OBJECT, broadcast=False).wait()
+            filename = camera.expose(self._exptime, ICamera.ImageType.OBJECT, broadcast=False).wait()[0]
 
             # download image
             log.info('Downloading image...')
@@ -91,8 +93,8 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
             # calculate offsets and return them
             dra = radec2.ra.degree - radec1.ra.degree
             ddec = radec2.dec.degree - radec1.dec.degree
-            dist = radec1.separation(radec2)
-            log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f, giving %.2f" in total.".',
+            dist = radec1.separation(radec2).degree
+            log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f", giving %.2f" in total.',
                      dra * 3600., ddec * 3600., dist * 3600.)
 
             # get distance
@@ -118,14 +120,15 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
                 # calculate offsets
                 dalt = altaz2.alt.degree - altaz1.alt.degree
                 daz = altaz2.az.degree - altaz1.az.degree
-                log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+                log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f".', dalt * 3600., daz * 3600.)
 
                 # get current offset
                 cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
+                log.info('Current offsets alt=%.2f, az=%.2f.', cur_dalt * 3600, cur_daz * 3600)
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+                telescope.set_altaz_offsets(cur_dalt - dalt, cur_daz - daz).wait()
 
             else:
                 log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
@@ -152,6 +155,9 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
 
         # target is first one in list
         target = sources.iloc[0]
+        log.info('Found brightest star at x=%.2f, y=%.2f.', target['xcentroid'], target['ycentroid'])
+        log.info('Distance to center at (%.2f, %.2f) is dx=%.2f, dy=%.2f.',
+                 cx, cy, target['xcentroid'] - cx, target['ycentroid'] - cy)
 
         # get obs time
         time = Time(img.header['DATE-OBS'])

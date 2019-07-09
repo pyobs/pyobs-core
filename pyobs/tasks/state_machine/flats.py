@@ -177,9 +177,10 @@ class FlatsTask(StateMachineTask):
             log.info('Setting camera window to %dx%d at %d,%d...', width, height, left, top)
             self._camera.set_window(left, top, width, height).wait()
 
-        # do exposures
+        # do exposures, do not broadcast while testing
         log.info('Exposing flat field for %.2fs...', self._exptime)
-        filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT).wait()
+        filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT,
+                                       broadcast=not testing).wait()
         self._exposure += 1
 
         # download image

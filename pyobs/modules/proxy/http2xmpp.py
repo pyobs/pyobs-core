@@ -503,7 +503,7 @@ class HTTP2XMPP(PyObsModule, tornado.web.Application):
                 proxy = self._proxies[client]
 
             # execute it
-            return proxy.execute(method, *args, **kwargs)
+            return proxy.execute(method, *args, **kwargs).wait()
         except RemoteException:
             # not possible
             logging.exception('Something went wrong.')

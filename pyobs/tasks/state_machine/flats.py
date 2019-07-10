@@ -179,7 +179,7 @@ class FlatsTask(StateMachineTask):
 
         # do exposures, do not broadcast while testing
         log.info('Exposing flat field for %.2fs...', self._exptime)
-        filename = self._camera.expose(exposure_time=self._exptime * 1000., image_type=ICamera.ImageType.FLAT,
+        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.), image_type=ICamera.ImageType.FLAT,
                                        broadcast=not testing).wait()
         self._exposure += 1
 

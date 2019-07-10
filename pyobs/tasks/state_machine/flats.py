@@ -161,7 +161,7 @@ class FlatsTask(StateMachineTask):
         # set binning
         if isinstance(self._camera, ICameraBinning):
             log.info('Setting camera binning to %dx%d...', *self._binning)
-            self._camera.set_binning(*self._binning)
+            self._camera.set_binning(*self._binning).wait()
 
         # set window
         if isinstance(self._camera, ICameraWindow):

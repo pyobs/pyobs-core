@@ -126,8 +126,10 @@ class FlatsTask(StateMachineTask):
         radec = altaz.icrs
 
         # move telescope
-        log.info('Moving telescope to %s...', radec.to_string('hmsdms'))
-        future_track = self._telescope.track_radec(radec.ra.degree, radec.dec.degree)
+        #log.info('Moving telescope to %s...', radec.to_string('hmsdms'))
+        #future_track = self._telescope.track_radec(radec.ra.degree, radec.dec.degree)
+        log.info('Moving telescope to Alt=80, Az=%.2f...', altaz.az.degree)
+        future_track = self._telescope.move_altaz(80, altaz.az.degree)
 
         # get filter from first step and set it
         log.info('Setting filter to %s...', self._filter)

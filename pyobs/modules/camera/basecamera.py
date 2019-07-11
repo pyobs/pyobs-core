@@ -277,10 +277,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # add image type
         hdu.header['IMAGETYP'] = image_type.value
 
-        # add static fits headers
-        for key, value in self._fits_headers.items():
-            hdu.header[key] = tuple(value)
-
         # get fits headers from other clients
         for client, future in fits_header_futures.items():
             # join thread
@@ -297,6 +293,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                         hdu.header[key] = tuple(value)
                     else:
                         hdu.header[key] = value
+
+        # add static fits headers
+        for key, value in self._fits_headers.items():
+            hdu.header[key] = tuple(value)
 
         # add more fits headers
         log.info("Adding FITS headers...")

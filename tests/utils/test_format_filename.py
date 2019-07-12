@@ -28,8 +28,7 @@ def test_date_obs(observer):
     hdr = fits.Header({'DATE-OBS': '2019-03-26T19:46:23.000'})
 
     assert '2019-03-26T19:46:23.000' == format_filename(hdr, '{DATE-OBS}', observer)
-    assert '19:46:23' == format_filename(hdr, '{DATE-OBS|time}', observer)
-    assert '19-46-23' == format_filename(hdr, '{DATE-OBS|time:-}', observer)
+    assert '19-46-23' == format_filename(hdr, '{DATE-OBS|time}', observer)
     assert '2019-03-26' == format_filename(hdr, '{DATE-OBS|date}', observer)
     assert '20190326' == format_filename(hdr, '{DATE-OBS|night}', observer)
 

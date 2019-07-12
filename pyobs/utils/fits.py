@@ -161,7 +161,7 @@ class FilenameFormatter:
             # call method and replace
             return func(key, *params)
 
-    def _format_time(self, key: str, delimiter: str = ':') -> str:
+    def _format_time(self, key: str, delimiter: str = '-') -> str:
         """Formats time using the given delimiter.
 
        Args:

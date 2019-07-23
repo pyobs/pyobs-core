@@ -152,7 +152,7 @@ class pyobsDaemon(object):
                '--stop', '--quiet', '--oknodo',
                '--pidfile', pid_file]
         if self._chuid:
-            cmd.extend(['--user', self._chuid[self._chuid.find[':']]])
+            cmd.extend(['--user', self._chuid[self._chuid.find(':')]])
         subprocess.call(cmd)
 
     def _service(self, config_file):

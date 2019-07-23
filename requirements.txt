@@ -19,3 +19,4 @@ py_expression_eval
 colour
 requests
 #python-prctl
+#python-daemon

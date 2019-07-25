@@ -271,12 +271,14 @@ class FocusModel(PyObsModule, IFocusModel):
 
         try:
             # open file with previous measurements
+            log.info('Reading previous measurements...')
             with self.open_file(self._measurements_file, 'r') as f:
                 # read data and append values
                 data = pd.read_csv(f, index_col=False).append(values, ignore_index=True)
 
         except (FileNotFoundError, pd.errors.EmptyDataError):
             # use values as new dataframe with one entry
+            log.info('No previous measurements found, starting new file.')
             data = pd.DataFrame({k: [v] for k, v in values.items()})
 
         except TypeError:
@@ -286,13 +288,18 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # write file back
         with self.open_file(self._measurements_file, 'w') as f:
+            log.info('Writing measurements to file...')
             with io.StringIO() as sio:
                 data.to_csv(sio, index=False)
                 f.write(sio.getvalue().encode('utf8'))
 
         # finally, calculate new model
         if self._update_model:
+            log.info('Re-calculating model...')
             self._calc_focus_model()
+
+        # finished
+        log.info('Done.')
 
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""

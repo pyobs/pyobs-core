@@ -261,10 +261,6 @@ class FocusModel(PyObsModule, IFocusModel):
         """
         log.info('Received new focus of %.4f +- %.4f.', event.focus, event.error)
 
-        # no update wanted?
-        if not self._update_model:
-            return
-
         # collect values for model
         values = self._get_values()
 
@@ -295,7 +291,8 @@ class FocusModel(PyObsModule, IFocusModel):
                 f.write(sio.getvalue().encode('utf8'))
 
         # finally, calculate new model
-        self._calc_focus_model()
+        if self._update_model:
+            self._calc_focus_model()
 
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""

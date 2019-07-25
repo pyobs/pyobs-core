@@ -50,7 +50,7 @@ class FocusModel(PyObsModule, IFocusModel):
 
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,
-                 measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10,
+                 measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10, enabled: bool = True,
                  *args, **kwargs):
         """Initialize a focus model.
 
@@ -62,7 +62,8 @@ class FocusModel(PyObsModule, IFocusModel):
             coefficients: Coefficients in model, mainly used when updating it.
             update: Whether to update the model on new focus values.
             measurements: Path to file containing all focus measurements.
-
+            min_measurements: Minimum number of measurements to update model.
+            enabled: If False, no focus is set.
         """
         PyObsModule.__init__(self, thread_funcs=self._run_thread if interval is not None and interval > 0 else None,
                              *args, **kwargs)
@@ -77,6 +78,7 @@ class FocusModel(PyObsModule, IFocusModel):
         self._update_model = update
         self._measurements_file = measurements
         self._min_measurements = min_measurements
+        self._enabled = enabled
 
         # list of allowed focuser states for focussing:
         self._allowed_states = [IMotion.Status.IDLE, IMotion.Status.POSITIONED,
@@ -114,6 +116,10 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # run until closed
         while not self.closing.is_set():
+            # if not enabled, just sleep a little
+            if not self._enabled:
+                self.closing.wait(1)
+
             # get focuser
             try:
                 focuser: IFocuser = self.proxy(self._focuser, IFocuser)

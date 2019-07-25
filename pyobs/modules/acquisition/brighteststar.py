@@ -102,6 +102,10 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
                 # we're finished!
                 log.info('Target successfully acquired.')
                 return
+            if dist * 3600. > 120:
+                # move a maximum of 120"=2'
+                log.info('Calculated offsets too large.')
+                return
 
             # is telescope on an equitorial mount?
             if isinstance(telescope, IEquitorialMount):
@@ -128,7 +132,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_altaz_offsets(cur_dalt - dalt, cur_daz - daz).wait()
+                telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
 
             else:
                 log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
@@ -139,7 +143,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
     def _get_radec_shift(self, img):
         # get target pixel
         if self._target_pixel is None:
-            cx, cy = (np.array(img.data.shape) / 2.).astype(np.int)
+            cy, cx = (np.array(img.data.shape) / 2.).astype(np.int)
         else:
             cx, cy = self._target_pixel
 

@@ -119,6 +119,7 @@ class FocusModel(PyObsModule, IFocusModel):
             # if not enabled, just sleep a little
             if not self._enabled:
                 self.closing.wait(1)
+                continue
 
             # get focuser
             try:

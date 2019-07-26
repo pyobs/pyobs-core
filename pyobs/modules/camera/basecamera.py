@@ -252,19 +252,24 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         Raises:
             ValueError: If exposure was not successful.
         """
+        fits_header_futures = {}
         if self.comm:
             # get clients that provide fits headers
             clients = self.comm.clients_with_interface(IFitsHeaderProvider)
 
             # create and run a threads in which the fits headers are fetched
-            fits_header_futures = {}
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
                 future = self.comm.execute(client, 'get_fits_headers')
                 fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type in [ICamera.ImageType.OBJECT, ICamera.ImageType.FLAT]
+        open_shutter = image_type in [
+            ICamera.ImageType.OBJECT,
+            ICamera.ImageType.FLAT,
+            ICamera.ImageType.ACQUISITION,
+            ICamera.ImageType.FOCUS
+        ]
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
@@ -322,7 +327,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename))
+            self.comm.send_event(NewImageEvent(filename, image_type))
 
         # store new last image
         self._last_image = {'filename': filename, 'fits': hdu}

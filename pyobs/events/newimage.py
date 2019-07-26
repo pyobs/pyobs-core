@@ -8,7 +8,7 @@ class NewImageEvent(Event):
         Event.__init__(self)
         self.data = {
             'filename': filename,
-            'image_type': image_type.value
+            'image_type': 'object' if image_type is None else image_type.value
         }
 
     @property

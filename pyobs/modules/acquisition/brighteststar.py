@@ -78,7 +78,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         for a in range(self._attempts):
             # take image
             log.info('Exposing image for %.1f seconds...', self._exptime / 1000.)
-            filename = camera.expose(self._exptime, ICamera.ImageType.OBJECT, broadcast=False).wait()[0]
+            filename = camera.expose(self._exptime, ICamera.ImageType.ACQUISITION).wait()[0]
 
             # download image
             log.info('Downloading image...')

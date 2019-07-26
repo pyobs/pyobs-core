@@ -294,9 +294,8 @@ class FocusModel(PyObsModule, IFocusModel):
                 f.write(sio.getvalue().encode('utf8'))
 
         # finally, calculate new model
-        if self._update_model:
-            log.info('Re-calculating model...')
-            self._calc_focus_model()
+        log.info('Re-calculating model...')
+        self._calc_focus_model()
 
         # finished
         log.info('Done.')
@@ -340,7 +339,8 @@ class FocusModel(PyObsModule, IFocusModel):
         log.info('Reduced chi squared: %.3f', out.redchi)
 
         # store new coeffients
-        self._coefficients = dict(out.params.valuesdict())
+        if self._update_model:
+            self._coefficients = dict(out.params.valuesdict())
 
     def _residuals(self, x: lmfit.Parameters, data: pd.DataFrame):
         """Fit method for model

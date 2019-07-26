@@ -60,8 +60,7 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
 
     def open(self):
         """Open module."""
-        if not PyObsModule.open(self):
-            return False
+        PyObsModule.open(self)
 
         # check telescope
         try:

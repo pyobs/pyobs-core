@@ -19,14 +19,13 @@ log = logging.getLogger(__name__)
 class BrightestStarAcquisition(PyObsModule, IAcquisition):
     """Module for acquiring telescope on brightest star in field."""
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera], exptime: int = 2000,
+    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1, *args, **kwargs):
         """Acquire on brightest star in field..
 
         Args:
             telescope: Name of ITelescope.
             camera: Name of ICamera.
-            exptime: Exposure time in ms.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
             tolerance: Tolerance in position to reach.
@@ -38,7 +37,6 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         self._camera = camera
 
         # store
-        self._exptime = exptime
         self._target_pixel = target_pixel
         self._attempts = attempts
         self._tolerance = tolerance
@@ -55,12 +53,11 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300000)
-    def acquire_target(self, ra: float, dec: float, *args, **kwargs):
+    def acquire_target(self, exposure_time: int, *args, **kwargs):
         """Acquire target at given coordinates.
 
         Args:
-            ra: Right ascension of target to acquire.
-            dec: Declination of target to acquire.
+            exposure_time: Exposure time for acquisition.
         """
 
         # get focuser
@@ -71,14 +68,11 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
 
-        # move telescope to ra/dev
-        telescope.track_radec(ra, dec).wait()
-
         # try given number of attempts
         for a in range(self._attempts):
             # take image
-            log.info('Exposing image for %.1f seconds...', self._exptime / 1000.)
-            filename = camera.expose(self._exptime, ICamera.ImageType.ACQUISITION).wait()[0]
+            log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
+            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()[0]
 
             # download image
             log.info('Downloading image...')

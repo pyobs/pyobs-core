@@ -276,6 +276,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         try:
             hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if hdu is None:
+                self._exposure = None
                 return None, None
         except:
             # exposure was not successful (aborted?), so reset everything

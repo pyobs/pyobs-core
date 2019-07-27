@@ -275,9 +275,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
         try:
             hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-        finally:
+            if hdu is None:
+                return None
+        except:
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
+            raise
 
         # add image type
         hdu.header['IMAGETYP'] = image_type.value

@@ -1,6 +1,7 @@
 photutils
 scipy
 pyinotify
+mysqlclient
 sqlalchemy
 paramiko
 pandas

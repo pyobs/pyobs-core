@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Union
 import os
 from astropy.io import fits
@@ -8,7 +9,7 @@ from pyobs.utils.fits import format_filename
 from sqlalchemy import func
 
 from pyobs import PyObsModule
-from pyobs.database import session_context, Image, Observation, Night, Telescope, Instrument
+from pyobs.database import session_context, Image, Telescope, Instrument
 from pyobs.interfaces import IImageDB
 from pyobs.modules import timeout
 
@@ -18,29 +19,38 @@ log = logging.getLogger(__name__)
 class ImageDB(PyObsModule, IImageDB):
     """An image database."""
 
-    def __init__(self, pattern: str = '{telescope}/{night}/raw/{filename}',
-                 raw_path: str = 'raw', calibration_path: str = 'calib', reduced_path: str = 'reduced',
-                 vfs_root: str = '/archive', *args, **kwargs):
+    def __init__(self, archive: str = '/archive/', pattern: str = '{TELESCOP|lower}/{DATE-OBS|night}/{filename}',
+                 process_archive: bool = False, *args, **kwargs):
         """Create a new image database.
 
         Args:
             pattern: Filename pattern for new images.
-            raw_path: Sub-folder for raw files.
-            calibration_path: Sub-folder for calibration files.
-            reduced_path: Sub-folder for reduced files.
-            vfs_root: The VFS root to store images in.
+            process_archive: If True, all files in the archive directory are processed again. Should only be used once.
         """
         PyObsModule.__init__(self, *args, **kwargs)
         
         # store
+        self._archive = archive
         self._pattern = pattern
-        self._raw_path = raw_path
-        self._calibration_path = calibration_path
-        self._reduced_path = reduced_path
-        self._vfs_root = vfs_root
+        self._process_archive = process_archive
+
+    def open(self):
+        """Open module."""
+        PyObsModule.open(self)
+
+        # if we want to process the archive, start thread
+        threading.Thread(target=self._glob_archive).start()
+
+    def _glob_archive(self):
+        """Get all files in archive and call add_image on them."""
+
+        # find files
+        for file in self.vfs.find(self._archive, '*.fits*'):
+            # add them
+            self.add_image(os.path.join(self._archive, file))
 
     @timeout(60000)
-    def add_image(self, filename: str, *args, **kwargs) ->str:
+    def add_image(self, filename: str, *args, **kwargs) -> str:
         """Add a new image to the database.
 
         Args:
@@ -62,7 +72,7 @@ class ImageDB(PyObsModule, IImageDB):
             tmp.close()
 
         # add image
-        return self._add_image(os.path.basename(filename), hdu)
+        return self._add_image(filename, hdu)
 
     def _add_image(self, filename: str, hdu) -> str:
         """Actually add image to database.
@@ -80,64 +90,23 @@ class ImageDB(PyObsModule, IImageDB):
 
         # open a session
         with session_context() as session:
-            # find observation
-            if 'OBS' not in hdu.header:
-                raise ValueError('Could not find observation name OBS in FITS header.')
-            observation_name = hdu.header['OBS']
-
-            # find or create observation
-            log.info('Searching for observation  %s...', observation_name)
-            observation = session.query(Observation).filter(Observation.name == observation_name).first()
-            if observation is None:
-                log.info('Creating new observation...')
-
-                # get night of observation
-                if 'DATE-OBS' not in hdu.header:
-                    raise ValueError('Could not fetch DATE-OBS, skipping...')
-                date_obs = Time(hdu.header['DATE-OBS'])
-                night_obs = date_obs.night_obs(self.observer)
-
-                # get task name
-                if 'TASK' not in hdu.header:
-                    raise ValueError('Could not fetch name of task, skipping...')
-                task_name = hdu.header['TASK']
-
-                # get night from database
-                night = session.query(Night).filter(Night.night == night_obs).first()
-                if night is None:
-                    night = Night(night_obs)
-                    session.add(night)
-                    session.flush()
-
-                # add observation
-                observation = Observation()
-                observation.name = observation_name
-                observation.night = night
-                observation.task_name = task_name
-                session.add(observation)
-                session.flush()
+            # create new image from FITS file
+            log.info('Adding image to database...')
+            Image.add_from_fits(filename, hdu.header, self.observer)
 
             # create new filename?
             if self._pattern:
-                archive_filename = format_filename(hdu.header, self._pattern, self.observer)
+                archive_filename = format_filename(hdu.header, self._pattern, self.observer,
+                                                   keys={'filename': os.path.basename(filename)})
             else:
-                archive_filename = filename
+                archive_filename = os.path.basename(filename)
+            archive_filename = os.path.join(self._archive, archive_filename)
 
-            # create new image from FITS file
-            image = Image.add_from_fits(filename, hdu.header, self.observer)
-
-            # add to db
-            log.info('Storing new image in database...')
-            session.add(image)
-            observation.add_image(session, image, self.observer)
-
-            # set new filename root
-            archive_filename = os.path.join(self._vfs_root, archive_filename)
-
-            # write file
-            log.info('Writing file to disk as %s...', archive_filename)
-            with self.open_file(archive_filename, 'wb') as f:
-                hdu.writeto(f, overwrite=True)
+            # write file?
+            if archive_filename != filename:
+                log.info('Writing file to disk as %s...', archive_filename)
+                with self.open_file(archive_filename, 'wb') as f:
+                    hdu.writeto(f, overwrite=True)
 
             # finished
             log.info('Finished.')
@@ -157,7 +126,7 @@ class ImageDB(PyObsModule, IImageDB):
         # download image
         log.info('Downloading image from %s...', filename)
         try:
-            with self.open_file(os.path.join(self._vfs_root, filename), 'rb') as f:
+            with self.open_file(os.path.join(self._archive_path, filename), 'rb') as f:
                 hdu = fits.open(f)
                 data = [(c.keyword, c.value, c.comment) for c in hdu[0].header.cards]
                 hdu.close()
@@ -495,7 +464,7 @@ class ImageDB(PyObsModule, IImageDB):
         # open a session
         with session_context() as session:
             # base query
-            query = session.query(Image.filename, func.concat(self._vfs_root).label('scheme'),
+            query = session.query(Image.filename, func.concat(self._archive_path).label('scheme'),
                                   Image.image_type, Image.binning, Image.filter,
                                   Image.exp_time, Image.target_name,
                                   func.date_format(Image.date_obs, '%Y-%m-%d %H:%I:%S').label('date_obs'),

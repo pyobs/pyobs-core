@@ -2,7 +2,7 @@ from astroplan import Observer
 from astropy.io import fits
 import datetime
 
-from pyobs.database import Database, Image, session_context, Night, Observation
+from pyobs.database import Database, Image, session_context
 
 
 def test_add_from_fits():
@@ -34,16 +34,6 @@ def test_add_from_fits():
 
     # now check the database
     with session_context() as session:
-        # we should have a Night object with a value of 2019-02-03
-        night = session.query(Night).first()
-        assert night is not None
-        assert night.night == datetime.date(2019, 2, 3)
-
-        # an observation with name Observation
-        obs = session.query(Observation).first()
-        assert obs is not None
-        assert obs.name == 'Observation'
-
         # check some entries in image
         image = session.query(Image).first()
         assert image.exp_time == 100

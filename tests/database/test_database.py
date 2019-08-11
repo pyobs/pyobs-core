@@ -11,4 +11,3 @@ def test_create():
 
     # check a few
     assert 'pyobs_image' in table_names
-    assert 'pyobs_task' in table_names

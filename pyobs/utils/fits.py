@@ -60,24 +60,44 @@ def create_preview(hdu: fits.PrimaryHDU, grid: bool = True, colorbar: bool = Tru
 
 
 class FilenameFormatter:
-    def __init__(self, hdr: Header, observer: Observer = None):
+    def __init__(self, hdr: Header, observer: Observer = None, keys: dict = None):
         """Initializes a new filename formatter.
 
         Args:
             hdr: FITS header to take values from.
             observer: Observer to use.
+            keys: Additional keys to pass to the formatter.
         """
         self.header = hdr
         self.observer = observer
+        self.keys = {} if keys is None else keys
 
         # define functions
         self.funcs = {
+            'lower': self._format_lower,
             'time': self._format_time,
             'date': self._format_date,
             'night': self._format_night,
             'filter': self._format_filter,
             'string': self._format_string
         }
+
+    def _value(self, key: str):
+        """Returns value for given key.
+
+        Args:
+            key: Key to return value for.
+
+        Returns:
+            Value for given key.
+        """
+
+        # first check keys
+        if key in self.keys:
+            return self.keys[key]
+
+        # then check header
+        return self.header[key]
 
     def __call__(self, fmt: Union[str, list]) -> str:
         """Formats a filename given a format template and a FITS header.
@@ -102,7 +122,7 @@ class FilenameFormatter:
         for f in fmt:
             try:
                 # find all placeholders in format
-                placeholders = re.findall('\{[\w\d_-]+(?:\|[\w\d_-]+(?:\:[\w\d_-]+)*)?\}', f)
+                placeholders = re.findall('\{[\w\d_-]+(?:\|[\w\d_-]+\:?(?:[\w\d_-]+)*)?\}', f)
                 if len(placeholders) == 0:
                     return f
 
@@ -152,7 +172,7 @@ class FilenameFormatter:
 
         # if no method is given, just replace
         if method is None:
-            return self.header[key]
+            return self._value(key)
 
         else:
             # get function (may raise KeyError)
@@ -160,6 +180,17 @@ class FilenameFormatter:
 
             # call method and replace
             return func(key, *params)
+
+    def _format_lower(self, key: str) -> str:
+        """Sets a given string to lowercase.
+
+       Args:
+           key: The name of the FITS header key to use.
+
+       Returns:
+           Formatted string.
+       """
+        return self._value(key).lower()
 
     def _format_time(self, key: str, delimiter: str = '-') -> str:
         """Formats time using the given delimiter.
@@ -172,7 +203,7 @@ class FilenameFormatter:
            Formatted string.
        """
         fmt = '%H' + delimiter + '%M' + delimiter + '%S'
-        date_obs = Time(self.header[key])
+        date_obs = Time(self._value(key))
         return date_obs.datetime.strftime(fmt)
 
     def _format_date(self, key: str, delimiter: str = '-') -> str:
@@ -186,7 +217,7 @@ class FilenameFormatter:
             Formatted string.
         """
         fmt = '%Y' + delimiter + '%m' + delimiter + '%d'
-        date_obs = Time(self.header[key])
+        date_obs = Time(self._value(key))
         return date_obs.datetime.strftime(fmt)
 
     def _format_night(self, key: str, delimiter: str = '') -> str:
@@ -199,7 +230,7 @@ class FilenameFormatter:
         Returns:
             Formatted string.
         """
-        date_obs = Time(self.header[key])
+        date_obs = Time(self._value(key))
         night_obs = date_obs.night_obs(self.observer)
         return night_obs.strftime('%Y' + delimiter + '%m' + delimiter + '%d')
 
@@ -216,7 +247,7 @@ class FilenameFormatter:
         """
         it = self.header[image_type].lower()
         if it in ['light', 'object', 'flat']:
-            return prefix + self.header[key]
+            return prefix + self._value(key)
         else:
             return ''
 
@@ -231,16 +262,17 @@ class FilenameFormatter:
             Formatted string.
         """
         fmt = '%' + format
-        return fmt % self.header[key]
+        return fmt % self._value(key)
 
 
-def format_filename(hdr: Header, fmt: Union[str, list], observer: Observer = None) -> str:
+def format_filename(hdr: Header, fmt: Union[str, list], observer: Observer = None, keys: dict = None) -> str:
     """Formats a filename given a format template and a FITS header.
 
     Args:
         hdr: FITS header to take values from.
         fmt: Filename format or list of formats. If multiple formats are given, the first valid one is used.
         observer: An observer used astronomical calculations.
+        keys: Additional keys to pass to the format string.
 
     Returns:
         Filename
@@ -249,7 +281,7 @@ def format_filename(hdr: Header, fmt: Union[str, list], observer: Observer = Non
         KeyError: If either keyword could not be found in header or method could not be found.
     """
 
-    ff = FilenameFormatter(hdr, observer)
+    ff = FilenameFormatter(hdr, observer, keys)
     return ff(fmt)
 
 

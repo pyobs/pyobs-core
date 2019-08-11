@@ -7,13 +7,12 @@ from astroplan import Observer
 from astropy.io import fits
 
 from pyobs.utils.time import Time
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Table, Date
 from sqlalchemy.orm import relationship, Session
 
 from .base import Base
 from .telescope import Telescope
 from .instrument import Instrument
-from .observation import Observation
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +38,6 @@ class Image(Base):
     __tablename__ = 'pyobs_image'
 
     id = Column(Integer, comment='Unique ID of image', primary_key=True)
-    observation_id = Column(Integer, ForeignKey(Observation.id), comment='Link to observation', nullable=False)
     telescope_id = Column(Integer, ForeignKey(Telescope.id), comment='ID of telescope used')
     instrument_id = Column(Integer, ForeignKey(Instrument.id), comment='ID of instrument used')
     image_type = Column(String(10), comment='Image type')
@@ -69,7 +67,6 @@ class Image(Base):
     quality = Column(Float, comment='Estimation of image quality (0..1)')
     filename = Column(String(255), comment='Name of file', unique=True, nullable=False)
 
-    observation = relationship(Observation, back_populates='images')
     telescope = relationship(Telescope)
     instrument = relationship(Instrument)
 
@@ -197,57 +194,20 @@ class Image(Base):
             Success or not.
         """
         from ..database import session_context
-        from . import Project, Task, Night, Observation
 
         # don't want to raise exceptions
         with session_context() as session:
-            # get night of observation
-            if 'DATE-OBS' not in header:
-                log.error('No DATE-OBS in FITS header.')
-                return False
-            date_obs = Time(header['DATE-OBS'])
-            night_obs = date_obs.night_obs(observer)
-
-            # get project and task
-            if 'PROJECT' not in header:
-                log.error('No PROJECT in FITS header.')
-                return False
-            project_name = header['PROJECT']
-            if 'TASK' not in header:
-                log.error('No TASK in FITS header.')
-                return False
-            task_name = header['TASK']
-
-            # get night from database
-            night = session.query(Night).filter(Night.night == night_obs).first()
-            if night is None:
-                night = Night(night_obs)
-                session.add(night)
-
-            # get observation
-            if 'OBS' not in header:
-                log.error('No OBS in FITS header.')
-                return False
-            observation = Observation.get_by_name(session, header['OBS'])
-            if observation is None:
-                observation = Observation(header['OBS'])
-                session.add(observation)
-            observation.night = night
-            observation.task_name = task_name
-            observation.project_name = project_name
-
             # create or update image
             image = session.query(Image).filter(Image.filename == filename).first()
             if image is None:
                 image = Image()
                 image.filename = filename
-                session.add(image)
 
             # load fits headers
             image.add_fits_header(session, header)
 
-            # add image to observation
-            observation.add_image(session, image, observer)
+            # add image
+            session.add(image)
 
             # finished
             return True

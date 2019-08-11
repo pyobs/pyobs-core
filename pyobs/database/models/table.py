@@ -22,7 +22,10 @@ class GetByNameMixin:
         # query
         result = session.query(cls).filter(func.lower(cls.name) == name.lower()).all()
         if len(result) != 1:
-            return None
+            # doesn't exist? add it!
+            obj = cls(name=name)
+            session.add(obj)
+            return obj
 
         # object
         return result[0]

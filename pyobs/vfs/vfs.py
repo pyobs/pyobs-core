@@ -2,7 +2,7 @@ import logging
 import os
 from astropy.io import fits
 
-from pyobs.object import get_object
+from pyobs.object import get_object, get_class_from_string
 
 
 log = logging.getLogger(__name__)
@@ -103,6 +103,31 @@ class VirtualFileSystem:
             hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
             tmp.close()
             return hdu
+
+    def find(self, path: str, pattern: str):
+        """Find a file in the given path.
+
+        Args:
+            path: Path to search in.
+            pattern: Pattern to search for.
+
+        Returns:
+            List of found files.
+        """
+
+        # split root
+        if not path.endswith('/'):
+            path += '/'
+        root, path = VirtualFileSystem.split_root(path)
+
+        # get root class
+        klass = get_class_from_string(self._roots[root]['class'])
+
+        # get find method
+        find = getattr(klass, 'find')
+
+        # and call it
+        return find(path, pattern, **self._roots[root])
 
 
 __all__ = ['VirtualFileSystem', 'VFSFile']

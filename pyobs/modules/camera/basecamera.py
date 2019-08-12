@@ -6,6 +6,8 @@ from typing import Union, Tuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
+import yaml
+import io
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
@@ -24,7 +26,8 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 filenames: str = '/cache/pyobs_{DATE-OBS|date}T{DATE-OBS|time}{IMAGETYP}.fits.gz', *args, **kwargs):
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{NIGHTEXP|string:04d}-{IMAGETYP|type}00.fits.gz',
+                 cache: str = '/pyobs/camera_cache.json', *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
@@ -56,6 +59,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # multi-threading
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
+
+        # night exposure number
+        self._cache = cache
+        self._night_exp = 0
 
     def open(self):
         """Open module."""
@@ -221,6 +228,53 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 hdr['PC2_2'] = (+cos_theta, 'Partial of second axis coordinate w.r.t. y')
             else:
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
+
+        # add NIGHTEXP
+        self._add_nightexp(hdr)
+
+
+    def _add_nightexp(self, hdr: fits.Header):
+        """Add NIGHTEXP keyword to header
+
+        Args:
+            hdr: Heade to read from and write into.
+        """
+
+        # get night from header
+        night = hdr['DAY-OBS']
+
+        # increase night exp
+        self._night_exp += 1
+
+        # do we have a cache?
+        if self._cache is not None:
+            # try to load it
+            try:
+                with self.open_file(self._cache, 'r') as f:
+                    cache = yaml.load(f)
+
+                    # get new number
+                    if cache is not None and 'nightexp' in cache:
+                        self._night_exp = cache['nightexp'] + 1
+
+                    # if nights differ, reset count
+                    if cache is not None and 'night' in cache and night != cache['night']:
+                        self._night_exp = 1
+
+            except FileNotFoundError:
+                log.warning('Could not read camera cache file.')
+
+            # write file
+            try:
+                with self.open_file(self._cache, 'w') as f:
+                    with io.StringIO() as sio:
+                        yaml.dump({'night': night, 'nightexp': self._night_exp}, sio)
+                        f.write(bytes(sio.getvalue(), 'utf8'))
+            except FileNotFoundError:
+                log.warning('Could not write camera cache file.')
+
+        # set it
+        hdr['NIGHTEXP'] = self._night_exp
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.

@@ -232,7 +232,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # add NIGHTEXP
         self._add_nightexp(hdr)
 
-
     def _add_nightexp(self, hdr: fits.Header):
         """Add NIGHTEXP keyword to header
 
@@ -336,6 +335,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
             raise
+
+        # add HDU name
+        hdu.name = 'SCI'
 
         # add image type
         hdu.header['IMAGETYP'] = image_type.value

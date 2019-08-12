@@ -79,7 +79,8 @@ class FilenameFormatter:
             'date': self._format_date,
             'night': self._format_night,
             'filter': self._format_filter,
-            'string': self._format_string
+            'string': self._format_string,
+            'type': self._format_type
         }
 
     def _value(self, key: str):
@@ -263,6 +264,24 @@ class FilenameFormatter:
         """
         fmt = '%' + format
         return fmt % self._value(key)
+
+    def _format_type(self, key: str) -> str:
+        """Formats an image type to a one-letter code.
+
+        Args:
+            key: The name of the FITS header key to use.
+
+        Returns:
+            Formatted string.
+        """
+        if self._value('IMAGETYP') == 'bias':
+            return 'b'
+        elif self._value('IMAGETYP') == 'flat':
+            return 'f'
+        elif self._value('IMAGETYP') == 'd':
+            return 'd'
+        else:
+            return 'e'
 
 
 def format_filename(hdr: Header, fmt: Union[str, list], observer: Observer = None, keys: dict = None) -> str:

@@ -56,7 +56,6 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
     def close(self):
         """Close module."""
 
-
     @timeout(600000)
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.

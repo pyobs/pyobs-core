@@ -1,6 +1,6 @@
 import logging
 from typing import Union
-
+import threading
 import numpy as np
 from astropy.io import fits
 from lmfit.models import GaussianModel
@@ -34,6 +34,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         self._focuser = focuser
         self._camera = camera
         self._offset = offset
+        self._abort = threading.Event()
 
         # storage for data
         self._data = []
@@ -51,6 +52,10 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
+
+    def close(self):
+        """Close module."""
+
 
     @timeout(600000)
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
@@ -100,13 +105,15 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
         # reset
         self._data = []
+        self._abort = threading.Event()
 
         # loop focus values
         log.info('Starting focus series...')
         for foc in focus_values:
             # set focus
             log.info('Changing focus to %.2fmm...', foc)
-            self.check_running()
+            if self._abort.is_set():
+                raise InterruptedError()
             try:
                 set_focus(float(foc)).wait()
             except RemoteException:
@@ -114,7 +121,8 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
             # do exposure
             log.info('Taking picture...')
-            self.check_running()
+            if self._abort.is_set():
+                raise InterruptedError()
             try:
                 filename = camera.expose(exposure_time=exposure_time, image_type=ICamera.ImageType.FOCUS,
                                          count=1).wait()[0]
@@ -133,7 +141,6 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
             # analyse
             log.info('Analysing picture...')
-            self.check_running()
             try:
                 self._analyse_image(foc, img.data)
             except:
@@ -141,7 +148,8 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
                 log.error('Could not analyse image.')
 
         # fit focus
-        self.check_running()
+        if self._abort.is_set():
+            raise InterruptedError()
         focus = self._fit_focus()
 
         # check
@@ -166,6 +174,21 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
         # return result
         return focus[0], focus[1]
+
+    def auto_focus_status(self, *args, **kwargs) -> dict:
+        """Returns current status of auto focus.
+
+        Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
+
+        Returns:
+            Dictionary with current status.
+        """
+        return self._data
+
+    @timeout(20000)
+    def abort(self, *args, **kwargs):
+        """Abort current actions."""
+        self._abort.set()
 
     def _analyse_image(self, focus, data, backsub=True, xbad=None, ybad=None):
         # clean data

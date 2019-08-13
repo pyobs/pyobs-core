@@ -1,7 +1,7 @@
-from .interface import *
+from .IAbortable import IAbortable
 
 
-class IAutoFocus(Interface):
+class IAutoFocus(IAbortable):
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.
 
@@ -19,6 +19,16 @@ class IAutoFocus(Interface):
 
         Raises:
             ValueError: If focus could not be obtained.
+        """
+        raise NotImplementedError
+
+    def auto_focus_status(self, *args, **kwargs) -> dict:
+        """Returns current status of auto focus.
+
+        Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
+
+        Returns:
+            Dictionary with current status.
         """
         raise NotImplementedError
 

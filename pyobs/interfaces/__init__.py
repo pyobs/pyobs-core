@@ -14,15 +14,14 @@ from .IDome import IDome
 from .IEquitorialMount import IEquitorialMount
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
+from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
-from .IImageDB import IImageDB
 from .IMotion import IMotion
 from .IRoof import IRoof
 from .IRotation import IRotation
 from .IScriptRunner import IScriptRunner
 from .IStoppable import IStoppable
-from .ITaskDB import ITaskDB
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
 from .IWeather import IWeather

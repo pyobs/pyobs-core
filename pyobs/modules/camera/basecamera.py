@@ -260,7 +260,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     if cache is not None and 'night' in cache and night != cache['night']:
                         self._night_exp = 1
 
-            except FileNotFoundError:
+            except (FileNotFoundError, ValueError):
                 log.warning('Could not read camera cache file.')
 
             # write file
@@ -269,7 +269,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     with io.StringIO() as sio:
                         yaml.dump({'night': night, 'nightexp': self._night_exp}, sio)
                         f.write(bytes(sio.getvalue(), 'utf8'))
-            except FileNotFoundError:
+            except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 
         # set it

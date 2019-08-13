@@ -7,7 +7,7 @@ from lmfit.models import GaussianModel
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus
+from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters
 from pyobs.events import FocusFoundEvent
 from pyobs import PyObsModule
 from pyobs.modules import timeout
@@ -19,13 +19,14 @@ log = logging.getLogger(__name__)
 class AutoFocusProjection(PyObsModule, IAutoFocus):
     """Module for auto-focusing a telescope."""
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], offset: bool = False,
-                 *args, **kwargs):
+    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filter_wheel: Union[str, IFilters],
+                 offset: bool = False, *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
             focuser: Name of IFocuser.
             camera: Name of ICamera.
+            filters: Name of IFilters, if any.
             offset: If True, offsets are used instead of absolute focus values.
         """
         PyObsModule.__init__(self, *args, **kwargs)
@@ -33,6 +34,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         # store focuser and camera
         self._focuser = focuser
         self._camera = camera
+        self._filters = filters
         self._offset = offset
         self._abort = threading.Event()
 
@@ -86,6 +88,14 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
+
+        # get filter wheel and current filter
+        filter_name = 'unknown'
+        try:
+            filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+            filter_name = filter_wheel.get_filter().wait()
+        except ValueError:
+            log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
         # get focus as first guess
         try:
@@ -170,7 +180,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             focuser.set_focus(focus[0]).wait()
 
         # send event
-        self.comm.send_event(FocusFoundEvent(absolute, focus[1]))
+        self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
 
         # return result
         return focus[0], focus[1]

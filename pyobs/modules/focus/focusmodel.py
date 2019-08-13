@@ -268,6 +268,7 @@ class FocusModel(PyObsModule, IFocusModel):
         values['focus'] = event.focus
         values['error'] = event.error
         values['datetime'] = Time.now().isot
+        values['filter'] = event.filter_name
 
         try:
             # open file with previous measurements
@@ -316,6 +317,9 @@ class FocusModel(PyObsModule, IFocusModel):
             return
         except pd.errors.EmptyDataError:
             data = pd.DataFrame({})
+
+        # only take clear filter images for now
+        data = data[data['filter'] == 'clear']
 
         # enough measurements?
         if len(data) < self._min_measurements:

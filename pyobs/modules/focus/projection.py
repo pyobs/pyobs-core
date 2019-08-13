@@ -232,8 +232,8 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
         # add to list
         self._data.append({'focus': float(focus),
-                           'x': xfit.params['fwhm'].value, 'xerr': xfit.params['fwhm'].stderr,
-                           'y': yfit.params['fwhm'].value, 'yerr': yfit.params['fwhm'].stderr})
+                           'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
+                           'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
     def _fit_focus(self) -> (float, float):
         # get data

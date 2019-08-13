@@ -175,7 +175,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, *args, **kwargs) -> list:
+    def auto_focus_status(self, *args, **kwargs) -> dict:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
@@ -184,7 +184,9 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             Dictionary with current status.
         """
         with self._data_lock:
-            return self._data
+            return {
+                'series': self._data
+            }
 
     @timeout(20000)
     def abort(self, *args, **kwargs):

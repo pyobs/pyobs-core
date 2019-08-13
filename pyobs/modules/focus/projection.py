@@ -37,6 +37,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         self._abort = threading.Event()
 
         # storage for data
+        self._data_lock = threading.RLock()
         self._data = []
 
     def open(self):
@@ -174,7 +175,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, *args, **kwargs) -> dict:
+    def auto_focus_status(self, *args, **kwargs) -> list:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
@@ -182,7 +183,8 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         Returns:
             Dictionary with current status.
         """
-        return self._data
+        with self._data_lock:
+            return self._data
 
     @timeout(20000)
     def abort(self, *args, **kwargs):
@@ -231,9 +233,10 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
                      yfit.params['fwhm'].value, yfit.params['fwhm'].stderr)
 
         # add to list
-        self._data.append({'focus': float(focus),
-                           'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
-                           'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
+        with self._data_lock:
+            self._data.append({'focus': float(focus),
+                               'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
+                               'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
     def _fit_focus(self) -> (float, float):
         # get data

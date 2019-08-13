@@ -319,7 +319,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # open the shutter?
         open_shutter = image_type in [
             ICamera.ImageType.OBJECT,
-            ICamera.ImageType.FLAT,
+            ICamera.ImageType.SKYFLAT,
             ICamera.ImageType.ACQUISITION,
             ICamera.ImageType.FOCUS
         ]

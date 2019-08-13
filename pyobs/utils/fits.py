@@ -247,7 +247,7 @@ class FilenameFormatter:
             Formatted string.
         """
         it = self.header[image_type].lower()
-        if it in ['light', 'object', 'flat']:
+        if it in ['light', 'object', 'skyflat']:
             return prefix + self._value(key)
         else:
             return ''
@@ -276,7 +276,7 @@ class FilenameFormatter:
         """
         if self._value('IMAGETYP') == 'bias':
             return 'b'
-        elif self._value('IMAGETYP') == 'flat':
+        elif self._value('IMAGETYP') == 'skyflat':
             return 'f'
         elif self._value('IMAGETYP') == 'd':
             return 'd'

@@ -163,6 +163,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # get date obs
         date_obs = Time(hdr['DATE-OBS'])
 
+        # UT1-UTC
+        hdr['UT1_UTC'] = (float(date_obs.delta_ut1_utc), 'UT1-UTC')
+
         # basic stuff
         hdr['EQUINOX'] = (2000., 'Equinox of celestial coordinate system')
 

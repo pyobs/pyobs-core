@@ -17,7 +17,7 @@ class ICamera(IAbortable):
         BIAS = 'bias'
         DARK = 'dark'
         OBJECT = 'object'
-        FLAT = 'flat'
+        SKYFLAT = 'skyflat'
         FOCUS = 'focus'
         ACQUISITION = 'acquisition'
 

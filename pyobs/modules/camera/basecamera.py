@@ -260,7 +260,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     if cache is not None and 'night' in cache and night != cache['night']:
                         self._frame_num = 1
 
-            except FileNotFoundError:
+            except (FileNotFoundError, ValueError):
                 log.warning('Could not read camera cache file.')
 
             # write file
@@ -269,7 +269,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     with io.StringIO() as sio:
                         yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
                         f.write(bytes(sio.getvalue(), 'utf8'))
-            except FileNotFoundError:
+            except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 
         # set it
@@ -319,7 +319,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # open the shutter?
         open_shutter = image_type in [
             ICamera.ImageType.OBJECT,
-            ICamera.ImageType.FLAT,
+            ICamera.ImageType.SKYFLAT,
             ICamera.ImageType.ACQUISITION,
             ICamera.ImageType.FOCUS
         ]

@@ -9,7 +9,6 @@ import pytz
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
-from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
@@ -65,7 +64,7 @@ class PyObsModule:
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
                  timezone: str = 'utc', location: Union[str, dict] = None,
-                 database: str = None, plugins: list = None, thread_funcs: [list, Callable] = None,
+                 plugins: list = None, thread_funcs: [list, Callable] = None,
                  restart_threads: bool = True, *args, **kwargs):
         """Initializes a new pyobs module.
 
@@ -75,7 +74,6 @@ class PyObsModule:
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
-            database: Database connection string
             plugins: List of plugins to start.
             thread_funcs: Functions to start in a separate thread.
             restart_threads: Whether to automatically restart threads when they quit.
@@ -91,9 +89,6 @@ class PyObsModule:
         self._interfaces = []
         self._methods = {}
         self._get_interfaces_and_methods()
-
-        # store
-        self._db_connect = database
 
         # closing event
         self.closing = threading.Event()
@@ -160,10 +155,6 @@ class PyObsModule:
 
     def open(self):
         """Open module."""
-
-        # connect database
-        if self._db_connect:
-            Database.connect(self._db_connect)
 
         # open plugins
         if self._plugins:

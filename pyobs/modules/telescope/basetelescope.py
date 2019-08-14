@@ -23,7 +23,7 @@ class BaseTelescope(PyObsModule, ITelescope):
             fits_headers: Additional FITS headers to send.
             min_altitude: Minimal altitude for telescope.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        PyObsModule.__init__(self, thread_funcs=[self._celestial], *args, **kwargs)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -35,6 +35,10 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # status
         self._motion_status = IMotion.Status.IDLE
+
+        # celestial status
+        self._celestial_lock = threading.RLock()
+        self._celestial_headers = {}
 
     def open(self):
         """Open module."""
@@ -116,6 +120,9 @@ class BaseTelescope(PyObsModule, ITelescope):
             self._track_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
+            # update headers now
+            self._update_celestial_headers()
+
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
@@ -152,6 +159,9 @@ class BaseTelescope(PyObsModule, ITelescope):
             log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
             self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
+
+            # update headers now
+            self._update_celestial_headers()
 
     def get_motion_status(self, device: str = None) -> IMotion.Status:
         """Returns current motion status.
@@ -198,6 +208,10 @@ class BaseTelescope(PyObsModule, ITelescope):
         for key, value in self._fits_headers.items():
             hdr[key] = tuple(value)
 
+        # add celestial headers
+        for key, value in self._celestial_headers.items():
+            hdr[key] = tuple(value)
+
         # finish
         return hdr
 
@@ -210,6 +224,45 @@ class BaseTelescope(PyObsModule, ITelescope):
         """
         log.warning('Received bad weather event, shutting down.')
         self.park()
+
+    def _celestial(self):
+        """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
+
+        # run until closing
+        while not self.closing.is_set():
+            # update headers
+            self._update_celestial_headers()
+
+            # sleep a little
+            self.closing.wait(30)
+
+    def _update_celestial_headers(self):
+        """Calculate positions and distances to celestial objects like moon and sun."""
+        # get now
+        now = Time.now()
+
+        # get telescope alt/az
+        alt, az = self.get_altaz()
+        tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
+
+        # get current moon and sun information
+        moon_altaz = self.observer.moon_altaz(now)
+        moon_frac = self.observer.moon_illumination(now)
+        sun_altaz = self.observer.sun_altaz(now)
+
+        # calculate distance to telescope
+        moon_dist = tel_altaz.separation(moon_altaz)
+        sun_dist = tel_altaz.separation(sun_altaz)
+
+        # store it
+        with self._celestial_lock:
+            self._celestial_headers = {
+                'MOONALT': (moon_altaz.alt.degree, 'Lunar altitude'),
+                'MOONFRAC': (moon_frac, 'Fraction of the moon illuminated'),
+                'MOONDIST': (moon_dist.degree, 'Lunar distance from target'),
+                'SUNALT': (sun_altaz.alt.degree, 'Solar altitude'),
+                'SUNDIST': (sun_dist.degree, 'Solar Distance from Target')
+            }
 
 
 __all__ = ['BaseTelescope']

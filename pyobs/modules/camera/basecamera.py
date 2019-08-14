@@ -26,7 +26,7 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{NIGHTEXP|string:04d}-{IMAGETYP|type}00.fits.gz',
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
                  cache: str = '/pyobs/camera_cache.json', *args, **kwargs):
         """Creates a new BaseCamera.
 
@@ -62,7 +62,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # night exposure number
         self._cache = cache
-        self._night_exp = 0
+        self._frame_num = 0
 
     def open(self):
         """Open module."""
@@ -229,21 +229,21 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             else:
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
 
-        # add NIGHTEXP
-        self._add_nightexp(hdr)
+        # add FRAMENUM
+        self._add_framenum(hdr)
 
-    def _add_nightexp(self, hdr: fits.Header):
-        """Add NIGHTEXP keyword to header
+    def _add_framenum(self, hdr: fits.Header):
+        """Add FRAMENUM keyword to header
 
         Args:
-            hdr: Heade to read from and write into.
+            hdr: Header to read from and write into.
         """
 
         # get night from header
         night = hdr['DAY-OBS']
 
         # increase night exp
-        self._night_exp += 1
+        self._frame_num += 1
 
         # do we have a cache?
         if self._cache is not None:
@@ -253,12 +253,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     cache = yaml.load(f)
 
                     # get new number
-                    if cache is not None and 'nightexp' in cache:
-                        self._night_exp = cache['nightexp'] + 1
+                    if cache is not None and 'framenum' in cache:
+                        self._frame_num = cache['framenum'] + 1
 
                     # if nights differ, reset count
                     if cache is not None and 'night' in cache and night != cache['night']:
-                        self._night_exp = 1
+                        self._frame_num = 1
 
             except FileNotFoundError:
                 log.warning('Could not read camera cache file.')
@@ -267,13 +267,13 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             try:
                 with self.open_file(self._cache, 'w') as f:
                     with io.StringIO() as sio:
-                        yaml.dump({'night': night, 'nightexp': self._night_exp}, sio)
+                        yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
                         f.write(bytes(sio.getvalue(), 'utf8'))
             except FileNotFoundError:
                 log.warning('Could not write camera cache file.')
 
         # set it
-        hdr['NIGHTEXP'] = self._night_exp
+        hdr['FRAMENUM'] = self._frame_num
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
@@ -373,6 +373,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # create a temporary filename
         filename = format_filename(hdu.header, self._filenames, self.observer)
+        hdu.header['ORIGNAME'] = (filename, 'The original file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 

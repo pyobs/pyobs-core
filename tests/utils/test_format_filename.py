@@ -18,15 +18,15 @@ def test_default():
     assert 'image_clear.fits' == filename
 
 
-def test_date_obs(observer):
+def test_date_obs():
     hdr = fits.Header({'DATE-OBS': '2019-03-26T19:46:23.000'})
 
     assert '2019-03-26T19:46:23.000' == format_filename(hdr, '{DATE-OBS}')
-    assert '19-46-23' == format_filename(hdr, '{DATE-OBS|time}')
-    assert '2019-03-26' == format_filename(hdr, '{DATE-OBS|date}')
+    assert '19-46-23' == format_filename(hdr, '{DATE-OBS|time:-}')
+    assert '2019-03-26' == format_filename(hdr, '{DATE-OBS|date:-}')
 
 
-def test_filter(observer):
+def test_filter():
     hdr = fits.Header({'IMAGETYP': 'light', 'FILTER': 'clear'})
 
     # for dark/bias no filter should be added
@@ -39,7 +39,7 @@ def test_filter(observer):
     assert 'image_light_clear.fits' == format_filename(hdr, 'image_{IMAGETYP}{FILTER|filter}.fits')
 
 
-def test_string(observer):
+def test_string():
     hdr = fits.Header({'EXPID': 5})
 
     # format number
@@ -47,7 +47,7 @@ def test_string(observer):
     assert 'exp0005' == format_filename(hdr, 'exp{EXPID|string:04d}')
 
 
-def test_list(observer):
+def test_list():
     hdr = fits.Header({'EXPID': 5})
 
     # list of formats

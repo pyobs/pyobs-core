@@ -377,6 +377,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # create a temporary filename
         filename = format_filename(hdu.header, self._filenames, self.observer)
         hdu.header['ORIGNAME'] = (filename, 'The original file name')
+        hdu.header['FNAME'] = (filename, 'FITS file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 

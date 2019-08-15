@@ -1,8 +1,5 @@
 import logging
-import os
-import shutil
 from queue import Queue
-from typing import Union
 
 from pyobs import PyObsModule
 from pyobs.events import NewImageEvent
@@ -11,16 +8,16 @@ from pyobs.utils.fits import format_filename
 log = logging.getLogger(__name__)
 
 
-class NewImageWriter(PyObsModule):
+class ImageWriter(PyObsModule):
     """Writes new images to disk."""
 
-    def __init__(self, new_images_channel: str = 'new_images', filenames: Union[str, list] = None,
+    def __init__(self, new_images_channel: str = 'new_images', filename: str = '/archive/{FNAME}',
                  *args, **kwargs):
         """Creates a new image writer.
 
         Args:
             new_images_channel: Name of new images channel.
-            filenames: If not None, create new filename from this pattern.
+            filename: Pattern for filename to store images at.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -29,7 +26,7 @@ class NewImageWriter(PyObsModule):
 
         # variables
         self._new_images_channel = new_images_channel
-        self._filenames = filenames
+        self._filename = filename
         self._queue = Queue()
 
     def open(self):
@@ -74,13 +71,11 @@ class NewImageWriter(PyObsModule):
                 continue
 
             # output filename
-            output = filename
-            if self._filenames:
-                try:
-                    output = format_filename(hdu.header, self._filenames, self.observer)
-                except KeyError as e:
-                    log.error('Could not format filename: %s', e)
-                    continue
+            try:
+                output = format_filename(hdu.header, self._filename)
+            except KeyError as e:
+                log.error('Could not format filename: %s', e)
+                continue
 
             try:
                 # open output
@@ -91,4 +86,4 @@ class NewImageWriter(PyObsModule):
                 log.error('Could not store image.')
 
 
-__all__ = ['NewImageWriter']
+__all__ = ['ImageWriter']

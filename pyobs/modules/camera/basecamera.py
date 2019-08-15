@@ -1,6 +1,7 @@
 import datetime
 import logging
 import math
+import os
 import threading
 from typing import Union, Tuple
 import numpy as np
@@ -375,9 +376,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return hdu, None
 
         # create a temporary filename
-        filename = format_filename(hdu.header, self._filenames, self.observer)
-        hdu.header['ORIGNAME'] = (filename, 'The original file name')
-        hdu.header['FNAME'] = (filename, 'FITS file file name')
+        filename = format_filename(hdu.header, self._filenames)
+        hdu.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
+        hdu.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 

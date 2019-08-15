@@ -85,7 +85,9 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         else:
             left, top, width, height = self.get_window()
             data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
-            return fits.PrimaryHDU(data.astype('uint16'))
+            hdu = fits.PrimaryHDU(data.astype('uint16'))
+            hdu.header['DATAMEAN'] = 1000.
+            return hdu
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.

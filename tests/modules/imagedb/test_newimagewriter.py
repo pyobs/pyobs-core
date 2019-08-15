@@ -3,7 +3,7 @@ import time
 
 from pyobs.vfs import VirtualFileSystem
 from pyobs.comm.dummy import DummyComm
-from pyobs.modules.imagedb import NewImageWriter
+from pyobs.modules.image import NewImageWriter
 from pyobs.events import NewImageEvent
 
 

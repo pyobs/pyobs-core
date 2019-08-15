@@ -65,8 +65,11 @@ class FocusModel(PyObsModule, IFocusModel):
             min_measurements: Minimum number of measurements to update model.
             enabled: If False, no focus is set.
         """
-        PyObsModule.__init__(self, thread_funcs=self._run_thread if interval is not None and interval > 0 else None,
-                             *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        if interval is not None and interval > 0:
+            self._add_thread_func(self._run_thread, True)
 
         # store
         self._focuser = focuser

@@ -20,7 +20,10 @@ class StateMachineMastermind(PyObsModule, IFitsHeaderProvider):
 
     def __init__(self, tasks: dict, *args, **kwargs):
         """Initialize a new auto focus system."""
-        PyObsModule.__init__(self, thread_funcs=self._run_thread, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._run_thread, True)
 
         # storage for data
         self._task_factory: TaskFactory = get_object(tasks, comm=self.comm, observer=self.observer, vfs=self.vfs,

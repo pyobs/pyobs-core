@@ -24,7 +24,10 @@ class NewImageWatcher(PyObsModule):
             imagedb: The ImageDB to use.
             copy: If given, copy the file to the given location(s).
         """
-        PyObsModule.__init__(self, thread_funcs=self._worker, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._worker, True)
 
         # variables
         self._watchpath = watchpath

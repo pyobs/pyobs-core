@@ -16,7 +16,10 @@ class StandAlone(PyObsModule):
             message: Message to log in the given interval.
             interval: Interval between messages.
         """
-        PyObsModule.__init__(self, thread_funcs=self._message, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._message, True)
 
         # store
         self._message = message

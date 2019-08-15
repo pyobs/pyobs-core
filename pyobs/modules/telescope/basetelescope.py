@@ -23,7 +23,10 @@ class BaseTelescope(PyObsModule, ITelescope):
             fits_headers: Additional FITS headers to send.
             min_altitude: Minimal altitude for telescope.
         """
-        PyObsModule.__init__(self, thread_funcs=[self._celestial], *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._celestial, True)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}

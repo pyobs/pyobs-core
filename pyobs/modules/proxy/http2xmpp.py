@@ -345,7 +345,10 @@ class HTTP2XMPP(PyObsModule, tornado.web.Application):
             web_config: Configuration for Angular web app.
             public_html: Path to Angular web app.
         """
-        PyObsModule.__init__(self, thread_funcs=self._http, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._http, True)
 
         # create thread pool executor
         self.executor = ThreadPoolExecutor(max_workers=30)

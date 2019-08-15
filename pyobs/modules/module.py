@@ -63,9 +63,8 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 timezone: str = 'utc', location: Union[str, dict] = None,
-                 plugins: list = None, thread_funcs: [list, Callable] = None,
-                 restart_threads: bool = True, *args, **kwargs):
+                 timezone: str = 'utc', location: Union[str, dict] = None, plugins: list = None,
+                 *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
@@ -75,8 +74,6 @@ class PyObsModule:
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
             plugins: List of plugins to start.
-            thread_funcs: Functions to start in a separate thread.
-            restart_threads: Whether to automatically restart threads when they quit.
         """
 
         # an event that will be fired when closing the module
@@ -140,18 +137,24 @@ class PyObsModule:
         self._opened = False
 
         # thread function(s)
-        self._restart_threads = restart_threads
         self._threads = {}
-        self._watchdog = None
-        if thread_funcs:
-            # we want a list
-            if not hasattr(thread_funcs, '__iter__'):
-                thread_funcs = [thread_funcs]
+        self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-            # create threads and watchdog
-            self._threads = {threading.Thread(target=PyObsModule._thread_func, name=t.__name__, args=(t,)): t
-                             for t in thread_funcs}
-            self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
+    def _add_thread_func(self, func: Callable, restart: bool = True):
+        """Add a new thread func.
+
+        MUST be called in constructor of derived class or at least before calling open() on the module.
+
+        Args:
+            func: Func to add.
+            restart: Whether to restart this function.
+        """
+
+        # create thread
+        t = threading.Thread(target=PyObsModule._thread_func, name=func.__name__, args=(func,))
+
+        # add it
+        self._threads[t] = (func, restart)
 
     def open(self):
         """Open module."""
@@ -163,7 +166,7 @@ class PyObsModule:
                 plg.open()
 
         # start threads and watchdog
-        for thread, target in self._threads.items():
+        for thread, (target, _) in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
             thread.start()
         if self._watchdog:
@@ -252,12 +255,15 @@ class PyObsModule:
         """Watchdog thread that tries to restart threads if they quit."""
 
         while not self.closing.is_set():
-            # get dead threads
-            dead = {thread: target for thread, target in self._threads.items() if not thread.is_alive()}
+            # get dead threads that need to be restarted
+            dead = {}
+            for thread, (target, restart) in self._threads.items():
+                if not thread.is_alive():
+                    dead[thread] = (target, restart)
 
             # restart dead threads or quit
-            for thread, target in dead.items():
-                if self._restart_threads:
+            for thread, (target, restart) in dead.items():
+                if restart:
                     log.error('Thread for %s has died, restarting...', target.__name__)
                     del self._threads[thread]
                     thread = threading.Thread(target=target, name=target.__name__)

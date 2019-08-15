@@ -230,6 +230,9 @@ class BaseTelescope(PyObsModule, ITelescope):
 
     def _celestial(self):
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
+ 
+        # wait a little
+        self.closing.wait(10)
 
         # run until closing
         while not self.closing.is_set():

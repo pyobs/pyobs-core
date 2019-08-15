@@ -33,7 +33,10 @@ class PointingMastermind(PyObsModule):
             max_distance: Maximum distance in degrees of catalog star to grid point.
             acquisition: IAcquisition unit to use.
         """
-        PyObsModule.__init__(self, thread_funcs=self._run_thread, restart_threads=False, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._run_thread, False)
 
         # store
         self._finish = 1. - finish / 100.

@@ -278,7 +278,7 @@ class FilenameFormatter:
             return 'b'
         elif self._value('IMAGETYP') == 'skyflat':
             return 'f'
-        elif self._value('IMAGETYP') == 'd':
+        elif self._value('IMAGETYP') == 'dark':
             return 'd'
         else:
             return 'e'

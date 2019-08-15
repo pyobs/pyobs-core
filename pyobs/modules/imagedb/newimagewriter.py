@@ -22,7 +22,10 @@ class NewImageWriter(PyObsModule):
             new_images_channel: Name of new images channel.
             filenames: If not None, create new filename from this pattern.
         """
-        PyObsModule.__init__(self, thread_funcs=self._worker, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._worker, True)
 
         # variables
         self._new_images_channel = new_images_channel

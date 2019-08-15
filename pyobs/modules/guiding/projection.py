@@ -37,7 +37,10 @@ class AutoGuidingProjection(PyObsModule, IAutoGuiding, IStoppable):
             new_images_channel: Channel for receiving new images.
             pid: Whether to use a PID for guiding.
         """
-        PyObsModule.__init__(self, thread_funcs=self._auto_guiding, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._auto_guiding, True)
 
         # store
         self._telescope = telescope

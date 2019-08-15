@@ -26,7 +26,10 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             readout_time: Readout time in seconds.
             sim: Dictionary with config for image simulator.
         """
-        BaseCamera.__init__(self, thread_funcs=self._cooling_thread, *args, **kwargs)
+        BaseCamera.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._cooling_thread, True)
 
         # store
         self._redout_time = readout_time

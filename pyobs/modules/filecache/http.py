@@ -90,7 +90,10 @@ class HttpFileCacheServer(PyObsModule, tornado.web.Application):
             port: Port for HTTP server.
             cache_size: Size of file cache, i.e. number of files to cache.
         """
-        PyObsModule.__init__(self, thread_funcs=self._http, restart_threads=False, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._http, False)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [

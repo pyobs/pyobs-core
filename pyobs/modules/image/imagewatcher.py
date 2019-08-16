@@ -3,62 +3,27 @@ import logging
 import os
 from queue import Queue
 import pyinotify
-import requests
+from astropy.io import fits
 
-from pyobs import PyObsModule, get_object
-
+from pyobs import PyObsModule
+from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
 
 
-class ArchiveClient:
-    def __call__(self, filename: str) -> bool:
-        raise NotImplementedError
+class ImageWatcher(PyObsModule):
+    """Watch for new images and write them to all given destinations.
 
+    Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
+    the file is deleted.
+    """
 
-class PyObsArchiveClient(ArchiveClient):
-    def __init__(self, url: str, token: str, *args, **kwargs):
-        # store url
-        self._url = url
-        if not self._url.endswith('/'):
-            self._url += '/'
-
-        # http stuff
-        self._headers = {
-            'Authorization': 'Token ' + token
-        }
-        self._session = requests.session()
-
-        # do some initial GET request for getting the csrftoken
-        self._session.get(self._url, headers=self._headers)
-
-    def __call__(self, filename: str) -> bool:
-        # define list of files and url
-        files = {'image': open(filename, 'rb')}
-        url = self._url +  'frames/create/'
-
-        # post it
-        r = self._session.post(url,
-                               data={'csrfmiddlewaretoken': self._session.cookies['csrftoken']},
-                               files=files, headers=self._headers)
-
-        # success, if status code is 200
-        if r.status_code == 200:
-            return True
-        else:
-            log.error('Received status code %d.', r.status_code)
-            return False
-
-
-class SendToArchive(PyObsModule):
-    """Watch for new images and add them to one or more archives."""
-
-    def __init__(self, watchpath: str = None, archives: dict = None, *args, **kwargs):
+    def __init__(self, watchpath: str = None, destinations: list = None, *args, **kwargs):
         """Create a new image watcher.
 
         Args:
             watchpath: Path to watch.
-            archives: Config for a client to the archive.
+            destinations: Filename patterns for destinations.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -70,10 +35,10 @@ class SendToArchive(PyObsModule):
         self._notifier = None
         self._queue = Queue()
 
-        # create archives
-        if not archives:
-            raise ValueError('No archives given.')
-        self._archives = {name: get_object(a, ArchiveClient) for name, a in archives.items()}
+        # filename patterns
+        if not destinations:
+            raise ValueError('No filename patterns given for the destinations.')
+        self._destinations = destinations
 
     def open(self):
         """Open module."""
@@ -133,14 +98,24 @@ class SendToArchive(PyObsModule):
 
             # better safe than sorry
             try:
+                # open file
+                fits_file = fits.open(filename)
+
                 # loop archive and upload
                 success = True
-                for name, archive in self._archives.items():
-                    log.info('Sending file to archive %s...', name)
-                    if not archive(filename):
-                        log.error('Could not upload image, skipping for now...')
+                for pattern in self._destinations:
+
+                    # create filename
+                    out_filename = format_filename(fits_file['SCI'].header, pattern)
+
+                    # store it
+                    log.info('Storing file as %s...', out_filename)
+                    try:
+                        with self.open_file(out_filename, 'w') as dest:
+                            fits_file.writeto(dest)
+                    except:
+                        log.exception('Error while copying file, skipping for now.')
                         success = False
-                        break
 
                 # no success_
                 if not success:
@@ -167,4 +142,4 @@ class EventHandler(pyinotify.ProcessEvent):
         self.main.add_image(event.pathname)
 
 
-__all__ = ['SendToArchive']
+__all__ = ['ImageWatcher']

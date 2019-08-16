@@ -1,2 +1,2 @@
+from .imagewatcher import ImageWatcher
 from .imagewriter import ImageWriter
-from .sendtoarchive import SendToArchive

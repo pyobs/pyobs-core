@@ -60,7 +60,10 @@ class ArchiveFile(HttpFile):
         # check json
         json = r.json()
         if 'created' not in json or json['created'] == 0:
-            raise ValueError('Could not create file in archive.')
+            if 'errors' in json:
+                raise ValueError('Could not create file in archive: ' + str(errors))
+            else:
+                raise ValueError('Could not create file in archive.')
 
 
 __all__ = ['ArchiveFile']

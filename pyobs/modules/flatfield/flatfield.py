@@ -303,7 +303,7 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Got a flat field with mean counts of %.2f.', mean)
 
         # calculate factor for new exposure time
-        factor = (self._target_count - self._bias) / (mean - self._bias)
+        factor = (self._target_count - self._bias_level) / (mean - self._bias_level)
 
         # limit factor to 0.5-1.5
         factor = min(1.5, max(0.5, factor))

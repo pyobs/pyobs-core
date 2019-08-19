@@ -337,7 +337,7 @@ class FlatField(PyObsModule, IFlatField):
             else:
                 # we're finished
                 log.info('Left exposure time range for taking flats.')
-                self._state = FlatField.State.Finished
+                self._state = FlatField.State.FINISHED
 
     def flat_field_status(self, *args, **kwargs) -> dict:
         """Returns current status of auto focus.

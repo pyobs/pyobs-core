@@ -269,7 +269,7 @@ class FilenameFormatter:
             return 'b'
         elif self._value(hdr, key) == 'skyflat':
             return 'f'
-        elif self._value(hdr, key) == 'd':
+        elif self._value(hdr, key) == 'dark':
             return 'd'
         else:
             return 'e'

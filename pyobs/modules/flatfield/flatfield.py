@@ -324,7 +324,7 @@ class FlatField(PyObsModule, IFlatField):
                 # finished?
                 if self._exposures_left <= 0:
                     log.info('Finished all requested flat-fields..')
-                    self._state = FlatField.State.Finished
+                    self._state = FlatField.State.FINISHED
                 # keep going
                 self._exptime = exptime
 

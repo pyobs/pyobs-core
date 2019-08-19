@@ -168,7 +168,7 @@ class XmppComm(Comm):
         """
         return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
 
-    def _get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.
 
         Args:

@@ -107,7 +107,7 @@ class Comm:
         # exists?
         if client not in self._proxies:
             # get interfaces
-            interfaces = self._get_interfaces(client)
+            interfaces = self.get_interfaces(client)
             if interfaces is None:
                 return None
 
@@ -156,7 +156,7 @@ class Comm:
         """
         return filter(lambda c: self._supports_interface(c, interface), self.clients)
 
-    def _get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.
 
         Args:

@@ -1,9 +1,8 @@
-from typing import Tuple
 from .IAbortable import IAbortable
 
 
 class IFlatField(IAbortable):
-    def flat_field(self, filter_name: str, count: int = 20, binning: Tuple = (1, 1), *args, **kwargs):
+    def flat_field(self, filter_name: str, count: int = 20, binning: tuple = (1, 1), *args, **kwargs):
         """Do a series of flat fields in the given filter.
 
         Args:

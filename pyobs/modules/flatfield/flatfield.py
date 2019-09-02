@@ -108,7 +108,7 @@ class FlatField(PyObsModule, IFlatField):
         """Close module."""
 
     @timeout(3600000)
-    def flat_field(self, filter_name: str, count: int = 20, binning: tuple = (1, 1), *args, **kwargs):
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs):
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -191,7 +191,7 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Found average BIAS level of %.2f...', avg)
         return avg
 
-    def _init_system(self, filter_name: str, binning: tuple = (1, 1)):
+    def _init_system(self, filter_name: str, binning: int = 1):
         """Initialize whole system.
 
         Args:
@@ -201,8 +201,8 @@ class FlatField(PyObsModule, IFlatField):
 
         # set binning
         if isinstance(self._camera, ICameraBinning):
-            log.info('Setting binning to %dx%d...', *binning)
-            self._camera.set_binning(*binning)
+            log.info('Setting binning to %dx%d...', binning, binning)
+            self._camera.set_binning(binning, binning)
 
         # get bias level
         self._bias_level = self._get_bias()
@@ -233,7 +233,7 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Waiting for flat-field time...')
         self._state = FlatField.State.WAITING
 
-    def _wait(self, filter_name: str, binning: tuple = (1, 1)):
+    def _wait(self, filter_name: str, binning: int = 1):
         """Wait for flat-field time.
 
         Args:
@@ -246,9 +246,9 @@ class FlatField(PyObsModule, IFlatField):
         exptime = self._functions[filter_name].evaluate({'h': sun.alt.degree})
 
         # scale with binning
-        exptime /= binning[0] * binning[1]
+        exptime /= binning * binning
         log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
-                 exptime, binning[0], binning[1], sun.alt.degree)
+                 exptime, binning, binning, sun.alt.degree)
 
         # in boundaries?
         if self._min_exptime <= exptime <= self._max_exptime:

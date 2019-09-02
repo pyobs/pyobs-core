@@ -143,7 +143,7 @@ class FlatField(PyObsModule, IFlatField):
                 self._init_system(filter_name, binning)
             elif self._state == FlatField.State.WAITING:
                 # wait until exposure time reaches good time
-                self._wait(filter_name)
+                self._wait(filter_name, binning)
             elif self._state == FlatField.State.TESTING:
                 # do actual tests on sky for exposure time
                 self._flat_field(testing=True)
@@ -233,17 +233,22 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Waiting for flat-field time...')
         self._state = FlatField.State.WAITING
 
-    def _wait(self, filter_name: str):
+    def _wait(self, filter_name: str, binning: tuple = (1, 1)):
         """Wait for flat-field time.
 
         Args:
             filter_name: Name of filter to wait for.
+            binning: Binning to use.
         """
 
         # get solar elevation and evaluate function
         sun = self.observer.sun_altaz(Time.now())
         exptime = self._functions[filter_name].evaluate({'h': sun.alt.degree})
-        log.info('Calculated optimal exposure time of %.2fs at solar elevation of %.2f°.', exptime, sun.alt.degree)
+
+        # scale with binning
+        exptime /= binning[0] * binning[1]
+        log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
+                 exptime, binning[0], binning[1], sun.alt.degree)
 
         # in boundaries?
         if self._min_exptime <= exptime <= self._max_exptime:

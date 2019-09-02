@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 from .interface import Interface
 
@@ -22,6 +23,19 @@ class IWeather(Interface):
 
     def is_weather_good(self, *args, **kwargs) -> bool:
         """Whether the weather is good to observe."""
+        raise NotImplementedError
+
+    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) \
+            -> (Union[float, None], Union[str, None]):
+        """Return value for given sensor.
+
+        Args:
+            station: Name of weather station to get value from.
+            sensor: Name of sensor to get value from.
+
+        Returns:
+            Tuple of current value of given sensor or None and time of measurement or None.
+        """
         raise NotImplementedError
 
 

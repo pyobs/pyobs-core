@@ -203,12 +203,12 @@ class FocusModel(PyObsModule, IFocusModel):
                 raise ValueError('Could not connect to weather module.')
 
             # get value
-            val = weather.get_sensor_value(self._temp_station, self._temp_sensor).wait()
-            if 'value' not in val or val['value'] is None:
+            time, val = weather.get_sensor_value(self._temp_station, self._temp_sensor).wait()
+            if val is None:
                 raise ValueError('Received invalid temperature from weather station.')
 
             # get temperature
-            variables['temp'] = val['value']
+            variables['temp'] = val
             log.info('Got temperature of %.2f.', variables['temp'])
 
         # loop other temperatures

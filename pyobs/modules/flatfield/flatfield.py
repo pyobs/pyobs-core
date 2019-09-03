@@ -298,6 +298,8 @@ class FlatField(PyObsModule, IFlatField):
             # in DUSK, if exptime is less than max exptime, we still need to wait
             # in DAWN, if exptime is greater than min exptime, we still need to wait
             log.info('Sleeping a little...')
+            if self._state == FlatField.State.RUNNING:
+                self._state = FlatField.State.TESTING
             self._abort.wait(10)
 
         else:

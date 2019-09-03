@@ -51,7 +51,7 @@ class FocusModel(PyObsModule, IFocusModel):
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,
                  measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10, enabled: bool = True,
-                 *args, **kwargs):
+                 temp_sensor: str = 'average.temp', *args, **kwargs):
         """Initialize a focus model.
 
         Args:
@@ -64,6 +64,7 @@ class FocusModel(PyObsModule, IFocusModel):
             measurements: Path to file containing all focus measurements.
             min_measurements: Minimum number of measurements to update model.
             enabled: If False, no focus is set.
+            temp_sensor: Name of sensor at weather station to provide ambient temperature.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -82,6 +83,7 @@ class FocusModel(PyObsModule, IFocusModel):
         self._measurements_file = measurements
         self._min_measurements = min_measurements
         self._enabled = enabled
+        self._temp_station, self._temp_sensor = temp_sensor.split('.')
 
         # list of allowed focuser states for focussing:
         self._allowed_states = [IMotion.Status.IDLE, IMotion.Status.POSITIONED,
@@ -199,13 +201,13 @@ class FocusModel(PyObsModule, IFocusModel):
             except ValueError:
                 raise ValueError('Could not connect to weather module.')
 
-            # get all weather data
-            data = weather.get_weather_status().wait()
-            if IWeather.Sensors.TEMPERATURE.value not in data:
-                raise ValueError('No temperature in weather data.')
+            # get value
+            val = weather.get_sensor_value(self._temp_station, self._temp_sensor).wait()
+            if 'value' not in val or val['value'] is None:
+                raise ValueError('Received invalid temperature from weather station.')
 
             # get temperature
-            variables['temp'] = data[IWeather.Sensors.TEMPERATURE.value]
+            variables['temp'] = val['value']
             log.info('Got temperature of %.2f.', variables['temp'])
 
         # loop other temperatures

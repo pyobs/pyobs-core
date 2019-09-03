@@ -369,8 +369,8 @@ class FlatField(PyObsModule, IFlatField):
         # calculate factor for new exposure time
         factor = (self._target_count - self._bias_level) / (median - self._bias_level)
 
-        # limit factor to 0.5-1.5
-        factor = min(1.5, max(0.5, factor))
+        # limit factor to 0.1-10
+        factor = min(10., max(0.1, factor))
 
         # calculate next exposure time
         exptime = self._exptime * factor

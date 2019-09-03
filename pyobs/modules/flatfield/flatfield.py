@@ -249,16 +249,32 @@ class FlatField(PyObsModule, IFlatField):
         """
 
         # get solar elevation and evaluate function
-        sun = self.observer.sun_altaz(Time.now())
+        sun_alt, exptime = self._eval_function(Time.now(), filter_name, binning)
+        log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
+                 exptime, binning, binning, sun_alt)
+
+        # then evaluate exposure time
+        self._eval_exptime(exptime)
+
+    def _eval_function(self, time: Time, filter_name: str, binning: int = 1) -> (float, float):
+        """Evaluate function for given filter at given time.
+
+        Args:
+            time: Time to evaluate function at.
+            filter_name: Filter for which to evaluate.
+            binning: Binning to use.
+
+        Returns:
+            Estimated exposure time.
+        """
+
+        # get solar elevation and evaluate function
+        sun = self.observer.sun_altaz(time)
         exptime = self._functions[filter_name].evaluate({'h': sun.alt.degree})
 
         # scale with binning
         exptime /= binning * binning
-        log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
-                 exptime, binning, binning, sun.alt.degree)
-
-        # evaluate exposure time
-        self._eval_exptime(exptime)
+        return sun.alt.degree, exptime
 
     def _eval_exptime(self, exptime):
         """Evaluates current exposure time. Sets new state or waits of necessary.
@@ -279,6 +295,7 @@ class FlatField(PyObsModule, IFlatField):
              (self._twilight == FlatField.Twilight.DAWN and exptime > self._max_exptime):
             # in DUSK, if exptime is less than max exptime, we still need to wait
             # in DAWN, if exptime is greater than min exptime, we still need to wait
+            log.info('Sleeping a little...')
             self._abort.wait(10)
 
         else:

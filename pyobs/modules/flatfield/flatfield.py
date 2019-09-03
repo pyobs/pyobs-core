@@ -305,12 +305,13 @@ class FlatField(PyObsModule, IFlatField):
             if self._state == FlatField.State.WAITING:
                 log.info('Starting to take test flat-fields...')
                 self._state = FlatField.State.TESTING
-                self._exptime = exptime
 
             elif self._state == FlatField.State.TESTING:
                 log.info('Starting to store flat-fields...')
                 self._state = FlatField.State.RUNNING
-                self._exptime = exptime
+
+        # set exptime
+        self._exptime = exptime
 
     def _flat_field(self, testing: bool = False):
         # set window

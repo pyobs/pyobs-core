@@ -9,11 +9,12 @@ from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.mixins.weatheraware import WeatherAwareMixin
 
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(PyObsModule, ITelescope):
+class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
     """Base class for telescopes."""
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
@@ -24,9 +25,6 @@ class BaseTelescope(PyObsModule, ITelescope):
             min_altitude: Minimal altitude for telescope.
         """
         PyObsModule.__init__(self, *args, **kwargs)
-
-        # add thread func
-        self._add_thread_func(self._celestial, True)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -43,6 +41,12 @@ class BaseTelescope(PyObsModule, ITelescope):
         self._celestial_lock = threading.RLock()
         self._celestial_headers = {}
 
+        # add thread func
+        self._add_thread_func(self._celestial, True)
+
+        # init WeatherAware
+        WeatherAwareMixin.__init__(self, *args, **kwargs)
+
     def open(self):
         """Open module."""
         PyObsModule.open(self)
@@ -50,7 +54,10 @@ class BaseTelescope(PyObsModule, ITelescope):
         # subscribe to events
         if self.comm:
             self.comm.register_event(MotionStatusChangedEvent)
-            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
+            self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
+
+        # same for WeatherAware
+        WeatherAwareMixin.open(self)
 
     def _change_motion_status(self, status: IMotion.Status):
         """Change motion status and send event,
@@ -217,16 +224,6 @@ class BaseTelescope(PyObsModule, ITelescope):
 
         # finish
         return hdr
-
-    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
-        """Abort exposure if a bad weather event occurs.
-
-        Args:
-            event: The bad weather event.
-            sender: Who sent it.
-        """
-        log.warning('Received bad weather event, shutting down.')
-        self.park()
 
     def _celestial(self):
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""

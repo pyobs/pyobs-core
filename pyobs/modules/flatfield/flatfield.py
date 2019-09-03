@@ -257,15 +257,41 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
                  exptime, binning, binning, sun.alt.degree)
 
-        # in boundaries?
-        if self._min_exptime <= exptime <= self._max_exptime:
-            # yes, change state
-            log.info('Starting to take test flat-fields...')
-            self._state = FlatField.State.TESTING
-            self._exptime = exptime
-        else:
-            # sleep a little
+        # evaluate exposure time
+        self._eval_exptime(exptime)
+
+    def _eval_exptime(self, exptime):
+        """Evaluates current exposure time. Sets new state or waits of necessary.
+
+        Args:
+            exptime: Exposure time to evaluate.
+        """
+
+        # need to wait, change status or are we finished?
+        if (self._twilight == FlatField.Twilight.DUSK and exptime > self._max_exptime) or \
+           (self._twilight == FlatField.Twilight.DAWN and exptime < self._min_exptime):
+            # in DUSK, if exptime is greater than max exptime, we're past flatfielding time
+            # in DAWN, if exptime is less than min exptime, we're past flatfielding time
+            log.info('Missed flat-fielding time, finish task...')
+            self._state = FlatField.State.FINISHED
+
+        elif (self._twilight == FlatField.Twilight.DUSK and exptime < self._min_exptime) or \
+             (self._twilight == FlatField.Twilight.DAWN and exptime > self._max_exptime):
+            # in DUSK, if exptime is less than max exptime, we still need to wait
+            # in DAWN, if exptime is greater than min exptime, we still need to wait
             self._abort.wait(10)
+
+        else:
+            # otherwise it seems that we're in the middle of flat-fielding time
+            if self._state == FlatField.State.WAITING:
+                log.info('Starting to take test flat-fields...')
+                self._state = FlatField.State.TESTING
+                self._exptime = exptime
+
+            elif self._state == FlatField.State.TESTING:
+                log.info('Starting to store flat-fields...')
+                self._state = FlatField.State.RUNNING
+                self._exptime = exptime
 
     def _flat_field(self, testing: bool = False):
         # set window
@@ -292,6 +318,12 @@ class FlatField(PyObsModule, IFlatField):
         # decrease count
         if not testing:
             self._exposures_left -= 1
+
+            # are we finished?
+            if self._exposures_left <= 0:
+                log.info('Finished all requested flat-fields..')
+                self._state = FlatField.State.FINISHED
+                return
 
         # download image
         try:
@@ -324,32 +356,8 @@ class FlatField(PyObsModule, IFlatField):
         exptime = self._exptime * factor
         log.info('Calculated new exposure time to be %.2fs.', exptime)
 
-        # in boundaries?
-        if self._min_exptime <= exptime <= self._max_exptime:
-            # testing or flat-fielding?
-            if testing:
-                # go to actual flat fielding
-                log.info('Starting to store flat-fields...')
-                self._state = FlatField.State.RUNNING
-
-            else:
-                # finished?
-                if self._exposures_left <= 0:
-                    log.info('Finished all requested flat-fields..')
-                    self._state = FlatField.State.FINISHED
-                # keep going
-                self._exptime = exptime
-
-        else:
-            # testing or flat-fielding?
-            if testing:
-                # TODO: decide on sunset/sunrise, whether to wait or not
-                pass
-
-            else:
-                # we're finished
-                log.info('Left exposure time range for taking flats.')
-                self._state = FlatField.State.FINISHED
+        # evaluate exposure time
+        self._eval_exptime(exptime)
 
     def flat_field_status(self, *args, **kwargs) -> dict:
         """Returns current status of auto focus.

@@ -84,6 +84,7 @@ class FocusModel(PyObsModule, IFocusModel):
         self._min_measurements = min_measurements
         self._enabled = enabled
         self._temp_station, self._temp_sensor = temp_sensor.split('.')
+        log.info('Going to fetch temperature from sensor %s at station %s.', self._temp_sensor, self._temp_station)
 
         # list of allowed focuser states for focussing:
         self._allowed_states = [IMotion.Status.IDLE, IMotion.Status.POSITIONED,

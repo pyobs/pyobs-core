@@ -109,6 +109,8 @@ class FlatField(PyObsModule, IFlatField):
 
     def close(self):
         """Close module."""
+        PyObsModule.close(self)
+        self._abort.set()
 
     @timeout(3600000)
     def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs):

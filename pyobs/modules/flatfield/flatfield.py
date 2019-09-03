@@ -1,19 +1,15 @@
 import logging
-from typing import Union
 import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.io import fits
-from lmfit.models import GaussianModel
-from scipy import optimize, ndimage
+from astropy.time import TimeDelta
 import typing
 from py_expression_eval import Parser
 from enum import Enum
 
-from pyobs.comm import RemoteException
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, ICameraWindow, ICameraBinning
-from pyobs.events import FocusFoundEvent
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.time import Time
@@ -24,6 +20,10 @@ log = logging.getLogger(__name__)
 
 class FlatField(PyObsModule, IFlatField):
     """Module for auto-focusing a telescope."""
+
+    class Twilight(Enum):
+        DUSK = 'dusk'
+        DAWN = 'dawn'
 
     class State(Enum):
         INIT = 'init'
@@ -78,6 +78,9 @@ class FlatField(PyObsModule, IFlatField):
 
         # bias level
         self._bias_level = None
+
+        # which twilight are we in?
+        self._twilight = None
 
         # telescope and camera
         self._telescope_name = telescope
@@ -211,11 +214,15 @@ class FlatField(PyObsModule, IFlatField):
         sun = self.observer.sun_altaz(Time.now())
         log.info('Sun is currently located at alt=%.2f°, az=%.2f°', sun.alt.degree, sun.az.degree)
 
+        # which twilight are we in?
+        sun_10min = self.observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
+        self._twilight = FlatField.Twilight.DUSK if sun_10min.alt.degree < sun.alt.degree else FlatField.Twilight.DAWN
+        log.info('We are currently in %s twilight.', self._twilight.value)
+
         # get sweet spot for flat-fielding
         altaz = SkyCoord(alt=80 * u.deg, az=sun.az + 180 * u.degree, obstime=Time.now(),
                          location=self.observer.location, frame='altaz')
         log.info('Sweet spot for flat fielding is at alt=80°, az=%.2f°', altaz.az.degree)
-        radec = altaz.icrs
 
         # move telescope
         log.info('Moving telescope to Alt=80, Az=%.2f...', altaz.az.degree)
@@ -358,171 +365,6 @@ class FlatField(PyObsModule, IFlatField):
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()
-
-    def _analyse_image(self, focus, data, backsub=True, xbad=None, ybad=None):
-        # clean data
-        data = self._clean(data, backsub=backsub, xbad=xbad, ybad=ybad)
-
-        # get projections
-        xproj = np.mean(data, axis=0)  # PROJECTIONS
-        yproj = np.mean(data, axis=1)
-        nx = len(xproj)
-        ny = len(yproj)
-
-        # remove background gradient
-        xclean = xproj - ndimage.uniform_filter1d(xproj, nx // 10)
-        yclean = yproj - ndimage.uniform_filter1d(yproj, ny // 10)
-
-        # get window functions
-        xwind = self._window_function(xclean, border=3)
-        ywind = self._window_function(yclean, border=3)
-
-        # calculate correlation functions
-        xavg = np.average(xclean)
-        yavg = np.average(yclean)
-        x = xwind * (xclean - xavg) / xavg
-        y = ywind * (yclean - yavg) / yavg
-        xcorr = np.correlate(x, x, mode='same')
-        ycorr = np.correlate(y, y, mode='same')
-
-        # filter out the peak (e.g. cosmics, ...)
-        # imx = np.argmax(xcorr)
-        # xcorr[imx] = 0.5 * (xcorr[imx - 1] + xcorr[imx + 1])
-        # imx = np.argmax(ycorr)
-        # ycorr[imx] = 0.5 * (ycorr[imx - 1] + ycorr[imx + 1])
-
-        # fit cc functions to get fwhm
-        xfit = self._fit_correlation(xcorr)
-        yfit = self._fit_correlation(ycorr)
-
-        # log it
-        log.info('Found x=%.1f+-%.1f and y=%.1f+-%.1f.',
-                     xfit.params['fwhm'].value, xfit.params['fwhm'].stderr,
-                     yfit.params['fwhm'].value, yfit.params['fwhm'].stderr)
-
-        # add to list
-        with self._data_lock:
-            self._data.append({'focus': float(focus),
-                               'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
-                               'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
-
-    def _fit_focus(self) -> (float, float):
-        # get data
-        focus = [d['focus'] for d in self._data]
-        xfwhm = [d['x'] for d in self._data]
-        xsig = [d['xerr'] for d in self._data]
-        yfwhm = [d['y'] for d in self._data]
-        ysig = [d['yerr'] for d in self._data]
-
-        # fit focus
-        try:
-            xfoc, xerr = self._fit_focus_curve(focus, xfwhm, xsig)
-            yfoc, yerr = self._fit_focus_curve(focus, yfwhm, ysig)
-
-            # weighted mean
-            xerr = np.sqrt(xerr)
-            yerr = np.sqrt(yerr)
-            foc = (xfoc / xerr + yfoc / yerr) / (1. / xerr + 1. / yerr)
-            err = 2. / (1. / xerr + 1. / yerr)
-        except (RuntimeError, RuntimeWarning):
-            raise ValueError('Could not find best focus.')
-
-        # get min and max foci
-        min_focus = np.min(focus)
-        max_focus = np.max(focus)
-        if foc < min_focus or foc > max_focus:
-            raise ValueError("New focus out of bounds: {0:.3f}+-{1:.3f}mm.".format(foc, err))
-
-        # return it
-        return float(foc), float(err)
-
-    @staticmethod
-    def _window_function(arr, border=0):
-        """
-        Creates a sine window function of the same size as some 1-D array "arr".
-        Optionally, a zero border at the edges is added by "scrunching" the window.
-        """
-        ndata = len(arr)
-        nwind = ndata - 2 * border
-        w = np.zeros(ndata)
-        for i in range(nwind):
-            w[i + border] = np.sin(np.pi * (i + 1.) / (nwind + 1.))
-        return w
-
-    @staticmethod
-    def _clean(data, backsub=True, xbad=None, ybad=None):
-        """
-        Removes global slopes and fills up bad rows (ybad) or columns (xbad).
-        """
-        (ny, nx) = data.shape
-
-        # REMOVE BAD COLUMNS AND ROWS
-        if xbad is not None:
-            x1 = xbad - 1
-            if x1 < 0:
-                x1 = 1
-            x2 = x1 + 2
-            if x2 >= nx:
-                x2 = nx - 1
-                x1 = x2 - 2
-            for j in range(ny):
-                data[j][xbad] = 0.5 * (data[j][x1] + data[j][x2])
-        if ybad is not None:
-            y1 = ybad - 1
-            if y1 < 0:
-                y1 = 1
-            y2 = y1 + 2
-            if y2 >= ny:
-                y2 = ny - 1
-                y1 = y2 - 2
-            for i in range(nx):
-                data[ybad][i] = 0.5 * (data[y1][i] + data[y2][i])
-
-        # REMOVE GLOBAL SLOPES
-        if backsub:
-            xsl = np.median(data, axis=0)
-            ysl = np.median(data, axis=1).reshape((ny, 1))
-            xsl -= np.mean(xsl)
-            ysl -= np.mean(ysl)
-            xslope = np.tile(xsl, (ny, 1))
-            yslope = np.tile(ysl, (1, nx))
-            return data - xslope - yslope
-        else:
-            return data
-
-    @staticmethod
-    def _fit_correlation(correl):
-        # create Gaussian model
-        model = GaussianModel()
-
-        # initial guess
-        x = np.arange(len(correl))
-        pars = model.guess(correl, x=x)
-        pars['sigma'].value = 20.
-
-        # fit
-        return model.fit(correl, pars, x=x)
-
-    @staticmethod
-    def _fit_focus_curve(x_arr, y_arr, y_err):
-        # initial guess
-        ic = np.argmin(y_arr)
-        ix = np.argmax(y_arr)
-        b = y_arr[ic]
-        c = x_arr[ic]
-        x = x_arr[ix]
-        slope = np.abs((y_arr[ic] - y_arr[ix]) / (c - x))
-        a = b / slope
-
-        # init
-        p0 = [a, b, c]
-
-        # fit
-        coeffs, cov = optimize.curve_fit(lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa ** 2 + 1.),
-                                         x_arr, y_arr, sigma=y_err, p0=p0)
-
-        # return result
-        return coeffs[2], cov[2][2]
 
 
 __all__ = ['FlatField']

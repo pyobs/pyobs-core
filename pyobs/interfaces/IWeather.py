@@ -25,8 +25,7 @@ class IWeather(Interface):
         """Whether the weather is good to observe."""
         raise NotImplementedError
 
-    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) \
-            -> (Union[float, None], Union[str, None]):
+    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) -> (str, float):
         """Return value for given sensor.
 
         Args:

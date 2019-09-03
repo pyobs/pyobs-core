@@ -70,8 +70,10 @@ class Weather(PyObsModule, IWeather):
             # did status change?
             if is_good != self._is_good:
                 if is_good:
+                    log.info(('Weather is now good.'))
                     self.comm.send_event(GoodWeatherEvent())
                 else:
+                    log.info('Weather is now bad.')
                     self.comm.send_event(BadWeatherEvent())
                 self._is_good = is_good
 
@@ -86,8 +88,7 @@ class Weather(PyObsModule, IWeather):
         """Whether the weather is good to observe."""
         return False if self._is_good is None else self._is_good
 
-    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) \
-            -> (Union[float, None], Union[str, None]):
+    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> (str, float):
         """Return value for given sensor.
 
         Args:
@@ -99,7 +100,8 @@ class Weather(PyObsModule, IWeather):
         """
 
         # do request
-        res = self._session.get(urllib.parse.urljoin(self._url, 'api/stations/%s/%s/' % (station, sensor.value)))
+        url = urllib.parse.urljoin(self._url, 'api/stations/%s/%s/' % (station, sensor.value))
+        res = self._session.get(url)
         if res.status_code != 200:
             raise ValueError('Could not connect to weather station.')
 
@@ -108,7 +110,7 @@ class Weather(PyObsModule, IWeather):
         if 'time' not in status or 'value' not in status:
             raise ValueError('Time and/or value parameters not found in response from weather station.')
 
-        # return time and valie
+        # return time and value
         return status['time'], status['value']
 
 

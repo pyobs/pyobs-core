@@ -3,7 +3,7 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.events import MotionStatusChangedEvent, BadWeatherEvent
+from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
 from pyobs.modules import timeout
@@ -54,7 +54,6 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # subscribe to events
         if self.comm:
             self.comm.register_event(MotionStatusChangedEvent)
-            self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
 
         # same for WeatherAware
         WeatherAwareMixin.open(self)

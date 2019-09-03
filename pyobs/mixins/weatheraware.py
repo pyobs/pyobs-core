@@ -1,23 +1,14 @@
 import typing
 import logging
-import threading
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IMotion
-from pyobs.comm import Comm
 
 
 log = logging.getLogger(__name__)
 
 
 class WeatherAwareMixin:
-    _add_thread_func = None     # type: callable
-    park = None                 # type: callable
-    proxy = None                # type: callable
-    comm = None                 # type: Comm
-    _motion_status = None       # type: IMotion.Status
-    closing = None              # type: threading.Event
-
     """Mixin for IMotion devices that should park(), when weather gets bad."""
     def __init__(self, weather: typing.Union[str, IWeather] = None, *args, **kwargs):
         self.__weather = weather

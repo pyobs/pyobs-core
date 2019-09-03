@@ -359,12 +359,12 @@ class FlatField(PyObsModule, IFlatField):
         in_data = flat_field[int(f[0] / 100 * width):int((f[0] + f[2]) / 100 * width),
                              int(f[1] / 100 * height):int((f[1] + f[3]) / 100 * height)]
 
-        # get mean
-        mean = np.mean(in_data)
-        log.info('Got a flat field with mean counts of %.2f.', mean)
+        # get median
+        median = np.median(in_data)
+        log.info('Got a flat field with median counts of %.2f.', median)
 
         # calculate factor for new exposure time
-        factor = (self._target_count - self._bias_level) / (mean - self._bias_level)
+        factor = (self._target_count - self._bias_level) / (median - self._bias_level)
 
         # limit factor to 0.5-1.5
         factor = min(1.5, max(0.5, factor))

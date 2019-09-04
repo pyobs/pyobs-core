@@ -129,5 +129,29 @@ class VirtualFileSystem:
         # and call it
         return find(path, pattern, **self._roots[root])
 
+    def exists(self, path: str) -> bool:
+        """Checks, whether a given path or file exists.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            Whether it exists or not
+        """
+
+        # split root
+        if not path.endswith('/'):
+            path += '/'
+        root, path = VirtualFileSystem.split_root(path)
+
+        # get root class
+        klass = get_class_from_string(self._roots[root]['class'])
+
+        # get exists method
+        exists = getattr(klass, 'exists')
+
+        # and call it
+        return exists(path, **self._roots[root])
+
 
 __all__ = ['VirtualFileSystem', 'VFSFile']

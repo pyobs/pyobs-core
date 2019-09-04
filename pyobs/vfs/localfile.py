@@ -62,5 +62,23 @@ class LocalFile(VFSFile, FileIO):
             for filename in fnmatch.filter(filenames, pattern):
                 yield os.path.relpath(os.path.join(cur, filename), root)
 
+    @staticmethod
+    def exists(path: str, root: str = None) -> bool:
+        """Checks, whether a given path or file exists.
+
+        Args:
+            path: Path to check.
+            root: VFS root.
+
+        Returns:
+            Whether it exists or not
+        """
+
+        # build full path
+        full_path = os.path.join(root, path)
+
+        # check
+        return os.path.exists(full_path)
+
 
 __all__ = ['LocalFile']

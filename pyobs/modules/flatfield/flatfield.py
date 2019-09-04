@@ -416,8 +416,8 @@ class FlatField(PyObsModule, IFlatField):
                 data = pd.DataFrame(dict(solalt=[], exptime=[], counts=[], filter=[], binning=[]))
 
             # add data
-            data = data.append(dict(solalt=[sol_alt], exptime=[exptime], counts=[counts],
-                                    filter=[self._cur_filter], binning=[self._cur_binning]),
+            data = data.append(dict(solalt=sol_alt, exptime=exptime, counts=counts,
+                                    filter=self._cur_filter, binning=self._cur_binning),
                                ignore_index=True)
 
             # write file

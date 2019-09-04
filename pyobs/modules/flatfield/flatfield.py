@@ -409,7 +409,7 @@ class FlatField(PyObsModule, IFlatField):
             try:
                 with self.open_file(self._log_file, 'r') as f:
                     # read file
-                    data = pd.read_csv(self._log_file, index_col=False)
+                    data = pd.read_csv(f, index_col=False)
 
             except (FileNotFoundError, ValueError):
                 # init empty file

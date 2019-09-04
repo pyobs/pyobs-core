@@ -1,6 +1,8 @@
+import io
 import logging
 import threading
 import numpy as np
+import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.io import fits
@@ -36,7 +38,7 @@ class FlatField(PyObsModule, IFlatField):
                  filters: typing.Union[str, IFilters], functions: typing.Dict[str, str] = None,
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
                  test_frame: tuple = (45, 45, 10, 10), counts_frame: tuple = (0, 0, 100, 100),
-                 *args, **kwargs):
+                 log: str = '/pyobs/flatfield.json', *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:
@@ -51,6 +53,7 @@ class FlatField(PyObsModule, IFlatField):
             test_frame: Tupel (left, top, width, height) in percent that describe the frame for on-sky testing.
             counts_frame: Tupel (left, top, width, height) in percent that describe the frame for calculating mean
                 count rate.
+            log: Log file to write.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -63,6 +66,7 @@ class FlatField(PyObsModule, IFlatField):
         self._max_exptime = max_exptime
         self._test_frame = test_frame
         self._counts_frame = counts_frame
+        self._log_file = log
 
         # abort event
         self._abort = threading.Event()
@@ -81,6 +85,10 @@ class FlatField(PyObsModule, IFlatField):
 
         # which twilight are we in?
         self._twilight = None
+
+        # current request
+        self._cur_filter = None
+        self._cur_binning = None
 
         # telescope and camera
         self._telescope_name = telescope
@@ -127,6 +135,8 @@ class FlatField(PyObsModule, IFlatField):
         self._abort = threading.Event()
         self._state = FlatField.State.INIT
         self._exposures_left = count
+        self._cur_filter = filter_name
+        self._cur_binning = binning
 
         # get telescope
         log.info('Getting proxy for telescope...')
@@ -145,10 +155,10 @@ class FlatField(PyObsModule, IFlatField):
             # which state?
             if self._state == FlatField.State.INIT:
                 # init task
-                self._init_system(filter_name, binning)
+                self._init_system()
             elif self._state == FlatField.State.WAITING:
                 # wait until exposure time reaches good time
-                self._wait(filter_name, binning)
+                self._wait()
             elif self._state == FlatField.State.TESTING:
                 # do actual tests on sky for exposure time
                 self._flat_field(testing=True)
@@ -196,18 +206,13 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Found average BIAS level of %.2f...', avg)
         return avg
 
-    def _init_system(self, filter_name: str, binning: int = 1):
-        """Initialize whole system.
-
-        Args:
-            filter_name: Name of filter.
-            binning: Binning to use.
-        """
+    def _init_system(self):
+        """Initialize whole system."""
 
         # set binning
         if isinstance(self._camera, ICameraBinning):
-            log.info('Setting binning to %dx%d...', binning, binning)
-            self._camera.set_binning(binning, binning)
+            log.info('Setting binning to %dx%d...', self._cur_binning, self._cur_binning)
+            self._camera.set_binning(self._cur_binning, self._cur_binning)
 
         # get bias level
         self._bias_level = self._get_bias()
@@ -231,8 +236,8 @@ class FlatField(PyObsModule, IFlatField):
         future_track = self._telescope.move_altaz(80, altaz.az.degree)
 
         # get filter from first step and set it
-        log.info('Setting filter to %s...', filter_name)
-        future_filter = self._filters.set_filter(filter_name)
+        log.info('Setting filter to %s...', self._cur_filter)
+        future_filter = self._filters.set_filter(self._cur_filter)
 
         # wait for both
         Future.wait_all([future_track, future_filter])
@@ -242,29 +247,22 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Waiting for flat-field time...')
         self._state = FlatField.State.WAITING
 
-    def _wait(self, filter_name: str, binning: int = 1):
-        """Wait for flat-field time.
-
-        Args:
-            filter_name: Name of filter to wait for.
-            binning: Binning to use.
-        """
+    def _wait(self):
+        """Wait for flat-field time."""
 
         # get solar elevation and evaluate function
-        sun_alt, exptime = self._eval_function(Time.now(), filter_name, binning)
+        sun_alt, exptime = self._eval_function(Time.now())
         log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
-                 exptime, binning, binning, sun_alt)
+                 exptime, self._cur_binning, self._cur_binning, sun_alt)
 
         # then evaluate exposure time
         self._eval_exptime(exptime)
 
-    def _eval_function(self, time: Time, filter_name: str, binning: int = 1) -> (float, float):
+    def _eval_function(self, time: Time) -> (float, float):
         """Evaluate function for given filter at given time.
 
         Args:
             time: Time to evaluate function at.
-            filter_name: Filter for which to evaluate.
-            binning: Binning to use.
 
         Returns:
             Estimated exposure time.
@@ -272,10 +270,10 @@ class FlatField(PyObsModule, IFlatField):
 
         # get solar elevation and evaluate function
         sun = self.observer.sun_altaz(time)
-        exptime = self._functions[filter_name].evaluate({'h': sun.alt.degree})
+        exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
 
         # scale with binning
-        exptime /= binning * binning
+        exptime /= self._cur_binning * self._cur_binning
         return sun.alt.degree, exptime
 
     def _eval_exptime(self, exptime):
@@ -334,6 +332,7 @@ class FlatField(PyObsModule, IFlatField):
 
         # do exposures, do not broadcast while testing
         log.info('Exposing flat field for %.2fs...', self._exptime)
+        now = Time.now()
         filename = self._camera.expose(exposure_time=int(self._exptime * 1000.), image_type=ICamera.ImageType.SKYFLAT,
                                        broadcast=not testing).wait()
 
@@ -378,6 +377,11 @@ class FlatField(PyObsModule, IFlatField):
         exptime = self._exptime * factor
         log.info('Calculated new exposure time to be %.2fs.', exptime)
 
+        # write it to log
+        if not testing:
+            sun = self.observer.sun_altaz(now)
+            self._write_log(sun.alt.degree, exptime, self._target_count)
+
         # evaluate exposure time
         self._eval_exptime(exptime)
 
@@ -395,6 +399,32 @@ class FlatField(PyObsModule, IFlatField):
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()
+
+    def _write_log(self, sol_alt, exptime, counts):
+        """Write log file entry."""
+
+        # do we have a log file?
+        if self._log_file is not None:
+            # try to load it
+            try:
+                with self.open_file(self._log_file, 'r') as f:
+                    # read file
+                    data = pd.read_csv(self._log_file, index_col=False)
+
+            except (FileNotFoundError, ValueError):
+                # init empty file
+                data = pd.DataFrame(dict(solalt=[], exptime=[], counts=[], filter=[], binning=[]))
+
+            # add data
+            data = data.append(dict(solalt=[sol_alt], exptime=[exptime], counts=[counts],
+                                    filter=[self._cur_filter], binning=[self._cur_binning]),
+                               ignore_index=True)
+
+            # write file
+            with self.open_file(self._log_file, 'w') as f:
+                with io.StringIO() as sio:
+                    data.to_csv(sio, index=False)
+                    f.write(sio.getvalue().encode('utf8'))
 
 
 __all__ = ['FlatField']

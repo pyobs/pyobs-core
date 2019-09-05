@@ -547,20 +547,20 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         hdr['TRIMSEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
         hdr['DATASEC'] = hdr['TRIMSEC']
 
-        # now get BIASSEC -- whatever we do, we only take the first one
+        # now get BIASSEC -- whatever we do, we only take the last (!) one
         # which axis?
-        if img_left < left:
-            right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c1)
-        elif img_left+img_width > left+width:
+        if img_left+img_width > left+width:
             left_binned = np.floor((is_right - hdr['XORGSUBF']) / hdr['XBINNING']) + 1
             hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c1)
-        elif img_top < top:
-            bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
+        elif img_left < left:
+            right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c1)
         elif img_top+img_height > top+height:
             top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
             hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c1)
+        elif img_top < top:
+            bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
     def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.

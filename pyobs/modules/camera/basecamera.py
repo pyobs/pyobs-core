@@ -545,6 +545,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # set it
         hdr['TRIMSEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
+        hdr['DATASEC'] = hdr['TRIMSEC']
 
         # now get BIASSEC -- whatever we do, we only take the first one
         # which axis?

@@ -528,8 +528,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return False
 
         # comments
-        c1 = 'Area containing bias overscan [x1:x2,y1:y2] in binned pixels'
-        c2 = 'Area containing actual image [x1:x2,y1:y2] in binned pixels'
+        c1 = 'Bias overscan area [x1:x2,y1:y2] (binned)'
+        c2 = 'Image area [x1:x2,y1:y2] (binned)'
 
         # rectangle empty?
         if is_right <= is_left or is_bottom <= is_top:
@@ -551,16 +551,16 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # which axis?
         if img_left < left:
             right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c2)
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c1)
         elif img_left+img_width > left+width:
             left_binned = np.floor((is_right - hdr['XORGSUBF']) / hdr['XBINNING']) + 1
-            hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c2)
+            hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c1)
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c2)
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
         elif img_top+img_height > top+height:
             top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
-            hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c2)
+            hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c1)
 
     def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.

@@ -38,7 +38,7 @@ class FlatField(PyObsModule, IFlatField):
                  filters: typing.Union[str, IFilters], functions: typing.Dict[str, str] = None,
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
                  test_frame: tuple = (45, 45, 10, 10), counts_frame: tuple = (0, 0, 100, 100),
-                 log: str = '/pyobs/flatfield.json', *args, **kwargs):
+                 log: str = '/pyobs/flatfield.csv', *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:

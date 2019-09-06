@@ -380,7 +380,7 @@ class FlatField(PyObsModule, IFlatField):
         # write it to log
         if not testing:
             sun = self.observer.sun_altaz(now)
-            self._write_log(sun.alt.degree, exptime, self._target_count)
+            self._write_log(now.datetime, sun.alt.degree, exptime, self._target_count)
 
         # evaluate exposure time
         self._eval_exptime(exptime)

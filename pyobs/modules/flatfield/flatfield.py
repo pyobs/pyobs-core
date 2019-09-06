@@ -400,31 +400,21 @@ class FlatField(PyObsModule, IFlatField):
         """Abort current actions."""
         self._abort.set()
 
-    def _write_log(self, sol_alt, exptime, counts):
+    def _write_log(self, dt, sol_alt, exptime, counts):
         """Write log file entry."""
 
         # do we have a log file?
         if self._log_file is not None:
-            # try to load it
-            try:
-                with self.open_file(self._log_file, 'r') as f:
-                    # read file
-                    data = pd.read_csv(f, index_col=False)
+            # does it not exist?
+            if not self.vfs.exists(self._log_file):
+                # write header
+                with self.open_file(self._log_file, 'w') as f:
+                    f.write('datetime,solalt,exptime,counts,filter,binning\n')
 
-            except (FileNotFoundError, ValueError):
-                # init empty file
-                data = pd.DataFrame(dict(solalt=[], exptime=[], counts=[], filter=[], binning=[]))
-
-            # add data
-            data = data.append(dict(solalt=sol_alt, exptime=exptime, counts=counts,
-                                    filter=self._cur_filter, binning=self._cur_binning),
-                               ignore_index=True)
-
-            # write file
-            with self.open_file(self._log_file, 'w') as f:
-                with io.StringIO() as sio:
-                    data.to_csv(sio, index=False)
-                    f.write(sio.getvalue().encode('utf8'))
+            # write data
+            with self.open_file(self._log_file, 'a') as f:
+                f.write('%s,%f,%f,%d,%s,%d\n' % (dt.isoformat(), sol_alt, exptime, counts,
+                                                 self._cur_filter, self._cur_binning))
 
 
 __all__ = ['FlatField']

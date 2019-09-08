@@ -63,7 +63,7 @@ class LocalFile(VFSFile, FileIO):
                 yield os.path.relpath(os.path.join(cur, filename), root)
 
     @staticmethod
-    def exists(path: str, root: str = None) -> bool:
+    def exists(path: str, root: str = None, *args, **kwargs) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:

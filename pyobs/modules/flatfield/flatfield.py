@@ -11,7 +11,7 @@ import typing
 from py_expression_eval import Parser
 from enum import Enum
 
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, ICameraWindow, ICameraBinning, IAbortable
+from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, ICameraWindow, ICameraBinning
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.time import Time
@@ -20,7 +20,7 @@ from pyobs.utils.threads import Future
 log = logging.getLogger(__name__)
 
 
-class FlatField(PyObsModule, IFlatField, IAbortable):
+class FlatField(PyObsModule, IFlatField):
     """Module for auto-focusing a telescope."""
 
     class Twilight(Enum):

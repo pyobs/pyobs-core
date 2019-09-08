@@ -409,12 +409,12 @@ class FlatField(PyObsModule, IFlatField):
             if not self.vfs.exists(self._log_file):
                 # write header
                 with self.open_file(self._log_file, 'w') as f:
-                    f.write('datetime,solalt,exptime,counts,filter,binning\n')
+                    f.write(b'datetime,solalt,exptime,counts,filter,binning\n')
 
             # write data
             with self.open_file(self._log_file, 'a') as f:
-                f.write('%s,%f,%f,%d,%s,%d\n' % (dt.isoformat(), sol_alt, exptime, counts,
-                                                 self._cur_filter, self._cur_binning))
+                f.write(bytes('%s,%f,%f,%d,%s,%d\n' % (dt.isoformat(), sol_alt, exptime, counts,
+                                                       self._cur_filter, self._cur_binning), 'utf-8'))
 
 
 __all__ = ['FlatField']

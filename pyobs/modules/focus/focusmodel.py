@@ -180,7 +180,7 @@ class FocusModel(PyObsModule, IFocusModel):
         log.info('Evaluating model...')
         focus = self._model.evaluate({**values, **self._coefficients})
         log.info('Found optimal focus of %.4f.', focus)
-        return focus
+        return float(focus)
 
     def _get_values(self) -> dict:
         """Retrieve all required values for the model.

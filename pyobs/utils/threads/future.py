@@ -89,4 +89,4 @@ class Future(object):
 
     @staticmethod
     def wait_all(futures: list):
-        return [fut.wait() for fut in futures]
+        return [fut.wait() for fut in futures if fut is not None]

@@ -26,7 +26,8 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         self._add_thread_func(self._run_thread, True)
 
         # get scheduler
-        self._scheduler: Scheduler = get_object(scheduler, object_class=Scheduler)
+        self._scheduler: Scheduler = get_object(scheduler, object_class=Scheduler,
+                                                comm=self.comm, vfs=self.vfs, observer=self.observer)
 
         # observation name and exposure number
         self._task = None
@@ -40,10 +41,20 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         """Open module."""
         PyObsModule.open(self)
 
+        # open scheduler
+        self._scheduler.open()
+
         # subscribe to events
         if self.comm:
             self.comm.register_event(RoofOpenedEvent, self._on_roof_opened)
             self.comm.register_event(RoofClosingEvent, self._on_roof_closing)
+
+    def close(self):
+        """Close module."""
+        PyObsModule.close(self)
+
+        # close scheduler
+        self._scheduler.close()
 
     def _run_thread(self):
         # wait a little

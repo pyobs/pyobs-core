@@ -1,7 +1,7 @@
 import inspect
 import logging
 import queue
-from typing import Any
+from typing import Any, Union, Type
 import threading
 
 import pyobs.interfaces
@@ -117,6 +117,49 @@ class Comm:
 
         # return proxy
         return self._proxies[client]
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type):
+        """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
+
+        If name_or_object is an object:
+            - If it is of type (or derived), return object.
+            - Otherwise raise exception.
+        If name_name_or_object is string:
+            - Create proxy from name and raise exception, if it doesn't exist.
+            - Check type and raise exception if wrong.
+            - Return object.
+
+        Args:
+            name_or_object: Name of object or object itself.
+            obj_type: Expected class of object.
+
+        Returns:
+            Object or proxy to object.
+
+        Raises:
+            ValueError: If proxy does not exist or wrong type.
+        """
+
+        if isinstance(name_or_object, obj_type):
+            # return directly
+            return name_or_object
+
+        elif isinstance(name_or_object, str):
+            # get proxy
+            proxy = self[name_or_object]
+
+            # check it
+            if proxy is None:
+                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
+            elif isinstance(proxy, obj_type):
+                return proxy
+            else:
+                raise ValueError('Proxy obtained from given name "%s" is not of requested type "%s".' %
+                                 (name_or_object, obj_type))
+
+        else:
+            # completely wrong...
+            raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
     def _client_disconnected(self, event: ClientDisconnectedEvent, sender: str, *args, **kwargs):
         """Called when a client disconnects.

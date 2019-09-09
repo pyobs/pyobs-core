@@ -217,27 +217,7 @@ class PyObsModule:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-
-        if isinstance(name_or_object, obj_type):
-            # return directly
-            return name_or_object
-
-        elif isinstance(name_or_object, str):
-            # get proxy
-            proxy = self.comm[name_or_object]
-
-            # check it
-            if proxy is None:
-                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
-            elif isinstance(proxy, obj_type):
-                return proxy
-            else:
-                raise ValueError('Proxy obtained from given name "%s" is not of requested type "%s".' %
-                                 (name_or_object, obj_type))
-
-        else:
-            # completely wrong...
-            raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
+        return self.comm.proxy(name_or_object, obj_type)
 
     @staticmethod
     def _thread_func(target):

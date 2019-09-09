@@ -100,6 +100,7 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
         # get focus as first guess
         try:
             if self._offset:
+                guess = 0
                 log.info('Using focus offset of 0mm as initial guess.')
             else:
                 guess = focuser.get_focus().wait()

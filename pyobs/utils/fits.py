@@ -2,13 +2,13 @@ import io
 import logging
 import re
 from typing import Union
-
+import numpy as np
 import PIL
 import aplpy
 import matplotlib.pyplot as plt
-from astroplan import Observer
 from astropy.io import fits
 from astropy.io.fits import Header
+
 from pyobs.utils.time import Time
 
 
@@ -79,7 +79,7 @@ def fitssec(hdu, keyword: str = 'TRIMSEC') -> np.ndarray:
     sec = hdu.header[keyword]
 
     # split values
-    s = hdr[1:-1].split(',')
+    s = sec[1:-1].split(',')
     x = s[0].split(':')
     y = s[1].split(':')
     x0 = int(x[0]) - 1

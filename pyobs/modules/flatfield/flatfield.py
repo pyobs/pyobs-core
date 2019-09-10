@@ -16,6 +16,7 @@ from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.time import Time
 from pyobs.utils.threads import Future
+from pyobs.utils.fits import fitssec
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class FlatField(PyObsModule, IFlatField):
     def __init__(self, telescope: typing.Union[str, ITelescope], camera: typing.Union[str, ICamera],
                  filters: typing.Union[str, IFilters], functions: typing.Dict[str, str] = None,
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
-                 test_frame: tuple = (45, 45, 10, 10), counts_frame: tuple = (0, 0, 100, 100),
+                 test_frame: tuple = (45, 45, 10, 10), counts_frame: tuple = (25, 25, 75, 75),
                  log: str = '/pyobs/flatfield.csv', *args, **kwargs):
         """Initialize a new flat fielder.
 
@@ -78,7 +79,8 @@ class FlatField(PyObsModule, IFlatField):
         self._exptime = None
 
         # exposures to do
-        self._exposures_left = 0
+        self._exposures_total = 0
+        self._exposures_done = 0
 
         # bias level
         self._bias_level = None
@@ -134,7 +136,8 @@ class FlatField(PyObsModule, IFlatField):
         # reset
         self._abort = threading.Event()
         self._state = FlatField.State.INIT
-        self._exposures_left = count
+        self._exposures_total = count
+        self._exposures_done = 0
         self._cur_filter = filter_name
         self._cur_binning = binning
 
@@ -161,10 +164,10 @@ class FlatField(PyObsModule, IFlatField):
                 self._wait()
             elif self._state == FlatField.State.TESTING:
                 # do actual tests on sky for exposure time
-                self._flat_field(testing=True)
+                self._testing()
             elif self._state == FlatField.State.RUNNING:
                 # take flat fields
-                self._flat_field(testing=False)
+                self._flat_field()
 
         # stop telescope
         log.info('Stopping telescope...')
@@ -251,12 +254,21 @@ class FlatField(PyObsModule, IFlatField):
         """Wait for flat-field time."""
 
         # get solar elevation and evaluate function
-        sun_alt, exptime = self._eval_function(Time.now())
+        sun_alt, self._exptime = self._eval_function(Time.now())
         log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
-                 exptime, self._cur_binning, self._cur_binning, sun_alt)
+                 self._exptime, self._cur_binning, self._cur_binning, sun_alt)
 
-        # then evaluate exposure time
-        self._eval_exptime(exptime)
+        # then evaluate exposure time within a larger range
+        state = self._eval_exptime(self._min_exptime * 0.5, self._max_exptime * 2.0)
+        if state < 0:
+            log.info('Sleeping a little...')
+            self._abort.wait(10)
+        elif state == 0:
+            log.info('Starting to take test flat-fields...')
+            self._state = FlatField.State.TESTING
+        else:
+            log.info('Missed flat-fielding time, finish task...')
+            self._state = FlatField.State.FINISHED
 
     def _eval_function(self, time: Time) -> (float, float):
         """Evaluate function for given filter at given time.
@@ -276,45 +288,40 @@ class FlatField(PyObsModule, IFlatField):
         exptime /= self._cur_binning * self._cur_binning
         return sun.alt.degree, exptime
 
-    def _eval_exptime(self, exptime):
+    def _eval_exptime(self, min_exptime: float = None, max_exptime: float = None) -> int:
         """Evaluates current exposure time. Sets new state or waits of necessary.
 
-        Args:
-            exptime: Exposure time to evaluate.
+        Returns:
+            -1, if we have to wait, 0 during flat-field time and 1 if it has passed.
         """
 
+        # no min/max given?
+        if min_exptime is None:
+            min_exptime = self._min_exptime
+        if max_exptime is None:
+            max_exptime = self._max_exptime
+
         # need to wait, change status or are we finished?
-        if (self._twilight == FlatField.Twilight.DUSK and exptime > self._max_exptime) or \
-           (self._twilight == FlatField.Twilight.DAWN and exptime < self._min_exptime):
+        if (self._twilight == FlatField.Twilight.DUSK and self._exptime > max_exptime) or \
+           (self._twilight == FlatField.Twilight.DAWN and self._exptime < min_exptime):
             # in DUSK, if exptime is greater than max exptime, we're past flatfielding time
             # in DAWN, if exptime is less than min exptime, we're past flatfielding time
-            log.info('Missed flat-fielding time, finish task...')
-            self._state = FlatField.State.FINISHED
-
-        elif (self._twilight == FlatField.Twilight.DUSK and exptime < self._min_exptime) or \
-             (self._twilight == FlatField.Twilight.DAWN and exptime > self._max_exptime):
+            return 1
+        elif (self._twilight == FlatField.Twilight.DUSK and self._exptime < min_exptime) or \
+             (self._twilight == FlatField.Twilight.DAWN and self._exptime > max_exptime):
             # in DUSK, if exptime is less than max exptime, we still need to wait
             # in DAWN, if exptime is greater than min exptime, we still need to wait
-            log.info('Sleeping a little...')
-            if self._state == FlatField.State.RUNNING:
-                self._state = FlatField.State.TESTING
-            self._abort.wait(10)
-
+            return -1
         else:
             # otherwise it seems that we're in the middle of flat-fielding time
-            if self._state == FlatField.State.WAITING:
-                log.info('Starting to take test flat-fields...')
-                self._state = FlatField.State.TESTING
+            return 0
 
-            elif self._state == FlatField.State.TESTING:
-                log.info('Starting to store flat-fields...')
-                self._state = FlatField.State.RUNNING
+    def _set_window(self, testing: bool):
+        """Set camera window.
 
-        # set exptime
-        self._exptime = exptime
-
-    def _flat_field(self, testing: bool = False):
-        # set window
+        Args:
+            testing: Whether we're in testing mode or not.
+        """
         if isinstance(self._camera, ICameraWindow):
             # get full frame
             left, top, width, height = self._camera.get_full_frame().wait()
@@ -330,43 +337,50 @@ class FlatField(PyObsModule, IFlatField):
             log.info('Setting camera window to %dx%d at %d,%d...', width, height, left, top)
             self._camera.set_window(left, top, width, height).wait()
 
-        # do exposures, do not broadcast while testing
-        log.info('Exposing flat field for %.2fs...', self._exptime)
-        now = Time.now()
-        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.), image_type=ICamera.ImageType.SKYFLAT,
-                                       broadcast=not testing).wait()
-
-        # decrease count
-        if not testing:
-            self._exposures_left -= 1
-
-            # are we finished?
-            if self._exposures_left <= 0:
-                log.info('Finished all requested flat-fields..')
-                self._state = FlatField.State.FINISHED
-                return
-
-        # download image
+    def _download_image(self, filename: str) -> typing.Union[np.ndarray, None]:
         try:
             log.info('Downloading image...')
-            with self.vfs.open_file(filename[0], 'rb') as f:
+            with self.vfs.open_file(filename, 'rb') as f:
                 tmp = fits.open(f, memmap=False)
-                flat_field = np.copy(tmp[0].data)
+                image = fits.PrimaryHDU(tmp['SCI'].data, header=tmp['SCI'].header)
                 tmp.close()
+                return image
         except FileNotFoundError:
             log.error('Could not download image.')
-            return
+            return None
 
-        # get data in counts frame
-        width, height = flat_field.shape
-        f = self._counts_frame
-        in_data = flat_field[int(f[0] / 100 * width):int((f[0] + f[2]) / 100 * width),
-                             int(f[1] / 100 * height):int((f[1] + f[3]) / 100 * height)]
+    def _get_image_median(self, image, frame=None) -> float:
+        """Returns median of image after trimming it to TRIMSEC and to given frame.
 
-        # get median
-        median = np.median(in_data)
-        log.info('Got a flat field with median counts of %.2f.', median)
+        Args:
+            image: Image to calculate median for.
+            frame: Frame coordinates as (width, top, width, height) in percent of full frame.
 
+        Returns:
+            Median of image.
+        """
+
+        # trim image to TRIMSEC
+        data = fitssec(image, 'TRIMSEC')
+
+        # cut to frame
+        if frame is not None:
+            width, height = trimsec.shape
+            data = data[int(frame[0] / 100 * width):int((frame[0] + frame[2]) / 100 * width),
+                        int(frame[1] / 100 * height):int((frame[1] + frame[3]) / 100 * height)]
+
+        # return median
+        return np.median(data)
+
+    def _calc_new_exptime(self, median: float) -> float:
+        """Calculate new exposure time.
+
+        Args:
+            median: Median of last exposure.
+
+        Returns:
+            New exposure time.
+        """
         # calculate factor for new exposure time
         factor = (self._target_count - self._bias_level) / (median - self._bias_level)
 
@@ -374,16 +388,91 @@ class FlatField(PyObsModule, IFlatField):
         factor = min(10., max(0.1, factor))
 
         # calculate next exposure time
-        exptime = self._exptime * factor
-        log.info('Calculated new exposure time to be %.2fs.', exptime)
+        return self._exptime * factor
+
+    def _testing(self):
+        """Take flat-fields but don't store them."""
+
+        # set window
+        self._set_window(testing=True)
+
+        # do exposures, do not broadcast while testing
+        log.info('Exposing test flat field for %.2fs...', self._exptime)
+        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
+                                       image_type=ICamera.ImageType.SKYFLAT,
+                                       broadcast=False).wait()
+
+        # download image
+        flat_field = self._download_image(filename[0])
+        if flat_field is None:
+            return
+
+        # get median from image
+        median = self._get_image_median(flat_field, self._counts_frame)
+        log.info('Got a flat field with median counts of %.2f.', median)
+
+        # calculate new exposure time
+        self._exptime = self._calc_new_exptime(median)
+        log.info('Calculated new exposure time to be %.2fs.', self._exptime)
+
+        # then evaluate exposure time
+        state = self._eval_exptime(exptime)
+        if state < 0:
+            log.info('Sleeping a little...')
+            self._abort.wait(10)
+        elif state == 0:
+            log.info('Starting to store flat-fields...')
+            self._state = FlatField.State.RUNNING
+        else:
+            log.info('Missed flat-fielding time, finish task...')
+            self._state = FlatField.State.FINISHED
+
+    def _flat_field(self):
+        """Take flat-fields."""
+
+        # set window
+        self._set_window(testing=True)
+
+        # do exposures, do not broadcast while testing
+        log.info('Exposing flat field %d/%d for %.2fs...', self._exposures_done, self._exposures_total, self._exptime)
+        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
+                                       image_type=ICamera.ImageType.SKYFLAT).wait()
+
+        # increase count and quite here, if finished
+        self._exposures_done += 1
+        if self._exposures_done >= self._exposures_total:
+            log.info('Finished all requested flat-fields..')
+            self._state = FlatField.State.FINISHED
+            return
+
+        # download image
+        flat_field = self._download_image(filename[0])
+        if flat_field is None:
+            return
+
+        # get median from image
+        median = self._get_image_median(flat_field, self._counts_frame)
+        log.info('Got a flat field with median counts of %.2f.', median)
+
+        # calculate new exposure time
+        self._exptime = self._calc_new_exptime(median)
+        log.info('Calculated new exposure time to be %.2fs.', self._exptime)
 
         # write it to log
-        if not testing:
-            sun = self.observer.sun_altaz(now)
-            self._write_log(now.datetime, sun.alt.degree, exptime, self._target_count)
+        sun = self.observer.sun_altaz(now)
+        self._write_log(now.datetime, sun.alt.degree, exptime, self._target_count)
 
-        # evaluate exposure time
-        self._eval_exptime(exptime)
+        # then evaluate exposure time
+        state = self._eval_exptime(exptime)
+        if state < 0:
+            log.info('Sleeping a little...')
+            self._abort.wait(10)
+        elif state == 0:
+            log.info('Starting to store flat-fields...')
+            self._state = FlatField.State.RUNNING
+        else:
+            log.info('Missed flat-fielding time, finish task...')
+            self._state = FlatField.State.FINISHED
 
     def flat_field_status(self, *args, **kwargs) -> dict:
         """Returns current status of auto focus.

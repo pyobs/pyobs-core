@@ -59,6 +59,38 @@ def create_preview(hdu: fits.PrimaryHDU, grid: bool = True, colorbar: bool = Tru
             return im.crop(bbox)
 
 
+def fitssec(hdu, keyword: str = 'TRIMSEC') -> np.ndarray:
+    """Trim an image to TRIMSEC or BIASSEC.
+
+    Args:
+        hdu: HDU to take data from.
+        keyword: Header keyword for section.
+
+    Returns:
+        Numpy array with image data.
+    """
+
+    # keyword not given?
+    if keyword not in hdu.header:
+        # return whole data
+        return hdu.data
+
+    # get value of section
+    sec = hdu.header[keyword]
+
+    # split values
+    s = hdr[1:-1].split(',')
+    x = s[0].split(':')
+    y = s[1].split(':')
+    x0 = int(x[0]) - 1
+    x1 = int(x[1])
+    y0 = int(y[0]) - 1
+    y1 = int(y[1])
+
+    # return data
+    return hdu.data[y0:y1, x0:x1]
+
+
 class FilenameFormatter:
     def __init__(self, fmt: Union[str, list], keys: dict = None):
         """Initializes a new filename formatter.

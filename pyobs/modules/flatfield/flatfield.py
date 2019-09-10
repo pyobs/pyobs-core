@@ -365,7 +365,7 @@ class FlatField(PyObsModule, IFlatField):
 
         # cut to frame
         if frame is not None:
-            width, height = trimsec.shape
+            width, height = data.shape
             data = data[int(frame[0] / 100 * width):int((frame[0] + frame[2]) / 100 * width),
                         int(frame[1] / 100 * height):int((frame[1] + frame[3]) / 100 * height)]
 
@@ -416,7 +416,7 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Calculated new exposure time to be %.2fs.', self._exptime)
 
         # then evaluate exposure time
-        state = self._eval_exptime(exptime)
+        state = self._eval_exptime()
         if state < 0:
             log.info('Sleeping a little...')
             self._abort.wait(10)
@@ -434,6 +434,7 @@ class FlatField(PyObsModule, IFlatField):
         self._set_window(testing=True)
 
         # do exposures, do not broadcast while testing
+        now = Time.now()
         log.info('Exposing flat field %d/%d for %.2fs...', self._exposures_done, self._exposures_total, self._exptime)
         filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
                                        image_type=ICamera.ImageType.SKYFLAT).wait()
@@ -460,16 +461,15 @@ class FlatField(PyObsModule, IFlatField):
 
         # write it to log
         sun = self.observer.sun_altaz(now)
-        self._write_log(now.datetime, sun.alt.degree, exptime, self._target_count)
+        self._write_log(now.datetime, sun.alt.degree)
 
         # then evaluate exposure time
-        state = self._eval_exptime(exptime)
+        state = self._eval_exptime()
         if state < 0:
-            log.info('Sleeping a little...')
-            self._abort.wait(10)
+            log.info('Going back to testing...')
+            self._state = FlatField.State.TESTING
         elif state == 0:
-            log.info('Starting to store flat-fields...')
-            self._state = FlatField.State.RUNNING
+            pass
         else:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatField.State.FINISHED
@@ -489,7 +489,7 @@ class FlatField(PyObsModule, IFlatField):
         """Abort current actions."""
         self._abort.set()
 
-    def _write_log(self, dt, sol_alt, exptime, counts):
+    def _write_log(self, dt, sol_alt):
         """Write log file entry."""
 
         # do we have a log file?
@@ -505,7 +505,7 @@ class FlatField(PyObsModule, IFlatField):
                 data = pd.DataFrame(dict(datetime=[], solalt=[], exptime=[], counts=[], filter=[], binning=[]))
 
             # add data
-            data = data.append(dict(datetime=dt, solalt=sol_alt, exptime=exptime, counts=counts,
+            data = data.append(dict(datetime=dt, solalt=sol_alt, exptime=self._exptime, counts=self._target_count,
                                     filter=self._cur_filter, binning=self._cur_binning),
                                ignore_index=True)
 

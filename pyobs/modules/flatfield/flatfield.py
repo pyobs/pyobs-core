@@ -390,18 +390,7 @@ class FlatField(PyObsModule, IFlatField):
         # calculate next exposure time
         return self._exptime * factor
 
-    def _testing(self):
-        """Take flat-fields but don't store them."""
-
-        # set window
-        self._set_window(testing=True)
-
-        # do exposures, do not broadcast while testing
-        log.info('Exposing test flat field for %.2fs...', self._exptime)
-        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
-                                       image_type=ICamera.ImageType.SKYFLAT,
-                                       broadcast=False).wait()
-
+    def _analyse_image(self, filename: str):
         # download image
         flat_field = self._download_image(filename[0])
         if flat_field is None:
@@ -414,6 +403,21 @@ class FlatField(PyObsModule, IFlatField):
         # calculate new exposure time
         self._exptime = self._calc_new_exptime(median)
         log.info('Calculated new exposure time to be %.2fs.', self._exptime)
+
+    def _testing(self):
+        """Take flat-fields but don't store them."""
+
+        # set window
+        self._set_window(testing=True)
+
+        # do exposures, do not broadcast while testing
+        log.info('Exposing test flat field for %.2fs...', self._exptime)
+        filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
+                                       image_type=ICamera.ImageType.SKYFLAT,
+                                       broadcast=False).wait()
+
+        # analyse image
+        self._analyse_image(filename[0])
 
         # then evaluate exposure time
         state = self._eval_exptime()
@@ -446,18 +450,8 @@ class FlatField(PyObsModule, IFlatField):
             self._state = FlatField.State.FINISHED
             return
 
-        # download image
-        flat_field = self._download_image(filename[0])
-        if flat_field is None:
-            return
-
-        # get median from image
-        median = self._get_image_median(flat_field, self._counts_frame)
-        log.info('Got a flat field with median counts of %.2f.', median)
-
-        # calculate new exposure time
-        self._exptime = self._calc_new_exptime(median)
-        log.info('Calculated new exposure time to be %.2fs.', self._exptime)
+        # analyse image
+        self._analyse_image(filename[0])
 
         # write it to log
         sun = self.observer.sun_altaz(now)

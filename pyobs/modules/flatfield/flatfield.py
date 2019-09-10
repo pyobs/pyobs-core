@@ -392,7 +392,7 @@ class FlatField(PyObsModule, IFlatField):
 
     def _analyse_image(self, filename: str):
         # download image
-        flat_field = self._download_image(filename[0])
+        flat_field = self._download_image(filename)
         if flat_field is None:
             return
 

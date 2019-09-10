@@ -435,7 +435,7 @@ class FlatField(PyObsModule, IFlatField):
         """Take flat-fields."""
 
         # set window
-        self._set_window(testing=True)
+        self._set_window(testing=False)
 
         # do exposures, do not broadcast while testing
         now = Time.now()

@@ -439,7 +439,8 @@ class FlatField(PyObsModule, IFlatField):
 
         # do exposures, do not broadcast while testing
         now = Time.now()
-        log.info('Exposing flat field %d/%d for %.2fs...', self._exposures_done, self._exposures_total, self._exptime)
+        log.info('Exposing flat field %d/%d for %.2fs...',
+                 self._exposures_done + 1, self._exposures_total, self._exptime)
         filename = self._camera.expose(exposure_time=int(self._exptime * 1000.),
                                        image_type=ICamera.ImageType.SKYFLAT).wait()
 

@@ -81,7 +81,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             # run task in thread
             log.info('Running task %s...', self._task.name())
             abort_event = threading.Event()
-            task_thread = threading.Thread(target=self._task.run, args=(abort_event,))
+            task_thread = threading.Thread(target=self._scheduler.run_task, args=(self._task, abort_event))
             task_thread.start()
 
             # wait for it

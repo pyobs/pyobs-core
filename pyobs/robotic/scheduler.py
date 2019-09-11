@@ -1,3 +1,6 @@
+import threading
+import time
+
 from astroplan import Observer
 
 from pyobs.comm import Comm
@@ -29,6 +32,18 @@ class Scheduler:
 
         Returns:
             Task at the given time.
+        """
+        raise NotImplementedError
+
+    def run_task(self, task: Task, abort_event: threading.Event):
+        """Run a task.
+
+        Args:
+            task: Task to run
+            abort_event: Abort event
+
+        Returns:
+            Success or not
         """
         raise NotImplementedError
 

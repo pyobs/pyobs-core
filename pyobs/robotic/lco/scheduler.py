@@ -121,5 +121,38 @@ class LcoScheduler(Scheduler):
         # nothing found
         return None
 
+    def run_task(self, task: Task, abort_event: threading.Event):
+        """Run a task.
+
+        Args:
+            task: Task to run
+            abort_event: Abort event
+
+        Returns:
+            Success or not
+        """
+
+        # run task
+        status = task.run(abort_event)
+
+        # send report to LCO portal
+        self._send_report(status)
+
+        # finish
+        return True
+
+    def _send_report(self, task: Task, success: bool, duration: float):
+        """Send report to LCO portal
+
+        Args:
+            task: Task to report
+            success:
+            duration:
+
+        Returns:
+
+        """
+        pass
+
 
 __all__ = ['LcoScheduler']

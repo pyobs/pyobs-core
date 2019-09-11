@@ -30,7 +30,16 @@ class LcoTask(Task):
     def window(self) -> (Time, Time):
         return self.task['start'], self.task['end']
 
-    def run(self, abort_event: Event):
+    def run(self, abort_event: Event) -> dict:
+        """Run a task
+
+        Args:
+            abort_event: Event to be triggered to abort task.
+
+        Returns:
+            Dictionary with results that are to be sent to the scheduler
+        """
+
         # get request
         req = self.task['request']
         log.info('Running task %d: %s...', self.id, self.task['name'])
@@ -43,10 +52,19 @@ class LcoTask(Task):
         camera: ICamera = self.comm.proxy(self.camera, ICamera)
         filters: IFilters = self.comm.proxy(self.filters, IFilters)
 
+        # init all config statuses
+        config_status = {c['configuration_status']: {'state': 'FAILED'} for c in req['configurations']}
+
         try:
             # loop configurations
             for config in req['configurations']:
                 self._check_abort(abort_event, end=window_end)
+
+                # start time for config
+                start_time = Time.now()
+
+                # at least we tried...
+                config_status[config['configuration_status']]['state'] = 'ATTEMPTED'
 
                 # got a target?
                 target = config['target']
@@ -91,6 +109,16 @@ class LcoTask(Task):
                                  config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.expose(ic['exposure_time'], image_type).wait()
 
+                # finished config
+                config_status[config['configuration_status']] = {
+                    'state': 'FINISHED',
+                    'summary': {
+                        'start': start_time.isot,
+                        'end': Time.now().isot,
+                        'time_completed': (Time.now() - start_time).sec
+                    }
+                }
+
             # finished task
             self.task['state'] = 'FINISHED'
 
@@ -99,9 +127,17 @@ class LcoTask(Task):
             camera.abort().wait()
             self.task['state'] = 'ABORTED'
 
+        except Exception:
+            log.exception('Something went wrong.')
+            camera.abort().wait()
+            self.task['state'] = 'ABORTED'
+
         finally:
             # stop telescope and abort exposure
             telescope.stop_motion().wait()
+
+        # return the status
+        return config_status
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

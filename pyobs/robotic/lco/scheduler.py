@@ -5,7 +5,6 @@ import requests
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.comm import Comm
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from ..scheduler import Scheduler
@@ -16,7 +15,8 @@ log = logging.getLogger(__name__)
 
 
 class LcoScheduler(Scheduler):
-    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, *args, **kwargs):
+    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str,
+                 *args, **kwargs):
         Scheduler.__init__(self, *args, **kwargs)
 
         # store stuff
@@ -59,7 +59,8 @@ class LcoScheduler(Scheduler):
             params = {
                 'site': self._site,
                 'end_after': now.isot,
-                'start_before': (now + TimeDelta(24 * u.hour)).isot
+                'start_before': (now + TimeDelta(24 * u.hour)).isot,
+                'state': 'PENDING'
             }
 
             # do request
@@ -80,7 +81,9 @@ class LcoScheduler(Scheduler):
 
                         # does task exist?
                         if sched['request']['id'] not in self._tasks:
-                            self._tasks[sched['request']['id']] = LcoTask(sched, scheduler=self)
+                            task = self._create_task(LcoTask, sched,
+                                                     telescope=self.telescope, filters=self.filters, camera=self.camera)
+                            self._tasks[sched['request']['id']] = task
 
                     # clean up old tasks
                     to_delete = [k for k, v in self._tasks.items() if v.window()[1] < now]

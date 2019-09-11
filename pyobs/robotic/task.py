@@ -1,12 +1,10 @@
+import threading
 from threading import Event
 
 from pyobs.utils.time import Time
 
 
 class Task:
-    def __init__(self, scheduler: 'Scheduler', *args, **kwargs):
-        self.scheduler = scheduler
-
     def name(self) -> str:
         """Returns name of task.
 
@@ -42,6 +40,19 @@ class Task:
             Dictionary with FITS headers.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def _check_abort(abort_event: threading.Event):
+        """Throws an exception, if abort_event is set.
+
+        Args:
+            abort_event: Event to check.
+
+        Raises:
+            InterruptedError: if event is set.
+        """
+        if abort_event.is_set():
+            raise InterruptedError
 
 
 __all__ = ['Task']

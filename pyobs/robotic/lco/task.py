@@ -26,6 +26,9 @@ class LcoTask(Task):
     def id(self) -> str:
         return self.task['request']['id']
 
+    def name(self) -> str:
+        return self.task['name']
+
     def window(self) -> (Time, Time):
         return self.task['start'], self.task['end']
 
@@ -33,6 +36,9 @@ class LcoTask(Task):
         # get request
         req = self.task['request']
         log.info('Running task %d: %s...', self.id, self.task['name'])
+
+        # get end of window
+        window_end = Time(self.task['end'])
 
         # get proxies
         telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
@@ -42,7 +48,7 @@ class LcoTask(Task):
         try:
             # loop configurations
             for config in req['configurations']:
-                self._check_abort(abort_event)
+                self._check_abort(abort_event, end=window_end)
 
                 # got a target?
                 target = config['target']
@@ -53,7 +59,7 @@ class LcoTask(Task):
 
                 # loop instrument configs
                 for ic in config['instrument_configs']:
-                    self._check_abort(abort_event)
+                    self._check_abort(abort_event, end=window_end)
 
                     # set filter
                     set_filter = None
@@ -65,7 +71,7 @@ class LcoTask(Task):
                     Future.wait_all([track, set_filter])
 
                     # set binning and window
-                    self._check_abort(abort_event)
+                    self._check_abort(abort_event, end=window_end)
                     if isinstance(camera, ICameraBinning):
                         log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
                         camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
@@ -82,7 +88,7 @@ class LcoTask(Task):
 
                     # loop images
                     for exp in range(ic['exposure_count']):
-                        self._check_abort(abort_event)
+                        self._check_abort(abort_event, end=window_end)
                         log.info('Exposing %s image %d/%d for %.2fs...',
                                  config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.expose(ic['exposure_time'], image_type).wait()

@@ -42,16 +42,23 @@ class Task:
         raise NotImplementedError
 
     @staticmethod
-    def _check_abort(abort_event: threading.Event):
-        """Throws an exception, if abort_event is set.
+    def _check_abort(abort_event: threading.Event, end: Time = None):
+        """Throws an exception, if abort_event is set or window has passed
 
         Args:
-            abort_event: Event to check.
+            abort_event: Event to check
+            end: End of observing window for task
 
         Raises:
-            InterruptedError: if event is set.
+            InterruptedError: if task should be aborted
         """
+
+        # check abort event
         if abort_event.is_set():
+            raise InterruptedError
+
+        # check time
+        if end is not None and end < Time.now():
             raise InterruptedError
 
 

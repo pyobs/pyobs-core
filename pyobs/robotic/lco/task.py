@@ -96,12 +96,12 @@ class LcoTask(Task):
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
+            camera.abort().wait()
             self.task['state'] = 'ABORTED'
 
         finally:
             # stop telescope and abort exposure
             telescope.stop_motion().wait()
-            camera.abort().wait()
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

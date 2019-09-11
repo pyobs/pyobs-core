@@ -105,6 +105,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             self.comm.send_event(TaskFinishedEvent(self._task.name()))
 
             # finish
+            log.info('Finished task %s.', self._task.name())
             self._task = None
 
     def get_fits_headers(self, *args, **kwargs) -> dict:

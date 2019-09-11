@@ -13,8 +13,6 @@ log = logging.getLogger(__name__)
 
 class LcoTask(Task):
     def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, *args, **kwargs):
-        Task.__init__(self, *args, **kwargs)
-
         # store stuff
         self.task = task
         self.comm = comm

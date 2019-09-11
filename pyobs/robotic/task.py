@@ -5,6 +5,9 @@ from pyobs.utils.time import Time
 
 
 class Task:
+    def __init__(self, scheduler: 'Scheduler', *args, **kwargs):
+        self.scheduler = scheduler
+
     def name(self) -> str:
         """Returns name of task.
 

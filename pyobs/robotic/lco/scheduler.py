@@ -135,24 +135,22 @@ class LcoScheduler(Scheduler):
         # run task
         status = task.run(abort_event)
 
-        # send report to LCO portal
-        self._send_report(status)
-
         # finish
         return True
 
-    def _send_report(self, task: Task, success: bool, duration: float):
+    def send_update(self, status_id: int, status: dict):
         """Send report to LCO portal
 
         Args:
-            task: Task to report
-            success:
-            duration:
-
-        Returns:
-
+            status_id: id of config status
+            status: Status dictionary
         """
-        pass
+
+        log.info('Sending configuration status update to portal...')
+        url = urllib.parse.urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
+        r = requests.patch(url, json=status, headers=self._header)
+        if r.status_code != 200:
+            log.error('Could not update configuration status: %s', r.text)
 
 
 __all__ = ['LcoScheduler']

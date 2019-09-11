@@ -1,6 +1,8 @@
 import threading
 import urllib.parse
 import logging
+from typing import Union
+
 import requests
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -96,14 +98,14 @@ class LcoScheduler(Scheduler):
             # sleep a little
             self._closing.wait(10)
 
-    def get_task(self, time: Time) -> Task:
+    def get_task(self, time: Time) -> Union[Task, None]:
         """Returns the active task at the given time.
 
         Args:
             time: Time to return task for.
 
         Returns:
-            Task at the given time.
+            Task at the given time or None.
         """
 
         # loop all tasks
@@ -113,7 +115,7 @@ class LcoScheduler(Scheduler):
                 start, end = task.window()
 
                 # running now?
-                if start <= time < end:
+                if start <= time < end and not task.is_finished():
                     return task
 
         # nothing found

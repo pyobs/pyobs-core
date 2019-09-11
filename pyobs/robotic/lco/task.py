@@ -93,8 +93,12 @@ class LcoTask(Task):
                                  config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.expose(ic['exposure_time'], image_type).wait()
 
+            # finished task
+            self.task['state'] = 'FINISHED'
+
         except InterruptedError:
             log.warning('Task execution was interrupted.')
+            self.task['state'] = 'ABORTED'
 
         finally:
             # stop telescope and abort exposure

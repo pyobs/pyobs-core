@@ -73,24 +73,21 @@ class LcoScheduler(Scheduler):
                 # get schedule
                 schedules = r.json()['results']
 
+                # create tasks
+                tasks = []
+                for sched in schedules:
+                    # parse start and end
+                    sched['start'] = Time(sched['start'])
+                    sched['end'] = Time(sched['end'])
+
+                    # create task
+                    task = self._create_task(LcoTask, sched,
+                                             telescope=self.telescope, filters=self.filters, camera=self.camera)
+                    tasks[sched['request']['id']] = task
+
                 # update
                 with self._update_lock:
-                    # create tasks
-                    for sched in schedules:
-                        # parse start and end
-                        sched['start'] = Time(sched['start'])
-                        sched['end'] = Time(sched['end'])
-
-                        # does task exist?
-                        if sched['request']['id'] not in self._tasks:
-                            task = self._create_task(LcoTask, sched,
-                                                     telescope=self.telescope, filters=self.filters, camera=self.camera)
-                            self._tasks[sched['request']['id']] = task
-
-                    # clean up old tasks
-                    to_delete = [k for k, v in self._tasks.items() if v.window()[1] < now]
-                    for d in to_delete:
-                        del self._tasks[d]
+                    self._tasks = tasks
 
             else:
                 log.warning('Could not fetch schedule.')

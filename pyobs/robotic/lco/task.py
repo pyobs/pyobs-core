@@ -116,7 +116,7 @@ class LcoTask(Task):
                     self._check_abort(abort_event)
                     log.info('Exposing %s image %d/%d for %.2fs...',
                              config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                    camera.expose(ic['exposure_time'], image_type).wait()
+                    camera.expose(int(ic['exposure_time'] * 1000), image_type).wait()
 
             # finished config
             config_status['state'] = 'COMPLETED'

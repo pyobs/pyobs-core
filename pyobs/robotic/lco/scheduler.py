@@ -74,7 +74,7 @@ class LcoScheduler(Scheduler):
                 schedules = r.json()['results']
 
                 # create tasks
-                tasks = []
+                tasks = {}
                 for sched in schedules:
                     # parse start and end
                     sched['start'] = Time(sched['start'])

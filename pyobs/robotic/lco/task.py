@@ -123,12 +123,10 @@ class LcoTask(Task):
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
-            camera.abort().wait()
             config_status['state'] = 'ATTEMPTED'
 
         except Exception:
             log.exception('Something went wrong.')
-            camera.abort().wait()
             config_status['state'] = 'FAILED'
 
         finally:

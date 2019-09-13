@@ -55,45 +55,49 @@ class LcoScheduler(Scheduler):
     def _update(self):
         """Update thread."""
         while not self._closing.is_set():
-            # get url and params
-            url = urllib.parse.urljoin(self._url, '/api/observations/')
-            now = Time.now()
-            params = {
-                'site': self._site,
-                'end_after': now.isot,
-                'start_before': (now + TimeDelta(24 * u.hour)).isot,
-                'state': 'PENDING'
-            }
-
-            # do request
-            r = requests.get(url, params=params, headers=self._header)
-
-            # success?
-            if r.status_code == 200:
-                # get schedule
-                schedules = r.json()['results']
-
-                # create tasks
-                tasks = {}
-                for sched in schedules:
-                    # parse start and end
-                    sched['start'] = Time(sched['start'])
-                    sched['end'] = Time(sched['end'])
-
-                    # create task
-                    task = self._create_task(LcoTask, sched,
-                                             telescope=self.telescope, filters=self.filters, camera=self.camera)
-                    tasks[sched['request']['id']] = task
-
-                # update
-                with self._update_lock:
-                    self._tasks = tasks
-
-            else:
-                log.warning('Could not fetch schedule.')
+            # do actual update
+            self._update_now()
 
             # sleep a little
             self._closing.wait(10)
+
+    def _update_now(self):
+        # get url and params
+        url = urllib.parse.urljoin(self._url, '/api/observations/')
+        now = Time.now()
+        params = {
+            'site': self._site,
+            'end_after': now.isot,
+            'start_before': (now + TimeDelta(24 * u.hour)).isot,
+            'state': 'PENDING'
+        }
+
+        # do request
+        r = requests.get(url, params=params, headers=self._header)
+
+        # success?
+        if r.status_code == 200:
+            # get schedule
+            schedules = r.json()['results']
+
+            # create tasks
+            tasks = {}
+            for sched in schedules:
+                # parse start and end
+                sched['start'] = Time(sched['start'])
+                sched['end'] = Time(sched['end'])
+
+                # create task
+                task = self._create_task(LcoTask, sched,
+                                         telescope=self.telescope, filters=self.filters, camera=self.camera)
+                tasks[sched['request']['id']] = task
+
+            # update
+            with self._update_lock:
+                self._tasks = tasks
+
+        else:
+            log.warning('Could not fetch schedule.')
 
     def get_task(self, time: Time) -> Union[Task, None]:
         """Returns the active task at the given time.
@@ -131,6 +135,9 @@ class LcoScheduler(Scheduler):
 
         # run task
         status = task.run(abort_event)
+
+        # force update tasks
+        self._update_now()
 
         # finish
         return True

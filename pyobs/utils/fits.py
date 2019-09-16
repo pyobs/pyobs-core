@@ -268,7 +268,7 @@ class FilenameFormatter:
             Formatted string.
         """
         it = hdr[image_type].lower()
-        if it in ['light', 'object', 'flat']:
+        if it in ['light', 'object', 'flat', 'skyflat']:
             return prefix + self._value(hdr, key)
         else:
             return ''

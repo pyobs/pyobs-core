@@ -18,7 +18,7 @@ FITS_HEADERS = {
     IWeather.Sensors.HUMIDITY: ('WS-HUMID', 'Ambient rel. humidity average, %', float),
     IWeather.Sensors.PRESSURE: ('WS-PRESS', 'Average atmospheric pressure, hPa', float),
     IWeather.Sensors.WINDDIR: ('WS-AZ', 'Average wind direction, not corrected for overlap, deg', float),
-    IWeather.Sensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, m/s', float),
+    IWeather.Sensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, km/h', float),
     IWeather.Sensors.RAIN: ('WS-PREC', 'Ambient precipitation [0/1]', bool),
     IWeather.Sensors.SKYTEMP: ('WS-SKY', 'Average sky temperature, C', float),
     IWeather.Sensors.DEWPOINT: ('WS-TDEW', 'Ambient dewpoint average during expsoure, C', float),

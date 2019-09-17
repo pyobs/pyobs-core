@@ -144,15 +144,21 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
         with self._status_lock:
             status = dict(self._status)
 
+        # got sensors?
+        if 'sensors' not in status:
+            log.error('No sensor data found in status.')
+            return {}
+        sensors = status['sensors']
+
         # loop sensor types
         header = {}
         for sensor_type in IWeather.Sensors:
             # got a value for this type?
-            if sensor_type.value in status:
+            if sensor_type.value in sensors:
                 # get value
-                if 'value' not in status[sensor_type.value]:
+                if 'value' not in sensors[sensor_type.value]:
                     continue
-                value = status[sensor_type.value]['value']
+                value = sensors[sensor_type.value]['value']
 
                 # get header keyword, comment and data type
                 key, comment, dtype = FITS_HEADERS[sensor_type]

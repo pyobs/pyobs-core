@@ -2,17 +2,31 @@ import logging
 import requests
 import urllib.parse
 import json
+import threading
 from typing import Union
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather
+from pyobs.interfaces import IWeather, IFitsHeaderProvider
 from pyobs import PyObsModule
 
 
 log = logging.getLogger(__name__)
 
 
-class Weather(PyObsModule, IWeather):
+FITS_HEADERS = {
+    IWeather.Sensors.TEMPERATURE: ('WS-TEMP', 'Ambient temperature average during exposure, C', float),
+    IWeather.Sensors.HUMIDITY: ('WS-HUMID', 'Ambient rel. humidity average, %', float),
+    IWeather.Sensors.PRESSURE: ('WS-PRESS', 'Average atmospheric pressure, hPa', float),
+    IWeather.Sensors.WINDDIR: ('WS-AZ', 'Average wind direction, not corrected for overlap, deg', float),
+    IWeather.Sensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, km/h', float),
+    IWeather.Sensors.RAIN: ('WS-PREC', 'Ambient precipitation [0/1]', bool),
+    IWeather.Sensors.SKYTEMP: ('WS-SKY', 'Average sky temperature, C', float),
+    IWeather.Sensors.DEWPOINT: ('WS-TDEW', 'Ambient dewpoint average during expsoure, C', float),
+    IWeather.Sensors.PARTICLES: ('WS-DUST', 'Average particle count during exposure, ppcm', float)
+}
+
+
+class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
     """Connection to pyobs-weather."""
 
     def __init__(self, url: str = None, *args, **kwargs):
@@ -25,6 +39,10 @@ class Weather(PyObsModule, IWeather):
 
         # current status
         self._is_good = None
+
+        # whole status
+        self._status = {}
+        self._status_lock = threading.RLock()
 
         # add thread func
         self._add_thread_func(self._update, True)
@@ -60,6 +78,8 @@ class Weather(PyObsModule, IWeather):
 
                 # store it
                 is_good = status['good']
+                with self._status_lock:
+                    self._status = status
 
             except (requests.exceptions.Timeout, ValueError) as e:
                 # on error, we're always bad
@@ -112,6 +132,42 @@ class Weather(PyObsModule, IWeather):
 
         # return time and value
         return status['time'], status['value']
+
+    def get_fits_headers(self, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of the telescope.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # copy status
+        with self._status_lock:
+            status = dict(self._status)
+
+        # got sensors?
+        if 'sensors' not in status:
+            log.error('No sensor data found in status.')
+            return {}
+        sensors = status['sensors']
+
+        # loop sensor types
+        header = {}
+        for sensor_type in IWeather.Sensors:
+            # got a value for this type?
+            if sensor_type.value in sensors:
+                # get value
+                if 'value' not in sensors[sensor_type.value]:
+                    continue
+                value = sensors[sensor_type.value]['value']
+
+                # get header keyword, comment and data type
+                key, comment, dtype = FITS_HEADERS[sensor_type]
+
+                # set it
+                header[key] = (None if value is None else dtype(value), comment)
+
+        # finished
+        return header
 
 
 __all__ = ['Weather']

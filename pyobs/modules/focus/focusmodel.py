@@ -80,7 +80,6 @@ class FocusModel(PyObsModule, IFocusModel):
         self._focuser_ready = True
         self._coefficients = {} if coefficients is None else coefficients
         self._update_model = update
-        self._measurements_file = measurements
         self._min_measurements = min_measurements
         self._enabled = enabled
         self._temp_station, self._temp_sensor = temp_sensor.split('.')
@@ -104,6 +103,11 @@ class FocusModel(PyObsModule, IFocusModel):
         for c in self._coefficients.keys():
             variables.remove(c)
         log.info('Found variables: %s', ', '.join(variables))
+
+        # load measurements
+        self._measurements_file = measurements
+        self._measurements = None
+        self._load_measurements()
 
         # update model now?
         if update:
@@ -276,29 +280,22 @@ class FocusModel(PyObsModule, IFocusModel):
         values['datetime'] = Time.now().isot
         values['filter'] = event.filter_name
 
-        try:
-            # open file with previous measurements
-            log.info('Reading previous measurements...')
-            with self.open_file(self._measurements_file, 'r') as f:
-                # read data and append values
-                data = pd.read_csv(f, index_col=False).append(values, ignore_index=True)
-
-        except (FileNotFoundError, pd.errors.EmptyDataError):
+        # append or new?
+        if self._measurements is None:
             # use values as new dataframe with one entry
             log.info('No previous measurements found, starting new file.')
-            data = pd.DataFrame({k: [v] for k, v in values.items()})
+            self._measurements = pd.DataFrame({k: [v] for k, v in values.items()})
+        else:
+            # append
+            try:
+                self._measurements = self._measurements.append(values, ignore_index=True)
+            except TypeError:
+                # wrong file format?
+                log.error('Possibly wrong file format for %s, please fix or delete it.', self._measurements_file)
+                return
 
-        except TypeError:
-            # wrong file format?
-            log.error('Possibly wrong file format for %s, please fix or delete it.', self._measurements_file)
-            return
-
-        # write file back
-        with self.open_file(self._measurements_file, 'w') as f:
-            log.info('Writing measurements to file...')
-            with io.StringIO() as sio:
-                data.to_csv(sio, index=False)
-                f.write(sio.getvalue().encode('utf8'))
+        # write it back
+        self._save_measurements()
 
         # finally, calculate new model
         log.info('Re-calculating model...')
@@ -307,25 +304,40 @@ class FocusModel(PyObsModule, IFocusModel):
         # finished
         log.info('Done.')
 
+    def _load_measurements(self):
+        try:
+            # open file with previous measurements
+            log.info('Reading previous measurements...')
+            with self.open_file(self._measurements_file, 'r') as f:
+                # read data and append values
+                self._measurements = pd.read_csv(f, index_col=False)
+
+        except (FileNotFoundError, pd.errors.EmptyDataError):
+            # use values as new dataframe with one entry
+            log.info('No previous measurements found, starting new file.')
+            self._measurements = None
+
+    def _save_measurements(self):
+        # no measurements?
+        if self._measurements is None:
+            return
+
+        # write to file
+        with self.open_file(self._measurements_file, 'w') as f:
+            log.info('Writing measurements to file...')
+            with io.StringIO() as sio:
+                self._measurements.to_csv(sio, index=False)
+                f.write(sio.getvalue().encode('utf8'))
+
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""
 
         # no coefficients? no model...
-        if not self._coefficients:
+        if not self._coefficients or self._measurements is None:
             return
-
-        try:
-            # open file with previous measurements and read data
-            with self.open_file(self._measurements_file, 'r') as f:
-                data = pd.read_csv(f, index_col=False)
-        except FileNotFoundError:
-            log.warning('Could not find file with previous measurements at %s.', self._measurements_file)
-            return
-        except pd.errors.EmptyDataError:
-            data = pd.DataFrame({})
 
         # only take clear filter images for now
-        data = data[data['filter'] == 'clear']
+        data = self._measurements[self._measurements['filter'] == 'clear']
 
         # enough measurements?
         if len(data) < self._min_measurements:

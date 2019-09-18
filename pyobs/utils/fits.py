@@ -163,7 +163,7 @@ class FilenameFormatter:
                 # loop all placeholders
                 for ph in placeholders:
                     # call method and replace
-                    output = output.replace(ph, self._format_placeholder(ph, hdr))
+                    output = output.replace(ph, str(self._format_placeholder(ph, hdr)))
 
                 # finished
                 return output
@@ -255,7 +255,7 @@ class FilenameFormatter:
         date_obs = Time(self._value(hdr, key))
         return date_obs.datetime.strftime(fmt)
 
-    def _format_filter(self, hdr: Header, key: str, image_type: str = 'IMAGETYP', prefix: str = '_') -> str:
+    def _format_filter(self, hdr: Header, key: str, image_type: str = 'IMAGETYP', prefix: str = '-') -> str:
         """Formats a filter, prefixed by a given separator, only if the image type requires it.
 
         Args:
@@ -268,7 +268,7 @@ class FilenameFormatter:
             Formatted string.
         """
         it = hdr[image_type].lower()
-        if it in ['light', 'object', 'flat']:
+        if it in ['light', 'object', 'flat', 'skyflat']:
             return prefix + self._value(hdr, key)
         else:
             return ''

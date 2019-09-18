@@ -69,7 +69,10 @@ class LcoTask(Task):
 
     def _run_config(self, abort_event, config, telescope, camera,  filters) -> dict:
         # at least we tried...
-        config_status = {'state': 'ATTEMPTED'}
+        config_status = {'state': 'ATTEMPTED', 'summary': {'start': Time.now().isot}}
+
+        # total exposure time
+        exp_time_done = 0
 
         try:
             # check first
@@ -117,21 +120,30 @@ class LcoTask(Task):
                     log.info('Exposing %s image %d/%d for %.2fs...',
                              config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                     camera.expose(int(ic['exposure_time'] * 1000), image_type).wait()
+                    exp_time_done += ic['exposure_time']
 
             # finished config
             config_status['state'] = 'COMPLETED'
+            config_status['summary']['state'] = 'COMPLETED'
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
             config_status['state'] = 'ATTEMPTED'
+            config_status['summary']['state'] = 'ATTEMPTED'
+            config_status['summary']['reason'] = 'Task execution was interrupted'
 
         except Exception:
             log.exception('Something went wrong.')
             config_status['state'] = 'FAILED'
+            config_status['summary']['state'] = 'FAILED'
+            config_status['summary']['reason'] = 'Something went wrong'
 
-        finally:
-            # stop telescope and abort exposure
-            telescope.stop_motion().wait()
+        # stop telescope and abort exposure
+        telescope.stop_motion().wait()
+
+        # finish filling config status
+        config_status['summary']['end'] = Time.now().isot
+        config_status['summary']['time_completed'] = exp_time_done
 
         # finished
         return config_status

@@ -18,6 +18,7 @@ from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IMotion import IMotion
+from .IPipeline import IPipeline
 from .IRoof import IRoof
 from .IRotation import IRotation
 from .IScriptRunner import IScriptRunner

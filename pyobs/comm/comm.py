@@ -118,7 +118,7 @@ class Comm:
         # return proxy
         return self._proxies[client]
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type):
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -140,7 +140,7 @@ class Comm:
             ValueError: If proxy does not exist or wrong type.
         """
 
-        if isinstance(name_or_object, obj_type):
+        if obj_type is not None and isinstance(name_or_object, obj_type):
             # return directly
             return name_or_object
 
@@ -151,7 +151,7 @@ class Comm:
             # check it
             if proxy is None:
                 raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
-            elif isinstance(proxy, obj_type):
+            elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
                 raise ValueError('Proxy obtained from given name "%s" is not of requested type "%s".' %

@@ -118,9 +118,6 @@ class PyobsArchive(Archive):
         return images
 
     def upload_frames(self, images: List[Image]):
-        for img in images:
-            img.writeto('temp/' + img.header['FNAME'], overwrite=True)
-
         # build URL
         url = urllib.parse.urljoin(self._url, '/api/frames/create/')
 

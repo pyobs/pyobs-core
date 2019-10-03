@@ -136,6 +136,8 @@ class FocusModel(PyObsModule, IFocusModel):
                 focuser: IFocuser = self.proxy(self._focuser, IFocuser)
             except ValueError:
                 log.warning('Could not connect to focuser.')
+                self.closing.wait(60)
+                continue
 
             # it must be in allowed state
             status = focuser.get_motion_status('IFocuser').wait()

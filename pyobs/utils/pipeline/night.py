@@ -148,7 +148,7 @@ class Night:
         # finished
         return calib
 
-    def __call__(self, ):
+    def __call__(self):
         """Reduces all data im this night."""
 
         # get options

@@ -36,7 +36,7 @@ def test_filter():
 
     # for light it should
     hdr['IMAGETYP'] = 'light'
-    assert 'image_light_clear.fits' == format_filename(hdr, 'image_{IMAGETYP}{FILTER|filter}.fits')
+    assert 'image_light-clear.fits' == format_filename(hdr, 'image_{IMAGETYP}{FILTER|filter}.fits')
 
 
 def test_string():

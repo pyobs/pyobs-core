@@ -15,7 +15,8 @@ log = logging.getLogger(__name__)
 
 
 class Night:
-    def __init__(self, archive: Union[dict, Archive], photometry: Union[dict, Photometry],
+    def __init__(self, site: str, night: str,
+                 archive: Union[dict, Archive], photometry: Union[dict, Photometry],
                  astrometry: Union[dict, Astrometry], worker_procs: int = 4,
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
@@ -29,6 +30,8 @@ class Night:
         self._astrometry = get_object(astrometry, Astrometry)
 
         # stuff
+        self._site = site
+        self._night = night
         self._worker_processes = worker_procs
 
         # cache for master calibration frames
@@ -57,9 +60,9 @@ class Night:
         # upload
         self._archive.upload_frames([calibrated])
 
-    def _calib_data(self, night: str, instrument: str, binning: str, filter_name: str):
+    def _calib_data(self, instrument: str, binning: str, filter_name: str):
         # get all frames
-        infos = self._archive.list_frames(night=night, instrument=instrument,
+        infos = self._archive.list_frames(night=self._night, instrument=instrument,
                                           image_type=ICamera.ImageType.OBJECT, binning=binning, filter_name=filter_name,
                                           rlevel=0)
         if len(infos) == 0:
@@ -67,7 +70,7 @@ class Night:
         log.info('Calibrating %d OBJECT frames...', len(infos))
 
         # midnight
-        midnight = Time(night + ' 23:59:59')
+        midnight = Time(self._night + ' 23:59:59')
 
         # get calibration frames
         bias = BiasImage.find_master(self._archive, midnight, instrument, binning)
@@ -87,10 +90,10 @@ class Night:
             log.info('Calibrating file %d/%d: %s...', i, len(infos), info.filename)
             self._calib_data_frame(info, bias, dark, flat)
 
-    def _create_master_calib(self, night: str, instrument: str, image_type: ICamera.ImageType, binning: str,
+    def _create_master_calib(self, instrument: str, image_type: ICamera.ImageType, binning: str,
                              filter_name: str = None):
         # get frames
-        infos = self._archive.list_frames(night=night, image_type=image_type, filter_name=filter_name,
+        infos = self._archive.list_frames(night=self._night, image_type=image_type, filter_name=filter_name,
                                           instrument=instrument, binning=binning, rlevel=0)
 
         # log it
@@ -108,7 +111,7 @@ class Night:
         images = self._archive.download_frames(infos)
 
         # midnight
-        midnight = Time(night + ' 23:59:59')
+        midnight = Time(self._night + ' 23:59:59')
 
         # create master
         if image_type == ICamera.ImageType.BIAS:
@@ -145,15 +148,11 @@ class Night:
         # finished
         return calib
 
-    def __call__(self, night: str):
-        """Reduces all data within a given range of time.
-
-        Args:
-            night: Night to reduce
-        """
+    def __call__(self, ):
+        """Reduces all data im this night."""
 
         # get options
-        options = self._archive.list_options(night=night)
+        options = self._archive.list_options(night=self._night, site=self._site)
 
         # loop instruments
         for instrument in options['instruments']:
@@ -162,18 +161,18 @@ class Night:
             # loop binnings
             for binning in options['binnings']:
                 # create bias
-                self._create_master_calib(night, instrument, ICamera.ImageType.BIAS, binning)
+                self._create_master_calib(instrument, ICamera.ImageType.BIAS, binning)
 
                 # create dark
-                self._create_master_calib(night, instrument, ICamera.ImageType.DARK, binning)
+                self._create_master_calib(instrument, ICamera.ImageType.DARK, binning)
 
                 # loop filters
                 for filter_name in options['filters']:
                     # create flat
-                    self._create_master_calib(night, instrument, ICamera.ImageType.SKYFLAT, binning, filter_name)
+                    self._create_master_calib(instrument, ICamera.ImageType.SKYFLAT, binning, filter_name)
 
                     # calibrate science data
-                    self._calib_data(night, instrument, binning, filter_name)
+                    self._calib_data(instrument, binning, filter_name)
 
 
 __all__ = ['Night']

@@ -31,17 +31,16 @@ class PyobsArchive(Archive):
         self._url = url
         self._headers = {'Authorization': 'Token ' + token}
 
-    def list_options(self, start: Time = None, end: Time = None, night: str = None):
+    def list_options(self, start: Time = None, end: Time = None, night: str = None,
+                    site: str = None, telescope: str = None, instrument: str = None,
+                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    rlevel: int = None):
         # build URL
         url = urllib.parse.urljoin(self._url, '/api/frames/aggregate/')
 
-        # build params
-        if start is not None and end is not None:
-            params = {'start': start.isot, 'end': end.isot}
-        elif night is not None:
-            params = {'night': night}
-        else:
-            raise ValueError('Invalid date')
+        # and params
+        params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
+                                   filter_name, rlevel)
 
         # do request
         r = requests.get(url, params=params, headers=self._headers)
@@ -59,6 +58,24 @@ class PyobsArchive(Archive):
         # build URL
         url = urllib.parse.urljoin(self._url, '/api/frames/')
 
+        # and params
+        params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
+                                   filter_name, rlevel)
+        params['offset'] = 0
+        params['limit'] = 1000
+
+        # do request
+        r = requests.get(url, params=params, headers=self._headers)
+        if r.status_code != 200:
+            raise ValueError('Could not query frames')
+
+        # create frames and return them
+        return [PyobsArchiveFrameInfo(frame, archive=self) for frame in r.json()['results']]
+
+    def _build_query(self, start: Time = None, end: Time = None, night: str = None,
+                    site: str = None, telescope: str = None, instrument: str = None,
+                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    rlevel: int = None):
         # build params
         params = {}
         if start is not None:
@@ -81,17 +98,7 @@ class PyobsArchive(Archive):
             params['FILTER'] = filter_name
         if rlevel is not None:
             params['RLEVEL'] = rlevel
-
-        params['offset'] = 0
-        params['limit'] = 1000
-
-        # do request
-        r = requests.get(url, params=params, headers=self._headers)
-        if r.status_code != 200:
-            raise ValueError('Could not query frames')
-
-        # create frames and return them
-        return [PyobsArchiveFrameInfo(frame, archive=self) for frame in r.json()['results']]
+        return params
 
     def download_frames(self, infos: List[PyobsArchiveFrameInfo]) -> List[Image]:
         # loop infos

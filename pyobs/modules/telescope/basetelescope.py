@@ -194,24 +194,31 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         hdr = {}
 
         # positions
-        ra, dec = self.get_radec()
-        coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-        alt, az = self.get_altaz()
-        coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
+        try:
+            ra, dec = self.get_radec()
+            coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
+            alt, az = self.get_altaz()
+            coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
+        except:
+            log.error('Could not fetch telescope position.')
+            coords_ra_dec, coords_alt_az = None, None
 
         # set coordinate headers
-        hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
-        hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
-        hdr['CRVAL1'] = hdr['TEL-RA']
-        hdr['CRVAL2'] = hdr['TEL-DEC']
-        hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
-        hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
-        hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-        hdr['AIRMASS'] = (coords_alt_az.secz.value, 'Airmass of observation start')
+        if coords_ra_dec is not None:
+            hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
+            hdr['CRVAL1'] = hdr['TEL-RA']
+            hdr['CRVAL2'] = hdr['TEL-DEC']
+        if coords_alt_az is not None:
+            hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
+            hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
+            hdr['AIRMASS'] = (coords_alt_az.secz.value, 'Airmass of observation start')
 
         # convert to sexagesimal
-        hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
-        hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
+        if coords_ra_dec is not None:
+            hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
+            hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
 
         # add static fits headers
         for key, value in self._fits_headers.items():
@@ -244,8 +251,11 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         now = Time.now()
 
         # get telescope alt/az
-        alt, az = self.get_altaz()
-        tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
+        try:
+            alt, az = self.get_altaz()
+            tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
+        except:
+            alt, az, tel_altaz = None, None, None
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)
@@ -253,8 +263,8 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         sun_altaz = self.observer.sun_altaz(now)
 
         # calculate distance to telescope
-        moon_dist = tel_altaz.separation(moon_altaz)
-        sun_dist = tel_altaz.separation(sun_altaz)
+        moon_dist = tel_altaz.separation(moon_altaz) if tel_altaz is not None else None
+        sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
 
         # store it
         with self._celestial_lock:

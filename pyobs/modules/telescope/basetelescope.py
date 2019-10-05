@@ -271,9 +271,9 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
             self._celestial_headers = {
                 'MOONALT': (moon_altaz.alt.degree, 'Lunar altitude'),
                 'MOONFRAC': (moon_frac, 'Fraction of the moon illuminated'),
-                'MOONDIST': (moon_dist.degree, 'Lunar distance from target'),
+                'MOONDIST': (None if moon_dist is None else moon_dist.degree, 'Lunar distance from target'),
                 'SUNALT': (sun_altaz.alt.degree, 'Solar altitude'),
-                'SUNDIST': (sun_dist.degree, 'Solar Distance from Target')
+                'SUNDIST': (None if sun_dist is None else sun_dist.degree, 'Solar Distance from Target')
             }
 
 

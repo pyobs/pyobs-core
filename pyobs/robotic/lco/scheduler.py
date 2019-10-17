@@ -56,7 +56,10 @@ class LcoScheduler(Scheduler):
         """Update thread."""
         while not self._closing.is_set():
             # do actual update
-            self._update_now()
+            try:
+                self._update_now()
+            except:
+                log.exception('An exception occured.')
 
             # sleep a little
             self._closing.wait(10)

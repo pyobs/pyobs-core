@@ -152,7 +152,7 @@ class Night:
         """Reduces all data im this night."""
 
         # get options
-        log.info('Retrieving configurations for night %s...', self._night)
+        log.info('Retrieving configurations for site %s at night %s...', self._site, self._night)
         options = self._archive.list_options(night=self._night, site=self._site)
         log.info('Got data for %d instruments, %d binnings, and %d filters.',
                  len(options['instruments']), len(options['binnings']), len(options['filters']))

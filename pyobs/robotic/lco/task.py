@@ -2,7 +2,7 @@ from threading import Event
 import logging
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow
+from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, IRoof
 from pyobs.robotic.task import Task
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 
 
 class LcoTask(Task):
-    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, *args, **kwargs):
+    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, flat_fields: str, roof: str,
+                 *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
 
         # store stuff
@@ -21,6 +22,8 @@ class LcoTask(Task):
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
+        self.roof = roof
+        self.flat_fields = flat_fields
 
     @property
     def id(self) -> str:
@@ -45,6 +48,7 @@ class LcoTask(Task):
         log.info('Running task %d: %s...', self.id, self.task['name'])
 
         # get proxies
+        roof: IRoof = self.comm.proxy(self.roof, IRoof)
         telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
         camera: ICamera = self.comm.proxy(self.camera, ICamera)
         filters: IFilters = self.comm.proxy(self.filters, IFilters)
@@ -53,7 +57,7 @@ class LcoTask(Task):
             # loop configurations
             for config in req['configurations']:
                 # run config
-                status = self._run_config(abort_event, config, telescope, camera, filters)
+                status = self._run_config(abort_event, config, roof, telescope, camera, filters)
 
                 # send status
                 if isinstance(self.scheduler, LcoScheduler):
@@ -67,7 +71,7 @@ class LcoTask(Task):
             self.task['state'] = 'ABORTED'
             raise
 
-    def _run_config(self, abort_event, config, telescope, camera,  filters) -> dict:
+    def _run_config(self, abort_event, config, roof, telescope, camera,  filters) -> dict:
         # at least we tried...
         config_status = {'state': 'ATTEMPTED', 'summary': {'start': Time.now().isot}}
 
@@ -78,49 +82,21 @@ class LcoTask(Task):
             # check first
             self._check_abort(abort_event)
 
-            # got a target?
-            target = config['target']
-            track = None
-            if target['ra'] is not None and target['dec'] is not None:
-                log.info('Moving to target %s...', target['name'])
-                track = telescope.track_radec(target['ra'], target['dec'])
+            # what do we run?
+            if 'extra_params' in config and 'script_name' in config['extra_params']:
+                # let's run some script, so get its name
+                script_name = config['extra_params']['script_name']
 
-            # loop instrument configs
-            for ic in config['instrument_configs']:
-                self._check_abort(abort_event)
+                # which one is it?
+                if script_name == 'skyflats':
+                    exp_time_done += self._run_skyflats_config(abort_event, config, roof, telescope, camera, filters)
+                else:
+                    # unknown script
+                    raise ValueError('Invalid script task type.')
 
-                # set filter
-                set_filter = None
-                if 'optical_elements' in ic and 'filter' in ic['optical_elements']:
-                    log.info('Setting filter to %s...', ic['optical_elements']['filter'])
-                    set_filter = filters.set_filter(ic['optical_elements']['filter'])
-
-                # wait for tracking and filter
-                Future.wait_all([track, set_filter])
-
-                # set binning and window
-                self._check_abort(abort_event)
-                if isinstance(camera, ICameraBinning):
-                    log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
-                    camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
-                if isinstance(camera, ICameraWindow):
-                    full_frame = camera.get_full_frame().wait()
-                    camera.set_window(*full_frame).wait()
-
-                # decide on image type
-                image_type = ICamera.ImageType.OBJECT
-                if config['type'] == 'BIAS':
-                    image_type = ICamera.ImageType.BIAS
-                elif config['type'] == 'DARK':
-                    image_type = ICamera.ImageType.DARK
-
-                # loop images
-                for exp in range(ic['exposure_count']):
-                    self._check_abort(abort_event)
-                    log.info('Exposing %s image %d/%d for %.2fs...',
-                             config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                    camera.expose(int(ic['exposure_time'] * 1000), image_type).wait()
-                    exp_time_done += ic['exposure_time']
+            else:
+                # seems to be a default task
+                exp_time_done += self._run_default_config(abort_event, config, roof, telescope, camera, filters)
 
             # finished config
             config_status['state'] = 'COMPLETED'
@@ -147,6 +123,60 @@ class LcoTask(Task):
 
         # finished
         return config_status
+
+    def _run_default_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
+        # got a target?
+        target = config['target']
+        track = None
+        if target['ra'] is not None and target['dec'] is not None:
+            log.info('Moving to target %s...', target['name'])
+            track = telescope.track_radec(target['ra'], target['dec'])
+
+        # total exposure time in this config
+        exp_time_done = 0
+
+        # loop instrument configs
+        for ic in config['instrument_configs']:
+            self._check_abort(abort_event)
+
+            # set filter
+            set_filter = None
+            if 'optical_elements' in ic and 'filter' in ic['optical_elements']:
+                log.info('Setting filter to %s...', ic['optical_elements']['filter'])
+                set_filter = filters.set_filter(ic['optical_elements']['filter'])
+
+            # wait for tracking and filter
+            Future.wait_all([track, set_filter])
+
+            # set binning and window
+            self._check_abort(abort_event)
+            if isinstance(camera, ICameraBinning):
+                log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
+                camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
+            if isinstance(camera, ICameraWindow):
+                full_frame = camera.get_full_frame().wait()
+                camera.set_window(*full_frame).wait()
+
+            # decide on image type
+            image_type = ICamera.ImageType.OBJECT
+            if config['type'] == 'BIAS':
+                image_type = ICamera.ImageType.BIAS
+            elif config['type'] == 'DARK':
+                image_type = ICamera.ImageType.DARK
+
+            # loop images
+            for exp in range(ic['exposure_count']):
+                self._check_abort(abort_event)
+                log.info('Exposing %s image %d/%d for %.2fs...',
+                         config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
+                camera.expose(int(ic['exposure_time'] * 1000), image_type).wait()
+                exp_time_done += ic['exposure_time']
+
+        # finally, return total exposure time
+        return exp_time_done
+
+    def _run_skyflats_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
+        return 0
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

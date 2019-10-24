@@ -1,14 +1,18 @@
 from threading import Event
 import logging
+from typing import Union
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, IRoof
+from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, IRoof, IMotion
 from pyobs.robotic.task import Task
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
-
 log = logging.getLogger(__name__)
+
+
+class CannotRunTask(Exception):
+    pass
 
 
 class LcoTask(Task):
@@ -45,7 +49,6 @@ class LcoTask(Task):
 
         # get request
         req = self.task['request']
-        log.info('Running task %d: %s...', self.id, self.task['name'])
 
         # get proxies
         roof: IRoof = self.comm.proxy(self.roof, IRoof)
@@ -60,7 +63,7 @@ class LcoTask(Task):
                 status = self._run_config(abort_event, config, roof, telescope, camera, filters)
 
                 # send status
-                if isinstance(self.scheduler, LcoScheduler):
+                if status is not None and isinstance(self.scheduler, LcoScheduler):
                     self.scheduler.send_update(config['configuration_status'], status)
 
             # finished task
@@ -71,7 +74,7 @@ class LcoTask(Task):
             self.task['state'] = 'ABORTED'
             raise
 
-    def _run_config(self, abort_event, config, roof, telescope, camera,  filters) -> dict:
+    def _run_config(self, abort_event, config, roof, telescope, camera, filters) -> Union[dict, None]:
         # at least we tried...
         config_status = {'state': 'ATTEMPTED', 'summary': {'start': Time.now().isot}}
 
@@ -102,6 +105,9 @@ class LcoTask(Task):
             config_status['state'] = 'COMPLETED'
             config_status['summary']['state'] = 'COMPLETED'
 
+        except CannotRunTask:
+            return None
+
         except InterruptedError:
             log.warning('Task execution was interrupted.')
             config_status['state'] = 'ATTEMPTED'
@@ -125,6 +131,22 @@ class LcoTask(Task):
         return config_status
 
     def _run_default_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
+        # get image type
+        image_type = ICamera.ImageType.OBJECT
+        if config['type'] == 'BIAS':
+            image_type = ICamera.ImageType.BIAS
+        elif config['type'] == 'DARK':
+            image_type = ICamera.ImageType.DARK
+
+        # we need an open roof and a working telescope for OBJECT exposures
+        if image_type == ICamera.ImageType.OBJECT:
+            if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
+                    telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+                raise CannotRunTask
+
+        # log
+        log.info('Running default task %d: %s...', self.id, self.task['name'])
+
         # got a target?
         target = config['target']
         track = None
@@ -157,13 +179,6 @@ class LcoTask(Task):
                 full_frame = camera.get_full_frame().wait()
                 camera.set_window(*full_frame).wait()
 
-            # decide on image type
-            image_type = ICamera.ImageType.OBJECT
-            if config['type'] == 'BIAS':
-                image_type = ICamera.ImageType.BIAS
-            elif config['type'] == 'DARK':
-                image_type = ICamera.ImageType.DARK
-
             # loop images
             for exp in range(ic['exposure_count']):
                 self._check_abort(abort_event)
@@ -176,7 +191,14 @@ class LcoTask(Task):
         return exp_time_done
 
     def _run_skyflats_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
-        return 0
+        # we need an open roof and a working telescope
+        if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
+                telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+            raise CannotRunTask
+
+        # log
+        log.info('Running skyflats task %d: %s...', self.id, self.task['name'])
+        return 0.
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

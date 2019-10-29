@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class LcoScheduler(Scheduler):
-    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str,
+    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
                  *args, **kwargs):
         Scheduler.__init__(self, *args, **kwargs)
 
@@ -27,6 +27,7 @@ class LcoScheduler(Scheduler):
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
+        self.roof = roof
 
         # header
         self._header = {
@@ -92,7 +93,8 @@ class LcoScheduler(Scheduler):
 
                 # create task
                 task = self._create_task(LcoTask, sched,
-                                         telescope=self.telescope, filters=self.filters, camera=self.camera)
+                                         telescope=self.telescope, filters=self.filters, camera=self.camera,
+                                         roof=self.roof)
                 tasks[sched['request']['id']] = task
 
             # update

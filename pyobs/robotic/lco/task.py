@@ -16,7 +16,7 @@ class CannotRunTask(Exception):
 
 
 class LcoTask(Task):
-    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, flat_fields: str, roof: str,
+    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
                  *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
 
@@ -27,7 +27,6 @@ class LcoTask(Task):
         self.camera = camera
         self.filters = filters
         self.roof = roof
-        self.flat_fields = flat_fields
 
     @property
     def id(self) -> str:

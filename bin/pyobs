@@ -3,9 +3,13 @@
 import matplotlib
 import argparse
 import os
+from astropy.utils import iers
 
 from pyobs.application import Application, GuiApplication
 
+# set IERS options for astropy
+iers.conf.remote_timeout = 5
+iers.conf.iers_auto_url_mirror = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
 
 # set locale to en_US on all systems
 #locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')

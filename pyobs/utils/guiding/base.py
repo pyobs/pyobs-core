@@ -17,5 +17,13 @@ class BaseGuider:
         """
         raise NotImplementedError
 
+    def reset(self):
+        """Reset auto-guider."""
+        raise NotImplementedError
+
+    def is_loop_closed(self) -> bool:
+        """Whether loop is closed."""
+        raise NotImplementedError
+
 
 __all__ = ['BaseGuider']

@@ -194,6 +194,14 @@ class AutoGuidingProjection(BaseGuider):
         else:
             log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
 
+    def reset(self):
+        """Reset auto-guider."""
+        self._ref_image = None
+
+    def is_loop_closed(self) -> bool:
+        """Whether loop is closed."""
+        pass
+
     @staticmethod
     def _gaussian(pars, x):
         a = pars[0]

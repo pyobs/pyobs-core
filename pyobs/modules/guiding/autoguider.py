@@ -35,7 +35,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
         self._add_thread_func(self._auto_guiding, True)
 
         # create auto-guiding system
-        self._guider = get_object(guider, BaseGuider)
+        self._guider: BaseGuider = get_object(guider, BaseGuider)
 
     def open(self):
         """Open module."""
@@ -56,6 +56,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""
         self._enabled = True
+        self._guider.reset()
 
     def stop(self, *args, **kwargs):
         """Stops auto-guiding."""

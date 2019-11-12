@@ -45,6 +45,7 @@ class AutoGuidingProjection(BaseGuider):
         self._last_header = None
         self._pid_ra = None
         self._pid_dec = None
+        self._loop_closed = False
 
     def __call__(self, image: Image, telescope: ITelescope):
         """Processes an image.
@@ -172,6 +173,7 @@ class AutoGuidingProjection(BaseGuider):
             log.info('Offsetting telescope...')
             telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
             log.info('Finished image.')
+            self._loop_closed = True
 
         elif isinstance(telescope, IAltAzMount):
             # transform both to Alt/AZ
@@ -190,6 +192,7 @@ class AutoGuidingProjection(BaseGuider):
             log.info('Offsetting telescope...')
             telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
             log.info('Finished image.')
+            self._loop_closed = True
 
         else:
             log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
@@ -197,10 +200,11 @@ class AutoGuidingProjection(BaseGuider):
     def reset(self):
         """Reset auto-guider."""
         self._ref_image = None
+        self._loop_closed = False
 
     def is_loop_closed(self) -> bool:
         """Whether loop is closed."""
-        pass
+        return self._loop_closed
 
     @staticmethod
     def _gaussian(pars, x):
@@ -246,6 +250,7 @@ class AutoGuidingProjection(BaseGuider):
 
     def _reset_guiding(self, sum_x, sum_y, hdr):
         # reset
+        self._loop_closed = False
         self._ref_image = (sum_x, sum_y)
         self._ref_header = hdr
         self._last_header = hdr

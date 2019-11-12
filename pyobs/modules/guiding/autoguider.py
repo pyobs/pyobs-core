@@ -77,18 +77,23 @@ class AutoGuider(PyObsModule, IAutoGuiding):
                 self.closing.sleep(1)
                 continue
 
-            # get telescope and camera
-            telescope: ITelescope = self.proxy(self._telescope, ITelescope)
-            camera: ICamera = self.proxy(self._camera, ICamera)
+            try:
+                # get telescope and camera
+                telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+                camera: ICamera = self.proxy(self._camera, ICamera)
 
-            # take image
-            filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False)
+                # take image
+                filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False)
 
-            # download image
-            image = self.vfs.download_fits_image(filenames[0])
+                # download image
+                image = self.vfs.download_image(filenames[0])
 
-            # process it
-            self._guider(image, telescope)
+                # process it
+                self._guider(image, telescope)
+
+            except Exception as e:
+                log.error('An error occured: ', e)
+                self.closing.sleep(5)
 
 
 __all__ = ['AutoGuider']

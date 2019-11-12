@@ -3,7 +3,7 @@ import os
 from astropy.io import fits
 
 from pyobs.object import get_object, get_class_from_string
-
+from pyobs.utils.images import Image
 
 log = logging.getLogger(__name__)
 
@@ -103,6 +103,18 @@ class VirtualFileSystem:
             hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
             tmp.close()
             return hdu
+
+    def download_image(self, filename) -> Image:
+        """Convenience function that wraps around open_file() to download an Image.
+
+        Args:
+            filename: Name of file to download.
+
+        Returns:
+            An image object
+        """
+        with self.open_file(filename, 'rb') as f:
+            return Image.from_bytes(f.read())
 
     def find(self, path: str, pattern: str):
         """Find a file in the given path.

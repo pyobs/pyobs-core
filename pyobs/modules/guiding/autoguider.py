@@ -92,7 +92,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
                 self._guider(image, telescope)
 
             except Exception as e:
-                log.error('An error occured: ', e)
+                log.error('An error occurred: ', e)
                 self.closing.sleep(5)
 
 

@@ -1,22 +1,10 @@
 import logging
-import threading
 from typing import Union
-import astropy.units as u
-import numpy as np
-from astropy.coordinates import SkyCoord, AltAz
-from astropy.io import fits
-from astropy.time import Time
-from scipy.interpolate import UnivariateSpline
-from scipy.optimize import fmin
-from astropy.wcs import WCS
-import re
 
 from pyobs import PyObsModule
-from pyobs.events import NewImageEvent
-from pyobs.interfaces import ITelescope, IAutoGuiding, IStoppable, IEquitorialMount, IAltAzMount, ICamera
+from pyobs.interfaces import ITelescope, IAutoGuiding, ICamera
 from pyobs.object import get_object
 from pyobs.utils.guiding.base import BaseGuider
-from pyobs.utils.pid import PID
 
 
 log = logging.getLogger(__name__)
@@ -25,7 +13,7 @@ log = logging.getLogger(__name__)
 class AutoGuider(PyObsModule, IAutoGuiding):
     """An auto-guiding system."""
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope], exp_time: float = None,
+    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope], exp_time: int = None,
                  guider: Union[dict, BaseGuider] = None, *args, **kwargs):
         """Initializes a new auto guiding system.
 
@@ -65,7 +53,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
         except ValueError:
             log.warning('Given telescope does not exist or is not of correct type at the moment.')
 
-    def start(self, *args, **kwargs) -> bool:
+    def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""
         self._enabled = True
 
@@ -94,47 +82,13 @@ class AutoGuider(PyObsModule, IAutoGuiding):
             camera: ICamera = self.proxy(self._camera, ICamera)
 
             # take image
-            image = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False)
+            filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False)
+
+            # download image
+            image = self.vfs.download_fits_image(filenames[0])
 
             # process it
             self._guider(image, telescope)
 
-    def add_image(self, event: NewImageEvent, sender: str, *args, **kwargs):
-        """Processes an image asynchronously, returns immediately.
 
-        Args:
-            filename: Filename of image to process.
-        """
-
-        log.info('Received new image from %s.', sender)
-
-        # if not enabled, just ignore
-        if not self._enabled:
-            return
-
-        # download image
-        try:
-            with self.open_file(event.filename, 'rb') as f:
-                tmp = fits.open(f, memmap=False)
-                data = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-                tmp.close()
-        except FileNotFoundError:
-            log.error('Could not download image.')
-            return
-
-        # we only accept OBJECT images
-        if data.header['IMAGETYP'] != 'object':
-            return
-
-        # store filename as next image to process
-        with self._lock:
-            # do we have a filename in here already?
-            if self._next_image:
-                log.warning('Last image still being processed by auto-guiding, skipping new one.')
-                return
-
-            # store it
-            self._next_image = data
-
-
-__all__ = ['AutoGuidingProjection']
+__all__ = ['AutoGuider']

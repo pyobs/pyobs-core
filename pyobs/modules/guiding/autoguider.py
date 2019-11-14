@@ -13,8 +13,8 @@ log = logging.getLogger(__name__)
 class AutoGuider(PyObsModule, IAutoGuiding):
     """An auto-guiding system."""
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 guider: Union[dict, BaseGuider] = None, *args, **kwargs):
+    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope], guider: Union[dict, BaseGuider],
+                 *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:

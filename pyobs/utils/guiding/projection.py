@@ -199,8 +199,7 @@ class AutoGuidingProjection(BaseGuider):
 
     def reset(self):
         """Reset auto-guider."""
-        self._ref_image = None
-        self._loop_closed = False
+        self._reset_guiding()
 
     def is_loop_closed(self) -> bool:
         """Whether loop is closed."""
@@ -248,12 +247,17 @@ class AutoGuidingProjection(BaseGuider):
             return None
         return shift
 
-    def _reset_guiding(self, sum_x, sum_y, hdr):
-        # reset
+    def _reset_guiding(self, sum_x=None, sum_y=None, hdr=None):
+        # reset guiding
         self._loop_closed = False
-        self._ref_image = (sum_x, sum_y)
-        self._ref_header = hdr
-        self._last_header = hdr
+        if sum_x is None or sum_y is None or hdr is None:
+            self._ref_image = None
+            self._ref_header = None
+            self._last_header = None
+        else:
+            self._ref_image = (sum_x, sum_y)
+            self._ref_header = hdr
+            self._last_header = hdr
         self._init_pid()
 
     def _init_pid(self):

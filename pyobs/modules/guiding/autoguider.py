@@ -83,7 +83,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
         while not self.closing.is_set():
             # not running?
             if not self._enabled:
-                self.closing.sleep(1)
+                self.closing.wait(1)
                 continue
 
             try:
@@ -102,7 +102,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
 
             except Exception as e:
                 log.error('An error occurred: ', e)
-                self.closing.sleep(5)
+                self.closing.wait(5)
 
 
 __all__ = ['AutoGuider']

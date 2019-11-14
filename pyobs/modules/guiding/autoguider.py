@@ -92,7 +92,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
                 camera: ICamera = self.proxy(self._camera, ICamera)
 
                 # take image
-                filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False)
+                filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False).wait()
 
                 # download image
                 image = self.vfs.download_image(filenames[0])

@@ -1,7 +1,7 @@
 import logging
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord, AltAz
+from astropy.coordinates import SkyCoord, AltAz, EarthLocation
 from astropy.time import Time
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
@@ -47,12 +47,13 @@ class AutoGuidingProjection(BaseGuider):
         self._pid_dec = None
         self._loop_closed = False
 
-    def __call__(self, image: Image, telescope: ITelescope):
+    def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation):
         """Processes an image.
 
         Args:
             image: Image to process.
             telescope: Telescope to guide
+            location: Location of observer
         """
 
         # we only accept OBJECT images
@@ -138,9 +139,9 @@ class AutoGuidingProjection(BaseGuider):
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(hdr)
         lon, lat = w.all_pix2world(cx, cy, 0)
-        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
+        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=location)
         lon, lat = w.all_pix2world(cx + dx, cy + dy, 0)
-        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=self.location)
+        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=location)
 
         # calculate offsets
         dra = radec2.ra.degree - radec1.ra.degree

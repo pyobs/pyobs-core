@@ -98,7 +98,7 @@ class AutoGuider(PyObsModule, IAutoGuiding):
                 image = self.vfs.download_image(filenames[0])
 
                 # process it
-                self._guider(image, telescope)
+                self._guider(image, telescope, self.location)
 
             except Exception as e:
                 log.error('An error occurred: ', e)

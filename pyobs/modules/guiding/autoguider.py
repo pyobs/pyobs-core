@@ -13,14 +13,13 @@ log = logging.getLogger(__name__)
 class AutoGuider(PyObsModule, IAutoGuiding):
     """An auto-guiding system."""
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope], exp_time: int = None,
+    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  guider: Union[dict, BaseGuider] = None, *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:
             camera: Camera to use.
             telescope: Telescope to use.
-            exp_time: Exposure time
             guider: Auto-guider to use
         """
         PyObsModule.__init__(self, *args, **kwargs)
@@ -28,8 +27,8 @@ class AutoGuider(PyObsModule, IAutoGuiding):
         # store
         self._camera = camera
         self._telescope = telescope
-        self._exp_time = exp_time
         self._enabled = False
+        self._exp_time = 1000
 
         # add thread func
         self._add_thread_func(self._auto_guiding, True)
@@ -52,6 +51,15 @@ class AutoGuider(PyObsModule, IAutoGuiding):
             self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.warning('Given telescope does not exist or is not of correct type at the moment.')
+
+    def set_exposure_time(self, exp_time: int):
+        """Set the exposure time for the auto-guider.
+
+        Args:
+            exp_time: Exposure time in ms.
+        """
+        self._exp_time = exp_time
+        self._guider.reset()
 
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""

@@ -117,7 +117,7 @@ class AutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
         """
 
         # state
-        state = 'GUIDING_CLOSED_LOOP' if self._guider.is_loop_closed() else 'GUIDING_CLOSED_LOOP'
+        state = 'GUIDING_CLOSED_LOOP' if self._guider.is_loop_closed() else 'GUIDING_OPEN_LOOP'
 
         # return header
         return {

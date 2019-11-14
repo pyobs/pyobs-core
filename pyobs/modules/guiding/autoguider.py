@@ -92,12 +92,14 @@ class AutoGuider(PyObsModule, IAutoGuiding):
                 camera: ICamera = self.proxy(self._camera, ICamera)
 
                 # take image
+                log.info('Taking image with an exposure time of %dms...', self._exp_time)
                 filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False).wait()
 
                 # download image
                 image = self.vfs.download_image(filenames[0])
 
                 # process it
+                log.info('Processing image...')
                 self._guider(image, telescope, self.location)
 
             except Exception as e:

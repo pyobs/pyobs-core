@@ -129,7 +129,7 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding):
                     telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
                     # process it
-                    self._guider(image, telescope)
+                    self._guider(image, telescope, self.location)
 
                 except Exception as e:
                     log.error('An exception occured: %s', e)

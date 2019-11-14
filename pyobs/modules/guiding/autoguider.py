@@ -2,7 +2,7 @@ import logging
 from typing import Union
 
 from pyobs import PyObsModule
-from pyobs.interfaces import ITelescope, IAutoGuiding, ICamera
+from pyobs.interfaces import ITelescope, IAutoGuiding, ICamera, IFitsHeaderProvider
 from pyobs.object import get_object
 from pyobs.utils.guiding.base import BaseGuider
 
@@ -10,7 +10,7 @@ from pyobs.utils.guiding.base import BaseGuider
 log = logging.getLogger(__name__)
 
 
-class AutoGuider(PyObsModule, IAutoGuiding):
+class AutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
     """An auto-guiding system."""
 
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope], guider: Union[dict, BaseGuider],
@@ -58,16 +58,19 @@ class AutoGuider(PyObsModule, IAutoGuiding):
         Args:
             exp_time: Exposure time in ms.
         """
+        log.info('Setting exposure time to %dms...', exp_time)
         self._exp_time = exp_time
         self._guider.reset()
 
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""
+        log.info('Start auto-guiding...')
         self._enabled = True
         self._guider.reset()
 
     def stop(self, *args, **kwargs):
         """Stops auto-guiding."""
+        log.info('Stopping autp-guiding...')
         self._enabled = False
 
     def is_running(self, *args, **kwargs) -> bool:
@@ -105,6 +108,21 @@ class AutoGuider(PyObsModule, IAutoGuiding):
             except Exception as e:
                 log.error('An error occurred: ', e)
                 self.closing.wait(5)
+
+    def get_fits_headers(self, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of the auto-guiding.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # state
+        state = 'GUIDING_CLOSED_LOOP' if self._guider.is_loop_closed() else 'GUIDING_CLOSED_LOOP'
+
+        # return header
+        return {
+            'AGSTATE': state
+        }
 
 
 __all__ = ['AutoGuider']

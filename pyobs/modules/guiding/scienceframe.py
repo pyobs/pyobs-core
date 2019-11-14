@@ -4,7 +4,7 @@ from typing import Union
 
 from pyobs import PyObsModule, get_object
 from pyobs.events import NewImageEvent
-from pyobs.interfaces import ITelescope, IAutoGuiding
+from pyobs.interfaces import ITelescope, IAutoGuiding, IFitsHeaderProvider
 from pyobs.utils.guiding.base import BaseGuider
 from pyobs.utils.images import Image
 
@@ -12,7 +12,7 @@ from pyobs.utils.images import Image
 log = logging.getLogger(__name__)
 
 
-class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding):
+class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
     def __init__(self, camera: str, telescope: Union[str, ITelescope], guider: Union[dict, BaseGuider],
@@ -140,6 +140,21 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding):
 
             # wait for next image
             self.closing.wait(0.1)
+
+    def get_fits_headers(self, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of the auto-guiding.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # state
+        state = 'GUIDING_CLOSED_LOOP' if self._guider.is_loop_closed() else 'GUIDING_CLOSED_LOOP'
+
+        # return header
+        return {
+            'AGSTATE': state
+        }
 
 
 __all__ = ['ScienceFrameAutoGuider']

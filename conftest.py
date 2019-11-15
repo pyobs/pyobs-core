@@ -22,5 +22,9 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session", autouse=True)
 def download_IERS():
+    # IERS workaround...
+    from astropy.utils import iers
+    iers.IERS_A_URL = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
+
     # before starting any test, download the new IERS data
     astroplan.download_IERS_A()

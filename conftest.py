@@ -24,7 +24,8 @@ def pytest_collection_modifyitems(config, items):
 def download_IERS():
     # IERS workaround...
     from astropy.utils import iers
-    iers.IERS_A_URL = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
-
-    # before starting any test, download the new IERS data
-    astroplan.download_IERS_A()
+    from astropy.utils.data import clear_download_cache
+    clear_download_cache()
+    #iers.conf.auto_download = False
+    #iers.conf.auto_max_age = None
+    iers.IERS_Auto.open()

@@ -17,7 +17,9 @@ class ICamera(IAbortable):
         BIAS = 'bias'
         DARK = 'dark'
         OBJECT = 'object'
-        FLAT = 'flat'
+        SKYFLAT = 'skyflat'
+        FOCUS = 'focus'
+        ACQUISITION = 'acquisition'
 
     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.

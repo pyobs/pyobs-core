@@ -1,11 +1,14 @@
 import datetime
 import logging
 import math
+import os
 import threading
 from typing import Union, Tuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
+import yaml
+import io
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
@@ -24,7 +27,8 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 filenames: str = '/cache/pyobs_{DATE-OBS|date}T{DATE-OBS|time}{IMAGETYP}.fits.gz', *args, **kwargs):
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
+                 cache: str = '/pyobs/camera_cache.json', *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
@@ -56,6 +60,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # multi-threading
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
+
+        # night exposure number
+        self._cache = cache
+        self._frame_num = 0
 
     def open(self):
         """Open module."""
@@ -156,6 +164,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # get date obs
         date_obs = Time(hdr['DATE-OBS'])
 
+        # UT1-UTC
+        hdr['UT1_UTC'] = (float(date_obs.delta_ut1_utc), 'UT1-UTC')
+
         # basic stuff
         hdr['EQUINOX'] = (2000., 'Equinox of celestial coordinate system')
 
@@ -171,19 +182,19 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             log.warning('Could not calculate CDELT1/CDELT2 (DET-PIXL/TEL-FOCL/DET-BIN1/DET-BIN2 missing).')
 
         # do we have a location?
-        if self.environment and self.environment.location:
-            loc = self.environment.location
+        if self.location is not None:
+            loc = self.location
             # add location of telescope
             hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
             hdr['LATITUDE'] = (loc.lat.degree, 'Latitude of the telescope [deg N]')
             hdr['HEIGHT'] = (loc.height.value, 'Altitude of the telescope [m]')
 
             # add local sidereal time
-            hdr['LST'] = (self.environment.lst(date_obs).to_string(unit=u.hour, sep=':'))
+            lst = self.observer.local_sidereal_time(date_obs)
+            hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
 
-        # day of observation start
-        if self.environment:
-            hdr['DAY-OBS'] = self.environment.night_obs(date_obs).strftime('%Y-%m-%d')
+        # date of night this observation is in
+        hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
         # only add all this stuff for OBJECT images
         if hdr['IMAGETYP'] in ['object', 'light']:
@@ -222,16 +233,51 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             else:
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
 
-    def _fetch_fits_headers(self, client: IFitsHeaderProvider) -> dict:
-        """Fetch FITS headers from a given IFitsHeaderProvider.
+        # add FRAMENUM
+        self._add_framenum(hdr)
+
+    def _add_framenum(self, hdr: fits.Header):
+        """Add FRAMENUM keyword to header
 
         Args:
-            client: A IFitsHeaderProvider to fetch headers from.
-
-        Returns:
-            New FITS header keywords.
+            hdr: Header to read from and write into.
         """
-        return self.comm.execute(client, 'get_fits_headers')
+
+        # get night from header
+        night = hdr['DAY-OBS']
+
+        # increase night exp
+        self._frame_num += 1
+
+        # do we have a cache?
+        if self._cache is not None:
+            # try to load it
+            try:
+                with self.open_file(self._cache, 'r') as f:
+                    cache = yaml.load(f)
+
+                    # get new number
+                    if cache is not None and 'framenum' in cache:
+                        self._frame_num = cache['framenum'] + 1
+
+                    # if nights differ, reset count
+                    if cache is not None and 'night' in cache and night != cache['night']:
+                        self._frame_num = 1
+
+            except (FileNotFoundError, ValueError):
+                log.warning('Could not read camera cache file.')
+
+            # write file
+            try:
+                with self.open_file(self._cache, 'w') as f:
+                    with io.StringIO() as sio:
+                        yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
+                        f.write(bytes(sio.getvalue(), 'utf8'))
+            except (FileNotFoundError, ValueError):
+                log.warning('Could not write camera cache file.')
+
+        # set it
+        hdr['FRAMENUM'] = self._frame_num
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
@@ -263,45 +309,48 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         Raises:
             ValueError: If exposure was not successful.
         """
+        fits_header_futures = {}
         if self.comm:
             # get clients that provide fits headers
             clients = self.comm.clients_with_interface(IFitsHeaderProvider)
 
             # create and run a threads in which the fits headers are fetched
-            fits_header_threads = {}
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                thread = ThreadWithReturnValue(target=self._fetch_fits_headers, args=(client,), name='headers_' + client)
-                thread.start()
-                fits_header_threads[client] = thread
+                future = self.comm.execute(client, 'get_fits_headers')
+                fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type in [ICamera.ImageType.OBJECT, ICamera.ImageType.FLAT]
+        open_shutter = image_type in [
+            ICamera.ImageType.OBJECT,
+            ICamera.ImageType.SKYFLAT,
+            ICamera.ImageType.ACQUISITION,
+            ICamera.ImageType.FOCUS
+        ]
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
         try:
             hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-        finally:
+            if hdu is None:
+                self._exposure = None
+                return None, None
+        except:
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
+            raise
+
+        # add HDU name
+        hdu.name = 'SCI'
 
         # add image type
         hdu.header['IMAGETYP'] = image_type.value
 
-        # add static fits headers
-        for key, value in self._fits_headers.items():
-            hdu.header[key] = tuple(value)
-
         # get fits headers from other clients
-        for client, thread in fits_header_threads.items():
+        for client, future in fits_header_futures.items():
             # join thread
             log.info('Fetching FITS headers from %s...', client)
-            headers = thread.join(10)
-
-            # still alive?
-            if thread.is_alive():
-                log.error('Could not receive fits headers from %s.' % client)
+            headers = future.wait()
 
             # add them to fits file
             if headers:
@@ -314,6 +363,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     else:
                         hdu.header[key] = value
 
+        # add static fits headers
+        for key, value in self._fits_headers.items():
+            hdu.header[key] = tuple(value)
+
         # add more fits headers
         log.info("Adding FITS headers...")
         self._add_fits_headers(hdu.header)
@@ -323,7 +376,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return hdu, None
 
         # create a temporary filename
-        filename = format_filename(hdu.header, self._filenames, self.environment)
+        filename = format_filename(hdu.header, self._filenames)
+        hdu.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
+        hdu.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 
@@ -338,7 +393,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename))
+            self.comm.send_event(NewImageEvent(filename, image_type))
 
         # store new last image
         self._last_image = {'filename': filename, 'fits': hdu}
@@ -473,8 +528,8 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return False
 
         # comments
-        c1 = 'Area containing bias overscan [x1:x2,y1:y2] in binned pixels'
-        c2 = 'Area containing actual image [x1:x2,y1:y2] in binned pixels'
+        c1 = 'Bias overscan area [x1:x2,y1:y2] (binned)'
+        c2 = 'Image area [x1:x2,y1:y2] (binned)'
 
         # rectangle empty?
         if is_right <= is_left or is_bottom <= is_top:
@@ -490,21 +545,22 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # set it
         hdr['TRIMSEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
+        hdr['DATASEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
 
-        # now get BIASSEC -- whatever we do, we only take the first one
+        # now get BIASSEC -- whatever we do, we only take the last (!) one
         # which axis?
-        if img_left < left:
-            right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c2)
-        elif img_left+img_width > left+width:
+        if img_left+img_width > left+width:
             left_binned = np.floor((is_right - hdr['XORGSUBF']) / hdr['XBINNING']) + 1
-            hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c2)
-        elif img_top < top:
-            bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c2)
+            hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c1)
+        elif img_left < left:
+            right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c1)
         elif img_top+img_height > top+height:
             top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
-            hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c2)
+            hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c1)
+        elif img_top < top:
+            bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
+            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
     def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.

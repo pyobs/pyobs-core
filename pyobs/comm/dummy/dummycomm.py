@@ -19,7 +19,7 @@ class DummyComm(Comm):
         """Always return zero clients."""
         return []
 
-    def _get_interfaces(self, item):
+    def get_interfaces(self, item):
         """No interfaces implemented."""
         return []
 

@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IFocusModel, IMotion
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzMount
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -14,7 +14,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFocusModel):
+class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeaderProvider):
     """A dummy telescope for testing."""
 
     def __init__(self, *args, **kwargs):
@@ -39,7 +39,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
 
-    def _track(self, ra: float, dec: float, abort_event: threading.Event):
+    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -77,7 +77,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         self._position['dec'] = dec
         self._change_motion_status(IMotion.Status.TRACKING)
 
-    def _move(self, alt: float, az: float, abort_event: threading.Event):
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -91,11 +91,11 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # alt/az coordinates to ra/dec
         coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
-                          location=self.environment.location, frame='altaz')
+                          location=self.location, frame='altaz')
         icrs = coords.icrs
 
         # track
-        self._track(icrs.ra.degree, icrs.dec.degree, abort_event)
+        self._track_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 
         # set telescope to idle
         self._change_motion_status(IMotion.Status.IDLE)
@@ -134,15 +134,6 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
                 self._focus = ifoc + i * dfoc
                 time.sleep(0.01)
             self._focus = focus
-
-    def set_optimal_focus(self, *args, **kwargs):
-        """Sets optimal focus.
-
-        Raises:
-            InterruptedError: If focus was interrupted.
-        """
-        log.info('Setting optimal focus...')
-        self.set_focus(42.0)
 
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
@@ -207,15 +198,7 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.PARKED)
 
-    def reset_offset(self, *args, **kwargs):
-        """Reset Alt/Az offset.
-
-        Raises:
-            ValueError: If offset could not be reset.
-        """
-        log.info("Resetting offsets")
-
-    def offset(self, dalt: float, daz: float, *args, **kwargs):
+    def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset, which will be reset on next call of track.
 
         Args:
@@ -227,7 +210,15 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
 
-    def get_ra_dec(self) -> (float, float):
+    def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
+        """Get Alt/Az offset.
+
+        Returns:
+            Tuple with alt and az offsets.
+        """
+        return 0, 0
+
+    def get_radec(self) -> (float, float):
         """Returns current RA and Dec.
 
         Returns:
@@ -235,14 +226,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
         """
         return self._position['ra'], self._position['dec']
 
-    def get_alt_az(self) -> (float, float):
+    def get_altaz(self) -> (float, float):
         """Returns current Alt and Az.
 
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        coords = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
-        alt_az = self.environment.to_altaz(coords)
+        ra_dec = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
+        alt_az = self.observer.altaz(Time.now(), ra_dec)
         return alt_az.alt.degree, alt_az.az.degree
 
     def get_fits_headers(self, *args, **kwargs) -> dict:
@@ -263,6 +254,14 @@ class DummyTelescope(BaseTelescope, IFocuser, IFilters, IFitsHeaderProvider, IFo
 
         # finished
         return hdr
+
+    def stop_motion(self, device: str = None, *args, **kwargs):
+        """Stop the motion.
+
+        Args:
+            device: Name of device to stop, or None for all.
+        """
+        pass
 
 
 __all__ = ['DummyTelescope']

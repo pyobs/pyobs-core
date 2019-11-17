@@ -1,16 +1,17 @@
 import inspect
 import logging
 import threading
-from typing import Union, Type, Any
+from typing import Union, Type, Any, Callable
 from py_expression_eval import Parser
+from astropy.coordinates import EarthLocation
+from astroplan import Observer
+import pytz
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
-from pyobs.database import Database
 from pyobs.object import get_object
 from pyobs.vfs import VirtualFileSystem
-from pyobs.utils.types import cast_bound_arguments_to_simple, cast_response_to_simple
-
+from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
 
@@ -62,19 +63,17 @@ class PyObsModule:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 environment: Union[Environment, dict] = None, database: str = None, plugins: list = None,
-                 thread_funcs: list = None, restart_threads: bool = True, *args, **kwargs):
+                 timezone: str = 'utc', location: Union[str, dict] = None, plugins: list = None,
+                 *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
             name: Name of module.
             comm: Comm object to use
             vfs: VFS to use (either object or config)
-            environment: Environment to use (either object or config)
-            database: Database connection string
+            timezone: Timezone at observatory.
+            location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
             plugins: List of plugins to start.
-            thread_funcs: Functions to start in a separate thread.
-            restart_threads: Whether to automatically restart threads when they quit.
         """
 
         # an event that will be fired when closing the module
@@ -87,9 +86,6 @@ class PyObsModule:
         self._interfaces = []
         self._methods = {}
         self._get_interfaces_and_methods()
-
-        # store
-        self._db_connect = database
 
         # closing event
         self.closing = threading.Event()
@@ -106,43 +102,62 @@ class PyObsModule:
             from pyobs.vfs import VirtualFileSystem
             self.vfs = VirtualFileSystem()
 
-        # create environment
-        self.environment = None
-        if environment:
-            self.environment = get_object(environment)
+        # timezone
+        self.timezone = pytz.timezone(timezone)
+        log.info('Using timezone %s.', timezone)
+
+        # location
+        if location is None:
+            self.location = None
+        elif isinstance(location, str):
+            self.location = EarthLocation.of_site(location)
+        elif isinstance(location, dict):
+            self.location = EarthLocation.from_geodetic(location['longitude'], location['latitude'],
+                                                        location['elevation'])
+        else:
+            raise ValueError('Unknown format for location.')
+
+        # create observer
+        self.observer = None
+        if self.location is not None:
+            log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
+                     self.location.lon, self.location.lat, self.location.height)
+            self.observer = Observer(location=self.location, timezone=timezone)
 
         # plugins
         self._plugins = []
         if plugins:
             for cfg in plugins.values():
-                plg = get_object(cfg)
-                plg._comm = self.comm
-                plg._environment = self.environment
+                plg = get_object(cfg)   # Type: PyObsModule
+                plg.comm = self.comm
+                plg.observer = self.observer
                 self._plugins.append(plg)
 
         # opened?
         self._opened = False
 
         # thread function(s)
-        self._restart_threads = restart_threads
         self._threads = {}
-        self._watchdog = None
-        if thread_funcs:
-            # we want a list
-            if not hasattr(thread_funcs, '__iter__'):
-                thread_funcs = [thread_funcs]
+        self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-            # create threads and watchdog
-            self._threads = {threading.Thread(target=PyObsModule._thread_func, name=t.__name__, args=(t,)): t
-                             for t in thread_funcs}
-            self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
+    def _add_thread_func(self, func: Callable, restart: bool = True):
+        """Add a new thread func.
+
+        MUST be called in constructor of derived class or at least before calling open() on the module.
+
+        Args:
+            func: Func to add.
+            restart: Whether to restart this function.
+        """
+
+        # create thread
+        t = threading.Thread(target=PyObsModule._thread_func, name=func.__name__, args=(func,))
+
+        # add it
+        self._threads[t] = (func, restart)
 
     def open(self):
         """Open module."""
-
-        # connect database
-        if self._db_connect:
-            Database.connect(self._db_connect)
 
         # open plugins
         if self._plugins:
@@ -151,7 +166,7 @@ class PyObsModule:
                 plg.open()
 
         # start threads and watchdog
-        for thread, target in self._threads.items():
+        for thread, (target, _) in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
             thread.start()
         if self._watchdog:
@@ -181,7 +196,7 @@ class PyObsModule:
             for plg in self._plugins:
                 plg.close()
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type) -> object:
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -202,27 +217,7 @@ class PyObsModule:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-
-        if isinstance(name_or_object, obj_type):
-            # return directly
-            return name_or_object
-
-        elif isinstance(name_or_object, str):
-            # get proxy
-            proxy = self.comm[name_or_object]
-
-            # check it
-            if proxy is None:
-                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
-            elif isinstance(proxy, obj_type):
-                return proxy
-            else:
-                raise ValueError('Proxy obtained from given name "%s" is not of requested type "%s".' %
-                                 (name_or_object, obj_type))
-
-        else:
-            # completely wrong...
-            raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
+        return self.comm.proxy(name_or_object, obj_type)
 
     @staticmethod
     def _thread_func(target):
@@ -240,12 +235,15 @@ class PyObsModule:
         """Watchdog thread that tries to restart threads if they quit."""
 
         while not self.closing.is_set():
-            # get dead threads
-            dead = {thread: target for thread, target in self._threads.items() if not thread.is_alive()}
+            # get dead threads that need to be restarted
+            dead = {}
+            for thread, (target, restart) in self._threads.items():
+                if not thread.is_alive():
+                    dead[thread] = (target, restart)
 
             # restart dead threads or quit
-            for thread, target in dead.items():
-                if self._restart_threads:
+            for thread, (target, restart) in dead.items():
+                if restart:
                     log.error('Thread for %s has died, restarting...', target.__name__)
                     del self._threads[thread]
                     thread = threading.Thread(target=target, name=target.__name__)
@@ -363,16 +361,16 @@ class PyObsModule:
         ba.apply_defaults()
 
         # cast to types requested by method
-        cast_bound_arguments_to_simple(ba, signature)
+        cast_bound_arguments_to_real(ba, signature)
 
-        # call method
         try:
+            # call method
             response = func(**ba.arguments)
-        except:
-            log.exception('Error on remote procedure call.')
 
-        # finished
-        return cast_response_to_simple(response)
+            # finished
+            return cast_response_to_simple(response)
+        except Exception as e:
+            log.exception('Error on remote procedure call: %s' % str(e))
 
 
 __all__ = ['PyObsModule', 'timeout']

@@ -77,10 +77,10 @@ class Application:
 
         Args:
             config: Name of config file, if any.
-            username: Username for server connection (or given in config or environment).
-            password: Password for server connection (or given in config or environment).
-            server: Server to connect to (or given in config or environment).
-            comm: Type of comm object to use (or given in config or environment), defaults to 'xmpp'.
+            username: Username for server connection (overrides the one in config).
+            password: Password for server connection (overrides the one in config).
+            server: Server to connect to (overrides the one in config).
+            comm: Type of comm object to use (overrides the one in config), defaults to 'xmpp'.
         """
 
         # everything in a try/except/finally, so that we can shut down gracefully
@@ -174,21 +174,17 @@ class Application:
 
         Args:
             config: Configuration dictionary.
-            username: Username for server connection (or given in config or environment).
-            password: Password for server connection (or given in config or environment).
-            server: Server to connect to (or given in config or environment).
-            comm: Type of comm object to use (or given in config or environment), defaults to 'xmpp'.
+            username: Username for server connection (overrides the one in config).
+            password: Password for server connection (overrides the one in config).
+            server: Server to connect to (overrides the one in config).
+            comm: Type of comm object to use (overrides the one in config), defaults to 'xmpp'.
 
         Returns:
             A comm object.
         """
-        # get comm config from command line or environment, if given
-        username = os.environ['PYOBS_USERNAME'] if username is None and 'PYOBS_USERNAME' in os.environ else username
-        password = os.environ['PYOBS_PASSWORD'] if password is None and 'PYOBS_PASSWORD' in os.environ else password
-        server = os.environ['PYOBS_SERVER'] if server is None and 'PYOBS_SERVER' in os.environ else server
 
         # create comm object and return it
-        if username and password and comm == 'xmpp':
+        if username is not None and password is not None and comm == 'xmpp':
             # create comm object from command line or environment
             return XmppComm(jid=username, password=password, server=server)
         else:
@@ -220,7 +216,7 @@ class Application:
                 proxy = comm[client]  # type: IConfigProvider
 
                 # get config and return it
-                return proxy.get_config(comm.name)
+                return proxy.get_config(comm.name).wait()
 
             except FileNotFoundError:
                 # seems that this config provider doesn't have a config for this client

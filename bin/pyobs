@@ -3,15 +3,21 @@
 import matplotlib
 import argparse
 import os
+from astropy.utils import iers
 
 from pyobs.application import Application, GuiApplication
 
+# set IERS options for astropy
+iers.conf.remote_timeout = 5
+iers.conf.iers_auto_url_mirror = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
 
 # set locale to en_US on all systems
 #locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 
 # force matplotlib not to use a graphical interface
+from pyobs.utils.time import Time
+
 matplotlib.use('Agg')
 
 
@@ -63,29 +69,48 @@ def run(config=None, log_file: str = None, log_level: str = 'info', log_rotate: 
 
 def main():
     # init argument parsing
+    # for all command line parameters we set the default to an environment variable,
+    # so they can also be specified that way
     parser = argparse.ArgumentParser()
-    parser.add_argument('config', type=str, help='Configuration file', nargs='?')
+
+    # config
+    parser.add_argument('config', type=str, help='Configuration file', nargs='?', default=os.environ.get('CONFIG'))
 
     # logging
     parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
-                        default='info')
-    parser.add_argument('-l', '--log-file', type=str, help='file to write log into')
-    parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically')
+                        default=os.environ.get('PYOBS_LOG_LEVEL', 'info'))
+    parser.add_argument('-l', '--log-file', type=str, help='file to write log into',
+                        default=os.environ.get('PYOBS_LOG_FILE'))
+    parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
+                        default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
 
     # write pid file as daemon
-    parser.add_argument('-p', '--pid-file', type=str)
-
-    # show gui
-    parser.add_argument('--gui', action='store_true', help='run in a GUI instead of a terminal')
+    parser.add_argument('-p', '--pid-file', type=str, default=os.environ.get('PIDFILE'))
 
     # comm
-    parser.add_argument('--username', type=str, help='Username for connecting to server')
-    parser.add_argument('--password', type=str, help='Password for connecting to server')
-    parser.add_argument('--server', type=str, help='server:port for server to connect to')
+    parser.add_argument('--username', type=str, help='Username for connecting to server',
+                        default=os.environ.get('PYOBS_USERNAME'))
+    parser.add_argument('--password', type=str, help='Password for connecting to server',
+                        default=os.environ.get('PYOBS_PASSWORD'))
+    parser.add_argument('--server', type=str, help='server:port for server to connect to',
+                        default=os.environ.get('PYOBS_SERVER'))
     parser.add_argument('--comm', type=str, choices=['xmpp'], default='xmpp')
+
+    # show gui (here an environment variable doesn't really make sense, so we skip it)
+    parser.add_argument('--gui', action='store_true', help='run in a GUI instead of a terminal')
+
+    # debug stuff
+    parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
+                        default=os.environ.get('PYOBS_DEBUG_TIME'))
 
     # parse args
     args = parser.parse_args()
+
+    # set debug time now
+    if args.debug_time is not None:
+        # calculate difference between now and given time
+        delta = Time(args.debug_time) - Time.now()
+        Time.set_offset_to_now(delta)
 
     # --gui and --pid-file don't work together
     if args.gui and args.pid_file:

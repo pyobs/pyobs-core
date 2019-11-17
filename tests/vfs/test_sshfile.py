@@ -3,13 +3,7 @@ import pytest
 from pyobs.vfs import SSHFile
 
 
-nossh = pytest.mark.skipif(
-    not pytest.config.getoption("--use-ssh", default=False),
-    reason="SSH testing disabled (use --use-ssh to activate."
-)
-
-
-@nossh
+@pytest.mark.ssh
 def test_write_read():
     # create config
     root = '/tmp'

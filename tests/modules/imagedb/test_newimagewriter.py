@@ -1,12 +1,12 @@
+"""
 import time
 
 from pyobs.vfs import VirtualFileSystem
 from pyobs.comm.dummy import DummyComm
-from pyobs.modules.imagedb import NewImageWriter
+from pyobs.modules.image import NewImageWriter
 from pyobs.events import NewImageEvent
 
 
-"""
 def test_newimage():
     # we need a VFS and Comm
     vfs = VirtualFileSystem(roots={'input': {'class': 'pyobs.vfs.TempFile'},

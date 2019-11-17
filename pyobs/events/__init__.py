@@ -2,6 +2,8 @@ from .badweather import BadWeatherEvent
 from .exposurestatuschanged import ExposureStatusChangedEvent
 from .event import Event
 from .filterchanged import FilterChangedEvent
+from .focusfound import FocusFoundEvent
+from .goodweather import GoodWeatherEvent
 from .log import LogEvent
 from .motionstatuschanged import MotionStatusChangedEvent
 from .newimage import NewImageEvent

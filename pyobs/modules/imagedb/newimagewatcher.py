@@ -24,13 +24,16 @@ class NewImageWatcher(PyObsModule):
             imagedb: The ImageDB to use.
             copy: If given, copy the file to the given location(s).
         """
-        PyObsModule.__init__(self, thread_funcs=self._worker, *args, **kwargs)
+        PyObsModule.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._worker, True)
 
         # variables
         self._watchpath = watchpath
         self._imagedb = get_object(imagedb)
         self._copy_to = [] if copy is None else copy
-        self._observer = None
+        self._notifier = None
         self._queue = Queue()
 
         # make a list of copy targets
@@ -46,17 +49,17 @@ class NewImageWatcher(PyObsModule):
             log.info('Start watching directory %s for changes...', self._watchpath)
             wm = pyinotify.WatchManager()
             wm.add_watch(self._watchpath, pyinotify.IN_CLOSE_WRITE)
-            self._observer = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
-            self._observer.start()
+            self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
+            self._notifier.start()
 
     def close(self):
         """Close image watcher."""
         PyObsModule.close(self)
 
         # stop watching
-        if self._observer:
+        if self._notifier:
             log.info('Stop watching directory...')
-            self._observer.stop()
+            self._notifier.stop()
 
     def add_image(self, filename: str):
         """Add an image to the image database.
@@ -119,7 +122,7 @@ class NewImageWatcher(PyObsModule):
 
                 # send image to imagedb
                 log.info('Sending file to image database...')
-                archive_filename = imagedb.add_image(filename)
+                archive_filename = imagedb.add_image(filename).wait()
 
                 # check result
                 if archive_filename is not None:
@@ -175,8 +178,7 @@ class NewImageWatcher(PyObsModule):
         # loop copy targets
         for target in self._copy_to:
             # format filename
-            filename = format_filename(fits_file[0].header, target, filename=filename, environment=self.environment)
-            print("formated %s to %s" % (target, filename))
+            filename = format_filename(fits_file[0].header, target, observer=self.observer)
 
             # open and write output file
             log.info('Copying file to %s...', filename)
@@ -185,7 +187,7 @@ class NewImageWatcher(PyObsModule):
                     fits_file.writeto(out)
                 log.info('Copied successfully.')
             except:
-                log.error('Error while copying file.')
+                log.exception('Error while copying file.')
                 return False
 
         # success

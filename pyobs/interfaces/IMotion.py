@@ -36,7 +36,23 @@ class IMotion(Interface):
         TRACKING = 'tracking'
         UNKNOWN = 'unknown'
 
-    def get_motion_status(self, device: str = None) -> Status:
+    def init(self, *args, **kwargs):
+        """Initialize device.
+
+        Raises:
+            ValueError: If device could not be initialized.
+        """
+        raise NotImplementedError
+
+    def park(self, *args, **kwargs):
+        """Park device.
+
+        Raises:
+            ValueError: If device could not be parked.
+        """
+        raise NotImplementedError
+
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> Status:
         """Returns current motion status.
 
         Args:
@@ -47,7 +63,7 @@ class IMotion(Interface):
         """
         raise NotImplementedError
 
-    def stop_motion(self, device: str = None):
+    def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.
 
         Args:

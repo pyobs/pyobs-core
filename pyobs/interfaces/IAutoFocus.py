@@ -1,8 +1,8 @@
-from .interface import *
+from .IAbortable import IAbortable
 
 
-class IAutoFocus(Interface):
-    def auto_focus(self, count: int, step: float, guess: float, exposure_time: int, *args, **kwargs) -> (float, float):
+class IAutoFocus(IAbortable):
+    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -12,7 +12,6 @@ class IAutoFocus(Interface):
         Args:
             count: Number of images to take on each side of the initial guess. Should be an odd number.
             step: Step size.
-            guess: Initial guess.
             exposure_time: Exposure time for images.
 
         Returns:
@@ -20,6 +19,16 @@ class IAutoFocus(Interface):
 
         Raises:
             ValueError: If focus could not be obtained.
+        """
+        raise NotImplementedError
+
+    def auto_focus_status(self, *args, **kwargs) -> dict:
+        """Returns current status of auto focus.
+
+        Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
+
+        Returns:
+            Dictionary with current status.
         """
         raise NotImplementedError
 

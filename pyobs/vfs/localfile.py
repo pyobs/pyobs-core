@@ -1,3 +1,4 @@
+import fnmatch
 from io import FileIO
 import os
 
@@ -39,6 +40,45 @@ class LocalFile(VFSFile, FileIO):
 
         # init FileIO
         FileIO.__init__(self, full_path, mode)
+
+    @staticmethod
+    def find(path: str, pattern: str, root: str = None, *args, **kwargs) -> list:
+        """Find files by pattern matching.
+
+        Args:
+            path: Path to search in.
+            pattern: Pattern to search for.
+            root: VFS root.
+
+        Returns:
+            List of found files.
+        """
+
+        # build full path
+        full_path = os.path.join(root, path)
+
+        # loop directories
+        for cur, dirnames, filenames in os.walk(full_path):
+            for filename in fnmatch.filter(filenames, pattern):
+                yield os.path.relpath(os.path.join(cur, filename), root)
+
+    @staticmethod
+    def exists(path: str, root: str = None, *args, **kwargs) -> bool:
+        """Checks, whether a given path or file exists.
+
+        Args:
+            path: Path to check.
+            root: VFS root.
+
+        Returns:
+            Whether it exists or not
+        """
+
+        # build full path
+        full_path = os.path.join(root, path)
+
+        # check
+        return os.path.exists(full_path)
 
 
 __all__ = ['LocalFile']

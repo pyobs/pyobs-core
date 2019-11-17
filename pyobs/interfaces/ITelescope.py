@@ -2,30 +2,9 @@ from .IMotion import IMotion
 
 
 class ITelescope(IMotion):
-    """
-    Generic interface for an astronomical telescope.
+    """Generic interface for an astronomical telescope."""
 
-    Other interfaces to be implemented:
-        (none)
-    """
-
-    def init(self, *args, **kwargs):
-        """Initialize telescope.
-
-        Raises:
-            ValueError: If telescope could not be initialized.
-        """
-        raise NotImplementedError
-
-    def park(self, *args, **kwargs):
-        """Park telescope.
-
-        Raises:
-            ValueError: If telescope could not be parked.
-        """
-        raise NotImplementedError
-
-    def track(self, ra: float, dec: float, *args, **kwargs):
+    def track_radec(self, ra: float, dec: float, *args, **kwargs):
         """Starts tracking on given coordinates.
 
         Args:
@@ -37,7 +16,7 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def move(self, alt: float, az: float, *args, **kwargs):
+    def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
         Args:
@@ -49,27 +28,7 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def offset(self, dalt: float, daz: float, *args, **kwargs):
-        """Move an Alt/Az offset, which will be reset on next call of track.
-
-        Args:
-            dalt: Altitude offset in degrees.
-            daz: Azimuth offset in degrees.
-
-        Raises:
-            ValueError: If offset could not be set.
-        """
-        raise NotImplementedError
-
-    def reset_offset(self, *args, **kwargs):
-        """Reset Alt/Az offset.
-
-        Raises:
-            ValueError: If offset could not be reset.
-        """
-        raise NotImplementedError
-
-    def get_ra_dec(self) -> (float, float):
+    def get_radec(self) -> (float, float):
         """Returns current RA and Dec.
 
         Returns:
@@ -77,22 +36,11 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def get_alt_az(self) -> (float, float):
+    def get_altaz(self) -> (float, float):
         """Returns current Alt and Az.
 
         Returns:
             Tuple of current Alt and Az in degrees.
-        """
-        raise NotImplementedError
-
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
         """
         raise NotImplementedError
 

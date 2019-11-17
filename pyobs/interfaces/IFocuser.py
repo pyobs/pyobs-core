@@ -19,6 +19,17 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
+    def set_focus_offset(self, offset: float, *args, **kwargs):
+        """Sets focus offset.
+
+        Args:
+            offset: New focus offset.
+
+        Raises:
+            InterruptedError: If focus was interrupted.
+        """
+        raise NotImplementedError
+
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
 
@@ -27,16 +38,12 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
+    def get_focus_offset(self, *args, **kwargs) -> float:
+        """Return current focus offset.
 
         Returns:
-            A string from the Status enumerator.
+            Current focus offset.
         """
         raise NotImplementedError
-
 
 __all__ = ['IFocuser']

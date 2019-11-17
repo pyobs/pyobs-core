@@ -2,10 +2,11 @@ import json
 import logging
 import re
 import threading
+import time
 from typing import Any
-
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
+import xml.sax.saxutils
 
 from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent
@@ -57,10 +58,10 @@ class XmppComm(Comm):
 
         # build jid
         if jid:
-            # set jid
-            self._jid = jid
+            # resource given in jid?
             if '/' not in jid:
                 jid += '/' + resource
+
             # get user/domain/resource and write it back to config
             m = re.match(r'([\w_\-\.]+)@([\w_\-\.]+)\/([\w_\-\.]+)', jid)
             if not m:
@@ -69,6 +70,10 @@ class XmppComm(Comm):
             self._user = m.group(1)
             self._domain = m.group(2)
             self._resource = m.group(3)
+
+            # set jid itself
+            self._jid = jid
+
         else:
             self._jid = '%s@%s/%s' % (self._user, self._domain, self._resource)
 
@@ -163,7 +168,7 @@ class XmppComm(Comm):
         """
         return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
 
-    def _get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.
 
         Args:
@@ -303,8 +308,15 @@ class XmppComm(Comm):
         Args:
             event (Event): Event to send
         """
+
+        # create stanza
         stanza = EventStanza()
-        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % json.dumps(event.to_json()))
+
+        # dump event to JSON and escape it
+        body = xml.sax.saxutils.escape(json.dumps(event.to_json()))
+
+        # set xml and send event
+        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
         self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__)
 
     def register_event(self, event_class, handler=None):
@@ -344,9 +356,9 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        # get node and body
-        # node = msg['pubsub_event']['items']['node']
-        body = msg['pubsub_event']['items']['item']['payload'].text
+        # get body, unescape it, parse it
+        # node = msg['pubsub_event'][items']['node']
+        body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
 
         # do we have a <delay> element?
         delay = msg.findall('{urn:xmpp:delay}delay')
@@ -358,8 +370,14 @@ class XmppComm(Comm):
         if msg['from'] == self._xmpp.boundjid.bare:
             return
 
-        # create event and send it to module
-        event = EventFactory.from_dict(json.loads(body))
+        # create event and check timestamp
+        event = EventFactory.from_dict(body)
+        if time.time() - event.timestamp > 30:
+            # event is more than 30 seconds old, ignore it
+            # we do this do avoid resent events after a reconnect
+            return
+
+        # send it to module
         self._send_event_to_module(event, msg['from'].username)
 
     def _send_event_to_module(self, event: Event, from_client: str):

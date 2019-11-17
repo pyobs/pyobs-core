@@ -81,16 +81,8 @@ class RPC(object):
             # we handle exceptions elsewhere
             pass
 
-        # first we wait for 10 seconds
-        try:
-            return future.get_value(10)
-        except TimeoutException:
-            # did we receive a new timeout by now?
-            timeout = future.get_timeout()
-            if timeout:
-                return future.get_value(timeout)
-            else:
-                raise
+        # don't wait for response, just return future
+        return future
 
     def _on_jabber_rpc_method_call(self, iq):
         """React on remote method call.

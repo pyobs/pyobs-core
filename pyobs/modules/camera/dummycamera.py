@@ -26,7 +26,10 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             readout_time: Readout time in seconds.
             sim: Dictionary with config for image simulator.
         """
-        BaseCamera.__init__(self, thread_funcs=self._cooling_thread, *args, **kwargs)
+        BaseCamera.__init__(self, *args, **kwargs)
+
+        # add thread func
+        self._add_thread_func(self._cooling_thread, True)
 
         # store
         self._redout_time = readout_time
@@ -35,7 +38,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # init camera
-        self._window = (50, 0, 2048, 2064)
+        self._full_frame = (50, 0, 2048, 2064)
+        self._window = self._full_frame
         self._binning = (1, 1)
         self._cooling = {'Enabled': True, 'SetPoint': -10., 'Power': 80,
                          'Temperatures':  {'CCD': 0.0, 'Backplate': 3.14}}
@@ -66,7 +70,24 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return 50, 0, 2048, 2064
+        return self._full_frame
+
+    def _get_image(self, exp_time: float) -> fits.PrimaryHDU:
+        """Actually get (i.e. simulate) the image."""
+
+        # random image or pre-defined?
+        if self._sim_images:
+            filename = self._sim_images.pop(0)
+            self._sim_images.append(filename)
+            with fits.open(filename, memmap=False) as f:
+                return fits.PrimaryHDU(data=f[0].data, header=f[0].header)
+
+        else:
+            left, top, width, height = self.get_window()
+            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
+            hdu = fits.PrimaryHDU(data.astype('uint16'))
+            hdu.header['DATAMEAN'] = 1000.
+            return hdu
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
@@ -104,20 +125,11 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         self._change_exposure_status(ICamera.ExposureStatus.READOUT)
         time.sleep(self._redout_time)
 
-        # random image or pre-defined?
-        if self._sim_images:
-            filename = self._sim_images.pop(0)
-            self._sim_images.append(filename)
-            with fits.open(filename, memmap=False) as f:
-                hdu = fits.PrimaryHDU(data=f[0].data, header=f[0].header)
-
-        else:
-            left, top, width, height = self.get_window()
-            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
-            hdu = fits.PrimaryHDU(data.astype('uint16'))
-            hdu.header['EXPTIME'] = exposure_time / 1000.
+        # get image
+        hdu = self._get_image(exposure_time)
 
         # add headers
+        hdu.header['EXPTIME'] = exposure_time / 1000.
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
         hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning[0], 'Binning factor used on X axis')
         hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning[1], 'Binning factor used on Y axis')
@@ -125,7 +137,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
-        self.set_biassec_trimsec(hdu.header, 50, 0, 2048, 2064)
+        self.set_biassec_trimsec(hdu.header, *self._full_frame)
 
         # finished
         log.info('Exposure finished.')

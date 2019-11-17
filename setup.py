@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyobs-core',
-    version='0.8',
+    version='0.8.1',
     description='robotic telescope software',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',
@@ -16,7 +16,6 @@ setup(
         'sep',
         'photutils',
         'scipy',
-        'pyinotify',
         'paramiko',
         'pandas',
         'matplotlib',
@@ -33,6 +32,7 @@ setup(
         'py_expression_eval',
         'colour',
         'requests',
+        'pyinotify;platform_system=="Linux"',
         'python-daemon;platform_system=="Linux"'
     ]
 )

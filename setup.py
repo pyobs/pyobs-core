@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyobs-core',
-    version='0.8.2',
+    version='0.8.3',
     description='robotic telescope software',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',
@@ -13,7 +13,6 @@ setup(
         'bin/pyobsd'
     ],
     install_requires=[
-        'sep',
         'photutils',
         'scipy',
         'paramiko',
@@ -32,6 +31,7 @@ setup(
         'py_expression_eval',
         'colour',
         'requests',
+        'sep;platform_system=="Linux"',
         'pyinotify;platform_system=="Linux"',
         'python-daemon;platform_system=="Linux"'
     ]

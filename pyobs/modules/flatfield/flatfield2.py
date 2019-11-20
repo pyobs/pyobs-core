@@ -42,7 +42,7 @@ class FlatField2(PyObsModule, IFlatField):
         self._telescope = telescope
         self._camera = camera
         self._filters = filters
-        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder, observer=self.observer)
+        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder, observer=self.observer, vfs=self.vfs)
         self._abort = threading.Event()
 
     def open(self):

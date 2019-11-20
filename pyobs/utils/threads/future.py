@@ -9,15 +9,20 @@ class Future(object):
     Represents the result of an asynchronous computation.
     """
 
-    def __init__(self):
+    def __init__(self, value=None):
         """
         Initializes a new Future.
         """
-        self._value = None
+        self._value = value
         self._exception = None
         self._timeout = None
         self._signature = None
         self._event = threading.Event()
+
+        # already got a value?
+        if value is not None:
+            # fire event
+            self._event.set()
 
     def set_value(self, value):
         """

@@ -9,7 +9,7 @@ class Future(object):
     Represents the result of an asynchronous computation.
     """
 
-    def __init__(self, value=None):
+    def __init__(self, value=None, is_set=False):
         """
         Initializes a new Future.
         """
@@ -19,8 +19,8 @@ class Future(object):
         self._signature = None
         self._event = threading.Event()
 
-        # already got a value?
-        if value is not None:
+        # already set?
+        if is_set:
             # fire event
             self._event.set()
 

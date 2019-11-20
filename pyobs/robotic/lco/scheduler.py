@@ -139,7 +139,7 @@ class LcoScheduler(Scheduler):
         """
 
         # run task
-        status = task.run(abort_event)
+        task.run(abort_event)
 
         # force update tasks
         self._update_now()

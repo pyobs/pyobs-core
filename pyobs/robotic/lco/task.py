@@ -11,8 +11,33 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class CannotRunTask(Exception):
-    pass
+class ConfigStatus:
+    def __init__(self):
+        self.start = Time.now()
+        self.end = None
+        self.state = 'ATTEMPTED'
+        self.reason = None
+        self.time_completed = 0
+
+    def finish(self, state=None, reason=None, time_completed: int = 0):
+        if state is not None:
+            self.state = state
+        if reason is not None:
+            self.reason = reason
+        self.time_completed = time_completed
+        self.end = Time.now()
+
+    def to_json(self):
+        return {
+            'state': self.state,
+            'summary': {
+                'state': self.state,
+                'reason': self.reason,
+                'start': self.start.isot,
+                'end': self.end.isot,
+                'time_completed': self.time_completed
+            }
+        }
 
 
 class LcoTask(Task):
@@ -51,33 +76,44 @@ class LcoTask(Task):
 
         # get proxies
         log.info('Getting proxies for modules...')
-        roof: IRoof = self.comm.proxy(self.roof, IRoof)
-        telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
-        camera: ICamera = self.comm.proxy(self.camera, ICamera)
-        filters: IFilters = self.comm.proxy(self.filters, IFilters)
-
         try:
-            # loop configurations
+            roof: IRoof = self.comm.proxy(self.roof, IRoof)
+            telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
+            camera: ICamera = self.comm.proxy(self.camera, ICamera)
+            filters: IFilters = self.comm.proxy(self.filters, IFilters)
+
+        except ValueError:
+            # fail all configs
+            log.error('Could not get proxies.')
             for config in req['configurations']:
-                # run config
-                log.info('Running config...')
-                status = self._run_config(abort_event, config, roof, telescope, camera, filters)
+                # create failed status for config
+                status = ConfigStatus()
+                status.finish(state='FAILED', reason='System failure.')
 
                 # send status
-                if status is not None and isinstance(self.scheduler, LcoScheduler):
-                    self.scheduler.send_update(config['configuration_status'], status)
+                if isinstance(self.scheduler, LcoScheduler):
+                    self.scheduler.send_update(config['configuration_status'], status.to_json())
 
-            # finished task
-            self.task['state'] = 'COMPLETED'
+            # finish
+            return
 
-        except InterruptedError:
-            log.warning('Task execution was interrupted.')
-            self.task['state'] = 'ABORTED'
-            raise
+        # loop configurations
+        for config in req['configurations']:
+            # aborted?
+            if abort_event.is_set():
+                return
 
-    def _run_config(self, abort_event, config, roof, telescope, camera, filters) -> Union[dict, None]:
+            # run config
+            log.info('Running config...')
+            status = self._run_config(abort_event, config, roof, telescope, camera, filters)
+
+            # send status
+            if status is not None and isinstance(self.scheduler, LcoScheduler):
+                self.scheduler.send_update(config['configuration_status'], status.to_json())
+
+    def _run_config(self, abort_event, config, roof, telescope, camera, filters) -> Union[ConfigStatus, None]:
         # at least we tried...
-        config_status = {'state': 'ATTEMPTED', 'summary': {'start': Time.now().isot}}
+        config_status = ConfigStatus()
 
         # total exposure time
         exp_time_done = 0
@@ -105,6 +141,7 @@ class LcoTask(Task):
 
             # can we run it?
             if not cfg_runner.can_run():
+                log.warning('Cannot run config.')
                 return None
 
             # run it
@@ -112,27 +149,18 @@ class LcoTask(Task):
             exp_time_done += cfg_runner(abort_event)
 
             # finished config
-            config_status['state'] = 'COMPLETED'
-            config_status['summary']['state'] = 'COMPLETED'
+            config_status.finish(state='COMPLETED')
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
-            config_status['state'] = 'ATTEMPTED'
-            config_status['summary']['state'] = 'ATTEMPTED'
-            config_status['summary']['reason'] = 'Task execution was interrupted'
+            config_status.finish(state='ATTEMPTED', reason='Task execution was interrupted.')
 
         except Exception:
             log.exception('Something went wrong.')
-            config_status['state'] = 'FAILED'
-            config_status['summary']['state'] = 'FAILED'
-            config_status['summary']['reason'] = 'Something went wrong'
+            config_status.finish(state='FAILED', reason='Something went wrong')
 
         # stop telescope and abort exposure
         telescope.stop_motion().wait()
-
-        # finish filling config status
-        config_status['summary']['end'] = Time.now().isot
-        config_status['summary']['time_completed'] = exp_time_done
 
         # finished
         return config_status

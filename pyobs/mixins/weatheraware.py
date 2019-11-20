@@ -67,7 +67,7 @@ class WeatherAwareMixin:
 
                 # get good status
                 try:
-                    self.__is_weather_good = weather.is_weather_good()
+                    self.__is_weather_good = weather.is_weather_good().wait()
                 except:
                     self.__is_weather_good = False
 
@@ -78,9 +78,6 @@ class WeatherAwareMixin:
 
             # sleep a little
             self.closing.wait(10)
-
-    def is_weather_good(self):
-        return self.__is_weather_good
 
 
 __all__ = ['WeatherAwareMixin']

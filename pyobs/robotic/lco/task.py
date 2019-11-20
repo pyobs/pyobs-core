@@ -50,6 +50,7 @@ class LcoTask(Task):
         req = self.task['request']
 
         # get proxies
+        log.info('Getting proxies for modules...')
         roof: IRoof = self.comm.proxy(self.roof, IRoof)
         telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
         camera: ICamera = self.comm.proxy(self.camera, ICamera)
@@ -59,6 +60,7 @@ class LcoTask(Task):
             # loop configurations
             for config in req['configurations']:
                 # run config
+                log.info('Running config...')
                 status = self._run_config(abort_event, config, roof, telescope, camera, filters)
 
                 # send status
@@ -98,6 +100,7 @@ class LcoTask(Task):
 
             else:
                 # seems to be a default task
+                log.info('Running default configuration...')
                 exp_time_done += self._run_default_config(abort_event, config, roof, telescope, camera, filters)
 
             # finished config
@@ -141,6 +144,7 @@ class LcoTask(Task):
         if image_type == ICamera.ImageType.OBJECT:
             if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
                     telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+                log.error('Cannot run task.')
                 raise CannotRunTask
 
         # log

@@ -17,11 +17,10 @@ class LcoSkyFlatsConfig(LcoBaseConfig):
     def can_run(self) -> bool:
         """Whether this config can currently run."""
 
-        # we need an open roof and a working telescope for OBJECT exposures
-        if self.image_type == ICamera.ImageType.OBJECT:
-            if self.roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                    self.telescope.get_motion_status().wait() != IMotion.Status.IDLE:
-                return False
+        # we need an open roof and a working telescope
+        if self.roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
+                self.telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+            return False
 
         # seems alright
         return True

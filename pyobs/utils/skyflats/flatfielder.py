@@ -113,6 +113,10 @@ class FlatFielder:
             Current state of flat fielder.
         """
 
+        # store
+        self._cur_filter = filter_name
+        self._cur_binning = binning
+
         # which state are we in?
         if self._state == FlatFielder.State.INIT:
             # init task
@@ -133,6 +137,7 @@ class FlatFielder:
     def reset(self):
         """Reset flat fielder"""
         self._state = FlatFielder.State.INIT
+        self._exposures_done = 0
 
     def _init_system(self, camera: ICamera, filters: IFilters):
         """Initialize whole system."""

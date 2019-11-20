@@ -16,7 +16,7 @@ class ConfigStatus:
         self.start = Time.now()
         self.end = None
         self.state = 'ATTEMPTED'
-        self.reason = None
+        self.reason = ''
         self.time_completed = 0
 
     def finish(self, state=None, reason=None, time_completed: int = 0):

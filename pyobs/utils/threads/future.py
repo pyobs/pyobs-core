@@ -9,7 +9,7 @@ class Future(object):
     Represents the result of an asynchronous computation.
     """
 
-    def __init__(self, value=None, is_set=False):
+    def __init__(self, value=None, empty=False):
         """
         Initializes a new Future.
         """
@@ -20,7 +20,7 @@ class Future(object):
         self._event = threading.Event()
 
         # already set?
-        if is_set:
+        if empty:
             # fire event
             self._event.set()
 

@@ -116,6 +116,7 @@ class FlatFielder:
         # store
         self._cur_filter = filter_name
         self._cur_binning = binning
+        self._exposures_total = count
 
         # which state are we in?
         if self._state == FlatFielder.State.INIT:

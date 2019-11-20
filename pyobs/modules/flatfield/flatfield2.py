@@ -97,6 +97,7 @@ class FlatField2(PyObsModule, IFlatField):
         # stop telescope
         log.info('Stopping telescope...')
         telescope.stop_motion().wait()
+        log.info('Flat-fielding finished.')
 
     @timeout(20000)
     def abort(self, *args, **kwargs):

@@ -129,7 +129,7 @@ class FlatFielder:
             self._testing(camera)
         elif self._state == FlatFielder.State.RUNNING:
             # take flat fields
-            self._flat_field(camera)
+            self._flat_field(telescope, camera)
 
         # return current state
         return self._state
@@ -365,14 +365,14 @@ class FlatFielder:
         # calculate next exposure time
         return self._exptime * factor
 
-    def _flat_field(self, camera: ICamera):
+    def _flat_field(self, telescope: ITelescope, camera: ICamera):
         """Take flat-fields."""
 
         # set window
         self._set_window(camera, testing=False)
 
         # move telescope
-        self._pointing().wait()
+        self._pointing(telescope).wait()
 
         # do exposures, do not broadcast while testing
         now = Time.now()

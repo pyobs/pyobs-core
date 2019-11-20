@@ -75,7 +75,7 @@ class FlatFielder:
         self._abort = threading.Event()
 
         # pointing
-        self._pointing = get_object(pointing, SkyFlatsBasePointing)
+        self._pointing = get_object(pointing, SkyFlatsBasePointing, observer=self._observer)
 
         # state machine
         self._state = FlatFielder.State.INIT

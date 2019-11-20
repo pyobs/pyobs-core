@@ -120,7 +120,7 @@ class FlatFielder:
         # which state are we in?
         if self._state == FlatFielder.State.INIT:
             # init task
-            self._init_system(camera, filters)
+            self._init_system(telescope, camera, filters)
         elif self._state == FlatFielder.State.WAITING:
             # wait until exposure time reaches good time
             self._wait()
@@ -139,7 +139,7 @@ class FlatFielder:
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
 
-    def _init_system(self, camera: ICamera, filters: IFilters):
+    def _init_system(self, telescope:ITelescope, camera: ICamera, filters: IFilters):
         """Initialize whole system."""
 
         # set binning
@@ -158,7 +158,7 @@ class FlatFielder:
         log.info('We are currently in %s twilight.', self._twilight.value)
 
         # move telescope
-        future_track = self._pointing()
+        future_track = self._pointing(telescope)
 
         # get filter from first step and set it
         log.info('Setting filter to %s...', self._cur_filter)

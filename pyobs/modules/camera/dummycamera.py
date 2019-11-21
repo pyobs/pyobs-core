@@ -80,7 +80,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             filename = self._sim_images.pop(0)
             self._sim_images.append(filename)
             with fits.open(filename, memmap=False) as f:
-                return fits.PrimaryHDU(data=f[0].data, header=f[0].header)
+                return fits.PrimaryHDU(f[0].data) #, header=f[0].header)
 
         else:
             left, top, width, height = self.get_window()

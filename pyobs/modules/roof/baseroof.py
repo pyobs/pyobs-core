@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 class BaseRoof(WeatherAwareMixin, IRoof, IFitsHeaderProvider, PyObsModule):
     """Base class for roofs."""
 
-    def __init__(self, weather: typing.Union[str, IWeather] = None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initialize a new base roof."""
         PyObsModule.__init__(self, *args, **kwargs)
 

@@ -10,7 +10,7 @@ class SepPhotometry(Photometry):
         Photometry.__init__(self, *args, **kwargs)
         self.threshold = threshold
 
-    def __call__(self, image: Image):
+    def __call__(self, image: Image) -> Table:
         # get data and make it continuous
         data = image.data.copy()
 
@@ -39,6 +39,9 @@ class SepPhotometry(Photometry):
 
         # set it
         image.catalog = cat
+
+        # return full catalog
+        return sources
 
 
 __all__ = ['SepPhotometry']

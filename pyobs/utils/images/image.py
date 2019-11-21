@@ -19,7 +19,7 @@ class Image:
 
             # store
             image = Image()
-            image.data = data['SCI'].data
+            image.data = data['SCI'].data.astype(np.float)
             image.header = data['SCI'].header
 
             # close file

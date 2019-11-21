@@ -149,15 +149,16 @@ class LcoTask(Task):
             exp_time_done += cfg_runner(abort_event)
 
             # finished config
-            config_status.finish(state='COMPLETED')
+            config_status.finish(state='COMPLETED', time_completed=exp_time_done)
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
-            config_status.finish(state='ATTEMPTED', reason='Task execution was interrupted.')
+            config_status.finish(state='ATTEMPTED', reason='Task execution was interrupted.',
+                                 time_completed=exp_time_done)
 
         except Exception:
             log.exception('Something went wrong.')
-            config_status.finish(state='FAILED', reason='Something went wrong')
+            config_status.finish(state='FAILED', reason='Something went wrong', time_completed=exp_time_done)
 
         # stop telescope and abort exposure
         telescope.stop_motion().wait()

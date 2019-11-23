@@ -21,6 +21,7 @@ from .IMotion import IMotion
 from .IPipeline import IPipeline
 from .IRoof import IRoof
 from .IRotation import IRotation
+from .IRunnable import IRunnable
 from .IScriptRunner import IScriptRunner
 from .IStoppable import IStoppable
 from .ITelescope import ITelescope

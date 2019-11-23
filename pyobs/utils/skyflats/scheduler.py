@@ -4,6 +4,8 @@ import astropy.units as u
 from astroplan import Observer
 import operator
 
+from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
+
 
 class ExpTimeEval:
     """Exposure time evaluator for skyflats."""
@@ -119,13 +121,13 @@ class SchedulerItem:
 
 class Scheduler:
     """Scheduler for taking flat fields"""
-    def __init__(self, functions: dict, priorities: dict, observer: Observer, min_exptime: float = 0.5,
+    def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
                  max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20):
         """Initializes a new scheduler for taking flat fields
 
         Args:
             functions: Flat field functions
-            priorities: Priorities for filters as "(filter, binning) -> priority" dict
+            priorities: Class handling priorities
             observer: Observer to use
             min_exptime: Minimum exposure time for flats
             max_exptime: Maximum exposure time for flats
@@ -155,7 +157,7 @@ class Scheduler:
         self._eval.init(time)
 
         # sort filters by priority
-        priorities = sorted(self._priorities.items(), key=operator.itemgetter(1), reverse=True)
+        priorities = sorted(self._priorities().items(), key=operator.itemgetter(1), reverse=True)
 
         # place them
         schedules = []

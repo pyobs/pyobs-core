@@ -16,8 +16,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         self._filter_names = filter_names
         self._binnings = binnings
 
-    @property
-    def priorities(self):
+    def __call__(self):
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
         frames = self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now,

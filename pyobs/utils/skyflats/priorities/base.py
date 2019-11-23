@@ -1,6 +1,6 @@
 class SkyflatPriorities:
-    def __init__(self):
-        self.priorities = {}
+    def __call__(self):
+        return {}
 
 
 __all__ = ['SkyflatPriorities']

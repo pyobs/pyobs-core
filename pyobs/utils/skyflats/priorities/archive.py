@@ -6,10 +6,12 @@ from pyobs import get_object
 from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive, FrameInfo
 from pyobs.utils.time import Time
+from .base import Priorities
 
 
-class ArchiveSkyflatPriorities:
+class ArchiveSkyflatPriorities(Priorities):
     def __init__(self, archive: typing.Union[dict, Archive], filter_names: list, binnings: list, *args, **kwargs):
+        Priorities.__init__(self)
         self._archive: Archive = get_object(archive, Archive)
         self._filter_names = filter_names
         self._binnings = binnings

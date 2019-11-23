@@ -2,9 +2,11 @@ import logging
 import threading
 import typing
 
-from pyobs.interfaces import ICamera, IRunnable, IFlatField
+from pyobs.interfaces import IRunnable, IFlatField
 from pyobs import PyObsModule
 from pyobs.modules import timeout
+from pyobs.object import create_object
+from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
@@ -16,14 +18,14 @@ class FlatFieldScheduler(PyObsModule, IRunnable):
     """Run the flat-field scheduler."""
 
     def __init__(self, flatfield: typing.Union[str, IFlatField], functions: typing.Dict[str, str],
-                 priorities: dict, min_exptime: float = 0.5, max_exptime: float = 5, timespan: float = 7200,
-                 filter_change: float = 30, count: int = 20, *args, **kwargs):
+                 priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
+                 timespan: float = 7200, filter_change: float = 30, count: int = 20, *args, **kwargs):
         """Initialize a new flat field scheduler.
 
         Args:
             flatfield: Flat field module to use
             functions: Dict with flat functions
-            priorities: Dict with priorities
+            priorities: Class handling priorities
             min_exptime: Minimum exposure time [s]
             max_exptime: Maximum exposure time [s]
             timespan: Time to scheduler after start [s]
@@ -38,6 +40,9 @@ class FlatFieldScheduler(PyObsModule, IRunnable):
 
         # abort
         self._abort = threading.Event()
+
+        # priorities
+        priorities = create_object(priorities, SkyflatPriorities)
 
         # create scheduler
         self._scheduler = Scheduler(functions, priorities, self.observer, min_exptime=min_exptime,

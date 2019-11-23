@@ -118,6 +118,10 @@ class FlatFielder:
         self._cur_binning = binning
         self._exposures_total = count
 
+        # do initial check
+        if not self._inital_check():
+            return self._state
+
         # which state are we in?
         if self._state == FlatFielder.State.INIT:
             # init task
@@ -139,6 +143,28 @@ class FlatFielder:
         """Reset flat fielder"""
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
+
+    def _inital_check(self) -> bool:
+        """Do a quick initial check.
+
+        Returns:
+            False, if flat-field time for this filter is over, True otherwise.
+        """
+
+        # get solar elevation and evaluate function
+        sun_alt, self._exptime = self._eval_function(Time.now())
+        log.info('Calculated optimal exposure time of %.2fs in %dx%d at solar elevation of %.2f°.',
+                 self._exptime, self._cur_binning, self._cur_binning, sun_alt)
+
+        # then evaluate exposure time within a larger range
+        state = self._eval_exptime(self._min_exptime * 0.5, self._max_exptime * 2.0)
+        if state > 0:
+            log.info('Missed flat-fielding time, finishing task...')
+            self._state = FlatFielder.State.FINISHED
+            return False
+        else:
+            log.info('Flat-field time is still coming, keep going...')
+            return True
 
     def _init_system(self, telescope:ITelescope, camera: ICamera, filters: IFilters):
         """Initialize whole system."""

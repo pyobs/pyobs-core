@@ -25,6 +25,14 @@ class PyobsArchiveFrameInfo(FrameInfo):
     def dateobs(self):
         return Time(self.info['DATE_OBS'])
 
+    @property
+    def filter_name(self):
+        return self.info['FILTER']
+
+    @property
+    def binning(self):
+        return int(self.info['binning'][0])
+
 
 class PyobsArchive(Archive):
     def __init__(self, url: str, token: str, *args, **kwargs):

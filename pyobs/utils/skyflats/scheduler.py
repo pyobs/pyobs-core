@@ -100,7 +100,7 @@ class ExpTimeEval:
 class SchedulerItem:
     """A single item in the flat scheduler"""
 
-    def __init__(self, start: float, end: float, filter_name: str, binning: int):
+    def __init__(self, start: float, end: float, filter_name: str, binning: int, priority: float):
         """Initializes a new scheduler item
 
         Args:
@@ -113,10 +113,12 @@ class SchedulerItem:
         self.end = end
         self.filter_name = filter_name
         self.binning = binning
+        self.priority = priority
 
     def __repr__(self):
         """Nice string representation for item"""
-        return '%d - %d (%s %dx%d)' % (self.start, self.end, self.filter_name, self.binning, self.binning)
+        return '%d - %d (%s %dx%d): %.2f' % (self.start, self.end, self.filter_name,
+                                             self.binning, self.binning, self.priority)
 
 
 class Scheduler:
@@ -161,9 +163,9 @@ class Scheduler:
 
         # place them
         schedules = []
-        for task, _ in priorities:
+        for task, priority in priorities:
             # find possible time
-            self._find_slot(schedules, *task)
+            self._find_slot(schedules, *task, priority)
 
         # sort by start time
         self._schedules = sorted(schedules, key=lambda x: x.start)
@@ -182,7 +184,7 @@ class Scheduler:
         else:
             raise StopIteration
 
-    def _find_slot(self, schedules: list, filter_name: str, binning: int):
+    def _find_slot(self, schedules: list, filter_name: str, binning: int, priority: float):
         """Find a possible slot for a given filter/binning in the given schedule
 
         Args:
@@ -213,7 +215,7 @@ class Scheduler:
                     # check for overlap with existing schedule
                     if not self._overlaps(schedules, time, time + duration):
                         # add schedule and quit
-                        schedules.append(SchedulerItem(time, time + duration, filter_name, binning))
+                        schedules.append(SchedulerItem(time, time + duration, filter_name, binning, priority))
                         return
 
             # next step

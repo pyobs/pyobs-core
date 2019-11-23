@@ -1,9 +1,9 @@
-from .base import Priorities
+from .base import SkyflatPriorities
 
 
-class ConstSkyflatPriorities(Priorities):
+class ConstSkyflatPriorities(SkyflatPriorities):
     def __init__(self, priorities: dict, *args, **kwargs):
-        Priorities.__init__(self)
+        SkyflatPriorities.__init__(self)
         self.priorities = priorities
 
 

@@ -1,6 +1,6 @@
-class Priorities:
+class SkyflatPriorities:
     def __init__(self):
         self.priorities = {}
 
 
-__all__ = ['Priorities']
+__all__ = ['SkyflatPriorities']

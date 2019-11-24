@@ -118,10 +118,6 @@ class FlatFielder:
         self._cur_binning = binning
         self._exposures_total = count
 
-        # do initial check
-        if not self._inital_check():
-            return self._state
-
         # which state are we in?
         if self._state == FlatFielder.State.INIT:
             # init task
@@ -168,6 +164,10 @@ class FlatFielder:
 
     def _init_system(self, telescope:ITelescope, camera: ICamera, filters: IFilters):
         """Initialize whole system."""
+
+        # do initial check
+        if not self._inital_check():
+            return self._state
 
         # set binning
         if isinstance(camera, ICameraBinning):

@@ -3,7 +3,6 @@ import threading
 from typing import Union
 
 from pyobs import PyObsModule, get_object
-from pyobs.events import RoofOpenedEvent, RoofClosingEvent
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderProvider
@@ -34,20 +33,12 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         self._obs = None
         self._exp = None
 
-        # roof
-        self._roof_open = False
-
     def open(self):
         """Open module."""
         PyObsModule.open(self)
 
         # open scheduler
         self._scheduler.open()
-
-        # subscribe to events
-        if self.comm:
-            self.comm.register_event(RoofOpenedEvent, self._on_roof_opened)
-            self.comm.register_event(RoofClosingEvent, self._on_roof_closing)
 
     def close(self):
         """Close module."""
@@ -122,28 +113,6 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             return hdr
         else:
             return {}
-
-    def _on_roof_opened(self, event: RoofOpenedEvent, sender: str, *args, **kwargs):
-        """Roof has opened.
-
-        Args:
-            event: The event.
-            sender: Who sent it.
-        """
-
-        log.warning('Received event that roof has opened.')
-        self._roof_open = True
-
-    def _on_roof_closing(self, event: RoofClosingEvent, sender: str, *args, **kwargs):
-        """Roof is closing.
-
-        Args:
-            event: The event.
-            sender: Who sent it.
-        """
-
-        log.warning('Received event that roof is closing.')
-        self._roof_open = False
 
 
 __all__ = ['RoboticMastermind']

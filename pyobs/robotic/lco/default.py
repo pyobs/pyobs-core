@@ -1,21 +1,50 @@
 import logging
 import threading
 
-from pyobs.interfaces import ICamera, IMotion, ICameraBinning, ICameraWindow
+from pyobs.interfaces import ICamera, IMotion, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters
+from pyobs.robotic.scripts import Script
 from pyobs.utils.threads import Future
 from pyobs.utils.threads.checkabort import check_abort
-from .base import LcoBaseConfig
 
 
 log = logging.getLogger(__name__)
 
 
-class LcoDefaultConfig(LcoBaseConfig):
-    def __init__(self, *args, **kwargs):
-        LcoBaseConfig.__init__(self, *args, **kwargs)
+class LcoDefaultScript(Script):
+    """Default script for LCO configs."""
+
+    def __init__(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera, filters: IFilters,
+                 *args, **kwargs):
+        """Initialize a new LCO default script.
+
+        Args:
+            config: Config to run
+            roof: Roof to use
+            telescope: Telescope to use
+            camera: Camera to use
+            filters: Filter wheel to use
+        """
+
+        # store
+        self.config = config
+        self.roof = roof
+        self.telescope = telescope
+        self.camera = camera
+        self.filters = filters
+
+        # get image type
+        self.image_type = ICamera.ImageType.OBJECT
+        if config['type'] == 'BIAS':
+            self.image_type = ICamera.ImageType.BIAS
+        elif config['type'] == 'DARK':
+            self.image_type = ICamera.ImageType.DARK
 
     def can_run(self) -> bool:
-        """Whether this config can currently run."""
+        """Whether this config can currently run.
+
+        Returns:
+            True, if script can run now
+        """
 
         # we need an open roof and a working telescope for OBJECT exposures
         if self.image_type == ICamera.ImageType.OBJECT:
@@ -26,14 +55,17 @@ class LcoDefaultConfig(LcoBaseConfig):
         # seems alright
         return True
 
-    def __call__(self, abort_event: threading.Event) -> int:
+    def run(self, abort_event: threading.Event) -> int:
         """Run configuration.
 
         Args:
-            abort_event: Event to abort run.
+            abort_event: Event to abort run
 
         Returns:
-            Total exposure time in ms.
+            Total exposure time in ms
+
+        Raises:
+            InterruptedError: If script was interrupted
         """
 
         # got a target?
@@ -80,4 +112,4 @@ class LcoDefaultConfig(LcoBaseConfig):
         return exp_time_done
 
 
-__all__ = ['LcoDefaultConfig']
+__all__ = ['LcoDefaultScript']

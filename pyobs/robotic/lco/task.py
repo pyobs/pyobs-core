@@ -1,11 +1,12 @@
 from threading import Event
 import logging
 from typing import Union
+import typing
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, IRoof, IMotion
-from pyobs.robotic.lco.configs import LcoDefaultConfig, LcoSkyFlatsConfig
-from pyobs.robotic.lco.configs.base import LcoBaseConfig
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IRoof
+from pyobs.robotic.lco.default import LcoDefaultScript
+from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 
@@ -13,7 +14,10 @@ log = logging.getLogger(__name__)
 
 
 class ConfigStatus:
+    """Status of a single configuration."""
+
     def __init__(self):
+        """Initializes a new Status with an ATTEMPTED."""
         self.start = Time.now()
         self.end = None
         self.state = 'ATTEMPTED'
@@ -21,6 +25,13 @@ class ConfigStatus:
         self.time_completed = 0
 
     def finish(self, state=None, reason=None, time_completed: int = 0):
+        """Finish this status with the given values and the current time.
+
+        Args:
+            state: State of configuration
+            reason: Reason for that state
+            time_completed: Completed time [s]
+        """
         if state is not None:
             self.state = state
         if reason is not None:
@@ -29,6 +40,7 @@ class ConfigStatus:
         self.end = Time.now()
 
     def to_json(self):
+        """Convert status to JSON for sending to portal."""
         return {
             'state': self.state,
             'summary': {
@@ -42,27 +54,52 @@ class ConfigStatus:
 
 
 class LcoTask(Task):
-    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
-                 *args, **kwargs):
+    """A task from the LCO portal."""
+
+    def __init__(self, config: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
+                 scripts: typing.Dict[str, Script], *args, **kwargs):
+        """Init LCO task (called request there).
+
+        Args:
+            config: Configuration for task
+            comm: Comm object to use
+            telescope: Telescope to use
+            camera: Camera to use
+            filters: Filters to use
+            roof: Roof to use
+            scripts: External scripts to run
+        """
         Task.__init__(self, *args, **kwargs)
 
         # store stuff
-        self.task = task
+        self.config = config
         self.comm = comm
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
         self.roof = roof
+        self.scripts = scripts
 
     @property
     def id(self) -> str:
-        return self.task['request']['id']
+        """ID of task."""
+        return self.config['request']['id']
 
     def name(self) -> str:
-        return self.task['name']
+        """Returns name of task.
+
+        Returns:
+            Name of task.
+        """
+        return self.config['name']
 
     def window(self) -> (Time, Time):
-        return self.task['start'], self.task['end']
+        """Returns the time window for this task.
+
+        Returns:
+            Start and end time for this observation window.
+        """
+        return self.config['start'], self.config['end']
 
     def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters):
         """Get proxies for running the task
@@ -80,10 +117,9 @@ class LcoTask(Task):
         filters: IFilters = self.comm.proxy(self.filters, IFilters)
         return roof, telescope, camera, filters
 
-    @staticmethod
-    def _get_config_runner(config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera,
-                           filters: IFilters) -> LcoBaseConfig:
-        """Create config runner for given configuration.
+    def _get_config_script(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera,
+                           filters: IFilters) -> Script:
+        """Get config script for given configuration.
 
         Args:
             config: Config to create runner for.
@@ -93,7 +129,7 @@ class LcoTask(Task):
             filters: Filter wheel
 
         Returns:
-            Config runner
+            Script for running config
 
         Raises:
             ValueError: If could not create runner.
@@ -104,17 +140,16 @@ class LcoTask(Task):
             # let's run some script, so get its name
             script_name = config['extra_params']['script_name']
 
-            # which one is it?
-            if script_name == 'skyflats':
-                return LcoSkyFlatsConfig(config, roof, telescope, camera, filters)
+            # got one?
+            if script_name in self.scripts:
+                return self.scripts[script_name]
             else:
-                # unknown script
                 raise ValueError('Invalid script task type.')
 
         else:
             # seems to be a default task
             log.info('Creating default configuration...')
-            return LcoDefaultConfig(config, roof, telescope, camera, filters)
+            return LcoDefaultScript(config, roof, telescope, camera, filters)
 
     def can_run(self) -> bool:
         """Checks, whether this task could run now.
@@ -130,10 +165,10 @@ class LcoTask(Task):
             return False
 
         # loop configurations
-        req = self.task['request']
+        req = self.config['request']
         for config in req['configurations']:
             # get config runner
-            runner = self._get_config_runner(config, roof, telescope, camera, filters)
+            runner = self._get_config_script(config, roof, telescope, camera, filters)
 
             # if any runner can run, we proceed
             if runner.can_run():
@@ -151,7 +186,7 @@ class LcoTask(Task):
         from pyobs.robotic.lco import LcoScheduler
 
         # get request
-        req = self.task['request']
+        req = self.config['request']
 
         # get proxies
         try:
@@ -178,16 +213,16 @@ class LcoTask(Task):
                 break
 
             # get config runner
-            runner = self._get_config_runner(config, roof, telescope, camera, filters)
+            script = self._get_config_script(config, roof, telescope, camera, filters)
 
             # can run?
-            if not runner.can_run():
+            if not script.can_run():
                 log.warning('Cannot run config.')
                 continue
 
             # run config
             log.info('Running config...')
-            status = self._run_config(abort_event, runner)
+            status = self._run_script(abort_event, script)
 
             # send status
             if status is not None and isinstance(self.scheduler, LcoScheduler):
@@ -196,12 +231,12 @@ class LcoTask(Task):
         # finished task
         log.info('Finished task.')
 
-    def _run_config(self, abort_event, runner: LcoBaseConfig) -> Union[ConfigStatus, None]:
+    def _run_script(self, abort_event, script: Script) -> Union[ConfigStatus, None]:
         """Run a config
 
         Args:
             abort_event: Event for signaling abort
-            runner: Runner to run
+            script: Script to run
 
         Returns:
             Configuration status to send to portal
@@ -218,8 +253,8 @@ class LcoTask(Task):
             self._check_abort(abort_event)
 
             # run it
-            log.info('Running task %d: %s...', self.id, self.task['name'])
-            exp_time_done += runner(abort_event)
+            log.info('Running task %d: %s...', self.id, self.config['name'])
+            exp_time_done += script.run(abort_event)
 
             # finished config
             config_status.finish(state='COMPLETED', time_completed=exp_time_done)
@@ -238,7 +273,7 @@ class LcoTask(Task):
 
     def is_finished(self) -> bool:
         """Whether task is finished."""
-        return self.task['state'] != 'PENDING'
+        return self.config['state'] != 'PENDING'
 
     def get_fits_headers(self) -> dict:
         return {}

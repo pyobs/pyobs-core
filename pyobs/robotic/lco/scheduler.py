@@ -2,11 +2,11 @@ import threading
 import urllib.parse
 import logging
 from typing import Union
-
 import requests
 from astropy.time import TimeDelta
 import astropy.units as u
 
+from pyobs.object import get_object
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from ..scheduler import Scheduler
@@ -17,8 +17,22 @@ log = logging.getLogger(__name__)
 
 
 class LcoScheduler(Scheduler):
+    """Scheduler for using the LCO portal"""
+
     def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
-                 *args, **kwargs):
+                 scripts: dict = None, *args, **kwargs):
+        """Creates a new LCO scheduler.
+
+        Args:
+            url: URL to portal
+            site: Site filter for fetching requests
+            token: Authorization token for portal
+            telescope: Telescope to use
+            camera: Camera to use
+            filters: Filter wheel to use
+            roof: Roof to use
+            scripts: External scripts
+        """
         Scheduler.__init__(self, *args, **kwargs)
 
         # store stuff
@@ -28,6 +42,11 @@ class LcoScheduler(Scheduler):
         self.camera = camera
         self.filters = filters
         self.roof = roof
+
+        # create script handlers
+        if scripts is None:
+            scripts = {}
+        self.scripts = {k: get_object(v, comm=self.comm, observer=self.observer) for k, v in scripts.items()}
 
         # header
         self._header = {
@@ -66,6 +85,8 @@ class LcoScheduler(Scheduler):
             self._closing.wait(10)
 
     def _update_now(self):
+        """Update list of requests."""
+
         # get url and params
         url = urllib.parse.urljoin(self._url, '/api/observations/')
         now = Time.now()
@@ -94,7 +115,7 @@ class LcoScheduler(Scheduler):
                 # create task
                 task = self._create_task(LcoTask, sched,
                                          telescope=self.telescope, filters=self.filters, camera=self.camera,
-                                         roof=self.roof)
+                                         roof=self.roof, scripts=self.scripts)
                 tasks[sched['request']['id']] = task
 
             # update

@@ -24,6 +24,14 @@ class Task:
         """
         raise NotImplementedError
 
+    def can_run(self) -> bool:
+        """Checks, whether this task could run now.
+
+        Returns:
+            True, if task can run now.
+        """
+        raise NotImplementedError
+
     def run(self, abort_event: Event):
         """Run a task
 

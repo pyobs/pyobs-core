@@ -120,8 +120,7 @@ class RPC(object):
                     response.send()
 
             # call method
-            #return_value = method(**ba.arguments)
-            return_value = self._handler.execute(pmethod, *params)
+            return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
             return_value = () if return_value is None else (return_value,)
 
             # send response

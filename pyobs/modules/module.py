@@ -363,9 +363,15 @@ class PyObsModule:
         # cast to types requested by method
         cast_bound_arguments_to_real(ba, signature)
 
+        # get additional args and kwargs and delete from ba
+        func_args = ba.arguments['args']
+        func_kwargs = ba.arguments['kwargs']
+        del ba.arguments['args']
+        del ba.arguments['kwargs']
+
         try:
             # call method
-            response = func(**ba.arguments)
+            response = func(*func_args, **ba.arguments, **func_kwargs)
 
             # finished
             return cast_response_to_simple(response)

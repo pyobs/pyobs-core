@@ -172,7 +172,7 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
             # update headers now
             self._update_celestial_headers()
 
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> IMotion.Status:
         """Returns current motion status.
 
         Args:
@@ -183,8 +183,11 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         """
         return self._motion_status
 
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
             Dictionary containing FITS headers.

@@ -3,7 +3,7 @@ import threading
 import typing
 from enum import Enum
 
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
+from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
 from pyobs import PyObsModule, get_object
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.flatfielder import FlatFielder
@@ -63,13 +63,16 @@ class FlatField(PyObsModule, IFlatField):
         self._abort.set()
 
     @timeout(3600000)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs):
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
         """Do a series of flat fields in the given filter.
 
         Args:
-            filter_name: Name of filter.
-            count: Number of images to take.
-            binning: Binning to use.
+            filter_name: Name of filter
+            count: Number of images to take
+            binning: Binning to use
+
+        Returns:
+            Number of images actually taken and total exposure time in ms
         """
         log.info('Performing flat fielding...')
 
@@ -91,6 +94,11 @@ class FlatField(PyObsModule, IFlatField):
         # run until state is finished or we aborted
         state = None
         while not self._abort.is_set() and state != FlatFielder.State.FINISHED:
+            # can we run?
+            if telescope.get_motion_status().wait() not in [IMotion.Status.IDLE, IMotion.Status.TRACKING]:
+                log.error('Telescope not in valid state, aborting...')
+                return self._flat_fielder.image_count
+
             # do step
             state = self._flat_fielder(telescope, camera, filters, filter_name, count, binning)
 
@@ -98,6 +106,9 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Stopping telescope...')
         telescope.stop_motion().wait()
         log.info('Flat-fielding finished.')
+
+        # return number of taken images
+        return self._flat_fielder.image_count
 
     @timeout(20000)
     def abort(self, *args, **kwargs):

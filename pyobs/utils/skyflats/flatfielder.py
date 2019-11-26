@@ -86,6 +86,7 @@ class FlatFielder:
         # exposures to do
         self._exposures_total = 0
         self._exposures_done = 0
+        self._exptime_done = 0
 
         # bias level
         self._bias_level = None
@@ -139,6 +140,15 @@ class FlatFielder:
         """Reset flat fielder"""
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
+        self._exptime_done = 0
+
+    @property
+    def image_count(self):
+        return self._exposures_done
+
+    @property
+    def total_exptime(self):
+        return self._exptime_done
 
     def _inital_check(self) -> bool:
         """Do a quick initial check.
@@ -162,7 +172,7 @@ class FlatFielder:
             log.info('Flat-field time is still coming, keep going...')
             return True
 
-    def _init_system(self, telescope:ITelescope, camera: ICamera, filters: IFilters):
+    def _init_system(self, telescope: ITelescope, camera: ICamera, filters: IFilters):
         """Initialize whole system."""
 
         # do initial check
@@ -409,6 +419,7 @@ class FlatFielder:
                                  image_type=ICamera.ImageType.SKYFLAT).wait()
 
         # increase count and quite here, if finished
+        self._exptime_done += int(self._exptime * 1000.)
         self._exposures_done += 1
         if self._exposures_done >= self._exposures_total:
             log.info('Finished all requested flat-fields..')

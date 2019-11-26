@@ -6,6 +6,7 @@ import astropy.units as u
 
 from pyobs.events import FilterChangedEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzMount
+from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -14,12 +15,13 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeaderProvider):
+class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeaderProvider, FitsNamespaceMixin):
     """A dummy telescope for testing."""
 
     def __init__(self, *args, **kwargs):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, *args, **kwargs)
+        FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
         # init telescope
         self._images = {}
@@ -218,7 +220,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         return 0, 0
 
-    def get_radec(self) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> (float, float):
         """Returns current RA and Dec.
 
         Returns:
@@ -226,7 +228,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         return self._position['ra'], self._position['dec']
 
-    def get_altaz(self) -> (float, float):
+    def get_altaz(self, *args, **kwargs) -> (float, float):
         """Returns current Alt and Az.
 
         Returns:
@@ -236,8 +238,11 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         alt_az = self.observer.altaz(Time.now(), ra_dec)
         return alt_az.alt.degree, alt_az.az.degree
 
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
             Dictionary containing FITS headers.
@@ -253,7 +258,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         hdr['FILTER'] = (self._filter, 'Focus position [mm]')
 
         # finished
-        return hdr
+        return self._filter_fits_namespace(hdr, namespaces, **kwargs)
 
     def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.

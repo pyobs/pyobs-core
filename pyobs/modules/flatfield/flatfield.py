@@ -108,7 +108,7 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Flat-fielding finished.')
 
         # return number of taken images
-        return self._flat_fielder.image_count
+        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
     @timeout(20000)
     def abort(self, *args, **kwargs):

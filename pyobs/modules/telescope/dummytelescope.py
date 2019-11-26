@@ -236,8 +236,11 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         alt_az = self.observer.altaz(Time.now(), ra_dec)
         return alt_az.alt.degree, alt_az.az.degree
 
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
             Dictionary containing FITS headers.

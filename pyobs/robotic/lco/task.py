@@ -275,7 +275,7 @@ class LcoTask(Task):
         """Whether task is finished."""
         return self.config['state'] != 'PENDING'
 
-    def get_fits_headers(self, namespaces: list = None) -> dict:
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.
 
         Args:

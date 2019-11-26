@@ -172,7 +172,7 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
             # update headers now
             self._update_celestial_headers()
 
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> IMotion.Status:
         """Returns current motion status.
 
         Args:

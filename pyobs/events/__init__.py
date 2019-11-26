@@ -4,6 +4,7 @@ from .event import Event
 from .filterchanged import FilterChangedEvent
 from .focusfound import FocusFoundEvent
 from .goodweather import GoodWeatherEvent
+from .initialized import InitializedEvent
 from .log import LogEvent
 from .motionstatuschanged import MotionStatusChangedEvent
 from .newimage import NewImageEvent

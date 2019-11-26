@@ -63,7 +63,7 @@ class FlatField(PyObsModule, IFlatField):
         self._abort.set()
 
     @timeout(3600000)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> int:
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -72,7 +72,7 @@ class FlatField(PyObsModule, IFlatField):
             binning: Binning to use
 
         Returns:
-            Number of images actually taken
+            Number of images actually taken and total exposure time in ms
         """
         log.info('Performing flat fielding...')
 

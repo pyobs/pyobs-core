@@ -2,7 +2,7 @@ from .IAbortable import IAbortable
 
 
 class IFlatField(IAbortable):
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> int:
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -11,7 +11,7 @@ class IFlatField(IAbortable):
             binning: Binning to use
 
         Returns:
-            Number of images actually taken
+            Number of images actually taken and total exposure time in ms
         """
         raise NotImplementedError
 

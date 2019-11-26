@@ -1,23 +1,21 @@
 import logging
 import threading
-import time
 import typing
 from astroplan import Observer
 
 from pyobs import get_object
 from pyobs.comm import Comm
 from pyobs.interfaces import IMotion, IFlatField, ITelescope, IRoof
-from pyobs.utils.archive import Archive
+from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
-from pyobs.utils.threads.checkabort import check_abort
 from pyobs.utils.time import Time
 
 
 log = logging.getLogger(__name__)
 
 
-class SkyFlats:
+class SkyFlats(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
     def __init__(self, roof: typing.Union[str, IRoof], telescope: typing.Union[str, ITelescope],
@@ -41,6 +39,7 @@ class SkyFlats:
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
         """
+        Script.__init__(self, *args, **kwargs)
 
         # store modules
         self._roof = roof
@@ -82,14 +81,14 @@ class SkyFlats:
         # seems alright
         return True
 
-    def __call__(self, abort_event: threading.Event) -> int:
-        """Run configuration.
+    def run(self, abort_event: threading.Event):
+        """Run script.
 
         Args:
             abort_event: Event to abort run.
 
-        Returns:
-            Total exposure time in ms.
+        Raises:
+            InterruptedError: If interrupted
         """
 
         # get proxy for flatfield
@@ -98,21 +97,20 @@ class SkyFlats:
         # schedule
         self._scheduler(Time.now())
 
-        # measure time
-        start_time = time.time()
+        # total exposure time in ms
+        self.exptime_done = 0
 
         # do flat fields
         item: SchedulerItem
         for item in self._scheduler:
-            # check for abort
-            check_abort(abort_event)
+            self._check_abort(abort_event)
 
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, item.binning, item.binning)
-            flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
+            _, exp_time = flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
 
-        # return elapsed time
-        return int((time.time() - start_time) * 1000)
+            # increase exposure time
+            self.exptime_done += exp_time
 
 
 __all__ = ['SkyFlats']

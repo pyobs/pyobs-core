@@ -254,19 +254,19 @@ class LcoTask(Task):
 
             # run it
             log.info('Running task %d: %s...', self.id, self.config['name'])
-            exp_time_done += script.run(abort_event)
+            script.run(abort_event)
 
             # finished config
-            config_status.finish(state='COMPLETED', time_completed=exp_time_done)
+            config_status.finish(state='COMPLETED', time_completed=script.exptime_done)
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
             config_status.finish(state='ATTEMPTED', reason='Task execution was interrupted.',
-                                 time_completed=exp_time_done)
+                                 time_completed=script.exptime_done)
 
         except Exception:
             log.exception('Something went wrong.')
-            config_status.finish(state='FAILED', reason='Something went wrong', time_completed=exp_time_done)
+            config_status.finish(state='FAILED', reason='Something went wrong', time_completed=script.exptime_done)
 
         # finished
         return config_status

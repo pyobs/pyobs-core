@@ -24,6 +24,7 @@ class LcoDefaultScript(Script):
             camera: Camera to use
             filters: Filter wheel to use
         """
+        Script.__init__(self, *args, **kwargs)
 
         # store
         self.config = config
@@ -49,23 +50,20 @@ class LcoDefaultScript(Script):
         # we need an open roof and a working telescope for OBJECT exposures
         if self.image_type == ICamera.ImageType.OBJECT:
             if self.roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                    self.telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+                    self.telescope.get_motion_status().wait() not in [IMotion.Status.IDLE, IMotion.Status.TRACKING]:
                 return False
 
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event) -> int:
-        """Run configuration.
+    def run(self, abort_event: threading.Event):
+        """Run script.
 
         Args:
-            abort_event: Event to abort run
-
-        Returns:
-            Total exposure time in ms
+            abort_event: Event to abort run.
 
         Raises:
-            InterruptedError: If script was interrupted
+            InterruptedError: If interrupted
         """
 
         # got a target?
@@ -76,11 +74,11 @@ class LcoDefaultScript(Script):
             track = self.telescope.track_radec(target['ra'], target['dec'])
 
         # total exposure time in this config
-        exp_time_done = 0
+        self.exptime_done = 0
 
         # loop instrument configs
         for ic in self.config['instrument_configs']:
-            check_abort(abort_event)
+            self._check_abort(abort_event)
 
             # set filter
             set_filter = None
@@ -92,7 +90,6 @@ class LcoDefaultScript(Script):
             Future.wait_all([track, set_filter])
 
             # set binning and window
-            check_abort(abort_event)
             if isinstance(self.camera, ICameraBinning):
                 log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
                 self.camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
@@ -102,14 +99,13 @@ class LcoDefaultScript(Script):
 
             # loop images
             for exp in range(ic['exposure_count']):
-                check_abort(abort_event)
+                self._check_abort(abort_event)
+
+                # do exposures
                 log.info('Exposing %s image %d/%d for %.2fs...',
                          self.config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                 self.camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
-                exp_time_done += ic['exposure_time']
-
-        # finally, return total exposure time
-        return exp_time_done
+                self.exptime_done += ic['exposure_time']
 
 
 __all__ = ['LcoDefaultScript']

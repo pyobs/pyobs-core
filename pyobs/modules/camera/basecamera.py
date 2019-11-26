@@ -28,7 +28,7 @@ class CameraException(Exception):
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 cache: str = '/pyobs/camera_cache.json', *args, **kwargs):
+                 cache: str = '/pyobs/camera_cache.json', fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
@@ -36,6 +36,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
             filenames: Template for file naming.
+            fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -50,6 +51,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         self._centre = centre
         self._rotation = rotation
         self._filenames = filenames
+        self._fits_namespaces = fits_namespaces
 
         # init camera
         self._last_image = None
@@ -317,7 +319,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                future = self.comm.execute(client, 'get_fits_headers')
+                future = self.comm.execute(client, 'get_fits_headers', self._fits_namespaces)
                 fits_header_futures[client] = future
 
         # open the shutter?

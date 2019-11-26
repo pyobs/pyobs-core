@@ -2,13 +2,16 @@ from .IAbortable import IAbortable
 
 
 class IFlatField(IAbortable):
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs):
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> int:
         """Do a series of flat fields in the given filter.
 
         Args:
-            filter_name: Name of filter.
-            count: Number of images to take.
-            binning: Binning to use.
+            filter_name: Name of filter
+            count: Number of images to take
+            binning: Binning to use
+
+        Returns:
+            Number of images actually taken
         """
         raise NotImplementedError
 
@@ -18,7 +21,7 @@ class IFlatField(IAbortable):
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
 
         Returns:
-            Dictionary with current status.
+            Dictionary with current status
         """
         raise NotImplementedError
 

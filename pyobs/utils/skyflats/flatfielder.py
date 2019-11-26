@@ -140,6 +140,10 @@ class FlatFielder:
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
 
+    @property
+    def image_count(self):
+        return self._exposures_done
+
     def _inital_check(self) -> bool:
         """Do a quick initial check.
 

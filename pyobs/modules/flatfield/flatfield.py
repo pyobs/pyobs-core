@@ -63,13 +63,16 @@ class FlatField(PyObsModule, IFlatField):
         self._abort.set()
 
     @timeout(3600000)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs):
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> int:
         """Do a series of flat fields in the given filter.
 
         Args:
-            filter_name: Name of filter.
-            count: Number of images to take.
-            binning: Binning to use.
+            filter_name: Name of filter
+            count: Number of images to take
+            binning: Binning to use
+
+        Returns:
+            Number of images actually taken
         """
         log.info('Performing flat fielding...')
 
@@ -98,6 +101,9 @@ class FlatField(PyObsModule, IFlatField):
         log.info('Stopping telescope...')
         telescope.stop_motion().wait()
         log.info('Flat-fielding finished.')
+
+        # return number of taken images
+        return self._flat_fielder.image_count
 
     @timeout(20000)
     def abort(self, *args, **kwargs):

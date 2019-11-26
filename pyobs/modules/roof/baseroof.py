@@ -48,7 +48,7 @@ class BaseRoof(WeatherAwareMixin, IRoof, IFitsHeaderProvider, PyObsModule):
         # set it
         self._motion_status = status
 
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> IMotion.Status:
         """Returns current motion status.
 
         Args:

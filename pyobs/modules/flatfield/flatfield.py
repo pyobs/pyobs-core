@@ -3,7 +3,7 @@ import threading
 import typing
 from enum import Enum
 
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
+from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
 from pyobs import PyObsModule, get_object
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.flatfielder import FlatFielder
@@ -94,6 +94,11 @@ class FlatField(PyObsModule, IFlatField):
         # run until state is finished or we aborted
         state = None
         while not self._abort.is_set() and state != FlatFielder.State.FINISHED:
+            # can we run?
+            if telescope.get_motion_status().wait() not in [IMotion.Status.IDLE, IMotion.Status.TRACKING]:
+                log.error('Telescope not in valid state, aborting...')
+                return self._flat_fielder.image_count
+
             # do step
             state = self._flat_fielder(telescope, camera, filters, filter_name, count, binning)
 

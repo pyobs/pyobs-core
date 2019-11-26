@@ -172,7 +172,7 @@ class FlatFielder:
             log.info('Flat-field time is still coming, keep going...')
             return True
 
-    def _init_system(self, telescope:ITelescope, camera: ICamera, filters: IFilters):
+    def _init_system(self, telescope: ITelescope, camera: ICamera, filters: IFilters):
         """Initialize whole system."""
 
         # do initial check

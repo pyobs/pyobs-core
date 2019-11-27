@@ -39,7 +39,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
             Dictionary containing FITS headers.
         """
         return {
-            'ROOF-OPN': (self._motion_status in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING],
+            'ROOF-OPN': (self.get_motion_status() in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING],
                          'True for open, false for closed roof')
         }
 

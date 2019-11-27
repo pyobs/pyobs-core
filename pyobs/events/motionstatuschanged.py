@@ -15,7 +15,9 @@ class MotionStatusChangedEvent(Event):
 
     @property
     def status(self):
-        return None if self.data is None else IMotion.Status(self.data['status'])
+        if self.data is None or 'status' not in self.data:
+            return None
+        return IMotion.Status(self.data['status'])
 
     @property
     def interfaces(self):

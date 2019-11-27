@@ -1,9 +1,9 @@
 from enum import Enum
 
-from .interface import Interface
+from .IReady import IReady
 
 
-class IMotion(Interface):
+class IMotion(IReady):
     """
     Basic interface for all devices that move.
 

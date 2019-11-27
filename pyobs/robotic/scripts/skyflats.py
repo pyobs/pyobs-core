@@ -74,8 +74,7 @@ class SkyFlats(Script):
             return False
 
         # we need an open roof and a working telescope
-        if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                telescope.get_motion_status().wait() != IMotion.Status.IDLE:
+        if not roof.is_ready() or not telescope.is_ready():
             return False
 
         # seems alright

@@ -4,7 +4,6 @@ import threading
 from pyobs.interfaces import ICamera, IMotion, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters
 from pyobs.robotic.scripts import Script
 from pyobs.utils.threads import Future
-from pyobs.utils.threads.checkabort import check_abort
 
 
 log = logging.getLogger(__name__)
@@ -49,8 +48,7 @@ class LcoDefaultScript(Script):
 
         # we need an open roof and a working telescope for OBJECT exposures
         if self.image_type == ICamera.ImageType.OBJECT:
-            if self.roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                    self.telescope.get_motion_status().wait() not in [IMotion.Status.IDLE, IMotion.Status.TRACKING]:
+            if not self.roof.is_ready() or not self.telescope.is_ready():
                 return False
 
         # seems alright

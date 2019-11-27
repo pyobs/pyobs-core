@@ -1,25 +1,27 @@
+import typing
+
 from pyobs.interfaces import IMotion
 from .event import Event
 
 
 class MotionStatusChangedEvent(Event):
-    def __init__(self, last: IMotion.Status = None, current: IMotion.Status = None, interface: str = None):
+    def __init__(self, status: IMotion.Status = None, interfaces: typing.Dict[str, IMotion.Status] = None):
         Event.__init__(self)
-        self.data = None
-        if last is not None and current is not None:
-            self.data = {'last': last.value, 'current': current.value, 'interface': interface}
+        self.data = {}
+        if status is not None:
+            self.data['status'] = status.value
+        if interfaces is not None:
+            self.data['interfaces'] = {k: v.value for k, v in interfaces.items()}
 
     @property
-    def last(self):
-        return None if self.data is None else IMotion.Status(self.data['last'])
+    def status(self):
+        return None if self.data is None else IMotion.Status(self.data['status'])
 
     @property
-    def current(self):
-        return None if self.data is None else IMotion.Status(self.data['current'])
-
-    @property
-    def interface(self):
-        return self.data['interface']
+    def interfaces(self):
+        if self.data is None or 'interfaces' not in self.data:
+            return {}
+        return {k: IMotion.Status(v) for k, v in self.data['interfaces'].items()}
 
 
 __all__ = ['MotionStatusChangedEvent']

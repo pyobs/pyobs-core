@@ -6,15 +6,15 @@ import logging
 from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
+from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-from pyobs.mixins.weatheraware import WeatherAwareMixin
 
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModule):
     """Base class for telescopes."""
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
@@ -34,9 +34,6 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         self._lock_moving = threading.Lock()
         self._abort_move = threading.Event()
 
-        # status
-        self._motion_status = IMotion.Status.IDLE
-
         # celestial status
         self._celestial_lock = threading.RLock()
         self._celestial_headers = {}
@@ -44,33 +41,20 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # add thread func
         self._add_thread_func(self._celestial, True)
 
-        # init WeatherAware
+        # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
+        MotionStatusMixin.__init__(self, *args, **kwargs)
 
     def open(self):
         """Open module."""
         PyObsModule.open(self)
 
-        # subscribe to events
-        if self.comm:
-            self.comm.register_event(MotionStatusChangedEvent)
-
-        # same for WeatherAware
+        # open mixins
         WeatherAwareMixin.open(self)
+        MotionStatusMixin.open(self)
 
-    def _change_motion_status(self, status: IMotion.Status):
-        """Change motion status and send event,
-
-        Args:
-            status: New motion status.
-        """
-
-        # send event, if it changed
-        if self._motion_status != status:
-            self.comm.send_event(MotionStatusChangedEvent(self._motion_status, status))
-
-        # set it
-        self._motion_status = status
+        # set status
+        self._change_motion_status(IMotion.Status.IDLE)
 
     def init(self, *args, **kwargs):
         """Initialize telescope.
@@ -171,17 +155,6 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
 
             # update headers now
             self._update_celestial_headers()
-
-    def get_motion_status(self, device: str = None, *args, **kwargs) -> IMotion.Status:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
-        """
-        return self._motion_status
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.

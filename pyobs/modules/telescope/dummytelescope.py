@@ -20,7 +20,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
 
     def __init__(self, *args, **kwargs):
         """Creates a new dummy telescope."""
-        BaseTelescope.__init__(self, *args, **kwargs)
+        BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
         # init telescope
@@ -54,7 +54,47 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
 
         # start slewing
-        self._change_motion_status(IMotion.Status.SLEWING)
+        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        self.__move(ra, dec, abort_event)
+
+        # finish slewing
+        self._change_motion_status(IMotion.Status.TRACKING, interface='ITelescope')
+
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
+        """Actually moves to given coordinates. Must be implemented by derived classes.
+
+        Args:
+            alt: Alt in deg to move to.
+            az: Az in deg to move to.
+            abort_event: Event that gets triggered when movement should be aborted.
+
+        Raises:
+            Exception: On error.
+        """
+
+        # alt/az coordinates to ra/dec
+        coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
+                          location=self.location, frame='altaz')
+        icrs = coords.icrs
+
+        # start slewing
+        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
+
+        # set telescope to idle
+        self._change_motion_status(IMotion.Status.IDLE)
+
+    def __move(self, ra: float, dec: float, abort_event: threading.Event):
+        """Simulate move.
+
+       Args:
+           ra: RA in deg to track.
+           dec: Dec in deg to track.
+           abort_event: Event that gets triggered when movement should be aborted.
+
+       Raises:
+           Exception: On any error.
+       """
 
         # simulate slew
         ira = self._position['ra'] * 1.
@@ -74,33 +114,9 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
             # sleep a little
             abort_event.wait(0.1)
 
-        # finish slewing
+        # set final coordinates
         self._position['ra'] = ra
         self._position['dec'] = dec
-        self._change_motion_status(IMotion.Status.TRACKING)
-
-    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
-        """Actually moves to given coordinates. Must be implemented by derived classes.
-
-        Args:
-            alt: Alt in deg to move to.
-            az: Az in deg to move to.
-            abort_event: Event that gets triggered when movement should be aborted.
-
-        Raises:
-            Exception: On error.
-        """
-
-        # alt/az coordinates to ra/dec
-        coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
-                          location=self.location, frame='altaz')
-        icrs = coords.icrs
-
-        # track
-        self._track_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
-
-        # set telescope to idle
-        self._change_motion_status(IMotion.Status.IDLE)
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
@@ -125,6 +141,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         # acquire lock
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
+            self._change_motion_status(IMotion.Status.SLEWING, interface='IFocuser')
             ifoc = self._focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
@@ -135,6 +152,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
                 # move focus and sleep a little
                 self._focus = ifoc + i * dfoc
                 time.sleep(0.01)
+            self._change_motion_status(IMotion.Status.POSITIONED, interface='IFocuser')
             self._focus = focus
 
     def list_filters(self, *args, **kwargs) -> list:
@@ -167,7 +185,9 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         if filter_name != self._filter:
             # set it
             logging.info('Setting filter to %s', filter_name)
+            self._change_motion_status(IMotion.Status.SLEWING, interface='IFilters')
             time.sleep(3)
+            self._change_motion_status(IMotion.Status.POSITIONED, interface='IFilters')
             self._filter = filter_name
 
             # send event
@@ -196,7 +216,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
 
         # PARK, wait a little, then PARKED
-        self._change_motion_status(IMotion.Status.INITIALIZING)
+        self._change_motion_status(IMotion.Status.PARKING)
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.PARKED)
 

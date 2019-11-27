@@ -85,10 +85,6 @@ class FocusModel(PyObsModule, IFocusModel):
         self._temp_station, self._temp_sensor = temp_sensor.split('.')
         log.info('Going to fetch temperature from sensor %s at station %s.', self._temp_sensor, self._temp_station)
 
-        # list of allowed focuser states for focussing:
-        self._allowed_states = [IMotion.Status.IDLE, IMotion.Status.POSITIONED,
-                                IMotion.Status.SLEWING, IMotion.Status.TRACKING]
-
         # model
         parser = Parser()
         log.info('Parsing model: %s', model)
@@ -139,9 +135,9 @@ class FocusModel(PyObsModule, IFocusModel):
                 self.closing.wait(60)
                 continue
 
-            # it must be in allowed state
-            status = focuser.get_motion_status('IFocuser').wait()
-            if status not in self._allowed_states:
+            # is focuser ready?
+            status = focuser.is_ready().wait()
+            if status is False:
                 # log
                 if self._focuser_ready:
                     log.info('Focuser not ready, waiting for it...')

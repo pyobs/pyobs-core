@@ -110,7 +110,6 @@ class LcoTask(Task):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        log.info('Getting proxies for modules...')
         roof: IRoof = self.comm.proxy(self.roof, IRoof)
         telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
         camera: ICamera = self.comm.proxy(self.camera, ICamera)

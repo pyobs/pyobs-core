@@ -15,7 +15,7 @@ class MotionStatusMixin:
         Args:
             interfaces: List of interfaces to handle or None
         """
-        self.__motion_status_interfaces = [] if motion_status_interfaces is None else {}
+        self.__motion_status_interfaces = [] if motion_status_interfaces is None else motion_status_interfaces
         self.__motion_status = IMotion.Status.UNKNOWN
         self.__motion_status_single = {i: IMotion.Status.UNKNOWN for i in self.__motion_status_interfaces}
 

@@ -53,9 +53,6 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-        # set status
-        self._change_motion_status(IMotion.Status.IDLE)
-
     def init(self, *args, **kwargs):
         """Initialize telescope.
 

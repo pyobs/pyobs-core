@@ -51,7 +51,7 @@ class Trigger(PyObsModule):
             # does it handle the event?
             if trigger['event'] == event.__class__:
                 log.info('Received a %s event and calling %s.%s now.',
-                         type(event), trigger['module'], trigger['method'])
+                         str(type(event)), trigger['module'], trigger['method'])
 
                 # get proxy
                 try:

@@ -4,7 +4,7 @@ import time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.events import FilterChangedEvent
+from pyobs.events import FilterChangedEvent, InitializedEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzMount
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
@@ -40,6 +40,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         # subscribe to events
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
+            self.comm.register_event(InitializedEvent)
 
     def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -206,6 +207,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         self._change_motion_status(IMotion.Status.INITIALIZING)
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.IDLE)
+        self.comm.send_event(InitializedEvent())
 
     @timeout(60000)
     def park(self, *args, **kwargs):

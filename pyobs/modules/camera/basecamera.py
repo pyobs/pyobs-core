@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import threading
-from typing import Union, Tuple
+from typing import Tuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -13,10 +13,9 @@ from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
 from pyobs import PyObsModule
-from pyobs.events import BadWeatherEvent, NewImageEvent, ExposureStatusChangedEvent
+from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
-from pyobs.utils.threads import ThreadWithReturnValue
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +74,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
-            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -563,16 +561,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
-
-    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
-        """Abort exposure if a bad weather event occurs.
-
-        Args:
-            event: The bad weather event.
-            sender: Who sent it.
-        """
-        log.warning('Received bad weather event, shutting down.')
-        self.abort()
 
 
 __all__ = ['BaseCamera', 'CameraException']

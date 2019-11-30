@@ -57,11 +57,14 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             now = Time.now()
 
             # find task that we want to run now
-            self._task: Task = self._scheduler.get_task(now)
-            if self._task is None or not self._task.can_run():
+            task: Task = self._scheduler.get_task(now)
+            if task is None or not task.can_run():
                 # no task found
                 self.closing.wait(10)
                 continue
+
+            # set it
+            self._task = task
 
             # task window
             window = self._task.window()

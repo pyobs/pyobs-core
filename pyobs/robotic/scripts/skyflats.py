@@ -113,7 +113,7 @@ class SkyFlats(Script):
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, item.binning, item.binning)
             done, exp_time = flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
-            log.info('Finished %s flat-fields.')
+            log.info('Finished flat-fields.')
 
             # increase exposure time
             self.exptime_done += exp_time

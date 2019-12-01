@@ -94,7 +94,13 @@ class SkyFlats(Script):
         flatfield: IFlatField = self._comm.proxy(self._flatfield, IFlatField)
 
         # schedule
+        log.info('Scheduling flat-fields...')
         self._scheduler(Time.now())
+
+        # log schedule
+        log.info('Found schedule:')
+        for sched in self._scheduler:
+            log.info('- %s', sched)
 
         # total exposure time in ms
         self.exptime_done = 0
@@ -106,10 +112,14 @@ class SkyFlats(Script):
 
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, item.binning, item.binning)
-            _, exp_time = flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
+            done, exp_time = flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
+            log.info('Finished %s flat-fields.')
 
             # increase exposure time
             self.exptime_done += exp_time
+
+        # finished
+        log.info('Finished all scheduled flat-fields.')
 
 
 __all__ = ['SkyFlats']

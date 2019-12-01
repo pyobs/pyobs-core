@@ -74,7 +74,7 @@ class SkyFlats(Script):
             return False
 
         # we need an open roof and a working telescope
-        if not roof.is_ready() or not telescope.is_ready():
+        if not roof.is_ready().wait() or not telescope.is_ready().wait():
             return False
 
         # seems alright

@@ -13,7 +13,7 @@ class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
     def __init__(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera, filters: IFilters,
-                 *args, **kwargs):
+                 instruments: dict, *args, **kwargs):
         """Initialize a new LCO default script.
 
         Args:
@@ -22,6 +22,7 @@ class LcoDefaultScript(Script):
             telescope: Telescope to use
             camera: Camera to use
             filters: Filter wheel to use
+            instruments: Instruments description from portal
         """
         Script.__init__(self, *args, **kwargs)
 
@@ -31,6 +32,7 @@ class LcoDefaultScript(Script):
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
+        self.instruments = instruments
 
         # get image type
         self.image_type = ICamera.ImageType.OBJECT
@@ -74,9 +76,22 @@ class LcoDefaultScript(Script):
         # total exposure time in this config
         self.exptime_done = 0
 
+        # get instrument info
+        instrument_type = self.config['instrument_type'].lower()
+        instrument = self.instruments[instrument_type]
+
         # loop instrument configs
         for ic in self.config['instrument_configs']:
             self._check_abort(abort_event)
+
+            # get readout mode
+            for readout_mode in instrument['modes']['readout']['modes']:
+                if readout_mode['code'] == ic['mode']:
+                    break
+            else:
+                # could not find readout mode
+                raise ValueError('Could not find readout mode %s.' % ic['mode'])
+            log.info('Using readout mode "%s"...' % readout_mode['name'])
 
             # set filter
             set_filter = None
@@ -89,8 +104,9 @@ class LcoDefaultScript(Script):
 
             # set binning and window
             if isinstance(self.camera, ICameraBinning):
-                log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
-                self.camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
+                binning = readout_mode['params']['binning']
+                log.info('Set binning to %dx%d...', binning, binning)
+                self.camera.set_binning(binning, binning).wait()
             if isinstance(self.camera, ICameraWindow):
                 full_frame = self.camera.get_full_frame().wait()
                 self.camera.set_window(*full_frame).wait()

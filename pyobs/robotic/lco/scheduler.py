@@ -79,7 +79,7 @@ class LcoScheduler(Scheduler):
             try:
                 self._update_now()
             except:
-                log.exception('An exception occured.')
+                log.exception('An exception occurred.')
 
             # sleep a little
             self._closing.wait(10)

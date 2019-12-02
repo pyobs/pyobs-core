@@ -148,7 +148,9 @@ class LcoTask(Task):
         else:
             # seems to be a default task
             log.info('Creating default configuration...')
-            return LcoDefaultScript(config, roof, telescope, camera, filters)
+            from .scheduler import LcoScheduler
+            self.scheduler: LcoScheduler
+            return LcoDefaultScript(config, roof, telescope, camera, filters, self.scheduler.instruments)
 
     def can_run(self) -> bool:
         """Checks, whether this task could run now.

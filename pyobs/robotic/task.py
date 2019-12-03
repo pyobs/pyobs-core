@@ -8,12 +8,14 @@ class Task:
     def __init__(self, scheduler: 'Scheduler', *args, **kwargs):
         self.scheduler = scheduler
 
-    def name(self) -> str:
-        """Returns name of task.
+    @property
+    def id(self) -> str:
+        """ID of task."""
+        raise NotImplementedError
 
-        Returns:
-            Name of task.
-        """
+    @property
+    def name(self) -> str:
+        """Returns name of task."""
         raise NotImplementedError
 
     def window(self) -> (Time, Time):
@@ -53,7 +55,7 @@ class Task:
         Returns:
             Dictionary containing FITS headers.
         """
-        raise NotImplementedError
+        return {}
 
     @staticmethod
     def _check_abort(abort_event: threading.Event, end: Time = None):

@@ -86,12 +86,9 @@ class LcoTask(Task):
         """ID of task."""
         return self.config['request']['id']
 
+    @property
     def name(self) -> str:
-        """Returns name of task.
-
-        Returns:
-            Name of task.
-        """
+        """Returns name of task."""
         return self.config['name']
 
     def window(self) -> (Time, Time):
@@ -275,17 +272,6 @@ class LcoTask(Task):
     def is_finished(self) -> bool:
         """Whether task is finished."""
         return self.config['state'] != 'PENDING'
-
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of this module.
-
-        Args:
-            namespaces: If given, only return FITS headers for the given namespaces.
-
-        Returns:
-            Dictionary containing FITS headers.
-        """
-        return {}
 
 
 __all__ = ['LcoTask']

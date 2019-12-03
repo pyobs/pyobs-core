@@ -16,15 +16,15 @@ log = logging.getLogger(__name__)
 class ConfigStatus:
     """Status of a single configuration."""
 
-    def __init__(self):
+    def __init__(self, state='ATTEMPTED', reason=''):
         """Initializes a new Status with an ATTEMPTED."""
         self.start = Time.now()
         self.end = None
-        self.state = 'ATTEMPTED'
-        self.reason = ''
+        self.state = state
+        self.reason = reason
         self.time_completed = 0
 
-    def finish(self, state=None, reason=None, time_completed: int = 0):
+    def finish(self, state=None, reason=None, time_completed: int = 0) -> 'ConfigStatus':
         """Finish this status with the given values and the current time.
 
         Args:
@@ -38,6 +38,7 @@ class ConfigStatus:
             self.reason = reason
         self.time_completed = time_completed
         self.end = Time.now()
+        return self
 
     def to_json(self):
         """Convert status to JSON for sending to portal."""
@@ -196,13 +197,11 @@ class LcoTask(Task):
             # fail all configs
             log.error('Could not get proxies.')
             for config in req['configurations']:
-                # create failed status for config
-                status = ConfigStatus()
-                status.finish(state='FAILED', reason='System failure.')
-
                 # send status
+                status = ConfigStatus()
                 if isinstance(self.scheduler, LcoScheduler):
-                    self.scheduler.send_update(config['configuration_status'], status.to_json())
+                    self.scheduler.send_update(config['configuration_status'],
+                                               status.finish(state='FAILED', reason='System failure.').to_json())
 
             # finish
             return
@@ -212,6 +211,10 @@ class LcoTask(Task):
             # aborted?
             if abort_event.is_set():
                 break
+
+            # send an ATTEMPT status
+            if isinstance(self.scheduler, LcoScheduler):
+                self.scheduler.send_update(config['configuration_status'], ConfigStatus().to_json())
 
             # get config runner
             script = self._get_config_script(config, roof, telescope, camera, filters)
@@ -246,9 +249,6 @@ class LcoTask(Task):
         # at least we tried...
         config_status = ConfigStatus()
 
-        # total exposure time
-        exp_time_done = 0
-
         try:
             # check first
             self._check_abort(abort_event)
@@ -262,7 +262,7 @@ class LcoTask(Task):
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
-            config_status.finish(state='ATTEMPTED', reason='Task execution was interrupted.',
+            config_status.finish(state='FAILED', reason='Task execution was interrupted.',
                                  time_completed=script.exptime_done)
 
         except Exception:

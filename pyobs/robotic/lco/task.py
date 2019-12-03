@@ -48,7 +48,7 @@ class ConfigStatus:
                 'state': self.state,
                 'reason': self.reason,
                 'start': self.start.isot,
-                'end': self.end.isot,
+                'end': None if self.end is None else self.end.isot,
                 'time_completed': self.time_completed
             }
         }

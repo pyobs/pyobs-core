@@ -116,7 +116,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         if self._task is not None:
             hdr = self._task.get_fits_headers()
             hdr['TASK'] = self._task.name, 'Name of task'
-            hdr['REQNUM'] = self._task.id, 'Unique ID of task'
+            hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
             return hdr
         else:
             return {}

@@ -48,7 +48,7 @@ class ConfigStatus:
                 'state': self.state,
                 'reason': self.reason,
                 'start': self.start.isot,
-                'end': None if self.end is None else self.end.isot,
+                'end': self.end.isot,
                 'time_completed': self.time_completed
             }
         }
@@ -211,7 +211,8 @@ class LcoTask(Task):
 
             # send an ATTEMPT status
             if isinstance(self.scheduler, LcoScheduler):
-                self.scheduler.send_update(config['configuration_status'], ConfigStatus().to_json())
+                status = ConfigStatus()
+                self.scheduler.send_update(config['configuration_status'], status.finish().to_json())
 
             # get config runner
             script = self._get_config_script(config, roof, telescope, camera, filters)

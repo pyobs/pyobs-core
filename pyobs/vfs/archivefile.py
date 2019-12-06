@@ -47,7 +47,7 @@ class ArchiveFile(HttpFile):
 
         # define list of files and url
         files = {os.path.basename(self._filename): self._buffer}
-        url = self._url + 'api/frames/create/'
+        url = self._url + 'frames/create/'
 
         # post it
         r = session.post(url, data={'csrfmiddlewaretoken': session.cookies['csrftoken']},

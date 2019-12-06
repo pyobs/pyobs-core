@@ -2,11 +2,15 @@ import io
 from typing import List
 import requests
 import urllib.parse
+import logging
 
 from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from pyobs.utils.images import Image
 from .archive import Archive, FrameInfo
+
+
+log = logging.getLogger(__name__)
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
@@ -120,8 +124,11 @@ class PyobsArchive(Archive):
             r = requests.get(info.url, headers=self._headers)
 
             # create image
-            image = Image.from_bytes(r.content)
-            images.append(image)
+            try:
+                image = Image.from_bytes(r.content)
+                images.append(image)
+            except OSError:
+                log.error('Error downloading file %s.', info.filename)
 
         # return all
         return images

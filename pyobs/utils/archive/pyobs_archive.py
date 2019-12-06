@@ -22,6 +22,10 @@ class PyobsArchiveFrameInfo(FrameInfo):
         return self.info['basename']
 
     @property
+    def url(self):
+        return self.info['url']
+
+    @property
     def dateobs(self):
         return Time(self.info['DATE_OBS'])
 
@@ -112,11 +116,8 @@ class PyobsArchive(Archive):
         # loop infos
         images = []
         for info in infos:
-            # build URL
-            url = urllib.parse.urljoin(self._url, '/api/frames/%d/download/' % info.id)
-
             # download
-            r = requests.get(url, headers=self._headers)
+            r = requests.get(info.url, headers=self._headers)
 
             # create image
             image = Image.from_bytes(r.content)

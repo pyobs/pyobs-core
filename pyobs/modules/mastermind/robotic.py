@@ -57,20 +57,23 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             now = Time.now()
 
             # find task that we want to run now
-            self._task: Task = self._scheduler.get_task(now)
-            if self._task is None or not self._task.can_run():
+            task: Task = self._scheduler.get_task(now)
+            if task is None or not task.can_run():
                 # no task found
                 self.closing.wait(10)
                 continue
+
+            # set it
+            self._task = task
 
             # task window
             window = self._task.window()
 
             # send event
-            self.comm.send_event(TaskStartedEvent(self._task.name()))
+            self.comm.send_event(TaskStartedEvent(self._task.name))
 
             # run task in thread
-            log.info('Running task %s...', self._task.name())
+            log.info('Running task %s...', self._task.name)
             abort_event = threading.Event()
             task_thread = threading.Thread(target=self._scheduler.run_task, args=(self._task, abort_event))
             task_thread.start()
@@ -93,10 +96,10 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
                 self.closing.wait(10)
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(self._task.name()))
+            self.comm.send_event(TaskFinishedEvent(self._task.name))
 
             # finish
-            log.info('Finished task %s.', self._task.name())
+            log.info('Finished task %s.', self._task.name)
             self._task = None
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
@@ -112,7 +115,8 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         # inside an observation?
         if self._task is not None:
             hdr = self._task.get_fits_headers()
-            hdr['TASK'] = self._task.name(), 'Name of task'
+            hdr['TASK'] = self._task.name, 'Name of task'
+            hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
             return hdr
         else:
             return {}

@@ -42,6 +42,7 @@ class LcoScheduler(Scheduler):
         self.camera = camera
         self.filters = filters
         self.roof = roof
+        self.instruments = None
 
         # create script handlers
         if scripts is None:
@@ -63,14 +64,34 @@ class LcoScheduler(Scheduler):
 
     def open(self):
         """Open scheduler."""
+
+        # start update thread
         self._update_thread = threading.Thread(target=self._update)
         self._update_thread.start()
+
+        # get stuff from portal
+        self._init_from_portal()
 
     def close(self):
         """Close scheduler."""
         if self._update_thread is not None and self._update_thread.is_alive():
             self._closing.set()
             self._update_thread.join()
+
+    def _init_from_portal(self):
+        """Initialize scheduler from portal."""
+        # get url and params
+
+        # get url
+        url = urllib.parse.urljoin(self._url, '/api/instruments/')
+
+        # do request
+        res = requests.get(url, headers=self._header)
+        if res.status_code != 200:
+            raise RuntimeError('Invalid response from portal.')
+
+        # store instruments
+        self.instruments = {k.lower(): v for k, v in res.json().items()}
 
     def _update(self):
         """Update thread."""
@@ -79,7 +100,7 @@ class LcoScheduler(Scheduler):
             try:
                 self._update_now()
             except:
-                log.exception('An exception occured.')
+                log.exception('An exception occurred.')
 
             # sleep a little
             self._closing.wait(10)

@@ -1,14 +1,13 @@
 import logging
 
 from pyobs.events import Event
-from pyobs.interfaces import IScriptRunner
 from pyobs import PyObsModule
 from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)
 
 
-class Trigger(PyObsModule, IScriptRunner):
+class Trigger(PyObsModule):
     """A module that can call another module's methods when a specific event occurs."""
 
     def __init__(self, triggers: list, *args, **kwargs):
@@ -52,7 +51,7 @@ class Trigger(PyObsModule, IScriptRunner):
             # does it handle the event?
             if trigger['event'] == event.__class__:
                 log.info('Received a %s event and calling %s.%s now.',
-                         type(event), trigger['module'], trigger['method'])
+                         str(type(event)), trigger['module'], trigger['method'])
 
                 # get proxy
                 try:

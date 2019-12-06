@@ -1,9 +1,10 @@
 import typing
 import logging
 
+from pyobs import PyObsModule
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IMotion
-
+from pyobs.mixins import MotionStatusMixin
 
 log = logging.getLogger(__name__)
 
@@ -11,11 +12,15 @@ log = logging.getLogger(__name__)
 class WeatherAwareMixin:
     """Mixin for IMotion devices that should park(), when weather gets bad."""
     def __init__(self, weather: typing.Union[str, IWeather] = None, *args, **kwargs):
+        self: (PyObsModule, WeatherAwareMixin)
         self.__weather = weather
         self.__is_weather_good = None
         self._add_thread_func(self.__weather_check, True)
 
     def open(self):
+        """Open mixin."""
+        self: (PyObsModule, WeatherAwareMixin)
+
         # subscribe to events
         if self.comm:
             self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
@@ -28,12 +33,13 @@ class WeatherAwareMixin:
             event: The bad weather event.
             sender: Who sent it.
         """
+        self: (PyObsModule, WeatherAwareMixin, MotionStatusMixin)
 
         # weather is bad
         self.__is_weather_good = False
 
         # do we need to park?
-        if self._motion_status != IMotion.Status.PARKED:
+        if self.get_motion_status() != IMotion.Status.PARKED:
             log.warning('Received bad weather event, shutting down.')
             self.park()
 
@@ -50,6 +56,7 @@ class WeatherAwareMixin:
 
     def __weather_check(self):
         """Thread for continuously checking for good weather"""
+        self: (PyObsModule, WeatherAwareMixin, MotionStatusMixin)
 
         # wait a little
         self.closing.wait(10)
@@ -72,7 +79,7 @@ class WeatherAwareMixin:
                     self.__is_weather_good = False
 
             # if not good, park now
-            if self.__is_weather_good is False and self._motion_status != IMotion.Status.PARKED:
+            if self.__is_weather_good is False and self.get_motion_status() != IMotion.Status.PARKED:
                 log.warning('Weather seems to be bad, shutting down.')
                 self.park()
 

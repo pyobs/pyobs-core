@@ -95,7 +95,7 @@ class FlatField(PyObsModule, IFlatField):
         state = None
         while not self._abort.is_set() and state != FlatFielder.State.FINISHED:
             # can we run?
-            if telescope.get_motion_status().wait() not in [IMotion.Status.IDLE, IMotion.Status.TRACKING, IMotion.Status.SLEWING]:
+            if not telescope.is_ready().wait():
                 log.error('Telescope not in valid state, aborting...')
                 return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 

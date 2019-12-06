@@ -52,7 +52,7 @@ class PyobsArchive(Archive):
                     image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/aggregate/')
+        url = urllib.parse.urljoin(self._url, '/frames/aggregate/')
 
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
@@ -72,7 +72,7 @@ class PyobsArchive(Archive):
                     rlevel: int = None) \
             -> List[PyobsArchiveFrameInfo]:
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/')
+        url = urllib.parse.urljoin(self._url, '/frames/')
 
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
@@ -135,7 +135,7 @@ class PyobsArchive(Archive):
 
     def upload_frames(self, images: List[Image]):
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/create/')
+        url = urllib.parse.urljoin(self._url, '/frames/create/')
 
         # create session
         session = requests.session()

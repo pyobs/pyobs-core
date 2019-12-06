@@ -32,6 +32,11 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera):
         # exposure time
         self._exp_time = None
 
+        # options
+        self._counts = 30000
+        self._min_exp_time = 500
+        self._max_exp_time = 60000
+
         # SEP
         self._sep = SepPhotometry()
 
@@ -173,7 +178,6 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera):
                 image = self.vfs.download_image(filename)
 
                 # process it
-                print('process image ', filename)
                 self._process_image(image)
 
                 # reset image
@@ -193,10 +197,15 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera):
         # find sources
         sources = self._sep(image)
 
-        # sort by peak brightness
+        # sort by peak brightness and get first
         sources.sort('peak', True)
-        print(sources.columns)
-        print(sources['peak'])
+        peak = sources['peak'][0]
+
+        # scale exposure time
+        self._exp_time = int(self._exp_time * self._counts / peak)
+
+        # cut to limits
+        self._exp_time = max(min(self._exp_time, self._max_exp_time), self._min_exp_time)
 
 
 __all__ = ['AdaptiveExpTimeCamera']

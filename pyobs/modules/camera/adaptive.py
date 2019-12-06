@@ -84,6 +84,7 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
                 break
 
             # do exposure(s), never broadcast
+            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time)
             filenames = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
 
             # store filename
@@ -94,7 +95,6 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
 
             # broadcast image path
             if broadcast and self.comm:
-                log.info('Broadcasting image ID...')
                 self.comm.send_event(NewImageEvent(filenames[0], image_type))
 
         # return filenames
@@ -200,6 +200,7 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         # sort by peak brightness and get first
         sources.sort('peak', True)
         peak = sources['peak'][0]
+        log.info('Found a peak count of %d.', peak)
 
         # scale exposure time
         self._exp_time = int(self._exp_time * self._counts / peak)

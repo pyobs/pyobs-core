@@ -24,6 +24,7 @@ from .IRoof import IRoof
 from .IRotation import IRotation
 from .IRunnable import IRunnable
 from .IScriptRunner import IScriptRunner
+from .ISettings import ISettings
 from .IStoppable import IStoppable
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures

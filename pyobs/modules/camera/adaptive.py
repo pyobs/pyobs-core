@@ -2,7 +2,7 @@ import logging
 import threading
 
 from pyobs import PyObsModule
-from pyobs.interfaces import ICamera
+from pyobs.interfaces import ICamera, ISettings
 from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.utils.images import Image
@@ -11,7 +11,7 @@ from pyobs.utils.photometry import SepPhotometry
 log = logging.getLogger(__name__)
 
 
-class AdaptiveExpTimeCamera(PyObsModule, ICamera):
+class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
     """A virtual camera for adaptive exposure times."""
 
     def __init__(self, camera: str, *args, **kwargs):
@@ -206,6 +206,54 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera):
 
         # cut to limits
         self._exp_time = max(min(self._exp_time, self._max_exp_time), self._min_exp_time)
+
+    def get_settings(self, *args, **kwargs) -> dict:
+        """Returns a dict of name->type pairs for settings."""
+        return {
+            'target_counts': 'int',
+            'min_exp_time': 'int',
+            'max_exp_time': 'int'
+        }
+
+    def get_setting_value(self, setting: str, *args, **kwargs):
+        """Returns the value of the given setting.
+
+        Args:
+            setting: Name of setting
+
+        Returns:
+            Current value
+
+        Raises:
+            KeyError if setting does not exist
+        """
+        if setting == 'target_counts':
+            return self._counts
+        elif setting == 'min_exp_time':
+            return self._min_exp_time
+        elif setting == 'max_exp_time':
+            return self._max_exp_time
+        else:
+            raise KeyError
+
+    def set_setting_value(self, setting: str, value, *args, **kwargs):
+        """Sets the value of the given setting.
+
+        Args:
+            setting: Name of setting
+            value: New value
+
+        Raises:
+            KeyError if setting does not exist
+        """
+        if setting == 'target_counts':
+            self._counts = value
+        elif setting == 'min_exp_time':
+            self._min_exp_time = value
+        elif setting == 'max_exp_time':
+            self._max_exp_time = value
+        else:
+            raise KeyError
 
 
 __all__ = ['AdaptiveExpTimeCamera']

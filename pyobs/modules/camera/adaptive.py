@@ -29,8 +29,10 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         # abort
         self._abort = threading.Event()
 
-        # exposure time
+        # exposures
         self._exp_time = None
+        self._exposure_count = None
+        self._exposures_done = None
 
         # options
         self._counts = 30000
@@ -75,6 +77,8 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         # reset
         self._abort = threading.Event()
         self._exp_time = exposure_time
+        self._exposure_count = count
+        self._exposures_done = 0
 
         # loop exposures
         return_filenames = []
@@ -86,6 +90,7 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
             # do exposure(s), never broadcast
             log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time)
             filenames = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
+            self._exposures_done += 1
 
             # store filename
             return_filenames.append(filenames[0])
@@ -96,6 +101,10 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
             # broadcast image path
             if broadcast and self.comm:
                 self.comm.send_event(NewImageEvent(filenames[0], image_type))
+
+        # finished
+        self._exposure_count = count
+        self._exposures_done = 0
 
         # return filenames
         return return_filenames
@@ -123,6 +132,8 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         Raises:
             ValueError: If sequemce could not be aborted.
         """
+        self._exposure_count = None
+        self._exposures_done = None
         return self._camera.abort_sequence().wait()
 
     def get_exposures_left(self, *args, **kwargs) -> int:
@@ -131,7 +142,10 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         Returns:
             Remaining exposures
         """
-        return self._camera.get_exposures_left().wait()
+        if self._exposures_done is None or self._exposure_count is None:
+            return 0
+        else:
+            return self._exposure_count - self._exposures_done
 
     def get_exposure_time_left(self, *args, **kwargs) -> float:
         """Returns the remaining exposure time on the current exposure in ms.

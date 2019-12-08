@@ -216,11 +216,14 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         peak = sources['peak'][0]
         log.info('Found a peak count of %d.', peak)
 
+        # get exposure time from image in ms
+        exp_time = image.header['EXPTIME'] * 1000
+
         # scale exposure time
-        self._exp_time = int(self._exp_time * self._counts / peak)
+        exp_time = int(exp_time * self._counts / peak)
 
         # cut to limits
-        self._exp_time = max(min(self._exp_time, self._max_exp_time), self._min_exp_time)
+        self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
 
     def get_settings(self, *args, **kwargs) -> dict:
         """Returns a dict of name->type pairs for settings."""

@@ -4,6 +4,7 @@ from lmfit.models import GaussianModel
 from scipy import optimize, ndimage
 
 from .base import FocusSeries
+from ..curvefit import fit_hyperbola
 from ..images import Image
 
 
@@ -98,8 +99,8 @@ class ProjectionFocusSeries(FocusSeries):
 
         # fit focus
         try:
-            xfoc, xerr = self._fit_focus_curve(focus, xfwhm, xsig)
-            yfoc, yerr = self._fit_focus_curve(focus, yfwhm, ysig)
+            xfoc, xerr = fit_hyperbola(focus, xfwhm, xsig)
+            yfoc, yerr = fit_hyperbola(focus, yfwhm, ysig)
 
             # weighted mean
             xerr = np.sqrt(xerr)
@@ -184,27 +185,6 @@ class ProjectionFocusSeries(FocusSeries):
 
         # fit
         return model.fit(correl, pars, x=x)
-
-    @staticmethod
-    def _fit_focus_curve(x_arr, y_arr, y_err):
-        # initial guess
-        ic = np.argmin(y_arr)
-        ix = np.argmax(y_arr)
-        b = y_arr[ic]
-        c = x_arr[ic]
-        x = x_arr[ix]
-        slope = np.abs((y_arr[ic] - y_arr[ix]) / (c - x))
-        a = b / slope
-
-        # init
-        p0 = [a, b, c]
-
-        # fit
-        coeffs, cov = optimize.curve_fit(lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa ** 2 + 1.),
-                                         x_arr, y_arr, sigma=y_err, p0=p0)
-
-        # return result
-        return coeffs[2], cov[2][2]
 
 
 __all__ = ['ProjectionFocusSeries']

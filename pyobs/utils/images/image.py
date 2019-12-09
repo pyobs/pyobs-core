@@ -26,6 +26,14 @@ class Image:
             data.close()
             return image
 
+    @staticmethod
+    def from_file(filename: str) -> 'Image':
+        # load file
+        image = Image()
+        data, image.header = fits.getdata(filename, header=True)
+        image.data = data.astype(np.float)
+        return image
+
     def copy(self):
         img = Image()
         img.data = self.data.copy()

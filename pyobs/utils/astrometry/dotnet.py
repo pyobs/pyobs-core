@@ -22,7 +22,7 @@ class AstrometryDotNet(Astrometry):
         cat = image.catalog
 
         # nothing?
-        if len(cat) < 3:
+        if cat is None or len(cat) < 3:
             log.error('Not enough sources for astrometry.')
             return
 

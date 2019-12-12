@@ -24,6 +24,7 @@ class AstrometryDotNet(Astrometry):
         # nothing?
         if cat is None or len(cat) < 3:
             log.error('Not enough sources for astrometry.')
+            image.header['WCSERR'] = 1
             return
 
         # sort it and take N brightest sources

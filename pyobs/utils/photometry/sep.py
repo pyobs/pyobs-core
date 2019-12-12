@@ -1,8 +1,12 @@
 import sep
 from astropy.table import Table
+import logging
 
 from .photometry import Photometry
 from pyobs.utils.images import Image
+
+
+log = logging.getLogger(__name__)
 
 
 class SepPhotometry(Photometry):
@@ -23,7 +27,11 @@ class SepPhotometry(Photometry):
         bkg.subfrom(data)
 
         # extract sources
-        sources = sep.extract(data, self.threshold, err=bkg.globalrms)
+        try:
+            sources = sep.extract(data, self.threshold, err=bkg.globalrms)
+        except:
+            log.exception('An error has occured.')
+            return Table()
 
         # convert to astropy table
         sources = Table(sources)

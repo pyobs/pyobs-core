@@ -21,6 +21,11 @@ class AstrometryDotNet(Astrometry):
         # get catalog
         cat = image.catalog
 
+        # nothing?
+        if len(cat) < 3:
+            log.error('Not enough sources for astrometry.')
+            return
+
         # sort it and take N brightest sources
         cat.sort(['flux'], reverse=True)
         cat = cat[:self.source_count]

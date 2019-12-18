@@ -7,16 +7,16 @@ from astropy.time import TimeDelta
 import astropy.units as u
 
 from pyobs.object import get_object
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import BaseTask
 from pyobs.utils.time import Time
-from ..scheduler import Scheduler
+from ..scheduler import BaseScheduler
 from .task import LcoTask
 
 
 log = logging.getLogger(__name__)
 
 
-class LcoScheduler(Scheduler):
+class LcoScheduler(BaseScheduler):
     """Scheduler for using the LCO portal"""
 
     def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
@@ -33,7 +33,7 @@ class LcoScheduler(Scheduler):
             roof: Roof to use
             scripts: External scripts
         """
-        Scheduler.__init__(self, *args, **kwargs)
+        BaseScheduler.__init__(self, *args, **kwargs)
 
         # store stuff
         self._url = url
@@ -146,7 +146,7 @@ class LcoScheduler(Scheduler):
         else:
             log.warning('Could not fetch schedule.')
 
-    def get_task(self, time: Time) -> Union[Task, None]:
+    def get_task(self, time: Time) -> Union[BaseTask, None]:
         """Returns the active task at the given time.
 
         Args:
@@ -169,7 +169,7 @@ class LcoScheduler(Scheduler):
         # nothing found
         return None
 
-    def run_task(self, task: Task, abort_event: threading.Event):
+    def run_task(self, task: BaseTask, abort_event: threading.Event):
         """Run a task.
 
         Args:

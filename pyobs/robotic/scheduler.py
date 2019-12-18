@@ -1,15 +1,13 @@
 import threading
-import time
-
 from astroplan import Observer
 
 from pyobs.comm import Comm
 from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
-from .task import Task
+from .task import BaseTask
 
 
-class Scheduler:
+class BaseScheduler:
     def __init__(self, comm: Comm = None, vfs: VirtualFileSystem = None, observer: Observer = None, *args, **kwargs):
         self.comm = comm
         self.vfs = vfs
@@ -24,7 +22,7 @@ class Scheduler:
     def _create_task(self, klass, *args, **kwargs):
         return klass(*args, **kwargs, scheduler=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
-    def get_task(self, time: Time) -> Task:
+    def get_task(self, time: Time) -> BaseTask:
         """Returns the active task at the given time.
 
         Args:
@@ -35,7 +33,7 @@ class Scheduler:
         """
         raise NotImplementedError
 
-    def run_task(self, task: Task, abort_event: threading.Event):
+    def run_task(self, task: BaseTask, abort_event: threading.Event):
         """Run a task.
 
         Args:
@@ -48,4 +46,4 @@ class Scheduler:
         raise NotImplementedError
 
 
-__all__ = ['Scheduler']
+__all__ = ['BaseScheduler']

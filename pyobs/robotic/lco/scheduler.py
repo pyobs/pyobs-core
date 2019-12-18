@@ -23,14 +23,14 @@ log = logging.getLogger(__name__)
 class LcoScheduler(BaseScheduler):
     """Scheduler for using the LCO portal"""
 
-    def __init__(self, url: str, portal_site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
+    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
                  scripts: dict = None, portal_enclosure: str = None, portal_telescope: str = None,
                  portal_instrument: str = None, period: int = 24, *args, **kwargs):
         """Creates a new LCO scheduler.
 
         Args:
             url: URL to portal
-            portal_site: Site filter for fetching requests
+            site: Site filter for fetching requests
             token: Authorization token for portal
             telescope: Telescope to use
             camera: Camera to use
@@ -46,7 +46,7 @@ class LcoScheduler(BaseScheduler):
 
         # store stuff
         self._url = url
-        self._portal_site = portal_site
+        self._site = site
         self._portal_enclosure = portal_enclosure
         self._portal_telescope = portal_telescope
         self._portal_instrument = portal_instrument
@@ -126,7 +126,7 @@ class LcoScheduler(BaseScheduler):
         url = urllib.parse.urljoin(self._url, '/api/observations/')
         now = Time.now()
         params = {
-            'site': self._portal_site,
+            'site': self._site,
             'end_after': now.isot,
             'start_before': (now + TimeDelta(24 * u.hour)).isot,
             'state': 'PENDING'
@@ -322,7 +322,7 @@ class LcoScheduler(BaseScheduler):
 
         # define parameters
         params = {
-            'site': self._portal_site,
+            'site': self._site,
             'enclosure': self._portal_enclosure,
             'telescope': self._portal_telescope,
             'start': now.isot,
@@ -355,7 +355,7 @@ class LcoScheduler(BaseScheduler):
 
             # add observation
             observations.append({
-                'site': self._portal_site,
+                'site': self._site,
                 'enclosure': self._portal_enclosure,
                 'telescope': self._portal_telescope,
                 'start': row['start time (UTC)'],

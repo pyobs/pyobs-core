@@ -77,11 +77,9 @@ class Scheduler(PyObsModule, IStoppable):
 
             # update scheduler
             try:
-                self._scheduler()
+                self._scheduler(self.observer)
             except:
                 log.exception('The scheduler threw an exception.')
-                self._abort_event.wait(10)
-                continue
 
             # sleep a little
             self._interval_event.wait(self._interval)

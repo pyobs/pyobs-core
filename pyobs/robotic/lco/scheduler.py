@@ -4,7 +4,7 @@ import logging
 from typing import Union
 import requests
 from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, AtNightConstraint, Transitioner, \
-    SequentialScheduler, Schedule
+    SequentialScheduler, Schedule, Observer
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from astropy.time import TimeDelta
@@ -23,9 +23,9 @@ log = logging.getLogger(__name__)
 class LcoScheduler(BaseScheduler):
     """Scheduler for using the LCO portal"""
 
-    def __init__(self, url: str, site: str, token: str, telescope: str, camera: str, filters: str, roof: str,
-                 scripts: dict = None, portal_enclosure: str = None, portal_telescope: str = None,
-                 portal_instrument: str = None, period: int = 24, *args, **kwargs):
+    def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
+                 roof: str = None, update: bool = True, scripts: dict = None, portal_enclosure: str = None,
+                 portal_telescope: str = None, portal_instrument: str = None, period: int = 24, *args, **kwargs):
         """Creates a new LCO scheduler.
 
         Args:
@@ -36,6 +36,7 @@ class LcoScheduler(BaseScheduler):
             camera: Camera to use
             filters: Filter wheel to use
             roof: Roof to use
+            update: Whether to update scheduler in background
             scripts: External scripts
             portal_enclosure: Enclosure for new schedules.
             portal_telescope: Telescope for new schedules.
@@ -56,6 +57,7 @@ class LcoScheduler(BaseScheduler):
         self.filters = filters
         self.roof = roof
         self.instruments = None
+        self._update = update
 
         # create script handlers
         if scripts is None:
@@ -80,8 +82,9 @@ class LcoScheduler(BaseScheduler):
         """Open scheduler."""
 
         # start update thread
-        self._update_thread = threading.Thread(target=self._update)
-        self._update_thread.start()
+        if self._update:
+            self._update_thread = threading.Thread(target=self._update_schedule)
+            self._update_thread.start()
 
         # get stuff from portal
         self._init_from_portal()
@@ -107,7 +110,7 @@ class LcoScheduler(BaseScheduler):
         # store instruments
         self.instruments = {k.lower(): v for k, v in res.json().items()}
 
-    def _update(self):
+    def _update_schedule(self):
         """Update thread."""
         while not self._closing.is_set():
             # do actual update
@@ -217,8 +220,12 @@ class LcoScheduler(BaseScheduler):
         if r.status_code != 200:
             log.error('Could not update configuration status: %s', r.text)
 
-    def __call__(self):
-        """Calculate new schedule."""
+    def __call__(self, observer: Observer):
+        """Calculate new schedule.
+
+        Args:
+            observer: Observer to use
+        """
 
         # need some info
         if self._portal_enclosure is None or self._portal_telescope is None or self._portal_instrument is None:
@@ -235,8 +242,7 @@ class LcoScheduler(BaseScheduler):
         blocks, all_requests = self._get_blocks(schedulable)
 
         # schedule
-        schedule = self._schedule(blocks)
-        # print(schedule)
+        schedule = self._schedule(blocks, observer)
 
         # create observations
         observations = self._create_observations(schedule, all_requests)
@@ -302,15 +308,15 @@ class LcoScheduler(BaseScheduler):
         # return it
         return blocks, all_requests
 
-    def _schedule(self, blocks: list) -> Table:
+    def _schedule(self, blocks: list, observer: Observer) -> Table:
         # only constraint is the night
-        constraints = [AtNightConstraint.twilight_civil()]
+        constraints = [AtNightConstraint.twilight_astronomical()]
 
         # we don't need any transitions
         transitioner = Transitioner()
 
         # init scheduler and schedule
-        scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+        scheduler = SequentialScheduler(constraints, observer, transitioner=transitioner)
         schedule = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
         scheduler(blocks, schedule)
 
@@ -330,7 +336,7 @@ class LcoScheduler(BaseScheduler):
         }
 
         # cancel schedule
-        r = requests.post(self._url + '/observations/cancel/', json=params,
+        r = requests.post(self._url + '/api/observations/cancel/', json=params,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 200:
@@ -383,7 +389,7 @@ class LcoScheduler(BaseScheduler):
             return
 
         # submit obervations
-        r = requests.post(self._url + '/observations/', json=observations,
+        r = requests.post(self._url + '/api/observations/', json=observations,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 201:

@@ -22,6 +22,10 @@ class BaseScheduler:
     def _create_task(self, klass, *args, **kwargs):
         return klass(*args, **kwargs, scheduler=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
+    def __call__(self):
+        """Calculate new schedule."""
+        raise NotImplementedError
+
     def get_task(self, time: Time) -> BaseTask:
         """Returns the active task at the given time.
 

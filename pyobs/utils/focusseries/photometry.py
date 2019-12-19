@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 class PhotometryFocusSeries(FocusSeries):
-    def __init__(self, photometry: Photometry, radius_column: str = 'radius'):
+    def __init__(self, photometry: Photometry, radius_column: str = 'radius', *args, **kwargs):
         """Initialize a new projection focus series.
 
         Args:

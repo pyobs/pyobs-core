@@ -37,6 +37,9 @@ class PhotometryFocusSeries(FocusSeries):
 
         # do photometry
         sources = self._photometry(image)
+        sources = sources[sources['ellipticity'] < 0.1]
+        sources = sources[sources['peak'] > 1000]
+        sources = sources[sources['radius'] > 0]
 
         # calculate median radius
         radius = np.median(sources['radius'])

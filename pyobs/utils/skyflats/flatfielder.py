@@ -213,9 +213,9 @@ class FlatFielder:
         """Take bias image to determine bias level.
 
         Returns:
-            Average bias level.
+            Median bias level.
         """
-        log.info('Taking BIAS image to determine average level...')
+        log.info('Taking BIAS image to determine median level...')
 
         # set full frame
         if isinstance(camera, ICameraWindow):
@@ -227,10 +227,10 @@ class FlatFielder:
 
         # download image
         bias = self._vfs.download_image(filename[0])
-        avg = float(np.mean(bias.data))
+        avg = float(np.median(bias.data))
 
         # return it
-        log.info('Found average BIAS level of %.2f...', avg)
+        log.info('Found median BIAS level of %.2f...', avg)
         return avg
 
     def _wait(self):

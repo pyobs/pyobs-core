@@ -36,7 +36,7 @@ class FlatFielder:
         FINISHED = 'finished'
 
     def __init__(self, functions: typing.Dict[str, str] = None, target_count: float = 30000, min_exptime: float = 0.5,
-                 max_exptime: float = 5, test_frame: tuple = (45, 45, 10, 10), counts_frame: tuple = (25, 25, 75, 75),
+                 max_exptime: float = 5, test_frame: tuple = None, counts_frame: tuple = None,
                  log: str = '/pyobs/flatfield.csv', pointing: typing.Union[dict, SkyFlatsBasePointing] = None,
                  observer: Observer = None, vfs: VirtualFileSystem = None,
                  *args, **kwargs):
@@ -60,8 +60,8 @@ class FlatFielder:
         self._target_count = target_count
         self._min_exptime = min_exptime
         self._max_exptime = max_exptime
-        self._test_frame = test_frame
-        self._counts_frame = counts_frame
+        self._test_frame = (45, 45, 10, 10) if test_frame is None else test_frame
+        self._counts_frame = (25, 25, 75, 75) if counts_frame is None else counts_frame
         self._log_file = log
         self._observer = observer
         self._vfs = vfs

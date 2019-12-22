@@ -243,7 +243,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         with self._celestial_lock:
             self._celestial_headers = {
                 'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
-                'MOONFRAC': (moon_frac, 'Fraction of the moon illuminated'),
+                'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
                 'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
                 'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
                 'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')

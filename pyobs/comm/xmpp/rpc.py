@@ -150,6 +150,7 @@ class RPC(object):
 
         # get message
         iq.enable('rpc_query')
+        print(iq)
         args = xml2py(iq['rpc_query']['method_response']['params'])
 
         # get future

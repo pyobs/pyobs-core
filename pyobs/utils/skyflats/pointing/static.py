@@ -49,7 +49,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
         # move telescope
         log.info('Moving telescope to Alt=80, Az=%.2f...', altaz.az.degree)
-        return telescope.move_altaz(80, altaz.az.degree)
+        return telescope.move_altaz(80, float(altaz.az.degree))
 
 
 __all__ = ['SkyFlatsStaticPointing']

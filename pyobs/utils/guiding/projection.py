@@ -171,7 +171,7 @@ class AutoGuidingProjection(BaseGuider):
 
             # move offset
             log.info('Offsetting telescope...')
-            telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+            telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
             log.info('Finished image.')
             self._loop_closed = True
 
@@ -190,7 +190,7 @@ class AutoGuidingProjection(BaseGuider):
 
             # move offset
             log.info('Offsetting telescope...')
-            telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+            telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
             log.info('Finished image.')
             self._loop_closed = True
 

@@ -258,7 +258,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         ra_dec = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
         alt_az = self.observer.altaz(Time.now(), ra_dec)
-        return alt_az.alt.degree, alt_az.az.degree
+        return float(alt_az.alt.degree), float(alt_az.az.degree)
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.

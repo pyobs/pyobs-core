@@ -269,7 +269,7 @@ class FlatFielder:
 
         # scale with binning
         exptime /= self._cur_binning * self._cur_binning
-        return sun.alt.degree, exptime
+        return float(sun.alt.degree), exptime
 
     def _eval_exptime(self, min_exptime: float = None, max_exptime: float = None) -> int:
         """Evaluates current exposure time. Sets new state or waits of necessary.

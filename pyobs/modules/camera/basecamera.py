@@ -185,9 +185,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self.location is not None:
             loc = self.location
             # add location of telescope
-            hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
-            hdr['LATITUDE'] = (loc.lat.degree, 'Latitude of the telescope [deg N]')
-            hdr['HEIGHT'] = (loc.height.value, 'Altitude of the telescope [m]')
+            hdr['LONGITUD'] = (float(loc.lon.degree), 'Longitude of the telescope [deg E]')
+            hdr['LATITUDE'] = (float(loc.lat.degree), 'Latitude of the telescope [deg N]')
+            hdr['HEIGHT'] = (float(loc.height.value), 'Altitude of the telescope [m]')
 
             # add local sidereal time
             lst = self.observer.local_sidereal_time(date_obs)

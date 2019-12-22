@@ -178,15 +178,15 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
 
         # set coordinate headers
         if coords_ra_dec is not None:
-            hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
+            hdr['TEL-RA'] = (float(coords_ra_dec.ra.degree), 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (float(coords_ra_dec.dec.degree), 'Declination of telescope [degrees]')
             hdr['CRVAL1'] = hdr['TEL-RA']
             hdr['CRVAL2'] = hdr['TEL-DEC']
         if coords_alt_az is not None:
-            hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
+            hdr['TEL-ALT'] = (float(coords_alt_az.alt.degree), 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (float(coords_alt_az.az.degree), 'Telescope azimuth [degrees]')
             hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-            hdr['AIRMASS'] = (coords_alt_az.secz.value, 'Airmass of observation start')
+            hdr['AIRMASS'] = (float(coords_alt_az.secz.value), 'Airmass of observation start')
 
         # convert to sexagesimal
         if coords_ra_dec is not None:
@@ -242,11 +242,11 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         # store it
         with self._celestial_lock:
             self._celestial_headers = {
-                'MOONALT': (moon_altaz.alt.degree, 'Lunar altitude'),
+                'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
                 'MOONFRAC': (moon_frac, 'Fraction of the moon illuminated'),
-                'MOONDIST': (None if moon_dist is None else moon_dist.degree, 'Lunar distance from target'),
-                'SUNALT': (sun_altaz.alt.degree, 'Solar altitude'),
-                'SUNDIST': (None if sun_dist is None else sun_dist.degree, 'Solar Distance from Target')
+                'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
+                'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
+                'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
             }
 
 

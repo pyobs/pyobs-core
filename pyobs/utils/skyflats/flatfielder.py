@@ -177,7 +177,7 @@ class FlatFielder:
 
         # do initial check
         if not self._inital_check():
-            return self._state
+            return
 
         # set binning
         if isinstance(camera, ICameraBinning):

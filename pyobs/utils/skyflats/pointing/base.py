@@ -19,5 +19,9 @@ class SkyFlatsBasePointing:
         """
         raise NotImplementedError
 
+    def reset(self):
+        """Reset pointing."""
+        pass
+
 
 __all__ = ['SkyFlatsBasePointing']

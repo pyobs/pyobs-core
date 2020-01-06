@@ -141,6 +141,7 @@ class FlatFielder:
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
         self._exptime_done = 0
+        self._pointing.reset()
 
     @property
     def image_count(self):

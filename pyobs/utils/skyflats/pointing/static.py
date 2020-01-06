@@ -51,5 +51,9 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         log.info('Moving telescope to Alt=80, Az=%.2f...', altaz.az.degree)
         return telescope.move_altaz(80, float(altaz.az.degree))
 
+    def reset(self):
+        """Reset pointing."""
+        self._initialized = False
+
 
 __all__ = ['SkyFlatsStaticPointing']

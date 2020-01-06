@@ -3,6 +3,7 @@ import threading
 import typing
 from enum import Enum
 
+from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
 from pyobs import PyObsModule, get_object
 from pyobs.modules import timeout
@@ -57,6 +58,11 @@ class FlatField(PyObsModule, IFlatField):
         except ValueError:
             log.warning('Either telescope, camera or filters do not exist or are not of correct type at the moment.')
 
+            # subscribe to events
+            if self.comm:
+                self.comm.register_event(BadWeatherEvent, self._abort_weather)
+                self.comm.register_event(RoofClosingEvent, self._abort_weather)
+
     def close(self):
         """Close module."""
         PyObsModule.close(self)
@@ -93,10 +99,13 @@ class FlatField(PyObsModule, IFlatField):
 
         # run until state is finished or we aborted
         state = None
-        while not self._abort.is_set() and state != FlatFielder.State.FINISHED:
+        while state != FlatFielder.State.FINISHED:
             # can we run?
             if not telescope.is_ready().wait():
                 log.error('Telescope not in valid state, aborting...')
+                return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+            if self._abort.is_set():
+                log.warning('Aborting flat-fielding...')
                 return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
             # do step
@@ -124,6 +133,10 @@ class FlatField(PyObsModule, IFlatField):
             Dictionary with current status.
         """
         raise NotImplementedError
+
+    def _abort_weather(self, event: Event, sender: str, *args, **kwargs):
+        """Abort on bad weather."""
+        self.abort()
 
 
 __all__ = ['FlatField']

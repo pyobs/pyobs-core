@@ -37,7 +37,7 @@ class FlatFielder:
 
     def __init__(self, functions: typing.Dict[str, str] = None, target_count: float = 30000, min_exptime: float = 0.5,
                  max_exptime: float = 5, test_frame: tuple = None, counts_frame: tuple = None,
-                 allowed_offset_frac: float = 0.2, log: str = '/pyobs/flatfield.csv',
+                 allowed_offset_frac: float = 0.2, min_counts: int = 100, log: str = '/pyobs/flatfield.csv',
                  pointing: typing.Union[dict, SkyFlatsBasePointing] = None, observer: Observer = None,
                  vfs: VirtualFileSystem = None, *args, **kwargs):
         """Initialize a new flat fielder.
@@ -53,18 +53,20 @@ class FlatFielder:
                 count rate.
             allowed_offset_frac: Offset from target_count (given in fraction of it) that's still allowed for good
                 flat-field
+            min_counts: Minimum counts in frames.
             log: Log file to write.
             observer: Observer to use.
             vfs: VFS to use.
         """
 
-        # store telescope, camera, and filters
+        # store stuff
         self._target_count = target_count
         self._min_exptime = min_exptime
         self._max_exptime = max_exptime
         self._test_frame = (45, 45, 10, 10) if test_frame is None else test_frame
         self._counts_frame = (25, 25, 75, 75) if counts_frame is None else counts_frame
         self._allowed_offset_frac = allowed_offset_frac
+        self._min_counts = min_counts
         self._log_file = log
         self._observer = observer
         self._vfs = vfs
@@ -373,19 +375,28 @@ class FlatFielder:
         self._median = self._get_image_median(flat_field, self._counts_frame)
         log.info('Got a flat field with median counts of %.2f.', self._median)
 
-        # outside range
-        frac = abs(1. - self._median / self._target_count)
-        good = True
-        if frac > self._target_count:
-            log.warning('Deviation from target count (%.1f%%) is larger than allowed, retrying last image...')
-            good = False
+        # if count rate is too low, don't use this image to calculate new exposure time
+        if self._median < self._min_counts:
+            log.warning('Median counts (%d) too low, retrying last image with same exposure time...', self._median)
+            return False
 
-        # calculate new exposure time
-        self._calc_new_exptime()
-        log.info('Calculated new exposure time to be %.2fs.', self._exptime)
-        return good
+        else:
+            # calculate deviation from target counts
+            frac = abs(1. - self._median / self._target_count)
 
-    def _get_image_median(self, image, frame=None) -> float:
+            # calculate new exposure time
+            self._calc_new_exptime()
+
+            # log and return
+            if frac > self._target_count:
+                log.warning('Deviation from target count (%.1f%%) is larger than allowed, retrying last image...', frac)
+                return False
+            else:
+                log.info('Calculated new exposure time to be %.2fs.', self._exptime)
+                return True
+
+    @staticmethod
+    def _get_image_median(image, frame=None) -> float:
         """Returns median of image after trimming it to TRIMSEC and to given frame.
 
         Args:

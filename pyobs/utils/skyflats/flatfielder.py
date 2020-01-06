@@ -37,9 +37,9 @@ class FlatFielder:
 
     def __init__(self, functions: typing.Dict[str, str] = None, target_count: float = 30000, min_exptime: float = 0.5,
                  max_exptime: float = 5, test_frame: tuple = None, counts_frame: tuple = None,
-                 log: str = '/pyobs/flatfield.csv', pointing: typing.Union[dict, SkyFlatsBasePointing] = None,
-                 observer: Observer = None, vfs: VirtualFileSystem = None,
-                 *args, **kwargs):
+                 allowed_offset_frac: float = 0.2, log: str = '/pyobs/flatfield.csv',
+                 pointing: typing.Union[dict, SkyFlatsBasePointing] = None, observer: Observer = None,
+                 vfs: VirtualFileSystem = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:
@@ -51,6 +51,8 @@ class FlatFielder:
             test_frame: Tupel (left, top, width, height) in percent that describe the frame for on-sky testing.
             counts_frame: Tupel (left, top, width, height) in percent that describe the frame for calculating mean
                 count rate.
+            allowed_offset_frac: Offset from target_count (given in fraction of it) that's still allowed for good
+                flat-field
             log: Log file to write.
             observer: Observer to use.
             vfs: VFS to use.
@@ -62,6 +64,7 @@ class FlatFielder:
         self._max_exptime = max_exptime
         self._test_frame = (45, 45, 10, 10) if test_frame is None else test_frame
         self._counts_frame = (25, 25, 75, 75) if counts_frame is None else counts_frame
+        self._allowed_offset_frac = allowed_offset_frac
         self._log_file = log
         self._observer = observer
         self._vfs = vfs
@@ -82,6 +85,9 @@ class FlatFielder:
 
         # current exposure time
         self._exptime = None
+
+        # median of last image
+        self._median = None
 
         # exposures to do
         self._exposures_total = 0
@@ -348,19 +354,36 @@ class FlatFielder:
             log.info('Setting camera window to %dx%d at %d,%d...', width, height, left, top)
             camera.set_window(left, top, width, height).wait()
 
-    def _analyse_image(self, filename: str):
+    def _analyse_image(self, filename: str) -> bool:
+        """Analyze image and return whether it's okay.
+
+        Args:
+            filename: Filename of image.
+
+        Returns:
+            Whether flat-field is okay.
+        """
+
         # download image
         flat_field = self._vfs.download_image(filename)
         if flat_field is None:
-            return
+            return False
 
         # get median from image
-        median = self._get_image_median(flat_field, self._counts_frame)
-        log.info('Got a flat field with median counts of %.2f.', median)
+        self._median = self._get_image_median(flat_field, self._counts_frame)
+        log.info('Got a flat field with median counts of %.2f.', self._median)
+
+        # outside range
+        frac = abs(1. - self._median / self._target_count)
+        good = True
+        if frac > self._target_count:
+            log.warning('Deviation from target count (%.1f%%) is larger than allowed, retrying last image...')
+            good = False
 
         # calculate new exposure time
-        self._exptime = self._calc_new_exptime(median)
+        self._calc_new_exptime()
         log.info('Calculated new exposure time to be %.2fs.', self._exptime)
+        return good
 
     def _get_image_median(self, image, frame=None) -> float:
         """Returns median of image after trimming it to TRIMSEC and to given frame.
@@ -385,23 +408,16 @@ class FlatFielder:
         # return median
         return np.median(data)
 
-    def _calc_new_exptime(self, median: float) -> float:
-        """Calculate new exposure time.
-
-        Args:
-            median: Median of last exposure.
-
-        Returns:
-            New exposure time.
-        """
+    def _calc_new_exptime(self):
+        """Calculate new exposure time."""
         # calculate factor for new exposure time
-        factor = (self._target_count - self._bias_level) / (median - self._bias_level)
+        factor = (self._target_count - self._bias_level) / (self._median - self._bias_level)
 
         # limit factor to 0.1-10
         factor = min(10., max(0.1, factor))
 
         # calculate next exposure time
-        return self._exptime * factor
+        self._exptime *= factor
 
     def _flat_field(self, telescope: ITelescope, camera: ICamera):
         """Take flat-fields."""
@@ -419,20 +435,19 @@ class FlatFielder:
         filename = camera.expose(exposure_time=int(self._exptime * 1000.),
                                  image_type=ICamera.ImageType.SKYFLAT).wait()
 
-        # increase count and quite here, if finished
-        self._exptime_done += int(self._exptime * 1000.)
-        self._exposures_done += 1
-        if self._exposures_done >= self._exposures_total:
-            log.info('Finished all requested flat-fields..')
-            self._state = FlatFielder.State.FINISHED
-            return
-
         # analyse image
-        self._analyse_image(filename[0])
+        if self._analyse_image(filename[0]):
+            # increase count and quite here, if finished
+            self._exptime_done += int(self._exptime * 1000.)
+            self._exposures_done += 1
+            if self._exposures_done >= self._exposures_total:
+                log.info('Finished all requested flat-fields..')
+                self._state = FlatFielder.State.FINISHED
+                return
 
-        # write it to log
-        sun = self._observer.sun_altaz(now)
-        self._write_log(now.datetime, sun.alt.degree)
+            # write it to log
+            sun = self._observer.sun_altaz(now)
+            self._write_log(now.datetime, sun.alt.degree)
 
         # then evaluate exposure time
         state = self._eval_exptime()

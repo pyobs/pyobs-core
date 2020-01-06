@@ -7,7 +7,7 @@ from pyobs.comm import Comm
 from pyobs.interfaces import ITelescope, ICamera, IFilters, IRoof
 from pyobs.robotic.lco.default import LcoDefaultScript
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.task import BaseTask
+from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class ConfigStatus:
         }
 
 
-class LcoTask(BaseTask):
+class LcoTask(Task):
     """A task from the LCO portal."""
 
     def __init__(self, config: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
@@ -70,7 +70,7 @@ class LcoTask(BaseTask):
             roof: Roof to use
             scripts: External scripts to run
         """
-        BaseTask.__init__(self, *args, **kwargs)
+        Task.__init__(self, *args, **kwargs)
 
         # store stuff
         self.config = config

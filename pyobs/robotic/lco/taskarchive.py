@@ -11,16 +11,16 @@ from astropy.time import TimeDelta
 import astropy.units as u
 
 from pyobs.object import get_object
-from pyobs.robotic.task import BaseTask
+from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
-from ..scheduler import BaseScheduler
+from ..taskarchive import TaskArchive
 from .task import LcoTask
 
 
 log = logging.getLogger(__name__)
 
 
-class LcoScheduler(BaseScheduler):
+class LcoTaskArchive(TaskArchive):
     """Scheduler for using the LCO portal"""
 
     def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
@@ -43,7 +43,7 @@ class LcoScheduler(BaseScheduler):
             portal_instrument: Instrument for new schedules.
             period: Period to schedule in hours
         """
-        BaseScheduler.__init__(self, *args, **kwargs)
+        TaskArchive.__init__(self, *args, **kwargs)
 
         # store stuff
         self._url = url
@@ -163,7 +163,7 @@ class LcoScheduler(BaseScheduler):
         else:
             log.warning('Could not fetch schedule.')
 
-    def get_task(self, time: Time) -> Union[BaseTask, None]:
+    def get_task(self, time: Time) -> Union[Task, None]:
         """Returns the active task at the given time.
 
         Args:
@@ -186,7 +186,7 @@ class LcoScheduler(BaseScheduler):
         # nothing found
         return None
 
-    def run_task(self, task: BaseTask, abort_event: threading.Event):
+    def run_task(self, task: Task, abort_event: threading.Event):
         """Run a task.
 
         Args:
@@ -220,66 +220,24 @@ class LcoScheduler(BaseScheduler):
         if r.status_code != 200:
             log.error('Could not update configuration status: %s', r.text)
 
-    def __call__(self, observer: Observer):
-        """Calculate new schedule.
+    def get_schedulable_blocks(self) -> list:
+        """Returns list of schedulable blocks.
 
-        Args:
-            observer: Observer to use
+        Returns:
+            List of schedulable blocks
         """
-
-        # need some info
-        if self._portal_enclosure is None or self._portal_telescope is None or self._portal_instrument is None:
-            log.error('No enclosure, telescope, or instrument given.')
-            return
-
-        # get now
-        now = Time.now()
-
-        # get schedulable requests
-        schedulable = self._get_requests()
-
-        # get all observation blocks
-        blocks, all_requests = self._get_blocks(schedulable)
-
-        # schedule
-        schedule = self._schedule(blocks, observer)
-
-        # create observations
-        observations = self._create_observations(schedule, all_requests)
-
-        # cancel schedule
-        self._cancel_schedule(now)
-
-        # submit observations
-        self._submit_observations(observations)
-
-    def _get_requests(self):
-        """Get requests from observe page"""
 
         # get requests
         r = requests.get(self._url + '/api/requestgroups/schedulable_requests/', headers=self._header)
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
-        return r.json()
-
-    def _get_blocks(self, schedulable: list) -> (list, dict):
-        """Get all blocks from a list of schedulable requests
-
-        Args:
-            schedulable: List of schedulable requests.
-
-        Returns:
-            Lists of blocks and dict with all requests by ID.
-        """
+        schedulable = r.json()
 
         # loop all request groups
         blocks = []
-        all_requests = {}
         for group in schedulable:
             # loop all requests in group
             for req in group['requests']:
-                # store request
-                all_requests[req['id']] = req
 
                 # duration
                 duration = req['duration'] * u.second
@@ -302,26 +260,28 @@ class LcoScheduler(BaseScheduler):
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,
-                                           constraints=[*constraints, *time_constraints])
+                                           constraints=[*constraints, *time_constraints],
+                                           configuration={'request': req})
                     blocks.append(block)
 
-        # return it
-        return blocks, all_requests
+        # return blocks
+        return blocks
 
-    def _schedule(self, blocks: list, observer: Observer) -> Table:
-        # only constraint is the night
-        constraints = [AtNightConstraint.twilight_astronomical()]
+    def update_schedule(self, blocks: list):
+        """Update the list of scheduled blocks.
 
-        # we don't need any transitions
-        transitioner = Transitioner()
+        Args:
+            blocks: Scheduled blocks.
+        """
 
-        # init scheduler and schedule
-        scheduler = SequentialScheduler(constraints, observer, transitioner=transitioner)
-        schedule = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
-        scheduler(blocks, schedule)
+        # create observations
+        observations = self._create_observations(blocks)
 
-        # return table
-        return schedule.to_table()
+        # cancel schedule
+        self._cancel_schedule(Time.now())
+
+        # send new schedule
+        self._submit_observations(observations)
 
     def _cancel_schedule(self, now: Time):
         """Cancel future schedule."""
@@ -342,30 +302,29 @@ class LcoScheduler(BaseScheduler):
         if r.status_code != 200:
             raise ValueError('Could not cancel schedule.')
 
-    def _create_observations(self, schedule: Table, all_requests: dict) -> list:
+    def _create_observations(self, blocks: list) -> list:
         """Create observations from schedule.
 
         Args:
-            schedule: Schedule to use.
-            all_requests: Dict with all requests.
+            blocks: List of scheduled blocks
 
         Returns:
             List with observations.
         """
 
-        # loop results
+        # loop blocks
         observations = []
-        for row in schedule:
-            # find request
-            request = all_requests[row['target']]
+        for block in blocks:
+            # get request
+            request = block.configuration['request']
 
             # add observation
             observations.append({
                 'site': self._site,
                 'enclosure': self._portal_enclosure,
                 'telescope': self._portal_telescope,
-                'start': row['start time (UTC)'],
-                'end': row['end time (UTC)'],
+                'start': block.start_time.isot,
+                'end': block.end_time.isot,
                 'request': request['id'],
                 'configuration_statuses': [{
                     'configuration': request['configurations'][0]['id'],
@@ -396,4 +355,4 @@ class LcoScheduler(BaseScheduler):
             raise ValueError('Could not submit observations.')
 
 
-__all__ = ['LcoScheduler']
+__all__ = ['LcoTaskArchive']

@@ -4,8 +4,8 @@ from threading import Event
 from pyobs.utils.time import Time
 
 
-class BaseTask:
-    def __init__(self, scheduler: 'BaseScheduler', *args, **kwargs):
+class Task:
+    def __init__(self, scheduler: 'TaskArchive', *args, **kwargs):
         self.scheduler = scheduler
 
     @property
@@ -78,4 +78,4 @@ class BaseTask:
             raise InterruptedError
 
 
-__all__ = ['BaseTask']
+__all__ = ['Task']

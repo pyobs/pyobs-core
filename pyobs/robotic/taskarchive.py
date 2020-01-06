@@ -4,10 +4,10 @@ from astroplan import Observer
 from pyobs.comm import Comm
 from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
-from .task import BaseTask
+from .task import Task
 
 
-class BaseScheduler:
+class TaskArchive:
     def __init__(self, comm: Comm = None, vfs: VirtualFileSystem = None, observer: Observer = None, *args, **kwargs):
         self.comm = comm
         self.vfs = vfs
@@ -22,11 +22,23 @@ class BaseScheduler:
     def _create_task(self, klass, *args, **kwargs):
         return klass(*args, **kwargs, scheduler=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
-    def __call__(self):
-        """Calculate new schedule."""
+    def get_schedulable_blocks(self) -> list:
+        """Returns list of schedulable blocks.
+
+        Returns:
+            List of schedulable blocks
+        """
         raise NotImplementedError
 
-    def get_task(self, time: Time) -> BaseTask:
+    def update_schedule(self, blocks: list):
+        """Update the list of scheduled blocks.
+
+        Args:
+            blocks: Scheduled blocks.
+        """
+        raise NotImplementedError
+
+    def get_task(self, time: Time) -> Task:
         """Returns the active task at the given time.
 
         Args:
@@ -37,7 +49,7 @@ class BaseScheduler:
         """
         raise NotImplementedError
 
-    def run_task(self, task: BaseTask, abort_event: threading.Event):
+    def run_task(self, task: Task, abort_event: threading.Event):
         """Run a task.
 
         Args:
@@ -50,4 +62,4 @@ class BaseScheduler:
         raise NotImplementedError
 
 
-__all__ = ['BaseScheduler']
+__all__ = ['TaskArchive']

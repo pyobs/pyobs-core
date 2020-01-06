@@ -6,8 +6,8 @@ from pyobs import PyObsModule, get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderProvider
-from pyobs.robotic.scheduler import BaseScheduler
-from pyobs.robotic.task import BaseTask
+from pyobs.robotic.taskarchive import TaskArchive
+from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 
 
@@ -17,16 +17,16 @@ log = logging.getLogger(__name__)
 class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
-    def __init__(self, scheduler: Union[BaseScheduler, dict], *args, **kwargs):
+    def __init__(self, tasks: Union[TaskArchive, dict], *args, **kwargs):
         """Initialize a new auto focus system."""
         PyObsModule.__init__(self, *args, **kwargs)
 
         # add thread func
         self._add_thread_func(self._run_thread, True)
 
-        # get scheduler
-        self._scheduler: BaseScheduler = get_object(scheduler, object_class=BaseScheduler,
-                                                    comm=self.comm, vfs=self.vfs, observer=self.observer)
+        # get task archive
+        self._task_archive: TaskArchive = get_object(tasks, object_class=TaskArchive,
+                                                     comm=self.comm, vfs=self.vfs, observer=self.observer)
 
         # observation name and exposure number
         self._task = None
@@ -38,14 +38,14 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         PyObsModule.open(self)
 
         # open scheduler
-        self._scheduler.open()
+        self._task_archive.open()
 
     def close(self):
         """Close module."""
         PyObsModule.close(self)
 
         # close scheduler
-        self._scheduler.close()
+        self._task_archive.close()
 
     def _run_thread(self):
         # wait a little
@@ -57,7 +57,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             now = Time.now()
 
             # find task that we want to run now
-            task: BaseTask = self._scheduler.get_task(now)
+            task: Task = self._task_archive.get_task(now)
             if task is None or not task.can_run():
                 # no task found
                 self.closing.wait(10)
@@ -75,7 +75,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             # run task in thread
             log.info('Running task %s...', self._task.name)
             abort_event = threading.Event()
-            task_thread = threading.Thread(target=self._scheduler.run_task, args=(self._task, abort_event))
+            task_thread = threading.Thread(target=self._task_archive.run_task, args=(self._task, abort_event))
             task_thread.start()
 
             # wait for it

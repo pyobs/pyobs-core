@@ -121,5 +121,26 @@ class LcoDefaultScript(Script):
                 self.camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
                 self.exptime_done += ic['exposure_time']
 
+    def get_fits_headers(self, namespaces: list = None) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # init header
+        hdr = {}
+
+        # which image type?
+        if self.image_type == ICamera.ImageType.OBJECT:
+            # add object name
+            hdr['OBJECT'] = self.config['target']['name'], 'Name of target'
+
+        # return
+        return hdr
+
 
 __all__ = ['LcoDefaultScript']

@@ -5,8 +5,8 @@ from pyobs.utils.time import Time
 
 
 class Task:
-    def __init__(self, scheduler: 'TaskArchive', *args, **kwargs):
-        self.scheduler = scheduler
+    def __init__(self, tasks: 'TaskArchive', *args, **kwargs):
+        self.task_archive = tasks
 
     @property
     def id(self) -> str:

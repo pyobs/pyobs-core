@@ -80,6 +80,7 @@ class LcoTask(Task):
         self.filters = filters
         self.roof = roof
         self.scripts = scripts
+        self.cur_script = None
 
     @property
     def id(self) -> str:
@@ -146,9 +147,9 @@ class LcoTask(Task):
         else:
             # seems to be a default task
             log.info('Creating default configuration...')
-            from .scheduler import LcoScheduler
-            self.scheduler: LcoScheduler
-            return LcoDefaultScript(config, roof, telescope, camera, filters, self.scheduler.instruments)
+            from .taskarchive import LcoTaskArchive
+            self.task_archive: LcoTaskArchive
+            return LcoDefaultScript(config, roof, telescope, camera, filters, self.task_archive.instruments)
 
     def can_run(self) -> bool:
         """Checks, whether this task could run now.
@@ -182,7 +183,7 @@ class LcoTask(Task):
         Args:
             abort_event: Event to be triggered to abort task.
         """
-        from pyobs.robotic.lco import LcoScheduler
+        from pyobs.robotic.lco import LcoTaskArchive
 
         # get request
         req = self.config['request']
@@ -196,9 +197,9 @@ class LcoTask(Task):
             for config in req['configurations']:
                 # send status
                 status = ConfigStatus()
-                if isinstance(self.scheduler, LcoScheduler):
-                    self.scheduler.send_update(config['configuration_status'],
-                                               status.finish(state='FAILED', reason='System failure.').to_json())
+                if isinstance(self.task_archive, LcoTaskArchive):
+                    self.task_archive.send_update(config['configuration_status'],
+                                                  status.finish(state='FAILED', reason='System failure.').to_json())
 
             # finish
             return
@@ -210,9 +211,9 @@ class LcoTask(Task):
                 break
 
             # send an ATTEMPT status
-            if isinstance(self.scheduler, LcoScheduler):
+            if isinstance(self.task_archive, LcoTaskArchive):
                 status = ConfigStatus()
-                self.scheduler.send_update(config['configuration_status'], status.finish().to_json())
+                self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
 
             # get config runner
             script = self._get_config_script(config, roof, telescope, camera, filters)
@@ -224,11 +225,13 @@ class LcoTask(Task):
 
             # run config
             log.info('Running config...')
+            self.cur_script = script
             status = self._run_script(abort_event, script)
+            self.cur_script = None
 
             # send status
-            if status is not None and isinstance(self.scheduler, LcoScheduler):
-                self.scheduler.send_update(config['configuration_status'], status.to_json())
+            if status is not None and isinstance(self.task_archive, LcoTaskArchive):
+                self.task_archive.send_update(config['configuration_status'], status.to_json())
 
         # finished task
         log.info('Finished task.')
@@ -273,6 +276,22 @@ class LcoTask(Task):
     def is_finished(self) -> bool:
         """Whether task is finished."""
         return self.config['state'] != 'PENDING'
+
+    def get_fits_headers(self, namespaces: list = None) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # get header from script
+        hdr = self.cur_script.get_fits_headers(namespaces) if self.cur_script is not None else {}
+
+        # return it
+        return hdr
 
 
 __all__ = ['LcoTask']

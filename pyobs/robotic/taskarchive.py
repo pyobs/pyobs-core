@@ -20,7 +20,7 @@ class TaskArchive:
         pass
 
     def _create_task(self, klass, *args, **kwargs):
-        return klass(*args, **kwargs, scheduler=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
+        return klass(*args, **kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
     def get_schedulable_blocks(self) -> list:
         """Returns list of schedulable blocks.

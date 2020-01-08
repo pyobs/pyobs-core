@@ -10,7 +10,7 @@ import numpy as np
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel, IFilters
-from pyobs.events import FocusFoundEvent
+from pyobs.events import FocusFoundEvent, FilterChangedEvent
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class FocusModel(PyObsModule, IFocusModel):
                  model: str = None, coefficients: dict = None, update: bool = False,
                  measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10, enabled: bool = True,
                  temp_sensor: str = 'average.temp', default_filter: str = None, filter_offsets: dict = None,
-                 filter_wheel: typing.Union[str, IFilters] = None, *args, **kwargs):
+                 filter_wheel: str = None, *args, **kwargs):
         """Initialize a focus model.
 
         Args:
@@ -125,6 +125,8 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # subscribe to events
         self.comm.register_event(FocusFoundEvent, self._on_focus_found)
+        if self._filter_offsets is not None and self._filter_wheel is not None:
+            self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
 
     def _run_thread(self):
         # wait a little
@@ -175,8 +177,11 @@ class FocusModel(PyObsModule, IFocusModel):
             log.info('Going to sleep for %d seconds...', self._interval)
             self.closing.wait(self._interval)
 
-    def get_optimal_focus(self, *args, **kwargs) -> float:
+    def _get_optimal_focus(self, filter_name: str = None, *args, **kwargs) -> float:
         """Returns the optimal focus.
+
+        Args:
+            filter_name: If given, use this filter name instead of fetching one.
 
         Returns:
             Optimum focus calculated from model.
@@ -194,20 +199,37 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # focus offset?
         if self._filter_offsets is not None and self._filter_wheel is not None:
-            # get proxy
-            wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
+            try:
+                # need a filter name?
+                if filter_name is None:
+                    # get proxy
+                    wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
 
-            # get filter
-            filter_name = wheel.get_filter().wait()
+                    # get filter
+                    filter_name = wheel.get_filter().wait()
 
-            # add offset
-            offset = self._filter_offsets[filter_name]
-            log.info('Adding filter offset of %.2f...', offset)
-            focus += offset
+                # add offset
+                offset = self._filter_offsets[filter_name]
+                log.info('Adding filter offset of %.2f for filter %s...', offset, filter_name)
+                focus += offset
+
+            except (ValueError, KeyError):
+                log.error('Could not determine filter offset.')
 
         # set focus
         log.info('Found optimal focus of %.4f.', focus)
         return float(focus)
+
+    def get_optimal_focus(self, *args, **kwargs) -> float:
+        """Returns the optimal focus.
+
+        Returns:
+            Optimum focus calculated from model.
+
+        Raises:
+            ValueError: If anything went wrong.
+        """
+        return self._get_optimal_focus()
 
     def _get_values(self) -> dict:
         """Retrieve all required values for the model.
@@ -266,9 +288,11 @@ class FocusModel(PyObsModule, IFocusModel):
         log.info('Found values for model: %s', vars)
         return variables
 
-    @timeout(60000)
-    def set_optimal_focus(self, *args, **kwargs):
+    def _set_optimal_focus(self, filter_name: str = None, *args, **kwargs):
         """Sets optimal focus.
+
+        Args:
+            filter_name: Name of filter to use.
 
         Raises:
             ValueError: If anything went wrong.
@@ -278,12 +302,21 @@ class FocusModel(PyObsModule, IFocusModel):
         focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get focus
-        focus = self.get_optimal_focus()
+        focus = self._get_optimal_focus(filter_name=filter_name)
 
         # set it
         log.info('Setting optimal focus...')
         focuser.set_focus(focus).wait()
         log.info('Done.')
+
+    @timeout(60000)
+    def set_optimal_focus(self, *args, **kwargs):
+        """Sets optimal focus.
+
+        Raises:
+            ValueError: If anything went wrong.
+        """
+        self._set_optimal_focus()
 
     def _on_focus_found(self, event: FocusFoundEvent, sender: str):
         """Receive FocusFoundEvent.
@@ -412,8 +445,6 @@ class FocusModel(PyObsModule, IFocusModel):
                 # need to separate
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
-                print(self._coefficients)
-                print(self._filter_offsets)
 
     def _residuals(self, x: lmfit.Parameters, data: pd.DataFrame):
         """Fit method for model
@@ -461,6 +492,25 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # return residuals
         return (focus - model) / error
+
+    def _on_filter_changed(self, event: FilterChangedEvent, sender: str):
+        """Receive FilterChangedEvent and set focus.
+
+        Args:
+            event: The event itself
+            sender: The name of the sender.
+        """
+
+        # wrong sender?
+        if sender != self._filter_wheel:
+            return
+
+        # log and change
+        try:
+            log.info('Detected filter change to %s, adjusting focus...')
+            self._set_optimal_focus(event.filter)
+        except ValueError:
+            log.error('Could not set focus.')
 
 
 __all__ = ['FocusModel']

@@ -507,7 +507,7 @@ class FocusModel(PyObsModule, IFocusModel):
 
         # log and change
         try:
-            log.info('Detected filter change to %s, adjusting focus...')
+            log.info('Detected filter change to %s, adjusting focus...', event.filter)
             self._set_optimal_focus(event.filter)
         except ValueError:
             log.error('Could not set focus.')

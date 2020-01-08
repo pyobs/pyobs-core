@@ -1,12 +1,15 @@
 import io
 import logging
+
+import typing
 from py_expression_eval import Parser
 import pandas as pd
 import lmfit
+import numpy as np
 
 from pyobs import PyObsModule
 from pyobs.modules import timeout
-from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel
+from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent
 from pyobs.utils.time import Time
 
@@ -51,7 +54,8 @@ class FocusModel(PyObsModule, IFocusModel):
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,
                  measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10, enabled: bool = True,
-                 temp_sensor: str = 'average.temp', *args, **kwargs):
+                 temp_sensor: str = 'average.temp', default_filter: str = None, filter_offsets: dict = None,
+                 filter_wheel: typing.Union[str, IFilters] = None, *args, **kwargs):
         """Initialize a focus model.
 
         Args:
@@ -65,6 +69,9 @@ class FocusModel(PyObsModule, IFocusModel):
             min_measurements: Minimum number of measurements to update model.
             enabled: If False, no focus is set.
             temp_sensor: Name of sensor at weather station to provide ambient temperature.
+            default_filter: Name of default filter. If None, filters are ignored.
+            filter_offsets: Offsets for different filters. If None, they are not modeled.
+            filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -83,6 +90,9 @@ class FocusModel(PyObsModule, IFocusModel):
         self._min_measurements = min_measurements
         self._enabled = enabled
         self._temp_station, self._temp_sensor = temp_sensor.split('.')
+        self._default_filter = default_filter
+        self._filter_offsets = filter_offsets
+        self._filter_wheel = filter_wheel
         log.info('Going to fetch temperature from sensor %s at station %s.', self._temp_sensor, self._temp_station)
 
         # model
@@ -181,6 +191,21 @@ class FocusModel(PyObsModule, IFocusModel):
         # evaluate model
         log.info('Evaluating model...')
         focus = self._model.evaluate({**values, **self._coefficients})
+
+        # focus offset?
+        if self._filter_offsets is not None and self._filter_wheel is not None:
+            # get proxy
+            wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
+
+            # get filter
+            filter_name = wheel.get_filter().wait()
+
+            # add offset
+            offset = self._filter_offsets[filter_name]
+            log.info('Adding filter offset of %.2f...', offset)
+            focus += offset
+
+        # set focus
         log.info('Found optimal focus of %.4f.', focus)
         return float(focus)
 
@@ -335,7 +360,7 @@ class FocusModel(PyObsModule, IFocusModel):
             return
 
         # only take clear filter images for now
-        data = self._measurements[self._measurements['filter'] == 'clear']
+        data = self._measurements.copy()
 
         # enough measurements?
         if len(data) < self._min_measurements:
@@ -348,6 +373,12 @@ class FocusModel(PyObsModule, IFocusModel):
         for c in self._coefficients.keys():
             params.add(c, 0.)
 
+        # if we want to fit filter offsets, add them to params
+        if self._filter_offsets is not None:
+            # get unique list of filters and add them
+            for f in data['filter'].unique():
+                params.add('off_' + f, 0.)
+
         # fit
         log.info('Fitting coefficients...')
         out = lmfit.minimize(self._residuals, params, args=(data,))
@@ -355,12 +386,34 @@ class FocusModel(PyObsModule, IFocusModel):
         # print results
         log.info('Found best coefficients:')
         for p in out.params:
-            log.info('  %5s = %10.5f +- %8.5f', p, out.params[p].value, out.params[p].stderr)
+            if not p.startswith('off_'):
+                if out.params[p].stderr is not None:
+                    log.info('  %-5s = %10.5f +- %8.5f', p, out.params[p].value, out.params[p].stderr)
+                else:
+                    log.info('  %-5s = %10.5f', p, out.params[p].value)
+        if self._filter_offsets is not None:
+            log.info('Found filter offsets:')
+            for p in out.params:
+                if p.startswith('off_'):
+                    if out.params[p].stderr is not None:
+                        log.info('  %-10s = %10.5f +- %8.5f', p[4:], out.params[p].value, out.params[p].stderr)
+                    else:
+                        log.info('  %-10s = %10.5f', p[4:], out.params[p].value)
+
         log.info('Reduced chi squared: %.3f', out.redchi)
 
-        # store new coeffients
+        # store new coefficients and filter offsets
         if self._update_model:
-            self._coefficients = dict(out.params.valuesdict())
+            # just copy all?
+            d = dict(out.params.valuesdict())
+            if self._filter_offsets is None:
+                self._coefficients = d
+            else:
+                # need to separate
+                self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
+                self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
+                print(self._coefficients)
+                print(self._filter_offsets)
 
     def _residuals(self, x: lmfit.Parameters, data: pd.DataFrame):
         """Fit method for model
@@ -374,10 +427,40 @@ class FocusModel(PyObsModule, IFocusModel):
         """
 
         # calc model
-        model = [self._model.evaluate({**x.valuesdict(), **row}) for _, row in data.iterrows()]
+        focus, model, error = [], [], []
+        for _, row in data.iterrows():
+            # how do we fit?
+            if self._default_filter is None:
+                # just fit it
+                mod = self._model.evaluate({**x.valuesdict(), **row})
+
+            else:
+                # do we want to fit filter offsets?
+                if self._filter_offsets:
+                    # evaluate and add offset
+                    mod = self._model.evaluate({**x.valuesdict(), **row})
+                    if row['filter'] != self._default_filter:
+                        mod += x['off_' + row['filter']]
+
+                else:
+                    # no filter offsets, so ignore this row if, if wrong filter
+                    if row['filter'] == self._default_filter:
+                        mod = self._model.evaluate({**x.valuesdict(), **row})
+                    else:
+                        continue
+
+            # add it
+            model.append(mod)
+            focus.append(row['focus'])
+            error.append(row['error'])
+
+        # to numpy arrays
+        model = np.array(model)
+        focus = np.array(focus)
+        error = np.array(error)
 
         # return residuals
-        return (data['focus'] - model) / data['error']
+        return (focus - model) / error
 
 
 __all__ = ['FocusModel']

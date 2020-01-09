@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class Comm:
     """Base class for all Comm modules in pyobs."""
 
-    def __init__(self, cache_proxies: bool = True, *args, **kwargs):
+    def __init__(self, cache_proxies: bool = False, *args, **kwargs):
         """Creates a comm module."""
 
         self._proxies = {}

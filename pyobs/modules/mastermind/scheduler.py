@@ -113,7 +113,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # run forever
         while not self._abort_event.is_set():
             # not running or doesn't need update?
-            if self._running is False or self._need_update is False:
+            if self._need_update is False:
                 self._abort_event.wait(10)
                 continue
 

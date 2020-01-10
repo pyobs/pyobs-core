@@ -267,7 +267,7 @@ class PyObsModule:
             raise InterruptedError
         return True
 
-    def run(self):
+    def main(self):
         """Main loop for application."""
         while not self.closing.is_set():
             self.closing.wait(1)

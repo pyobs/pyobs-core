@@ -109,7 +109,7 @@ class JobScheduler(PyObsModule):
 
         self.add_job(PeriodicJob(module='camera', method='get_binning', seconds=10))
 
-    def run(self):
+    def main(self):
         """Main loop for application."""
         while not self.closing.is_set():
             # loop all jobs

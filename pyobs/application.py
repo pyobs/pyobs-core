@@ -159,7 +159,7 @@ class Application:
         signal.signal(signal.SIGINT, self._signal_handler)
 
         # run module
-        self._module.run()
+        self._module.main()
 
     def _signal_handler(self, signum, frame):
         """React to signals and quit module."""

@@ -81,6 +81,7 @@ class FlatField(PyObsModule, IFlatField):
             Number of images actually taken and total exposure time in ms
         """
         log.info('Performing flat fielding...')
+        self._abort = threading.Event()
 
         # get telescope
         log.info('Getting proxy for telescope...')

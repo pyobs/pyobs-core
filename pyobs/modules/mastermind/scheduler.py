@@ -117,6 +117,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 self._abort_event.wait(10)
                 continue
 
+            # reset need for update
+            self._need_update = False
+
             # init scheduler and schedule
             scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
             time_range = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
@@ -127,6 +130,10 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
             # sleep a little
             self._interval_event.wait(self._interval)
+
+    def run(self, *args, **kwargs):
+        """Trigger a re-schedule."""
+        self._need_update = True
 
 
 __all__ = ['Scheduler']

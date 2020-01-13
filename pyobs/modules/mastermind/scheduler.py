@@ -41,7 +41,6 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
         # update thread
         self._abort_event = threading.Event()
-        self._interval_event = threading.Event()
         self._add_thread_func(self._schedule_thread, True)
         self._add_thread_func(self._update_thread, True)
 
@@ -55,7 +54,6 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
         # trigger events
         self._abort_event.set()
-        self._interval_event.set()
 
     def start(self, *args, **kwargs):
         """Start scheduler."""
@@ -64,10 +62,6 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
     def stop(self, *args, **kwargs):
         """Stop scheduler."""
         self._running = False
-
-        # reset event
-        self._interval_event.set()
-        self._interval_event = threading.Event()
 
     def is_running(self, *args, **kwargs) -> bool:
         """Whether scheduler is running."""
@@ -131,7 +125,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
             # sleep a little
             log.info('Finished calculating schedule.')
-            self._interval_event.wait(1)
+            self._abort_event.wait(1)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

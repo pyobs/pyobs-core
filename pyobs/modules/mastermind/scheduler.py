@@ -40,20 +40,8 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         self._scheduled_blocks = []
 
         # update thread
-        self._abort_event = threading.Event()
         self._add_thread_func(self._schedule_thread, True)
         self._add_thread_func(self._update_thread, True)
-
-    def open(self):
-        """Open module"""
-        PyObsModule.open(self)
-
-    def close(self):
-        """Close module"""
-        PyObsModule.close(self)
-
-        # trigger events
-        self._abort_event.set()
 
     def start(self, *args, **kwargs):
         """Start scheduler."""
@@ -69,13 +57,13 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
     def _update_thread(self):
         # wait a little
-        self._abort_event.wait(1)
+        self.closing.wait(1)
 
         # run forever
-        while not self._abort_event.is_set():
+        while not self.closing.is_set():
             # not running?
             if self._running is False:
-                self._abort_event.wait(10)
+                self.closing.wait(10)
                 continue
 
             # get schedulable blocks
@@ -92,11 +80,11 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 self._need_update = True
 
             # sleep a little
-            self._abort_event.wait(1)
+            self.closing.wait(1)
 
     def _schedule_thread(self):
         # wait a little
-        self._abort_event.wait(10)
+        self.closing.wait(10)
 
         # only constraint is the night
         constraints = [AtNightConstraint.twilight_astronomical()]
@@ -105,10 +93,10 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         transitioner = Transitioner()
 
         # run forever
-        while not self._abort_event.is_set():
+        while not self.closing.is_set():
             # not running or doesn't need update?
             if self._need_update is False:
-                self._abort_event.wait(10)
+                self.closing.wait(10)
                 continue
 
             # reset need for update
@@ -125,7 +113,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
             # sleep a little
             log.info('Finished calculating schedule.')
-            self._abort_event.wait(1)
+            self.closing.wait(1)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

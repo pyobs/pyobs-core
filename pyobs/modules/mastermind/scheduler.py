@@ -131,7 +131,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
             # sleep a little
             log.info('Finished calculating schedule.')
-            self._interval_event.wait(self._interval)
+            self._interval_event.wait(1)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

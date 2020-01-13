@@ -94,25 +94,22 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
         # run forever
         while not self.closing.is_set():
-            # not running or doesn't need update?
-            if self._need_update is False:
-                self.closing.wait(10)
-                continue
+            # need update?
+            if self._need_update:
+                # reset need for update
+                log.info('Calculating schedule...')
+                self._need_update = False
 
-            # reset need for update
-            log.info('Calculating schedule...')
-            self._need_update = False
+                # init scheduler and schedule
+                scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+                time_range = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
+                schedule = scheduler(self._blocks, time_range)
 
-            # init scheduler and schedule
-            scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-            time_range = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
-            schedule = scheduler(self._blocks, time_range)
-
-            # update
-            self._task_archive.update_schedule(schedule.scheduled_blocks)
+                # update
+                self._task_archive.update_schedule(schedule.scheduled_blocks)
+                log.info('Finished calculating schedule.')
 
             # sleep a little
-            log.info('Finished calculating schedule.')
             self.closing.wait(1)
 
     def run(self, *args, **kwargs):

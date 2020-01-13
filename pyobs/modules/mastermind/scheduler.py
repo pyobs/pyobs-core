@@ -33,7 +33,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # store
         self._interval = interval
         self._running = True
-        self._need_update = True
+        self._need_update = False
 
         # blocks
         self._blocks = []

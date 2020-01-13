@@ -43,7 +43,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         self._abort_event = threading.Event()
         self._interval_event = threading.Event()
         self._add_thread_func(self._schedule_thread, True)
-        #self._add_thread_func(self._update_thread, True)
+        self._add_thread_func(self._update_thread, True)
 
     def open(self):
         """Open module"""
@@ -118,6 +118,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 continue
 
             # reset need for update
+            log.info('Calculating schedule...')
             self._need_update = False
 
             # init scheduler and schedule
@@ -129,6 +130,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             self._task_archive.update_schedule(schedule.scheduled_blocks)
 
             # sleep a little
+            log.info('Finished calculating schedule.')
             self._interval_event.wait(self._interval)
 
     def run(self, *args, **kwargs):

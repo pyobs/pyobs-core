@@ -3,10 +3,8 @@ import urllib.parse
 import logging
 from typing import Union
 import requests
-from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, AtNightConstraint, Transitioner, \
-    SequentialScheduler, Schedule, Observer
+from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget
 from astropy.coordinates import SkyCoord
-from astropy.table import Table
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -97,12 +95,9 @@ class LcoTaskArchive(TaskArchive):
 
     def _init_from_portal(self):
         """Initialize scheduler from portal."""
-        # get url and params
 
-        # get url
+        # get instruments
         url = urllib.parse.urljoin(self._url, '/api/instruments/')
-
-        # do request
         res = requests.get(url, headers=self._header)
         if res.status_code != 200:
             raise RuntimeError('Invalid response from portal.')

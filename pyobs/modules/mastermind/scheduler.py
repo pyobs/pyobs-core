@@ -1,4 +1,5 @@
 import functools
+import json
 import logging
 import threading
 import typing
@@ -66,8 +67,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 self.closing.wait(10)
                 continue
 
-            # get schedulable blocks
-            blocks = sorted(self._task_archive.get_schedulable_blocks())
+            # get schedulable blocks and sort them
+            blocks = sorted(self._task_archive.get_schedulable_blocks(),
+                            key=lambda x: json.dumps(x.configuration, sort_keys=True))
 
             # did it change?
             # we compare the blocks' configurations, so they need to be unique

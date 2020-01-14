@@ -82,7 +82,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 self._need_update = True
 
             # sleep a little
-            self.closing.wait(1)
+            self.closing.wait(60)
 
     def _schedule_thread(self):
         # wait a little

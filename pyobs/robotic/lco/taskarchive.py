@@ -23,7 +23,8 @@ class LcoTaskArchive(TaskArchive):
 
     def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
                  roof: str = None, update: bool = True, scripts: dict = None, portal_enclosure: str = None,
-                 portal_telescope: str = None, portal_instrument: str = None, period: int = 24, *args, **kwargs):
+                 portal_telescope: str = None, portal_instrument: str = None, portal_instrument_type: str = None,
+                 period: int = 24, *args, **kwargs):
         """Creates a new LCO scheduler.
 
         Args:
@@ -39,6 +40,7 @@ class LcoTaskArchive(TaskArchive):
             portal_enclosure: Enclosure for new schedules.
             portal_telescope: Telescope for new schedules.
             portal_instrument: Instrument for new schedules.
+            portal_instrument_type: Instrument type to schedule.
             period: Period to schedule in hours
         """
         TaskArchive.__init__(self, *args, **kwargs)
@@ -49,6 +51,7 @@ class LcoTaskArchive(TaskArchive):
         self._portal_enclosure = portal_enclosure
         self._portal_telescope = portal_telescope
         self._portal_instrument = portal_instrument
+        self._portal_instrument_type = portal_instrument_type
         self._period = TimeDelta(period * u.hour)
         self.telescope = telescope
         self.camera = camera
@@ -242,6 +245,11 @@ class LcoTaskArchive(TaskArchive):
 
                 # loop configs
                 for cfg in req['configurations']:
+                    # get instrument and check, whether we schedule it
+                    instrument = cfg['instrument_type']
+                    if instrument.lower() != self._portal_instrument_type.lower():
+                        continue
+
                     # target
                     t = cfg['target']
                     target = SkyCoord(t['ra'] * u.deg, t['dec'] * u.deg, frame=t['type'].lower())

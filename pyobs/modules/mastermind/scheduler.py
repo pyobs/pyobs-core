@@ -97,7 +97,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             # need update?
             if self._need_update:
                 # reset need for update
-                log.info('Calculating schedule for %d schedulable blocks...', len(self._blocks))
+                log.info('Calculating schedule for %d schedulable block(s)...', len(self._blocks))
                 self._need_update = False
 
                 # init scheduler and schedule
@@ -107,7 +107,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks)
-                log.info('Finished calculating schedule for %d blocks.', len(schedule.scheduled_blocks))
+                log.info('Finished calculating schedule for %d block(s).', len(schedule.scheduled_blocks))
 
             # sleep a little
             self.closing.wait(1)

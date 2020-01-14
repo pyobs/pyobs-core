@@ -146,7 +146,6 @@ class LcoTask(Task):
 
         else:
             # seems to be a default task
-            log.info('Creating default configuration...')
             from .taskarchive import LcoTaskArchive
             self.task_archive: LcoTaskArchive
             return LcoDefaultScript(config, roof, telescope, camera, filters, self.task_archive.instruments)

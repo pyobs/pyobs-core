@@ -122,7 +122,8 @@ class LcoDefaultScript(Script):
                 self.exptime_done += ic['exposure_time']
 
         # finally, stop telescope
-        self.telescope.stop_motion()
+        if not abort_event.is_set():
+            self.telescope.stop_motion().wait()
 
     def get_fits_headers(self, namespaces: list = None) -> dict:
         """Returns FITS header for the current status of this module.

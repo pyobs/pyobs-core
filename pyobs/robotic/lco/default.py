@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from pyobs.interfaces import ICamera, IMotion, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters
+from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding
 from pyobs.robotic.scripts import Script
 from pyobs.utils.threads import Future
 
@@ -13,7 +13,7 @@ class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
     def __init__(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera, filters: IFilters,
-                 instruments: dict, *args, **kwargs):
+                 autoguider: IAutoGuiding, instruments: dict, *args, **kwargs):
         """Initialize a new LCO default script.
 
         Args:
@@ -32,6 +32,7 @@ class LcoDefaultScript(Script):
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
+        self.autoguider = autoguider
         self.instruments = instruments
 
         # get image type
@@ -73,7 +74,12 @@ class LcoDefaultScript(Script):
             log.info('Moving to target %s...', target['name'])
             track = self.telescope.track_radec(target['ra'], target['dec'])
 
-        # total exposure time in this config
+        # guiding?
+        if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
+                self.config['guiding_config']['mode'] == 'ON':
+            self.autoguider.start().wait()
+
+            # total exposure time in this config
         self.exptime_done = 0
 
         # get instrument info
@@ -120,6 +126,11 @@ class LcoDefaultScript(Script):
                          self.config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                 self.camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
                 self.exptime_done += ic['exposure_time']
+
+        # stop auto guiding
+        if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
+                self.config['guiding_config']['mode'] == 'ON':
+            self.autoguider.stop().wait()
 
         # finally, stop telescope
         if not abort_event.is_set():

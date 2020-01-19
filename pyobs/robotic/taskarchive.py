@@ -22,6 +22,11 @@ class TaskArchive:
     def _create_task(self, klass, *args, **kwargs):
         return klass(*args, **kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
+    @property
+    def last_changed(self) -> Time:
+        """Returns time when last time any blocks changed."""
+        raise NotImplementedError
+
     def get_schedulable_blocks(self) -> list:
         """Returns list of schedulable blocks.
 

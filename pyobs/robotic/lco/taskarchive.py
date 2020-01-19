@@ -218,6 +218,13 @@ class LcoTaskArchive(TaskArchive):
         if r.status_code != 200:
             log.error('Could not update configuration status: %s', r.text)
 
+    def last_changed(self) -> Time:
+        """Returns time when last time any blocks changed."""
+        r = requests.get(self._url + '/api/last_changed/', headers=self._header)
+        if r.status_code != 200:
+            raise ValueError('Could not fetch list of schedulable requests.')
+        return r.json()['last_change_time']
+
     def get_schedulable_blocks(self) -> list:
         """Returns list of schedulable blocks.
 

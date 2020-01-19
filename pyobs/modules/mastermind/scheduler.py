@@ -57,37 +57,36 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         return self._running
 
     def _update_thread(self):
-        # wait a little
-        self.closing.wait(1)
+        # time of last change in blocks
+        last_change = None
 
         # run forever
         while not self.closing.is_set():
             # not running?
             if self._running is False:
-                self.closing.wait(10)
+                self.closing.wait(1)
                 continue
 
-            # get schedulable blocks and sort them
-            blocks = sorted(self._task_archive.get_schedulable_blocks(),
-                            key=lambda x: json.dumps(x.configuration, sort_keys=True))
+            # got new time of last change?
+            t = self._task_archive.last_changed
+            if last_change != t:
+                # got new time, so update!
+                last_change = t
 
-            # did it change?
-            # we compare the blocks' configurations, so they need to be unique
-            equal = functools.reduce(lambda i, j: i and j,
-                                     map(lambda m, k: m.configuration == k.configuration, blocks, self._blocks),
-                                     True)
-            if len(blocks) != len(self._blocks) or not equal:
-                # store blocks and update schedule
-                self._blocks = blocks
+                # get schedulable blocks and sort them
+                log.info('Found update in schedulable block, downloading them...')
+                self._blocks = sorted(self._task_archive.get_schedulable_blocks(),
+                                      key=lambda x: json.dumps(x.configuration, sort_keys=True))
+                log.info('Downloaded %d schedulable block(s).', len(self._blocks))
+
+                # schedule update
+                log.info('Triggering scheduler run...')
                 self._need_update = True
 
             # sleep a little
-            self.closing.wait(60)
+            self.closing.wait(5)
 
     def _schedule_thread(self):
-        # wait a little
-        self.closing.wait(10)
-
         # only constraint is the night
         constraints = [AtNightConstraint.twilight_astronomical()]
 

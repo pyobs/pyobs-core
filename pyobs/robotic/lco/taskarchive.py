@@ -61,6 +61,10 @@ class LcoTaskArchive(TaskArchive):
         self._update = update
         self._last_schedule_time = None
 
+        # buffers in case of errors
+        self._last_scheduled = None
+        self._last_changed = None
+
         # create script handlers
         if scripts is None:
             scripts = {}
@@ -232,17 +236,33 @@ class LcoTaskArchive(TaskArchive):
 
     def last_changed(self) -> Time:
         """Returns time when last time any blocks changed."""
-        r = requests.get(self._url + '/api/last_changed/', headers=self._header)
-        if r.status_code != 200:
-            raise ValueError('Could not fetch last change time.')
-        return r.json()['last_change_time']
+
+        # try to update time
+        try:
+            r = requests.get(self._url + '/api/last_changed/', headers=self._header)
+            if r.status_code != 200:
+                raise ValueError
+            self._last_changed = r.json()['last_change_time']
+            return self._last_changed
+
+        except:
+            # in case of errors, return last time
+            return self._last_changed
 
     def last_scheduled(self) -> Time:
         """Returns time of last scheduler run."""
-        r = requests.get(self._url + '/api/last_scheduled/', headers=self._header)
-        if r.status_code != 200:
-            raise ValueError('Could not fetch last scheduler time.')
-        return r.json()['last_schedule_time']
+
+        # try to update time
+        try:
+            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header)
+            if r.status_code != 200:
+                raise ValueError
+            self._last_scheduled = ['last_schedule_time']
+            return self._last_scheduled
+
+        except:
+            # in case of errors, return last time
+            return self._last_scheduled
 
     def get_schedulable_blocks(self) -> list:
         """Returns list of schedulable blocks.

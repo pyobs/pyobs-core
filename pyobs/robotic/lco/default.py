@@ -121,6 +121,9 @@ class LcoDefaultScript(Script):
                 self.camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
                 self.exptime_done += ic['exposure_time']
 
+        # finally, stop telescope
+        self.telescope.stop_motion()
+
     def get_fits_headers(self, namespaces: list = None) -> dict:
         """Returns FITS header for the current status of this module.
 

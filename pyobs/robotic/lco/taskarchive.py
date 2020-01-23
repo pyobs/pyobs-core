@@ -22,9 +22,9 @@ class LcoTaskArchive(TaskArchive):
     """Scheduler for using the LCO portal"""
 
     def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
-                 roof: str = None, update: bool = True, scripts: dict = None, portal_enclosure: str = None,
-                 portal_telescope: str = None, portal_instrument: str = None, portal_instrument_type: str = None,
-                 period: int = 24, *args, **kwargs):
+                 roof: str = None, autoguider: str = None, update: bool = True, scripts: dict = None,
+                 portal_enclosure: str = None, portal_telescope: str = None, portal_instrument: str = None,
+                 portal_instrument_type: str = None, period: int = 24, *args, **kwargs):
         """Creates a new LCO scheduler.
 
         Args:
@@ -35,6 +35,7 @@ class LcoTaskArchive(TaskArchive):
             camera: Camera to use
             filters: Filter wheel to use
             roof: Roof to use
+            autoguider: Autoguider to use
             update: Whether to update scheduler in background
             scripts: External scripts
             portal_enclosure: Enclosure for new schedules.
@@ -57,6 +58,7 @@ class LcoTaskArchive(TaskArchive):
         self.camera = camera
         self.filters = filters
         self.roof = roof
+        self.autoguider = autoguider
         self.instruments = None
         self._update = update
         self._last_schedule_time = None
@@ -166,7 +168,7 @@ class LcoTaskArchive(TaskArchive):
                 # create task
                 task = self._create_task(LcoTask, sched,
                                          telescope=self.telescope, filters=self.filters, camera=self.camera,
-                                         roof=self.roof, scripts=self.scripts)
+                                         roof=self.roof, scripts=self.scripts, autoguider=self.autoguider)
                 tasks[sched['request']['id']] = task
 
             # update

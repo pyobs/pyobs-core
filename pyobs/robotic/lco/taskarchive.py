@@ -127,12 +127,16 @@ class LcoTaskArchive(TaskArchive):
             # sleep a little
             self._closing.wait(10)
 
-    def _update_now(self):
-        """Update list of requests."""
+    def _update_now(self, force: bool = False):
+        """Update list of requests.
+
+        Args:
+            force: Force update.
+        """
 
         # get time of last scheduler run and check, whether we need an update
         t = self.last_scheduled()
-        if t == self._last_schedule_time:
+        if t == self._last_schedule_time and force is False:
             # need no update
             return
 
@@ -217,7 +221,7 @@ class LcoTaskArchive(TaskArchive):
         task.run(abort_event)
 
         # force update tasks
-        self._update_now()
+        self._update_now(force=True)
 
         # finish
         return True

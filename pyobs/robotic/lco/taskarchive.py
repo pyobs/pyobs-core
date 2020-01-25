@@ -7,6 +7,7 @@ from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTa
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
+from requests import Timeout
 
 from pyobs.object import get_object
 from pyobs.robotic.task import Task
@@ -62,6 +63,7 @@ class LcoTaskArchive(TaskArchive):
         self.instruments = None
         self._update = update
         self._last_schedule_time = None
+        self._last_schedule_lock = threading.RLock()
 
         # buffers in case of errors
         self._last_scheduled = None
@@ -135,53 +137,62 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get time of last scheduler run and check, whether we need an update
-        t = self.last_scheduled()
-        if self._last_schedule_time is not None and self._last_schedule_time >= t and force is False:
+        last_scheduled = self.last_scheduled()
+        if self._last_schedule_time is not None and self._last_schedule_time >= last_scheduled and force is False:
             # need no update
             return
 
-        # need update!
-        self._last_schedule_time = t
-        log.info('Found updated schedule, downloading it...')
+        # only want to do this once at a time
+        with self._last_schedule_lock:
+            # need update!
+            log.info('Found updated schedule, downloading it...')
 
-        # get url and params
-        url = urllib.parse.urljoin(self._url, '/api/observations/')
-        now = Time.now()
-        params = {
-            'site': self._site,
-            'end_after': now.isot,
-            'start_before': (now + TimeDelta(24 * u.hour)).isot,
-            'state': 'PENDING'
-        }
+            # get url and params
+            url = urllib.parse.urljoin(self._url, '/api/observations/')
+            now = Time.now()
+            params = {
+                'site': self._site,
+                'end_after': now.isot,
+                'start_before': (now + TimeDelta(24 * u.hour)).isot,
+                'state': 'PENDING'
+            }
 
-        # do request
-        r = requests.get(url, params=params, headers=self._header)
+            # do request
+            try:
+                r = requests.get(url, params=params, headers=self._header, timeout=30)
+            except Timeout:
+                log.error('Request timed out')
+                self._closing.wait(60)
+                return
 
-        # success?
-        if r.status_code == 200:
-            # get schedule
-            schedules = r.json()['results']
+            # success?
+            if r.status_code == 200:
+                # get schedule
+                schedules = r.json()['results']
 
-            # create tasks
-            tasks = {}
-            for sched in schedules:
-                # parse start and end
-                sched['start'] = Time(sched['start'])
-                sched['end'] = Time(sched['end'])
+                # create tasks
+                tasks = {}
+                for sched in schedules:
+                    # parse start and end
+                    sched['start'] = Time(sched['start'])
+                    sched['end'] = Time(sched['end'])
 
-                # create task
-                task = self._create_task(LcoTask, sched,
-                                         telescope=self.telescope, filters=self.filters, camera=self.camera,
-                                         roof=self.roof, scripts=self.scripts, autoguider=self.autoguider)
-                tasks[sched['request']['id']] = task
+                    # create task
+                    task = self._create_task(LcoTask, sched,
+                                             telescope=self.telescope, filters=self.filters, camera=self.camera,
+                                             roof=self.roof, scripts=self.scripts, autoguider=self.autoguider)
+                    tasks[sched['request']['id']] = task
 
-            # update
-            log.info('Found %d tasks to run.', len(tasks))
-            with self._update_lock:
-                self._tasks = tasks
+                # update
+                log.info('Found %d tasks to run.', len(tasks))
+                with self._update_lock:
+                    self._tasks = tasks
 
-        else:
-            log.warning('Could not fetch schedule.')
+            else:
+                log.warning('Could not fetch schedule.')
+
+            # finished
+            self._last_schedule_time = last_scheduled
 
     def get_task(self, time: Time) -> Union[Task, None]:
         """Returns the active task at the given time.
@@ -245,7 +256,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_changed/', headers=self._header)
+            r = requests.get(self._url + '/api/last_changed/', headers=self._header, timeout=30)
             if r.status_code != 200:
                 raise ValueError
             self._last_changed = r.json()['last_change_time']
@@ -260,7 +271,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header)
+            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header, timeout=30)
             if r.status_code != 200:
                 raise ValueError
             self._last_scheduled = Time(r.json()['last_schedule_time'])
@@ -279,6 +290,8 @@ class LcoTaskArchive(TaskArchive):
 
         # get requests
         r = requests.get(self._url + '/api/requestgroups/schedulable_requests/', headers=self._header)
+
+
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()

@@ -263,7 +263,7 @@ class LcoTaskArchive(TaskArchive):
             r = requests.get(self._url + '/api/last_scheduled/', headers=self._header)
             if r.status_code != 200:
                 raise ValueError
-            self._last_scheduled = ['last_schedule_time']
+            self._last_scheduled = Time(r.json()['last_schedule_time'])
             return self._last_scheduled
 
         except:

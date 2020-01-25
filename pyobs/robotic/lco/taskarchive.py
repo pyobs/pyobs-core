@@ -136,7 +136,7 @@ class LcoTaskArchive(TaskArchive):
 
         # get time of last scheduler run and check, whether we need an update
         t = self.last_scheduled()
-        if t == self._last_schedule_time and force is False:
+        if self._last_schedule_time >= t and force is False:
             # need no update
             return
 

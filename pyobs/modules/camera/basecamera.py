@@ -26,6 +26,7 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
+                 flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
                  cache: str = '/pyobs/camera_cache.json', fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
@@ -34,6 +35,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             fits_headers: Additional FITS headers.
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
+            flip: Whether or not to flip the image along its first axis.
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
@@ -49,6 +51,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             self._fits_headers['OBSERVER'] = ['pyobs', 'Name of observer']
         self._centre = centre
         self._rotation = rotation
+        self._flip = flip
         self._filenames = filenames
         self._fits_namespaces = fits_namespaces
 
@@ -344,6 +347,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
             raise
+
+        # flip it?
+        if self._flip:
+            self.hdu.data = np.flip(self.hdu.data, axis=0)
 
         # add HDU name
         hdu.name = 'SCI'

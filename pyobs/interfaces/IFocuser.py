@@ -46,4 +46,5 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
+
 __all__ = ['IFocuser']

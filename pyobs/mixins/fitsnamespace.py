@@ -57,8 +57,18 @@ class FitsNamespaceMixin:
             hdr: Full unfiltered header
         """
 
+        # no namespaces given at all? then add all...
+        if self.__namespaces is None:
+            keywords.extend(hdr.keys())
+            return
+
+        # given namespace doesn't exist? then add none
+        if name not in self.__namespaces:
+            return
+
+        # what to add?
         if self.__namespaces[name] is None:
-            # take all keywords, if namespace is empty
+            # take all keywords, if namespace is empty or none are given
             keywords.extend(hdr.keys())
         elif isinstance(self.__namespaces[name], list):
             # take only keywords from list

@@ -91,13 +91,13 @@ class LcoTaskArchive(TaskArchive):
     def open(self):
         """Open scheduler."""
 
+        # get stuff from portal
+        self._init_from_portal()
+
         # start update thread
         if self._update:
             self._update_thread = threading.Thread(target=self._update_schedule)
             self._update_thread.start()
-
-        # get stuff from portal
-        self._init_from_portal()
 
     def close(self):
         """Close scheduler."""

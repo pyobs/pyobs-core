@@ -164,7 +164,7 @@ class LcoTaskArchive(TaskArchive):
 
             # do request
             try:
-                r = requests.get(url, params=params, headers=self._header, timeout=30)
+                r = requests.get(url, params=params, headers=self._header, timeout=10)
             except Timeout:
                 log.error('Request timed out')
                 self._closing.wait(60)
@@ -252,16 +252,21 @@ class LcoTaskArchive(TaskArchive):
 
         log.info('Sending configuration status update to portal...')
         url = urllib.parse.urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
-        r = requests.patch(url, json=status, headers=self._header)
-        if r.status_code != 200:
-            log.error('Could not update configuration status: %s', r.text)
+
+        # do request
+        try:
+            r = requests.patch(url, json=status, headers=self._header, timeout=10)
+            if r.status_code != 200:
+                log.error('Could not update configuration status: %s', r.text)
+        except Timeout:
+            log.error('Request timed out.')
 
     def last_changed(self) -> Time:
         """Returns time when last time any blocks changed."""
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_changed/', headers=self._header, timeout=30)
+            r = requests.get(self._url + '/api/last_changed/', headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_changed = r.json()['last_change_time']
@@ -276,7 +281,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header, timeout=30)
+            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_scheduled = Time(r.json()['last_schedule_time'])

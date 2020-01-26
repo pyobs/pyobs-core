@@ -201,6 +201,7 @@ class LcoTask(Task):
                 # send status
                 status = ConfigStatus()
                 if isinstance(self.task_archive, LcoTaskArchive):
+                    self.config['state'] = 'FAILED'
                     self.task_archive.send_update(config['configuration_status'],
                                                   status.finish(state='FAILED', reason='System failure.').to_json())
 
@@ -213,9 +214,10 @@ class LcoTask(Task):
             if abort_event.is_set():
                 break
 
-            # send an ATTEMPT status
+            # send an ATTEMPTED status
             if isinstance(self.task_archive, LcoTaskArchive):
                 status = ConfigStatus()
+                self.config['state'] = 'ATTEMPTED'
                 self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
 
             # get config runner
@@ -234,6 +236,7 @@ class LcoTask(Task):
 
             # send status
             if status is not None and isinstance(self.task_archive, LcoTaskArchive):
+                self.config['state'] = status.state
                 self.task_archive.send_update(config['configuration_status'], status.to_json())
 
         # finished task

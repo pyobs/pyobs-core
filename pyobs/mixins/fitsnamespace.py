@@ -24,7 +24,7 @@ class FitsNamespaceMixin:
         """
 
         # no namespaces?
-        if self.__namespaces is None or namespaces is None:
+        if self.__namespaces is None:
             return hdr
 
         # get list of FITS headers that we let pass
@@ -36,11 +36,12 @@ class FitsNamespaceMixin:
             self.__add_namespace(sender, keywords, hdr)
 
         # loop all given namespaces
-        for name in namespaces:
-            # does namespace exist in my config?
-            if name in self.__namespaces:
-                # add namespace
-                self.__add_namespace(name, keywords, hdr)
+        if namespaces is not None:
+            for name in namespaces:
+                # does namespace exist in my config?
+                if name in self.__namespaces:
+                    # add namespace
+                    self.__add_namespace(name, keywords, hdr)
 
         # make unique
         keywords = list(set(keywords))
@@ -57,17 +58,11 @@ class FitsNamespaceMixin:
             hdr: Full unfiltered header
         """
 
-        # no namespaces given at all? then add all...
-        if self.__namespaces is None:
-            keywords.extend(hdr.keys())
-            return
-
-        # given namespace doesn't exist? then add none
-        if name not in self.__namespaces:
-            return
-
         # what to add?
-        if self.__namespaces[name] is None:
+        if name not in self.__namespaces:
+            # given namespace doesn't exist? then add none
+            return
+        elif self.__namespaces[name] is None:
             # take all keywords, if namespace is empty or none are given
             keywords.extend(hdr.keys())
         elif isinstance(self.__namespaces[name], list):

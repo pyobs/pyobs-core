@@ -350,7 +350,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # flip it?
         if self._flip:
-            self.hdu.data = np.flip(self.hdu.data, axis=0)
+            hdu.data = np.flip(hdu.data, axis=0)
 
         # add HDU name
         hdu.name = 'SCI'

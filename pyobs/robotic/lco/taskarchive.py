@@ -136,9 +136,14 @@ class LcoTaskArchive(TaskArchive):
             force: Force update.
         """
 
-        # get time of last scheduler run and check, whether we need an update
+        # get time of last scheduler run and check, whether we need an update, which is not the case, if
+        # - we updated before
+        # - AND last update was after last schedule update
+        # - AND last update is less then 1h ago
+        # - AND force is set to False
         last_scheduled = self.last_scheduled()
-        if self._last_schedule_time is not None and self._last_schedule_time >= last_scheduled and force is False:
+        if self._last_schedule_time is not None and self._last_schedule_time >= last_scheduled and \
+                self._last_schedule_time > Time.now() - TimeDelta(1. * u.hour) and force is False:
             # need no update
             return
 

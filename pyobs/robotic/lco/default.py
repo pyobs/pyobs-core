@@ -77,6 +77,7 @@ class LcoDefaultScript(Script):
         # guiding?
         if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
                 self.config['guiding_config']['mode'] == 'ON':
+            log.info('Starting auto-guiding...')
             self.autoguider.start().wait()
 
             # total exposure time in this config
@@ -130,10 +131,12 @@ class LcoDefaultScript(Script):
         # stop auto guiding
         if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
                 self.config['guiding_config']['mode'] == 'ON':
+            log.info('Stopping auto-guiding...')
             self.autoguider.stop().wait()
 
         # finally, stop telescope
         if not abort_event.is_set():
+            log.info('Stopping telescope...')
             self.telescope.stop_motion().wait()
 
     def get_fits_headers(self, namespaces: list = None) -> dict:

@@ -14,7 +14,7 @@ class HttpFile(VFSFile, io.RawIOBase):
     Especially useful in combination with :class:`pyobs.modules.filecache,http.HttpFileCacheServer`."""
 
     def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None,
-                 username: str = None, password: str = None, *args, **kwargs):
+                 username: str = None, password: str = None, verify_tls: bool = False, *args, **kwargs):
         """Creates a new HTTP file.
 
         Args:
@@ -24,10 +24,12 @@ class HttpFile(VFSFile, io.RawIOBase):
             upload: Base URL for uploading files. If None, no write access possible.
             username: Username for accessing the HTTP server.
             password: Password for accessing the HTTP server.
+            verify_tls: Whether to verify TLS certificates.
         """
 
         # init
         io.RawIOBase.__init__(self)
+        self._verify_tls = verify_tls
 
         # auth
         self._auth = None
@@ -69,7 +71,7 @@ class HttpFile(VFSFile, io.RawIOBase):
             url = urljoin(self._download_path, self._filename)
 
             # do request
-            r = requests.get(url, stream=True, auth=self._auth)
+            r = requests.get(url, stream=True, auth=self._auth, verify=self._verify_tls)
 
         except requests.exceptions.ConnectionError:
             log.error('Could not connect to filecache.')

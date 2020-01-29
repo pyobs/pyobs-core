@@ -81,7 +81,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
                 with self._status_lock:
                     self._status = status
 
-            except (requests.exceptions.Timeout, ValueError) as e:
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as e:
                 # on error, we're always bad
                 log.error('Request failed: %s', e)
                 is_good = False

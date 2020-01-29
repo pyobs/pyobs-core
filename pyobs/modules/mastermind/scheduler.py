@@ -69,10 +69,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
             # got new time of last change?
             t = self._task_archive.last_changed
-            if last_change != t:
-                # got new time, so update!
-                last_change = t
-
+            if last_change < t:
                 # get schedulable blocks and sort them
                 log.info('Found update in schedulable block, downloading them...')
                 self._blocks = sorted(self._task_archive.get_schedulable_blocks(),
@@ -82,6 +79,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 # schedule update
                 log.info('Triggering scheduler run...')
                 self._need_update = True
+
+                # remember now
+                last_change = Time.now()
 
             # sleep a little
             self.closing.wait(5)

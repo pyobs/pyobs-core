@@ -68,7 +68,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 continue
 
             # got new time of last change?
-            t = self._task_archive.last_changed
+            t = self._task_archive.last_changed()
             if last_change is None or last_change < t:
                 # get schedulable blocks and sort them
                 log.info('Found update in schedulable block, downloading them...')

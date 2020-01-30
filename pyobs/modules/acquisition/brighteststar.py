@@ -132,7 +132,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+                telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
 
             else:
                 log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')

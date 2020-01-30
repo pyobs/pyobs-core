@@ -114,7 +114,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+                telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
 
             elif isinstance(telescope, IAltAzMount):
                 # transform both to Alt/AZ

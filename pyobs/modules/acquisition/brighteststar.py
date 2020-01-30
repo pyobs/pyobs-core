@@ -53,20 +53,26 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300000)
-    def acquire_target(self, exposure_time: int, *args, **kwargs):
+    def acquire_target(self, ra: float, dec: float, exposure_time: int, *args, **kwargs):
         """Acquire target at given coordinates.
 
         Args:
+            ra: Right ascension of field to acquire.
+            dec: Declination of field to acquire.
             exposure_time: Exposure time for acquisition.
         """
 
-        # get focuser
-        log.info('Getting proxy for focuser...')
+        # get telescope
+        log.info('Getting proxy for telescope...')
         telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
+
+        # initial move
+        log.info('Moving telescope...')
+        telescope.track_radec(ra, dec).wait()
 
         # try given number of attempts
         for a in range(self._attempts):

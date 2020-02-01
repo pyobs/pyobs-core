@@ -6,6 +6,9 @@ import typing
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule
 from astropy.time import TimeDelta
 import astropy.units as u
+from pyobs.events.taskstarted import TaskStartedEvent
+
+from pyobs.events import GoodWeatherEvent
 
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStoppable, IRunnable
@@ -19,12 +22,16 @@ log = logging.getLogger(__name__)
 class Scheduler(PyObsModule, IStoppable, IRunnable):
     """Scheduler."""
 
-    def __init__(self, tasks: typing.Union[dict, TaskArchive], interval: int = 300, *args, **kwargs):
+    def __init__(self, tasks: typing.Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
+                 *args, **kwargs):
         """Initialize a new scheduler.
 
         Args:
             scheduler: Scheduler to use
-            interval: Interval between scheduler updates
+            schedule_range: Number of hours to schedule into the future
+            safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
+                         this time in seconds to make sure that we don't schedule for a time when the scheduler is
+                         still running
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -32,9 +39,13 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         self._task_archive: TaskArchive = get_object(tasks, TaskArchive)
 
         # store
-        self._interval = interval
+        self._schedule_range = schedule_range
+        self._safety_time = safety_time
         self._running = True
         self._need_update = False
+
+        # time to start next schedule from
+        self._schedule_start = None
 
         # blocks
         self._blocks = []
@@ -43,6 +54,15 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # update thread
         self._add_thread_func(self._schedule_thread, True)
         self._add_thread_func(self._update_thread, True)
+
+    def open(self):
+        """Open module."""
+        PyObsModule.open(self)
+
+        # subscribe to events
+        if self.comm:
+            self.comm.register_event(TaskStartedEvent, self._on_task_started)
+            self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
     def start(self, *args, **kwargs):
         """Start scheduler."""
@@ -101,9 +121,16 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 log.info('Calculating schedule for %d schedulable block(s)...', len(self._blocks))
                 self._need_update = False
 
+                # get start time for scheduler
+                start = self._schedule_start
+                now_plus_safety = Time.now() + self._safety_time * u.second
+                if start is None or start < now_plus_safety:
+                    # if no ETA exists or is in the past, use safety time
+                    start = now_plus_safety
+
                 # init scheduler and schedule
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-                time_range = Schedule(Time.now(), Time.now() + TimeDelta(1 * u.day))
+                time_range = Schedule(start, start + TimeDelta(self._schedule_range * u.hour))
                 schedule = scheduler(self._blocks, time_range)
 
                 # update
@@ -116,6 +143,26 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""
         self._need_update = True
+
+    def _on_task_started(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
+        """Re-schedule when task has started and we can predict its end.
+
+        Args:
+            event: The task started event.
+            sender: Who sent it.
+        """
+        self._need_update = True
+        self._schedule_start = event.eta
+
+    def _on_good_weather(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
+        """Re-schedule on incoming good weather event.
+
+        Args:
+            event: The good weather event.
+            sender: Who sent it.
+        """
+        self._need_update = True
+        self._schedule_start = event.eta
 
 
 __all__ = ['Scheduler']

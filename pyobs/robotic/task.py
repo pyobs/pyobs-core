@@ -18,6 +18,11 @@ class Task:
         """Returns name of task."""
         raise NotImplementedError
 
+    @property
+    def duration(self) -> float:
+        """Returns estimated duration of task in seconds."""
+        raise NotImplementedError
+
     def window(self) -> (Time, Time):
         """Returns the time window for this task.
 

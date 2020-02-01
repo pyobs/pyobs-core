@@ -94,6 +94,11 @@ class LcoTask(Task):
         """Returns name of task."""
         return self.config['name']
 
+    @property
+    def duration(self) -> float:
+        """Returns estimated duration of task in seconds."""
+        return self.config['request']['duration']
+
     def window(self) -> (Time, Time):
         """Returns the time window for this task.
 

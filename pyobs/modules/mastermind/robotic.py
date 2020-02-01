@@ -18,9 +18,17 @@ log = logging.getLogger(__name__)
 class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
-    def __init__(self, tasks: Union[TaskArchive, dict], *args, **kwargs):
-        """Initialize a new auto focus system."""
+    def __init__(self, tasks: Union[TaskArchive, dict], allowed_overrun: int = 300, *args, **kwargs):
+        """Initialize a new auto focus system.
+
+        Args:
+            tasks: Task archive to use
+            allowed_overrun: Allowed time for a task to exceed it's window in seconds
+        """
         PyObsModule.__init__(self, *args, **kwargs)
+
+        # store
+        self._allowed_overrun = allowed_overrun
 
         # add thread func
         self._add_thread_func(self._run_thread, True)
@@ -89,8 +97,8 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
                     # finished
                     break
 
-                # time over or closing?
-                if self.closing.is_set() or Time.now() > window[1]:
+                # closing?
+                if self.closing.is_set() or Time.now() > window[1] + self._allowed_overrun * u.second:
                     # set event and wait for thread
                     abort_event.set()
                     task_thread.join()

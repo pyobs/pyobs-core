@@ -1,6 +1,7 @@
 import logging
 import threading
 from typing import Union
+import astropy.units as u
 
 from pyobs import PyObsModule, get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
@@ -69,8 +70,11 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             # task window
             window = self._task.window()
 
+            # ETA
+            eta = now + self._task.duration * u.second
+
             # send event
-            self.comm.send_event(TaskStartedEvent(self._task.name))
+            self.comm.send_event(TaskStartedEvent(name=self._task.name, eta=eta))
 
             # run task in thread
             log.info('Running task %s...', self._task.name)

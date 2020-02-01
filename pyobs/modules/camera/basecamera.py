@@ -9,6 +9,9 @@ from astropy.io import fits
 import astropy.units as u
 import yaml
 import io
+
+from pyobs.comm import TimeoutException
+
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
@@ -362,7 +365,11 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         for client, future in fits_header_futures.items():
             # join thread
             log.info('Fetching FITS headers from %s...', client)
-            headers = future.wait()
+            try:
+                headers = future.wait()
+            except TimeoutException:
+                log.error('Fetching FITS headers from %s timed out.')
+                continue
 
             # add them to fits file
             if headers:

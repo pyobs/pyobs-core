@@ -1,14 +1,28 @@
+from pyobs.utils.time import Time
 from .event import Event
 
 
 class TaskStartedEvent(Event):
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = None, eta: Time = None):
+        """Initializes a new task started event.
+
+        Args:
+            name: Name of task that just started
+            eta: Predicted ETA for when the task will finish
+        """
         Event.__init__(self)
-        self.data = {'name': name}
+        self.data = {
+            'name': name,
+            'eta':  None if eta is None else eta.isot
+        }
 
     @property
     def name(self):
         return self.data['name']
+
+    @property
+    def eta(self):
+        return None if self.data is None else Time(self.data)
 
 
 __all__ = ['TaskStartedEvent']

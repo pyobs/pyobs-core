@@ -151,6 +151,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             event: The task started event.
             sender: Who sent it.
         """
+        log.info('Received task started event, triggering new scheduler run...')
         self._need_update = True
         self._schedule_start = event.eta
 
@@ -161,6 +162,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             event: The good weather event.
             sender: Who sent it.
         """
+        log.info('Received good weather event, triggering new scheduler run...')
         self._need_update = True
         self._schedule_start = event.eta
 

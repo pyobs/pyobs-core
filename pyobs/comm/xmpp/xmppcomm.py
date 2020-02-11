@@ -372,6 +372,8 @@ class XmppComm(Comm):
 
         # create event and check timestamp
         event = EventFactory.from_dict(body)
+        if event is None:
+            return
         if time.time() - event.timestamp > 30:
             # event is more than 30 seconds old, ignore it
             # we do this do avoid resent events after a reconnect

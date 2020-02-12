@@ -4,7 +4,7 @@ import logging
 import requests
 
 from .vfs import VFSFile
-
+from ..utils.http import requests_retry_session
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class HttpFile(VFSFile, io.RawIOBase):
             url = urljoin(self._download_path, self._filename)
 
             # do request
-            r = requests.get(url, stream=True, auth=self._auth, verify=self._verify_tls)
+            r = requests_retry_session().get(url, stream=True, auth=self._auth, verify=self._verify_tls, timeout=5)
 
         except requests.exceptions.ConnectionError:
             log.error('Could not connect to filecache.')
@@ -180,7 +180,8 @@ class HttpFile(VFSFile, io.RawIOBase):
 
         # send data and return image ID
         try:
-            r = requests.post(self._upload_path, data=self._buffer, headers=headers, auth=self._auth)
+            r = requests_retry_session().post(self._upload_path, data=self._buffer, headers=headers, auth=self._auth,
+                                              timeout=5)
             if r.status_code == 401:
                 log.error('Wrong credentials for uploading file.')
                 raise FileNotFoundError

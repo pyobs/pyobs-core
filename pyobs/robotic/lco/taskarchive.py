@@ -302,8 +302,6 @@ class LcoTaskArchive(TaskArchive):
 
         # get requests
         r = requests.get(self._url + '/api/requestgroups/schedulable_requests/', headers=self._header)
-
-
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()

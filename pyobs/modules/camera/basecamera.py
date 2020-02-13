@@ -368,7 +368,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             try:
                 headers = future.wait()
             except TimeoutException:
-                log.error('Fetching FITS headers from %s timed out.')
+                log.error('Fetching FITS headers from %s timed out.', client)
                 continue
 
             # add them to fits file

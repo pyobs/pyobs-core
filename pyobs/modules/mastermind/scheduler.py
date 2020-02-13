@@ -118,7 +118,6 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             # need update?
             if self._need_update:
                 # reset need for update
-                log.info('Calculating schedule for %d schedulable block(s)...', len(self._blocks))
                 self._need_update = False
 
                 # get start time for scheduler
@@ -127,6 +126,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 if start is None or start < now_plus_safety:
                     # if no ETA exists or is in the past, use safety time
                     start = now_plus_safety
+
+                # log it
+                log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(self._blocks), start)
 
                 # init scheduler and schedule
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)

@@ -46,6 +46,11 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
         """Open module."""
         PyObsModule.open(self)
 
+        # subscribe to events
+        if self.comm:
+            self.comm.register_event(TaskStartedEvent)
+            self.comm.register_event(TaskFinishedEvent)
+
         # open scheduler
         self._task_archive.open()
 

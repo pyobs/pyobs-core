@@ -153,7 +153,12 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             event: The task started event.
             sender: Who sent it.
         """
-        log.info('Received task started event, triggering new scheduler run...')
+
+        # get ETA in minutes
+        eta = (event.eta - Time.now()).sec / 60
+        log.info('Received task started event with ETA of %.0f minutes, triggering new scheduler run...', eta)
+
+        # set it
         self._need_update = True
         self._schedule_start = event.eta
 
@@ -164,7 +169,12 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             event: The good weather event.
             sender: Who sent it.
         """
-        log.info('Received good weather event, triggering new scheduler run...')
+
+        # get ETA in minutes
+        eta = (event.eta - Time.now()).sec / 60
+        log.info('Received good weather event with ETA of %.0f minutes, triggering new scheduler run...', eta)
+
+        # set it
         self._need_update = True
         self._schedule_start = event.eta
 

@@ -30,7 +30,7 @@ class TaskStartedEvent(Event):
 
     @property
     def eta(self):
-        return None if self.data is None else Time(self.data)
+        return None if self.data is None else Time(self.data['eta'])
 
 
 __all__ = ['TaskStartedEvent']

@@ -7,6 +7,8 @@ from urllib3 import Retry
 # TODO: is there a better way? we can link to actual CA:
 # https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl
 # but does that only work in Linux?
+# some more:
+# https://github.com/psf/requests/issues/2214
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

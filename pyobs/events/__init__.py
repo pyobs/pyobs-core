@@ -10,6 +10,8 @@ from .motionstatuschanged import MotionStatusChangedEvent
 from .newimage import NewImageEvent
 from .roofclosing import RoofClosingEvent
 from .roofopened import RoofOpenedEvent
+from .taskstarted import TaskStartedEvent
+from .taskfinished import TaskFinishedEvent
 from .testevent import TestEvent
 from .variablechanged import VariableChangedEvent
 from .variablesupdate import VariablesUpdateEvent

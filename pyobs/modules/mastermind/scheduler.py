@@ -6,6 +6,8 @@ import typing
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule
 from astropy.time import TimeDelta
 import astropy.units as u
+from pyobs.events.taskfinished import TaskFinishedEvent
+
 from pyobs.events.taskstarted import TaskStartedEvent
 
 from pyobs.events import GoodWeatherEvent
@@ -47,6 +49,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # time to start next schedule from
         self._schedule_start = None
 
+        # ID of currently running task
+        self._current_task_id = None
+
         # blocks
         self._blocks = []
         self._scheduled_blocks = []
@@ -62,6 +67,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # subscribe to events
         if self.comm:
             self.comm.register_event(TaskStartedEvent, self._on_task_started)
+            self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
     def start(self, *args, **kwargs):
@@ -127,13 +133,16 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                     # if no ETA exists or is in the past, use safety time
                     start = now_plus_safety
 
+                # remove currently running block
+                blocks = list(filter(lambda b: b.name != self._current_task_id, self._blocks))
+
                 # log it
-                log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(self._blocks), start)
+                log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
                 # init scheduler and schedule
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
                 time_range = Schedule(start, start + TimeDelta(self._schedule_range * u.hour))
-                schedule = scheduler(self._blocks, time_range)
+                schedule = scheduler(blocks, time_range)
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks)
@@ -146,7 +155,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         """Trigger a re-schedule."""
         self._need_update = True
 
-    def _on_task_started(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
+    def _on_task_started(self, event: TaskStartedEvent, sender: str, *args, **kwargs):
         """Re-schedule when task has started and we can predict its end.
 
         Args:
@@ -161,6 +170,16 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # set it
         self._need_update = True
         self._schedule_start = event.eta
+        self._current_task_id = event.id
+
+    def _on_task_finished(self, event: TaskFinishedEvent, sender: str, *args, **kwargs):
+        """Reset current task, when it has finished.
+
+        Args:
+            event: The task finished event.
+            sender: Who sent it.
+        """
+        self._current_task_id = None
 
     def _on_good_weather(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
         """Re-schedule on incoming good weather event.

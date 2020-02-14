@@ -12,7 +12,6 @@ class TaskStartedEvent(Event):
             name: Name of task that just started
             id: Unique identifier for task
             eta: Predicted ETA for when the task will finish
-
         """
         Event.__init__(self)
         self.data = {

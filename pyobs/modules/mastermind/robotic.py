@@ -87,7 +87,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
             eta = now + self._task.duration * u.second
 
             # send event
-            self.comm.send_event(TaskStartedEvent(name=self._task.name, eta=eta))
+            self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
             # run task in thread
             log.info('Running task %s...', self._task.name)
@@ -113,7 +113,7 @@ class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
                 self.closing.wait(10)
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(self._task.name))
+            self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
 
             # finish
             log.info('Finished task %s.', self._task.name)

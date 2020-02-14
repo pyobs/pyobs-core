@@ -311,6 +311,9 @@ class LcoTaskArchive(TaskArchive):
         for group in schedulable:
             # loop all requests in group
             for req in group['requests']:
+                # still pending?
+                if req['state'] != 'PENDING':
+                    continue
 
                 # duration
                 duration = req['duration'] * u.second

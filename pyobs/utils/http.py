@@ -3,6 +3,13 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
+# disable warnings
+# TODO: is there a better way? we can link to actual CA:
+# https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl
+# but does that only work in Linux?
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 def requests_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
     session = session or requests.Session()

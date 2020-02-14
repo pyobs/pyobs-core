@@ -134,7 +134,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                     start = now_plus_safety
 
                 # remove currently running block
-                blocks = list(filter(lambda b: b.name != self._current_task_id, self._blocks))
+                blocks = list(filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks))
 
                 # log it
                 log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)

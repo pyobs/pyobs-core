@@ -348,18 +348,19 @@ class LcoTaskArchive(TaskArchive):
         # return blocks
         return blocks
 
-    def update_schedule(self, blocks: list):
+    def update_schedule(self, blocks: list, start_time: Time):
         """Update the list of scheduled blocks.
 
         Args:
             blocks: Scheduled blocks.
+            start_time: Start time for schedule.
         """
 
         # create observations
         observations = self._create_observations(blocks)
 
         # cancel schedule
-        self._cancel_schedule(Time.now())
+        self._cancel_schedule(start_time)
 
         # send new schedule
         self._submit_observations(observations)

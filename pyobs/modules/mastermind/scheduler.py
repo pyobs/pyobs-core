@@ -145,7 +145,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 schedule = scheduler(blocks, time_range)
 
                 # update
-                self._task_archive.update_schedule(schedule.scheduled_blocks)
+                self._task_archive.update_schedule(schedule.scheduled_blocks, start)
                 log.info('Finished calculating schedule for %d block(s).', len(schedule.scheduled_blocks))
 
             # sleep a little

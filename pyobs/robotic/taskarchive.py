@@ -38,11 +38,12 @@ class TaskArchive:
         """
         raise NotImplementedError
 
-    def update_schedule(self, blocks: list):
+    def update_schedule(self, blocks: list, start_time: Time):
         """Update the list of scheduled blocks.
 
         Args:
             blocks: Scheduled blocks.
+            start_time: Start time for schedule.
         """
         raise NotImplementedError
 

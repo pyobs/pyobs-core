@@ -290,5 +290,13 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         """
         pass
 
+    def get_focus_offset(self, *args, **kwargs) -> float:
+        """Return current focus offset.
+
+        Returns:
+            Current focus offset.
+        """
+        return 0
+
 
 __all__ = ['DummyTelescope']

@@ -106,7 +106,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
-            log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
+            log.info("Moving telescope to RA=%s (%.2f°), Dec=%s (%.2f°)...",
+                     ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
+                     ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
             self._track_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 

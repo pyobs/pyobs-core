@@ -12,6 +12,7 @@ from .roofclosing import RoofClosingEvent
 from .roofopened import RoofOpenedEvent
 from .taskstarted import TaskStartedEvent
 from .taskfinished import TaskFinishedEvent
+from .telescopemoving import TelescopeMovingEvent
 from .testevent import TestEvent
 from .variablechanged import VariableChangedEvent
 from .variablesupdate import VariablesUpdateEvent

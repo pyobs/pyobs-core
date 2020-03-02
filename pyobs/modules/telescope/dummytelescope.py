@@ -4,7 +4,7 @@ import time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.events import FilterChangedEvent, InitializedEvent
+from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzMount
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
@@ -41,6 +41,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
             self.comm.register_event(InitializedEvent)
+            self.comm.register_event(TelescopeMovingEvent)
 
     def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -54,8 +55,11 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
             Exception: On any error.
         """
 
-        # start slewing
+        # send events
         self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        self.comm.send_event(TelescopeMovingEvent(ra=ra, dec=dec))
+
+        # start slewing
         self.__move(ra, dec, abort_event)
 
         # finish slewing
@@ -78,8 +82,11 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
                           location=self.location, frame='altaz')
         icrs = coords.icrs
 
-        # start slewing
+        # send events
         self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        self.comm.send_event(TelescopeMovingEvent(alt=alt, az=az))
+
+        # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
         # set telescope to idle
@@ -109,15 +116,15 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
                 raise ValueError('Movement was aborted.')
 
             # move
-            self._position['ra'] = ira + i * dra
-            self._position['dec'] = idec + i * ddec
+            self._position['ra'] = float(ira + i * dra)
+            self._position['dec'] = float(idec + i * ddec)
 
             # sleep a little
             abort_event.wait(0.1)
 
         # set final coordinates
-        self._position['ra'] = ra
-        self._position['dec'] = dec
+        self._position['ra'] = float(ra)
+        self._position['dec'] = float(dec)
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.

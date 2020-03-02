@@ -148,7 +148,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
-            log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
+            log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
             self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 

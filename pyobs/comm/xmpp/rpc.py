@@ -150,7 +150,10 @@ class RPC(object):
 
         # get message
         iq.enable('rpc_query')
-        args = xml2py(iq['rpc_query']['method_response']['params'])
+        try:
+            args = xml2py(iq['rpc_query']['method_response']['params'])
+        except ValueError:
+            log.error('Could not parse method response: %s', iq)
 
         # get future
         pid = iq['id']

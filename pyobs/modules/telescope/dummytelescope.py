@@ -44,6 +44,9 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
             self.comm.register_event(InitializedEvent)
             self.comm.register_event(TelescopeMovingEvent)
 
+        # init status
+        self._change_motion_status(IMotion.Status.PARKED)
+
     def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 

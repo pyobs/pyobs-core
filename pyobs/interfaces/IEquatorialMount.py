@@ -1,8 +1,8 @@
 from .interface import Interface
 
 
-class IEquitorialMount(Interface):
-    """Telescopes on an equitorial mount should also implement this interface."""
+class IEquatorialMount(Interface):
+    """Telescopes on an equatorial mount should also implement this interface."""
 
     def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.
@@ -25,4 +25,4 @@ class IEquitorialMount(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IEquitorialMount']
+__all__ = ['IEquatorialMount']

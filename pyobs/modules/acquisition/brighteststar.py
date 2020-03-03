@@ -8,7 +8,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 from photutils import DAOStarFinder
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquitorialMount, IAltAzMount
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquatorialMount, IAltAzMount
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.time import Time
@@ -113,7 +113,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
                 return
 
             # is telescope on an equitorial mount?
-            if isinstance(telescope, IEquitorialMount):
+            if isinstance(telescope, IEquatorialMount):
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 

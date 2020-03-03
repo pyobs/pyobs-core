@@ -8,7 +8,7 @@ from scipy.optimize import fmin
 from astropy.wcs import WCS
 import re
 
-from pyobs.interfaces import ITelescope, IEquitorialMount, IAltAzMount, ICamera
+from pyobs.interfaces import ITelescope, IEquatorialMount, IAltAzMount, ICamera
 from pyobs.utils.images import Image
 from pyobs.utils.pid import PID
 from .base import BaseGuider
@@ -165,7 +165,7 @@ class AutoGuidingProjection(BaseGuider):
             log.info('PID results in RA/Dec shift of dRA=%.2f", dDec=%.2f.', dra * 3600., ddec * 3600.)
 
         # is telescope on an equitorial mount?
-        if isinstance(telescope, IEquitorialMount):
+        if isinstance(telescope, IEquatorialMount):
             # get current offset
             cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 

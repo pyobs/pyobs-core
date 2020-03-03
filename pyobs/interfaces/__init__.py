@@ -11,7 +11,7 @@ from .IConfigProvider import IConfigProvider
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
-from .IEquitorialMount import IEquitorialMount
+from .IEquatorialMount import IEquatorialMount
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField

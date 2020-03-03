@@ -26,6 +26,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         # init telescope
         self._images = {}
         self._position = {'ra': 12.12, 'dec': 45.45}
+        self._offsets = {'ra': 0, 'dec': 0}
         self._focus = 52.
         self._filter = 'V'
 
@@ -240,6 +241,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
+        self._offsets = {'ra': dalt, 'dec': daz}
 
     def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
         """Get Alt/Az offset.
@@ -247,7 +249,7 @@ class DummyTelescope(BaseTelescope, IAltAzMount, IFocuser, IFilters, IFitsHeader
         Returns:
             Tuple with alt and az offsets.
         """
-        return 0, 0
+        return self._offsets['ra'], self._offsets['dec']
 
     def get_radec(self, *args, **kwargs) -> (float, float):
         """Returns current RA and Dec.

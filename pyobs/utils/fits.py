@@ -4,6 +4,7 @@ import re
 from typing import Union
 import numpy as np
 import PIL
+import PIL.Image
 import aplpy
 import matplotlib.pyplot as plt
 from astropy.io import fits

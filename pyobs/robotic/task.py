@@ -5,15 +5,22 @@ from pyobs.utils.time import Time
 
 
 class Task:
-    def __init__(self, scheduler: 'Scheduler', *args, **kwargs):
-        self.scheduler = scheduler
+    def __init__(self, tasks: 'TaskArchive', *args, **kwargs):
+        self.task_archive = tasks
 
+    @property
+    def id(self) -> str:
+        """ID of task."""
+        raise NotImplementedError
+
+    @property
     def name(self) -> str:
-        """Returns name of task.
+        """Returns name of task."""
+        raise NotImplementedError
 
-        Returns:
-            Name of task.
-        """
+    @property
+    def duration(self) -> float:
+        """Returns estimated duration of task in seconds."""
         raise NotImplementedError
 
     def window(self) -> (Time, Time):
@@ -21,6 +28,14 @@ class Task:
 
         Returns:
             Start and end time for this observation window.
+        """
+        raise NotImplementedError
+
+    def can_run(self) -> bool:
+        """Checks, whether this task could run now.
+
+        Returns:
+            True, if task can run now.
         """
         raise NotImplementedError
 
@@ -36,13 +51,16 @@ class Task:
         """Whether task is finished."""
         raise NotImplementedError
 
-    def get_fits_headers(self) -> dict:
-        """Return FITS header produced by this task.
+    def get_fits_headers(self, namespaces: list = None) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
-            Dictionary with FITS headers.
+            Dictionary containing FITS headers.
         """
-        raise NotImplementedError
+        return {}
 
     @staticmethod
     def _check_abort(abort_event: threading.Event, end: Time = None):

@@ -109,6 +109,8 @@ class Night:
 
         # download frames
         images = self._archive.download_frames(infos)
+        if len(images) < 3:
+            log.warning('Too few (%d) frames found, skipping...', len(infos))
 
         # midnight
         midnight = Time(self._night + ' 23:59:59')

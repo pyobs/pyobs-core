@@ -24,12 +24,9 @@ Install pyobs:
 
 Create a test configuration test.yaml:
 
-    class: pyobs.Application
-
-    module:
-      class: pyobs.modules.test.StandAlone
-      message: Hello world
-      interval: 10
+    class: pyobs.modules.test.StandAlone
+    message: Hello world
+    interval: 10
       
 And run it:
    

@@ -28,7 +28,7 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def get_radec(self) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> (float, float):
         """Returns current RA and Dec.
 
         Returns:
@@ -36,7 +36,7 @@ class ITelescope(IMotion):
         """
         raise NotImplementedError
 
-    def get_altaz(self) -> (float, float):
+    def get_altaz(self, *args, **kwargs) -> (float, float):
         """Returns current Alt and Az.
 
         Returns:

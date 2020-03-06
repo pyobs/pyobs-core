@@ -1,8 +1,12 @@
 import sep
 from astropy.table import Table
+import logging
 
 from .photometry import Photometry
 from pyobs.utils.images import Image
+
+
+log = logging.getLogger(__name__)
 
 
 class SepPhotometry(Photometry):
@@ -10,20 +14,24 @@ class SepPhotometry(Photometry):
         Photometry.__init__(self, *args, **kwargs)
         self.threshold = threshold
 
-    def __call__(self, image: Image):
+    def __call__(self, image: Image) -> Table:
         # get data and make it continuous
         data = image.data.copy()
 
         # estimate background, probably we need to byte swap, and subtract it
         try:
             bkg = sep.Background(data)
-        except ValueError:
+        except ValueError as e:
             data = data.byteswap(True).newbyteorder()
             bkg = sep.Background(data)
         bkg.subfrom(data)
 
         # extract sources
-        sources = sep.extract(data, self.threshold, err=bkg.globalrms)
+        try:
+            sources = sep.extract(data, self.threshold, err=bkg.globalrms)
+        except:
+            log.exception('An error has occured.')
+            return Table()
 
         # convert to astropy table
         sources = Table(sources)
@@ -34,11 +42,26 @@ class SepPhotometry(Photometry):
         # Calculate the ellipticity
         sources['ellipticity'] = 1.0 - (sources['b'] / sources['a'])
 
+        # equivalent of FLUX_AUTO
+        kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
+                                          sources['theta'], 6.0)
+        flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
+                                          sources['theta'], 2.5 * kronrad, subpix=1)
+        sources['flux_auto'] = flux
+        sources['flux_auto_err'] = fluxerr
+
+        # equivalent to FLUX_RADIUS
+        sources['radius'], _ = sep.flux_radius(data, sources['x'], sources['y'], 6. * sources['a'], 0.5,
+                                               normflux=sources['flux_auto'], subpix=5)
+
         # pick columns for catalog
-        cat = sources['x', 'y', 'ellipticity', 'flux']
+        cat = sources['x', 'y', 'ellipticity', 'flux', 'flux_auto', 'flux_auto_err', 'radius']
 
         # set it
         image.catalog = cat
+
+        # return full catalog
+        return sources
 
 
 __all__ = ['SepPhotometry']

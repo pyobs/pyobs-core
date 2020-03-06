@@ -19,12 +19,20 @@ class Image:
 
             # store
             image = Image()
-            image.data = data['SCI'].data
+            image.data = data['SCI'].data.astype(np.float)
             image.header = data['SCI'].header
 
             # close file
             data.close()
             return image
+
+    @staticmethod
+    def from_file(filename: str) -> 'Image':
+        # load file
+        image = Image()
+        data, image.header = fits.getdata(filename, header=True)
+        image.data = data.astype(np.float)
+        return image
 
     def copy(self):
         img = Image()

@@ -8,7 +8,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 from photutils import DAOStarFinder
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquitorialMount, IAltAzMount
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquatorialMount, IAltAzMount
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.time import Time
@@ -53,20 +53,31 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300000)
-    def acquire_target(self, exposure_time: int, *args, **kwargs):
+    def acquire_target(self, exposure_time: int, ra: float = None, dec: float = None, *args, **kwargs):
         """Acquire target at given coordinates.
+
+        If no RA/Dec are given, start from current position.
 
         Args:
             exposure_time: Exposure time for acquisition.
+            ra: Right ascension of field to acquire.
+            dec: Declination of field to acquire.
         """
 
-        # get focuser
-        log.info('Getting proxy for focuser...')
+        # get telescope
+        log.info('Getting proxy for telescope...')
         telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
+
+        # initial move
+        if ra is not None and dec is not None:
+            log.info('Moving telescope...')
+            telescope.track_radec(ra, dec).wait()
+        else:
+            log.info('No RA/Dec given, starting from current position...')
 
         # try given number of attempts
         for a in range(self._attempts):
@@ -102,13 +113,13 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
                 return
 
             # is telescope on an equitorial mount?
-            if isinstance(telescope, IEquitorialMount):
+            if isinstance(telescope, IEquatorialMount):
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+                telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
 
             elif isinstance(telescope, IAltAzMount):
                 # transform both to Alt/AZ
@@ -126,7 +137,7 @@ class BrightestStarAcquisition(PyObsModule, IAcquisition):
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+                telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
 
             else:
                 log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')

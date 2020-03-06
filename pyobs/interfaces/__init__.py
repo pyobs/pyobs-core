@@ -11,7 +11,7 @@ from .IConfigProvider import IConfigProvider
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
-from .IEquitorialMount import IEquitorialMount
+from .IEquatorialMount import IEquatorialMount
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
@@ -19,9 +19,12 @@ from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IMotion import IMotion
 from .IPipeline import IPipeline
+from .IReady import IReady
 from .IRoof import IRoof
 from .IRotation import IRotation
+from .IRunnable import IRunnable
 from .IScriptRunner import IScriptRunner
+from .ISettings import ISettings
 from .IStoppable import IStoppable
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures

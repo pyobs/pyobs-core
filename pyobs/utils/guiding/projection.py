@@ -8,7 +8,7 @@ from scipy.optimize import fmin
 from astropy.wcs import WCS
 import re
 
-from pyobs.interfaces import ITelescope, IEquitorialMount, IAltAzMount, ICamera
+from pyobs.interfaces import ITelescope, IEquatorialMount, IAltAzMount, ICamera
 from pyobs.utils.images import Image
 from pyobs.utils.pid import PID
 from .base import BaseGuider
@@ -20,8 +20,8 @@ log = logging.getLogger(__name__)
 class AutoGuidingProjection(BaseGuider):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
-    def __init__(self, max_offset: float = 10, max_exposure_time: float = 20,
-                 max_interval: float = 30, separation_reset: float = 10, pid: bool = False, *args, **kwargs):
+    def __init__(self, max_offset: float = 30, max_exposure_time: float = None,
+                 max_interval: float = 600, separation_reset: float = None, pid: bool = False, *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:
@@ -93,7 +93,7 @@ class AutoGuidingProjection(BaseGuider):
         c1 = SkyCoord(ra=hdr['TEL-RA'] * u.deg, dec=hdr['TEL-DEC'] * u.deg, frame='icrs')
         c2 = SkyCoord(ra=self._ref_header['TEL-RA'] * u.deg, dec=self._ref_header['TEL-DEC'] * u.deg, frame='icrs')
         separation = c1.separation(c2).deg
-        if separation * 3600. > self._separation_reset:
+        if self._separation_reset is not None and separation * 3600. > self._separation_reset:
             log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
                             separation * 3600.)
             self._reset_guiding(sum_x, sum_y, hdr)
@@ -149,13 +149,12 @@ class AutoGuidingProjection(BaseGuider):
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
         # too large?
-        max_offset = self._max_offset
-        if abs(dra * 3600.) > max_offset or abs(ddec * 3600.) > max_offset:
+        if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return
 
         # exposure time too large
-        if hdr['EXPTIME'] > self._max_exposure_time:
+        if self._max_exposure_time is not None and hdr['EXPTIME'] > self._max_exposure_time:
             log.warning('Exposure time too large, skipping auto-guiding for now...')
             return
 
@@ -166,13 +165,13 @@ class AutoGuidingProjection(BaseGuider):
             log.info('PID results in RA/Dec shift of dRA=%.2f", dDec=%.2f.', dra * 3600., ddec * 3600.)
 
         # is telescope on an equitorial mount?
-        if isinstance(telescope, IEquitorialMount):
+        if isinstance(telescope, IEquatorialMount):
             # get current offset
             cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
             # move offset
             log.info('Offsetting telescope...')
-            telescope.set_radec_offsets(cur_dra + dra, cur_ddec + ddec).wait()
+            telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
             log.info('Finished image.')
             self._loop_closed = True
 
@@ -191,7 +190,7 @@ class AutoGuidingProjection(BaseGuider):
 
             # move offset
             log.info('Offsetting telescope...')
-            telescope.set_altaz_offsets(cur_dalt + dalt, cur_daz + daz).wait()
+            telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
             log.info('Finished image.')
             self._loop_closed = True
 

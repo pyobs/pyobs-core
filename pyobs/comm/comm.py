@@ -18,12 +18,13 @@ log = logging.getLogger(__name__)
 class Comm:
     """Base class for all Comm modules in pyobs."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cache_proxies: bool = True, *args, **kwargs):
         """Creates a comm module."""
 
         self._proxies = {}
         self._module = None
         self._log_queue = queue.Queue()
+        self._cache_proxies = cache_proxies
 
         # cache for shared variables
         self.variables = SharedVariableCache(comm=self)
@@ -104,8 +105,8 @@ class Comm:
         if client is None:
             return None
 
-        # exists?
-        if client not in self._proxies:
+        # if client doesn't exist or we disabled caching, fetch a new proxy
+        if client not in self._proxies or not self._cache_proxies:
             # get interfaces
             interfaces = self.get_interfaces(client)
             if interfaces is None:

@@ -6,15 +6,15 @@ import logging
 from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
+from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-from pyobs.mixins.weatheraware import WeatherAwareMixin
 
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModule):
     """Base class for telescopes."""
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
@@ -34,9 +34,6 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         self._lock_moving = threading.Lock()
         self._abort_move = threading.Event()
 
-        # status
-        self._motion_status = IMotion.Status.IDLE
-
         # celestial status
         self._celestial_lock = threading.RLock()
         self._celestial_headers = {}
@@ -44,33 +41,17 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # add thread func
         self._add_thread_func(self._celestial, True)
 
-        # init WeatherAware
+        # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
+        MotionStatusMixin.__init__(self, *args, **kwargs)
 
     def open(self):
         """Open module."""
         PyObsModule.open(self)
 
-        # subscribe to events
-        if self.comm:
-            self.comm.register_event(MotionStatusChangedEvent)
-
-        # same for WeatherAware
+        # open mixins
         WeatherAwareMixin.open(self)
-
-    def _change_motion_status(self, status: IMotion.Status):
-        """Change motion status and send event,
-
-        Args:
-            status: New motion status.
-        """
-
-        # send event, if it changed
-        if self._motion_status != status:
-            self.comm.send_event(MotionStatusChangedEvent(self._motion_status, status))
-
-        # set it
-        self._motion_status = status
+        MotionStatusMixin.open(self)
 
     def init(self, *args, **kwargs):
         """Initialize telescope.
@@ -125,7 +106,9 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # track telescope
-            log.info("Moving telescope to RA=%.2f, Dec=%.2f...", ra, dec)
+            log.info("Moving telescope to RA=%s (%.2f°), Dec=%s (%.2f°)...",
+                     ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
+                     ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
             self._track_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
@@ -165,26 +148,18 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # move telescope
-            log.info("Moving telescope to Alt=%.2f, Az=%.2f...", alt, az)
+            log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
             self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
             # update headers now
             self._update_celestial_headers()
 
-    def get_motion_status(self, device: str = None) -> IMotion.Status:
-        """Returns current motion status.
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of this module.
 
         Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
-        """
-        return self._motion_status
-
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
             Dictionary containing FITS headers.
@@ -205,15 +180,15 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
 
         # set coordinate headers
         if coords_ra_dec is not None:
-            hdr['TEL-RA'] = (coords_ra_dec.ra.degree, 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (coords_ra_dec.dec.degree, 'Declination of telescope [degrees]')
+            hdr['TEL-RA'] = (float(coords_ra_dec.ra.degree), 'Right ascension of telescope [degrees]')
+            hdr['TEL-DEC'] = (float(coords_ra_dec.dec.degree), 'Declination of telescope [degrees]')
             hdr['CRVAL1'] = hdr['TEL-RA']
             hdr['CRVAL2'] = hdr['TEL-DEC']
         if coords_alt_az is not None:
-            hdr['TEL-ALT'] = (coords_alt_az.alt.degree, 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (coords_alt_az.az.degree, 'Telescope azimuth [degrees]')
+            hdr['TEL-ALT'] = (float(coords_alt_az.alt.degree), 'Telescope altitude [degrees]')
+            hdr['TEL-AZ'] = (float(coords_alt_az.az.degree), 'Telescope azimuth [degrees]')
             hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-            hdr['AIRMASS'] = (coords_alt_az.secz.value, 'Airmass of observation start')
+            hdr['AIRMASS'] = (float(coords_alt_az.secz.value), 'Airmass of observation start')
 
         # convert to sexagesimal
         if coords_ra_dec is not None:
@@ -269,11 +244,11 @@ class BaseTelescope(WeatherAwareMixin, ITelescope, PyObsModule):
         # store it
         with self._celestial_lock:
             self._celestial_headers = {
-                'MOONALT': (moon_altaz.alt.degree, 'Lunar altitude'),
-                'MOONFRAC': (moon_frac, 'Fraction of the moon illuminated'),
-                'MOONDIST': (None if moon_dist is None else moon_dist.degree, 'Lunar distance from target'),
-                'SUNALT': (sun_altaz.alt.degree, 'Solar altitude'),
-                'SUNDIST': (None if sun_dist is None else sun_dist.degree, 'Solar Distance from Target')
+                'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
+                'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
+                'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
+                'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
+                'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
             }
 
 

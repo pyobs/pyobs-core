@@ -1,42 +1,189 @@
 from threading import Event
 import logging
 from typing import Union
+import typing
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, IRoof, IMotion
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IRoof, IAutoGuiding
+from pyobs.robotic.lco.default import LcoDefaultScript
+from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
-from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class CannotRunTask(Exception):
-    pass
+class ConfigStatus:
+    """Status of a single configuration."""
+
+    def __init__(self, state='ATTEMPTED', reason=''):
+        """Initializes a new Status with an ATTEMPTED."""
+        self.start = Time.now()
+        self.end = None
+        self.state = state
+        self.reason = reason
+        self.time_completed = 0
+
+    def finish(self, state=None, reason=None, time_completed: int = 0) -> 'ConfigStatus':
+        """Finish this status with the given values and the current time.
+
+        Args:
+            state: State of configuration
+            reason: Reason for that state
+            time_completed: Completed time [s]
+        """
+        if state is not None:
+            self.state = state
+        if reason is not None:
+            self.reason = reason
+        self.time_completed = time_completed
+        self.end = Time.now()
+        return self
+
+    def to_json(self):
+        """Convert status to JSON for sending to portal."""
+        return {
+            'state': self.state,
+            'summary': {
+                'state': self.state,
+                'reason': self.reason,
+                'start': self.start.isot,
+                'end': self.end.isot,
+                'time_completed': self.time_completed
+            }
+        }
 
 
 class LcoTask(Task):
-    def __init__(self, task: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
-                 *args, **kwargs):
+    """A task from the LCO portal."""
+
+    def __init__(self, config: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
+                 autoguider: str, scripts: typing.Dict[str, Script], *args, **kwargs):
+        """Init LCO task (called request there).
+
+        Args:
+            config: Configuration for task
+            comm: Comm object to use
+            telescope: Telescope to use
+            camera: Camera to use
+            filters: Filters to use
+            roof: Roof to use
+            autoguider: Autoguider to use
+            scripts: External scripts to run
+        """
         Task.__init__(self, *args, **kwargs)
 
         # store stuff
-        self.task = task
+        self.config = config
         self.comm = comm
         self.telescope = telescope
         self.camera = camera
         self.filters = filters
         self.roof = roof
+        self.autoguider = autoguider
+        self.scripts = scripts
+        self.cur_script = None
 
     @property
     def id(self) -> str:
-        return self.task['request']['id']
+        """ID of task."""
+        return self.config['request']['id']
 
+    @property
     def name(self) -> str:
-        return self.task['name']
+        """Returns name of task."""
+        return self.config['name']
+
+    @property
+    def duration(self) -> float:
+        """Returns estimated duration of task in seconds."""
+        return self.config['request']['duration']
 
     def window(self) -> (Time, Time):
-        return self.task['start'], self.task['end']
+        """Returns the time window for this task.
+
+        Returns:
+            Start and end time for this observation window.
+        """
+        return self.config['start'], self.config['end']
+
+    def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters):
+        """Get proxies for running the task
+
+        Returns:
+            Proxies for roof, telescope, camera and filter wheel
+
+        Raises:
+            ValueError: If could not get proxies for all modules
+        """
+        roof: IRoof = self.comm.proxy(self.roof, IRoof)
+        telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
+        camera: ICamera = self.comm.proxy(self.camera, ICamera)
+        filters: IFilters = self.comm.proxy(self.filters, IFilters)
+        autoguider: IAutoGuiding = self.comm.proxy(self.autoguider, IAutoGuiding)
+        return roof, telescope, camera, filters, autoguider
+
+    def _get_config_script(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera,
+                           filters: IFilters, autoguider: IAutoGuiding) -> Script:
+        """Get config script for given configuration.
+
+        Args:
+            config: Config to create runner for.
+            roof: Roof
+            telescope: Telescope
+            camera: Camera
+            filters: Filter wheel
+            autoguider: Auto guider
+
+        Returns:
+            Script for running config
+
+        Raises:
+            ValueError: If could not create runner.
+        """
+
+        # what do we run?
+        if 'extra_params' in config and 'script_name' in config['extra_params']:
+            # let's run some script, so get its name
+            script_name = config['extra_params']['script_name']
+
+            # got one?
+            if script_name in self.scripts:
+                return self.scripts[script_name]
+            else:
+                raise ValueError('Invalid script task type.')
+
+        else:
+            # seems to be a default task
+            from .taskarchive import LcoTaskArchive
+            self.task_archive: LcoTaskArchive
+            return LcoDefaultScript(config, roof, telescope, camera, filters, autoguider, self.task_archive.instruments)
+
+    def can_run(self) -> bool:
+        """Checks, whether this task could run now.
+
+        Returns:
+            True, if task can run now.
+        """
+
+        # get proxies
+        try:
+            roof, telescope, camera, filters, autoguider = self._get_proxies()
+        except ValueError:
+            return False
+
+        # loop configurations
+        req = self.config['request']
+        for config in req['configurations']:
+            # get config runner
+            runner = self._get_config_script(config, roof, telescope, camera, filters, autoguider)
+
+            # if any runner can run, we proceed
+            if runner.can_run():
+                return True
+
+        # no config found that could run
+        return False
 
     def run(self, abort_event: Event):
         """Run a task
@@ -44,167 +191,118 @@ class LcoTask(Task):
         Args:
             abort_event: Event to be triggered to abort task.
         """
-        from pyobs.robotic.lco import LcoScheduler
+        from pyobs.robotic.lco import LcoTaskArchive
 
         # get request
-        req = self.task['request']
+        req = self.config['request']
 
         # get proxies
-        roof: IRoof = self.comm.proxy(self.roof, IRoof)
-        telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
-        camera: ICamera = self.comm.proxy(self.camera, ICamera)
-        filters: IFilters = self.comm.proxy(self.filters, IFilters)
-
         try:
-            # loop configurations
+            roof, telescope, camera, filters, autoguider = self._get_proxies()
+        except ValueError:
+            # fail all configs
+            log.error('Could not get proxies.')
             for config in req['configurations']:
-                # run config
-                status = self._run_config(abort_event, config, roof, telescope, camera, filters)
-
                 # send status
-                if status is not None and isinstance(self.scheduler, LcoScheduler):
-                    self.scheduler.send_update(config['configuration_status'], status)
+                status = ConfigStatus()
+                if isinstance(self.task_archive, LcoTaskArchive):
+                    self.config['state'] = 'FAILED'
+                    self.task_archive.send_update(config['configuration_status'],
+                                                  status.finish(state='FAILED', reason='System failure.').to_json())
 
-            # finished task
-            self.task['state'] = 'COMPLETED'
+            # finish
+            return
 
-        except InterruptedError:
-            log.warning('Task execution was interrupted.')
-            self.task['state'] = 'ABORTED'
-            raise
+        # loop configurations
+        for config in req['configurations']:
+            # aborted?
+            if abort_event.is_set():
+                break
 
-    def _run_config(self, abort_event, config, roof, telescope, camera, filters) -> Union[dict, None]:
+            # send an ATTEMPTED status
+            if isinstance(self.task_archive, LcoTaskArchive):
+                status = ConfigStatus()
+                self.config['state'] = 'ATTEMPTED'
+                self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
+
+            # get config runner
+            script = self._get_config_script(config, roof, telescope, camera, filters, autoguider)
+
+            # can run?
+            if not script.can_run():
+                log.warning('Cannot run config.')
+                continue
+
+            # run config
+            log.info('Running config...')
+            self.cur_script = script
+            status = self._run_script(abort_event, script)
+            self.cur_script = None
+
+            # send status
+            if status is not None and isinstance(self.task_archive, LcoTaskArchive):
+                self.config['state'] = status.state
+                self.task_archive.send_update(config['configuration_status'], status.to_json())
+
+        # finished task
+        log.info('Finished task.')
+
+    def _run_script(self, abort_event, script: Script) -> Union[ConfigStatus, None]:
+        """Run a config
+
+        Args:
+            abort_event: Event for signaling abort
+            script: Script to run
+
+        Returns:
+            Configuration status to send to portal
+        """
+
         # at least we tried...
-        config_status = {'state': 'ATTEMPTED', 'summary': {'start': Time.now().isot}}
-
-        # total exposure time
-        exp_time_done = 0
+        config_status = ConfigStatus()
 
         try:
             # check first
             self._check_abort(abort_event)
 
-            # what do we run?
-            if 'extra_params' in config and 'script_name' in config['extra_params']:
-                # let's run some script, so get its name
-                script_name = config['extra_params']['script_name']
-
-                # which one is it?
-                if script_name == 'skyflats':
-                    exp_time_done += self._run_skyflats_config(abort_event, config, roof, telescope, camera, filters)
-                else:
-                    # unknown script
-                    raise ValueError('Invalid script task type.')
-
-            else:
-                # seems to be a default task
-                exp_time_done += self._run_default_config(abort_event, config, roof, telescope, camera, filters)
+            # run it
+            log.info('Running task %d: %s...', self.id, self.config['name'])
+            script.run(abort_event)
 
             # finished config
-            config_status['state'] = 'COMPLETED'
-            config_status['summary']['state'] = 'COMPLETED'
-
-        except CannotRunTask:
-            return None
+            config_status.finish(state='COMPLETED', time_completed=script.exptime_done)
 
         except InterruptedError:
             log.warning('Task execution was interrupted.')
-            config_status['state'] = 'ATTEMPTED'
-            config_status['summary']['state'] = 'ATTEMPTED'
-            config_status['summary']['reason'] = 'Task execution was interrupted'
+            config_status.finish(state='FAILED', reason='Task execution was interrupted.',
+                                 time_completed=script.exptime_done)
 
         except Exception:
             log.exception('Something went wrong.')
-            config_status['state'] = 'FAILED'
-            config_status['summary']['state'] = 'FAILED'
-            config_status['summary']['reason'] = 'Something went wrong'
-
-        # stop telescope and abort exposure
-        telescope.stop_motion().wait()
-
-        # finish filling config status
-        config_status['summary']['end'] = Time.now().isot
-        config_status['summary']['time_completed'] = exp_time_done
+            config_status.finish(state='FAILED', reason='Something went wrong', time_completed=script.exptime_done)
 
         # finished
         return config_status
 
-    def _run_default_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
-        # get image type
-        image_type = ICamera.ImageType.OBJECT
-        if config['type'] == 'BIAS':
-            image_type = ICamera.ImageType.BIAS
-        elif config['type'] == 'DARK':
-            image_type = ICamera.ImageType.DARK
-
-        # we need an open roof and a working telescope for OBJECT exposures
-        if image_type == ICamera.ImageType.OBJECT:
-            if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                    telescope.get_motion_status().wait() != IMotion.Status.IDLE:
-                raise CannotRunTask
-
-        # log
-        log.info('Running default task %d: %s...', self.id, self.task['name'])
-
-        # got a target?
-        target = config['target']
-        track = None
-        if target['ra'] is not None and target['dec'] is not None:
-            log.info('Moving to target %s...', target['name'])
-            track = telescope.track_radec(target['ra'], target['dec'])
-
-        # total exposure time in this config
-        exp_time_done = 0
-
-        # loop instrument configs
-        for ic in config['instrument_configs']:
-            self._check_abort(abort_event)
-
-            # set filter
-            set_filter = None
-            if 'optical_elements' in ic and 'filter' in ic['optical_elements']:
-                log.info('Setting filter to %s...', ic['optical_elements']['filter'])
-                set_filter = filters.set_filter(ic['optical_elements']['filter'])
-
-            # wait for tracking and filter
-            Future.wait_all([track, set_filter])
-
-            # set binning and window
-            self._check_abort(abort_event)
-            if isinstance(camera, ICameraBinning):
-                log.info('Set binning to %dx%d...', ic['bin_x'], ic['bin_x'])
-                camera.set_binning(ic['bin_x'], ic['bin_x']).wait()
-            if isinstance(camera, ICameraWindow):
-                full_frame = camera.get_full_frame().wait()
-                camera.set_window(*full_frame).wait()
-
-            # loop images
-            for exp in range(ic['exposure_count']):
-                self._check_abort(abort_event)
-                log.info('Exposing %s image %d/%d for %.2fs...',
-                         config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                camera.expose(int(ic['exposure_time'] * 1000), image_type).wait()
-                exp_time_done += ic['exposure_time']
-
-        # finally, return total exposure time
-        return exp_time_done
-
-    def _run_skyflats_config(self, abort_event, config, roof, telescope, camera, filters) -> float:
-        # we need an open roof and a working telescope
-        if roof.get_motion_status().wait() not in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING] or \
-                telescope.get_motion_status().wait() != IMotion.Status.IDLE:
-            raise CannotRunTask
-
-        # log
-        log.info('Running skyflats task %d: %s...', self.id, self.task['name'])
-        return 0.
-
     def is_finished(self) -> bool:
         """Whether task is finished."""
-        return self.task['state'] != 'PENDING'
+        return self.config['state'] != 'PENDING'
 
-    def get_fits_headers(self) -> dict:
-        return {}
+    def get_fits_headers(self, namespaces: list = None) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+
+        # get header from script
+        hdr = self.cur_script.get_fits_headers(namespaces) if self.cur_script is not None else {}
+
+        # return it
+        return hdr
 
 
 __all__ = ['LcoTask']

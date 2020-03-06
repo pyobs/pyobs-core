@@ -120,8 +120,7 @@ class RPC(object):
                     response.send()
 
             # call method
-            #return_value = method(**ba.arguments)
-            return_value = self._handler.execute(pmethod, *params)
+            return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
             return_value = () if return_value is None else (return_value,)
 
             # send response
@@ -151,7 +150,10 @@ class RPC(object):
 
         # get message
         iq.enable('rpc_query')
-        args = xml2py(iq['rpc_query']['method_response']['params'])
+        try:
+            args = xml2py(iq['rpc_query']['method_response']['params'])
+        except ValueError:
+            log.error('Could not parse method response: %s', iq)
 
         # get future
         pid = iq['id']

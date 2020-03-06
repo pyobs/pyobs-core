@@ -2,11 +2,15 @@ import io
 from typing import List
 import requests
 import urllib.parse
+import logging
 
 from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from pyobs.utils.images import Image
 from .archive import Archive, FrameInfo
+
+
+log = logging.getLogger(__name__)
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
@@ -22,8 +26,20 @@ class PyobsArchiveFrameInfo(FrameInfo):
         return self.info['basename']
 
     @property
+    def url(self):
+        return self.info['url']
+
+    @property
     def dateobs(self):
         return Time(self.info['DATE_OBS'])
+
+    @property
+    def filter_name(self):
+        return self.info['FILTER']
+
+    @property
+    def binning(self):
+        return int(self.info['binning'][0])
 
 
 class PyobsArchive(Archive):
@@ -36,7 +52,7 @@ class PyobsArchive(Archive):
                     image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/aggregate/')
+        url = urllib.parse.urljoin(self._url, '/frames/aggregate/')
 
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
@@ -56,7 +72,7 @@ class PyobsArchive(Archive):
                     rlevel: int = None) \
             -> List[PyobsArchiveFrameInfo]:
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/')
+        url = urllib.parse.urljoin(self._url, '/frames/')
 
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
@@ -104,22 +120,22 @@ class PyobsArchive(Archive):
         # loop infos
         images = []
         for info in infos:
-            # build URL
-            url = urllib.parse.urljoin(self._url, '/api/frames/%d/download/' % info.id)
-
             # download
-            r = requests.get(url, headers=self._headers)
+            r = requests.get(info.url, headers=self._headers)
 
             # create image
-            image = Image.from_bytes(r.content)
-            images.append(image)
+            try:
+                image = Image.from_bytes(r.content)
+                images.append(image)
+            except OSError:
+                log.error('Error downloading file %s.', info.filename)
 
         # return all
         return images
 
     def upload_frames(self, images: List[Image]):
         # build URL
-        url = urllib.parse.urljoin(self._url, '/api/frames/create/')
+        url = urllib.parse.urljoin(self._url, '/frames/create/')
 
         # create session
         session = requests.session()

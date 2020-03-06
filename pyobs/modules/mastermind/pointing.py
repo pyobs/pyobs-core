@@ -118,7 +118,7 @@ class PointingMastermind(PyObsModule):
 
             # acquire target
             try:
-                acquisition.acquire_target(radec.ra.degree, radec.dec.degree)
+                acquisition.acquire_target(float(radec.ra.degree), float(radec.dec.degree))
             except ValueError:
                 log.info('Could not acquire target.')
                 continue

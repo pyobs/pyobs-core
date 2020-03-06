@@ -3,20 +3,22 @@ import logging
 import math
 import os
 import threading
-from typing import Union, Tuple
+from typing import Tuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
 import yaml
 import io
+
+from pyobs.comm import TimeoutException
+
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
 from pyobs import PyObsModule
-from pyobs.events import BadWeatherEvent, NewImageEvent, ExposureStatusChangedEvent
+from pyobs.events import NewImageEvent, ExposureStatusChangedEvent, BadWeatherEvent, RoofClosingEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
-from pyobs.utils.threads import ThreadWithReturnValue
 
 log = logging.getLogger(__name__)
 
@@ -27,15 +29,18 @@ class CameraException(Exception):
 
 class BaseCamera(PyObsModule, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
+                 flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 cache: str = '/pyobs/camera_cache.json', *args, **kwargs):
+                 cache: str = '/pyobs/camera_cache.json', fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
             fits_headers: Additional FITS headers.
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
+            flip: Whether or not to flip the image along its first axis.
             filenames: Template for file naming.
+            fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -49,13 +54,16 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             self._fits_headers['OBSERVER'] = ['pyobs', 'Name of observer']
         self._centre = centre
         self._rotation = rotation
+        self._flip = flip
         self._filenames = filenames
+        self._fits_namespaces = fits_namespaces
 
         # init camera
         self._last_image = None
         self._exposure = None
         self._camera_status = ICamera.ExposureStatus.IDLE
         self._exposures_left = 0
+        self._image_type = None
 
         # multi-threading
         self._expose_lock = threading.Lock()
@@ -73,7 +81,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
+
+            # bad weather
             self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
+            self.comm.register_event(RoofClosingEvent, self._on_bad_weather)
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -185,9 +196,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self.location is not None:
             loc = self.location
             # add location of telescope
-            hdr['LONGITUD'] = (loc.lon.degree, 'Longitude of the telescope [deg E]')
-            hdr['LATITUDE'] = (loc.lat.degree, 'Latitude of the telescope [deg N]')
-            hdr['HEIGHT'] = (loc.height.value, 'Altitude of the telescope [m]')
+            hdr['LONGITUD'] = (float(loc.lon.degree), 'Longitude of the telescope [deg E]')
+            hdr['LATITUDE'] = (float(loc.lat.degree), 'Latitude of the telescope [deg N]')
+            hdr['HEIGHT'] = (float(loc.height.value), 'Altitude of the telescope [m]')
 
             # add local sidereal time
             lst = self.observer.local_sidereal_time(date_obs)
@@ -317,7 +328,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                future = self.comm.execute(client, 'get_fits_headers')
+                future = self.comm.execute(client, 'get_fits_headers', self._fits_namespaces)
                 fits_header_futures[client] = future
 
         # open the shutter?
@@ -340,6 +351,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             self._exposure = None
             raise
 
+        # flip it?
+        if self._flip:
+            hdu.data = np.flip(hdu.data, axis=0)
+
         # add HDU name
         hdu.name = 'SCI'
 
@@ -350,7 +365,11 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         for client, future in fits_header_futures.items():
             # join thread
             log.info('Fetching FITS headers from %s...', client)
-            headers = future.wait()
+            try:
+                headers = future.wait()
+            except TimeoutException:
+                log.error('Fetching FITS headers from %s timed out.', client)
+                continue
 
             # add them to fits file
             if headers:
@@ -429,6 +448,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
+            # store type
+            self._image_type = image_type
+
             # loop count
             images = []
             self._exposures_left = count
@@ -454,6 +476,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return images
 
         finally:
+            # reset type
+            self._image_type = None
+
+            # release lock
             log.info('Releasing exclusive lock on camera...')
             self._expose_lock.release()
 
@@ -562,15 +588,22 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
-    def _on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+    def _on_bad_weather(self, event, sender: str, *args, **kwargs):
         """Abort exposure if a bad weather event occurs.
 
         Args:
             event: The bad weather event.
             sender: Who sent it.
         """
-        log.warning('Received bad weather event, shutting down.')
-        self.abort()
+
+        # is current image type one with closed shutter?
+        if self._image_type not in [ICamera.ImageType.DARK, ICamera.ImageType.BIAS]:
+            # ignore it
+            return
+
+        # let's finish current exposure, then abort sequence
+        log.warning('Received bad weather event, aborting sequence...')
+        self.abort_sequence()
 
 
 __all__ = ['BaseCamera', 'CameraException']

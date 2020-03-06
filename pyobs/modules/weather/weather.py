@@ -1,10 +1,10 @@
 import logging
 import requests
 import urllib.parse
-import json
 import threading
-from typing import Union
+import astropy.units as u
 
+from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderProvider
 from pyobs import PyObsModule
@@ -29,11 +29,17 @@ FITS_HEADERS = {
 class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
     """Connection to pyobs-weather."""
 
-    def __init__(self, url: str = None, *args, **kwargs):
-        """Initialize a new pyobs-weather connector."""
+    def __init__(self, url: str = None, system_init_time: int = 300, *args, **kwargs):
+        """Initialize a new pyobs-weather connector.
+
+        Args:
+            url: URL to weather station
+            system_init_time: Time in seconds the full system needs to initialize
+        """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # store url and create session
+        # store and create session
+        self._system_init_time = system_init_time
         self._url = url
         self._session = requests.session()
 
@@ -81,7 +87,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
                 with self._status_lock:
                     self._status = status
 
-            except (requests.exceptions.Timeout, ValueError) as e:
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as e:
                 # on error, we're always bad
                 log.error('Request failed: %s', e)
                 is_good = False
@@ -91,7 +97,8 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
             if is_good != self._is_good:
                 if is_good:
                     log.info(('Weather is now good.'))
-                    self.comm.send_event(GoodWeatherEvent())
+                    eta = Time.now() + self._system_init_time * u.second
+                    self.comm.send_event(GoodWeatherEvent(eta=eta))
                 else:
                     log.info('Weather is now bad.')
                     self.comm.send_event(BadWeatherEvent())
@@ -133,8 +140,11 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_headers(self, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of the telescope.
+    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
 
         Returns:
             Dictionary containing FITS headers.

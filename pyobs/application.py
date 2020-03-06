@@ -90,7 +90,7 @@ class Application:
                 # yes, load it
                 log.info('Loading configuration from {0:s}...'.format(config))
                 with StringIO(pre_process_yaml(config)) as f:
-                    cfg = yaml.load(f)
+                    cfg = yaml.safe_load(f)
             else:
                 # create empty config
                 cfg = {}
@@ -159,7 +159,7 @@ class Application:
         signal.signal(signal.SIGINT, self._signal_handler)
 
         # run module
-        self._module.run()
+        self._module.main()
 
     def _signal_handler(self, signum, frame):
         """React to signals and quit module."""

@@ -35,7 +35,7 @@ class FlatFieldPointing(PyObsModule, IRunnable):
         telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
         # point
-        self._pointing(telescope)
+        self._pointing(telescope).wait()
         log.info('Finished pointing telescope.')
 
     def abort(self, *args, **kwargs):

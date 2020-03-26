@@ -46,7 +46,6 @@ class AutoGuidingProjection(BaseGuider):
         self._pid_ra = None
         self._pid_dec = None
         self._loop_closed = False
-        self._last_offsets = None
 
     def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation):
         """Processes an image.
@@ -149,16 +148,8 @@ class AutoGuidingProjection(BaseGuider):
         ddec = radec2.dec.degree - radec1.dec.degree
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
-        # compare with last offsets
-        if self._last_offsets is None:
-            change_ra, change_dec = 0, 0
-        else:
-            change_ra, change_dec = abs(dra - self._last_offsets[0]), abs(ddec - self._last_offsets[1])
-            log.info('Relative shift to last image is dRA=%.2f", dDec=%.2f".', change_ra * 3600., change_dec * 3600.)
-        self._last_offsets = (dra, ddec)
-
         # too large?
-        if abs(change_ra * 3600.) > self._max_offset or abs(change_dec * 3600.) > self._max_offset:
+        if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return
 
@@ -259,7 +250,6 @@ class AutoGuidingProjection(BaseGuider):
     def _reset_guiding(self, sum_x=None, sum_y=None, hdr=None):
         # reset guiding
         self._loop_closed = False
-        self._last_offsets = None
         if sum_x is None or sum_y is None or hdr is None:
             self._ref_image = None
             self._ref_header = None

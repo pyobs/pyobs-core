@@ -3,6 +3,7 @@ import typing
 
 from pyobs.interfaces import ITelescope, IRunnable
 from pyobs import PyObsModule, get_object
+from pyobs.modules import timeout
 from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ class FlatFieldPointing(PyObsModule, IRunnable):
         self._telescope = telescope
         self._pointing = pointing
 
+    @timeout(60000)
     def run(self, *args, **kwargs):
         """Move telescope to pointing."""
 

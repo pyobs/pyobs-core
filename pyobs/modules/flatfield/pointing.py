@@ -21,11 +21,9 @@ class FlatFieldPointing(PyObsModule, IRunnable):
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # store telescope
+        # store telescope and pointing
         self._telescope = telescope
-
-        # pointing
-        self._pointing = get_object(pointing, SkyFlatsBasePointing, observer=self.observer)
+        self._pointing = pointing
 
     def run(self, *args, **kwargs):
         """Move telescope to pointing."""
@@ -34,8 +32,11 @@ class FlatFieldPointing(PyObsModule, IRunnable):
         log.info('Getting proxy for telescope...')
         telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
+        # pointing
+        pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self.observer)
+
         # point
-        self._pointing(telescope).wait()
+        pointing(telescope).wait()
         log.info('Finished pointing telescope.')
 
     def abort(self, *args, **kwargs):

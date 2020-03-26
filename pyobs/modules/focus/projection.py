@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 class AutoFocusProjection(PyObsModule, IAutoFocus):
     """Module for auto-focusing a telescope."""
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
+    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters] = None,
                  offset: bool = False, *args, **kwargs):
         """Initialize a new auto focus system.
 
@@ -91,11 +91,12 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
         # get filter wheel and current filter
         filter_name = 'unknown'
-        try:
-            filter_wheel: IFilters = self.proxy(self._filters, IFilters)
-            filter_name = filter_wheel.get_filter().wait()
-        except ValueError:
-            log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
+        if self._filters is not None:
+            try:
+                filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+                filter_name = filter_wheel.get_filter().wait()
+            except ValueError:
+                log.warning('Filter wheel is not of correct type at the moment.')
 
         # get focus as first guess
         try:

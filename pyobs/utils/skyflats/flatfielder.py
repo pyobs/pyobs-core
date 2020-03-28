@@ -35,12 +35,24 @@ class FlatFielder:
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, functions: typing.Dict[str, str] = None, target_count: float = 30000, min_exptime: float = 0.5,
-                 max_exptime: float = 5, test_frame: tuple = None, counts_frame: tuple = None,
-                 allowed_offset_frac: float = 0.2, min_counts: int = 100, log: str = '/pyobs/flatfield.csv',
-                 pointing: typing.Union[dict, SkyFlatsBasePointing] = None, observer: Observer = None,
-                 vfs: VirtualFileSystem = None, *args, **kwargs):
+    def __init__(self, functions: typing.Dict[str, typing.Union[str, typing.Dict[str, str]]] = None,
+                 target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
+                 test_frame: tuple = None, counts_frame: tuple = None, allowed_offset_frac: float = 0.2,
+                 min_counts: int = 100, log: str = '/pyobs/flatfield.csv',
+                 pointing: typing.Union[dict, SkyFlatsBasePointing] = None, combine_binnings: bool = True,
+                 observer: Observer = None, vfs: VirtualFileSystem = None, *args, **kwargs):
         """Initialize a new flat fielder.
+
+        Depending on the value of combine_binnings, functions must be in a specific format:
+
+            1. combine_binnings=True:
+                functions must be a dictionary of filter->function pairs, like
+                {'clear': 'exp(-0.9*(h+3.9))'}
+                In this case it is assumed that the average flux per pixel is directly correlated to the binning,
+                i.e. a flat with 3x3 binning hast on average 9 times as much flux per pixel.
+            2. combine_binnings=False:
+                functions must be nested one level deeper within the binning, like
+                {'1x1': {'clear': 'exp(-0.9*(h+3.9))'}}
 
         Args:
             functions: Function f(h) for each filter to describe ideal exposure time as a function of solar
@@ -55,6 +67,7 @@ class FlatFielder:
                 flat-field
             min_counts: Minimum counts in frames.
             log: Log file to write.
+            combine_binnings: Whether different binnings use the same functions.
             observer: Observer to use.
             vfs: VFS to use.
         """
@@ -68,13 +81,22 @@ class FlatFielder:
         self._allowed_offset_frac = allowed_offset_frac
         self._min_counts = min_counts
         self._log_file = log
+        self._combine_binnings = combine_binnings
         self._observer = observer
         self._vfs = vfs
 
         # parse function
         if functions is None:
             functions = {}
-        self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        if combine_binnings:
+            # in the simple case, the key is just the filter
+            self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        else:
+            # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
+            self._functions = {}
+            for binning, func in functions.items():
+                for filter_name, func in func.items():
+                    self._functions[binning, filter_name] = Parser().parse(func)
 
         # abort event
         self._abort = threading.Event()
@@ -272,9 +294,15 @@ class FlatFielder:
             Estimated exposure time.
         """
 
-        # get solar elevation and evaluate function
+        # get solar elevation
         sun = self._observer.sun_altaz(time)
-        exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
+
+        # evaluate function depending on whether we combine binnings or not
+        if self._combine_binnings:
+            exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
+        else:
+            binning = '%dx%d' % (self._cur_binning, self._cur_binning)
+            exptime = self._functions[binning, self._cur_filter].evaluate({'h': sun.alt.degree})
 
         # scale with binning
         exptime /= self._cur_binning * self._cur_binning

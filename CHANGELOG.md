@@ -2,6 +2,7 @@
 
 ### v0.x
 
+* Re-factored acquisition modules and added one based on astrometry.
 * Added combine_binnings parameter to FlatFielder, which triggers, whether to use one function for all binnings or not
 * Added get_current_weather() to IWeather
 * New FlatFieldPointing module that can move telescope to a flatfield pointing

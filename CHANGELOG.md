@@ -1,5 +1,12 @@
 ## Changelog
 
+### v0.x
+
+* Added combine_binnings parameter to FlatFielder, which triggers, whether to use one function for all binnings or not
+* Added get_current_weather() to IWeather
+* New FlatFieldPointing module that can move telescope to a flatfield pointing
+ 
+
 ### v0.9 (2020-03-06)
 
 * working on robotic system based on LCO portal

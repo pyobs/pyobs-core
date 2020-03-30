@@ -149,7 +149,7 @@ class AutoGuidingProjection(BaseGuider):
         # calculate offsets
         dra = (radec2.ra.degree - radec1.ra.degree) / np.cos(np.radians(cur_dec))
         ddec = radec2.dec.degree - radec1.dec.degree
-        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra / 15. * 3600., ddec * 3600.)
+        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
         # too large?
         if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:

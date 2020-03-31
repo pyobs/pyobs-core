@@ -147,7 +147,7 @@ class AutoGuidingProjection(BaseGuider):
         cur_ra, cur_dec = telescope.get_radec().wait()
 
         # calculate offsets
-        dra = (radec2.ra.degree - radec1.ra.degree) / np.cos(np.radians(cur_dec))
+        dra = (radec2.ra.degree - radec1.ra.degree) * np.cos(np.radians(cur_dec))
         ddec = radec2.dec.degree - radec1.dec.degree
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 

@@ -422,7 +422,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         log.info('Finished image %s.', filename)
         return hdu, filename
 
-    @timeout('(exposure_time+10000)*count')
+    @timeout('(exposure_time+30000)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
                *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.

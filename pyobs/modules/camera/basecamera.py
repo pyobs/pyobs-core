@@ -207,18 +207,18 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
+        # centre pixel
+        if self._centre is not None:
+            hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
+        else:
+            log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
+
         # only add all this stuff for OBJECT images
         if hdr['IMAGETYP'] not in ['dark', 'bias']:
             # projection
             hdr['CTYPE1'] = ('RA---TAN', 'RA in tangent plane projection')
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
-
-            # centre pixel
-            if self._centre is not None:
-                hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
-                hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
-            else:
-                log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 
             # reference pixel in binned image
             if 'DET-CPX1' in hdr and 'DET-BIN1' in hdr and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:

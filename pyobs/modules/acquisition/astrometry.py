@@ -39,16 +39,16 @@ class AstrometryAcquisition(BaseAcquisition):
         """
 
         # get objects
-        _photometry = get_object(self._photometry, Photometry)
-        _astrometry = get_object(self._astrometry, Astrometry)
+        photometry = get_object(self._photometry, Photometry)
+        astrometry = get_object(self._astrometry, Astrometry)
 
         # copy image
         image = fits.PrimaryHDU(data=img.data, header=img.header)
 
         # do photometry and astrometry
         log.info('Searching for stars')
-        self._photometry(image)
-        self._astrometry(image)
+        photometry(image)
+        astrometry(image)
 
         # get WCS on new image return x/y coordinates of requested RA/Dec
         wcs = WCS(image.header)

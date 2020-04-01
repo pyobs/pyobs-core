@@ -208,7 +208,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
         # only add all this stuff for OBJECT images
-        if hdr['IMAGETYP'] in ['object', 'light']:
+        if hdr['IMAGETYP'] not in ['dark', 'bias']:
             # projection
             hdr['CTYPE1'] = ('RA---TAN', 'RA in tangent plane projection')
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
@@ -333,12 +333,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type in [
-            ICamera.ImageType.OBJECT,
-            ICamera.ImageType.SKYFLAT,
-            ICamera.ImageType.ACQUISITION,
-            ICamera.ImageType.FOCUS
-        ]
+        open_shutter = image_type not in [ICamera.ImageType.BIAS, ICamera.ImageType.DARK]
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)

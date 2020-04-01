@@ -221,11 +221,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 
             # reference pixel in binned image
-            if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr and 'DET-CPX1' in hdr and 'DET-BIN1' in hdr \
-                    and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
+            if 'DET-CPX1' in hdr and 'DET-BIN1' in hdr and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
                 # offset?
-                off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
-                off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
+                off_x, off_y = 0, 0
+                if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr:
+                    off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
+                    off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
                 hdr['CRPIX1'] = ((v('DET-CPX1') - off_x) / v('DET-BIN1'), 'Reference x-pixel position in binned image')
                 hdr['CRPIX2'] = ((v('DET-CPX2') - off_y) / v('DET-BIN2'), 'Reference y-pixel position in binned image')
             else:

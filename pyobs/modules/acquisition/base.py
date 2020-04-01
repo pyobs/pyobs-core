@@ -21,7 +21,8 @@ class BaseAcquisition(PyObsModule, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1, *args, **kwargs):
+                 target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
+                 max_offset: float = 120, *args, **kwargs):
         """Create a new base acquisition.
 
         Args:
@@ -30,6 +31,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
             tolerance: Tolerance in position to reach.
+            max_offset: Maximum offset to move in arcsec.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -41,6 +43,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
         self._target_pixel = target_pixel
         self._attempts = attempts
         self._tolerance = tolerance
+        self._max_offset = max_offset
 
     def open(self):
         """Open module"""
@@ -124,7 +127,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
                 # we're finished!
                 log.info('Target successfully acquired.')
                 return
-            if dist * 3600. > 120:
+            if dist * 3600. > self._max_offset:
                 # move a maximum of 120"=2'
                 log.info('Calculated offsets too large.')
                 return

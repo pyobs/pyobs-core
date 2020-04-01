@@ -115,8 +115,11 @@ class BaseAcquisition(PyObsModule, IAcquisition):
             radec_target = SkyCoord(ra=ra_target * u.deg, dec=dec_target * u.deg, frame='icrs',
                                     obstime=date_obs, location=self.location)
 
+            # get current position
+            cur_ra, cur_dec = telescope.get_radec().wait()
+
             # calculate offsets and return them
-            dra = radec_target.ra.degree - radec_center.ra.degree
+            dra = (radec_target.ra.degree - radec_center.ra.degree) * np.cos(np.radians(cur_dec))
             ddec = radec_target.dec.degree - radec_center.dec.degree
             dist = radec_center.separation(radec_target).degree
             log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f", giving %.2f" in total.',

@@ -214,24 +214,23 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         else:
             log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 
+        # reference pixel in binned image
+        if 'DET-CPX1' in hdr and 'DET-BIN1' in hdr and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
+            # offset?
+            off_x, off_y = 0, 0
+            if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr:
+                off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
+                off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
+            hdr['CRPIX1'] = ((v('DET-CPX1') - off_x) / v('DET-BIN1'), 'Reference x-pixel position in binned image')
+            hdr['CRPIX2'] = ((v('DET-CPX2') - off_y) / v('DET-BIN2'), 'Reference y-pixel position in binned image')
+        else:
+            log.warning('Could not calculate CRPIX1/CRPIX2 '
+                            '(XORGSUBF/YORGSUBF/DET-CPX1/TEL-CPX2/DET-BIN1/DET-BIN2) missing.')
         # only add all this stuff for OBJECT images
         if hdr['IMAGETYP'] not in ['dark', 'bias']:
             # projection
             hdr['CTYPE1'] = ('RA---TAN', 'RA in tangent plane projection')
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
-
-            # reference pixel in binned image
-            if 'DET-CPX1' in hdr and 'DET-BIN1' in hdr and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
-                # offset?
-                off_x, off_y = 0, 0
-                if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr:
-                    off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
-                    off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
-                hdr['CRPIX1'] = ((v('DET-CPX1') - off_x) / v('DET-BIN1'), 'Reference x-pixel position in binned image')
-                hdr['CRPIX2'] = ((v('DET-CPX2') - off_y) / v('DET-BIN2'), 'Reference y-pixel position in binned image')
-            else:
-                log.warning('Could not calculate CRPIX1/CRPIX2 '
-                                '(XORGSUBF/YORGSUBF/DET-CPX1/TEL-CPX2/DET-BIN1/DET-BIN2) missing.')
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._rotation is not None:

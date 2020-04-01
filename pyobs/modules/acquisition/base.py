@@ -30,7 +30,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
             camera: Name of ICamera.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
-            tolerance: Tolerance in position to reach.
+            tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
         """
         PyObsModule.__init__(self, *args, **kwargs)

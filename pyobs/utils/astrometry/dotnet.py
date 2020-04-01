@@ -1,6 +1,8 @@
 import logging
 import requests
+from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+import astropy.units as u
 
 from pyobs.utils.images import Image
 from .astrometry import Astrometry
@@ -45,6 +47,14 @@ class AstrometryDotNet(Astrometry):
             'flux': cat['flux'].tolist()
         }
 
+        # log it
+        ra_dec = SkyCoord(ra=data['ra'] * u.deg, dec=data['dec'] * u.deg, frame='icrs')
+        cx, cy = image.header['CRPIX1'], image.header['CRPIX2']
+        log.info('Found original RA=%s (%.4f), Dec=%s (%.4f) at pixel %.2f,%.2f.',
+                 ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), data['ra'],
+                 ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), data['dec'],
+                 cx, cy)
+
         # send it
         r = requests.post('https://astrometry.monet.uni-goettingen.de/', json=data)
 
@@ -72,6 +82,16 @@ class AstrometryDotNet(Astrometry):
             # set them
             image.catalog['ra'] = ras
             image.catalog['dec'] = decs
+
+            # RA/Dec at center pos
+            final_ra, final_dec = image_wcs.all_pix2world(cx, cy, 0)
+            ra_dec = SkyCoord(ra=final_ra * u.deg, dec=final_dec * u.deg, frame='icrs')
+
+            # log it
+            log.info('Found final RA=%s (%.4f), Dec=%s (%.4f) at pixel %.2f,%.2f.',
+                     ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), data['ra'],
+                     ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), data['dec'],
+                     cx, cy)
 
             # success
             image.header['WCSERR'] = 0

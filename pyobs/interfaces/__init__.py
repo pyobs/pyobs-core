@@ -1,6 +1,7 @@
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
 from .IAltAzMount import IAltAzMount
+from .IAltAz import IAltAz
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .ICalibrate import ICalibrate

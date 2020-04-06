@@ -1,17 +1,11 @@
 from .IRoof import IRoof
+from .IAltAz import IAltAz
 
 
-class IDome(IRoof):
-    """
-    Interface for an observatory enclosure that has a direction when it is opened,
-    e.g. a rotating dome or a partially closed clamshell.  The is_observable()
-    method can then be used to determine if a telescope could look in a particular
-    direction (given by RA,DEC) and not be blocked.
-    """
+class IDome(IRoof, IAltAz):
+    """Base interface for all shelters with a rotating dome."""
 
-    def is_observable(self, ra: float, dec: float, *args, **kwargs) -> bool:
-        """whether and for long an object at the given coordinates is visible"""
-        raise NotImplementedError
+    pass
 
 
 __all__ = ['IDome']

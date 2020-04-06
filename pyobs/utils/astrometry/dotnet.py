@@ -62,6 +62,10 @@ class AstrometryDotNet(Astrometry):
         if r.status_code != 200 or 'error' in r.json():
             # set error
             image.header['WCSERR'] = 1
+            if 'error' in r.json():
+                log.error('Received error from astrometry service: %s', r.json()['error'])
+            else:
+                log.error('Could not connect to astrometry service.')
 
         else:
             # copy keywords

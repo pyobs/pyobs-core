@@ -56,7 +56,7 @@ class AstrometryDotNet(Astrometry):
                  cx, cy)
 
         # send it
-        r = requests.post('https://astrometry.monet.uni-goettingen.de/', json=data)
+        r = requests.post(self.url, json=data)
 
         # success?
         if r.status_code != 200 or 'error' in r.json():

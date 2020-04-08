@@ -78,6 +78,9 @@ class FollowMixin:
         # I'm a module!
         self: Union[PyObsModule, FollowMixin]
 
+        # wait a little
+        self.closing.wait(10)
+
         # run until closing
         while not self.closing.is_set():
             # get other device

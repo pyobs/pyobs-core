@@ -299,13 +299,18 @@ class FlatFielder:
 
         # evaluate function depending on whether we combine binnings or not
         if self._combine_binnings:
+            # evaluate filter function without binning
             exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
+
+            # scale with binning
+            exptime /= self._cur_binning * self._cur_binning
+
         else:
+            # get binnind and evaluate correct function
             binning = '%dx%d' % (self._cur_binning, self._cur_binning)
             exptime = self._functions[binning, self._cur_filter].evaluate({'h': sun.alt.degree})
 
-        # scale with binning
-        exptime /= self._cur_binning * self._cur_binning
+        # return solar altitude and exposure time
         return float(sun.alt.degree), exptime
 
     def _eval_exptime(self, min_exptime: float = None, max_exptime: float = None) -> int:

@@ -25,12 +25,12 @@ setup(
         'PyYAML',
         'numpy',
         'lmfit',
-        'aplpy',
         'tornado',
         'sleekxmpp',
         'py_expression_eval',
         'colour',
         'requests',
+        'aplpy;platform_system=="Linux',
         'sep;platform_system=="Linux"',
         'pyinotify;platform_system=="Linux"',
         'python-daemon;platform_system=="Linux"'

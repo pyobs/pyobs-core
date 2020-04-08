@@ -1,7 +1,7 @@
 import logging
 from typing import Union, Tuple, Type
-
 from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from pyobs import PyObsModule
 from pyobs.interfaces import IAltAz, IRaDec

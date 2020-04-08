@@ -38,9 +38,9 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]
     """
 
     if mode == IAltAz:
-        return SkyCoord(alt=coord[0], az=coord[1], frame='altaz')
+        return SkyCoord(alt=coord[0] * u.deg, az=coord[1] * u.deg, frame='altaz')
     else:
-        return SkyCoord(ra=coord[0], dec=coord[1], frame='icrs')
+        return SkyCoord(ra=coord[0] * u.deg, dec=coord[1] * u.deg, frame='icrs')
 
 
 class FollowMixin:

@@ -28,6 +28,7 @@ from .IRunnable import IRunnable
 from .IScriptRunner import IScriptRunner
 from .ISettings import ISettings
 from .IStoppable import IStoppable
+from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
 from .IWeather import IWeather

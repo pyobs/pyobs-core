@@ -47,7 +47,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         # init status
         self._change_motion_status(IMotion.Status.PARKED)
 
-    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
+    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:

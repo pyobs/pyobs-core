@@ -79,7 +79,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
         # initial move
         if ra is not None and dec is not None:
             log.info('Moving telescope...')
-            telescope.track_radec(ra, dec).wait()
+            telescope.move_radec(ra, dec).wait()
         else:
             log.info('No RA/Dec given, starting from current position...')
 

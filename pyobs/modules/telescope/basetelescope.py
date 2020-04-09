@@ -3,8 +3,7 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import ITelescope, IMotion
+from pyobs.interfaces import ITelescope
 from pyobs import PyObsModule
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import timeout
@@ -69,7 +68,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         """
         raise NotImplementedError
 
-    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
+    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -83,16 +82,16 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         raise NotImplementedError
 
     @timeout(60000)
-    def track_radec(self, ra: float, dec: float, *args, **kwargs):
+    def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
+            track: Whether the device should start tracking on the given coordinates.
 
         Raises:
-            ValueError: If telescope could not track.
-            AcquireLockFailed: If current motion could not be aborted.
+            ValueError: If device could not track.
         """
 
         # to alt/az
@@ -109,7 +108,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
             log.info("Moving telescope to RA=%s (%.2f°), Dec=%s (%.2f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
-            self._track_radec(ra, dec, abort_event=self._abort_move)
+            self._move_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
             # update headers now

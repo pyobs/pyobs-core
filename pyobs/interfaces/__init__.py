@@ -1,7 +1,7 @@
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
-from .IAltAzMount import IAltAzMount
 from .IAltAz import IAltAz
+from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .ICalibrate import ICalibrate
@@ -12,7 +12,6 @@ from .IConfigProvider import IConfigProvider
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
-from .IEquatorialMount import IEquatorialMount
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
@@ -21,6 +20,7 @@ from .IFocuser import IFocuser
 from .IMotion import IMotion
 from .IPipeline import IPipeline
 from .IRaDec import IRaDec
+from .IRaDecOffsets import IRaDecOffsets
 from .IReady import IReady
 from .IRoof import IRoof
 from .IRotation import IRotation

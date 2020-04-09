@@ -1,7 +1,7 @@
 from .interface import Interface
 
 
-class IAltAzMount(Interface):
+class IAltAzOffsets(Interface):
     """Telescopes on an altaz mount should also implement this interface."""
 
     def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
@@ -25,4 +25,4 @@ class IAltAzMount(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IAltAzMount']
+__all__ = ['IAltAzOffsets']

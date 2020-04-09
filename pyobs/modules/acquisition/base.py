@@ -8,7 +8,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 from photutils import DAOStarFinder
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IEquatorialMount, IAltAzMount
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import PyObsModule
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
@@ -136,7 +136,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
                 return
 
             # is telescope on an equitorial mount?
-            if isinstance(telescope, IEquatorialMount):
+            if isinstance(telescope, IRaDecOffsets):
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
@@ -144,7 +144,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
                 log.info('Offsetting telescope...')
                 telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
 
-            elif isinstance(telescope, IAltAzMount):
+            elif isinstance(telescope, IAltAzOffsets):
                 # transform both to Alt/AZ
                 altaz1 = radec_center.transform_to(AltAz)
                 altaz2 = radec_target.transform_to(AltAz)

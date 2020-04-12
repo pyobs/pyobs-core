@@ -8,10 +8,12 @@ setup(
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',
     packages=find_packages(include=['pyobs', 'pyobs.*']),
-    scripts=[
-        'bin/pyobs',
-        'bin/pyobsd'
-    ],
+    entry_points={
+        'console_scripts': [
+            'pyobs=pyobs.cli.pyobs:main',
+            'pyobsd=pyobs.cli.pyobsd:main',
+        ]
+    },
     install_requires=[
         'photutils',
         'scipy',

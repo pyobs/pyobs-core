@@ -1,23 +1,9 @@
-#!/usr/bin/env python3
-#import locale
 import matplotlib
 import argparse
 import os
-from astropy.utils import iers
-
-from pyobs.application import Application, GuiApplication
-
-# set IERS options for astropy
-#iers.conf.remote_timeout = 5
-#iers.conf.iers_auto_url_mirror = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
-
-# set locale to en_US on all systems
-#locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 
 # force matplotlib not to use a graphical interface
-from pyobs.utils.time import Time
-
 matplotlib.use('Agg')
 
 
@@ -56,6 +42,7 @@ def run(config=None, log_file: str = None, log_level: str = 'info', log_rotate: 
         server: Server to connect to (or given in config or environment).
         comm: Type of comm object to use (or given in config or environment), defaults to 'xmpp'.
     """
+    from pyobs.application import Application, GuiApplication
 
     # get app class
     App = GuiApplication if gui else Application
@@ -68,6 +55,8 @@ def run(config=None, log_file: str = None, log_level: str = 'info', log_rotate: 
 
 
 def main():
+    from pyobs.utils.time import Time
+
     # init argument parsing
     # for all command line parameters we set the default to an environment variable,
     # so they can also be specified that way
@@ -126,7 +115,3 @@ def main():
         start_daemon(**vars(args))
     else:
         run(**vars(args))
-
-
-if __name__ == '__main__':
-    main()

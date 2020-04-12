@@ -199,3 +199,7 @@ def main():
     # run
     cmd = getattr(daemon, args.command)
     cmd(services=args.services if args.services else None)
+
+
+if __name__ == '__main__':
+    main()

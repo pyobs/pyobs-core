@@ -115,3 +115,7 @@ def main():
         start_daemon(**vars(args))
     else:
         run(**vars(args))
+
+
+if __name__ == '__main__':
+    main()

@@ -11,6 +11,7 @@ setup(
     entry_points={
         'console_scripts': [
             'pyobs=pyobs.cli.pyobs:main',
+            'pyobsw=pyobs.cli.pyobsw:main',
             'pyobsd=pyobs.cli.pyobsd:main',
         ]
     },

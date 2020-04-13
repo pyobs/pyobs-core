@@ -10,6 +10,7 @@ from photutils import DAOStarFinder
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import PyObsModule
+from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
 from pyobs.utils.time import Time
@@ -17,12 +18,12 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(PyObsModule, IAcquisition):
+class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
-                 max_offset: float = 120, *args, **kwargs):
+                 max_offset: float = 120, log_file: str = None, *args, **kwargs):
         """Create a new base acquisition.
 
         Args:
@@ -32,6 +33,7 @@ class BaseAcquisition(PyObsModule, IAcquisition):
             attempts: Number of attempts before giving up.
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
+            log_file: Name of file to write log to.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -44,6 +46,22 @@ class BaseAcquisition(PyObsModule, IAcquisition):
         self._attempts = attempts
         self._tolerance = tolerance
         self._max_offset = max_offset
+
+        # columns for storage
+        storage_columns = {
+            'datetime': str,
+            'ra': float,
+            'dec': float,
+            'alt': float,
+            'az': float,
+            'off_ra': float,
+            'off_dec': float,
+            'off_alt': float,
+            'off_az': float
+        }
+
+        # init table storage and load measurements
+        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
     def open(self):
         """Open module"""
@@ -129,7 +147,32 @@ class BaseAcquisition(PyObsModule, IAcquisition):
             if dist * 3600. < self._tolerance:
                 # we're finished!
                 log.info('Target successfully acquired.')
+
+                # get current Alt/Az
+                cur_alt, cur_az = telescope.get_altaz().wait()
+
+                # prepare log entry
+                log_entry = {
+                    'datetime': Time.now().isot,
+                    'ra': cur_ra,
+                    'dec': cur_dec,
+                    'alt': cur_alt,
+                    'az': cur_az
+                }
+
+                # Alt/Az or RA/Dec?
+                if isinstance(telescope, IRaDecOffsets):
+                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_radec_offsets().wait()
+                elif isinstance(telescope, IAltAzOffsets):
+                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
+
+                # write log
+                self._append_to_table_storage(**log_entry)
+
+                # finished
                 return
+
+            # abort?
             if dist * 3600. > self._max_offset:
                 # move a maximum of 120"=2'
                 log.info('Calculated offsets too large.')

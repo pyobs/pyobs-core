@@ -6,13 +6,14 @@ from enum import Enum
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
 from pyobs import PyObsModule, get_object
+from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.flatfielder import FlatFielder
 
 log = logging.getLogger(__name__)
 
 
-class FlatField(PyObsModule, IFlatField):
+class FlatField(PyObsModule, TableStorageMixin, IFlatField):
     """Module for auto-focusing a telescope."""
 
     class Twilight(Enum):
@@ -28,7 +29,7 @@ class FlatField(PyObsModule, IFlatField):
 
     def __init__(self, telescope: typing.Union[str, ITelescope], camera: typing.Union[str, ICamera],
                  filters: typing.Union[str, IFilters], flat_fielder: typing.Union[dict, FlatFielder],
-                 *args, **kwargs):
+                 log_file: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:
@@ -36,6 +37,7 @@ class FlatField(PyObsModule, IFlatField):
             camera: Name of ICamera.
             filters: Name of IFilters, if any.
             pointing: Pointing to use.
+            log_file: Name of file to store flat field log in.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -43,8 +45,22 @@ class FlatField(PyObsModule, IFlatField):
         self._telescope = telescope
         self._camera = camera
         self._filters = filters
-        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder, observer=self.observer, vfs=self.vfs)
+        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder,
+                                                     observer=self.observer, callback=self.callback)
         self._abort = threading.Event()
+
+        # columns for storage
+        storage_columns = {
+            'datetime': str,
+            'solalt': float,
+            'exptime': float,
+            'counts': float,
+            'filter': str,
+            'binning': int
+        }
+
+        # init table storage and load measurements
+        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
     def open(self):
         """Open module"""
@@ -67,6 +83,11 @@ class FlatField(PyObsModule, IFlatField):
         """Close module."""
         PyObsModule.close(self)
         self._abort.set()
+
+    def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str, binning: int):
+        """Callback for flat-field class to call with statistics."""
+        self._append_to_table_storage(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
+                                      filter=filter, binning=binning)
 
     @timeout(3600000)
     def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):

@@ -24,7 +24,7 @@ class ScienceFrameAutoGuider(PyObsModule, TableStorageMixin, IAutoGuiding, IFits
             camera: Camera to use.
             telescope: Telescope to use.
             guider: Auto-guider to use
-            log_file
+            log_file: Name of file to write log to.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 

@@ -5,6 +5,7 @@ from typing import Union
 from pyobs import PyObsModule, get_object
 from pyobs.events import NewImageEvent
 from pyobs.interfaces import ITelescope, IAutoGuiding, IFitsHeaderProvider
+from pyobs.mixins import TableStorageMixin
 from pyobs.utils.guiding.base import BaseGuider
 from pyobs.utils.images import Image
 
@@ -12,18 +13,18 @@ from pyobs.utils.images import Image
 log = logging.getLogger(__name__)
 
 
-class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
+class ScienceFrameAutoGuider(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvider):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
     def __init__(self, camera: str, telescope: Union[str, ITelescope], guider: Union[dict, BaseGuider],
-                 new_images_channel: str = 'new_images', *args, **kwargs):
+                 log_file: str = None, *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
             camera: Camera to use.
             telescope: Telescope to use.
             guider: Auto-guider to use
-            new_images_channel: Channel for receiving new images.
+            log_file
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -31,7 +32,6 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
         self._camera = camera
         self._telescope = telescope
         self._enabled = False
-        self._new_images_channel = new_images_channel
 
         # create auto-guiding system
         self._guider: BaseGuider = get_object(guider, BaseGuider)
@@ -42,6 +42,22 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
         # variables
         self._next_image: Image = None
         self._lock = threading.Lock()
+
+        # columns for storage
+        storage_columns = {
+            'datetime': str,
+            'ra': float,
+            'dec': float,
+            'alt': float,
+            'az': float,
+            'off_ra': float,
+            'off_dec': float,
+            'off_alt': float,
+            'off_az': float
+        }
+
+        # init table storage and load measurements
+        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
     def open(self):
         """Open module."""

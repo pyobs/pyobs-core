@@ -25,8 +25,11 @@ class TableStorageMixin:
         self.__table_storage_columns = columns
         self.__table_storage_reload_always = reload_always
 
-        # load data or init with empty dataframe if file doesn't exist
-        self.__table_storage_data = self.__load_table_storage_data()
+        # load data or init with empty dataframe if file doesn't exist or None if no filename is given
+        if filename is None:
+            self.__table_storage_data = None
+        else:
+            self.__table_storage_data = self.__load_table_storage_data()
 
     @property
     def _table_storage(self):
@@ -86,6 +89,11 @@ class TableStorageMixin:
         Args:
             kwargs: Dictionary with column->value pairs.
         """
+
+        # no filename given?
+        if self.__table_storage_filename is None:
+            # do nothing
+            return
 
         # reload table?
         if self.__table_storage_reload_always:

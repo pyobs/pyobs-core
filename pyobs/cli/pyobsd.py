@@ -20,7 +20,8 @@ class pyobsDaemon(object):
         self._start_stop_daemon = start_stop_daemon
 
         # get pyobs executable
-        self._pyobs_exec = os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs'))
+        #self._pyobs_exec = os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs'))
+        self._pyobs_exec = '/usr/bin/pyobs'
 
         # get configs and running
         self._configs = self._get_configs()

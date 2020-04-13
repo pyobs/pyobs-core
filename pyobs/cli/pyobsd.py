@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import glob
 import logging
@@ -123,16 +122,12 @@ class pyobsDaemon(object):
                     '--start',
                     '--quiet',
                     '--pidfile', pid_file])
-                    #'--startas', '/bin/bash'])
 
         # change user?
         if self._chuid:
             cmd.extend(['--chuid', self._chuid])
 
         # call to pyobs
-        #cmd.extend(['--', '-c', 'exec %s --pid-file %s --log-file %s --log-level %s %s > %s 2>&1' %
-        #            (self._pyobs_exec, pid_file, self._log_file(service), self._log_level,
-        #             self._config_file(service), self._log_file(service).replace('.log', '.error'))])
         cmd.extend(['--exec', self._pyobs_exec,
                     '--',
                     '--pid-file', pid_file,
@@ -155,7 +150,8 @@ class pyobsDaemon(object):
             cmd.extend(['--user', self._chuid[:self._chuid.find(':')]])
         subprocess.call(cmd)
 
-    def _service(self, config_file):
+    @staticmethod
+    def _service(config_file):
         # get basename without extension
         return os.path.splitext(os.path.basename(config_file))[0]
 
@@ -205,5 +201,5 @@ def main():
     cmd(services=args.services if args.services else None)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

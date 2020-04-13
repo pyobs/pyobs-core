@@ -8,6 +8,7 @@ import lmfit
 import numpy as np
 
 from pyobs import PyObsModule
+from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
@@ -16,7 +17,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class FocusModel(PyObsModule, IFocusModel):
+class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
     """A focus model that is automatically applied to an IFocuser.
 
     If, e.g., the model is defined as:
@@ -110,10 +111,19 @@ class FocusModel(PyObsModule, IFocusModel):
             variables.remove(c)
         log.info('Found variables: %s', ', '.join(variables))
 
-        # load measurements
-        self._measurements_file = measurements
-        self._measurements = None
-        self._load_measurements()
+        # columns for storage
+        storage_columns = {
+            'datetime': str,
+            'focus': float,
+            'error': float,
+            'filter': str,
+            'temp': float
+        }
+        for temp in self._temperatures:
+            storage_columns[temp] = float
+
+        # init table storage and load measurements
+        TableStorageMixin.__init__(self, filename=measurements, columns=storage_columns, reload_always=True)
 
         # update model now?
         if update:
@@ -336,22 +346,8 @@ class FocusModel(PyObsModule, IFocusModel):
         values['datetime'] = Time.now().isot
         values['filter'] = event.filter_name
 
-        # append or new?
-        if self._measurements is None:
-            # use values as new dataframe with one entry
-            log.info('No previous measurements found, starting new file.')
-            self._measurements = pd.DataFrame({k: [v] for k, v in values.items()})
-        else:
-            # append
-            try:
-                self._measurements = self._measurements.append(values, ignore_index=True)
-            except TypeError:
-                # wrong file format?
-                log.error('Possibly wrong file format for %s, please fix or delete it.', self._measurements_file)
-                return
-
-        # write it back
-        self._save_measurements()
+        # append to table storage
+        self._append_to_table_storage(**values)
 
         # finally, calculate new model
         log.info('Re-calculating model...')
@@ -360,40 +356,15 @@ class FocusModel(PyObsModule, IFocusModel):
         # finished
         log.info('Done.')
 
-    def _load_measurements(self):
-        try:
-            # open file with previous measurements
-            log.info('Reading previous measurements...')
-            with self.open_file(self._measurements_file, 'r') as f:
-                # read data and append values
-                self._measurements = pd.read_csv(f, index_col=False)
-
-        except (FileNotFoundError, pd.errors.EmptyDataError):
-            # use values as new dataframe with one entry
-            log.info('No previous measurements found, starting new file.')
-            self._measurements = None
-
-    def _save_measurements(self):
-        # no measurements?
-        if self._measurements is None:
-            return
-
-        # write to file
-        with self.open_file(self._measurements_file, 'w') as f:
-            log.info('Writing measurements to file...')
-            with io.StringIO() as sio:
-                self._measurements.to_csv(sio, index=False)
-                f.write(sio.getvalue().encode('utf8'))
-
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""
 
         # no coefficients? no model...
-        if not self._coefficients or self._measurements is None:
+        if not self._coefficients or self._table_storage is None:
             return
 
         # only take clear filter images for now
-        data = self._measurements.copy()
+        data = self._table_storage.copy()
 
         # enough measurements?
         if len(data) < self._min_measurements:

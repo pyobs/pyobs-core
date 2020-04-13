@@ -54,7 +54,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
 
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,
-                 measurements: str = '/pyobs/focus_model.csv', min_measurements: int = 10, enabled: bool = True,
+                 log_file: str = None, min_measurements: int = 10, enabled: bool = True,
                  temp_sensor: str = 'average.temp', default_filter: str = None, filter_offsets: dict = None,
                  filter_wheel: str = None, *args, **kwargs):
         """Initialize a focus model.
@@ -66,7 +66,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
             model: Focus model to use.
             coefficients: Coefficients in model, mainly used when updating it.
             update: Whether to update the model on new focus values.
-            measurements: Path to file containing all focus measurements.
+            log_file: Path to file containing all focus measurements.
             min_measurements: Minimum number of measurements to update model.
             enabled: If False, no focus is set.
             temp_sensor: Name of sensor at weather station to provide ambient temperature.
@@ -123,7 +123,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
             storage_columns[temp] = float
 
         # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=measurements, columns=storage_columns, reload_always=True)
+        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
         # update model now?
         if update:

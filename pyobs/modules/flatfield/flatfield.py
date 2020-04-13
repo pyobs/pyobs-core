@@ -29,7 +29,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
 
     def __init__(self, telescope: typing.Union[str, ITelescope], camera: typing.Union[str, ICamera],
                  filters: typing.Union[str, IFilters], flat_fielder: typing.Union[dict, FlatFielder],
-                 log_file: str = None, *args, **kwargs):
+                 log: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:
@@ -37,7 +37,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
             camera: Name of ICamera.
             filters: Name of IFilters, if any.
             pointing: Pointing to use.
-            log_file: Name of file to store flat field log in.
+            log: Name of file to store flat field log in.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -60,7 +60,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
         }
 
         # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        TableStorageMixin.__init__(self, filename=log, columns=storage_columns, reload_always=True)
 
     def open(self):
         """Open module"""

@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from pyobs.interfaces import ICamera
 from .base import BaseGuiding
@@ -10,30 +9,15 @@ log = logging.getLogger(__name__)
 class AutoGuiding(BaseGuiding):
     """An auto-guiding system."""
 
-    def __init__(self, camera: Union[str, ICamera], *args, **kwargs):
-        """Initializes a new auto guiding system.
-
-        Args:
-            camera: Camera to use.
-        """
+    def __init__(self, *args, **kwargs):
+        """Initializes a new auto guiding system."""
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # store
         self._exp_time = 1000
-        self._camera = camera
 
         # add thread func
         self._add_thread_func(self._auto_guiding, True)
-
-    def open(self):
-        """Open module."""
-        BaseGuiding.open(self)
-
-        # check camera
-        try:
-            self.proxy(self._camera, ICamera)
-        except ValueError:
-            log.warning('Given camera does not exist or is not of correct type at the moment.')
 
     def set_exposure_time(self, exp_time: int):
         """Set the exposure time for the auto-guider.

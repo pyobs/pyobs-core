@@ -50,12 +50,12 @@ class AstrometryAcquisition(BaseAcquisition):
 
         # find stars
         log.info('Searching for stars...')
-        if len(photometry(image)) == 0:
+        if len(photometry.find_stars(image)) == 0:
             raise ValueError('Could not find any stars in image.')
 
         # do astrometry
         log.info('Calculating astrometric solution...')
-        if not astrometry(image):
+        if not astrometry.find_solution(image):
             raise ValueError('Could not find astrometric solution.')
 
         # get WCS on new image return x/y coordinates of requested RA/Dec

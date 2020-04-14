@@ -19,7 +19,16 @@ class AstrometryDotNet(Astrometry):
         self.url = url
         self.source_count = source_count
 
-    def __call__(self, image: Image):
+    def find_solution(self, image: Image) -> bool:
+        """Find astrometric solution on given image.
+
+        Args:
+            image: Image to analyse.
+
+        Returns:
+            Success or not.
+        """
+
         # get catalog
         cat = image.catalog
 
@@ -27,7 +36,7 @@ class AstrometryDotNet(Astrometry):
         if cat is None or len(cat) < 3:
             log.error('Not enough sources for astrometry.')
             image.header['WCSERR'] = 1
-            return
+            return False
 
         # sort it and take N brightest sources
         cat.sort(['flux'], reverse=True)
@@ -66,6 +75,7 @@ class AstrometryDotNet(Astrometry):
                 log.error('Received error from astrometry service: %s', r.json()['error'])
             else:
                 log.error('Could not connect to astrometry service.')
+            return False
 
         else:
             # copy keywords
@@ -99,6 +109,7 @@ class AstrometryDotNet(Astrometry):
 
             # success
             image.header['WCSERR'] = 0
+            return True
 
 
 __all__ = ['AstrometryDotNet']

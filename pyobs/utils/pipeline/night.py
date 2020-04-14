@@ -54,8 +54,12 @@ class Night:
         calibrated.header['L1RAW'] = info.filename
 
         # do photometry and astrometry
-        self._photometry(calibrated)
-        self._astrometry(calibrated)
+        self._photometry.find_stars(calibrated)
+        try:
+            self._astrometry.find_solution(calibrated)
+        except ValueError:
+            # error message comes from astrometry
+            pass
 
         # upload
         self._archive.upload_frames([calibrated])

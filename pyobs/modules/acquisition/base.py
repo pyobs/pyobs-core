@@ -84,6 +84,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
             exposure_time: Exposure time for acquisition.
             ra: Right ascension of field to acquire.
             dec: Declination of field to acquire.
+
+        Raises:
+            ValueError if target could not be acquired.
         """
 
         # get telescope
@@ -129,6 +132,8 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
             # get required shift in RA/Dec
             log.info('Analyzing image...')
             x_target, y_target = self._get_target_radec(img, ra, dec)
+
+            # convert to world
             ra_target, dec_target = wcs.all_pix2world(x_target, y_target, 0)
             radec_target = SkyCoord(ra=ra_target * u.deg, dec=dec_target * u.deg, frame='icrs',
                                     obstime=date_obs, location=self.location)
@@ -221,6 +226,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
 
         Returns:
             (ra, dec) of pixel that needs to be moved to the centre of the image.
+
+        Raises:
+            ValueError if target coordinates could not be determined.
         """
         raise NotImplemented
 

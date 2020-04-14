@@ -36,6 +36,9 @@ class AstrometryAcquisition(BaseAcquisition):
 
         Returns:
             (ra, dec) of pixel that needs to be moved to the centre of the image.
+
+        Raises:
+            ValueError if target coordinates could not be determined.
         """
 
         # get objects
@@ -45,10 +48,15 @@ class AstrometryAcquisition(BaseAcquisition):
         # copy image
         image = fits.PrimaryHDU(data=img.data, header=img.header)
 
-        # do photometry and astrometry
-        log.info('Searching for stars')
-        photometry(image)
-        astrometry(image)
+        # find stars
+        log.info('Searching for stars...')
+        if len(photometry(image)) == 0:
+            raise ValueError('Could not find any stars in image.')
+
+        # do astrometry
+        log.info('Calculating astrometric solution...')
+        if not astrometry(image):
+            raise ValueError('Could not find astrometric solution.')
 
         # get WCS on new image return x/y coordinates of requested RA/Dec
         wcs = WCS(image.header)

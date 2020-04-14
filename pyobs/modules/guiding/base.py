@@ -88,7 +88,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""
         log.info('Start auto-guiding...')
-        self._reset_guiding()
+        self._reset_guiding(enabled=True)
 
     def stop(self, *args, **kwargs):
         """Stops auto-guiding."""
@@ -121,13 +121,13 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             'AGSTATE': state
         }
 
-    def _reset_guiding(self, image: Union[Image, None] = None):
+    def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] = None):
         """Reset guiding.
 
         Args:
             image: If given, new reference image.
         """
-        self._enabled = False
+        self._enabled = enabled
         self._loop_closed = False
         self._guiding_offset.set_reference_image(image)
         self._ref_header = None if image is None else image.header
@@ -146,7 +146,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         # reference header?
         if self._ref_header is None:
             log.info('Setting new reference image...')
-            self._reset_guiding(image)
+            self._reset_guiding(image=image)
 
         # check RA/Dec in header and separation
         c1 = SkyCoord(ra=image.header['TEL-RA'] * u.deg, dec=image.header['TEL-DEC'] * u.deg, frame='icrs')
@@ -155,14 +155,14 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         if self._separation_reset is not None and separation * 3600. > self._separation_reset:
             log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
                             separation * 3600.)
-            self._reset_guiding(image)
+            self._reset_guiding(image=image)
             return
 
         # check filter
         if 'FILTER' in image.header and 'FILTER' in self._ref_header and \
                 image.header['FILTER'] != self._ref_header['FILTER']:
             log.warning('The filter has been changed since the last exposure, resetting reference...')
-            self._reset_guiding(image)
+            self._reset_guiding(image=image)
             return
 
         # get time
@@ -174,13 +174,13 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             t0 = Time(self._last_header['DATE-OBS'])
             if (date_obs - t0).sec > self._max_interval:
                 log.warning('Time between current and last image is too large, resetting reference...')
-                self._reset_guiding(image)
+                self._reset_guiding(image=image)
                 return
 
             # check focus
             if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
                 log.warning('Focus difference between current and last image is too large, resetting reference...')
-                self._reset_guiding(image)
+                self._reset_guiding(image=image)
                 return
 
         # remember header

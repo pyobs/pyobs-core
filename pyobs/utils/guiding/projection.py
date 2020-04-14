@@ -56,12 +56,13 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         """
 
         # process it
-        log.info('Initialising auto-guiding with new image...')
-        sum_x, sum_y = self._process(image)
-
-        # reset guiding with this image
-        self._ref_image = None if sum_x is None or sum_y is None else (sum_x, sum_y)
-        self._init_pid()
+        if image is None:
+            log.info('Resetting auto-guiding...')
+            self._ref_image = None
+        else:
+            log.info('Initialising auto-guiding with new image...')
+            self._ref_image = self._process(image)
+            self._init_pid()
 
     def _process(self, image: Image) -> (np.array, np.array):
         """Project image along x and y axes and return results.

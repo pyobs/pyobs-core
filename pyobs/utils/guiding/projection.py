@@ -17,9 +17,6 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
 
     def __init__(self, *args, **kwargs):
         """Initializes a new auto guiding system."""
-        BaseGuidingOffset.__init__(self, *args, **kwargs)
-
-        # variables
         self._ref_image = None
         self._pid_ra = None
         self._pid_dec = None

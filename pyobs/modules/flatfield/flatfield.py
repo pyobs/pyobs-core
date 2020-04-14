@@ -45,7 +45,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
         self._telescope = telescope
         self._camera = camera
         self._filters = filters
-        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder,
+        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
                                                      observer=self.observer, callback=self.callback)
         self._abort = threading.Event()
 

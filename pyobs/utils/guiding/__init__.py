@@ -1,1 +1,1 @@
-from .projection import AutoGuidingProjection
+from .projection import ProjectionGuidingOffset

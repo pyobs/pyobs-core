@@ -1,2 +1,2 @@
-from .autoguider import AutoGuider
-from .scienceframe import ScienceFrameAutoGuider
+from .autoguider import AutoGuiding
+from .scienceframe import ScienceFrameAutoGuiding

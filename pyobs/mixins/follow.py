@@ -58,17 +58,17 @@ class FollowMixin:
         """
 
         # store
-        self._device = device
-        self._interval = interval
-        self._tolerance = tolerance
-        self._mode = mode
+        self._follow_device = device
+        self.__follow_interval = interval
+        self.__follow_tolerance = tolerance
+        self.__follow_mode = mode
 
         # check
-        if not isinstance(self, self._mode):
+        if not isinstance(self, self.__follow_mode):
             raise ValueError('This module is not of given mode %s.' % mode)
 
         # add thread function only, if device is given
-        if self._device is not None:
+        if self._follow_device is not None:
             self: Union[PyObsModule, FollowMixin]
             self._add_thread_func(self.__update_follow)
 
@@ -85,22 +85,22 @@ class FollowMixin:
         while not self.closing.is_set():
             # get other device
             try:
-                device = self.proxy(self._device, self._mode)
+                device = self.proxy(self._follow_device, self.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
                 log.error('Cannot follow device, since it is of wrong type.')
-                self.closing.wait(self._interval * 10)
+                self.closing.wait(self.__follow_interval * 10)
                 continue
 
             # get coordinates from other and from myself
-            my_coords = build_skycoord(get_coord(self, self._mode), self._mode)
-            x, y = get_coord(device, self._mode).wait()
-            other_coords = build_skycoord((x, y), self._mode)
+            my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
+            x, y = get_coord(device, self.__follow_mode).wait()
+            other_coords = build_skycoord((x, y), self.__follow_mode)
 
             # is separation larger than tolerance?
-            if my_coords.separation(other_coords).degree > self._tolerance:
+            if my_coords.separation(other_coords).degree > self.__follow_tolerance:
                 # move to other
-                if self._mode == IAltAz:
+                if self.__follow_mode == IAltAz:
                     self: IAltAz
                     self.move_altaz(x, y)
                 else:
@@ -108,7 +108,7 @@ class FollowMixin:
                     self.move_radec(x, y)
 
             # sleep a little
-            self.closing.wait(self._interval)
+            self.closing.wait(self.__follow_interval)
 
 
 __all__ = ['FollowMixin']

@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Union, Tuple, Type
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -113,10 +114,10 @@ class FollowMixin:
                 # move to other
                 if self.__follow_mode == IAltAz:
                     self: IAltAz
-                    self.move_altaz(x, y)
+                    threading.Thread(target=self.move_altaz, args=(x, y)).start()
                 else:
                     self: IRaDec
-                    self.move_radec(x, y)
+                    threading.Thread(target=self.move_radec, args=(x, y)).start()
 
             # sleep a little
             self.closing.wait(self.__follow_interval)

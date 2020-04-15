@@ -58,7 +58,7 @@ class FollowMixin:
         """
 
         # store
-        self._follow_device = device
+        self.__follow_device = device
         self.__follow_interval = interval
         self.__follow_tolerance = tolerance
         self.__follow_mode = mode
@@ -68,9 +68,14 @@ class FollowMixin:
             raise ValueError('This module is not of given mode %s.' % mode)
 
         # add thread function only, if device is given
-        if self._follow_device is not None:
+        if self.__follow_device is not None:
             self: Union[PyObsModule, FollowMixin]
             self._add_thread_func(self.__update_follow)
+
+    @property
+    def is_following(self) -> bool:
+        """Returns True, if we're following another device."""
+        return self.__follow_device is not None
 
     def __update_follow(self):
         """Update function."""
@@ -85,7 +90,7 @@ class FollowMixin:
         while not self.closing.is_set():
             # get other device
             try:
-                device = self.proxy(self._follow_device, self.__follow_mode)
+                device = self.proxy(self.__follow_device, self.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
                 log.error('Cannot follow device, since it is of wrong type.')

@@ -88,6 +88,12 @@ class FollowMixin:
 
         # run until closing
         while not self.closing.is_set():
+            # not ready?
+            if isinstance(self, IReady):
+                if not self.is_ready():
+                    self.closing.wait(self.__follow_interval)
+                    continue
+
             # get other device
             try:
                 device = self.proxy(self.__follow_device, self.__follow_mode)
@@ -96,12 +102,6 @@ class FollowMixin:
                 log.error('Cannot follow device, since it is of wrong type.')
                 self.closing.wait(self.__follow_interval * 10)
                 continue
-
-            # not ready?
-            if isinstance(self, IReady):
-                if not self.is_ready():
-                    self.closing.wait(self.__follow_interval)
-                    continue
 
             # get coordinates from other and from myself
             my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)

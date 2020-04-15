@@ -19,8 +19,8 @@ log = logging.getLogger(__name__)
 class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
-                 max_interval: float = 600, separation_reset: float = None, pid: bool = False, log_file: str = None,
-                 *args, **kwargs):
+                 min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
+                 log_file: str = None, *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
@@ -28,6 +28,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             offsets: Auto-guider to use
             max_offset: Max offset in arcsec to move.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
+            min_interval: Minimum interval in sec between two images.
             max_interval: Maximum interval in sec between to consecutive images to guide.
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
@@ -41,6 +42,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         self._enabled = False
         self._max_offset = max_offset
         self._max_exposure_time = max_exposure_time
+        self._min_interval = min_interval
         self._max_interval = max_interval
         self._separation_reset = separation_reset
         self._pid = pid
@@ -175,6 +177,9 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             if (date_obs - t0).sec > self._max_interval:
                 log.warning('Time between current and last image is too large, resetting reference...')
                 self._reset_guiding(image=image)
+                return
+            if (date_obs - t0).sec < self._min_interval:
+                log.warning('Time between current and last image is too small, ignoring image...')
                 return
 
             # check focus

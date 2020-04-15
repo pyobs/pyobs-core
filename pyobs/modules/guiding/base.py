@@ -62,10 +62,10 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             'dec': float,
             'alt': float,
             'az': float,
-            'off_ra': float,
-            'off_dec': float,
-            'off_alt': float,
-            'off_az': float
+            'dra': float,
+            'ddec': float,
+            'dalt': float,
+            'daz': float
         }
 
         # init table storage and load measurements
@@ -219,6 +219,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
 
         # get current position
         cur_ra, cur_dec = telescope.get_radec().wait()
+        cur_alt, cur_az = telescope.get_altaz().wait()
 
         # calculate offsets
         dra = (radec2.ra.degree - radec1.ra.degree) * np.cos(np.radians(cur_dec))
@@ -235,6 +236,15 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             log.warning('Exposure time too large, skipping auto-guiding for now...')
             return
 
+        # prepare log entry
+        log_entry = {
+            'datetime': Time.now().isot,
+            'ra': cur_ra,
+            'dec': cur_dec,
+            'alt': cur_alt,
+            'az': cur_az
+        }
+
         # push offset into PID
         #if self._pid:
         #    dra = self._pid_ra.update(dra)
@@ -243,6 +253,10 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
 
         # is telescope on an equitorial mount?
         if isinstance(telescope, IRaDecOffsets):
+            # log
+            log_entry['dra'], log_entry['ddec'] = dra, ddec
+            self._append_to_table_storage(**log_entry)
+
             # get current offset
             cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
@@ -261,6 +275,10 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             dalt = altaz2.alt.degree - altaz1.alt.degree
             daz = altaz2.az.degree - altaz1.az.degree
             log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
+
+            # log
+            log_entry['dalt'], log_entry['daz'] = dalt, daz
+            self._append_to_table_storage(**log_entry)
 
             # get current offset
             cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()

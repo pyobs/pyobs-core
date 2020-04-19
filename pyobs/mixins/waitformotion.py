@@ -36,6 +36,10 @@ class WaitForMotionMixin:
             TimeoutError if wait timed out.
         """
 
+        # no device?
+        if len(self.__wait_for_devices) == 0:
+            return
+
         # I'm a module!
         self: Union[WaitForMotionMixin, PyObsModule]
 

@@ -51,6 +51,9 @@ class PointingSeries(PyObsModule, IPointingSeries, IAbortable):
             num_az: Number of azimuth points to create on grid.
         """
 
+        # reset event
+        self._abort = Event()
+
         # create grid
         grid = {'alt': [], 'az': [], 'done': []}
         for az in np.linspace(0, 360 - 360 / num_az, num_az):

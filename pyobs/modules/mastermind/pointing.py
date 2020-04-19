@@ -79,6 +79,10 @@ class PointingSeries(PyObsModule, IPointingSeries, IAbortable):
 
             # try to find a good point
             while True:
+                # aborted?
+                if self._abort.is_set():
+                    return
+
                 # pick a random index and remove from list
                 alt, az = random.sample(todo, 1)[0]
                 todo.remove((alt, az))

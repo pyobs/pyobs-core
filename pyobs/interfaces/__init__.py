@@ -19,6 +19,7 @@ from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IMotion import IMotion
 from .IPipeline import IPipeline
+from .IPointingSeries import IPointingSeries
 from .IRaDec import IRaDec
 from .IRaDecOffsets import IRaDecOffsets
 from .IReady import IReady

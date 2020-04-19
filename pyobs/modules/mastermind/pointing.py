@@ -14,8 +14,8 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class PointingMastermind(PyObsModule, IPointingSeries, IAbortable):
-    """Mastermind that acts as a state machine."""
+class PointingSeries(PyObsModule, IPointingSeries, IAbortable):
+    """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, finish: int = 90, exp_time: int = 1000,
                  acquisition: str = 'acquisition', *args, **kwargs):

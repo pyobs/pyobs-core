@@ -11,18 +11,18 @@ log = logging.getLogger(__name__)
 
 class WaitForMotionMixin:
     """Mixin for a device that should wait for the motion status of another device."""
-    def __init__(self, wait_for_devices: List[str] = None, wait_for_states: List[str] = None,
+    def __init__(self, wait_for_modules: List[str] = None, wait_for_states: List[str] = None,
                  wait_for_timeout: float = None, *args, **kwargs):
         """Initializes the mixin.
 
         Args:
-            wait_for_devices: One or more devices to wait for.
+            wait_for_modules: One or more modules to wait for.
             wait_for_states: List of states to wait for.
             wait_for_timeout: Wait timeout in seconds.
         """
 
         # store
-        self.__wait_for_devices = wait_for_devices if wait_for_devices is not None else []
+        self.__wait_for_modules = wait_for_modules if wait_for_modules is not None else []
         self.__wait_for_states = [IMotion.Status(s) for s in wait_for_states] if wait_for_states is not None else []
         self.__wait_for_timeout = wait_for_timeout
 
@@ -37,14 +37,14 @@ class WaitForMotionMixin:
         """
 
         # no device?
-        if len(self.__wait_for_devices) == 0:
+        if len(self.__wait_for_modules) == 0:
             return
 
         # I'm a module!
         self: Union[WaitForMotionMixin, PyObsModule]
 
         # get all proxies
-        proxies = [self.proxy(device) for device in self.__wait_for_devices]
+        proxies = [self.proxy(device) for device in self.__wait_for_modules]
 
         # all need to be derived from IMotion
         if not all([isinstance(p, IMotion) for p in proxies]):
@@ -66,6 +66,7 @@ class WaitForMotionMixin:
 
             # if all good, we're finished waiting
             if all(good):
+                log.info('All other modules have finished moving.')
                 break
 
             # sleep a little

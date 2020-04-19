@@ -3,9 +3,9 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope
+from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
-from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
+from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
@@ -13,15 +13,16 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, PyObsModule):
     """Base class for telescopes."""
 
-    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
+    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
         """Initialize a new base telescope.
 
         Args:
             fits_headers: Additional FITS headers to send.
             min_altitude: Minimal altitude for telescope.
+            wait_for_dome: Name of dome module to wait for.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -43,6 +44,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
         MotionStatusMixin.__init__(self, *args, **kwargs)
+        WaitForMotionMixin.__init__(self, wait_for_devices=[wait_for_dome], wait_for_timeout=60000,
+                                    wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
 
     def open(self):
         """Open module."""
@@ -114,6 +117,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
             # update headers now
             self._update_celestial_headers()
 
+            # move dome, if exists
+            self._wait_for_motion(self._abort_move)
+
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
@@ -153,6 +159,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
 
             # update headers now
             self._update_celestial_headers()
+
+            # move dome, if exists
+            self._wait_for_motion(self._abort_move)
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.

@@ -107,18 +107,24 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
-            # track telescope
-            log.info("Moving telescope to RA=%s (%.2f°), Dec=%s (%.2f°)...",
+            # log and event
+            self._change_motion_status(IMotion.Status.SLEWING)
+            log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
+
+            # track telescope
             self._move_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
-            # update headers now
-            self._update_celestial_headers()
-
             # move dome, if exists
             self._wait_for_motion(self._abort_move)
+
+            # finish slewing
+            self._change_motion_status(IMotion.Status.TRACKING)
+
+            # update headers now
+            self._update_celestial_headers()
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -152,16 +158,22 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
-            # move telescope
+            # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
+            self._change_motion_status(IMotion.Status.SLEWING)
+
+            # move telescope
             self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
-            # update headers now
-            self._update_celestial_headers()
-
             # move dome, if exists
             self._wait_for_motion(self._abort_move)
+
+            # finish slewing
+            self._change_motion_status(IMotion.Status.POSITIONED)
+
+            # update headers now
+            self._update_celestial_headers()
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.

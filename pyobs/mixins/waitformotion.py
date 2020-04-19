@@ -52,6 +52,7 @@ class WaitForMotionMixin:
 
         # run until timeout
         start = time.time()
+        log.info('Waiting for motion of other modules...')
         while not abort.is_set():
             # timeout?
             if time.time() > start + self.__wait_for_timeout:

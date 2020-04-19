@@ -3,6 +3,7 @@ import threading
 from typing import Union, Tuple, Type
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from pyobs.comm import RemoteException
 
 from pyobs import PyObsModule
 from pyobs.interfaces import IAltAz, IRaDec, IReady
@@ -100,14 +101,19 @@ class FollowMixin:
                 device = self.proxy(self.__follow_device, self.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
-                log.error('Cannot follow device, since it is of wrong type.')
+                log.error('Cannot follow module, since it is of wrong type.')
                 self.closing.wait(self.__follow_interval * 10)
                 continue
 
             # get coordinates from other and from myself
             my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
-            x, y = get_coord(device, self.__follow_mode).wait()
-            other_coords = build_skycoord((x, y), self.__follow_mode)
+            try:
+                x, y = get_coord(device, self.__follow_mode).wait()
+                other_coords = build_skycoord((x, y), self.__follow_mode)
+            except RemoteException:
+                log.error('Module currently not available.')
+                self.closing.wait(self.__follow_interval * 10)
+                continue
 
             # is separation larger than tolerance?
             if my_coords.separation(other_coords).degree > self.__follow_tolerance:

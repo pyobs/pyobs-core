@@ -128,4 +128,4 @@ class PointingSeries(PyObsModule, IPointingSeries, IAbortable):
         self._abort.set()
 
 
-__all__ = ['PointingMastermind']
+__all__ = ['PointingSeries']

@@ -68,5 +68,8 @@ class WaitForMotionMixin:
             if all(good):
                 break
 
+            # sleep a little
+            abort.wait(1)
+
 
 __all__ = ['WaitForMotionMixin']

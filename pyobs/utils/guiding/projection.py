@@ -21,6 +21,11 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         self._pid_ra = None
         self._pid_dec = None
 
+    def reset(self):
+        """Resets guiding."""
+        log.info('Reset autp-guiding.')
+        self._ref_image = None
+
     def find_pixel_offset(self, image: Image) -> (float, float):
         """Processes an image and return x/y pixel offset to reference.
 
@@ -34,9 +39,11 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
             ValueError if offset could not be found.
         """
 
-        # process it
+        # no reference image?
         if self._ref_image is None:
-            self.set_reference_image(image)
+            log.info('Initialising auto-guiding with new image...')
+            self._ref_image = self._process(image)
+            self._init_pid()
             return 0, 0
 
         # process it
@@ -47,22 +54,6 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
         return dx, dy
-
-    def set_reference_image(self, image: Image):
-        """Set new reference image.
-
-        Args:
-            image: New reference image.
-        """
-
-        # process it
-        if image is None:
-            log.info('Resetting auto-guiding...')
-            self._ref_image = None
-        else:
-            log.info('Initialising auto-guiding with new image...')
-            self._ref_image = self._process(image)
-            self._init_pid()
 
     def _process(self, image: Image) -> (np.array, np.array):
         """Project image along x and y axes and return results.

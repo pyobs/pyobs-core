@@ -131,8 +131,13 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         """
         self._enabled = enabled
         self._loop_closed = False
-        self._guiding_offset.set_reference_image(image)
         self._ref_header = None if image is None else image.header
+
+        # reset offset
+        self._guiding_offset.reset()
+        if image is not None:
+            # if image is given, process it
+            self._guiding_offset.find_pixel_offset(image)
 
     def _process_image(self, image: Image):
         """Processes a single image and offsets telescope.
@@ -149,6 +154,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         if self._ref_header is None:
             log.info('Setting new reference image...')
             self._reset_guiding(image=image)
+            return
 
         # check RA/Dec in header and separation
         c1 = SkyCoord(ra=image.header['TEL-RA'] * u.deg, dec=image.header['TEL-DEC'] * u.deg, frame='icrs')

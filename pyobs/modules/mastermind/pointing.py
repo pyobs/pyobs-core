@@ -75,7 +75,7 @@ class PointingSeries(PyObsModule, IPointingSeries, IAbortable):
             log.info('Grid points left to do: %d', len(todo))
 
             # get moon
-            moon = self.observer.moon_altaz()
+            moon = self.observer.moon_altaz(Time.now())
 
             # try to find a good point
             while True:

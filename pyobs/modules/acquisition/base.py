@@ -75,15 +75,19 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300000)
-    def acquire_target(self, exposure_time: int, ra: float = None, dec: float = None, *args, **kwargs):
+    def acquire_target(self, exposure_time: int, ra: float = None, dec: float = None, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
-        If no RA/Dec are given, start from current position.
+        If no RA/Dec are given, start from current position. Might not work for some implementations that require
+        coordinates.
 
         Args:
             exposure_time: Exposure time for acquisition.
             ra: Right ascension of field to acquire.
             dec: Declination of field to acquire.
+
+        Returns:
+            A dictionary with entries for datetime, ra, dec, alt, az, and either ra_off, dec_off or alt_off, az_off.
 
         Raises:
             ValueError if target could not be acquired.
@@ -175,13 +179,12 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
                 self._append_to_table_storage(**log_entry)
 
                 # finished
-                return
+                return log_entry
 
             # abort?
             if dist * 3600. > self._max_offset:
                 # move a maximum of 120"=2'
-                log.info('Calculated offsets too large.')
-                return
+                raise ValueError('Calculated offsets too large.')
 
             # is telescope on an equitorial mount?
             if isinstance(telescope, IRaDecOffsets):

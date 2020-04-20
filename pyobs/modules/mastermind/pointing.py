@@ -120,7 +120,7 @@ class PointingSeries(PyObsModule):
             log.info('Pointing series finished.')
 
     def _process_acquisition(self, datetime: str, ra: float, dec: float, alt: float, az: float,
-                             ra_off: float = None, dec_off: float = None, alt_off: float = None, az_off: float = None):
+                             off_ra: float = None, off_dec: float = None, off_alt: float = None, off_az: float = None):
         """Process the result of the acquisition. Either ra_off/dec_off or alt_off/az_off must be given.
 
         Args:
@@ -129,10 +129,10 @@ class PointingSeries(PyObsModule):
             dec: Declination without offsets at destination.
             alt: Altitude without offsets at destination.
             az: Azimuth without offsets at destination.
-            ra_off: Found RA offset.
-            dec_off: Found Dec offset.
-            alt_off: Found Alt offset.
-            az_off: Found Az offset.
+            off_ra: Found RA offset.
+            off_dec: Found Dec offset.
+            off_alt: Found Alt offset.
+            off_az: Found Az offset.
         """
         pass
 

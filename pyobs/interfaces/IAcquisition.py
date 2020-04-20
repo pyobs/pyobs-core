@@ -14,7 +14,7 @@ class IAcquisition(Interface):
             dec: Declination of field to acquire.
 
         Returns:
-            A dictionary with entries for datetime, ra, dec, alt, az, and either ra_off, dec_off or alt_off, az_off.
+            A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
 
         Raises:
             ValueError if target could not be acquired.

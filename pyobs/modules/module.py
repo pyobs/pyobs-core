@@ -16,7 +16,7 @@ from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_r
 log = logging.getLogger(__name__)
 
 
-def timeout(func_timeout: Union[str, int, None] = None):
+def timeout(func_timeout: Union[str, int, Callable, None] = None):
     """Decorates a method with information about timeout for an async HTTP call.
 
     :param func_timeout:  Integer or string that specifies the timeout.
@@ -33,16 +33,29 @@ def timeout(func_timeout: Union[str, int, None] = None):
 
             # do we have a timeout?
             if func_timeout is not None:
-                # is it a string?
-                if isinstance(func_timeout, str):
-                    # evaluate
+                # what is it?
+                if callable(func_timeout):
+                    # this is a method, does it have a timeout on it's own? then use it
+                    try:
+                        if hasattr(func_timeout, 'timeout'):
+                            # call timeout method, only works if this has the same parameters
+                            to = func_timeout.timeout(*args, **kwargs)
+                        else:
+                            # call method directly
+                            to = func_timeout(*args, **kwargs)
+                    except:
+                        log.error('Could not call timeout method.')
+
+                elif isinstance(func_timeout, str):
+                    # this is a string with a function, so evaluate it
                     try:
                         parser = Parser()
                         to = parser.parse(func_timeout).evaluate(kwargs)
                     except Exception:
                         log.error('Could not find timeout "%s" in list of parameters.', func_timeout)
+
                 else:
-                    # add timeout directly
+                    # it's a number, add timeout directly
                     try:
                         to = float(func_timeout)
                     except ValueError:

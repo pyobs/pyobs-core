@@ -102,9 +102,10 @@ class PointingSeries(PyObsModule):
             # log finding
             log.info('Picked grid point at Alt=%.2f, Az=%.2f (%s).', alt, az, radec.to_string('hmsdms'))
 
-            # acquire target
+            # acquire target and process result
             try:
-                acquisition.acquire_target(self._exp_time, float(radec.ra.degree), float(radec.dec.degree)).wait()
+                acq = acquisition.acquire_target(self._exp_time, float(radec.ra.degree), float(radec.dec.degree)).wait()
+                self._process_acquisition(**acq)
             except ValueError:
                 log.info('Could not acquire target.')
                 continue
@@ -117,6 +118,23 @@ class PointingSeries(PyObsModule):
             log.info('Pointing series aborted.')
         else:
             log.info('Pointing series finished.')
+
+    def _process_acquisition(self, datetime: str, ra: float, dec: float, alt: float, az: float,
+                             ra_off: float = None, dec_off: float = None, alt_off: float = None, az_off: float = None):
+        """Process the result of the acquisition. Either ra_off/dec_off or alt_off/az_off must be given.
+
+        Args:
+            datetime: Date and time of observation.
+            ra: Right ascension without offsets at destination.
+            dec: Declination without offsets at destination.
+            alt: Altitude without offsets at destination.
+            az: Azimuth without offsets at destination.
+            ra_off: Found RA offset.
+            dec_off: Found Dec offset.
+            alt_off: Found Alt offset.
+            az_off: Found Az offset.
+        """
+        pass
 
 
 __all__ = ['PointingSeries']

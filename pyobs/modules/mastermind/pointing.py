@@ -105,7 +105,8 @@ class PointingSeries(PyObsModule):
             # acquire target and process result
             try:
                 acq = acquisition.acquire_target(self._exp_time, float(radec.ra.degree), float(radec.dec.degree)).wait()
-                self._process_acquisition(**acq)
+                if acq is not None:
+                    self._process_acquisition(**acq)
             except ValueError:
                 log.info('Could not acquire target.')
                 continue

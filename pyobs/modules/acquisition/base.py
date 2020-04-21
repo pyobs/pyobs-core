@@ -75,7 +75,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300000)
-    def acquire_target(self, exposure_time: int, ra: float = None, dec: float = None, *args, **kwargs) -> dict:
+    def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -83,8 +83,6 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
 
         Args:
             exposure_time: Exposure time for acquisition.
-            ra: Right ascension of field to acquire.
-            dec: Declination of field to acquire.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -100,13 +98,6 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
-
-        # initial move
-        if ra is not None and dec is not None:
-            log.info('Moving telescope...')
-            telescope.move_radec(ra, dec).wait()
-        else:
-            log.info('No RA/Dec given, starting from current position...')
 
         # try given number of attempts
         for a in range(self._attempts):
@@ -127,6 +118,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
             # get date obs and wcc
             date_obs = Time(img.header['DATE-OBS'])
             wcs = WCS(img.header)
+
+            # coordinates without offset
+            ra, dec = img.header['CRVAL1'], img.header['CRVAL2']
 
             # get WCS and RA/DEC for target pixel and
             lon, lat = wcs.all_pix2world(cx, cy, 0)

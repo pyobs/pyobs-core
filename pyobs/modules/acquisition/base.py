@@ -2,11 +2,8 @@ import logging
 from typing import Union, Tuple
 import numpy as np
 from astropy.coordinates import SkyCoord, AltAz
-from astropy.io import fits
-from astropy.stats import sigma_clipped_stats
 from astropy.wcs import WCS
 import astropy.units as u
-from photutils import DAOStarFinder
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import PyObsModule

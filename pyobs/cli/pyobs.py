@@ -1,10 +1,5 @@
-import matplotlib
 import argparse
 import os
-
-
-# force matplotlib not to use a graphical interface
-matplotlib.use('Agg')
 
 
 def init_cli():

@@ -1,8 +1,3 @@
-import matplotlib
-
-# force matplotlib not to use a graphical interface
-matplotlib.use('Agg')
-
 from .pyobs import init_cli, parse_cli, run
 
 

@@ -1,63 +1,13 @@
-import io
 import logging
 import re
 from typing import Union
 import numpy as np
-import PIL
-import PIL.Image
-import aplpy
-import matplotlib.pyplot as plt
-from astropy.io import fits
 from astropy.io.fits import Header
 
 from pyobs.utils.time import Time
 
 
 log = logging.getLogger(__name__)
-
-
-def create_preview(hdu: fits.PrimaryHDU, grid: bool = True, colorbar: bool = True,
-                   mark_centre: bool = True, buffer=False) -> PIL.Image.Image:
-    # create figure
-    dpi = 100.
-    fig = plt.figure(figsize=(780. / dpi, 780. / dpi), dpi=dpi)
-
-    # create plot
-    gc = aplpy.FITSFigure(hdu, figure=fig)
-    gc.show_colorscale(cmap='gist_heat', stretch='arcsinh')
-
-    # add colorbar and grid
-    if colorbar:
-        gc.add_colorbar()
-    if grid:
-        gc.add_grid()
-
-    # mark position
-    if 'CRVAL1' in hdu.header and 'CRVAL2' in hdu.header and mark_centre:
-        gc.show_markers([hdu.header['CRVAL1']], [hdu.header['CRVAL2']], c='blue', marker='+')
-
-    # create PIL image
-    with io.BytesIO() as buf:
-        # write to buffer
-        fig.tight_layout()
-        fig.savefig(buf, format='png', dpi=dpi*0.6)
-        gc.close()
-
-        # create PIL image
-        im = PIL.Image.open(buf)
-
-        # crop away white borders
-        bg = PIL.Image.new(im.mode, im.size, im.getpixel((0, 0)))
-        diff = PIL.ImageChops.difference(im, bg)
-        bbox = diff.getbbox()
-
-        # return buffer or image?
-        if buffer:
-            with io.BytesIO() as buf:
-                im.crop(bbox).save(buf, format='png')
-                return buf.getvalue()
-        else:
-            return im.crop(bbox)
 
 
 def fitssec(hdu, keyword: str = 'TRIMSEC') -> np.ndarray:
@@ -327,4 +277,4 @@ def format_filename(hdr: Header, fmt: Union[str, list], keys: dict = None) -> st
     return ff(hdr)
 
 
-__all__ = ['create_preview', 'format_filename', 'FilenameFormatter']
+__all__ = ['format_filename', 'FilenameFormatter']

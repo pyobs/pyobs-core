@@ -15,7 +15,6 @@ from pyobs import PyObsModule
 from pyobs.object import get_object
 from pyobs.comm import RemoteException
 from pyobs.utils.cache import DataCache
-from pyobs.utils.fits import create_preview
 from pyobs.auth import tornado_auth_required
 
 log = logging.getLogger(__name__)
@@ -214,49 +213,6 @@ class DownloadFileHandler(tornado.web.RequestHandler):
 
 
 @tornado_auth_required
-class PreviewHandler(tornado.web.RequestHandler):
-    """Handle preview images."""
-
-    """File cache."""
-    _preview_cache = DataCache()
-
-    @tornado.gen.coroutine
-    def get(self, filename: str):
-        """Send preview image for requested file.
-
-        Args:
-            filename: Name of image to get preview for.
-        """
-
-        # not in headers cache already?
-        if filename not in self._preview_cache:
-            try:
-                # download fits file
-                with self.application.open_file(filename, 'rb') as f:
-                    # get data
-                    hdus = fits.open(f, memmap=False)
-                    data = create_preview(hdus[0], buffer=True)
-                    hdus.close()
-
-                    # store it
-                    self._preview_cache[filename] = data
-
-            except FileNotFoundError:
-                log.error('Could not download image.')
-                raise tornado.web.HTTPError(404)
-
-        # get data
-        data = self._preview_cache[filename]
-
-        # send it
-        log.info('Sending preview for %s...', filename)
-        self.set_header('Content-type', 'image/png')
-        self.set_header('Content-Disposition', 'inline; filename="image.png')
-        self.write(data)
-        yield self.flush()
-
-
-@tornado_auth_required
 class HeadersHandler(tornado.web.RequestHandler):
     """Handle header requests."""
 
@@ -382,7 +338,6 @@ class HTTP2XMPP(PyObsModule, tornado.web.Application):
         routes = [
             (href + r'jsonrpc', JsonRpcHandler, {'executor': self.executor}),
             (href + r'download/(.*)', DownloadFileHandler),
-            (href + r'preview/(.*)', PreviewHandler),
             (href + r'headers/(.*)', HeadersHandler)
         ]
 

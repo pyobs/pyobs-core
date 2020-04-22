@@ -26,7 +26,6 @@ setup(
         'astroplan',
         'PyYAML',
         'numpy',
-        'tornado',
         'sleekxmpp',
         'py_expression_eval',
         'colour',
@@ -40,6 +39,7 @@ setup(
         'full':  [
             'photutils',
             'lmfit',
+            'tornado',
         ]
     }
 )

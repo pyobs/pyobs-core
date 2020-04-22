@@ -28,7 +28,6 @@ setup(
         'numpy',
         'sleekxmpp',
         'py_expression_eval',
-        'colour',
         'requests',
         'aplpy;platform_system=="Linux"',
         'sep;platform_system=="Linux"',

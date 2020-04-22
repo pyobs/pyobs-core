@@ -1,16 +1,12 @@
-import io
 import logging
-
-import typing
 from py_expression_eval import Parser
 import pandas as pd
-import lmfit
 import numpy as np
 
 from pyobs import PyObsModule
 from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
-from pyobs.interfaces import IFocuser, IMotion, IWeather, ITemperatures, IFocusModel, IFilters
+from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
 from pyobs.utils.time import Time
 
@@ -75,6 +71,9 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
             filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
         """
         PyObsModule.__init__(self, *args, **kwargs)
+
+        # check import
+        import lmfit
 
         # add thread func
         if interval is not None and interval > 0:
@@ -358,6 +357,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
 
     def _calc_focus_model(self):
         """Calculate new focus model from saved entries."""
+        import lmfit
 
         # no coefficients? no model...
         if not self._coefficients or self._table_storage is None:
@@ -417,7 +417,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
 
-    def _residuals(self, x: lmfit.Parameters, data: pd.DataFrame):
+    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame):
         """Fit method for model
 
         Args:

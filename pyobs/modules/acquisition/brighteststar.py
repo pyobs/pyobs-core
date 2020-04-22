@@ -1,6 +1,5 @@
 import logging
 from astropy.stats import sigma_clipped_stats
-from photutils import DAOStarFinder
 
 from .base import BaseAcquisition
 from ...utils.images import Image
@@ -10,6 +9,13 @@ log = logging.getLogger(__name__)
 
 class BrightestStarAcquisition(BaseAcquisition):
     """Module for acquiring telescope on brightest star in field."""
+
+    def __init__(self, *args, **kwargs):
+        """Initialize a new acquisition."""
+        BaseAcquisition.__init__(self, *args, **kwargs)
+
+        # test import
+        from photutils import DAOStarFinder
 
     def _get_target_pixel(self, img: Image, ra: float, dec: float) -> (float, float):
         """Returns RA/Dec coordinates of pixel that needs to be centered.
@@ -22,6 +28,7 @@ class BrightestStarAcquisition(BaseAcquisition):
         Returns:
             (x, y) of pixel that needs to be moved to the centre of the image.
         """
+        from photutils import DAOStarFinder
 
         # do statistics on image
         mean, median, std = sigma_clipped_stats(img.data, sigma=3.0)

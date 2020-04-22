@@ -1,7 +1,6 @@
 import numpy as np
 import logging
-from lmfit.models import GaussianModel
-from scipy import optimize, ndimage
+from scipy import ndimage
 
 from .base import FocusSeries
 from ..curvefit import fit_hyperbola
@@ -20,6 +19,9 @@ class ProjectionFocusSeries(FocusSeries):
             xbad: Bad rows
             ybad: Bad columns
         """
+
+        # test imports
+        import lmfit
 
         # stuff
         self._backsub = backsub
@@ -175,6 +177,8 @@ class ProjectionFocusSeries(FocusSeries):
 
     @staticmethod
     def _fit_correlation(correl):
+        from lmfit.models import GaussianModel
+
         # create Gaussian model
         model = GaussianModel()
 

@@ -3,7 +3,6 @@ from typing import Union
 import threading
 import numpy as np
 from astropy.io import fits
-from lmfit.models import GaussianModel
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
@@ -30,6 +29,9 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
             offset: If True, offsets are used instead of absolute focus values.
         """
         PyObsModule.__init__(self, *args, **kwargs)
+
+        # test import
+        import lmfit
 
         # store focuser and camera
         self._focuser = focuser
@@ -338,6 +340,8 @@ class AutoFocusProjection(PyObsModule, IAutoFocus):
 
     @staticmethod
     def _fit_correlation(correl):
+        from lmfit.models import GaussianModel
+
         # create Gaussian model
         model = GaussianModel()
 

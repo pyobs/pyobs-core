@@ -18,18 +18,14 @@ setup(
         ]
     },
     install_requires=[
-        'photutils',
         'scipy',
         'paramiko',
         'pandas',
-        'matplotlib',
         'pytz',
         'astropy',
         'astroplan',
-        'Pillow',
         'PyYAML',
         'numpy',
-        'lmfit',
         'tornado',
         'sleekxmpp',
         'py_expression_eval',
@@ -39,5 +35,11 @@ setup(
         'sep;platform_system=="Linux"',
         'pyinotify;platform_system=="Linux"',
         'python-daemon;platform_system=="Linux"'
-    ]
+    ],
+    extras_require={
+        'full':  [
+            'photutils',
+            'lmfit',
+        ]
+    }
 )

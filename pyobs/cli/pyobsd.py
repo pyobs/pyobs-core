@@ -19,9 +19,15 @@ class pyobsDaemon(object):
         self._chuid = chuid
         self._start_stop_daemon = start_stop_daemon
 
-        # get pyobs executable
-        #self._pyobs_exec = os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs'))
-        self._pyobs_exec = '/usr/local/bin/pyobs'
+        # find pyobs executable
+        filenames = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs')),
+                     '/usr/bin/pyobs', '/usr/local/bin/pyobs']
+        for filename in filenames:
+            if os.path.exists(filename):
+                self._pyobs_exec = filename
+                break
+        else:
+            raise ValueError('Could not find pyobs executable.')
 
         # get configs and running
         self._configs = self._get_configs()

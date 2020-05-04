@@ -21,7 +21,7 @@ class pyobsDaemon(object):
 
         # get pyobs executable
         #self._pyobs_exec = os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs'))
-        self._pyobs_exec = '/usr/bin/pyobs'
+        self._pyobs_exec = '/usr/local/bin/pyobs'
 
         # get configs and running
         self._configs = self._get_configs()

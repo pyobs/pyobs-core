@@ -1,4 +1,3 @@
-import sep
 from astropy.table import Table
 import logging
 
@@ -12,9 +11,24 @@ log = logging.getLogger(__name__)
 class SepPhotometry(Photometry):
     def __init__(self, threshold=1.5, *args, **kwargs):
         Photometry.__init__(self, *args, **kwargs)
+
+        # test imports
+        import sep
+
+        # save threshold
         self.threshold = threshold
 
-    def __call__(self, image: Image) -> Table:
+    def find_stars(self, image: Image) -> Table:
+        """Find stars in given image and append catalog.
+
+        Args:
+            image: Image to find stars in.
+
+        Returns:
+            Full table with results.
+        """
+        import sep
+        
         # get data and make it continuous
         data = image.data.copy()
 

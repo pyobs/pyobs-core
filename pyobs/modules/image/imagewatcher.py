@@ -2,7 +2,6 @@ import glob
 import logging
 import os
 from queue import Queue
-import pyinotify
 from astropy.io import fits
 
 from pyobs import PyObsModule
@@ -27,6 +26,9 @@ class ImageWatcher(PyObsModule):
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
+        # test import
+        import pyinotify
+
         # add thread func
         self._add_thread_func(self._worker, True)
 
@@ -43,6 +45,19 @@ class ImageWatcher(PyObsModule):
     def open(self):
         """Open module."""
         PyObsModule.open(self)
+        import pyinotify
+
+        class EventHandler(pyinotify.ProcessEvent):
+            """Event handler for file watcher."""
+
+            def __init__(self, main, *args, **kwargs):
+                """Create event handler."""
+                pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
+                self.main = main
+
+            def process_IN_CLOSE_WRITE(self, event):
+                """React to IN_CLOSE_WRITE events."""
+                self.main.add_image(event.pathname)
 
         # start watching directory
         if self._watchpath:
@@ -128,18 +143,6 @@ class ImageWatcher(PyObsModule):
             except:
                 log.exception('Something went wrong.')
 
-
-class EventHandler(pyinotify.ProcessEvent):
-    """Event handler for file watcher."""
-
-    def __init__(self, main, *args, **kwargs):
-        """Create event handler."""
-        pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
-        self.main = main
-
-    def process_IN_CLOSE_WRITE(self, event):
-        """React to IN_CLOSE_WRITE events."""
-        self.main.add_image(event.pathname)
 
 
 __all__ = ['ImageWatcher']

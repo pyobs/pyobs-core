@@ -74,7 +74,7 @@ class LcoDefaultScript(Script):
         track = None
         if target['ra'] is not None and target['dec'] is not None:
             log.info('Moving to target %s...', target['name'])
-            track = self.telescope.track_radec(target['ra'], target['dec'])
+            track = self.telescope.move_radec(target['ra'], target['dec'])
 
         # guiding?
         if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \

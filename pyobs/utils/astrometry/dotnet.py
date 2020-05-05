@@ -1,6 +1,8 @@
 import logging
 import requests
+from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+import astropy.units as u
 
 from pyobs.utils.images import Image
 from .astrometry import Astrometry
@@ -17,7 +19,16 @@ class AstrometryDotNet(Astrometry):
         self.url = url
         self.source_count = source_count
 
-    def __call__(self, image: Image):
+    def find_solution(self, image: Image) -> bool:
+        """Find astrometric solution on given image.
+
+        Args:
+            image: Image to analyse.
+
+        Returns:
+            Success or not.
+        """
+
         # get catalog
         cat = image.catalog
 
@@ -25,7 +36,7 @@ class AstrometryDotNet(Astrometry):
         if cat is None or len(cat) < 3:
             log.error('Not enough sources for astrometry.')
             image.header['WCSERR'] = 1
-            return
+            return False
 
         # sort it and take N brightest sources
         cat.sort(['flux'], reverse=True)
@@ -45,13 +56,26 @@ class AstrometryDotNet(Astrometry):
             'flux': cat['flux'].tolist()
         }
 
+        # log it
+        ra_dec = SkyCoord(ra=data['ra'] * u.deg, dec=data['dec'] * u.deg, frame='icrs')
+        cx, cy = image.header['CRPIX1'], image.header['CRPIX2']
+        log.info('Found original RA=%s (%.4f), Dec=%s (%.4f) at pixel %.2f,%.2f.',
+                 ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), data['ra'],
+                 ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), data['dec'],
+                 cx, cy)
+
         # send it
-        r = requests.post('https://astrometry.monet.uni-goettingen.de/', json=data)
+        r = requests.post(self.url, json=data)
 
         # success?
         if r.status_code != 200 or 'error' in r.json():
             # set error
             image.header['WCSERR'] = 1
+            if 'error' in r.json():
+                log.error('Received error from astrometry service: %s', r.json()['error'])
+            else:
+                log.error('Could not connect to astrometry service.')
+            return False
 
         else:
             # copy keywords
@@ -73,8 +97,19 @@ class AstrometryDotNet(Astrometry):
             image.catalog['ra'] = ras
             image.catalog['dec'] = decs
 
+            # RA/Dec at center pos
+            final_ra, final_dec = image_wcs.all_pix2world(cx, cy, 0)
+            ra_dec = SkyCoord(ra=final_ra * u.deg, dec=final_dec * u.deg, frame='icrs')
+
+            # log it
+            log.info('Found final RA=%s (%.4f), Dec=%s (%.4f) at pixel %.2f,%.2f.',
+                     ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), data['ra'],
+                     ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), data['dec'],
+                     cx, cy)
+
             # success
             image.header['WCSERR'] = 0
+            return True
 
 
 __all__ = ['AstrometryDotNet']

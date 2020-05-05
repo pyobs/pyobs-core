@@ -35,12 +35,24 @@ class FlatFielder:
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, functions: typing.Dict[str, str] = None, target_count: float = 30000, min_exptime: float = 0.5,
-                 max_exptime: float = 5, test_frame: tuple = None, counts_frame: tuple = None,
-                 allowed_offset_frac: float = 0.2, min_counts: int = 100, log: str = '/pyobs/flatfield.csv',
-                 pointing: typing.Union[dict, SkyFlatsBasePointing] = None, observer: Observer = None,
-                 vfs: VirtualFileSystem = None, *args, **kwargs):
+    def __init__(self, functions: typing.Dict[str, typing.Union[str, typing.Dict[str, str]]] = None,
+                 target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
+                 test_frame: tuple = None, counts_frame: tuple = None, allowed_offset_frac: float = 0.2,
+                 min_counts: int = 100, pointing: typing.Union[dict, SkyFlatsBasePointing] = None,
+                 combine_binnings: bool = True, observer: Observer = None, vfs: VirtualFileSystem = None,
+                 callback: typing.Callable = None, *args, **kwargs):
         """Initialize a new flat fielder.
+
+        Depending on the value of combine_binnings, functions must be in a specific format:
+
+            1. combine_binnings=True:
+                functions must be a dictionary of filter->function pairs, like
+                {'clear': 'exp(-0.9*(h+3.9))'}
+                In this case it is assumed that the average flux per pixel is directly correlated to the binning,
+                i.e. a flat with 3x3 binning hast on average 9 times as much flux per pixel.
+            2. combine_binnings=False:
+                functions must be nested one level deeper within the binning, like
+                {'1x1': {'clear': 'exp(-0.9*(h+3.9))'}}
 
         Args:
             functions: Function f(h) for each filter to describe ideal exposure time as a function of solar
@@ -54,9 +66,10 @@ class FlatFielder:
             allowed_offset_frac: Offset from target_count (given in fraction of it) that's still allowed for good
                 flat-field
             min_counts: Minimum counts in frames.
-            log: Log file to write.
+            combine_binnings: Whether different binnings use the same functions.
             observer: Observer to use.
             vfs: VFS to use.
+            callback: Callback function for statistics.
         """
 
         # store stuff
@@ -67,14 +80,23 @@ class FlatFielder:
         self._counts_frame = (25, 25, 75, 75) if counts_frame is None else counts_frame
         self._allowed_offset_frac = allowed_offset_frac
         self._min_counts = min_counts
-        self._log_file = log
+        self._combine_binnings = combine_binnings
         self._observer = observer
         self._vfs = vfs
+        self._callback = callback
 
         # parse function
         if functions is None:
             functions = {}
-        self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        if combine_binnings:
+            # in the simple case, the key is just the filter
+            self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        else:
+            # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
+            self._functions = {}
+            for binning, func in functions.items():
+                for filter_name, func in func.items():
+                    self._functions[binning, filter_name] = Parser().parse(func)
 
         # abort event
         self._abort = threading.Event()
@@ -272,12 +294,23 @@ class FlatFielder:
             Estimated exposure time.
         """
 
-        # get solar elevation and evaluate function
+        # get solar elevation
         sun = self._observer.sun_altaz(time)
-        exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
 
-        # scale with binning
-        exptime /= self._cur_binning * self._cur_binning
+        # evaluate function depending on whether we combine binnings or not
+        if self._combine_binnings:
+            # evaluate filter function without binning
+            exptime = self._functions[self._cur_filter].evaluate({'h': sun.alt.degree})
+
+            # scale with binning
+            exptime /= self._cur_binning * self._cur_binning
+
+        else:
+            # get binnind and evaluate correct function
+            binning = '%dx%d' % (self._cur_binning, self._cur_binning)
+            exptime = self._functions[binning, self._cur_filter].evaluate({'h': sun.alt.degree})
+
+        # return solar altitude and exposure time
         return float(sun.alt.degree), exptime
 
     def _eval_exptime(self, min_exptime: float = None, max_exptime: float = None) -> int:
@@ -456,9 +489,11 @@ class FlatFielder:
                 self._state = FlatFielder.State.FINISHED
                 return
 
-            # write it to log
-            sun = self._observer.sun_altaz(now)
-            self._write_log(now.datetime, sun.alt.degree)
+            # call callback
+            if self._callback is not None:
+                sun = self._observer.sun_altaz(now)
+                self._callback(datetime=now, solalt=sun.alt.degree, exptime=self._exptime, counts=self._target_count,
+                               filter=self._cur_filter, binning=self._cur_binning)
 
         # then evaluate exposure time
         state = self._eval_exptime()
@@ -474,32 +509,6 @@ class FlatFielder:
     def abort(self):
         """Abort current actions."""
         self._abort.set()
-
-    def _write_log(self, dt, sol_alt):
-        """Write log file entry."""
-
-        # do we have a log file?
-        if self._log_file is not None:
-            # try to load it
-            try:
-                with self._vfs.open_file(self._log_file, 'r') as f:
-                    # read file
-                    data = pd.read_csv(f, index_col=False)
-
-            except (FileNotFoundError, ValueError):
-                # init empty file
-                data = pd.DataFrame(dict(datetime=[], solalt=[], exptime=[], counts=[], filter=[], binning=[]))
-
-            # add data
-            data = data.append(dict(datetime=dt, solalt=sol_alt, exptime=self._exptime, counts=self._target_count,
-                                    filter=self._cur_filter, binning=self._cur_binning),
-                               ignore_index=True)
-
-            # write file
-            with self._vfs.open_file(self._log_file, 'w') as f:
-                with io.StringIO() as sio:
-                    data.to_csv(sio, index=False)
-                    f.write(sio.getvalue().encode('utf8'))
 
 
 __all__ = ['FlatFielder']

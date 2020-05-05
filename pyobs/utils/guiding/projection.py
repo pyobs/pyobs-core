@@ -1,70 +1,69 @@
 import logging
-import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord, AltAz, EarthLocation
-from astropy.time import Time
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
-from astropy.wcs import WCS
 import re
 
-from pyobs.interfaces import ITelescope, IEquatorialMount, IAltAzMount, ICamera
 from pyobs.utils.images import Image
 from pyobs.utils.pid import PID
-from .base import BaseGuider
+from .base import BaseGuidingOffset
 
 
 log = logging.getLogger(__name__)
 
 
-class AutoGuidingProjection(BaseGuider):
+class ProjectionGuidingOffset(BaseGuidingOffset):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
-    def __init__(self, max_offset: float = 30, max_exposure_time: float = None,
-                 max_interval: float = 600, separation_reset: float = None, pid: bool = False, *args, **kwargs):
-        """Initializes a new auto guiding system.
-
-        Args:
-            max_offset: Max offset in arcsec to move.
-            max_exposure_time: Maximum exposure time in sec for images to analyse.
-            max_interval: Maximum interval in sec between to consecutive images to guide.
-            separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
-            pid: Whether to use a PID for guiding.
-        """
-
-        # store
-        self._max_offset = max_offset
-        self._max_exposure_time = max_exposure_time
-        self._max_interval = max_interval
-        self._separation_reset = separation_reset
-        self._pid = pid
-
-        # variables
+    def __init__(self, *args, **kwargs):
+        """Initializes a new auto guiding system."""
         self._ref_image = None
-        self._ref_header = None
-        self._last_header = None
         self._pid_ra = None
         self._pid_dec = None
-        self._loop_closed = False
 
-    def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation):
-        """Processes an image.
+    def reset(self):
+        """Resets guiding."""
+        log.info('Reset autp-guiding.')
+        self._ref_image = None
+
+    def find_pixel_offset(self, image: Image) -> (float, float):
+        """Processes an image and return x/y pixel offset to reference.
 
         Args:
             image: Image to process.
-            telescope: Telescope to guide
-            location: Location of observer
+
+        Returns:
+            x/y pixel offset to reference.
+
+        Raises:
+            ValueError if offset could not be found.
         """
 
-        # we only accept OBJECT images
-        if image.header['IMAGETYP'] != 'object':
-            return
+        # no reference image?
+        if self._ref_image is None:
+            log.info('Initialising auto-guiding with new image...')
+            self._ref_image = self._process(image)
+            self._init_pid()
+            return 0, 0
 
         # process it
-        if self._ref_image:
-            log.info('Perform auto-guiding on new image...')
-        else:
-            log.info('Initialising auto-guiding with new image...')
+        log.info('Perform auto-guiding on new image...')
+        sum_x, sum_y = self._process(image)
+
+        # find peaks and return them
+        dx = self._correlate(sum_x, self._ref_image[0])
+        dy = self._correlate(sum_y, self._ref_image[1])
+        return dx, dy
+
+    def _process(self, image: Image) -> (np.array, np.array):
+        """Project image along x and y axes and return results.
+
+        Args:
+            image: Image to process.
+
+        Returns:
+            Projected images.
+        """
 
         # get image data and header
         data, hdr = image.data, image.header
@@ -73,137 +72,14 @@ class AutoGuidingProjection(BaseGuider):
         if 'TRIMSEC' in hdr:
             m = re.match('\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]', hdr['TRIMSEC'])
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
-            data = data[y0-1:y1, x0-1:x1]
+            data = data[y0 - 1:y1, x0 - 1:x1]
 
         # collapse
         sum_x = np.nansum(data, 0)
         sum_y = np.nansum(data, 1)
 
         # sky subtraction
-        sum_x = self._subtract_sky(sum_x)
-        sum_y = self._subtract_sky(sum_y)
-
-        # is this the new reference?
-        if not self._ref_image:
-            # yes, just store it
-            self._reset_guiding(sum_x, sum_y, hdr)
-            return
-
-        # check RA/Dec in header and separation
-        c1 = SkyCoord(ra=hdr['TEL-RA'] * u.deg, dec=hdr['TEL-DEC'] * u.deg, frame='icrs')
-        c2 = SkyCoord(ra=self._ref_header['TEL-RA'] * u.deg, dec=self._ref_header['TEL-DEC'] * u.deg, frame='icrs')
-        separation = c1.separation(c2).deg
-        if self._separation_reset is not None and separation * 3600. > self._separation_reset:
-            log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
-                            separation * 3600.)
-            self._reset_guiding(sum_x, sum_y, hdr)
-            return
-
-        # check filter
-        if 'FILTER' in hdr and 'FILTER' in self._ref_header and hdr['FILTER'] != self._ref_header['FILTER']:
-            log.warning('The filter has been changed since the last exposure, resetting reference...')
-            self._reset_guiding(sum_x, sum_y, hdr)
-            return
-
-        # check times and focus
-        if self._last_header is not None:
-            # check times
-            t = Time(hdr['DATE-OBS'])
-            t0 = Time(self._last_header['DATE-OBS'])
-            if (t - t0).sec > self._max_interval:
-                log.warning('Time between current and last image is too large, resetting reference...')
-                self._reset_guiding(sum_x, sum_y, hdr)
-                return
-
-            # check focus
-            if abs(hdr['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
-                log.warning('Focus difference between current and last image is too large, resetting reference...')
-                self._reset_guiding(sum_x, sum_y, hdr)
-                return
-
-        # remember header
-        self._last_header = hdr
-
-        # find peaks
-        dx = self._correlate(sum_x, self._ref_image[0])
-        dy = self._correlate(sum_y, self._ref_image[1])
-        if dx is None or dy is None:
-            log.error('Could not correlate image with reference.')
-            return
-        else:
-            log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
-
-        # get pixel in middle of image
-        cx, cy = (np.array(data.shape) / 2.).astype(np.int)
-
-        # get WCS and RA/DEC for pixel and pixel + dx/dy
-        w = WCS(hdr)
-        lon, lat = w.all_pix2world(cx, cy, 0)
-        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=location)
-        lon, lat = w.all_pix2world(cx + dx, cy + dy, 0)
-        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=t, location=location)
-
-        # calculate offsets
-        dra = radec2.ra.degree - radec1.ra.degree
-        ddec = radec2.dec.degree - radec1.dec.degree
-        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
-
-        # too large?
-        if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
-            log.warning('Shift too large, skipping auto-guiding for now...')
-            return
-
-        # exposure time too large
-        if self._max_exposure_time is not None and hdr['EXPTIME'] > self._max_exposure_time:
-            log.warning('Exposure time too large, skipping auto-guiding for now...')
-            return
-
-        # push offset into PID
-        if self._pid:
-            dra = self._pid_ra.update(dra)
-            ddec = self._pid_dec.update(ddec)
-            log.info('PID results in RA/Dec shift of dRA=%.2f", dDec=%.2f.', dra * 3600., ddec * 3600.)
-
-        # is telescope on an equitorial mount?
-        if isinstance(telescope, IEquatorialMount):
-            # get current offset
-            cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
-
-            # move offset
-            log.info('Offsetting telescope...')
-            telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
-            log.info('Finished image.')
-            self._loop_closed = True
-
-        elif isinstance(telescope, IAltAzMount):
-            # transform both to Alt/AZ
-            altaz1 = radec1.transform_to(AltAz)
-            altaz2 = radec2.transform_to(AltAz)
-
-            # calculate offsets
-            dalt = altaz2.alt.degree - altaz1.alt.degree
-            daz = altaz2.az.degree - altaz1.az.degree
-            log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f.', dalt * 3600., daz * 3600.)
-
-            # get current offset
-            cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
-
-            # move offset
-            log.info('Offsetting telescope...')
-            telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
-            log.info('Finished image.')
-            self._loop_closed = True
-
-        else:
-            log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
-
-    def reset(self):
-        """Reset auto-guider."""
-        self._reset_guiding()
-
-    def is_loop_closed(self) -> bool:
-        """Whether loop is closed."""
-        return self._loop_closed
+        return self._subtract_sky(sum_x), self._subtract_sky(sum_y)
 
     @staticmethod
     def _gaussian(pars, x):
@@ -214,7 +90,7 @@ class AutoGuidingProjection(BaseGuider):
 
     @staticmethod
     def _gaussian_fit(pars, y, x):
-        err = y - AutoGuidingProjection._gaussian(pars, x)
+        err = y - ProjectionGuidingOffset._gaussian(pars, x)
         return (err * err).sum()
 
     @staticmethod
@@ -239,26 +115,13 @@ class AutoGuidingProjection(BaseGuider):
         guesses = [np.max(y), m, m2]
 
         # perform fit
-        result = fmin(AutoGuidingProjection._gaussian_fit, guesses, args=(y, x), disp=False)
+        result = fmin(ProjectionGuidingOffset._gaussian_fit, guesses, args=(y, x), disp=False)
 
         # sanity check and finish up
         shift = result[1]
         if shift < centre - fit_width or shift > centre + fit_width:
             return None
         return shift
-
-    def _reset_guiding(self, sum_x=None, sum_y=None, hdr=None):
-        # reset guiding
-        self._loop_closed = False
-        if sum_x is None or sum_y is None or hdr is None:
-            self._ref_image = None
-            self._ref_header = None
-            self._last_header = None
-        else:
-            self._ref_image = (sum_x, sum_y)
-            self._ref_header = hdr
-            self._last_header = hdr
-        self._init_pid()
 
     def _init_pid(self):
         # init pids
@@ -300,4 +163,4 @@ class AutoGuidingProjection(BaseGuider):
         return data - cont
 
 
-__all__ = ['AutoGuidingProjection']
+__all__ = ['ProjectionGuidingOffset']

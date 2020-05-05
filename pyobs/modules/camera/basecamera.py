@@ -207,30 +207,30 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
+        # centre pixel
+        if self._centre is not None:
+            hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
+        else:
+            log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
+
+        # reference pixel in binned image
+        if 'DET-CPX1' in hdr and 'DET-BIN1' in hdr and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
+            # offset?
+            off_x, off_y = 0, 0
+            if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr:
+                off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
+                off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
+            hdr['CRPIX1'] = ((v('DET-CPX1') - off_x) / v('DET-BIN1'), 'Reference x-pixel position in binned image')
+            hdr['CRPIX2'] = ((v('DET-CPX2') - off_y) / v('DET-BIN2'), 'Reference y-pixel position in binned image')
+        else:
+            log.warning('Could not calculate CRPIX1/CRPIX2 '
+                            '(XORGSUBF/YORGSUBF/DET-CPX1/TEL-CPX2/DET-BIN1/DET-BIN2) missing.')
         # only add all this stuff for OBJECT images
-        if hdr['IMAGETYP'] in ['object', 'light']:
+        if hdr['IMAGETYP'] not in ['dark', 'bias']:
             # projection
             hdr['CTYPE1'] = ('RA---TAN', 'RA in tangent plane projection')
             hdr['CTYPE2'] = ('DEC--TAN', 'Dec in tangent plane projection')
-
-            # centre pixel
-            if self._centre is not None:
-                hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
-                hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
-            else:
-                log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
-
-            # reference pixel in binned image
-            if 'XORGSUBF' in hdr and 'YORGSUBF' in hdr and 'DET-CPX1' in hdr and 'DET-BIN1' in hdr \
-                    and 'DET-CPX2' in hdr and 'DET-BIN2' in hdr:
-                # offset?
-                off_x = v('XORGSUBF') if 'XORGSUBF' in hdr else 0.
-                off_y = v('YORGSUBF') if 'YORGSUBF' in hdr else 0.
-                hdr['CRPIX1'] = ((v('DET-CPX1') - off_x) / v('DET-BIN1'), 'Reference x-pixel position in binned image')
-                hdr['CRPIX2'] = ((v('DET-CPX2') - off_y) / v('DET-BIN2'), 'Reference y-pixel position in binned image')
-            else:
-                log.warning('Could not calculate CRPIX1/CRPIX2 '
-                                '(XORGSUBF/YORGSUBF/DET-CPX1/TEL-CPX2/DET-BIN1/DET-BIN2) missing.')
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._rotation is not None:
@@ -332,12 +332,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type in [
-            ICamera.ImageType.OBJECT,
-            ICamera.ImageType.SKYFLAT,
-            ICamera.ImageType.ACQUISITION,
-            ICamera.ImageType.FOCUS
-        ]
+        open_shutter = image_type not in [ICamera.ImageType.BIAS, ICamera.ImageType.DARK]
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
@@ -422,7 +417,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         log.info('Finished image %s.', filename)
         return hdu, filename
 
-    @timeout('(exposure_time+10000)*count')
+    @timeout('(exposure_time+30000)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
                *args, **kwargs) -> list:
         """Starts exposure and returns reference to image.

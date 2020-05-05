@@ -115,6 +115,16 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
         """Whether the weather is good to observe."""
         return False if self._is_good is None else self._is_good
 
+    def get_current_weather(self, *args, **kwargs) -> dict:
+        """Returns current weather.
+
+        Returns:
+            Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
+            with sensor information, which contain a value and a good flag.
+        """
+        with self._status_lock:
+            return self._status
+
     def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> (str, float):
         """Return value for given sensor.
 

@@ -25,6 +25,15 @@ class IWeather(Interface):
         """Whether the weather is good to observe."""
         raise NotImplementedError
 
+    def get_current_weather(self, *args, **kwargs) -> dict:
+        """Returns current weather.
+
+        Returns:
+            Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
+            with sensor information, which contain a value and a good flag.
+        """
+        raise NotImplementedError
+
     def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) -> (str, float):
         """Return value for given sensor.
 

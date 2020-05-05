@@ -1,40 +1,20 @@
 import logging
 import threading
-from typing import Union
 
-from pyobs import PyObsModule, get_object
 from pyobs.events import NewImageEvent
-from pyobs.interfaces import ITelescope, IAutoGuiding, IFitsHeaderProvider
-from pyobs.utils.guiding.base import BaseGuider
 from pyobs.utils.images import Image
+from .base import BaseGuiding
 
 
 log = logging.getLogger(__name__)
 
 
-class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
+class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
-    def __init__(self, camera: str, telescope: Union[str, ITelescope], guider: Union[dict, BaseGuider],
-                 new_images_channel: str = 'new_images', *args, **kwargs):
-        """Initializes a new science frame auto guiding system.
-
-        Args:
-            camera: Camera to use.
-            telescope: Telescope to use.
-            guider: Auto-guider to use
-            new_images_channel: Channel for receiving new images.
-        """
-        PyObsModule.__init__(self, *args, **kwargs)
-
-        # store
-        self._camera = camera
-        self._telescope = telescope
-        self._enabled = False
-        self._new_images_channel = new_images_channel
-
-        # create auto-guiding system
-        self._guider: BaseGuider = get_object(guider, BaseGuider)
+    def __init__(self, *args, **kwargs):
+        """Initializes a new science frame auto guiding system."""
+        BaseGuiding.__init__(self, *args, **kwargs)
 
         # add thread func
         self._add_thread_func(self._auto_guiding, True)
@@ -45,13 +25,7 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
-
-        # check telescope
-        try:
-            self.proxy(self._telescope, ITelescope)
-        except ValueError:
-            log.warning('Given telescope does not exist or is not of correct type at the moment.')
+        BaseGuiding.open(self)
 
         # subscribe to channel with new images
         log.info('Subscribing to new image events...')
@@ -64,24 +38,6 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
             exp_time: Exposure time in ms.
         """
         raise NotImplementedError
-
-    def start(self, *args, **kwargs):
-        """Starts/resets auto-guiding."""
-        self._guider.reset()
-        self._enabled = True
-
-    def stop(self, *args, **kwargs):
-        """Stops auto-guiding."""
-        self._guider.reset()
-        self._enabled = False
-
-    def is_running(self, *args, **kwargs) -> bool:
-        """Whether auto-guiding is running.
-
-        Returns:
-            Auto-guiding is running.
-        """
-        return self._enabled
 
     def add_image(self, event: NewImageEvent, sender: str, *args, **kwargs):
         """Processes an image asynchronously, returns immediately.
@@ -123,16 +79,9 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
                 image = self._next_image
 
             # got one?
-            if image:
-                try:
-                    # get telescope
-                    telescope: ITelescope = self.proxy(self._telescope, ITelescope)
-
-                    # process it
-                    self._guider(image, telescope, self.location)
-
-                except Exception as e:
-                    log.error('An exception occured: %s', e)
+            if image is not None:
+                # process it
+                self._process_image(image)
 
                 # image finished
                 with self._lock:
@@ -141,23 +90,5 @@ class ScienceFrameAutoGuider(PyObsModule, IAutoGuiding, IFitsHeaderProvider):
             # wait for next image
             self.closing.wait(0.1)
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
-        """Returns FITS header for the current status of this module.
 
-        Args:
-            namespaces: If given, only return FITS headers for the given namespaces.
-
-        Returns:
-            Dictionary containing FITS headers.
-        """
-
-        # state
-        state = 'GUIDING_CLOSED_LOOP' if self._guider.is_loop_closed() else 'GUIDING_OPEN_LOOP'
-
-        # return header
-        return {
-            'AGSTATE': state
-        }
-
-
-__all__ = ['ScienceFrameAutoGuider']
+__all__ = ['ScienceFrameAutoGuiding']

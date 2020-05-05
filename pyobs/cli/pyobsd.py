@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import glob
 import logging
@@ -20,8 +19,15 @@ class pyobsDaemon(object):
         self._chuid = chuid
         self._start_stop_daemon = start_stop_daemon
 
-        # get pyobs executable
-        self._pyobs_exec = os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs'))
+        # find pyobs executable
+        filenames = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs')),
+                     '/usr/bin/pyobs', '/usr/local/bin/pyobs']
+        for filename in filenames:
+            if os.path.exists(filename):
+                self._pyobs_exec = filename
+                break
+        else:
+            raise ValueError('Could not find pyobs executable.')
 
         # get configs and running
         self._configs = self._get_configs()
@@ -123,16 +129,12 @@ class pyobsDaemon(object):
                     '--start',
                     '--quiet',
                     '--pidfile', pid_file])
-                    #'--startas', '/bin/bash'])
 
         # change user?
         if self._chuid:
             cmd.extend(['--chuid', self._chuid])
 
         # call to pyobs
-        #cmd.extend(['--', '-c', 'exec %s --pid-file %s --log-file %s --log-level %s %s > %s 2>&1' %
-        #            (self._pyobs_exec, pid_file, self._log_file(service), self._log_level,
-        #             self._config_file(service), self._log_file(service).replace('.log', '.error'))])
         cmd.extend(['--exec', self._pyobs_exec,
                     '--',
                     '--pid-file', pid_file,
@@ -155,7 +157,8 @@ class pyobsDaemon(object):
             cmd.extend(['--user', self._chuid[:self._chuid.find(':')]])
         subprocess.call(cmd)
 
-    def _service(self, config_file):
+    @staticmethod
+    def _service(config_file):
         # get basename without extension
         return os.path.splitext(os.path.basename(config_file))[0]
 
@@ -205,5 +208,5 @@ def main():
     cmd(services=args.services if args.services else None)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

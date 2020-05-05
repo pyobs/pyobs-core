@@ -1,29 +1,29 @@
 import logging
 
-from pyobs.interfaces import ITelescope
 from pyobs.utils.images import Image
 
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuider:
-    def __call__(self, image: Image, telescope: ITelescope):
-        """Processes an image.
+class BaseGuidingOffset:
+    def reset(self):
+        """Resets guiding."""
+        raise NotImplementedError
+
+    def find_pixel_offset(self, image: Image) -> (float, float):
+        """Processes an image and return x/y pixel offset to reference.
 
         Args:
             image: Image to process.
-            telescope: Telescope to guide
+
+        Returns:
+            x/y pixel offset to reference.
+
+        Raises:
+            ValueError if offset could not be found.
         """
         raise NotImplementedError
 
-    def reset(self):
-        """Reset auto-guider."""
-        raise NotImplementedError
 
-    def is_loop_closed(self) -> bool:
-        """Whether loop is closed."""
-        raise NotImplementedError
-
-
-__all__ = ['BaseGuider']
+__all__ = ['BaseGuidingOffset']

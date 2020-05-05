@@ -3,10 +3,9 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import ITelescope, IMotion
 from pyobs import PyObsModule
-from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
+from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
@@ -14,15 +13,16 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, PyObsModule):
     """Base class for telescopes."""
 
-    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, *args, **kwargs):
+    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
         """Initialize a new base telescope.
 
         Args:
             fits_headers: Additional FITS headers to send.
             min_altitude: Minimal altitude for telescope.
+            wait_for_dome: Name of dome module to wait for.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -44,6 +44,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
         MotionStatusMixin.__init__(self, *args, **kwargs)
+        WaitForMotionMixin.__init__(self, wait_for_modules=[wait_for_dome], wait_for_timeout=60000,
+                                    wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
 
     def open(self):
         """Open module."""
@@ -69,7 +71,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         """
         raise NotImplementedError
 
-    def _track_radec(self, ra: float, dec: float, abort_event: threading.Event):
+    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -82,17 +84,17 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         """
         raise NotImplementedError
 
-    @timeout(60000)
-    def track_radec(self, ra: float, dec: float, *args, **kwargs):
+    @timeout(1200000)
+    def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
+            track: Whether the device should start tracking on the given coordinates.
 
         Raises:
-            ValueError: If telescope could not track.
-            AcquireLockFailed: If current motion could not be aborted.
+            ValueError: If device could not track.
         """
 
         # to alt/az
@@ -105,12 +107,21 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
 
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
-            # track telescope
-            log.info("Moving telescope to RA=%s (%.2f°), Dec=%s (%.2f°)...",
+            # log and event
+            self._change_motion_status(IMotion.Status.SLEWING)
+            log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
-            self._track_radec(ra, dec, abort_event=self._abort_move)
+
+            # track telescope
+            self._move_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
+
+            # move dome, if exists
+            self._wait_for_motion(self._abort_move)
+
+            # finish slewing
+            self._change_motion_status(IMotion.Status.TRACKING)
 
             # update headers now
             self._update_celestial_headers()
@@ -128,7 +139,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
         """
         raise NotImplementedError
 
-    @timeout(60000)
+    @timeout(1200000)
     def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
@@ -147,10 +158,19 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, ITelescope, PyObsModul
 
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
-            # move telescope
+            # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
+            self._change_motion_status(IMotion.Status.SLEWING)
+
+            # move telescope
             self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
+
+            # move dome, if exists
+            self._wait_for_motion(self._abort_move)
+
+            # finish slewing
+            self._change_motion_status(IMotion.Status.POSITIONED)
 
             # update headers now
             self._update_celestial_headers()

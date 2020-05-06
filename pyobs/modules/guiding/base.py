@@ -95,7 +95,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
     def stop(self, *args, **kwargs):
         """Stops auto-guiding."""
         log.info('Stopping autp-guiding...')
-        self._reset_guiding()
+        self._reset_guiding(enabled=False)
 
     def is_running(self, *args, **kwargs) -> bool:
         """Whether auto-guiding is running.
@@ -145,6 +145,10 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         Args:
             image: Image to process.
         """
+
+        # not enabled?
+        if not self._enabled:
+            return
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':

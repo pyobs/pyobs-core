@@ -132,6 +132,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         self._enabled = enabled
         self._loop_closed = False
         self._ref_header = None if image is None else image.header
+        self._last_header = None if image is None else image.header
 
         # reset offset
         self._guiding_offset.reset()

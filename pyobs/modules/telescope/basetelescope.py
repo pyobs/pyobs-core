@@ -218,7 +218,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # site location
         hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
         hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
-        hdr['HEIGHT'] = (float(self.observer.location.height), 'Altitude of telescope [m]')
+        hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

@@ -147,8 +147,6 @@ class LcoTaskArchive(TaskArchive):
             # - AND last update is less then 1h ago
             # - AND force is set to False
             last_scheduled = self.last_scheduled()
-            if last_scheduled is None:
-                return
             if self._last_schedule_time is not None and \
                     (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
                     self._last_schedule_time > now - TimeDelta(1. * u.hour) and \

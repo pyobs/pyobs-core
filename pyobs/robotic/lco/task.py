@@ -4,7 +4,7 @@ from typing import Union
 import typing
 
 from pyobs.comm import Comm
-from pyobs.interfaces import ITelescope, ICamera, IFilters, IRoof, IAutoGuiding
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IRoof, IAutoGuiding, IAcquisition
 from pyobs.robotic.lco.default import LcoDefaultScript
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
@@ -58,7 +58,7 @@ class LcoTask(Task):
     """A task from the LCO portal."""
 
     def __init__(self, config: dict, comm: Comm, telescope: str, camera: str, filters: str, roof: str,
-                 autoguider: str, scripts: typing.Dict[str, Script], *args, **kwargs):
+                 autoguider: str, acquisition: str, scripts: typing.Dict[str, Script], *args, **kwargs):
         """Init LCO task (called request there).
 
         Args:
@@ -69,6 +69,7 @@ class LcoTask(Task):
             filters: Filters to use
             roof: Roof to use
             autoguider: Autoguider to use
+            acquisition: Acquisition to use
             scripts: External scripts to run
         """
         Task.__init__(self, *args, **kwargs)
@@ -81,6 +82,7 @@ class LcoTask(Task):
         self.filters = filters
         self.roof = roof
         self.autoguider = autoguider
+        self.acquisition = acquisition
         self.scripts = scripts
         self.cur_script = None
 
@@ -121,17 +123,24 @@ class LcoTask(Task):
         camera: ICamera = self.__get_proxy(self.camera, ICamera)
         filters: IFilters = self.__get_proxy(self.filters, IFilters)
         autoguider: IAutoGuiding = self.__get_proxy(self.autoguider, IAutoGuiding)
-        return roof, telescope, camera, filters, autoguider
+        acquisition: IAcquisition = self.__get_proxy(self.acquisition, IAcquisition)
+        return roof, telescope, camera, filters, autoguider, acquisition
 
     def __get_proxy(self, name: str, klass: typing.Type):
         """Returns a single proxy."""
+
+        # nothing?
+        if name is None:
+            return None
+
+        # try to get proxy
         try:
             return self.comm.proxy(name, klass)
         except ValueError:
             return None
 
     def _get_config_script(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera,
-                           filters: IFilters, autoguider: IAutoGuiding) -> Script:
+                           filters: IFilters, autoguider: IAutoGuiding, acquisition: IAcquisition) -> Script:
         """Get config script for given configuration.
 
         Args:
@@ -141,6 +150,7 @@ class LcoTask(Task):
             camera: Camera
             filters: Filter wheel
             autoguider: Auto guider
+            acquisition: Acquisition
 
         Returns:
             Script for running config
@@ -164,7 +174,8 @@ class LcoTask(Task):
             # seems to be a default task
             from .taskarchive import LcoTaskArchive
             self.task_archive: LcoTaskArchive
-            return LcoDefaultScript(config, roof, telescope, camera, filters, autoguider, self.task_archive.instruments)
+            return LcoDefaultScript(config, roof, telescope, camera, filters, autoguider, acquisition,
+                                    self.task_archive.instruments)
 
     def can_run(self) -> bool:
         """Checks, whether this task could run now.
@@ -175,7 +186,7 @@ class LcoTask(Task):
 
         # get proxies
         try:
-            roof, telescope, camera, filters, autoguider = self._get_proxies()
+            roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
         except ValueError:
             return False
 
@@ -183,7 +194,7 @@ class LcoTask(Task):
         req = self.config['request']
         for config in req['configurations']:
             # get config runner
-            runner = self._get_config_script(config, roof, telescope, camera, filters, autoguider)
+            runner = self._get_config_script(config, roof, telescope, camera, filters, autoguider, acquisition)
 
             # if any runner can run, we proceed
             if runner.can_run():
@@ -205,7 +216,7 @@ class LcoTask(Task):
 
         # get proxies
         try:
-            roof, telescope, camera, filters, autoguider = self._get_proxies()
+            roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
         except ValueError:
             # fail all configs
             log.error('Could not get proxies.')
@@ -233,7 +244,7 @@ class LcoTask(Task):
                 self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
 
             # get config runner
-            script = self._get_config_script(config, roof, telescope, camera, filters, autoguider)
+            script = self._get_config_script(config, roof, telescope, camera, filters, autoguider, acquisition)
 
             # can run?
             if not script.can_run():

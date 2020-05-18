@@ -3,7 +3,8 @@ import threading
 import time
 import numpy as np
 
-from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding
+from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
+    IAcquisition
 from pyobs.robotic.scripts import Script
 from pyobs.utils.threads import Future
 
@@ -15,7 +16,7 @@ class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
     def __init__(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera, filters: IFilters,
-                 autoguider: IAutoGuiding, instruments: dict, *args, **kwargs):
+                 autoguider: IAutoGuiding, acquisition: IAcquisition, instruments: dict, *args, **kwargs):
         """Initialize a new LCO default script.
 
         Args:
@@ -24,6 +25,8 @@ class LcoDefaultScript(Script):
             telescope: Telescope to use
             camera: Camera to use
             filters: Filter wheel to use
+            autoguider: Autoguider to use
+            acquisition: Acquisition to use
             instruments: Instruments description from portal
         """
         Script.__init__(self, *args, **kwargs)
@@ -35,6 +38,7 @@ class LcoDefaultScript(Script):
         self.camera = camera
         self.filters = filters
         self.autoguider = autoguider
+        self.acquisition = acquisition
         self.instruments = instruments
 
         # get image type
@@ -62,8 +66,22 @@ class LcoDefaultScript(Script):
                 return False
             if self.telescope is None or not self.telescope.is_ready().wait():
                 return False
-            # we probably need filters and autoguider
-            if self.filters is None or self.autoguider is None:
+
+            # we probably need filters and autoguider/acquisition
+            if self.filters is None:
+                log.warning('No filter module found for task.')
+                return False
+
+            # acquisition?
+            if 'acquisition_config' in self.config and 'mode' in self.config['acquisition_config'] and \
+                    self.config['acquisition_config']['mode'] == 'ON' and self.acquisition is None:
+                log.warning('No autoguider found for task.')
+                return False
+
+            # guiding?
+            if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
+                    self.config['guiding_config']['mode'] == 'ON' and self.autoguider is None:
+                log.warning('No acquisition found for task.')
                 return False
 
         # seems alright
@@ -85,6 +103,13 @@ class LcoDefaultScript(Script):
         if self.image_type == ICamera.ImageType.OBJECT:
             log.info('Moving to target %s...', target['name'])
             track = self.telescope.move_radec(target['ra'], target['dec'])
+
+        # acquisition?
+        if 'acquisition_config' in self.config and 'mode' in self.config['acquisition_config'] and \
+                self.config['acquisition_config']['mode'] == 'ON':
+            log.info('Performing acquisition...')
+            # TODO: Take exposure time from request!
+            self.acquisition.acquire_target(2000).wait()
 
         # guiding?
         if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \

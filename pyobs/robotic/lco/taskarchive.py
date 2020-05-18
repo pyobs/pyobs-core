@@ -144,18 +144,17 @@ class LcoTaskArchive(TaskArchive):
             # get time of last scheduler run and check, whether we need an update, which is not the case, if
             # - we updated before
             # - AND last update was after last schedule update
-            # - AND last update is less then 1h ago
+            # - AND last update is less then 1 min ago
             # - AND force is set to False
             last_scheduled = self.last_scheduled()
             if self._last_schedule_time is not None and \
                     (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
-                    self._last_schedule_time > now - TimeDelta(1. * u.hour) and \
+                    self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
                     force is False:
                 # need no update
                 return
 
             # need update!
-            log.info('Found updated schedule, downloading it...')
             try:
                 tasks = self.fetch_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour), state='PENDING')
             except Timeout:
@@ -167,7 +166,8 @@ class LcoTaskArchive(TaskArchive):
                 return
 
             # update
-            log.info('Found %d tasks to run.', len(tasks))
+            if len(tasks) > 0:
+                log.info('Found %d tasks to run.', len(tasks))
             with self._update_lock:
                 self._tasks = tasks
 

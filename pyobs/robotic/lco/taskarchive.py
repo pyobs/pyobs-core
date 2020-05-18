@@ -1,5 +1,5 @@
 import threading
-import urllib.parse
+from urllib.parse import urljoin
 import logging
 from typing import Union, List, Dict
 import requests
@@ -109,7 +109,7 @@ class LcoTaskArchive(TaskArchive):
         """Initialize scheduler from portal."""
 
         # get instruments
-        url = urllib.parse.urljoin(self._url, '/api/instruments/')
+        url = urljoin(self._url, '/api/instruments/')
         res = requests.get(url, headers=self._header)
         if res.status_code != 200:
             raise RuntimeError('Invalid response from portal.')
@@ -191,7 +191,7 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get url and params
-        url = urllib.parse.urljoin(self._url, '/api/observations/')
+        url = urljoin(self._url, '/api/observations/')
         params = {
             'site': self._site,
             'end_after': end_after.isot,
@@ -277,7 +277,7 @@ class LcoTaskArchive(TaskArchive):
         """
 
         log.info('Sending configuration status update to portal...')
-        url = urllib.parse.urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
+        url = urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
 
         # do request
         try:
@@ -292,7 +292,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_changed/', headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_changed = r.json()['last_change_time']
@@ -307,7 +307,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_scheduled = Time(r.json()['last_schedule_time'])
@@ -325,7 +325,7 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get requests
-        r = requests.get(self._url + '/api/requestgroups/schedulable_requests/', headers=self._header)
+        r = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header)
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()
@@ -402,7 +402,7 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # cancel schedule
-        r = requests.post(self._url + '/api/observations/cancel/', json=params,
+        r = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 200:
@@ -454,7 +454,7 @@ class LcoTaskArchive(TaskArchive):
             return
 
         # submit obervations
-        r = requests.post(self._url + '/api/observations/', json=observations,
+        r = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 201:

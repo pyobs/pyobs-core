@@ -82,7 +82,7 @@ class LcoDefaultScript(Script):
         # got a target?
         target = self.config['target']
         track = None
-        if target['ra'] is not None and target['dec'] is not None:
+        if self.image_type == ICamera.ImageType.OBJECT:
             log.info('Moving to target %s...', target['name'])
             track = self.telescope.move_radec(target['ra'], target['dec'])
 
@@ -181,8 +181,9 @@ class LcoDefaultScript(Script):
 
         # finally, stop telescope
         if not abort_event.is_set():
-            log.info('Stopping telescope...')
-            self.telescope.stop_motion().wait()
+            if self.image_type == ICamera.ImageType.OBJECT:
+                log.info('Stopping telescope...')
+                self.telescope.stop_motion().wait()
 
     def get_fits_headers(self, namespaces: list = None) -> dict:
         """Returns FITS header for the current status of this module.

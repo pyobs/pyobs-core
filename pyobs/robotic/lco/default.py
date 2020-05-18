@@ -51,9 +51,19 @@ class LcoDefaultScript(Script):
             True, if script can run now
         """
 
-        # we need an open roof and a working telescope for OBJECT exposures
+        # need camera
+        if self.camera is None:
+            return False
+
+        # for OBJECT exposure we need more
         if self.image_type == ICamera.ImageType.OBJECT:
-            if not self.roof.is_ready().wait() or not self.telescope.is_ready().wait():
+            # we need an open roof and a working telescope
+            if self.roof is None or not self.roof.is_ready().wait():
+                return False
+            if self.telescope is None or not self.telescope.is_ready().wait():
+                return False
+            # we probably need filters and autoguider
+            if self.filters is None or self.autoguider is None:
                 return False
 
         # seems alright

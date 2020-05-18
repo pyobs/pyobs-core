@@ -116,12 +116,19 @@ class LcoTask(Task):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof: IRoof = self.comm.proxy(self.roof, IRoof)
-        telescope: ITelescope = self.comm.proxy(self.telescope, ITelescope)
-        camera: ICamera = self.comm.proxy(self.camera, ICamera)
-        filters: IFilters = self.comm.proxy(self.filters, IFilters)
-        autoguider: IAutoGuiding = self.comm.proxy(self.autoguider, IAutoGuiding)
+        roof: IRoof = self.__get_proxy(self.roof, IRoof)
+        telescope: ITelescope = self.__get_proxy(self.telescope, ITelescope)
+        camera: ICamera = self.__get_proxy(self.camera, ICamera)
+        filters: IFilters = self.__get_proxy(self.filters, IFilters)
+        autoguider: IAutoGuiding = self.__get_proxy(self.autoguider, IAutoGuiding)
         return roof, telescope, camera, filters, autoguider
+
+    def __get_proxy(self, name: str, klass: typing.Type):
+        """Returns a single proxy."""
+        try:
+            return self.comm.proxy(name, klass)
+        except ValueError:
+            return None
 
     def _get_config_script(self, config: dict, roof: IRoof, telescope: ITelescope, camera: ICamera,
                            filters: IFilters, autoguider: IAutoGuiding) -> Script:

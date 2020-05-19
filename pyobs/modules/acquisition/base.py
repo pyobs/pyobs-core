@@ -5,10 +5,9 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IFilters, ICameraWindow, \
-    ICameraBinning
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import PyObsModule
-from pyobs.mixins import TableStorageMixin
+from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
 from pyobs.utils.time import Time
@@ -16,11 +15,10 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
+class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 filters: Union[str, IFilters] = None, filter: str = 'clear', binning: int = 1,
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
                  max_offset: float = 120, log_file: str = None, *args, **kwargs):
         """Create a new base acquisition.
@@ -28,9 +26,6 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         Args:
             telescope: Name of ITelescope.
             camera: Name of ICamera.
-            filters: Filter wheel to use.
-            filter: Filter to use.
-            binning: Binning to use.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
             tolerance: Tolerance in position to reach in arcsec.
@@ -42,9 +37,6 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         # store telescope and camera
         self._telescope = telescope
         self._camera = camera
-        self._filters = filters
-        self._filter = filter
-        self._binning = binning
 
         # store
         self._target_pixel = target_pixel
@@ -67,6 +59,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
 
         # init table storage and load measurements
         TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+
+        # init camera settings mixin
+        CameraSettingsMixin.__init__(self, camera=camera, *kwargs)
 
     def open(self):
         """Open module"""
@@ -104,24 +99,8 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
 
-        # filter?
-        if self._filters is not None and self._filter is not None:
-            # get proxy
-            log.info('Getting proxy for filter wheel...')
-            filters: IFilters = self.proxy(self._filters, IFilters)
-
-            # set it
-            log.info('Setting filter to %s...', self._filter)
-            filters.set_filter(self._filter).wait()
-
-        # camera settings
-        if self._binning is not None and isinstance(camera, ICameraBinning):
-            log.info('Setting binning to %dx%d...', self._binning, self._binning)
-            camera.set_binning(self._binning, self._binning).wait()
-        if isinstance(camera, ICameraWindow):
-            log.info('Set window to full frame...')
-            full_frame = camera.get_full_frame().wait()
-            camera.set_window(*full_frame).wait()
+        # do camera settings
+        self._do_camera_settings(camera)
 
         # try given number of attempts
         for a in range(self._attempts):

@@ -61,7 +61,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
         TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
         # init camera settings mixin
-        CameraSettingsMixin.__init__(self, camera=camera, *kwargs)
+        CameraSettingsMixin.__init__(self, *args, **kwargs)
 
     def open(self):
         """Open module"""

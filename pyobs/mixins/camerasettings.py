@@ -9,8 +9,8 @@ log = logging.getLogger(__name__)
 
 class CameraSettingsMixin:
     """Mixin for a device that should be able to set camera settings."""
-    def __init__(self, filters: Union[str, IFilters] = None, filter_name: str = 'clear',
-                 binning: int = 1, *args, **kwargs):
+    def __init__(self, filters: Union[str, IFilters] = None, filter_name: str = None, binning: int = None,
+                 *args, **kwargs):
         """Initializes the mixin.
 
         Args:

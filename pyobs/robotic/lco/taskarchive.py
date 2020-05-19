@@ -213,9 +213,7 @@ class LcoTaskArchive(TaskArchive):
             sched['end'] = Time(sched['end'])
 
             # create task
-            task = self._create_task(LcoTask, sched,
-                                     telescope=self.telescope, filters=self.filters, camera=self.camera,
-                                     roof=self.roof, scripts=self.scripts, autoguider=self.autoguider)
+            task = self._create_task(LcoTask, sched, scripts=self.scripts)
             tasks[sched['request']['id']] = task
 
         # finished

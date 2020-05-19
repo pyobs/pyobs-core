@@ -142,9 +142,13 @@ class LcoDefaultScript(Script):
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                 self.configuration['acquisition_config']['mode'] == 'ON':
+            # get exposure time
+            acq = self.configuration['acquisition_config']
+            exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000
+
+            # do acquisition
             log.info('Performing acquisition...')
-            # TODO: Take exposure time from request!
-            acquisition.acquire_target(2000).wait()
+            acquisition.acquire_target(exp_time).wait()
 
         # guiding?
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \

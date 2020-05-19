@@ -118,7 +118,7 @@ class LcoTask(Task):
 
         # create script handler
         return get_object(self.scripts[config_type],
-                          config=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
+                          configuration=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
 
     def can_run(self) -> bool:
         """Checks, whether this task could run now.

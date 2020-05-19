@@ -41,9 +41,9 @@ class LcoDefaultScript(Script):
 
         # get image type
         self.image_type = ICamera.ImageType.OBJECT
-        if self.config['type'] == 'BIAS':
+        if self.configuration['type'] == 'BIAS':
             self.image_type = ICamera.ImageType.BIAS
-        elif self.config['type'] == 'DARK':
+        elif self.configuration['type'] == 'DARK':
             self.image_type = ICamera.ImageType.DARK
 
     def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters):
@@ -104,14 +104,14 @@ class LcoDefaultScript(Script):
                 return False
 
             # acquisition?
-            if 'acquisition_config' in self.config and 'mode' in self.config['acquisition_config'] and \
-                    self.config['acquisition_config']['mode'] == 'ON' and acquisition is None:
+            if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
+                    self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
                 log.warning('No autoguider found for task.')
                 return False
 
             # guiding?
-            if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
-                    self.config['guiding_config']['mode'] == 'ON' and autoguider is None:
+            if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
+                    self.configuration['guiding_config']['mode'] == 'ON' and autoguider is None:
                 log.warning('No acquisition found for task.')
                 return False
 
@@ -132,22 +132,22 @@ class LcoDefaultScript(Script):
         roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
 
         # got a target?
-        target = self.config['target']
+        target = self.configuration['target']
         track = None
         if self.image_type == ICamera.ImageType.OBJECT:
             log.info('Moving to target %s...', target['name'])
             track = telescope.move_radec(target['ra'], target['dec'])
 
         # acquisition?
-        if 'acquisition_config' in self.config and 'mode' in self.config['acquisition_config'] and \
-                self.config['acquisition_config']['mode'] == 'ON':
+        if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
+                self.configuration['acquisition_config']['mode'] == 'ON':
             log.info('Performing acquisition...')
             # TODO: Take exposure time from request!
             acquisition.acquire_target(2000).wait()
 
         # guiding?
-        if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
-                self.config['guiding_config']['mode'] == 'ON':
+        if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
+                self.configuration['guiding_config']['mode'] == 'ON':
             log.info('Starting auto-guiding...')
             autoguider.start().wait()
 
@@ -155,14 +155,14 @@ class LcoDefaultScript(Script):
         self.exptime_done = 0
 
         # get instrument info
-        instrument_type = self.config['instrument_type'].lower()
+        instrument_type = self.configuration['instrument_type'].lower()
         instrument = self.task_archive.instruments[instrument_type]
 
         # setting repeat duration depending on config type
         repeat_duration = None
-        if self.config['type'] == 'REPEAT_EXPOSE':
-            if 'repeat_duration' in self.config:
-                repeat_duration = self.config['repeat_duration']
+        if self.configuration['type'] == 'REPEAT_EXPOSE':
+            if 'repeat_duration' in self.configuration:
+                repeat_duration = self.configuration['repeat_duration']
                 log.info('Repeating all instrument configurations for %d seconds.', repeat_duration)
             else:
                 log.error('Type is REPEAT_EXPOSE, but no repeat_duration was set.')
@@ -175,7 +175,7 @@ class LcoDefaultScript(Script):
             ic_start_time = time.time()
 
             # loop instrument configs
-            for ic in self.config['instrument_configs']:
+            for ic in self.configuration['instrument_configs']:
                 self._check_abort(abort_event)
 
                 # get readout mode
@@ -211,7 +211,7 @@ class LcoDefaultScript(Script):
 
                     # do exposures
                     log.info('Exposing %s image %d/%d for %.2fs...',
-                             self.config['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
+                             self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                     camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
                     self.exptime_done += ic['exposure_time']
 
@@ -233,8 +233,8 @@ class LcoDefaultScript(Script):
                     config_finished = True
 
         # stop auto guiding
-        if 'guiding_config' in self.config and 'mode' in self.config['guiding_config'] and \
-                self.config['guiding_config']['mode'] == 'ON':
+        if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
+                self.configuration['guiding_config']['mode'] == 'ON':
             log.info('Stopping auto-guiding...')
             autoguider.stop().wait()
 
@@ -260,7 +260,7 @@ class LcoDefaultScript(Script):
         # which image type?
         if self.image_type == ICamera.ImageType.OBJECT:
             # add object name
-            hdr['OBJECT'] = self.config['target']['name'], 'Name of target'
+            hdr['OBJECT'] = self.configuration['target']['name'], 'Name of target'
 
         # return
         return hdr

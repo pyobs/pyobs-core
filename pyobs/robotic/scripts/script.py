@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class Script:
-    def __init__(self, config: Any, task_archive: TaskArchive, comm: Comm, observer: Observer, *args, **kwargs):
+    def __init__(self, configuration: Any, task_archive: TaskArchive, comm: Comm, observer: Observer, *args, **kwargs):
         """Init Script.
 
         Args:
@@ -19,7 +19,7 @@ class Script:
             observer: Observer to use
         """
         self.exptime_done = 0
-        self.config = config
+        self.configuration = configuration
         self.task_archive = task_archive
         self.comm = comm
         self.observer = observer

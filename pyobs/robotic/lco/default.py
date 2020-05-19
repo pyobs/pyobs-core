@@ -16,9 +16,10 @@ log = logging.getLogger(__name__)
 class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
-    def __init__(self, roof: Union[str, IRoof], telescope: Union[str, ITelescope],
-                 camera: Union[str, ICamera], filters: Union[str, IFilters], autoguider: Union[str, IAutoGuiding],
-                 acquisition: Union[str, IAcquisition], *args, ** kwargs):
+    def __init__(self, camera: Union[str, ICamera], roof: Union[str, IRoof] = None,
+                 telescope: Union[str, ITelescope] = None, filters: Union[str, IFilters] = None,
+                 autoguider: Union[str, IAutoGuiding] = None, acquisition: Union[str, IAcquisition] = None,
+                 *args, ** kwargs):
         """Initialize a new LCO default script.
 
         Args:

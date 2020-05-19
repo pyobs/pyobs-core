@@ -1,12 +1,28 @@
 import logging
 import threading
+from typing import Any
+
+from astroplan import Observer
+
+from pyobs.comm import Comm
+from pyobs.robotic import TaskArchive
 
 log = logging.getLogger(__name__)
 
 
 class Script:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, config: Any, task_archive: TaskArchive, comm: Comm, observer: Observer, *args, **kwargs):
+        """Init Script.
+
+        Args:
+            comm: Comm object to use
+            observer: Observer to use
+        """
         self.exptime_done = 0
+        self.config = config
+        self.task_archive = task_archive
+        self.comm = comm
+        self.observer = observer
 
     def can_run(self) -> bool:
         """Whether this config can currently run."""

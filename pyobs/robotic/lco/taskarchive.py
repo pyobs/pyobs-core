@@ -64,15 +64,11 @@ class LcoTaskArchive(TaskArchive):
         self._update = update
         self._last_schedule_time = None
         self._last_schedule_lock = threading.RLock()
+        self.scripts = scripts
 
         # buffers in case of errors
         self._last_scheduled = None
         self._last_changed = None
-
-        # create script handlers
-        if scripts is None:
-            scripts = {}
-        self.scripts = {k: get_object(v, comm=self.comm, observer=self.observer) for k, v in scripts.items()}
 
         # header
         self._token = token

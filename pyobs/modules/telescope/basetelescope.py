@@ -124,7 +124,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.TRACKING)
 
             # update headers now
+            log.info('Forcing update of celestial headers...')
             self._update_celestial_headers()
+            log.info('Finished moving telescope.')
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -173,7 +175,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.POSITIONED)
 
             # update headers now
+            log.info('Forcing update of celestial headers...')
             self._update_celestial_headers()
+            log.info('Finished moving telescope.')
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.

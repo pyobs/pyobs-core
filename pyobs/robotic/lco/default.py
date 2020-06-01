@@ -107,13 +107,13 @@ class LcoDefaultScript(Script):
             # acquisition?
             if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                     self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
-                log.warning('No autoguider found for task.')
+                log.warning('No acquisition found for task.')
                 return False
 
             # guiding?
             if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
                     self.configuration['guiding_config']['mode'] == 'ON' and autoguider is None:
-                log.warning('No acquisition found for task.')
+                log.warning('No auto guider found for task.')
                 return False
 
         # seems alright

@@ -124,8 +124,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.TRACKING)
 
             # update headers now
-            log.info('Forcing update of celestial headers...')
-            self._update_celestial_headers()
+            threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
@@ -175,8 +174,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.POSITIONED)
 
             # update headers now
-            log.info('Forcing update of celestial headers...')
-            self._update_celestial_headers()
+            threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:

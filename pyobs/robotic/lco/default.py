@@ -47,7 +47,7 @@ class LcoDefaultScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ICamera.ImageType.DARK
 
-    def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters):
+    def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters, IAutoGuiding, IAcquisition):
         """Get proxies for running the task
 
         Returns:
@@ -56,26 +56,13 @@ class LcoDefaultScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof: IRoof = self.__get_proxy(self.roof, IRoof)
-        telescope: ITelescope = self.__get_proxy(self.telescope, ITelescope)
-        camera: ICamera = self.__get_proxy(self.camera, ICamera)
-        filters: IFilters = self.__get_proxy(self.filters, IFilters)
-        autoguider: IAutoGuiding = self.__get_proxy(self.autoguider, IAutoGuiding)
-        acquisition: IAcquisition = self.__get_proxy(self.acquisition, IAcquisition)
+        roof: IRoof = self._get_proxy(self.roof, IRoof)
+        telescope: ITelescope = self._get_proxy(self.telescope, ITelescope)
+        camera: ICamera = self._get_proxy(self.camera, ICamera)
+        filters: IFilters = self._get_proxy(self.filters, IFilters)
+        autoguider: IAutoGuiding = self._get_proxy(self.autoguider, IAutoGuiding)
+        acquisition: IAcquisition = self._get_proxy(self.acquisition, IAcquisition)
         return roof, telescope, camera, filters, autoguider, acquisition
-
-    def __get_proxy(self, name: str, klass: Type):
-        """Returns a single proxy."""
-
-        # nothing?
-        if name is None:
-            return None
-
-        # try to get proxy
-        try:
-            return self.comm.proxy(name, klass)
-        except ValueError:
-            return None
 
     def can_run(self) -> bool:
         """Whether this config can currently run.

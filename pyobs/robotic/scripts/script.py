@@ -1,10 +1,11 @@
 import logging
 import threading
-from typing import Any
+from typing import Any, Type, Union
 
 from astroplan import Observer
 
 from pyobs.comm import Comm
+from pyobs.comm.proxy import Proxy
 from pyobs.robotic import TaskArchive
 
 log = logging.getLogger(__name__)
@@ -62,6 +63,27 @@ class Script:
             Dictionary containing FITS headers.
         """
         return {}
+
+    def _get_proxy(self, name: str, klass: Type) -> Union[None, Proxy, Any]:
+        """Returns a single proxy.
+
+        Args:
+            name: Name of proxy
+            klass: Expected class of proxy
+
+        Returns:
+            Proxy or None on errors
+        """
+
+        # nothing?
+        if name is None:
+            return None
+
+        # try to get proxy
+        try:
+            return self.comm.proxy(name, klass)
+        except ValueError:
+            return None
 
 
 __all__ = ['Script']

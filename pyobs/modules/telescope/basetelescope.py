@@ -44,7 +44,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
         MotionStatusMixin.__init__(self, *args, **kwargs)
-        WaitForMotionMixin.__init__(self, wait_for_modules=[wait_for_dome], wait_for_timeout=60000,
+        WaitForMotionMixin.__init__(self,
+                                    wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
+                                    wait_for_timeout=60000,
                                     wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
 
     def open(self):

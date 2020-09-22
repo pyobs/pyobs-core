@@ -153,7 +153,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-                log.info('Finished calculating schedule for %d block(s).', len(schedule.scheduled_blocks))
+                log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+                for i, block in enumerate(schedule.scheduled_blocks, 1):
+                    log.info('  #%d: %s to %s', block.configuration['request']['id'], block.start_time, block.end_time)
 
             # sleep a little
             self.closing.wait(1)

@@ -10,7 +10,6 @@ from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.utils.images import Image
 from pyobs.utils.photometry import SepPhotometry
-from pyobs.utils.pid import PID
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +44,6 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         self._camera = None
         self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
         self._radius = radius
-        self._pid = None
 
         # abort
         self._abort = threading.Event()
@@ -100,10 +98,6 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         self._exp_time = exposure_time
         self._exposure_count = count
         self._exposures_done = 0
-
-        # init PID
-        self._pid = PID()
-        self._pid.setpoint = self._counts
 
         # loop exposures
         return_filenames = []
@@ -240,8 +234,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         exp_time = image.header['EXPTIME'] * 1000
 
         # scale exposure time
-        #exp_time = int(exp_time * self._counts / peak)
-        exp_time = int(self._pid.update(exp_time * self._counts / peak))
+        exp_time = int(exp_time * self._counts / peak)
 
         # cut to limits
         self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)

@@ -332,7 +332,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # only do this, if wrapped camera doesn't support this
         if isinstance(self._camera, ICameraWindow):
-            return self._camera.get_full_frame()
+            return self._camera.get_full_frame().wait()
         else:
             return 0, 0, 100, 100
 
@@ -351,7 +351,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # only do this, if wrapped camera doesn't support this
         if isinstance(self._camera, ICameraWindow):
-            self._camera.set_window(left, top, width, height)
+            self._camera.set_window(left, top, width, height).wait()
 
     def get_window(self, *args, **kwargs) -> (int, int, int, int):
         """Returns the camera window.
@@ -362,7 +362,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # only do this, if wrapped camera doesn't support this
         if isinstance(self._camera, ICameraWindow):
-            return self._camera.get_window()
+            return self._camera.get_window().wait()
         else:
             return 0, 0, 100, 100
 
@@ -379,7 +379,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # only do this, if wrapped camera doesn't support this
         if isinstance(self._camera, ICameraBinning):
-            self._camera.set_binning(x, y)
+            self._camera.set_binning(x, y).wait()
 
     def get_binning(self, *args, **kwargs) -> (int, int):
         """Returns the camera binning.
@@ -390,7 +390,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # only do this, if wrapped camera doesn't support this
         if isinstance(self._camera, ICameraBinning):
-            return self._camera.get_binning()
+            return self._camera.get_binning().wait()
         else:
             return 1, 1
 

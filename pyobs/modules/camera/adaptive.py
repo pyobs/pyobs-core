@@ -229,7 +229,6 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # find peak count
         peak = self._find_target(image)
-        log.info('Found a peak count of %d.', peak)
 
         # get exposure time from image in ms
         exp_time = image.header['EXPTIME'] * 1000
@@ -239,6 +238,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # cut to limits
         self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+        log.info('Setting exposure time to %.3fs.', self._exp_time / 1000.)
 
     def _find_target(self, image: Image) -> int:
         """Find target in image and return it's peak count.
@@ -257,7 +257,9 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         if self._mode == AdaptiveCameraMode.BRIGHTEST:
             # sort by peak brightness and get first
             sources.sort_values('peak', ascending=False, inplace=True)
-            return sources['peak'].iloc[0]
+            row = sources.iloc[0]
+            log.info('Found brightest star at x=%.1f, y=%.1f with peak count of %d.', row['x'], row['y'], row['peak'])
+            return row['peak']
 
         elif self._mode == AdaptiveCameraMode.CENTRE:
             # get image centre
@@ -270,7 +272,10 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
             # sort by peak brightness and get first
             filtered.sort_values('peak', ascending=False, inplace=True)
-            return filtered['peak'].iloc[0]
+            row = sources.iloc[0]
+            log.info('Found brightest star at dx=%.1f, dy=%.1f from centre with peak count of %d.',
+                     row['x'] - cx, row['y'], cy, row['peak'])
+            return row['peak']
 
         else:
             raise ValueError('Unknown target mode.')

@@ -5,7 +5,7 @@ from typing import Union
 import pandas as pd
 
 from pyobs import PyObsModule
-from pyobs.interfaces import ICamera, ISettings
+from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.utils.images import Image
@@ -21,7 +21,7 @@ class AdaptiveCameraMode(Enum):
     BRIGHTEST = 'brightest'
 
 
-class AdaptiveCamera(PyObsModule, ICamera, ISettings):
+class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISettings):
     """A virtual camera for adaptive exposure times."""
 
     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
@@ -322,6 +322,77 @@ class AdaptiveCamera(PyObsModule, ICamera, ISettings):
             self._max_exp_time = value
         else:
             raise KeyError
+
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+        """Returns full size of CCD.
+
+        Returns:
+            Tuple with left, top, width, and height set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            return self._camera.get_full_frame()
+        else:
+            return 0, 0, 100, 100
+
+    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+        """Set the camera window.
+
+        Args:
+            left: X offset of window.
+            top: Y offset of window.
+            width: Width of window.
+            height: Height of window.
+
+        Raises:
+            ValueError: If window could not be set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            self._camera.set_window(left, top, width, height)
+
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
+        """Returns the camera window.
+
+        Returns:
+            Tuple with left, top, width, and height set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            return self._camera.get_window()
+        else:
+            return 0, 0, 100, 100
+
+    def set_binning(self, x: int, y: int, *args, **kwargs):
+        """Set the camera binning.
+
+        Args:
+            x: X binning.
+            y: Y binning.
+
+        Raises:
+            ValueError: If binning could not be set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraBinning):
+            self._camera.set_binning(x, y)
+
+    def get_binning(self, *args, **kwargs) -> (int, int):
+        """Returns the camera binning.
+
+        Returns:
+            Tuple with x and y.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraBinning):
+            return self._camera.get_binning()
+        else:
+            return 1, 1
 
 
 __all__ = ['AdaptiveCamera', 'AdaptiveCameraMode']

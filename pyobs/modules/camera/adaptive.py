@@ -122,8 +122,8 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
                 self.comm.send_event(NewImageEvent(filenames[0], image_type))
 
         # finished
-        self._exposure_count = count
-        self._exposures_done = 0
+        self._exposure_count = None
+        self._exposures_done = None
 
         # return filenames
         return return_filenames

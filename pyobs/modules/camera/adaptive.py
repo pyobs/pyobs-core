@@ -26,7 +26,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
     """A virtual camera for adaptive exposure times."""
 
     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
-                 target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000,
+                 target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000, history: int = 10,
                  *args, **kwargs):
         """Creates a new adaptive exposure time camera.
 
@@ -37,6 +37,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
             target_counts: Counts to aim for in target.
             min_exptime: Minimum exposure time.
             max_exptime: Maximum exposure time.
+            history: Length of history.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -46,6 +47,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
         self._radius = radius
         self._history = []
+        self._max_history = history
 
         # abort
         self._abort = threading.Event()
@@ -244,8 +246,8 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # fill history
         self._history.append(exp_time)
-        if len(self._history) > 5:
-            self._history = self._history[-5:]
+        if len(self._history) > self._max_history:
+            self._history = self._history[-self._max_history:]
 
         # set it
         self._exp_time = int(np.mean(self._history))

@@ -103,6 +103,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # loop exposures
         return_filenames = []
+        self._history = exposure_time
         for i in range(count):
             # abort?
             if self._abort.is_set():
@@ -247,7 +248,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
             self._history = self._history[-5:]
 
         # set it
-        self._exp_time = np.mean(self._history)
+        self._exp_time = int(np.mean(self._history))
         log.info('Setting exposure time to %.3fs.', self._exp_time / 1000.)
 
     def _find_target(self, image: Image) -> int:

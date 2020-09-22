@@ -268,8 +268,8 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
             # filter all sources within radius around centre
             r = self._radius
-            filtered = sources[(cx - r <= sources['x']) and (sources['x'] <= cx + r) and
-                               (cy - r <= sources['y']) and (sources['y'] <= cy + r)]
+            filtered = sources[(sources['x'] >= cx - r) & (sources['x'] <= cx + r) &
+                               (sources['y'] >= cy - r) & (sources['y'] <= cy + r)]
 
             # sort by peak brightness and get first
             filtered.sort_values('peak', ascending=False, inplace=True)

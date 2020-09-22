@@ -103,7 +103,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
         # loop exposures
         return_filenames = []
-        self._history = exposure_time
+        self._history = [exposure_time]
         for i in range(count):
             # abort?
             if self._abort.is_set():

@@ -251,7 +251,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         """
 
         # find sources
-        sources: pd.DataFrame = self._sep(image).to_pandas()
+        sources: pd.DataFrame = self._sep.find_stars(image).to_pandas()
 
         # which mode?
         if self._mode == AdaptiveCameraMode.BRIGHTEST:

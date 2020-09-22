@@ -107,7 +107,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
                 break
 
             # do exposure(s), never broadcast
-            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time)
+            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time / 1000.)
             filenames = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
             self._exposures_done += 1
 

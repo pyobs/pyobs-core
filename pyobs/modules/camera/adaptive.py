@@ -3,6 +3,7 @@ import threading
 from enum import Enum
 from typing import Union
 import pandas as pd
+import numpy as np
 
 from pyobs import PyObsModule
 from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
@@ -44,6 +45,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         self._camera = None
         self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
         self._radius = radius
+        self._history = []
 
         # abort
         self._abort = threading.Event()
@@ -237,7 +239,15 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
         exp_time = int(exp_time * self._counts / peak)
 
         # cut to limits
-        self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+        exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+
+        # fill history
+        self._history.append(exp_time)
+        if len(self._history) > 5:
+            self._history = self._history[-5:]
+
+        # set it
+        self._exp_time = np.mean(self._history)
         log.info('Setting exposure time to %.3fs.', self._exp_time / 1000.)
 
     def _find_target(self, image: Image) -> int:

@@ -282,7 +282,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
             filtered.sort_values('peak', ascending=False, inplace=True)
             row = filtered.iloc[0]
             log.info('Found brightest star at x=%.1f (dx=%.1f), y=%.1f (dy=%.1f) with peak count of %d.',
-                     row['x'], row['x'] - cx, row['y'], row['y'] - cy row['peak'])
+                     row['x'], row['x'] - cx, row['y'], row['y'] - cy, row['peak'])
             return row['peak']
 
         else:

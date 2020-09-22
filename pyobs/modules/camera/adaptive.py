@@ -1,5 +1,8 @@
 import logging
 import threading
+from enum import Enum
+from typing import Union
+import pandas as pd
 
 from pyobs import PyObsModule
 from pyobs.interfaces import ICamera, ISettings
@@ -11,20 +14,36 @@ from pyobs.utils.photometry import SepPhotometry
 log = logging.getLogger(__name__)
 
 
-class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
+class AdaptiveCameraMode(Enum):
+    # find brightest star within radius around centre of image
+    CENTRE = 'centre',
+    # find brightest star in whole image
+    BRIGHTEST = 'brightest'
+
+
+class AdaptiveCamera(PyObsModule, ICamera, ISettings):
     """A virtual camera for adaptive exposure times."""
 
-    def __init__(self, camera: str, *args, **kwargs):
-        """Creates a new adaptive exposure time cammera.
+    def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
+                 target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000,
+                 *args, **kwargs):
+        """Creates a new adaptive exposure time camera.
 
         Args:
             camera: Actual camera to use.
+            mode: Which mode to use to find star.
+            radius: Radius in px around centre for CENTRE mode.
+            target_counts: Counts to aim for in target.
+            min_exptime: Minimum exposure time.
+            max_exptime: Maximum exposure time.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # store camera
+        # store
         self._camera_name = camera
         self._camera = None
+        self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
+        self._radius = radius
 
         # abort
         self._abort = threading.Event()
@@ -35,9 +54,9 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         self._exposures_done = None
 
         # options
-        self._counts = 30000
-        self._min_exp_time = 500
-        self._max_exp_time = 60000
+        self._counts = target_counts
+        self._min_exp_time = min_exptime
+        self._max_exp_time = max_exptime
 
         # SEP
         self._sep = SepPhotometry()
@@ -208,12 +227,8 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
             image: Image to process.
         """
 
-        # find sources
-        sources = self._sep(image)
-
-        # sort by peak brightness and get first
-        sources.sort('peak', True)
-        peak = sources['peak'][0]
+        # find peak count
+        peak = self._find_target(image)
         log.info('Found a peak count of %d.', peak)
 
         # get exposure time from image in ms
@@ -224,6 +239,41 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
 
         # cut to limits
         self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+
+    def _find_target(self, image: Image) -> int:
+        """Find target in image and return it's peak count.
+
+        Args:
+            image: Image to analyse.
+
+        Returns:
+            Peak count of target.
+        """
+
+        # find sources
+        sources: pd.DataFrame = self._sep(image).to_pandas()
+
+        # which mode?
+        if self._mode == AdaptiveCameraMode.BRIGHTEST:
+            # sort by peak brightness and get first
+            sources.sort_values('peak', ascending=False, inplace=True)
+            return sources['peak'].iloc[0]
+
+        elif self._mode == AdaptiveCameraMode.CENTRE:
+            # get image centre
+            cx = image.header['CRPIX1'] if 'CRPIX1' in image.header else image.header['NAXIS1'] // 2
+            cy = image.header['CRPIX2'] if 'CRPIX2' in image.header else image.header['NAXIS2'] // 2
+
+            # filter all sources within radius around centre
+            r = self._radius
+            filtered = sources[(cx - r <= sources['x'] <= cx + r) & (cy - r <= sources['y'] <= cy + r)]
+
+            # sort by peak brightness and get first
+            filtered.sort_values('peak', ascending=False, inplace=True)
+            return filtered['peak'].iloc[0]
+
+        else:
+            raise ValueError('Unknown target mode.')
 
     def get_settings(self, *args, **kwargs) -> dict:
         """Returns a dict of name->type pairs for settings."""
@@ -274,4 +324,4 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
             raise KeyError
 
 
-__all__ = ['AdaptiveExpTimeCamera']
+__all__ = ['AdaptiveCamera', 'AdaptiveCameraMode']

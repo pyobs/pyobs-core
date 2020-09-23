@@ -116,7 +116,7 @@ class LcoAutoFocusScript(Script):
             acquisition.acquire_target(exp_time).wait()
 
         # do auto focus
-        autofocus.auto_focus(self._count, self._step, self._exptime)
+        autofocus.auto_focus(self._count, self._step, self._exptime).wait()
 
 
 __all__ = ['LcoAutoFocusScript']

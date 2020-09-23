@@ -107,6 +107,13 @@ class LcoAutoFocusScript(Script):
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                 self.configuration['acquisition_config']['mode'] == 'ON':
+            # TODO: unfortunately this never happens, since the LCO portal forces acquisition mode to OFF, see:
+            # observation_portal/requestgroups/serializers.py:288 in portal code:
+            # if data['type'] in ['LAMP_FLAT', 'ARC', 'AUTO_FOCUS', 'NRES_BIAS', 'NRES_DARK', 'BIAS', 'DARK', 'SCRIPT']:
+            #     These types of observations should only ever be set to guiding mode OFF, but the acquisition modes for
+            #     spectrographs won't necessarily have that mode. Force OFF here.
+            #     data['acquisition_config']['mode'] = AcquisitionConfig.OFF
+
             # get exposure time
             acq = self.configuration['acquisition_config']
             exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000

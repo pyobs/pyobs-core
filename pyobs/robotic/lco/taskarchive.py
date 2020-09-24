@@ -161,9 +161,11 @@ class LcoTaskArchive(TaskArchive):
                 log.warning('Could not fetch schedule.')
                 return
 
+            # any changes?
+            if sorted(tasks) != sorted(self._tasks):
+                log.info('Task list changed, found %d tasks to run.', len(tasks))
+
             # update
-            if len(tasks) > 0:
-                log.info('Found %d tasks to run.', len(tasks))
             with self._update_lock:
                 self._tasks = tasks
 

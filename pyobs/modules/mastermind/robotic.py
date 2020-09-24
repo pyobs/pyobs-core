@@ -6,7 +6,7 @@ import astropy.units as u
 from pyobs import PyObsModule, get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.interfaces import IFitsHeaderProvider
+from pyobs.interfaces import IFitsHeaderProvider, IMastermind
 from pyobs.robotic.taskarchive import TaskArchive
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class RoboticMastermind(PyObsModule, IFitsHeaderProvider):
+class RoboticMastermind(PyObsModule, IMastermind, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_overrun: int = 300, *args, **kwargs):

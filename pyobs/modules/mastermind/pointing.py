@@ -7,13 +7,13 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs import PyObsModule
-from pyobs.interfaces import IAcquisition
+from pyobs.interfaces import IAcquisition, IMastermind
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class PointingSeries(PyObsModule):
+class PointingSeries(PyObsModule, IMastermind):
     """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,

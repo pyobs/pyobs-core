@@ -17,6 +17,7 @@ from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
+from .IMastermind import IMastermind
 from .IMotion import IMotion
 from .IPipeline import IPipeline
 from .IRaDec import IRaDec

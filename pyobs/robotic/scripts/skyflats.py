@@ -20,9 +20,8 @@ class SkyFlats(Script):
 
     def __init__(self, roof: typing.Union[str, IRoof], telescope: typing.Union[str, ITelescope],
                  flatfield: typing.Union[str, IFlatField], functions: dict,
-                 priorities: typing.Union[dict, SkyflatPriorities], comm: Comm, observer: Observer,
-                 min_exptime: float = 0.5, max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30,
-                 count: int = 20, *args, **kwargs):
+                 priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
+                 timespan: float = 7200, filter_change: float = 30, count: int = 20, *args, **kwargs):
         """Init a new SkyFlats script.
 
         Args:
@@ -31,8 +30,6 @@ class SkyFlats(Script):
             flatfield: FlatFielder to use
             functions: Dict with solalt-exptime functions for all filters/binning
             priorities: SkyflatPriorities object that returns priorities
-            comm: Comm object to use
-            observer: Observer to use
             min_exptime: Minimum exposure time for flats
             max_exptime: Maximum exposure time for flats
             timespan: Timespan from now that should be scheduled [s]
@@ -47,15 +44,13 @@ class SkyFlats(Script):
         self._flatfield = flatfield
 
         # stuff
-        self._observer = observer
-        self._comm = comm
         self._count = count
 
         # get archive and priorities
         priorities = get_object(priorities, SkyflatPriorities)
 
         # create scheduler
-        self._scheduler = Scheduler(functions, priorities, observer, min_exptime=min_exptime, max_exptime=max_exptime,
+        self._scheduler = Scheduler(functions, priorities, self.observer, min_exptime=min_exptime, max_exptime=max_exptime,
                                     timespan=timespan, filter_change=filter_change, count=count)
 
     def can_run(self) -> bool:
@@ -67,9 +62,9 @@ class SkyFlats(Script):
 
         # get modules
         try:
-            roof: IRoof = self._comm.proxy(self._roof, IRoof)
-            telescope: ITelescope = self._comm.proxy(self._telescope, ITelescope)
-            self._comm.proxy(self._flatfield, IFlatField)
+            roof: IRoof = self.comm.proxy(self._roof, IRoof)
+            telescope: ITelescope = self.comm.proxy(self._telescope, ITelescope)
+            self.comm.proxy(self._flatfield, IFlatField)
         except ValueError:
             return False
 
@@ -91,7 +86,7 @@ class SkyFlats(Script):
         """
 
         # get proxy for flatfield
-        flatfield: IFlatField = self._comm.proxy(self._flatfield, IFlatField)
+        flatfield: IFlatField = self.comm.proxy(self._flatfield, IFlatField)
 
         # schedule
         log.info('Scheduling flat-fields...')

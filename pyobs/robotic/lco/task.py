@@ -84,6 +84,10 @@ class LcoTask(Task):
         """Returns estimated duration of task in seconds."""
         return self.config['request']['duration']
 
+    def __eq__(self, other: 'LcoTask'):
+        """Compares to tasks."""
+        return self.config == other.config
+
     def window(self) -> (Time, Time):
         """Returns the time window for this task.
 

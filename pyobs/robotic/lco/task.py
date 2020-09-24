@@ -60,12 +60,6 @@ class LcoTask(Task):
 
         Args:
             config: Configuration for task
-            telescope: Telescope to use
-            camera: Camera to use
-            filters: Filters to use
-            roof: Roof to use
-            autoguider: Autoguider to use
-            acquisition: Acquisition to use
             scripts: External scripts to run
         """
         Task.__init__(self, *args, **kwargs)

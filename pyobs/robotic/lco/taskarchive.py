@@ -163,7 +163,7 @@ class LcoTaskArchive(TaskArchive):
 
             # any changes?
             if sorted(tasks) != sorted(self._tasks):
-                log.info('Task list changed, found %d tasks to run.', len(tasks))
+                log.info('Task list changed, found %d task(s) to run.', len(tasks))
 
             # update
             with self._update_lock:

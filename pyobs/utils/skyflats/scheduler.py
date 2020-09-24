@@ -149,7 +149,8 @@ class SchedulerItem:
 class Scheduler:
     """Scheduler for taking flat fields"""
     def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
-                 max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20):
+                 max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
+                 combine_binnings: bool = True):
         """Initializes a new scheduler for taking flat fields
 
         Args:
@@ -161,8 +162,9 @@ class Scheduler:
             timespan: Timespan from now that should be scheduled [s]
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
+            combine_binnings: Whether different binnings use the same functions.
         """
-        self._eval = ExpTimeEval(observer, functions)
+        self._eval = ExpTimeEval(observer, functions, combine_binnings=combine_binnings)
         self._observer = observer
         self._priorities = priorities
         self._min_exptime = min_exptime

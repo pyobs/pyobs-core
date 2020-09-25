@@ -2,12 +2,13 @@ import logging
 
 from pyobs.events import Event
 from pyobs import PyObsModule
+from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)
 
 
-class Trigger(PyObsModule):
+class Trigger(PyObsModule, IAutonomous):
     """A module that can call another module's methods when a specific event occurs."""
 
     def __init__(self, triggers: list, *args, **kwargs):
@@ -19,6 +20,9 @@ class Trigger(PyObsModule):
 
         """
         PyObsModule.__init__(self, *args, **kwargs)
+
+        # store
+        self._running = False
 
         # store triggers and convert event strings to actual classes
         self._triggers = triggers
@@ -34,9 +38,24 @@ class Trigger(PyObsModule):
         # get a list of all events
         events = list(set([t['event'] for t in self._triggers]))
 
+        # start
+        self._running = True
+
         # register them
         for event in events:
             self.comm.register_event(event, self._handle_event)
+
+    def start(self, *args, **kwargs):
+        """Starts a service."""
+        self._running = True
+
+    def stop(self, *args, **kwargs):
+        """Stops a service."""
+        self._running = False
+
+    def is_running(self, *args, **kwargs) -> bool:
+        """Whether a service is running."""
+        return self._running
 
     def _handle_event(self, event: Event, sender: str):
         """Handle an incoming event.
@@ -45,6 +64,10 @@ class Trigger(PyObsModule):
             event: The received event
             sender: Name of sender
         """
+
+        # not running?
+        if not self._running:
+            return
 
         # loop all triggers
         for trigger in self._triggers:

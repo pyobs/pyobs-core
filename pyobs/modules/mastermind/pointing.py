@@ -7,13 +7,13 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs import PyObsModule
-from pyobs.interfaces import IAcquisition, IMastermind
+from pyobs.interfaces import IAcquisition, IAutonomous
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class PointingSeries(PyObsModule, IMastermind):
+class PointingSeries(PyObsModule, IAutonomous):
     """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
@@ -42,6 +42,18 @@ class PointingSeries(PyObsModule, IMastermind):
 
         # add thread func
         self._add_thread_func(self._run_thread, False)
+
+    def start(self, *args, **kwargs):
+        """Starts a service."""
+        pass
+
+    def stop(self, *args, **kwargs):
+        """Stops a service."""
+        pass
+
+    def is_running(self, *args, **kwargs) -> bool:
+        """Whether a service is running."""
+        return True
 
     def _run_thread(self):
         """Run a pointing series."""
@@ -74,7 +86,7 @@ class PointingSeries(PyObsModule, IMastermind):
 
             # try to find a good point
             while True:
-                # aborted?
+                # aborted or not running?
                 if self.closing.is_set():
                     return
 

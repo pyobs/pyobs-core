@@ -21,7 +21,8 @@ class SkyFlats(Script):
     def __init__(self, roof: typing.Union[str, IRoof], telescope: typing.Union[str, ITelescope],
                  flatfield: typing.Union[str, IFlatField], functions: dict,
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
-                 timespan: float = 7200, filter_change: float = 30, count: int = 20, *args, **kwargs):
+                 timespan: float = 7200, filter_change: float = 30, count: int = 20, combine_binnings: bool = True,
+                 *args, **kwargs):
         """Init a new SkyFlats script.
 
         Args:
@@ -35,6 +36,7 @@ class SkyFlats(Script):
             timespan: Timespan from now that should be scheduled [s]
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
+            combine_binnings: Whether different binnings use the same functions.
         """
         Script.__init__(self, *args, **kwargs)
 
@@ -50,8 +52,10 @@ class SkyFlats(Script):
         priorities = get_object(priorities, SkyflatPriorities)
 
         # create scheduler
-        self._scheduler = Scheduler(functions, priorities, self.observer, min_exptime=min_exptime, max_exptime=max_exptime,
-                                    timespan=timespan, filter_change=filter_change, count=count)
+        self._scheduler = Scheduler(functions, priorities, self.observer,
+                                    min_exptime=min_exptime, max_exptime=max_exptime,
+                                    timespan=timespan, filter_change=filter_change, count=count,
+                                    combine_binnings=combine_binnings)
 
     def can_run(self) -> bool:
         """Whether this config can currently run.

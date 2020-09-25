@@ -6,7 +6,7 @@ import astropy.units as u
 from pyobs import PyObsModule, get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.interfaces import IFitsHeaderProvider, IMastermind
+from pyobs.interfaces import IFitsHeaderProvider, IAutonomous
 from pyobs.robotic.taskarchive import TaskArchive
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class RoboticMastermind(PyObsModule, IMastermind, IFitsHeaderProvider):
+class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_overrun: int = 300, *args, **kwargs):
@@ -29,6 +29,7 @@ class RoboticMastermind(PyObsModule, IMastermind, IFitsHeaderProvider):
 
         # store
         self._allowed_overrun = allowed_overrun
+        self._running = False
 
         # add thread func
         self._add_thread_func(self._run_thread, True)
@@ -51,6 +52,9 @@ class RoboticMastermind(PyObsModule, IMastermind, IFitsHeaderProvider):
             self.comm.register_event(TaskStartedEvent)
             self.comm.register_event(TaskFinishedEvent)
 
+        # start
+        self._running = True
+
         # open scheduler
         self._task_archive.open()
 
@@ -61,12 +65,30 @@ class RoboticMastermind(PyObsModule, IMastermind, IFitsHeaderProvider):
         # close scheduler
         self._task_archive.close()
 
+    def start(self, *args, **kwargs):
+        """Starts a service."""
+        self._running = True
+
+    def stop(self, *args, **kwargs):
+        """Stops a service."""
+        self._running = False
+
+    def is_running(self, *args, **kwargs) -> bool:
+        """Whether a service is running."""
+        return self._running
+
     def _run_thread(self):
         # wait a little
         self.closing.wait(1)
 
         # run until closed
         while not self.closing.is_set():
+            # not running?
+            if not self._running:
+                # sleep a little and continue
+                self.closing.wait(1)
+                continue
+
             # get now
             now = Time.now()
 

@@ -4,6 +4,7 @@ from .IAltAz import IAltAz
 from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
+from .IAutonomous import IAutonomous
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .ICameraBinning import ICameraBinning
@@ -17,7 +18,6 @@ from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
-from .IMastermind import IMastermind
 from .IMotion import IMotion
 from .IPipeline import IPipeline
 from .IRaDec import IRaDec

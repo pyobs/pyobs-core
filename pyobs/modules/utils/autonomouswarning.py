@@ -107,7 +107,7 @@ class AutonomousWarning(PyObsModule):
                 log.info('%s robotic systems:', 'Stopping' if is_auto else 'Starting')
                 for auto in autonomous:
                     # get proxy
-                    log.info('  %s', auto)
+                    log.info('  - %s', auto)
                     proxy: IAutonomous = self.comm[auto]
 
                     # start/stop

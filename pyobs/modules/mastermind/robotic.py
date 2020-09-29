@@ -67,10 +67,12 @@ class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
 
     def start(self, *args, **kwargs):
         """Starts a service."""
+        log.info('Starting robotic system...')
         self._running = True
 
     def stop(self, *args, **kwargs):
         """Stops a service."""
+        log.info('Stopping robotic system...')
         self._running = False
 
     def is_running(self, *args, **kwargs) -> bool:

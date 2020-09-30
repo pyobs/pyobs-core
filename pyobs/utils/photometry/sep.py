@@ -9,14 +9,33 @@ log = logging.getLogger(__name__)
 
 
 class SepPhotometry(Photometry):
-    def __init__(self, threshold=1.5, *args, **kwargs):
+    def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+        """Initializes a wrapper for SEP. See its documentation for details.
+
+        Args:
+            threshold: Threshold pixel value for detection.
+            minarea: Minimum number of pixels required for detection.
+            deblend_nthresh: Number of thresholds used for object deblending.
+            deblend_cont: Minimum contrast ratio used for object deblending.
+            clean: Perform cleaning?
+            clean_param: Cleaning parameter (see SExtractor manual).
+            *args:
+            **kwargs:
+        """
+
         Photometry.__init__(self, *args, **kwargs)
 
         # test imports
         import sep
 
-        # save threshold
+        # store
         self.threshold = threshold
+        self.minarea = minarea
+        self.deblend_nthresh = deblend_nthresh
+        self.deblend_cont = deblend_cont
+        self.clean = clean
+        self.clean_param = clean_param
 
     def find_stars(self, image: Image) -> Table:
         """Find stars in given image and append catalog.
@@ -42,7 +61,9 @@ class SepPhotometry(Photometry):
 
         # extract sources
         try:
-            sources = sep.extract(data, self.threshold, err=bkg.globalrms)
+            sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
+                                  deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
+                                  clean=self.clean, clean_param=self.clean_param)
         except:
             log.exception('An error has occured.')
             return Table()

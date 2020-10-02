@@ -10,15 +10,15 @@ class Image:
         self.header = None
         self.catalog = None
 
-    @staticmethod
-    def from_bytes(data) -> 'Image':
+    @classmethod
+    def from_bytes(klass, data) -> 'Image':
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # store
-            image = Image()
+            image = klass()
             image.data = data['SCI'].data.astype(np.float)
             image.header = data['SCI'].header
 
@@ -26,10 +26,10 @@ class Image:
             data.close()
             return image
 
-    @staticmethod
-    def from_file(filename: str) -> 'Image':
+    @classmethod
+    def from_file(klass, filename: str) -> 'Image':
         # load file
-        image = Image()
+        image = klass()
         data, image.header = fits.getdata(filename, header=True)
         image.data = data.astype(np.float)
         return image

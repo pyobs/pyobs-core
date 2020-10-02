@@ -23,6 +23,20 @@ class Night:
                  filenames: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                   '{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits',
                  *args, **kwargs):
+        """Creates a Night object for reducing a given night.
+
+        Args:
+            site: Telescope site to use.
+            night: Night to reduce.
+            archive: Archive to fetch images from and write results to.
+            photometry: Photometry object.
+            astrometry: Astrometry object.
+            worker_procs: Number of worker processes.
+            filenames_calib: Filename pattern for master calibration files.
+            filenames: Filename pattern for reduced science frames.
+            *args:
+            **kwargs:
+        """
 
         # get archive, photometry and astrometry
         self._archive = get_object(archive, Archive)

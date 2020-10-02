@@ -196,7 +196,7 @@ class Night:
 
         # upload
         log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
-        #self._archive.upload_frames([calib])
+        self._archive.upload_frames([calib])
 
         # finished
         return calib

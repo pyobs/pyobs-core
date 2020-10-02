@@ -10,7 +10,7 @@ class BiasImage(CalibrationImage):
         calibrated = [img.calibrate() for img in images]
 
         # and average
-        return BiasImage.average(calibrated)
+        return BiasImage.combine(calibrated)
 
 
 __all__ = ['BiasImage']

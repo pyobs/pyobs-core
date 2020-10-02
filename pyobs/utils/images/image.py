@@ -1,10 +1,17 @@
 import io
+from enum import Enum
+
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu
 
 
 class Image:
+    class CombineMethod(Enum):
+        MEAN = 'mean'
+        MEDIAN = 'median'
+        SIGMA = 'sigma'
+
     def __init__(self, *args, **kwargs):
         self.data = None
         self.header = None

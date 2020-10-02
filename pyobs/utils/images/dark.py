@@ -13,7 +13,7 @@ class DarkImage(CalibrationImage):
         data = [img / img.header['EXPTIME'] for img in calibrated]
 
         # average
-        return DarkImage.average(data)
+        return DarkImage.combine(data)
 
 
 __all__ = ['DarkImage']

@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Dict
 
 from pyobs.interfaces import ICamera
 from pyobs.object import get_object
@@ -23,7 +23,7 @@ class Night:
                  filenames: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                   '{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits',
                  flats_combine: Union[str, Image.CombineMethod] = Image.CombineMethod.MEDIAN, flats_min_raw: int = 10,
-                 *args, **kwargs):
+                 masks: Dict[str, Union[Image, str]] = None, *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
@@ -37,6 +37,7 @@ class Night:
             filenames: Filename pattern for reduced science frames.
             flats_combine: Method to combine flats.
             flats_min_raw: Minimum number of raw frames to create flat field.
+            masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
             *args:
             **kwargs:
         """
@@ -53,6 +54,17 @@ class Night:
         self._flats_combine = Image.CombineMethod(flats_combine) if isinstance(flats_combine, str) else flats_combine
         self._flats_min_raw = flats_min_raw
 
+        # masks
+        self._masks = {}
+        if masks is not None:
+            for binning, mask in masks.items():
+                if isinstance(mask, Image):
+                    self._masks[binning] = mask
+                elif isinstance(mask, str):
+                    self._masks[binning] = Image.from_file(mask)
+                else:
+                    raise ValueError('Unknown mask format.')
+
         # cache for master calibration frames
         self._master_names = {}
         self._master_data = {}
@@ -67,6 +79,13 @@ class Night:
 
         # calibrate and trim to TRIMSEC
         calibrated = img.calibrate(bias=bias, dark=dark, flat=flat).trim()
+
+        # add mask
+        binning = '%dx%s' % (img.header['XBINNING'], img.header['YBINNING'])
+        if binning in self._masks:
+            calibrated.mask = self._masks[binning].copy()
+        else:
+            log.warning('No mask found for binning of frame.')
 
         # set (raw) filename
         calibrated.format_filename(self._fmt_object)
@@ -177,7 +196,7 @@ class Night:
 
         # upload
         log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
-        self._archive.upload_frames([calib])
+        #self._archive.upload_frames([calib])
 
         # finished
         return calib

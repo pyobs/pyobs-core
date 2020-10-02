@@ -59,11 +59,14 @@ class SepPhotometry(Photometry):
             bkg = sep.Background(data)
         bkg.subfrom(data)
 
+        # mask?
+        mask = image.mask.data if image.mask is not None else None
+
         # extract sources
         try:
             sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
                                   deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
-                                  clean=self.clean, clean_param=self.clean_param)
+                                  clean=self.clean, clean_param=self.clean_param, mask=mask)
         except:
             log.exception('An error has occured.')
             return Table()

@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 from astropy.io import fits
-from astropy.io.fits import table_to_hdu
+from astropy.io.fits import table_to_hdu, ImageHDU
 
 
 class Image:
@@ -15,6 +15,7 @@ class Image:
     def __init__(self, *args, **kwargs):
         self.data = None
         self.header = None
+        self.mask = None
         self.catalog = None
 
     @classmethod
@@ -64,6 +65,12 @@ class Image:
         if self.catalog is not None:
             hdu = table_to_hdu(self.catalog)
             hdu.name = 'CAT'
+            hdu_list.append(hdu)
+
+        # mask?
+        if self.mask is not None:
+            hdu = ImageHDU(self.mask.data.astype(np.uint8))
+            hdu.name = 'BPM'
             hdu_list.append(hdu)
 
         # write it

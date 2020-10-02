@@ -121,7 +121,8 @@ class PyobsArchive(Archive):
         images = []
         for info in infos:
             # download
-            r = requests.get(info.url, headers=self._headers)
+            url = urllib.parse.urljoin(self._url, info.url)
+            r = requests.get(url, headers=self._headers)
 
             # create image
             try:

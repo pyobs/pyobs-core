@@ -84,7 +84,7 @@ class SepPhotometry(Photometry):
         kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                           sources['theta'], 6.0)
         flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
-                                          sources['theta'], 2.5 * kronrad, subpix=1)
+                                          sources['theta'], 2.5 * kronrad, subpix=1, mask=mask)
         sources['flux_auto'] = flux
         sources['flux_auto_err'] = fluxerr
 

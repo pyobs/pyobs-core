@@ -80,11 +80,15 @@ class SepPhotometry(Photometry):
         # Calculate the ellipticity
         sources['ellipticity'] = 1.0 - (sources['b'] / sources['a'])
 
+        # get gain
+        gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
+
         # equivalent of FLUX_AUTO
         kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                           sources['theta'], 6.0)
         flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
-                                          sources['theta'], 2.5 * kronrad, subpix=1, mask=mask)
+                                              sources['theta'], 2.5 * kronrad, subpix=1, mask=mask,
+                                              err=bkg.rms(), gain=gain)
         sources['flux_auto'] = flux
         sources['flux_auto_err'] = fluxerr
 

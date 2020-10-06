@@ -1,9 +1,9 @@
 from astropy.table import Table
 import logging
+import numpy as np
 
 from .photometry import Photometry
 from pyobs.utils.images import Image
-
 
 log = logging.getLogger(__name__)
 
@@ -12,6 +12,9 @@ class SepPhotometry(Photometry):
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
                  deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
         """Initializes a wrapper for SEP. See its documentation for details.
+
+        Highly inspired by LCO's wrapper for SEP, see:
+        https://github.com/LCOGT/banzai/blob/master/banzai/photometry.py
 
         Args:
             threshold: Threshold pixel value for detection.
@@ -47,7 +50,7 @@ class SepPhotometry(Photometry):
             Full table with results.
         """
         import sep
-        
+
         # get data and make it continuous
         data = image.data.copy()
 
@@ -86,9 +89,11 @@ class SepPhotometry(Photometry):
         # equivalent of FLUX_AUTO
         kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                           sources['theta'], 6.0)
+        sources['flag'] |= krflag
         flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                               sources['theta'], 2.5 * kronrad, subpix=1, mask=mask,
                                               err=bkg.rms(), gain=gain)
+        sources['flag'] |= flag
         sources['flux_auto'] = flux
         sources['flux_auto_err'] = fluxerr
 
@@ -96,8 +101,32 @@ class SepPhotometry(Photometry):
         sources['radius'], _ = sep.flux_radius(data, sources['x'], sources['y'], 6. * sources['a'], 0.5,
                                                normflux=sources['flux_auto'], subpix=5)
 
+        # perform aperture photometry for diameters of 1" to 4"
+        for diameter in [1, 2, 3, 4]:
+            flux, fluxerr, flag = sep.sum_circle(data, sources['x'], sources['y'],
+                                                 diameter / 2. / image.pixel_scale,
+                                                 mask=mask, err=bkg.rms(), gain=gain)
+            sources['fluxaper{0}'.format(diameter)] = flux
+            sources['fluxerr{0}'.format(diameter)] = fluxerr
+            sources['flag'] |= flag
+
+        # match fits conventions
+        sources['x'] += 1.0
+        sources['y'] += 1.0
+        sources['xpeak'] += 1
+        sources['ypeak'] += 1
+        sources['xwin'] += 1.0
+        sources['ywin'] += 1.0
+        sources['theta'] = np.degrees(sources['theta'])
+
         # pick columns for catalog
-        cat = sources['x', 'y', 'ellipticity', 'flux', 'flux_auto', 'flux_auto_err', 'radius']
+        cat = sources['x', 'y', 'xwin', 'ywin', 'xpeak', 'ypeak',
+                      'flux', 'fluxerr', 'peak', 'fluxaper1', 'fluxerr1',
+                      'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
+                      'fluxaper4', 'fluxerr4', 'fluxaper5', 'fluxerr5',
+                      'fluxaper6', 'fluxerr6', 'background', 'fwhm',
+                      'a', 'b', 'theta', 'kronrad', 'ellipticity',
+                      'x2', 'y2', 'xy', 'flag']
 
         # set it
         image.catalog = cat

@@ -187,5 +187,15 @@ class Image:
     def format_filename(self, formatter):
         self.header['FNAME'] = formatter(self.header)
 
+    @property
+    def pixel_scale(self):
+        """Returns pixel scale in pixels per arc second."""
+        if 'CD1_1' in self.header:
+            return abs(self.header['CD1_1']) * 3600.
+        elif 'CDELT1' in self.header:
+            return abs(self.header['CDELTT1']) * 3600.
+        else:
+            return None
+
 
 __all__ = ['Image']

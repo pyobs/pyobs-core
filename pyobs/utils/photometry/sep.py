@@ -86,10 +86,13 @@ class SepPhotometry(Photometry):
         # get gain
         gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
 
-        # equivalent of FLUX_AUTO
+        # Kron radius
         kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                           sources['theta'], 6.0)
         sources['flag'] |= krflag
+        sources['kronrad'] = kronrad
+
+        # equivalent of FLUX_AUTO
         flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
                                               sources['theta'], 2.5 * kronrad, subpix=1, mask=mask,
                                               err=bkg.rms(), gain=gain)

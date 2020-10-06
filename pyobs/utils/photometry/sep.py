@@ -83,6 +83,10 @@ class SepPhotometry(Photometry):
         # Calculate the ellipticity
         sources['ellipticity'] = 1.0 - (sources['b'] / sources['a'])
 
+        # calculate the FWHMs of the stars
+        fwhm = 2.0 * (np.log(2) * (sources['a'] ** 2.0 + sources['b'] ** 2.0)) ** 0.5
+        sources['fwhm'] = fwhm
+
         # get gain
         gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
 

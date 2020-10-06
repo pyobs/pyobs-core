@@ -141,8 +141,7 @@ class SepPhotometry(Photometry):
         cat = sources['x', 'y', 'xwin', 'ywin', 'xpeak', 'ypeak',
                       'flux', 'fluxerr', 'peak', 'fluxaper1', 'fluxerr1',
                       'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
-                      'fluxaper4', 'fluxerr4', 'fluxaper5', 'fluxerr5',
-                      'fluxaper6', 'fluxerr6', 'background', 'fwhm',
+                      'fluxaper4', 'fluxerr4', 'background', 'fwhm',
                       'a', 'b', 'theta', 'kronrad', 'ellipticity',
                       'fluxrad25', 'fluxrad50', 'fluxrad75',
                       'x2', 'y2', 'xy', 'flag']

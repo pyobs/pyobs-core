@@ -102,7 +102,7 @@ class SepPhotometry(Photometry):
 
         # equivalent to FLUX_RADIUS
         sources['radius'], _ = sep.flux_radius(data, sources['x'], sources['y'], 6. * sources['a'], 0.5,
-                                               normflux=sources['flux_auto'], subpix=5)
+                                               normflux=sources['flux'], subpix=5)
 
         # radii at 0.25, 0.5, and 0.75 flux
         flux_radii, flag = sep.flux_radius(data, sources['x'], sources['y'], 6.0 * sources['a'], [0.25, 0.5, 0.75],

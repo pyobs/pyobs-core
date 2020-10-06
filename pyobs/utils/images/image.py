@@ -193,7 +193,7 @@ class Image:
         if 'CD1_1' in self.header:
             return abs(self.header['CD1_1']) * 3600.
         elif 'CDELT1' in self.header:
-            return abs(self.header['CDELTT1']) * 3600.
+            return abs(self.header['CDELT1']) * 3600.
         else:
             return None
 

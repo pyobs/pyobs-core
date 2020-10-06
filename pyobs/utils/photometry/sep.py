@@ -97,8 +97,8 @@ class SepPhotometry(Photometry):
                                               sources['theta'], 2.5 * kronrad, subpix=1, mask=mask,
                                               err=bkg.rms(), gain=gain)
         sources['flag'] |= flag
-        sources['flux_auto'] = flux
-        sources['flux_auto_err'] = fluxerr
+        sources['flux'] = flux
+        sources['fluxerr'] = fluxerr
 
         # equivalent to FLUX_RADIUS
         sources['radius'], _ = sep.flux_radius(data, sources['x'], sources['y'], 6. * sources['a'], 0.5,

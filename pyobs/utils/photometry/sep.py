@@ -104,6 +104,21 @@ class SepPhotometry(Photometry):
         sources['radius'], _ = sep.flux_radius(data, sources['x'], sources['y'], 6. * sources['a'], 0.5,
                                                normflux=sources['flux_auto'], subpix=5)
 
+        # radii at 0.25, 0.5, and 0.75 flux
+        flux_radii, flag = sep.flux_radius(data, sources['x'], sources['y'], 6.0 * sources['a'], [0.25, 0.5, 0.75],
+                                           normflux=sources['flux'], subpix=5)
+        sources['flag'] |= flag
+        sources['fluxrad25'] = flux_radii[:, 0]
+        sources['fluxrad50'] = flux_radii[:, 1]
+        sources['fluxrad75'] = flux_radii[:, 2]
+
+        # xwin/ywin
+        sig = 2. / 2.35 * sources['fluxrad50']
+        xwin, ywin, flag = sep.winpos(data, sources['x'], sources['y'], sig)
+        sources['flag'] |= flag
+        sources['xwin'] = xwin
+        sources['ywin'] = ywin
+
         # perform aperture photometry for diameters of 1" to 4"
         for diameter in [1, 2, 3, 4]:
             flux, fluxerr, flag = sep.sum_circle(data, sources['x'], sources['y'],
@@ -129,6 +144,7 @@ class SepPhotometry(Photometry):
                       'fluxaper4', 'fluxerr4', 'fluxaper5', 'fluxerr5',
                       'fluxaper6', 'fluxerr6', 'background', 'fwhm',
                       'a', 'b', 'theta', 'kronrad', 'ellipticity',
+                      'fluxrad25', 'fluxrad50', 'fluxrad75',
                       'x2', 'y2', 'xy', 'flag']
 
         # set it

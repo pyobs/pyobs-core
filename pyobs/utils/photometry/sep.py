@@ -132,6 +132,14 @@ class SepPhotometry(Photometry):
             sources['fluxerr{0}'.format(diameter)] = fluxerr
             sources['flag'] |= flag
 
+        # average background at each source
+        bkgflux, fluxerr, flag = sep.sum_ellipse(bkg.back(), sources['x'], sources['y'],
+                                                 sources['a'], sources['b'], np.pi / 2.0,
+                                                 2.5 * sources['kronrad'], subpix=1)
+        background_area = (2.5 * sources['kronrad']) ** 2.0 * sources['a'] * sources['b'] * np.pi
+        sources['background'] = bkgflux
+        sources['background'][background_area > 0] /= background_area[background_area > 0]
+
         # match fits conventions
         sources['x'] += 1.0
         sources['y'] += 1.0
@@ -145,7 +153,7 @@ class SepPhotometry(Photometry):
         cat = sources['x', 'y', 'xwin', 'ywin', 'xpeak', 'ypeak',
                       'flux', 'fluxerr', 'peak', 'fluxaper1', 'fluxerr1',
                       'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
-                      'fluxaper4', 'fluxerr4', 'fwhm',
+                      'fluxaper4', 'fluxerr4', 'background', 'fwhm',
                       'a', 'b', 'theta', 'kronrad', 'ellipticity',
                       'fluxrad25', 'fluxrad50', 'fluxrad75',
                       'x2', 'y2', 'xy', 'flag']

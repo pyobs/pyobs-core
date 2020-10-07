@@ -123,8 +123,8 @@ class SepPhotometry(Photometry):
         sources['xwin'] = xwin
         sources['ywin'] = ywin
 
-        # perform aperture photometry for diameters of 1" to 6"
-        for diameter in [1, 2, 3, 4, 5, 6]:
+        # perform aperture photometry for diameters of 1" to 8"
+        for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
             flux, fluxerr, flag = sep.sum_circle(data, sources['x'], sources['y'],
                                                  diameter / 2. / image.pixel_scale,
                                                  mask=mask, err=bkg.rms(), gain=gain)

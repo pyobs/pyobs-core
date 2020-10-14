@@ -194,10 +194,11 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
                 return
 
             # check focus
-            if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
-                log.warning('Focus difference between current and last image is too large, resetting reference...')
-                self._reset_guiding(image=image)
-                return
+            if 'TEL-FOCU' in image.header:
+                if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
+                    log.warning('Focus difference between current and last image is too large, resetting reference...')
+                    self._reset_guiding(image=image)
+                    return
 
         # remember header
         self._last_header = image.header

@@ -1,6 +1,7 @@
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
 from .IAltAz import IAltAz
+from .ILatLon import ILatLon
 from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding

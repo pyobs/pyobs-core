@@ -95,7 +95,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
     def stop(self, *args, **kwargs):
         """Stops auto-guiding."""
         log.info('Stopping autp-guiding...')
-        self._reset_guiding()
+        self._reset_guiding(enabled=False)
 
     def is_running(self, *args, **kwargs) -> bool:
         """Whether auto-guiding is running.
@@ -132,6 +132,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         self._enabled = enabled
         self._loop_closed = False
         self._ref_header = None if image is None else image.header
+        self._last_header = None if image is None else image.header
 
         # reset offset
         self._guiding_offset.reset()
@@ -145,6 +146,10 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         Args:
             image: Image to process.
         """
+
+        # not enabled?
+        if not self._enabled:
+            return
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
@@ -189,10 +194,11 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
                 return
 
             # check focus
-            if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
-                log.warning('Focus difference between current and last image is too large, resetting reference...')
-                self._reset_guiding(image=image)
-                return
+            if 'TEL-FOCU' in image.header:
+                if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
+                    log.warning('Focus difference between current and last image is too large, resetting reference...')
+                    self._reset_guiding(image=image)
+                    return
 
         # remember header
         self._last_header = image.header

@@ -7,13 +7,14 @@ from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters
 from pyobs.events import FocusFoundEvent
 from pyobs import PyObsModule, get_object
+from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.focusseries import FocusSeries
 
 log = logging.getLogger(__name__)
 
 
-class AutoFocusSeries(PyObsModule, IAutoFocus):
+class AutoFocusSeries(PyObsModule, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
 
     def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
@@ -41,6 +42,9 @@ class AutoFocusSeries(PyObsModule, IAutoFocus):
         # storage for data
         self._data_lock = threading.RLock()
         self._data = []
+
+        # init camera settings mixin
+        CameraSettingsMixin.__init__(self, *args, filters=filters, **kwargs)
 
     def open(self):
         """Open module"""
@@ -88,6 +92,9 @@ class AutoFocusSeries(PyObsModule, IAutoFocus):
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
+
+        # do camera settings
+        self._do_camera_settings(camera)
 
         # get filter wheel and current filter
         filter_name = 'unknown'

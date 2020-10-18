@@ -7,7 +7,7 @@ import astropy.units as u
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import PyObsModule
-from pyobs.mixins import TableStorageMixin
+from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
 from pyobs.utils.time import Time
@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
+class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
@@ -60,6 +60,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         # init table storage and load measurements
         TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
 
+        # init camera settings mixin
+        CameraSettingsMixin.__init__(self, *args, **kwargs)
+
     def open(self):
         """Open module"""
         PyObsModule.open(self)
@@ -95,6 +98,9 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, IAcquisition):
         # get camera
         log.info('Getting proxy for camera...')
         camera: ICamera = self.proxy(self._camera, ICamera)
+
+        # do camera settings
+        self._do_camera_settings(camera)
 
         # try given number of attempts
         for a in range(self._attempts):

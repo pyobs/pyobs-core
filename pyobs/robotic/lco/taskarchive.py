@@ -1,7 +1,7 @@
 import threading
-import urllib.parse
+from urllib.parse import urljoin
 import logging
-from typing import Union
+from typing import Union, List, Dict
 import requests
 from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget
 from astropy.coordinates import SkyCoord
@@ -64,15 +64,11 @@ class LcoTaskArchive(TaskArchive):
         self._update = update
         self._last_schedule_time = None
         self._last_schedule_lock = threading.RLock()
+        self.scripts = scripts
 
         # buffers in case of errors
         self._last_scheduled = None
         self._last_changed = None
-
-        # create script handlers
-        if scripts is None:
-            scripts = {}
-        self.scripts = {k: get_object(v, comm=self.comm, observer=self.observer) for k, v in scripts.items()}
 
         # header
         self._token = token
@@ -109,7 +105,7 @@ class LcoTaskArchive(TaskArchive):
         """Initialize scheduler from portal."""
 
         # get instruments
-        url = urllib.parse.urljoin(self._url, '/api/instruments/')
+        url = urljoin(self._url, '/api/instruments/')
         res = requests.get(url, headers=self._header)
         if res.status_code != 200:
             raise RuntimeError('Invalid response from portal.')
@@ -144,62 +140,86 @@ class LcoTaskArchive(TaskArchive):
             # get time of last scheduler run and check, whether we need an update, which is not the case, if
             # - we updated before
             # - AND last update was after last schedule update
-            # - AND last update is less then 1h ago
+            # - AND last update is less then 1 min ago
             # - AND force is set to False
             last_scheduled = self.last_scheduled()
-            if self._last_schedule_time is not None and self._last_schedule_time >= last_scheduled and \
-                    self._last_schedule_time > now - TimeDelta(1. * u.hour) and force is False:
+            if self._last_schedule_time is not None and \
+                    (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
+                    self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
+                    force is False:
                 # need no update
                 return
 
             # need update!
-            log.info('Found updated schedule, downloading it...')
-
-            # get url and params
-            url = urllib.parse.urljoin(self._url, '/api/observations/')
-            params = {
-                'site': self._site,
-                'end_after': now.isot,
-                'start_before': (now + TimeDelta(24 * u.hour)).isot,
-                'state': 'PENDING'
-            }
-
-            # do request
             try:
-                r = requests.get(url, params=params, headers=self._header, timeout=10)
+                tasks = self.fetch_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour), state='PENDING')
             except Timeout:
                 log.error('Request timed out')
                 self._closing.wait(60)
                 return
-
-            # success?
-            if r.status_code == 200:
-                # get schedule
-                schedules = r.json()['results']
-
-                # create tasks
-                tasks = {}
-                for sched in schedules:
-                    # parse start and end
-                    sched['start'] = Time(sched['start'])
-                    sched['end'] = Time(sched['end'])
-
-                    # create task
-                    task = self._create_task(LcoTask, sched,
-                                             telescope=self.telescope, filters=self.filters, camera=self.camera,
-                                             roof=self.roof, scripts=self.scripts, autoguider=self.autoguider)
-                    tasks[sched['request']['id']] = task
-
-                # update
-                log.info('Found %d tasks to run.', len(tasks))
-                with self._update_lock:
-                    self._tasks = tasks
-
-            else:
+            except ValueError:
                 log.warning('Could not fetch schedule.')
+                return
+
+            # any changes?
+            if sorted(tasks) != sorted(self._tasks):
+                log.info('Task list changed, found %d task(s) to run.', len(tasks))
+
+            # update
+            with self._update_lock:
+                self._tasks = tasks
 
             # finished
             self._last_schedule_time = now
+
+    def fetch_tasks(self, end_after: Time, start_before: Time, state: str = 'PENDING') -> Dict[str, Task]:
+        """Fetch tasks from portal.
+
+        Args:
+            end_after: Task must end after this time.
+            start_before: Task must start before this time.
+            state: State of tasks.
+
+        Returns:
+            Dictionary with tasks.
+
+        Raises:
+            Timeout if request timed out.
+            ValueError if something goes wrong.
+        """
+
+        # get url and params
+        url = urljoin(self._url, '/api/observations/')
+        params = {
+            'site': self._site,
+            'end_after': end_after.isot,
+            'start_before': start_before.isot,
+            'state': state
+        }
+
+        # do request
+        r = requests.get(url, params=params, headers=self._header, timeout=10)
+
+        # success?
+        if r.status_code != 200:
+            raise ValueError()
+
+        # get schedule
+        schedules = r.json()['results']
+
+        # create tasks
+        tasks = {}
+        for sched in schedules:
+            # parse start and end
+            sched['start'] = Time(sched['start'])
+            sched['end'] = Time(sched['end'])
+
+            # create task
+            task = self._create_task(LcoTask, sched, scripts=self.scripts)
+            tasks[sched['request']['id']] = task
+
+        # finished
+        return tasks
 
     def get_task(self, time: Time) -> Union[Task, None]:
         """Returns the active task at the given time.
@@ -253,7 +273,7 @@ class LcoTaskArchive(TaskArchive):
         """
 
         log.info('Sending configuration status update to portal...')
-        url = urllib.parse.urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
+        url = urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
 
         # do request
         try:
@@ -268,7 +288,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_changed/', headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_changed = r.json()['last_change_time']
@@ -283,7 +303,7 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(self._url + '/api/last_scheduled/', headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10)
             if r.status_code != 200:
                 raise ValueError
             self._last_scheduled = Time(r.json()['last_schedule_time'])
@@ -301,7 +321,7 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get requests
-        r = requests.get(self._url + '/api/requestgroups/schedulable_requests/', headers=self._header)
+        r = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header)
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()
@@ -378,7 +398,7 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # cancel schedule
-        r = requests.post(self._url + '/api/observations/cancel/', json=params,
+        r = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 200:
@@ -430,7 +450,7 @@ class LcoTaskArchive(TaskArchive):
             return
 
         # submit obervations
-        r = requests.post(self._url + '/api/observations/', json=observations,
+        r = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'})
         if r.status_code != 201:

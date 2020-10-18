@@ -10,12 +10,13 @@ from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 class ExpTimeEval:
     """Exposure time evaluator for skyflats."""
 
-    def __init__(self, observer: Observer, functions: dict):
+    def __init__(self, observer: Observer, functions: dict, combine_binnings: bool = True):
         """Initializes a new evaluator.
 
         Args:
             observer: Observer to use.
             functions: Dict of functions for the different filters.
+            combine_binnings: Whether different binnings use the same functions.
         """
 
         # init
@@ -23,11 +24,20 @@ class ExpTimeEval:
         self._time = None
         self._m = None
         self._b = None
+        self._combine_binnings = combine_binnings
 
         # parse function
         if functions is None:
             functions = {}
-        self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        if combine_binnings:
+            # in the simple case, the key is just the filter
+            self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        else:
+            # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
+            self._functions = {}
+            for binning, func in functions.items():
+                for filter_name, func in func.items():
+                    self._functions[binning, filter_name] = Parser().parse(func)
 
     def __call__(self, filter_name: str, binning: int, solalt: float) -> float:
         """Estimate exposure time for given filter
@@ -40,7 +50,22 @@ class ExpTimeEval:
         Returns:
             Estimated exposure time.
         """
-        return self._functions[filter_name].evaluate({'h': solalt}) / binning**2
+
+        # evaluate function depending on whether we combine binnings or not
+        if self._combine_binnings:
+            # evaluate filter function without binning
+            exptime = self._functions[filter_name].evaluate({'h': solalt})
+
+            # scale with binning
+            exptime /= binning**2
+
+        else:
+            # get binnind and evaluate correct function
+            sbin = '%dx%d' % (binning, binning)
+            exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
+
+        # return solar altitude and exposure time
+        return exptime / binning**2
 
     def init(self, time: Time):
         """Initialize object with the given time.
@@ -124,7 +149,8 @@ class SchedulerItem:
 class Scheduler:
     """Scheduler for taking flat fields"""
     def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
-                 max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20):
+                 max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
+                 combine_binnings: bool = True):
         """Initializes a new scheduler for taking flat fields
 
         Args:
@@ -136,8 +162,9 @@ class Scheduler:
             timespan: Timespan from now that should be scheduled [s]
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
+            combine_binnings: Whether different binnings use the same functions.
         """
-        self._eval = ExpTimeEval(observer, functions)
+        self._eval = ExpTimeEval(observer, functions, combine_binnings=combine_binnings)
         self._observer = observer
         self._priorities = priorities
         self._min_exptime = min_exptime

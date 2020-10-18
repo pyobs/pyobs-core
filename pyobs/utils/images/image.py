@@ -1,24 +1,32 @@
 import io
+from enum import Enum
+
 import numpy as np
 from astropy.io import fits
-from astropy.io.fits import table_to_hdu
+from astropy.io.fits import table_to_hdu, ImageHDU
 
 
 class Image:
+    class CombineMethod(Enum):
+        MEAN = 'mean'
+        MEDIAN = 'median'
+        SIGMA = 'sigma'
+
     def __init__(self, *args, **kwargs):
         self.data = None
         self.header = None
+        self.mask = None
         self.catalog = None
 
-    @staticmethod
-    def from_bytes(data) -> 'Image':
+    @classmethod
+    def from_bytes(klass, data) -> 'Image':
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # store
-            image = Image()
+            image = klass()
             image.data = data['SCI'].data.astype(np.float)
             image.header = data['SCI'].header
 
@@ -26,10 +34,10 @@ class Image:
             data.close()
             return image
 
-    @staticmethod
-    def from_file(filename: str) -> 'Image':
+    @classmethod
+    def from_file(klass, filename: str) -> 'Image':
         # load file
-        image = Image()
+        image = klass()
         data, image.header = fits.getdata(filename, header=True)
         image.data = data.astype(np.float)
         return image
@@ -57,6 +65,12 @@ class Image:
         if self.catalog is not None:
             hdu = table_to_hdu(self.catalog)
             hdu.name = 'CAT'
+            hdu_list.append(hdu)
+
+        # mask?
+        if self.mask is not None:
+            hdu = ImageHDU(self.mask.data.astype(np.uint8))
+            hdu.name = 'BPM'
             hdu_list.append(hdu)
 
         # write it
@@ -172,6 +186,16 @@ class Image:
 
     def format_filename(self, formatter):
         self.header['FNAME'] = formatter(self.header)
+
+    @property
+    def pixel_scale(self):
+        """Returns pixel scale in pixels per arc second."""
+        if 'CD1_1' in self.header:
+            return abs(self.header['CD1_1']) * 3600.
+        elif 'CDELT1' in self.header:
+            return abs(self.header['CDELT1']) * 3600.
+        else:
+            return None
 
 
 __all__ = ['Image']

@@ -1,11 +1,11 @@
 import logging
-from typing import Union
+from typing import Union, Dict
 
 from pyobs.interfaces import ICamera
 from pyobs.object import get_object
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage
+from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image
 from pyobs.utils.astrometry import Astrometry
 from pyobs.utils.photometry import Photometry
 from pyobs.utils.archive import Archive
@@ -22,7 +22,25 @@ class Night:
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
                  filenames: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                   '{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits',
-                 *args, **kwargs):
+                 flats_combine: Union[str, Image.CombineMethod] = Image.CombineMethod.MEDIAN, flats_min_raw: int = 10,
+                 masks: Dict[str, Union[Image, str]] = None, *args, **kwargs):
+        """Creates a Night object for reducing a given night.
+
+        Args:
+            site: Telescope site to use.
+            night: Night to reduce.
+            archive: Archive to fetch images from and write results to.
+            photometry: Photometry object.
+            astrometry: Astrometry object.
+            worker_procs: Number of worker processes.
+            filenames_calib: Filename pattern for master calibration files.
+            filenames: Filename pattern for reduced science frames.
+            flats_combine: Method to combine flats.
+            flats_min_raw: Minimum number of raw frames to create flat field.
+            masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
+            *args:
+            **kwargs:
+        """
 
         # get archive, photometry and astrometry
         self._archive = get_object(archive, Archive)
@@ -33,6 +51,19 @@ class Night:
         self._site = site
         self._night = night
         self._worker_processes = worker_procs
+        self._flats_combine = Image.CombineMethod(flats_combine) if isinstance(flats_combine, str) else flats_combine
+        self._flats_min_raw = flats_min_raw
+
+        # masks
+        self._masks = {}
+        if masks is not None:
+            for binning, mask in masks.items():
+                if isinstance(mask, Image):
+                    self._masks[binning] = mask
+                elif isinstance(mask, str):
+                    self._masks[binning] = Image.from_file(mask)
+                else:
+                    raise ValueError('Unknown mask format.')
 
         # cache for master calibration frames
         self._master_names = {}
@@ -48,6 +79,13 @@ class Night:
 
         # calibrate and trim to TRIMSEC
         calibrated = img.calibrate(bias=bias, dark=dark, flat=flat).trim()
+
+        # add mask
+        binning = '%dx%s' % (img.header['XBINNING'], img.header['YBINNING'])
+        if binning in self._masks:
+            calibrated.mask = self._masks[binning].copy()
+        else:
+            log.warning('No mask found for binning of frame.')
 
         # set (raw) filename
         calibrated.format_filename(self._fmt_object)
@@ -121,7 +159,7 @@ class Night:
 
         # create master
         if image_type == ICamera.ImageType.BIAS:
-            # BIAS are easy
+            # BIAS are easy, just combine
             calib = BiasImage.create_master(images)
 
         elif image_type == ICamera.ImageType.DARK:
@@ -130,16 +168,25 @@ class Night:
             if bias is None:
                 log.error('Could not find BIAS frame, skipping...')
                 return
+
+            # combine
             calib = DarkImage.create_master(images, bias=bias)
 
         elif image_type == ICamera.ImageType.SKYFLAT:
+            # got enough frames?
+            if len(images) < self._flats_min_raw:
+                log.warning('Not enough flat fields found for combining.')
+                return
+
             # for DARKs, we first ne a BIAS and a DARK
             bias = BiasImage.find_master(self._archive, midnight, instrument, binning, None)
             dark = DarkImage.find_master(self._archive, midnight, instrument, binning, None)
             if bias is None or dark is None:
                 log.error('Could not find BIAS/DARK frame, skipping...')
                 return
-            calib = FlatImage.create_master(images, bias=bias, dark=dark)
+
+            # combine
+            calib = FlatImage.create_master(images, bias=bias, dark=dark, method=self._flats_combine)
 
         else:
             raise ValueError('Invalid image type')

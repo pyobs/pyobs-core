@@ -1,8 +1,12 @@
 import logging
 import threading
+from enum import Enum
+from typing import Union
+import pandas as pd
+import numpy as np
 
 from pyobs import PyObsModule
-from pyobs.interfaces import ICamera, ISettings
+from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.utils.images import Image
@@ -11,20 +15,39 @@ from pyobs.utils.photometry import SepPhotometry
 log = logging.getLogger(__name__)
 
 
-class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
+class AdaptiveCameraMode(Enum):
+    # find brightest star within radius around centre of image
+    CENTRE = 'centre',
+    # find brightest star in whole image
+    BRIGHTEST = 'brightest'
+
+
+class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISettings):
     """A virtual camera for adaptive exposure times."""
 
-    def __init__(self, camera: str, *args, **kwargs):
-        """Creates a new adaptive exposure time cammera.
+    def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
+                 target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000, history: int = 10,
+                 *args, **kwargs):
+        """Creates a new adaptive exposure time camera.
 
         Args:
             camera: Actual camera to use.
+            mode: Which mode to use to find star.
+            radius: Radius in px around centre for CENTRE mode.
+            target_counts: Counts to aim for in target.
+            min_exptime: Minimum exposure time.
+            max_exptime: Maximum exposure time.
+            history: Length of history.
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
-        # store camera
+        # store
         self._camera_name = camera
         self._camera = None
+        self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
+        self._radius = radius
+        self._history = []
+        self._max_history = history
 
         # abort
         self._abort = threading.Event()
@@ -35,9 +58,9 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         self._exposures_done = None
 
         # options
-        self._counts = 30000
-        self._min_exp_time = 500
-        self._max_exp_time = 60000
+        self._counts = target_counts
+        self._min_exp_time = min_exptime
+        self._max_exp_time = max_exptime
 
         # SEP
         self._sep = SepPhotometry()
@@ -82,13 +105,14 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
 
         # loop exposures
         return_filenames = []
+        self._history = [exposure_time]
         for i in range(count):
             # abort?
             if self._abort.is_set():
                 break
 
             # do exposure(s), never broadcast
-            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time)
+            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time / 1000.)
             filenames = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
             self._exposures_done += 1
 
@@ -103,8 +127,8 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
                 self.comm.send_event(NewImageEvent(filenames[0], image_type))
 
         # finished
-        self._exposure_count = count
-        self._exposures_done = 0
+        self._exposure_count = None
+        self._exposures_done = None
 
         # return filenames
         return return_filenames
@@ -208,13 +232,8 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
             image: Image to process.
         """
 
-        # find sources
-        sources = self._sep(image)
-
-        # sort by peak brightness and get first
-        sources.sort('peak', True)
-        peak = sources['peak'][0]
-        log.info('Found a peak count of %d.', peak)
+        # find peak count
+        peak = self._find_target(image)
 
         # get exposure time from image in ms
         exp_time = image.header['EXPTIME'] * 1000
@@ -223,7 +242,57 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         exp_time = int(exp_time * self._counts / peak)
 
         # cut to limits
-        self._exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+        exp_time = max(min(exp_time, self._max_exp_time), self._min_exp_time)
+
+        # fill history
+        self._history.append(exp_time)
+        if len(self._history) > self._max_history:
+            self._history = self._history[-self._max_history:]
+
+        # set it
+        self._exp_time = int(np.mean(self._history))
+        log.info('Setting exposure time to %.3fs.', self._exp_time / 1000.)
+
+    def _find_target(self, image: Image) -> int:
+        """Find target in image and return it's peak count.
+
+        Args:
+            image: Image to analyse.
+
+        Returns:
+            Peak count of target.
+        """
+
+        # find sources
+        sources: pd.DataFrame = self._sep.find_stars(image).to_pandas()
+
+        # which mode?
+        if self._mode == AdaptiveCameraMode.BRIGHTEST:
+            # sort by peak brightness and get first
+            sources.sort_values('peak', ascending=False, inplace=True)
+            row = sources.iloc[0]
+            log.info('Found brightest star at x=%.1f, y=%.1f with peak count of %d.', row['x'], row['y'], row['peak'])
+            return row['peak']
+
+        elif self._mode == AdaptiveCameraMode.CENTRE:
+            # get image centre
+            cx = image.header['CRPIX1'] if 'CRPIX1' in image.header else image.header['NAXIS1'] // 2
+            cy = image.header['CRPIX2'] if 'CRPIX2' in image.header else image.header['NAXIS2'] // 2
+
+            # filter all sources within radius around centre
+            r = self._radius
+            filtered = sources[(sources['x'] >= cx - r) & (sources['x'] <= cx + r) &
+                               (sources['y'] >= cy - r) & (sources['y'] <= cy + r)]
+
+            # sort by peak brightness and get first
+            filtered.sort_values('peak', ascending=False, inplace=True)
+            row = filtered.iloc[0]
+            log.info('Found brightest star at x=%.1f (dx=%.1f), y=%.1f (dy=%.1f) with peak count of %d.',
+                     row['x'], row['x'] - cx, row['y'], row['y'] - cy, row['peak'])
+            return row['peak']
+
+        else:
+            raise ValueError('Unknown target mode.')
 
     def get_settings(self, *args, **kwargs) -> dict:
         """Returns a dict of name->type pairs for settings."""
@@ -273,5 +342,76 @@ class AdaptiveExpTimeCamera(PyObsModule, ICamera, ISettings):
         else:
             raise KeyError
 
+    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+        """Returns full size of CCD.
 
-__all__ = ['AdaptiveExpTimeCamera']
+        Returns:
+            Tuple with left, top, width, and height set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            return self._camera.get_full_frame().wait()
+        else:
+            return 0, 0, 100, 100
+
+    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+        """Set the camera window.
+
+        Args:
+            left: X offset of window.
+            top: Y offset of window.
+            width: Width of window.
+            height: Height of window.
+
+        Raises:
+            ValueError: If window could not be set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            self._camera.set_window(left, top, width, height).wait()
+
+    def get_window(self, *args, **kwargs) -> (int, int, int, int):
+        """Returns the camera window.
+
+        Returns:
+            Tuple with left, top, width, and height set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraWindow):
+            return self._camera.get_window().wait()
+        else:
+            return 0, 0, 100, 100
+
+    def set_binning(self, x: int, y: int, *args, **kwargs):
+        """Set the camera binning.
+
+        Args:
+            x: X binning.
+            y: Y binning.
+
+        Raises:
+            ValueError: If binning could not be set.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraBinning):
+            self._camera.set_binning(x, y).wait()
+
+    def get_binning(self, *args, **kwargs) -> (int, int):
+        """Returns the camera binning.
+
+        Returns:
+            Tuple with x and y.
+        """
+
+        # only do this, if wrapped camera doesn't support this
+        if isinstance(self._camera, ICameraBinning):
+            return self._camera.get_binning().wait()
+        else:
+            return 1, 1
+
+
+__all__ = ['AdaptiveCamera', 'AdaptiveCameraMode']

@@ -25,7 +25,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
     """Scheduler."""
 
     def __init__(self, tasks: typing.Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
-                 *args, **kwargs):
+                 twilight: str = 'astronomical', *args, **kwargs):
         """Initialize a new scheduler.
 
         Args:
@@ -34,6 +34,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
             safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
                          this time in seconds to make sure that we don't schedule for a time when the scheduler is
                          still running
+            twilight: astronomical or nautical
         """
         PyObsModule.__init__(self, *args, **kwargs)
 
@@ -43,6 +44,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         # store
         self._schedule_range = schedule_range
         self._safety_time = safety_time
+        self._twilight = twilight
         self._running = True
         self._need_update = False
 
@@ -114,7 +116,12 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
     def _schedule_thread(self):
         # only constraint is the night
-        constraints = [AtNightConstraint.twilight_astronomical()]
+        if self._twilight == 'astronomical':
+            constraints = [AtNightConstraint.twilight_astronomical()]
+        elif self._twilight == 'nautical':
+            constraints = [AtNightConstraint.twilight_nautical()]
+        else:
+            raise ValueError('Unknown twilight type.')
 
         # we don't need any transitions
         transitioner = Transitioner()
@@ -146,7 +153,9 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-                log.info('Finished calculating schedule for %d block(s).', len(schedule.scheduled_blocks))
+                log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+                for i, block in enumerate(schedule.scheduled_blocks, 1):
+                    log.info('  #%d: %s to %s', block.configuration['request']['id'], block.start_time, block.end_time)
 
             # sleep a little
             self.closing.wait(1)

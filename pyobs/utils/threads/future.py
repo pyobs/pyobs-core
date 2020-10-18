@@ -43,13 +43,15 @@ class Future(object):
         When this Future is cancelled with an error,
         """
 
-        # wait a little first
-        self._event.wait(10)
+        # no need to wait, if finished already
+        if not self._event.is_set():
+            # wait a little first
+            self._event.wait(10)
 
-        # got an additional timeout?
-        if self._timeout is not None and self._timeout > 10:
-            # timeout is in ms, so convert to s and subtract already waited 10s
-            self._event.wait(self._timeout / 1000. - 10)
+            # got an additional timeout?
+            if self._timeout is not None and self._timeout > 10:
+                # timeout is in ms, so convert to s and subtract already waited 10s
+                self._event.wait(self._timeout / 1000. - 10)
 
         # got an exception?
         if self._exception:

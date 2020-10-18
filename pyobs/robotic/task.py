@@ -1,12 +1,17 @@
 import threading
 from threading import Event
 
+from astroplan import Observer
+
+from pyobs.comm import Comm
 from pyobs.utils.time import Time
 
 
 class Task:
-    def __init__(self, tasks: 'TaskArchive', *args, **kwargs):
+    def __init__(self, tasks: 'TaskArchive', comm: Comm, observer: Observer, *args, **kwargs):
         self.task_archive = tasks
+        self.comm = comm
+        self.observer = observer
 
     @property
     def id(self) -> str:

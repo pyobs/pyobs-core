@@ -44,7 +44,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
         MotionStatusMixin.__init__(self, *args, **kwargs)
-        WaitForMotionMixin.__init__(self, wait_for_modules=[wait_for_dome], wait_for_timeout=60000,
+        WaitForMotionMixin.__init__(self,
+                                    wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
+                                    wait_for_timeout=60000,
                                     wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
 
     def open(self):
@@ -124,7 +126,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.TRACKING)
 
             # update headers now
-            self._update_celestial_headers()
+            threading.Thread(target=self._update_celestial_headers).start()
+            log.info('Finished moving telescope.')
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -173,7 +176,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._change_motion_status(IMotion.Status.POSITIONED)
 
             # update headers now
-            self._update_celestial_headers()
+            threading.Thread(target=self._update_celestial_headers).start()
+            log.info('Finished moving telescope.')
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.
@@ -214,6 +218,11 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         if coords_ra_dec is not None:
             hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
             hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
+
+        # site location
+        hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
+        hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
+        hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

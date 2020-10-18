@@ -1,5 +1,16 @@
 ## Changelog
 
+### v0.11 (2020-10-18)
+
+* Major changes to robotic system based on LCO portal.
+* Setting filter/window/binning in acquisition.
+* Added WaitForMotion and Follow mixins.
+* Added support for flats that don't directly scale with binning.
+* New module for acoustic warning when autonomous modules are running.
+* Improved SepPhotometry by calculating columns used also by LCO.
+* New interface for Lat/Lon telescopes, e.g. solar telescopes.
+
+
 ### v0.10 (2020-05-05)
 
 * Re-factored acquisition modules and added one based on astrometry.

@@ -4,24 +4,16 @@ pyobs
 Quick start
 -----------
 
-Clone the repository:
+Install pyobs-core:
 
-    git clone https://github.com/thusser/pytel-core.git
-    cd pytel-core
-
-Create a virtual environment (or skip this step if you want to have pyobs available globally):
-
-    python3 -m venv venv
-    source venv/bin/activate
+    pip3 install --user pyobs-core
     
-Install dependencies:
+Alternatively, create a virtual environment and install pyobs-core in there:
 
-    pip install -r requirements
+    python3 -m venv pyobs-venv
+    source pyobs-venv/bin/activate
+    pip3 install pyobs-core
     
-Install pyobs:
-
-    python setup.py install
-
 Create a test configuration test.yaml:
 
     class: pyobs.modules.test.StandAlone
@@ -31,3 +23,11 @@ Create a test configuration test.yaml:
 And run it:
    
     pyobs test.yaml
+
+
+Contributors
+------------
+
+- Tim-Oliver Husser (thusser@uni-goettingen.de)
+- Frederick V. Hessman
+- Karl Wessel

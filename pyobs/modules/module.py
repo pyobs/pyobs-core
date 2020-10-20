@@ -79,7 +79,7 @@ class Module:
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
-                 plugins: list = None, *args, **kwargs):
+                 *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
@@ -88,7 +88,6 @@ class Module:
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
-            plugins: List of plugins to start.
         """
 
         # an event that will be fired when closing the module
@@ -152,15 +151,6 @@ class Module:
                      self.location.lon, self.location.lat, self.location.height)
             self.observer = Observer(location=self.location, timezone=timezone)
 
-        # plugins
-        self._plugins = []
-        if plugins:
-            for cfg in plugins.values():
-                plg = get_object(cfg)   # Type: PyObsModule
-                plg.comm = self.comm
-                plg.observer = self.observer
-                self._plugins.append(plg)
-
         # opened?
         self._opened = False
 
@@ -193,12 +183,6 @@ class Module:
             self.comm.open()
             self.comm.module = self
 
-        # open plugins
-        if self._plugins:
-            log.info('Opening plugins...')
-            for plg in self._plugins:
-                plg.open()
-
         # start threads and watchdog
         for thread, (target, _) in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
@@ -223,12 +207,6 @@ class Module:
         if self._watchdog and self._watchdog.is_alive():
             self._watchdog.join()
         [t.join() for t in self._threads.keys() if t.is_alive()]
-
-        # close plugins
-        if self._plugins:
-            log.info('Closing plugins...')
-            for plg in self._plugins:
-                plg.close()
 
         # close comm
         if self.comm is not None:

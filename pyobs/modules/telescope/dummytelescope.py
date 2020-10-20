@@ -15,21 +15,26 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
+class DummyTelescopeStatus:
+    """Status of dummy telescope."""
+    def __init__(self, *args, **kwargs):
+        self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs')
+        self.offsets = (0., 0.)
+        self.focus = 52.
+        self.filter = 'V'
+
+
 class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, status: DummyTelescopeStatus = None, *args, **kwargs):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
         # init telescope
-        self._images = {}
-        self._position = {'ra': 12.12, 'dec': 45.45}
-        self._offsets = {'ra': 0, 'dec': 0}
-        self._focus = 52.
-        self._filter = 'V'
+        self._status = status if status is not None else DummyTelescopeStatus()
 
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
@@ -110,8 +115,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
        """
 
         # simulate slew
-        ira = self._position['ra'] * 1.
-        idec = self._position['dec'] * 1.
+        ira, idec = self._status.position.ra.degree, self._status.position.dec.degree
         dra = (ra - ira) / 100.
         ddec = (dec - idec) / 100.
         for i in range(100):
@@ -121,15 +125,13 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
                 raise ValueError('Movement was aborted.')
 
             # move
-            self._position['ra'] = float(ira + i * dra)
-            self._position['dec'] = float(idec + i * ddec)
+            self._status.position = SkyCoord((ira + i * dra) * u.deg, (idec + i * ddec) * u.deg, frame='icrs')
 
             # sleep a little
             abort_event.wait(0.1)
 
         # set final coordinates
-        self._position['ra'] = float(ra)
-        self._position['dec'] = float(dec)
+        self._status.position = SkyCoord(ra * u.deg, dec * u.deg, frame='icrs')
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
@@ -137,7 +139,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Current focus.
         """
-        return self._focus
+        return self._status.focus
 
     @timeout(60000)
     def set_focus(self, focus: float, *args, **kwargs):
@@ -155,7 +157,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
             self._change_motion_status(IMotion.Status.SLEWING, interface='IFocuser')
-            ifoc = self._focus * 1.
+            ifoc = self._status.focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
                 # abort?
@@ -163,10 +165,10 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
                     raise InterruptedError('Setting focus was interrupted.')
 
                 # move focus and sleep a little
-                self._focus = ifoc + i * dfoc
+                self._status.focus = ifoc + i * dfoc
                 time.sleep(0.01)
             self._change_motion_status(IMotion.Status.POSITIONED, interface='IFocuser')
-            self._focus = focus
+            self._status.focus = focus
 
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
@@ -182,7 +184,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Name of currently set filter.
         """
-        return self._filter
+        return self._status.filter
 
     def set_filter(self, filter_name: str, *args, **kwargs):
         """Set the current filter.
@@ -195,13 +197,13 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         """
 
         # log and send event
-        if filter_name != self._filter:
+        if filter_name != self._status.filter:
             # set it
             logging.info('Setting filter to %s', filter_name)
             self._change_motion_status(IMotion.Status.SLEWING, interface='IFilters')
             time.sleep(3)
             self._change_motion_status(IMotion.Status.POSITIONED, interface='IFilters')
-            self._filter = filter_name
+            self._status.filter = filter_name
 
             # send event
             self.comm.send_event(FilterChangedEvent(filter_name))
@@ -245,7 +247,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
-        self._offsets = {'ra': dalt, 'dec': daz}
+        self._status.offsets = (dalt, daz)
 
     def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
         """Get Alt/Az offset.
@@ -253,7 +255,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Tuple with alt and az offsets.
         """
-        return self._offsets['ra'], self._offsets['dec']
+        return self._status.offsets
 
     def get_radec(self, *args, **kwargs) -> (float, float):
         """Returns current RA and Dec.
@@ -261,7 +263,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Tuple of current RA and Dec in degrees.
         """
-        return self._position['ra'], self._position['dec']
+        return float(self._status.position.ra.degree), float(self._status.position.dec.degree)
 
     def get_altaz(self, *args, **kwargs) -> (float, float):
         """Returns current Alt and Az.
@@ -269,8 +271,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        ra_dec = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
-        alt_az = self.observer.altaz(Time.now(), ra_dec)
+        alt_az = self.observer.altaz(Time.now(), self._status.position)
         return float(alt_az.alt.degree), float(alt_az.az.degree)
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
@@ -287,10 +288,10 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         hdr = BaseTelescope.get_fits_headers(self)
 
         # focus
-        hdr['TEL-FOCU'] = (self._focus, 'Focus position [mm]')
+        hdr['TEL-FOCU'] = (self._status.focus, 'Focus position [mm]')
 
         # filter
-        hdr['FILTER'] = (self._filter, 'Focus position [mm]')
+        hdr['FILTER'] = (self._status.filter, 'Focus position [mm]')
 
         # finished
         return self._filter_fits_namespace(hdr, namespaces, **kwargs)

@@ -11,7 +11,7 @@ from pyobs.comm.dummy import DummyComm
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
-from pyobs.object import get_object
+from pyobs.object import get_object, create_object
 from pyobs.vfs import VirtualFileSystem
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
@@ -399,13 +399,22 @@ class Module:
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""
 
-    def __init__(self, modules: Dict[str, Union[Module, dict]], *args, **kwargs):
+    def __init__(self, modules: Dict[str, Union[Module, dict]], shared: Dict[str, Union[object, dict]] = None,
+                 *args, **kwargs):
         """Initializes a new pyobs multi module.
 
         Args:
-            modules: Dictionary with modules
+            modules: Dictionary with modules.
+            shared: Shared objects between modules.
         """
         Module.__init__(self, name='multi', *args, **kwargs)
+
+        # create shared objects
+        self._shared = {}
+        if shared:
+            for name, obj in shared.items():
+                # if obj is an object definition, create it, otherwise just set it
+                self._shared[name] = create_object(obj) if isinstance(obj, dict) and 'class' in obj else obj
 
         # create modules
         self._modules = {}
@@ -416,11 +425,17 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                module = get_object(mod, timezone=self.timezone, location=self.location)
+                module = get_object(mod, timezone=self.timezone, location=self.location, **self._shared)
                 self._modules[name] = module
 
     def open(self):
         """Open module."""
+
+        # open shared objects
+        for name, obj in self._shared.items():
+            # if it has an open method, call it
+            if hasattr(obj, 'open'):
+                getattr(obj, 'open')()
 
         # open all modules
         for name, mod in self._modules.items():
@@ -437,6 +452,12 @@ class MultiModule(Module):
         for name, mod in self._modules.items():
             log.info('Closing module %s...', name)
             mod.close()
+
+        # close shared objects
+        for name, obj in self._shared.items():
+            # if it has an close method, call it
+            if hasattr(obj, 'close'):
+                getattr(obj, 'close')()
 
         # close base
         Module.close(self)

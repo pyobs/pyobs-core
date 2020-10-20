@@ -11,7 +11,7 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
-
+from pyobs.modules.telescope.dummytelescope import DummyTelescopeStatus
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +19,8 @@ log = logging.getLogger(__name__)
 class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
     """A dummy camera for testing."""
 
-    def __init__(self, readout_time: float = 2, sim: dict = None, *args, **kwargs):
+    def __init__(self, readout_time: float = 2, sim: dict = None, status: DummyTelescopeStatus = None,
+                 *args, **kwargs):
         """Creates a new dummy cammera.
 
         Args:
@@ -36,6 +37,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         self._sim = sim if sim is not None else {}
         if 'images' not in self._sim:
             self._sim['images'] = None
+        self._telescope_status = status if status is not None else DummyTelescopeStatus()
 
         # init camera
         self._full_frame = (50, 0, 2048, 2064)

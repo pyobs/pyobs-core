@@ -1,11 +1,12 @@
 import inspect
 import logging
 import threading
-from typing import Union, Type, Any, Callable
+from typing import Union, Type, Any, Callable, Dict
 from py_expression_eval import Parser
 from astropy.coordinates import EarthLocation
 from astroplan import Observer
 import pytz
+from pyobs.comm.dummy import DummyComm
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
@@ -409,4 +410,62 @@ class Module:
             log.exception('Error on remote procedure call: %s' % str(e))
 
 
-__all__ = ['Module', 'timeout']
+class MultiModule(Module):
+    """Wrapper for running multiple modules in a single process."""
+
+    def __init__(self, modules: Dict[str, Union[Module, dict]], *args, **kwargs):
+        """Initializes a new pyobs multi module.
+
+        Args:
+            modules: Dictionary with modules
+        """
+        Module.__init__(self, name='multi', *args, **kwargs)
+
+        # create modules
+        self._modules = {}
+        for name, mod in modules.items():
+            # what is it?
+            if isinstance(mod, Module):
+                # it's a module already, store it
+                self._modules[name] = mod
+            elif isinstance(mod, dict):
+                # dictionary, create it
+                module = get_object(mod, timezone=self.timezone, location=self.location)
+                self._modules[name] = module
+
+    def open(self):
+        """Open module."""
+
+        # open all modules
+        for name, mod in self._modules.items():
+            log.info('Opening module %s...', name)
+            mod.open()
+
+        # open base
+        Module.open(self)
+
+    def close(self):
+        """Close module."""
+
+        # close all modules
+        for name, mod in self._modules.items():
+            log.info('Closing module %s...', name)
+            mod.close()
+
+        # close base
+        Module.close(self)
+
+    @property
+    def modules(self):
+        return self._modules
+
+    def __contains__(self, name: str) -> bool:
+        """Checks, whether this multi-module contains a module of given name."""
+        return name in self._modules
+
+    def __getitem__(self, name: str) -> Module:
+        """Returns module of given name."""
+        return self._modules[name]
+
+
+__all__ = ['Module', 'MultiModule', 'timeout']

@@ -1,1 +1,1 @@
-from .module import Module, timeout
+from .module import Module, MultiModule, timeout

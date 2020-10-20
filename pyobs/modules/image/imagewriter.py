@@ -1,14 +1,14 @@
 import logging
 from queue import Queue
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.events import NewImageEvent
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
 
 
-class ImageWriter(PyObsModule):
+class ImageWriter(Module):
     """Writes new images to disk."""
 
     def __init__(self, new_images_channel: str = 'new_images', filename: str = '/archive/{FNAME}',
@@ -19,7 +19,7 @@ class ImageWriter(PyObsModule):
             new_images_channel: Name of new images channel.
             filename: Pattern for filename to store images at.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # add thread func
         self._add_thread_func(self._worker, True)
@@ -31,7 +31,7 @@ class ImageWriter(PyObsModule):
 
     def open(self):
         """Open image writer."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to channel with new images
         if self._new_images_channel:

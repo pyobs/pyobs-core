@@ -3,7 +3,7 @@ import threading
 import typing
 
 from pyobs.interfaces import IRunnable, IFlatField
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.modules import timeout
 from pyobs.object import create_object
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
@@ -14,7 +14,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class FlatFieldScheduler(PyObsModule, IRunnable):
+class FlatFieldScheduler(Module, IRunnable):
     """Run the flat-field scheduler."""
 
     def __init__(self, flatfield: typing.Union[str, IFlatField], functions: typing.Dict[str, str],
@@ -32,7 +32,7 @@ class FlatFieldScheduler(PyObsModule, IRunnable):
             filter_change: Time required for filter change [s]
             count: Number of flats to take per filter/binning
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._flatfield = flatfield
@@ -51,7 +51,7 @@ class FlatFieldScheduler(PyObsModule, IRunnable):
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check flat field
         try:

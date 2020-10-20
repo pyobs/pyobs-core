@@ -5,7 +5,7 @@ from enum import Enum
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.flatfielder import FlatFielder
@@ -13,7 +13,7 @@ from pyobs.utils.skyflats.flatfielder import FlatFielder
 log = logging.getLogger(__name__)
 
 
-class FlatField(PyObsModule, TableStorageMixin, IFlatField):
+class FlatField(Module, TableStorageMixin, IFlatField):
     """Module for auto-focusing a telescope."""
 
     class Twilight(Enum):
@@ -39,7 +39,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
             pointing: Pointing to use.
             log_file: Name of file to store flat field log in.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store telescope, camera, and filters
         self._telescope = telescope
@@ -64,7 +64,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check telescope, camera, and filters
         try:
@@ -81,7 +81,7 @@ class FlatField(PyObsModule, TableStorageMixin, IFlatField):
 
     def close(self):
         """Close module."""
-        PyObsModule.close(self)
+        Module.close(self)
         self._abort.set()
 
     def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str, binning: int):

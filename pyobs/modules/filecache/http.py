@@ -11,7 +11,7 @@ import tornado.ioloop
 import tornado.web
 import tornado.gen
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.utils.cache import DataCache
 
 log = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class HttpFileCacheServer(PyObsModule, tornado.web.Application):
+class HttpFileCacheServer(Module, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
     def __init__(self, port: int = 37075, cache_size: int = 25, *args, **kwargs):
@@ -90,7 +90,7 @@ class HttpFileCacheServer(PyObsModule, tornado.web.Application):
             port: Port for HTTP server.
             cache_size: Size of file cache, i.e. number of files to cache.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # add thread func
         self._add_thread_func(self._http, False)
@@ -113,7 +113,7 @@ class HttpFileCacheServer(PyObsModule, tornado.web.Application):
 
         # close io loop and parent
         self._io_loop.add_callback(self._io_loop.stop)
-        PyObsModule.close(self)
+        Module.close(self)
 
     @property
     def opened(self) -> bool:

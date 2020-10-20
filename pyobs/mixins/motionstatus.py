@@ -1,6 +1,6 @@
 import logging
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import IMotion
 
@@ -21,7 +21,7 @@ class MotionStatusMixin:
 
     def open(self):
         # subscribe to events
-        self: (PyObsModule, MotionStatusMixin)
+        self: (Module, MotionStatusMixin)
         if self.comm:
             self.comm.register_event(MotionStatusChangedEvent)
 
@@ -32,7 +32,7 @@ class MotionStatusMixin:
             status: New motion status
             interface: Interface to set motion status for
         """
-        self: (PyObsModule, MotionStatusMixin)
+        self: (Module, MotionStatusMixin)
 
         # did something change?
         changed = False

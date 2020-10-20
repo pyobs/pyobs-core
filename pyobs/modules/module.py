@@ -72,7 +72,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     return timeout_decorator
 
 
-class PyObsModule:
+class Module:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
@@ -164,7 +164,7 @@ class PyObsModule:
         """
 
         # create thread
-        t = threading.Thread(target=PyObsModule._thread_func, name=func.__name__, args=(func,))
+        t = threading.Thread(target=Module._thread_func, name=func.__name__, args=(func,))
 
         # add it
         self._threads[t] = (func, restart)
@@ -392,4 +392,4 @@ class PyObsModule:
             log.exception('Error on remote procedure call: %s' % str(e))
 
 
-__all__ = ['PyObsModule', 'timeout']
+__all__ = ['Module', 'timeout']

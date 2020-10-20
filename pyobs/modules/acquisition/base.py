@@ -6,7 +6,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcquisition):
+class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
@@ -32,7 +32,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store telescope and camera
         self._telescope = telescope
@@ -65,7 +65,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check telescope and camera
         try:

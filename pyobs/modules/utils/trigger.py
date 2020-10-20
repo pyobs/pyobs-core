@@ -1,14 +1,14 @@
 import logging
 
 from pyobs.events import Event
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)
 
 
-class Trigger(PyObsModule, IAutonomous):
+class Trigger(Module, IAutonomous):
     """A module that can call another module's methods when a specific event occurs."""
 
     def __init__(self, triggers: list, *args, **kwargs):
@@ -19,7 +19,7 @@ class Trigger(PyObsModule, IAutonomous):
                       may contain a sender.
 
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._running = False
@@ -33,7 +33,7 @@ class Trigger(PyObsModule, IAutonomous):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # get a list of all events
         events = list(set([t['event'] for t in self._triggers]))

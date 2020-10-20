@@ -3,7 +3,7 @@ import time
 from threading import Event
 from typing import Union, List
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IMotion
 
 log = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class WaitForMotionMixin:
             return
 
         # I'm a module!
-        self: Union[WaitForMotionMixin, PyObsModule]
+        self: Union[WaitForMotionMixin, Module]
 
         # get all proxies
         proxies = [self.proxy(device) for device in self.__wait_for_modules]

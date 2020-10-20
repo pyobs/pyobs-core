@@ -11,7 +11,7 @@ import yaml
 
 from pyobs.comm.dummy import DummyComm
 from pyobs.object import get_object
-from pyobs.modules import PyObsModule
+from pyobs.modules import Module
 from pyobs.comm import Comm
 from pyobs.comm.xmpp import XmppComm
 from pyobs.interfaces import IConfigProvider
@@ -123,7 +123,7 @@ class Application:
 
             # create module and open it
             log.info('Creating module...')
-            self._module = get_object(cfg, comm=self._comm)   # type: PyObsModule
+            self._module = get_object(cfg, comm=self._comm)   # type: Module
             log.info('Opening module...')
             self._module.open()
             log.info('Started successfully.')

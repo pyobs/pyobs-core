@@ -1,1 +1,1 @@
-from .module import PyObsModule, timeout
+from .module import Module, timeout

@@ -5,13 +5,13 @@ from io import StringIO
 import yaml
 
 from pyobs.interfaces import IConfigProvider
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.utils.config import pre_process_yaml
 
 log = logging.getLogger(__name__)
 
 
-class Config(PyObsModule, IConfigProvider):
+class Config(Module, IConfigProvider):
     """Config provider."""
 
     def __init__(self, path: str, *args, **kwargs):
@@ -20,7 +20,7 @@ class Config(PyObsModule, IConfigProvider):
         Args:
             path: Path to config YAML files.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
         self._path = path
 
     def get_config(self, module: str, *args, **kwargs) -> dict:

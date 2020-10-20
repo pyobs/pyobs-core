@@ -5,8 +5,7 @@ from typing import Any, Union, Type
 import threading
 
 import pyobs.interfaces
-from pyobs.events import Event, LogEvent
-from pyobs.events.clientdisconnected import ClientDisconnectedEvent
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
@@ -61,7 +60,7 @@ class Comm:
         self.variables.open()
 
         # some events
-        self.register_event(ClientDisconnectedEvent, self._client_disconnected)
+        self.register_event(ModuleClosedEvent, self._client_disconnected)
 
     def close(self):
         """Close module."""
@@ -162,7 +161,7 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def _client_disconnected(self, event: ClientDisconnectedEvent, sender: str, *args, **kwargs):
+    def _client_disconnected(self, event: ModuleClosedEvent, sender: str, *args, **kwargs):
         """Called when a client disconnects.
 
         Args:

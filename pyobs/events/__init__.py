@@ -6,6 +6,8 @@ from .focusfound import FocusFoundEvent
 from .goodweather import GoodWeatherEvent
 from .initialized import InitializedEvent
 from .log import LogEvent
+from .moduleclosed import ModuleClosedEvent
+from .moduleopened import ModuleOpenedEvent
 from .motionstatuschanged import MotionStatusChangedEvent
 from .newimage import NewImageEvent
 from .roofclosing import RoofClosingEvent

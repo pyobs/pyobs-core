@@ -78,7 +78,7 @@ def start_daemon(app_class, pid_file=None, *args, **kwargs):
 
 
 def run(app_class, config=None, log_file: str = None, log_level: str = 'info', log_rotate: bool = False,
-        username: str = None, password: str = None, server: str = None, comm: str = 'xmpp', *args, **kwargs):
+        *args, **kwargs):
     """Run a pyobs application with the given options.
 
     Args:
@@ -87,15 +87,11 @@ def run(app_class, config=None, log_file: str = None, log_level: str = 'info', l
         log_file: Name of file to log to, if any.
         log_level: Logging level.
         log_rotate: Whether or not to rotate the logs.
-        username: Username for server connection (or given in config or environment).
-        password: Password for server connection (or given in config or environment).
-        server: Server to connect to (or given in config or environment).
-        comm: Type of comm object to use (or given in config or environment), defaults to 'xmpp'.
     """
 
     # create app and run it
     app = app_class(log_file, log_level, log_rotate)
-    app.run(config, username, password, server, comm)
+    app.run(config)
 
 
 def main():

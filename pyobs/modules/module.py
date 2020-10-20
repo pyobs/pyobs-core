@@ -103,10 +103,16 @@ class Module:
         # closing event
         self.closing = threading.Event()
 
-        # connect comm module
-        self.comm = comm
-        if comm:
-            self.comm.module = self
+        # comm object
+        if comm is None:
+            self.comm = DummyComm()
+        elif isinstance(comm, Comm):
+            self.comm = comm
+        elif isinstance(comm, dict):
+            log.info('Creating comm object...')
+            self.comm = get_object(comm)
+        else:
+            raise ValueError('Invalid Comm object')
 
         # create vfs
         if vfs:
@@ -172,6 +178,12 @@ class Module:
     def open(self):
         """Open module."""
 
+        # open comm
+        if self.comm is not None:
+            # open it and connect module
+            self.comm.open()
+            self.comm.module = self
+
         # open plugins
         if self._plugins:
             log.info('Opening plugins...')
@@ -208,6 +220,11 @@ class Module:
             log.info('Closing plugins...')
             for plg in self._plugins:
                 plg.close()
+
+        # close comm
+        if self.comm is not None:
+            log.info('Closing connection to server...')
+            self.comm.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.

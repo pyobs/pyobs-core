@@ -1,3 +1,4 @@
+import datetime
 import inspect
 import logging
 import threading
@@ -77,8 +78,8 @@ class Module:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 timezone: str = 'utc', location: Union[str, dict] = None, plugins: list = None,
-                 *args, **kwargs):
+                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
+                 plugins: list = None, *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
@@ -123,12 +124,19 @@ class Module:
             self.vfs = VirtualFileSystem()
 
         # timezone
-        self.timezone = pytz.timezone(timezone)
+        if isinstance(timezone, datetime.tzinfo):
+            self.timezone = timezone
+        elif isinstance(timezone, str):
+            self.timezone = pytz.timezone(timezone)
+        else:
+            raise ValueError('Unknown format for timezone.')
         log.info('Using timezone %s.', timezone)
 
         # location
         if location is None:
             self.location = None
+        elif isinstance(location, EarthLocation):
+            self.location = location
         elif isinstance(location, str):
             self.location = EarthLocation.of_site(location)
         elif isinstance(location, dict):

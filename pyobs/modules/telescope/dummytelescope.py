@@ -169,7 +169,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             List of available filters.
         """
-        return ['U', 'B', 'V', 'R', 'I']
+        return self._telescope.filters
 
     def get_filter(self, *args, **kwargs) -> str:
         """Get currently set filter.

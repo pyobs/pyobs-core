@@ -17,7 +17,8 @@ class SimTelescope:
         self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs')
         self.offsets = (0., 0.)
         self.focus = 52.
-        self.filter = 'V'
+        self.filters = ['clear', 'B', 'V', 'R']
+        self.filter = 'clear'
 
 
 class SimCamera:

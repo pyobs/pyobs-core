@@ -1,5 +1,7 @@
 from __future__ import annotations
 from collections import OrderedDict
+
+from astroplan import Observer
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.time import Time
@@ -7,6 +9,7 @@ from typing import Union
 from photutils.datasets import make_gaussian_prf_sources_image, make_random_models_table
 from photutils.datasets import make_noise_image
 
+from pyobs import Module
 from pyobs.object import create_object
 
 
@@ -40,6 +43,8 @@ class SimCamera:
             numpy array with image.
         """
 
+        print(self.world.time, self.world.sun_alt)
+
         # get shape for image
         shape = (int(self.window[3]), int(self.window[2]))
 
@@ -68,7 +73,7 @@ class SimCamera:
         return image
 
 
-class SimWorld:
+class SimWorld(Module):
     """A simulated world."""
 
     def __init__(self, time: Union[Time, str] = None,
@@ -80,11 +85,12 @@ class SimWorld:
             time: Time at start of simulation.
             telescope: Telescope to use.
             camera: Camera to use.
+            observer: Observer to use.
             *args:
             **kwargs:
         """
+        Module.__init__(self, *args, **kwargs)
 
-        time = '2020-08-10 20:12:00'
         # get start time
         if time is None:
             time = Time.now()
@@ -115,9 +121,16 @@ class SimWorld:
             raise ValueError('Invalid camera.')
 
     @property
-    def time(self):
+    def time(self) -> Time:
         """Returns current time in simulation."""
         return Time.now() + self.time_offset
+
+    @property
+    def sun_alt(self) -> float:
+        """Returns current solar altitude."""
+        return float(self.observer.sun_altaz(self.time).alt.degree)
+
+
 
 
 __all__ = ['SimTelescope', 'SimCamera', 'SimWorld']

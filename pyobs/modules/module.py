@@ -414,7 +414,8 @@ class MultiModule(Module):
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it
-                self._shared[name] = create_object(obj) if isinstance(obj, dict) and 'class' in obj else obj
+                self._shared[name] = create_object(obj, timezone=self.timezone, location=self.location) \
+                    if isinstance(obj, dict) and 'class' in obj else obj
 
         # create modules
         self._modules = {}

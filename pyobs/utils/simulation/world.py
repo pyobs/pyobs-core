@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections import OrderedDict
-
-from astroplan import Observer
+import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.time import Time
@@ -53,19 +52,31 @@ class SimCamera:
         if exp_time > 0:
             image += make_noise_image(shape, distribution='gaussian', mean=exp_time / 100., stddev=10.)
 
-        # add stars
-        if open_shutter:
-            # create random table with sources
-            n_sources = 50
-            param_ranges = [('amplitude', [1000, 20000]),
-                            ('x_0', [0, self.window[3]]),
-                            ('y_0', [0, self.window[2]]),
-                            ('sigma', [2. / self.binning[0], 2.2 / self.binning[0]])]
-            param_ranges = OrderedDict(param_ranges)
-            sources = make_random_models_table(n_sources, param_ranges, seed=0)
+            # add stars and stuff
+            if open_shutter:
+                # get solar altitude
+                sun_alt = self.world.sun_alt
 
-            # add image
-            image += make_gaussian_prf_sources_image(shape, sources)
+                # get mean flatfield counts
+                flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time / 1000.
+
+                # create flat
+                image += make_noise_image(shape, distribution='gaussian', mean=flat_counts, stddev=flat_counts / 10.)
+
+                # create random table with sources
+                n_sources = 50
+                param_ranges = [('amplitude', [1000, 20000]),
+                                ('x_0', [0, self.window[3]]),
+                                ('y_0', [0, self.window[2]]),
+                                ('sigma', [2. / self.binning[0], 2.2 / self.binning[0]])]
+                param_ranges = OrderedDict(param_ranges)
+                sources = make_random_models_table(n_sources, param_ranges, seed=0)
+
+                # create image
+                image += make_gaussian_prf_sources_image(shape, sources)
+
+        # saturate
+        image[image > 65535] = 65535
 
         # return it
         return image

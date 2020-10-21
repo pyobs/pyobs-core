@@ -43,8 +43,6 @@ class SimCamera:
             numpy array with image.
         """
 
-        print(self.world.time, self.world.sun_alt)
-
         # get shape for image
         shape = (int(self.window[3]), int(self.window[2]))
 

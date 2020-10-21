@@ -129,10 +129,13 @@ class SepPhotometry(Photometry):
             sources['flag'] |= flag
 
         # average background at each source
+        # since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area
         bkgflux, fluxerr, flag = sep.sum_ellipse(bkg.back(), sources['x'], sources['y'],
                                                  sources['a'], sources['b'], np.pi / 2.0,
                                                  2.5 * sources['kronrad'], subpix=1)
-        background_area = (2.5 * sources['kronrad']) ** 2.0 * sources['a'] * sources['b'] * np.pi
+        background_area, _, _ = sep.sum_ellipse(np.ones(shape=bkg.back().shape), sources['x'], sources['y'],
+                                                sources['a'], sources['b'], np.pi / 2.0,
+                                                2.5 * sources['kronrad'], subpix=1)
         sources['background'] = bkgflux
         sources['background'][background_area > 0] /= background_area[background_area > 0]
 

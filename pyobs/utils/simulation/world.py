@@ -1,11 +1,9 @@
+from __future__ import annotations
 from collections import OrderedDict
-
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.time import Time
 from typing import Union
-import numpy as np
-
-from astropy.table import Table
 from photutils.datasets import make_gaussian_prf_sources_image, make_random_models_table
 from photutils.datasets import make_noise_image
 
@@ -14,7 +12,8 @@ from pyobs.object import create_object
 
 class SimTelescope:
     """A simulated telescope on an equitorial mount."""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, world: SimWorld, *args, **kwargs):
+        self.world = world
         self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs')
         self.offsets = (0., 0.)
         self.focus = 52.
@@ -23,7 +22,8 @@ class SimTelescope:
 
 class SimCamera:
     """A simulated camera."""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, world: SimWorld, *args, **kwargs):
+        self.world = world
         self.full_frame = (0, 0, 512, 512)
         self.window = tuple(self.full_frame)
         self.binning = (1, 1)
@@ -70,28 +70,53 @@ class SimCamera:
 class SimWorld:
     """A simulated world."""
 
-    def __init__(self, telescope: Union[SimTelescope, dict] = None, camera: Union[SimCamera, dict] = None,
+    def __init__(self, time: Union[Time, str] = None,
+                 telescope: Union[SimTelescope, dict] = None, camera: Union[SimCamera, dict] = None,
                  *args, **kwargs):
+        """Initializes a new simulated world.
+
+        Args:
+            time: Time at start of simulation.
+            telescope: Telescope to use.
+            camera: Camera to use.
+            *args:
+            **kwargs:
+        """
+
+        time = '2020-08-10 20:12:00'
+        # get start time
+        if time is None:
+            time = Time.now()
+        elif isinstance(time, str):
+            time = Time(time)
+
+        # calculate time offset
+        self.time_offset = time - Time.now()
 
         # get telescope
         if telescope is None:
-            self.telescope = SimTelescope()
+            self.telescope = SimTelescope(world=self)
         elif isinstance(telescope, SimTelescope):
             self.telescope = telescope
         elif isinstance(telescope, dict):
-            self.telescope = create_object(telescope)
+            self.telescope = create_object(telescope, world=self)
         else:
             raise ValueError('Invalid telescope.')
 
         # get camera
         if camera is None:
-            self.camera = SimCamera()
+            self.camera = SimCamera(world=self)
         elif isinstance(camera, SimCamera):
             self.camera = telescope
         elif isinstance(camera, dict):
-            self.camera = create_object(camera)
+            self.camera = create_object(camera, world=self)
         else:
             raise ValueError('Invalid camera.')
+
+    @property
+    def time(self):
+        """Returns current time in simulation."""
+        return Time.now() + self.time_offset
 
 
 __all__ = ['SimTelescope', 'SimCamera', 'SimWorld']

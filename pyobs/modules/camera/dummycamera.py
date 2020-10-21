@@ -11,7 +11,7 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.simulation.world import SimWorld
+from pyobs.utils.simulation.world import SimWorld, SimCamera
 
 log = logging.getLogger(__name__)
 
@@ -39,11 +39,9 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
 
         # simulated world
         self._world = world if world is not None else SimWorld()
+        self._camera: SimCamera = self._world.camera
 
         # init camera
-        self._full_frame = (50, 0, 2048, 2064)
-        self._window = self._full_frame
-        self._binning = (1, 1)
         self._cooling = {'Enabled': True, 'SetPoint': -10., 'Power': 80,
                          'Temperatures':  {'CCD': 0.0, 'Backplate': 3.14}}
         self._exposing = True
@@ -73,9 +71,9 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return self._full_frame
+        return self._camera.full_frame
 
-    def _get_image(self, exp_time: float) -> fits.PrimaryHDU:
+    def _get_image(self, exp_time: float, open_shutter: bool) -> fits.PrimaryHDU:
         """Actually get (i.e. simulate) the image."""
 
         # random image or pre-defined?
@@ -87,7 +85,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
 
         else:
             left, top, width, height = self.get_window()
-            data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
+            #data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
+            data = self._camera.get_image(exp_time, open_shutter)
             hdu = fits.PrimaryHDU(data.astype('uint16'))
             hdu.header['DATAMEAN'] = 1000.
             return hdu
@@ -129,18 +128,18 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         time.sleep(self._redout_time)
 
         # get image
-        hdu = self._get_image(exposure_time)
+        hdu = self._get_image(exposure_time, open_shutter)
 
         # add headers
         hdu.header['EXPTIME'] = exposure_time / 1000.
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning[0], 'Binning factor used on X axis')
-        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning[1], 'Binning factor used on Y axis')
-        hdu.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
-        hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
+        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._camera.binning[0], 'Binning factor used on X axis')
+        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._camera.binning[1], 'Binning factor used on Y axis')
+        hdu.header['XORGSUBF'] = (self._camera.window[0], 'Subframe origin on X axis')
+        hdu.header['YORGSUBF'] = (self._camera.window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
-        self.set_biassec_trimsec(hdu.header, *self._full_frame)
+        self.set_biassec_trimsec(hdu.header, *self._camera.full_frame)
 
         # finished
         log.info('Exposure finished.')
@@ -161,7 +160,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return self._window
+        return self._camera.window
 
     def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
         """Set the camera window.
@@ -176,7 +175,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
-        self._window = (left, top, width, height)
+        self._camera.window = (left, top, width, height)
 
     def get_binning(self, *args, **kwargs) -> (int, int):
         """Returns the camera binning.
@@ -184,7 +183,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         Returns:
             Tuple with x and y.
         """
-        return self._binning
+        return self._camera.binning
 
     def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
@@ -197,7 +196,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If binning could not be set.
         """
         log.info("Set binning to %dx%d.", x, y)
-        self._binning = (x, y)
+        self._camera.binning = (x, y)
 
     def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
         """Enables/disables cooling and sets setpoint.

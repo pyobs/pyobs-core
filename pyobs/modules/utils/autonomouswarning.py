@@ -3,14 +3,14 @@ import os
 import subprocess
 
 from pyobs.events import Event
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)
 
 
-class AutonomousWarning(PyObsModule):
+class AutonomousWarning(Module):
     """A module that can plays a warning sound while an IAutonomous module is running."""
 
     def __init__(self, warn_sound: str, warn_interval: float = 1,
@@ -28,7 +28,7 @@ class AutonomousWarning(PyObsModule):
             trigger_file: File, which triggers to switch on-off and vice versa, when created.
                 Will be deleted afterwards.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._warn_sound = warn_sound

@@ -1,4 +1,4 @@
 from .application import Application
 from .environment import Environment
-from .modules import PyObsModule
+from .modules import Module
 from .object import get_object

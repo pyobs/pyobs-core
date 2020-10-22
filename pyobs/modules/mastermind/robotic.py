@@ -3,7 +3,7 @@ import threading
 from typing import Union
 import astropy.units as u
 
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderProvider, IAutonomous
@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
+class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_overrun: int = 300, *args, **kwargs):
@@ -25,7 +25,7 @@ class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
             tasks: Task archive to use
             allowed_overrun: Allowed time for a task to exceed it's window in seconds
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._allowed_overrun = allowed_overrun
@@ -45,7 +45,7 @@ class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:
@@ -60,7 +60,7 @@ class RoboticMastermind(PyObsModule, IAutonomous, IFitsHeaderProvider):
 
     def close(self):
         """Close module."""
-        PyObsModule.close(self)
+        Module.close(self)
 
         # close scheduler
         self._task_archive.close()

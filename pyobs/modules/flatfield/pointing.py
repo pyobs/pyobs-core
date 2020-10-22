@@ -2,14 +2,14 @@ import logging
 import typing
 
 from pyobs.interfaces import ITelescope, IRunnable
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
 
 
-class FlatFieldPointing(PyObsModule, IRunnable):
+class FlatFieldPointing(Module, IRunnable):
     """Module for pointing a telescope."""
 
     def __init__(self, telescope: typing.Union[str, ITelescope], pointing: typing.Union[dict, SkyFlatsBasePointing],
@@ -20,7 +20,7 @@ class FlatFieldPointing(PyObsModule, IRunnable):
             telescope: Telescope to point
             pointing: Pointing for calculating coordinates.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store telescope and pointing
         self._telescope = telescope

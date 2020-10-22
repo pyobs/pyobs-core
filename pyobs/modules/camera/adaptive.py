@@ -5,7 +5,7 @@ from typing import Union
 import pandas as pd
 import numpy as np
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
@@ -22,7 +22,7 @@ class AdaptiveCameraMode(Enum):
     BRIGHTEST = 'brightest'
 
 
-class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISettings):
+class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
     """A virtual camera for adaptive exposure times."""
 
     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
@@ -39,7 +39,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
             max_exptime: Maximum exposure time.
             history: Length of history.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._camera_name = camera
@@ -72,7 +72,7 @@ class AdaptiveCamera(PyObsModule, ICamera, ICameraWindow, ICameraBinning, ISetti
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:

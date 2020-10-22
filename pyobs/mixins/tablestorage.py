@@ -4,7 +4,7 @@ import numpy as np
 import logging
 from typing import Dict, Type, Union
 
-from pyobs import PyObsModule
+from pyobs import Module
 
 
 log = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class TableStorageMixin:
         """Load the table from file."""
 
         # I'm a PyobsModule as well!
-        self: Union[TableStorageMixin, PyObsModule]
+        self: Union[TableStorageMixin, Module]
 
         # try to load data
         try:
@@ -67,7 +67,7 @@ class TableStorageMixin:
         """Save the table to file."""
 
         # I'm a PyobsModule as well!
-        self: Union[TableStorageMixin, PyObsModule]
+        self: Union[TableStorageMixin, Module]
 
         # first, store it in memory
         self.__table_storage_data = table

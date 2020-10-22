@@ -15,7 +15,7 @@ from pyobs.comm import TimeoutException
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent, BadWeatherEvent, RoofClosingEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
@@ -27,7 +27,7 @@ class CameraException(Exception):
     pass
 
 
-class BaseCamera(PyObsModule, ICamera, IAbortable):
+class BaseCamera(Module, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
                  flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
@@ -42,7 +42,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # check
         if self.comm is None:
@@ -75,7 +75,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:

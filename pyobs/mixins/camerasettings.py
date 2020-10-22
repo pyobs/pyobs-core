@@ -1,7 +1,7 @@
 import logging
 from typing import Union
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import ICamera, IFilters, ICameraWindow, ICameraBinning
 
 log = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class CameraSettingsMixin:
         """Do camera settings for given camera."""
 
         # I'm a module!
-        self: Union[PyObsModule, CameraSettingsMixin]
+        self: Union[Module, CameraSettingsMixin]
 
         # filter
         if self.__camerasettings_filters is not None and self.__camerasettings_filter is not None:

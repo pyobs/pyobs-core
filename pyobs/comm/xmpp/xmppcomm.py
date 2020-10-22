@@ -9,9 +9,7 @@ from sleekxmpp.xmlstream import ET
 import xml.sax.saxutils
 
 from pyobs.comm import Comm
-from pyobs.events import Event, LogEvent
-from pyobs.events.clientconnected import ClientConnectedEvent
-from pyobs.events.clientdisconnected import ClientDisconnectedEvent
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
@@ -224,7 +222,7 @@ class XmppComm(Comm):
 
         # append to list and send event
         self._online_clients.append(msg['from'].full)
-        self._send_event_to_module(ClientConnectedEvent(), msg['from'].username)
+        self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
 
     def _got_offline(self, msg):
         """If a new client disconnects, remove it from list.
@@ -235,7 +233,7 @@ class XmppComm(Comm):
 
         # remove from list and send event
         self._online_clients.remove(msg['from'].full)
-        self._send_event_to_module(ClientDisconnectedEvent(), msg['from'].username)
+        self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
 
     @property
     def clients(self):

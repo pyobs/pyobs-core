@@ -1,11 +1,11 @@
 from .event import Event
 
 
-class ClientDisconnectedEvent(Event):
+class ModuleClosedEvent(Event):
     local = True
 
     def __init__(self):
         Event.__init__(self)
 
 
-__all__ = ['ClientDisconnectedEvent']
+__all__ = ['ModuleClosedEvent']

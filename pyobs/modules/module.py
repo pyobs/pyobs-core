@@ -1,15 +1,17 @@
+import datetime
 import inspect
 import logging
 import threading
-from typing import Union, Type, Any, Callable
+from typing import Union, Type, Any, Callable, Dict
 from py_expression_eval import Parser
 from astropy.coordinates import EarthLocation
 from astroplan import Observer
 import pytz
+from pyobs.comm.dummy import DummyComm
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
-from pyobs.object import get_object
+from pyobs.object import get_object, create_object
 from pyobs.vfs import VirtualFileSystem
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
@@ -72,11 +74,11 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     return timeout_decorator
 
 
-class PyObsModule:
+class Module:
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 timezone: str = 'utc', location: Union[str, dict] = None, plugins: list = None,
+                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
                  *args, **kwargs):
         """Initializes a new pyobs module.
 
@@ -86,7 +88,6 @@ class PyObsModule:
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
-            plugins: List of plugins to start.
         """
 
         # an event that will be fired when closing the module
@@ -103,10 +104,16 @@ class PyObsModule:
         # closing event
         self.closing = threading.Event()
 
-        # connect comm module
-        self.comm = comm
-        if comm:
-            self.comm.module = self
+        # comm object
+        if comm is None:
+            self.comm = DummyComm()
+        elif isinstance(comm, Comm):
+            self.comm = comm
+        elif isinstance(comm, dict):
+            log.info('Creating comm object...')
+            self.comm = get_object(comm)
+        else:
+            raise ValueError('Invalid Comm object')
 
         # create vfs
         if vfs:
@@ -116,12 +123,19 @@ class PyObsModule:
             self.vfs = VirtualFileSystem()
 
         # timezone
-        self.timezone = pytz.timezone(timezone)
+        if isinstance(timezone, datetime.tzinfo):
+            self.timezone = timezone
+        elif isinstance(timezone, str):
+            self.timezone = pytz.timezone(timezone)
+        else:
+            raise ValueError('Unknown format for timezone.')
         log.info('Using timezone %s.', timezone)
 
         # location
         if location is None:
             self.location = None
+        elif isinstance(location, EarthLocation):
+            self.location = location
         elif isinstance(location, str):
             self.location = EarthLocation.of_site(location)
         elif isinstance(location, dict):
@@ -136,15 +150,6 @@ class PyObsModule:
             log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
                      self.location.lon, self.location.lat, self.location.height)
             self.observer = Observer(location=self.location, timezone=timezone)
-
-        # plugins
-        self._plugins = []
-        if plugins:
-            for cfg in plugins.values():
-                plg = get_object(cfg)   # Type: PyObsModule
-                plg.comm = self.comm
-                plg.observer = self.observer
-                self._plugins.append(plg)
 
         # opened?
         self._opened = False
@@ -164,7 +169,7 @@ class PyObsModule:
         """
 
         # create thread
-        t = threading.Thread(target=PyObsModule._thread_func, name=func.__name__, args=(func,))
+        t = threading.Thread(target=Module._thread_func, name=func.__name__, args=(func,))
 
         # add it
         self._threads[t] = (func, restart)
@@ -172,11 +177,11 @@ class PyObsModule:
     def open(self):
         """Open module."""
 
-        # open plugins
-        if self._plugins:
-            log.info('Opening plugins...')
-            for plg in self._plugins:
-                plg.open()
+        # open comm
+        if self.comm is not None:
+            # open it and connect module
+            self.comm.open()
+            self.comm.module = self
 
         # start threads and watchdog
         for thread, (target, _) in self._threads.items():
@@ -203,11 +208,10 @@ class PyObsModule:
             self._watchdog.join()
         [t.join() for t in self._threads.keys() if t.is_alive()]
 
-        # close plugins
-        if self._plugins:
-            log.info('Closing plugins...')
-            for plg in self._plugins:
-                plg.close()
+        # close comm
+        if self.comm is not None:
+            log.info('Closing connection to server...')
+            self.comm.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
@@ -392,4 +396,84 @@ class PyObsModule:
             log.exception('Error on remote procedure call: %s' % str(e))
 
 
-__all__ = ['PyObsModule', 'timeout']
+class MultiModule(Module):
+    """Wrapper for running multiple modules in a single process."""
+
+    def __init__(self, modules: Dict[str, Union[Module, dict]], shared: Dict[str, Union[object, dict]] = None,
+                 *args, **kwargs):
+        """Initializes a new pyobs multi module.
+
+        Args:
+            modules: Dictionary with modules.
+            shared: Shared objects between modules.
+        """
+        Module.__init__(self, name='multi', *args, **kwargs)
+
+        # create shared objects
+        self._shared = {}
+        if shared:
+            for name, obj in shared.items():
+                # if obj is an object definition, create it, otherwise just set it
+                self._shared[name] = create_object(obj, timezone=self.timezone, location=self.location) \
+                    if isinstance(obj, dict) and 'class' in obj else obj
+
+        # create modules
+        self._modules = {}
+        for name, mod in modules.items():
+            # what is it?
+            if isinstance(mod, Module):
+                # it's a module already, store it
+                self._modules[name] = mod
+            elif isinstance(mod, dict):
+                # dictionary, create it
+                module = get_object(mod, timezone=self.timezone, location=self.location, **self._shared)
+                self._modules[name] = module
+
+    def open(self):
+        """Open module."""
+
+        # open shared objects
+        for name, obj in self._shared.items():
+            # if it has an open method, call it
+            if hasattr(obj, 'open'):
+                getattr(obj, 'open')()
+
+        # open all modules
+        for name, mod in self._modules.items():
+            log.info('Opening module %s...', name)
+            mod.open()
+
+        # open base
+        Module.open(self)
+
+    def close(self):
+        """Close module."""
+
+        # close all modules
+        for name, mod in self._modules.items():
+            log.info('Closing module %s...', name)
+            mod.close()
+
+        # close shared objects
+        for name, obj in self._shared.items():
+            # if it has an close method, call it
+            if hasattr(obj, 'close'):
+                getattr(obj, 'close')()
+
+        # close base
+        Module.close(self)
+
+    @property
+    def modules(self):
+        return self._modules
+
+    def __contains__(self, name: str) -> bool:
+        """Checks, whether this multi-module contains a module of given name."""
+        return name in self._modules
+
+    def __getitem__(self, name: str) -> Module:
+        """Returns module of given name."""
+        return self._modules[name]
+
+
+__all__ = ['Module', 'MultiModule', 'timeout']

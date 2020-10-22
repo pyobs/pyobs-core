@@ -3,7 +3,7 @@ from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
@@ -13,7 +13,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
+class FocusModel(Module, TableStorageMixin, IFocusModel):
     """A focus model that is automatically applied to an IFocuser.
 
     If, e.g., the model is defined as:
@@ -70,7 +70,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
             filter_offsets: Offsets for different filters. If None, they are not modeled.
             filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # check import
         import lmfit
@@ -130,7 +130,7 @@ class FocusModel(PyObsModule, TableStorageMixin, IFocusModel):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         self.comm.register_event(FocusFoundEvent, self._on_focus_found)

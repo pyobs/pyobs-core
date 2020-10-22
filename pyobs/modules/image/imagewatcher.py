@@ -4,13 +4,13 @@ import os
 from queue import Queue
 from astropy.io import fits
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
 
 
-class ImageWatcher(PyObsModule):
+class ImageWatcher(Module):
     """Watch for new images and write them to all given destinations.
 
     Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
@@ -24,7 +24,7 @@ class ImageWatcher(PyObsModule):
             watchpath: Path to watch.
             destinations: Filename patterns for destinations.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # test import
         import pyinotify
@@ -44,7 +44,7 @@ class ImageWatcher(PyObsModule):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
         import pyinotify
 
         class EventHandler(pyinotify.ProcessEvent):
@@ -69,7 +69,7 @@ class ImageWatcher(PyObsModule):
 
     def close(self):
         """Close image watcher."""
-        PyObsModule.close(self)
+        Module.close(self)
 
         # stop watching
         if self._notifier:

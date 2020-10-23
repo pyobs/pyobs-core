@@ -11,6 +11,7 @@ from pyobs.comm.dummy import DummyComm
 
 from pyobs.environment import Environment
 from pyobs.comm import Comm
+from pyobs.interfaces import IModule
 from pyobs.object import get_object, create_object
 from pyobs.vfs import VirtualFileSystem
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
@@ -74,7 +75,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     return timeout_decorator
 
 
-class Module:
+class Module(IModule):
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
@@ -293,6 +294,10 @@ class Module:
     def name(self):
         """Name of module."""
         return self._name
+
+    def label(self, *args, **kwargs) -> str:
+        """Returns label of module."""
+        return self._label
 
     def implements(self, interface):
         """checks, whether this object implements a given interface"""

@@ -78,13 +78,14 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
 class Module(IModule):
     """Base class for all pyobs modules."""
 
-    def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
-                 *args, **kwargs):
+    def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None,
+                 vfs: Union[VirtualFileSystem, dict] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
+                 location: Union[str, dict, EarthLocation] = None, *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
-            name: Name of module.
+            name: Name of module. If None, ID from comm object is used.
+            label: Label for module. If None, name is used.
             comm: Comm object to use
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
@@ -93,9 +94,6 @@ class Module(IModule):
 
         # an event that will be fired when closing the module
         self.closing = threading.Event()
-
-        # name
-        self._name = name
 
         # get list of client interfaces
         self._interfaces = []
@@ -115,6 +113,14 @@ class Module(IModule):
             self.comm = get_object(comm)
         else:
             raise ValueError('Invalid Comm object')
+
+        # name and label
+        self._name = name
+        if self._name is None:
+            self._name = self.comm.name
+        self._label = label
+        if self._label is None:
+            self._label = self._name
 
         # create vfs
         if vfs:
@@ -290,9 +296,8 @@ class Module(IModule):
         while not self.closing.is_set():
             self.closing.wait(1)
 
-    @property
-    def name(self):
-        """Name of module."""
+    def name(self, *args, **kwargs) -> str:
+        """Returns name of module."""
         return self._name
 
     def label(self, *args, **kwargs) -> str:

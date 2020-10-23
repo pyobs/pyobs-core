@@ -31,7 +31,7 @@ class BaseCamera(Module, ICamera, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
                  flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 cache: str = '/pyobs/camera_cache.json', fits_namespaces: list = None, *args, **kwargs):
+                 fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
@@ -70,7 +70,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         self.expose_abort = threading.Event()
 
         # night exposure number
-        self._cache = cache
+        self._cache = '/pyobs/modules/%s/cache.yaml' % self.name()
         self._frame_num = 0
 
     def open(self):

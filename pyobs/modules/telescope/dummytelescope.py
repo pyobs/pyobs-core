@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzOffsets, ITemperatures
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, ITemperatures, IRaDecOffsets
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
@@ -16,7 +16,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
+class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
 
@@ -28,6 +28,9 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         # init world and get telescope
         self._world = world if world is not None else SimWorld()
         self._telescope = self._world.telescope
+
+        # automatically send status updates
+        self._telescope.status_callback = self._change_motion_status
 
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
@@ -44,7 +47,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
             self.comm.register_event(TelescopeMovingEvent)
 
         # init status
-        self._change_motion_status(IMotion.Status.PARKED)
+        self._change_motion_status(IMotion.Status.IDLE)
 
     def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -58,15 +61,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
             Exception: On any error.
         """
 
-        # send events
-        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        # send event
         self.comm.send_event(TelescopeMovingEvent(ra=ra, dec=dec))
 
         # start slewing
         self.__move(ra, dec, abort_event)
-
-        # finish slewing
-        self._change_motion_status(IMotion.Status.TRACKING, interface='ITelescope')
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -85,15 +84,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
                           location=self.location, frame='altaz')
         icrs = coords.icrs
 
-        # send events
-        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        # send event
         self.comm.send_event(TelescopeMovingEvent(alt=alt, az=az))
 
         # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
-
-        # set telescope to idle
-        self._change_motion_status(IMotion.Status.IDLE)
 
     def __move(self, ra: float, dec: float, abort_event: threading.Event):
         """Simulate move.
@@ -108,23 +103,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
        """
 
         # simulate slew
-        ira, idec = self._telescope.position.ra.degree, self._telescope.position.dec.degree
-        dra = (ra - ira) / 100.
-        ddec = (dec - idec) / 100.
-        for i in range(100):
-            # abort?
-            if abort_event.is_set():
-                self._change_motion_status(IMotion.Status.IDLE)
-                raise ValueError('Movement was aborted.')
+        self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs'))
 
-            # move
-            self._telescope.position = SkyCoord((ira + i * dra) * u.deg, (idec + i * ddec) * u.deg, frame='icrs')
-
-            # sleep a little
-            abort_event.wait(0.1)
-
-        # set final coordinates
-        self._telescope.position = SkyCoord(ra * u.deg, dec * u.deg, frame='icrs')
+        # wait for it
+        while self._telescope.status == IMotion.Status.SLEWING and not abort_event.is_set():
+            self.closing.wait(1)
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
@@ -229,24 +212,24 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.PARKED)
 
-    def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
-        """Move an Alt/Az offset, which will be reset on next call of track.
+    def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
+        """Move an RA/Dec offset.
 
         Args:
-            dalt: Altitude offset in degrees.
-            daz: Azimuth offset in degrees.
+            dra: RA offset in degrees.
+            ddec: Dec offset in degrees.
 
         Raises:
             ValueError: If offset could not be set.
         """
-        log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
-        self._telescope.offsets = (dalt, daz)
+        log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
+        self._telescope.offsets = (dra, ddec)
 
-    def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
-        """Get Alt/Az offset.
+    def get_radec_offsets(self, *args, **kwargs) -> (float, float):
+        """Get RA/Dec offset.
 
         Returns:
-            Tuple with alt and az offsets.
+            Tuple with RA and Dec offsets.
         """
         return self._telescope.offsets
 

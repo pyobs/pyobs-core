@@ -1,37 +1,175 @@
 from __future__ import annotations
-from collections import OrderedDict
+
+import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.time import Time
-from typing import Union
-from photutils.datasets import make_gaussian_prf_sources_image, make_random_models_table
+from typing import Union, Tuple, List
+import random
+from astropy.wcs import WCS
+from astroquery.gaia import Gaia
+from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
 
 from pyobs import Module
+from pyobs.interfaces import IMotion
 from pyobs.object import create_object
 
 
-class SimTelescope:
+class SimTelescope(Module):
     """A simulated telescope on an equitorial mount."""
-    def __init__(self, world: SimWorld, *args, **kwargs):
+    def __init__(self, world: SimWorld, position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
+                 pointing_error: Tuple[float, float] = None, speed: float = 20., focus: float = 50,
+                 filters: List[str] = None, filter: str = 'clear', drift: Tuple[float, float] = None,
+                 *args, **kwargs):
+        """Initializes new telescope.
+
+        Args:
+            world: World object.
+            position: RA/Dec tuple with position of telescope in degrees.
+            offsets: RA/Dec offsets of telescope in arcsecs.
+            pointing_error: Pointing error in RA/Dec in arcsecs.
+            speed: Speed of telescope in deg/sec.
+            focus: Telescope focus.
+            filters: List of filters.
+            filter: Current filter.
+            drift: RA/Dec drift of telescope in arcsec/sec.
+        """
+        Module.__init__(self, *args, **kwargs)
+
+        # store
         self.world = world
-        self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs')
-        self.offsets = (0., 0.)
-        self.focus = 52.
-        self.filters = ['clear', 'B', 'V', 'R']
-        self.filter = 'clear'
+        self.status = IMotion.Status.IDLE
+        self.status_callback = None
+
+        # init
+        self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs') if position is None else \
+            SkyCoord(position[0] * u.deg, position[1] * u.deg, frame='icrs')
+        self.offsets = (0., 0.) if offsets is None else offsets
+        self.pointing_error = (20., 2.) if pointing_error is None else pointing_error
+        self.speed = speed     # telescope speed in deg/sec
+        self.focus = focus
+        self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
+        self.filter = filter
+        self.drift = (0.01, 0.0001) if drift is None else drift     # arcsec/sec in RA/Dec
+
+        # private stuff
+        self._drift = (0., 0.)
+        self._dest_coords = None
+
+        # locks
+        self._pos_lock = threading.RLock()
+
+        # threads
+        self._add_thread_func(self._move_thread)
+
+    def _change_motion_status(self, status: IMotion.Status):
+        """Change the current motion status.
+
+        Args:
+            status: New motion status
+        """
+
+        # call callback
+        if self.status_callback is not None and status != self.status:
+            self.status_callback(status)
+
+        # set it
+        self.status = status
+
+    @property
+    def real_pos(self):
+        # calculate offsets
+        dra = (self.offsets[0] + self._drift[0]) / np.cos(np.radians(self.position.dec.degree)) * u.arcsec
+        ddec = (self.offsets[1] + self._drift[1]) * u.arcsec
+
+        # return position
+        with self._pos_lock:
+            return SkyCoord(ra=self.position.ra + dra,
+                            dec=self.position.dec + ddec,
+                            frame='icrs')
+
+    def move_ra_dec(self, coords):
+        """Move telescope to given RA/Dec position.
+
+        Args:
+            coords: Destination coordinates.
+        """
+
+        self._change_motion_status(IMotion.Status.SLEWING)
+        self._dest_coords = coords
+
+    def _move_thread(self):
+        """Move the telescope over time."""
+
+        # run until closed
+        while not self.closing.is_set():
+            # do we have destination coordinates?
+            if self._dest_coords is not None:
+                # calculate moving vector
+                vra = (self._dest_coords.ra.degree - self.position.ra.degree) * \
+                      np.cos(np.radians(self.position.dec.degree))
+                vdec = self._dest_coords.dec.degree - self.position.dec.degree
+
+                # get direction
+                length = np.sqrt(vra**2 + vdec**2)
+
+                # do we reach target?
+                if length < self.speed:
+                    # set it
+                    with self._pos_lock:
+                        # set position and reset destination
+                        self._change_motion_status(IMotion.Status.TRACKING)
+                        self.position = self._dest_coords
+                        self._dest_coords = None
+
+                        # set some random drift around the pointing error
+                        self._drift = (random.gauss(self.pointing_error[0], self.pointing_error[0] / 10.),
+                                       random.gauss(self.pointing_error[1], self.pointing_error[1] / 10.))
+
+                else:
+                    # norm vector and get movement
+                    dra = vra / length * self.speed / np.cos(np.radians(self.position.dec.degree)) * u.deg
+                    ddec = vdec / length * self.speed * u.deg
+
+                    # apply it
+                    with self._pos_lock:
+                        self._change_motion_status(IMotion.Status.SLEWING)
+                        self.position = SkyCoord(ra=self.position.ra + dra,
+                                                 dec=self.position.dec + ddec,
+                                                 frame='icrs')
+
+            else:
+                # no movement, just drift
+                # calculate constant drift
+                drift_ra = random.gauss(self.drift[0], self.drift[0] / 10.)
+                drift_dec = random.gauss(self.drift[1], self.drift[1] / 10.)
+
+                # and apply it
+                with self._pos_lock:
+                    self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
+
+            # sleep a second
+            self.closing.wait(1)
 
 
-class SimCamera:
+class SimCamera(Module):
     """A simulated camera."""
     def __init__(self, world: SimWorld, *args, **kwargs):
+        Module.__init__(self, *args, **kwargs)
+
         self.world = world
+        self.telescope = world.telescope
         self.full_frame = (0, 0, 512, 512)
         self.window = tuple(self.full_frame)
         self.binning = (1, 1)
 
-    def get_image(self, exp_time: float, open_shutter: bool):
+        # private stuff
+        self._catalog = None
+        self._catalog_coords = None
+
+    def get_image(self, exp_time: int, open_shutter: bool):
         """Simulate an image.
 
         Args:
@@ -46,11 +184,11 @@ class SimCamera:
         shape = (int(self.window[3]), int(self.window[2]))
 
         # create image with Gaussian noise for BIAS
-        image = make_noise_image(shape, distribution='gaussian', mean=1000., stddev=10.)
+        image = make_noise_image(shape, distribution='gaussian', mean=1e3, stddev=100.)
 
         # add DARK
         if exp_time > 0:
-            image += make_noise_image(shape, distribution='gaussian', mean=exp_time / 100., stddev=10.)
+            image += make_noise_image(shape, distribution='gaussian', mean=exp_time / 1e4, stddev=exp_time / 1e5)
 
             # add stars and stuff
             if open_shutter:
@@ -63,14 +201,8 @@ class SimCamera:
                 # create flat
                 image += make_noise_image(shape, distribution='gaussian', mean=flat_counts, stddev=flat_counts / 10.)
 
-                # create random table with sources
-                n_sources = 50
-                param_ranges = [('amplitude', [1000, 20000]),
-                                ('x_0', [0, self.window[3]]),
-                                ('y_0', [0, self.window[2]]),
-                                ('sigma', [2. / self.binning[0], 2.2 / self.binning[0]])]
-                param_ranges = OrderedDict(param_ranges)
-                sources = make_random_models_table(n_sources, param_ranges, seed=0)
+                # get catalog with sources
+                sources = self._get_sources_table(exp_time)
 
                 # create image
                 image += make_gaussian_prf_sources_image(shape, sources)
@@ -80,6 +212,37 @@ class SimCamera:
 
         # return it
         return image
+
+    def _get_catalog(self):
+        """Returns GAIA catalog for current telescope coordinates."""
+        if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
+            self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=1. * u.deg)
+        return self._catalog
+
+    def _get_sources_table(self, exp_time: int):
+        """Create sources table."""
+
+        # get catalog
+        cat = self._get_catalog()
+
+        # create WCS
+        w = WCS(naxis=2)
+        w.wcs.crpix = [self.window[3] / 2., self.window[2] / 2.]
+        w.wcs.cdelt = np.array([-0.000153060853552312, 0.000153060853552312])
+        w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
+        w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+
+        # convert world to pixel coordinates
+        cat['x'], cat['y'] = w.wcs_world2pix(cat['ra'], cat['dec'], 0)
+
+        # get columns
+        sources = cat['x', 'y', 'phot_g_mean_flux']
+        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'amplitude'])
+        sources.add_column([1.] * len(sources), name='sigma')
+        sources['amplitude'] *= exp_time / 1e4
+
+        # finished
+        return sources
 
 
 class SimWorld(Module):
@@ -128,6 +291,30 @@ class SimWorld(Module):
             self.camera = create_object(camera, world=self)
         else:
             raise ValueError('Invalid camera.')
+
+    def open(self):
+        """Open module."""
+        Module.open(self)
+
+        # open telescope
+        if hasattr(self.telescope, 'open'):
+            self.telescope.open()
+
+        # open camera
+        if hasattr(self.telescope, 'open'):
+            self.camera.open()
+
+    def close(self):
+        """Close module."""
+        Module.close(self)
+
+        # close telescope
+        if hasattr(self.telescope, 'close'):
+            self.telescope.open()
+
+        # close camera
+        if hasattr(self.telescope, 'close'):
+            self.camera.close()
 
     @property
     def time(self) -> Time:

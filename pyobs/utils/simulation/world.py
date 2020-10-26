@@ -307,10 +307,14 @@ class SimCamera(Module):
         # get catalog
         cat = self._get_catalog()
 
+        # calculate cdelt1/2
+        tmp = 360. / (2. * np.pi) * self.pixel_size / self.telescope.focal_length
+        cdelt1, cdelt2 = tmp * self.binning[0], tmp * self.binning[1]
+
         # create WCS
         w = WCS(naxis=2)
         w.wcs.crpix = [self.window[3] / 2., self.window[2] / 2.]
-        w.wcs.cdelt = np.array([-0.000153060853552312, 0.000153060853552312])
+        w.wcs.cdelt = np.array([-cdelt1, cdelt2])
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 

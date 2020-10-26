@@ -11,6 +11,7 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
+from pyobs.utils.images import Image
 from pyobs.utils.simulation.world import SimWorld, SimCamera
 
 log = logging.getLogger(__name__)

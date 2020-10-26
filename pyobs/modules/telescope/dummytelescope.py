@@ -223,7 +223,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
-        self._telescope.offsets = (dra, ddec)
+        self._telescope.set_offsets(dra, ddec)
 
     def get_radec_offsets(self, *args, **kwargs) -> (float, float):
         """Get RA/Dec offset.

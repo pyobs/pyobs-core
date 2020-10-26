@@ -8,6 +8,7 @@ from astropy.time import Time
 from typing import Union, Tuple, List
 import random
 from astropy.wcs import WCS
+from astropy.io import fits
 from astroquery.gaia import Gaia
 from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
@@ -15,6 +16,7 @@ from photutils.datasets import make_noise_image
 from pyobs import Module
 from pyobs.interfaces import IMotion
 from pyobs.object import create_object
+from pyobs.utils.images import Image
 
 
 class SimTelescope(Module):
@@ -22,7 +24,7 @@ class SimTelescope(Module):
     def __init__(self, world: SimWorld, position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
                  pointing_offset: Tuple[float, float] = None, move_accuracy: float = 2.,
                  speed: float = 20., focus: float = 50, filters: List[str] = None, filter: str = 'clear',
-                 drift: Tuple[float, float] = None, *args, **kwargs):
+                 drift: Tuple[float, float] = None, focal_length: float = 5000., *args, **kwargs):
         """Initializes new telescope.
 
         Args:
@@ -36,6 +38,7 @@ class SimTelescope(Module):
             filters: List of filters.
             filter: Current filter.
             drift: RA/Dec drift of telescope in arcsec/sec.
+            focal_length: Focal length of telescope in mm.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -55,6 +58,7 @@ class SimTelescope(Module):
         self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
         self.filter = filter
         self.drift = (0.01, 0.0001) if drift is None else drift     # arcsec/sec in RA/Dec
+        self.focal_length = focal_length
 
         # private stuff
         self._drift = (0., 0.)
@@ -190,20 +194,28 @@ class SimTelescope(Module):
 
 class SimCamera(Module):
     """A simulated camera."""
-    def __init__(self, world: SimWorld, *args, **kwargs):
+    def __init__(self, world: SimWorld, pixel_size: float = 0.015, *args, **kwargs):
+        """Inits a new camera.
+
+        Args:
+            world: World to use.
+            pixel_size: Square pixel size in mm.
+        """
         Module.__init__(self, *args, **kwargs)
 
+        # store
         self.world = world
         self.telescope = world.telescope
         self.full_frame = (0, 0, 512, 512)
         self.window = tuple(self.full_frame)
         self.binning = (1, 1)
+        self.pixel_size = pixel_size
 
         # private stuff
         self._catalog = None
         self._catalog_coords = None
 
-    def get_image(self, exp_time: int, open_shutter: bool):
+    def get_image(self, exp_time: int, open_shutter: bool) -> Image:
         """Simulate an image.
 
         Args:
@@ -213,6 +225,9 @@ class SimCamera(Module):
         Returns:
             numpy array with image.
         """
+
+        # get now
+        now = Time.now()
 
         # get shape for image
         shape = (int(self.window[3]), int(self.window[2]))
@@ -244,8 +259,41 @@ class SimCamera(Module):
         # saturate
         image[image > 65535] = 65535
 
+        # create header
+        hdr = self._create_header(exp_time, open_shutter, now, image)
+
         # return it
-        return image
+        return Image(image.astype(np.uint16), header=hdr)
+
+    def _create_header(self, exp_time: int, open_shutter: float, time: Time, data: np.ndarray):
+        # create header
+        hdr = fits.Header()
+        hdr['NAXIS1'] = data.shape[1]
+        hdr['NAXIS2'] = data.shape[0]
+
+        # set values
+        hdr['DATE-OBS'] = (time.isot, 'Date and time of start of exposure')
+        hdr['EXPTIME'] = (exp_time / 1000., 'Exposure time [s]')
+
+        # binning
+        hdr['XBINNING'] = hdr['DET-BIN1'] = (int(self.binning[0]), 'Binning factor used on X axis')
+        hdr['YBINNING'] = hdr['DET-BIN2'] = (int(self.binning[1]), 'Binning factor used on Y axis')
+
+        # window
+        hdr['XORGSUBF'] = (int(self.window[0]), 'Subframe origin on X axis')
+        hdr['YORGSUBF'] = (int(self.window[1]), 'Subframe origin on Y axis')
+
+        # statistics
+        hdr['DATAMIN'] = (float(np.min(data)), 'Minimum data value')
+        hdr['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
+        hdr['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
+
+        # hardware
+        hdr['TEL-FOCL'] = (self.telescope.focal_length, "Focal length [mm]")
+        hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
+
+        # finished
+        return hdr
 
     def _get_catalog(self):
         """Returns GAIA catalog for current telescope coordinates."""

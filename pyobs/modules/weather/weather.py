@@ -7,7 +7,7 @@ import astropy.units as u
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderProvider
-from pyobs import PyObsModule
+from pyobs import Module
 
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ FITS_HEADERS = {
 }
 
 
-class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
+class Weather(Module, IWeather, IFitsHeaderProvider):
     """Connection to pyobs-weather."""
 
     def __init__(self, url: str = None, system_init_time: int = 300, *args, **kwargs):
@@ -36,7 +36,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
             url: URL to weather station
             system_init_time: Time in seconds the full system needs to initialize
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store and create session
         self._system_init_time = system_init_time
@@ -55,7 +55,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:

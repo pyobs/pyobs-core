@@ -7,7 +7,7 @@ import astropy.units as u
 from pyobs.utils.time import Time
 
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.mixins import TableStorageMixin
 from pyobs.utils.guiding.base import BaseGuidingOffset
 from pyobs.utils.images import Image
@@ -16,7 +16,7 @@ from pyobs.utils.images import Image
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvider):
+class BaseGuiding(Module, TableStorageMixin, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
                  min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
@@ -34,7 +34,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._camera = camera
@@ -73,7 +73,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check telescope
         try:

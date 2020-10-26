@@ -14,14 +14,14 @@ from pyobs.events import GoodWeatherEvent
 
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStoppable, IRunnable
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.robotic import TaskArchive
 
 
 log = logging.getLogger(__name__)
 
 
-class Scheduler(PyObsModule, IStoppable, IRunnable):
+class Scheduler(Module, IStoppable, IRunnable):
     """Scheduler."""
 
     def __init__(self, tasks: typing.Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
@@ -36,7 +36,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                          still running
             twilight: astronomical or nautical
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # get scheduler
         self._task_archive: TaskArchive = get_object(tasks, TaskArchive)
@@ -64,7 +64,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:

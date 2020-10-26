@@ -4,7 +4,7 @@ import astropy.units as u
 import logging
 
 from pyobs.interfaces import ITelescope, IMotion
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -13,7 +13,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, Module):
     """Base class for telescopes."""
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
@@ -24,7 +24,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             min_altitude: Minimal altitude for telescope.
             wait_for_dome: Name of dome module to wait for.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -51,7 +51,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # open mixins
         WeatherAwareMixin.open(self)

@@ -43,5 +43,10 @@ class DummyComm(Comm):
         """Always fake a successful execution of a method."""
         return True
 
+    @property
+    def name(self) -> str:
+        """Name of this client, which is unknown."""
+        return 'module'
+
 
 __all__ = ['DummyComm']

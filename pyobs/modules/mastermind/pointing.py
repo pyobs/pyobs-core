@@ -6,14 +6,14 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IAcquisition, IAutonomous
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class PointingSeries(PyObsModule, IAutonomous):
+class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
@@ -29,7 +29,7 @@ class PointingSeries(PyObsModule, IAutonomous):
             exp_time: Exposure time in ms.
             acquisition: IAcquisition unit to use.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._min_alt = min_alt

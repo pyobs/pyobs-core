@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from pyobs.comm import RemoteException
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IAltAz, IRaDec, IReady
 
 log = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class FollowMixin:
 
         # add thread function only, if device is given
         if self.__follow_device is not None:
-            self: Union[PyObsModule, FollowMixin]
+            self: Union[Module, FollowMixin]
             self._add_thread_func(self.__update_follow)
 
     @property
@@ -83,7 +83,7 @@ class FollowMixin:
         """Update function."""
 
         # I'm a module!
-        self: Union[PyObsModule, FollowMixin]
+        self: Union[Module, FollowMixin]
 
         # wait a little
         self.closing.wait(10)

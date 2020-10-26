@@ -1,19 +1,19 @@
 import logging
 
 from pyobs.interfaces import IScriptRunner
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.modules import timeout
 
 
 log = logging.getLogger(__name__)
 
 
-class ScriptRunner(PyObsModule, IScriptRunner):
+class ScriptRunner(Module, IScriptRunner):
     """Config provider."""
 
     def __init__(self, *args, **kwargs):
         """Initialize a new script runner."""
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
     @timeout(600000)
     def run_script(self, script: str, *args, **kwargs):

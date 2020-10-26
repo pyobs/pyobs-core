@@ -27,6 +27,13 @@ class VirtualFileSystem:
         self._roots = {} if roots is None else roots
         self._compression = {'.gz': '/bin/gzip'} if compression is None else compression
 
+        # if no root for 'pyobs' is given, add one
+        if 'pyobs' not in self._roots:
+            self._roots['pyobs'] = {
+                'class': 'pyobs.vfs.LocalFile',
+                'root': os.path.expanduser('~/.pyobs/')
+            }
+
     @staticmethod
     def split_root(path: str) -> tuple:
         """Splits the root from the rest of the path.

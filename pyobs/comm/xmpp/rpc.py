@@ -4,7 +4,7 @@ import sleekxmpp
 import sleekxmpp.exceptions
 from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 
-from pyobs.modules import PyObsModule
+from pyobs.modules import Module
 from pyobs.comm.exceptions import *
 from pyobs.utils.threads import Future
 
@@ -41,7 +41,7 @@ class RPC(object):
         # register handler
         self._methods = dict(handler.methods) if handler else {}
 
-    def set_handler(self, handler: PyObsModule = None):
+    def set_handler(self, handler: Module = None):
         """Set the handler for remote procedure calls to this client.
 
         Args:

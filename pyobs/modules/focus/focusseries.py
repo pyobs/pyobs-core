@@ -6,7 +6,7 @@ import numpy as np
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters
 from pyobs.events import FocusFoundEvent
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.focusseries import FocusSeries
@@ -14,7 +14,7 @@ from pyobs.utils.focusseries import FocusSeries
 log = logging.getLogger(__name__)
 
 
-class AutoFocusSeries(PyObsModule, CameraSettingsMixin, IAutoFocus):
+class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
 
     def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
@@ -27,7 +27,7 @@ class AutoFocusSeries(PyObsModule, CameraSettingsMixin, IAutoFocus):
             filters: Name of IFilters, if any.
             offset: If True, offsets are used instead of absolute focus values.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store focuser and camera
         self._focuser = focuser
@@ -48,7 +48,7 @@ class AutoFocusSeries(PyObsModule, CameraSettingsMixin, IAutoFocus):
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # register event
         self.comm.register_event(FocusFoundEvent)

@@ -8,7 +8,7 @@ import astropy.units as u
 
 from pyobs.comm import Comm
 from pyobs.comm.proxy import Proxy
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
@@ -90,12 +90,12 @@ class PeriodicJob(Job):
             return Time.now() + TimeDelta(self.interval * u.second)
 
 
-class JobScheduler(PyObsModule):
+class JobScheduler(Module):
     """Job scheduler."""
 
     def __init__(self, *args, **kwargs):
         """Initialize a new job scheduler."""
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # last job ID
         self.last_id = 0
@@ -105,7 +105,7 @@ class JobScheduler(PyObsModule):
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         self.add_job(PeriodicJob(module='camera', method='get_binning', seconds=10))
 

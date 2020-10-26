@@ -1,7 +1,7 @@
 import time
 import requests
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.modules.filecache import HttpFileCacheServer
 
 

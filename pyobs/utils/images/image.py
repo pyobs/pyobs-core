@@ -12,11 +12,20 @@ class Image:
         MEDIAN = 'median'
         SIGMA = 'sigma'
 
-    def __init__(self, *args, **kwargs):
-        self.data = None
-        self.header = None
+    def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
+        self.data = data
+        self.header = header
         self.mask = None
         self.catalog = None
+
+        # add header
+        if self.header is None:
+            self.header = fits.Header()
+
+        # add basic header stuff
+        if data is not None:
+            self.header['NAXIS1'] = self.data.shape[1]
+            self.header['NAXIS2'] = self.data.shape[0]
 
     @classmethod
     def from_bytes(klass, data) -> 'Image':

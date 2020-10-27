@@ -11,6 +11,7 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
+from pyobs.utils.images import Image
 from pyobs.utils.simulation.world import SimWorld, SimCamera
 
 log = logging.getLogger(__name__)
@@ -73,23 +74,18 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._camera.full_frame
 
-    def _get_image(self, exp_time: float, open_shutter: bool) -> fits.PrimaryHDU:
+    def _get_image(self, exp_time: int, open_shutter: bool) -> Image:
         """Actually get (i.e. simulate) the image."""
 
         # random image or pre-defined?
         if self._sim_images:
             filename = self._sim_images.pop(0)
             self._sim_images.append(filename)
-            with fits.open(filename, memmap=False) as f:
-                return fits.PrimaryHDU(f[0].data) #, header=f[0].header)
+            Image.from_file(filename)
 
         else:
-            left, top, width, height = self.get_window()
-            #data = np.random.rand(int(height / self._binning[1]), int(width / self._binning[0])) * 100.
-            data = self._camera.get_image(exp_time, open_shutter)
-            hdu = fits.PrimaryHDU(data.astype('uint16'))
-            hdu.header['DATAMEAN'] = 1000.
-            return hdu
+            image = self._camera.get_image(exp_time, open_shutter)
+            return image
 
     def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.

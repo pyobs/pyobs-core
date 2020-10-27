@@ -46,7 +46,7 @@ class AstrometryAcquisition(BaseAcquisition):
         astrometry = get_object(self._astrometry, Astrometry)
 
         # copy image
-        image = fits.PrimaryHDU(data=img.data, header=img.header)
+        image = img.copy()
 
         # find stars
         log.info('Searching for stars...')

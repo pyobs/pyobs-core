@@ -11,6 +11,7 @@ import yaml
 import io
 
 from pyobs.comm import TimeoutException
+from pyobs.utils.images import Image
 
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
@@ -306,7 +307,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         """
         raise NotImplementedError
 
-    def __expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool) -> (fits.PrimaryHDU, str):
+    def __expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool) -> (Image, str):
         """Wrapper for a single exposure.
 
         Args:
@@ -337,8 +338,8 @@ class BaseCamera(Module, ICamera, IAbortable):
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
         try:
-            hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if hdu is None:
+            image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
+            if image is None:
                 self._exposure = None
                 return None, None
         except:
@@ -348,13 +349,13 @@ class BaseCamera(Module, ICamera, IAbortable):
 
         # flip it?
         if self._flip:
-            hdu.data = np.flip(hdu.data, axis=0)
+            image.data = np.flip(image.data, axis=0)
 
         # add HDU name
-        hdu.name = 'SCI'
+        image.header['EXTNAME'] = 'SCI'
 
         # add image type
-        hdu.header['IMAGETYP'] = image_type.value
+        image.header['IMAGETYP'] = image_type.value
 
         # get fits headers from other clients
         for client, future in fits_header_futures.items():
@@ -373,26 +374,26 @@ class BaseCamera(Module, ICamera, IAbortable):
                     # if value is not a string, it may be a list of value and comment
                     if type(value) is list:
                         # convert list to tuple
-                        hdu.header[key] = tuple(value)
+                        image.header[key] = tuple(value)
                     else:
-                        hdu.header[key] = value
+                        image.header[key] = value
 
         # add static fits headers
         for key, value in self._fits_headers.items():
-            hdu.header[key] = tuple(value)
+            image.header[key] = tuple(value)
 
         # add more fits headers
         log.info("Adding FITS headers...")
-        self._add_fits_headers(hdu.header)
+        self._add_fits_headers(image.header)
 
         # don't want to save?
         if self._filenames is None:
-            return hdu, None
+            return image, None
 
         # create a temporary filename
-        filename = format_filename(hdu.header, self._filenames)
-        hdu.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
-        hdu.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
+        filename = format_filename(image.header, self._filenames)
+        image.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
+        image.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 
@@ -400,7 +401,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         try:
             with self.open_file(filename, 'wb') as cache:
                 log.info('Uploading image to file server...')
-                hdu.writeto(cache)
+                image.writeto(cache)
         except FileNotFoundError:
             raise ValueError('Could not upload image.')
 
@@ -410,12 +411,12 @@ class BaseCamera(Module, ICamera, IAbortable):
             self.comm.send_event(NewImageEvent(filename, image_type))
 
         # store new last image
-        self._last_image = {'filename': filename, 'fits': hdu}
+        self._last_image = {'filename': filename, 'image': image}
 
         # return image and unique
         self._exposure = None
         log.info('Finished image %s.', filename)
-        return hdu, filename
+        return image, filename
 
     @timeout('(exposure_time+30000)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
@@ -454,8 +455,8 @@ class BaseCamera(Module, ICamera, IAbortable):
                     log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
 
                 # expose
-                hdu, filename = self.__expose(exposure_time, image_type, broadcast)
-                if hdu is None:
+                image, filename = self.__expose(exposure_time, image_type, broadcast)
+                if image is None:
                     log.error('Could not take image.')
                 else:
                     if filename is None:

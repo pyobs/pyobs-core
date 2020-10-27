@@ -8,6 +8,7 @@ from astropy.time import Time
 from typing import Union, Tuple, List
 import random
 from astropy.wcs import WCS
+from astropy.io import fits
 from astroquery.gaia import Gaia
 from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
@@ -15,26 +16,29 @@ from photutils.datasets import make_noise_image
 from pyobs import Module
 from pyobs.interfaces import IMotion
 from pyobs.object import create_object
+from pyobs.utils.images import Image
 
 
 class SimTelescope(Module):
     """A simulated telescope on an equitorial mount."""
     def __init__(self, world: SimWorld, position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
-                 pointing_error: Tuple[float, float] = None, speed: float = 20., focus: float = 50,
-                 filters: List[str] = None, filter: str = 'clear', drift: Tuple[float, float] = None,
-                 *args, **kwargs):
+                 pointing_offset: Tuple[float, float] = None, move_accuracy: float = 2.,
+                 speed: float = 20., focus: float = 50, filters: List[str] = None, filter: str = 'clear',
+                 drift: Tuple[float, float] = None, focal_length: float = 5000., *args, **kwargs):
         """Initializes new telescope.
 
         Args:
             world: World object.
             position: RA/Dec tuple with position of telescope in degrees.
             offsets: RA/Dec offsets of telescope in arcsecs.
-            pointing_error: Pointing error in RA/Dec in arcsecs.
+            pointing_offset: Pointing offset in RA/Dec in arcsecs.
+            move_accuracy: Accuracy of movements in RA/Dec, i.e. random error after any movement [arcsec].
             speed: Speed of telescope in deg/sec.
             focus: Telescope focus.
             filters: List of filters.
             filter: Current filter.
             drift: RA/Dec drift of telescope in arcsec/sec.
+            focal_length: Focal length of telescope in mm.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -44,15 +48,17 @@ class SimTelescope(Module):
         self.status_callback = None
 
         # init
-        self.position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs') if position is None else \
+        self._position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs') if position is None else \
             SkyCoord(position[0] * u.deg, position[1] * u.deg, frame='icrs')
-        self.offsets = (0., 0.) if offsets is None else offsets
-        self.pointing_error = (20., 2.) if pointing_error is None else pointing_error
+        self._offsets = (0., 0.) if offsets is None else offsets
+        self.pointing_offset = (20., 2.) if pointing_offset is None else pointing_offset
+        self.move_accuracy = (1, 1) if move_accuracy is None else move_accuracy
         self.speed = speed     # telescope speed in deg/sec
         self.focus = focus
         self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
         self.filter = filter
         self.drift = (0.01, 0.0001) if drift is None else drift     # arcsec/sec in RA/Dec
+        self.focal_length = focal_length
 
         # private stuff
         self._drift = (0., 0.)
@@ -63,6 +69,14 @@ class SimTelescope(Module):
 
         # threads
         self._add_thread_func(self._move_thread)
+
+    @property
+    def position(self):
+        return self._position
+
+    @property
+    def offsets(self):
+        return self._offsets
 
     def _change_motion_status(self, status: IMotion.Status):
         """Change the current motion status.
@@ -81,13 +95,13 @@ class SimTelescope(Module):
     @property
     def real_pos(self):
         # calculate offsets
-        dra = (self.offsets[0] + self._drift[0]) / np.cos(np.radians(self.position.dec.degree)) * u.arcsec
-        ddec = (self.offsets[1] + self._drift[1]) * u.arcsec
+        dra = (self._offsets[0] * u.deg + self._drift[0] * u.arcsec) / np.cos(np.radians(self._position.dec.degree))
+        ddec = self._offsets[1] * u.deg + self._drift[1] * u.arcsec
 
         # return position
         with self._pos_lock:
-            return SkyCoord(ra=self.position.ra + dra,
-                            dec=self.position.dec + ddec,
+            return SkyCoord(ra=self._position.ra + dra,
+                            dec=self._position.dec + ddec,
                             frame='icrs')
 
     def move_ra_dec(self, coords):
@@ -97,20 +111,44 @@ class SimTelescope(Module):
             coords: Destination coordinates.
         """
 
+        # change status
         self._change_motion_status(IMotion.Status.SLEWING)
-        self._dest_coords = coords
+
+        # calculate random RA/Dec offsets
+        acc = self.move_accuracy / 3600.
+        ra = random.gauss(coords.ra.degree, acc / np.cos(np.radians(coords.dec.degree))) * u.deg
+        dec = random.gauss(coords.dec.degree, acc) * u.deg
+
+        # set coordinates
+        self._dest_coords = SkyCoord(ra=ra, dec=dec, frame='icrs')
+
+    def set_offsets(self, dra, ddec):
+        """Move RA/Dec offsets.
+
+        Args:
+            dra: RA offset [deg]
+            ddec: Dec offset [deg]
+        """
+
+        # calculate random RA/Dec offsets
+        acc = self.move_accuracy / 3600.
+        ra, dec = random.gauss(dra, acc), random.gauss(ddec, acc)
+
+        # set offsets
+        self._offsets = (ra, dec)
 
     def _move_thread(self):
         """Move the telescope over time."""
 
         # run until closed
         while not self.closing.is_set():
+
             # do we have destination coordinates?
             if self._dest_coords is not None:
                 # calculate moving vector
-                vra = (self._dest_coords.ra.degree - self.position.ra.degree) * \
-                      np.cos(np.radians(self.position.dec.degree))
-                vdec = self._dest_coords.dec.degree - self.position.dec.degree
+                vra = (self._dest_coords.ra.degree - self._position.ra.degree) * \
+                      np.cos(np.radians(self._position.dec.degree))
+                vdec = self._dest_coords.dec.degree - self._position.dec.degree
 
                 # get direction
                 length = np.sqrt(vra**2 + vdec**2)
@@ -121,24 +159,24 @@ class SimTelescope(Module):
                     with self._pos_lock:
                         # set position and reset destination
                         self._change_motion_status(IMotion.Status.TRACKING)
-                        self.position = self._dest_coords
+                        self._position = self._dest_coords
                         self._dest_coords = None
 
                         # set some random drift around the pointing error
-                        self._drift = (random.gauss(self.pointing_error[0], self.pointing_error[0] / 10.),
-                                       random.gauss(self.pointing_error[1], self.pointing_error[1] / 10.))
+                        self._drift = (random.gauss(self.pointing_offset[0], self.pointing_offset[0] / 10.),
+                                       random.gauss(self.pointing_offset[1], self.pointing_offset[1] / 10.))
 
                 else:
                     # norm vector and get movement
-                    dra = vra / length * self.speed / np.cos(np.radians(self.position.dec.degree)) * u.deg
+                    dra = vra / length * self.speed / np.cos(np.radians(self._position.dec.degree)) * u.deg
                     ddec = vdec / length * self.speed * u.deg
 
                     # apply it
                     with self._pos_lock:
                         self._change_motion_status(IMotion.Status.SLEWING)
-                        self.position = SkyCoord(ra=self.position.ra + dra,
-                                                 dec=self.position.dec + ddec,
-                                                 frame='icrs')
+                        self._position = SkyCoord(ra=self._position.ra + dra,
+                                                  dec=self._position.dec + ddec,
+                                                  frame='icrs')
 
             else:
                 # no movement, just drift
@@ -156,20 +194,28 @@ class SimTelescope(Module):
 
 class SimCamera(Module):
     """A simulated camera."""
-    def __init__(self, world: SimWorld, *args, **kwargs):
+    def __init__(self, world: SimWorld, pixel_size: float = 0.015, *args, **kwargs):
+        """Inits a new camera.
+
+        Args:
+            world: World to use.
+            pixel_size: Square pixel size in mm.
+        """
         Module.__init__(self, *args, **kwargs)
 
+        # store
         self.world = world
         self.telescope = world.telescope
         self.full_frame = (0, 0, 512, 512)
         self.window = tuple(self.full_frame)
         self.binning = (1, 1)
+        self.pixel_size = pixel_size
 
         # private stuff
         self._catalog = None
         self._catalog_coords = None
 
-    def get_image(self, exp_time: int, open_shutter: bool):
+    def get_image(self, exp_time: int, open_shutter: bool) -> Image:
         """Simulate an image.
 
         Args:
@@ -179,6 +225,9 @@ class SimCamera(Module):
         Returns:
             numpy array with image.
         """
+
+        # get now
+        now = Time.now()
 
         # get shape for image
         shape = (int(self.window[3]), int(self.window[2]))
@@ -210,8 +259,41 @@ class SimCamera(Module):
         # saturate
         image[image > 65535] = 65535
 
+        # create header
+        hdr = self._create_header(exp_time, open_shutter, now, image)
+
         # return it
-        return image
+        return Image(image.astype(np.uint16), header=hdr)
+
+    def _create_header(self, exp_time: int, open_shutter: float, time: Time, data: np.ndarray):
+        # create header
+        hdr = fits.Header()
+        hdr['NAXIS1'] = data.shape[1]
+        hdr['NAXIS2'] = data.shape[0]
+
+        # set values
+        hdr['DATE-OBS'] = (time.isot, 'Date and time of start of exposure')
+        hdr['EXPTIME'] = (exp_time / 1000., 'Exposure time [s]')
+
+        # binning
+        hdr['XBINNING'] = hdr['DET-BIN1'] = (int(self.binning[0]), 'Binning factor used on X axis')
+        hdr['YBINNING'] = hdr['DET-BIN2'] = (int(self.binning[1]), 'Binning factor used on Y axis')
+
+        # window
+        hdr['XORGSUBF'] = (int(self.window[0]), 'Subframe origin on X axis')
+        hdr['YORGSUBF'] = (int(self.window[1]), 'Subframe origin on Y axis')
+
+        # statistics
+        hdr['DATAMIN'] = (float(np.min(data)), 'Minimum data value')
+        hdr['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
+        hdr['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
+
+        # hardware
+        hdr['TEL-FOCL'] = (self.telescope.focal_length, "Focal length [mm]")
+        hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
+
+        # finished
+        return hdr
 
     def _get_catalog(self):
         """Returns GAIA catalog for current telescope coordinates."""
@@ -225,10 +307,14 @@ class SimCamera(Module):
         # get catalog
         cat = self._get_catalog()
 
+        # calculate cdelt1/2
+        tmp = 360. / (2. * np.pi) * self.pixel_size / self.telescope.focal_length
+        cdelt1, cdelt2 = tmp * self.binning[0], tmp * self.binning[1]
+
         # create WCS
         w = WCS(naxis=2)
         w.wcs.crpix = [self.window[3] / 2., self.window[2] / 2.]
-        w.wcs.cdelt = np.array([-0.000153060853552312, 0.000153060853552312])
+        w.wcs.cdelt = np.array([-cdelt1, cdelt2])
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 

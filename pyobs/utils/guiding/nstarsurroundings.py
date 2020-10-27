@@ -16,18 +16,19 @@ from .base import BaseGuidingOffset
 
 log = logging.getLogger(__name__)
 
+
 class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
 class NStarSurroundings(BaseGuidingOffset):
-    """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
+    """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
     MIN_REQUIRED_SOURCES_IN_IMAGE = 5
 
-    def __init__(self, N_stars=1,
-                 max_expected_offset_in_arcsec=1e-3 * 3600,
-                 *args, **kwargs):
+    def __init__(
+        self, N_stars=1, max_expected_offset_in_arcsec=1e-3 * 3600, *args, **kwargs
+    ):
         """Initializes a new auto guiding system."""
         self.N_stars = N_stars
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
@@ -39,13 +40,14 @@ class NStarSurroundings(BaseGuidingOffset):
 
     def reset(self):
         """Resets guiding."""
-        log.info('Reset autp-guiding.')
+        log.info("Reset autp-guiding.")
         self._ref_box_dimensions = None
         self._ref_boxed_images = None
 
-    def find_pixel_offset(self,
-                          image: Image,
-                          ) -> (float, float):
+    def find_pixel_offset(
+        self,
+        image: Image,
+    ) -> (float, float):
         """Processes an image and return x/y pixel offset to reference.
 
         Args:
@@ -60,30 +62,35 @@ class NStarSurroundings(BaseGuidingOffset):
 
         # no reference image?
         if self._ref_box_dimensions is None:
-            log.info('Initialising auto-guiding with new image...')
+            log.info("Initialising auto-guiding with new image...")
             self.star_box_size = self.get_star_box_size_from_max_expected_offset(
-                self.max_expected_offset_in_arcsec,
-                image.pixel_scale
+                self.max_expected_offset_in_arcsec, image.pixel_scale
             )
 
-            self._ref_box_dimensions, self._ref_boxed_images = self._create_star_boxes_from_ref_image(image)
+            # initialize reference image information: dimensions & position of boxes, box images
+            (
+                self._ref_box_dimensions,
+                self._ref_boxed_images,
+            ) = self._create_star_boxes_from_ref_image(image)
             self._init_pid()
             return 0, 0
 
         # process it
-        log.info('Perform auto-guiding on new image...')
+        log.info("Perform auto-guiding on new image...")
         dx, dy, _, _ = self.calculate_offset(image)
         return dx, dy
 
     @staticmethod
-    def get_star_box_size_from_max_expected_offset(max_expected_offset_in_arcsec, pixel_scale):
+    def get_star_box_size_from_max_expected_offset(
+        max_expected_offset_in_arcsec, pixel_scale
+    ):
+        # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         star_box_size = int(
-                4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20
-            )
+            4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20
+        )
         return star_box_size
 
-    def _create_star_boxes_from_ref_image(self,
-                                          image: Image) -> (list, list):
+    def _create_star_boxes_from_ref_image(self, image: Image) -> (list, list):
         sep = SepPhotometry()
         sources: Table = sep.find_stars(image)
         sources = self.convert_from_fits_to_numpy_index_convention(sources)
@@ -93,12 +100,11 @@ class NStarSurroundings(BaseGuidingOffset):
             sources, image.data.shape, self.star_box_size // 2 + 1
         )
         sources = self.remove_bad_sources(sources)
-
         self.check_if_enough_sources_in_image(sources, self.N_stars)
-
-        # create dimensions of boxes and boxed star images
-        box_dimensions, boxed_images = [], []
         selected_sources = self.select_top_N_brightest_sources(self.N_stars, sources)
+
+        # find positions & dimensions of boxes around the stars, and the corresponding box images
+        box_dimensions, boxed_images = [], []
         for i_selected_source, _ in enumerate(selected_sources):
             # make astropy table with only the selected source
             single_source_catalog = Table(rows=selected_sources[i_selected_source])
@@ -107,19 +113,19 @@ class NStarSurroundings(BaseGuidingOffset):
             )
             boxed_star_image = stars.all_stars[0].data
 
-            box_origin_x, box_origin_y = (
-                stars.all_stars[0].origin[0],
-                stars.all_stars[0].origin[1],
+            box_dimensions.append(
+                [
+                    stars.all_stars[0].origin[1],
+                    stars.all_stars[0].origin[1] + boxed_star_image.shape[0],
+                    stars.all_stars[0].origin[0],
+                    stars.all_stars[0].origin[0] + boxed_star_image.shape[1],
+                ]
             )
-            box_xmin, box_xmax, box_ymin, box_ymax = (
-                box_origin_x,
-                box_origin_x + boxed_star_image.shape[1],
-                box_origin_y,
-                box_origin_y + boxed_star_image.shape[0],
-            )
-            box_dimensions.append([box_ymin, box_ymax, box_xmin, box_xmax])
 
-            boxed_star_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax]
+            boxed_star_image = image.data[
+                box_dimensions[-1][0] : box_dimensions[-1][1],
+                box_dimensions[-1][2] : box_dimensions[-1][3],
+            ]
 
             boxed_images.append(boxed_star_image)
 
@@ -137,8 +143,8 @@ class NStarSurroundings(BaseGuidingOffset):
         sources["ypeak"] -= 1
         return sources
 
-    def remove_sources_close_to_border(self,
-            sources: Table, image_shape: tuple, min_distance_from_border_in_pixels
+    def remove_sources_close_to_border(
+        self, sources: Table, image_shape: tuple, min_distance_from_border_in_pixels
     ) -> Table:
         """Remove table rows from sources when closer than min_distance_from_border_in_pixels from border of image."""
         width, height = image_shape
@@ -171,10 +177,11 @@ class NStarSurroundings(BaseGuidingOffset):
         ]
         return sources_result
 
-    def remove_bad_sources(self,
-            sources: Table,
-            MAX_ELLIPTICITY=0.4,
-            MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
+    def remove_bad_sources(
+        self,
+        sources: Table,
+        MAX_ELLIPTICITY=0.4,
+        MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
     ) -> Table:
 
         # remove large and small sources
@@ -212,7 +219,6 @@ class NStarSurroundings(BaseGuidingOffset):
             sources = sources[:N_stars]
         return sources
 
-
     def check_if_enough_sources_in_image(self, sources: Table, N_stars=0):
         n_required_sources = max(self.MIN_REQUIRED_SOURCES_IN_IMAGE, N_stars)
         if len(sources) < n_required_sources:
@@ -220,16 +226,21 @@ class NStarSurroundings(BaseGuidingOffset):
                 f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."
             )
 
-    def calculate_offset(self,
-                         current_image : Image,
-                         ) -> tuple:
+    def calculate_offset(
+        self,
+        current_image: Image,
+    ) -> tuple:
 
         # calculate offset for each star
         offsets = []
-        for ref_box_dimension, ref_boxed_image in zip(self._ref_box_dimensions, self._ref_boxed_images):
+        for ref_box_dimension, ref_boxed_image in zip(
+            self._ref_box_dimensions, self._ref_boxed_images
+        ):
 
             box_ymin, box_ymax, box_xmin, box_xmax = ref_box_dimension
-            current_boxed_image = current_image.data[box_ymin:box_ymax, box_xmin:box_xmax]
+            current_boxed_image = current_image.data[
+                box_ymin:box_ymax, box_xmin:box_xmax
+            ]
 
             corr = signal.correlate2d(
                 ref_boxed_image, current_boxed_image, mode="same", boundary="wrap"
@@ -244,7 +255,9 @@ class NStarSurroundings(BaseGuidingOffset):
                 pass
 
         if len(offsets) == 0:
-            raise ValueError(f"All {self.N_stars} fits on boxed star correlations failed.")
+            raise ValueError(
+                f"All {self.N_stars} fits on boxed star correlations failed."
+            )
         offsets = np.array(offsets)
 
         offset = np.mean(offsets[:, 0]), np.mean(offsets[:, 1])
@@ -256,7 +269,8 @@ class NStarSurroundings(BaseGuidingOffset):
 
     def gauss2d(self, x, a, b, x0, y0, sigma_x, sigma_y):
         return a + b * np.exp(
-            -((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2)
+            -((x[0] - x0) ** 2) / (2 * sigma_x ** 2)
+            - (x[1] - y0) ** 2 / (2 * sigma_y ** 2)
         )
 
     def calculate_offset_from_2d_correlation(self, corr):
@@ -288,7 +302,7 @@ class NStarSurroundings(BaseGuidingOffset):
         # only use data that clearly belong to peak to avoid border effects
         mask_value_above_background = ydata > -1e5  # a + .1*b
         mask_circle_around_peak = (X.ravel() - x0) ** 2 + (Y.ravel() - y0) ** 2 < 4 * (
-                sigma_x ** 2 + sigma_y ** 2
+            sigma_x ** 2 + sigma_y ** 2
         ) / 2
         mask = np.logical_and(mask_value_above_background, mask_circle_around_peak)
         ydata_restricted = ydata[mask]
@@ -341,10 +355,10 @@ class NStarSurroundings(BaseGuidingOffset):
         x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
 
         if (
-                x0 < -corr_size / 4
-                or x0 > corr_size / 4
-                or y0 < -corr_size / 4
-                or y0 > corr_size / 4
+            x0 < -corr_size / 4
+            or x0 > corr_size / 4
+            or y0 < -corr_size / 4
+            or y0 > corr_size / 4
         ):
             raise CorrelationMaxCloseToBorderError(
                 "Maximum of correlation is outside center half of axes. "
@@ -361,4 +375,5 @@ class NStarSurroundings(BaseGuidingOffset):
         self._pid_ra = PID(Kp, Ki, Kd)
         self._pid_dec = PID(Kp, Ki, Kd)
 
-__all__ = ['NStarSurroundings']
+
+__all__ = ["NStarSurroundings"]

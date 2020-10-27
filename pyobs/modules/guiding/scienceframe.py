@@ -53,7 +53,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info('Received new image.')
 
         # download image
-        image = self.vfs.download_fits_image(event.filename)
+        image = self.vfs.download_image(event.filename)
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':

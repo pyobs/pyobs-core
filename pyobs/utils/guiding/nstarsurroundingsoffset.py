@@ -13,7 +13,7 @@ from pyobs.utils.photometry.sep import SepPhotometry
 from pyobs.utils.pid import PID
 from .base import BaseGuidingOffset
 
-
+import matplotlib.pyplot as plt
 log = logging.getLogger(__name__)
 
 
@@ -21,7 +21,7 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class NStarSurroundings(BaseGuidingOffset):
+class NStarSurroundingsOffset(BaseGuidingOffset):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
     MIN_REQUIRED_SOURCES_IN_IMAGE = 5
@@ -30,6 +30,7 @@ class NStarSurroundings(BaseGuidingOffset):
         self, N_stars=1, max_expected_offset_in_arcsec=1e-3 * 3600, *args, **kwargs
     ):
         """Initializes a new auto guiding system."""
+        print("Initializing NStarSurroundingsOffset")
         self.N_stars = N_stars
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self._ref_box_dimensions = None
@@ -61,7 +62,7 @@ class NStarSurroundings(BaseGuidingOffset):
         """
 
         # no reference image?
-        if self._ref_box_dimensions is None:
+        if self._ref_box_dimensions is None or self._ref_boxed_images is None:
             log.info("Initialising auto-guiding with new image...")
             self.star_box_size = self.get_star_box_size_from_max_expected_offset(
                 self.max_expected_offset_in_arcsec, image.pixel_scale
@@ -77,7 +78,7 @@ class NStarSurroundings(BaseGuidingOffset):
 
         # process it
         log.info("Perform auto-guiding on new image...")
-        dx, dy, _, _ = self.calculate_offset(image)
+        dx, dy = self.calculate_offset(image)
         return dx, dy
 
     @staticmethod
@@ -150,6 +151,7 @@ class NStarSurroundings(BaseGuidingOffset):
         width, height = image_shape
 
         def min_distance_from_border(source):
+            # minimum across x and y of distances to border
             return np.min(
                 np.array(
                     (
@@ -167,11 +169,10 @@ class NStarSurroundings(BaseGuidingOffset):
             )
         )
         sources.sort("min_distance_from_border")
-        sources_sorted_by_distance_from_border = sources
 
-        sources_result = sources_sorted_by_distance_from_border[
+        sources_result = sources[
             np.where(
-                sources_sorted_by_distance_from_border["min_distance_from_border"]
+                sources["min_distance_from_border"]
                 > min_distance_from_border_in_pixels
             )
         ]
@@ -236,36 +237,32 @@ class NStarSurroundings(BaseGuidingOffset):
         for ref_box_dimension, ref_boxed_image in zip(
             self._ref_box_dimensions, self._ref_boxed_images
         ):
-
             box_ymin, box_ymax, box_xmin, box_xmax = ref_box_dimension
             current_boxed_image = current_image.data[
                 box_ymin:box_ymax, box_xmin:box_xmax
             ]
 
             corr = signal.correlate2d(
-                ref_boxed_image, current_boxed_image, mode="same", boundary="wrap"
+                current_boxed_image, ref_boxed_image, mode="same", boundary="wrap"
             )
 
             try:
-                # ignore error from fit, because error is calculated across stars
-                offset, _ = self.calculate_offset_from_2d_correlation(corr)
+                offset = self.calculate_offset_from_2d_correlation(corr)
                 offsets.append(offset)
             except Exception as e:
                 log.info(f"Exception '{e}' caught. Ignoring this star.")
                 pass
 
         if len(offsets) == 0:
-            raise ValueError(
+            log.info(
                 f"All {self.N_stars} fits on boxed star correlations failed."
             )
+            return None, None
         offsets = np.array(offsets)
 
         offset = np.mean(offsets[:, 0]), np.mean(offsets[:, 1])
-        offset_err = np.std(offsets[:, 0]), np.std(offsets[:, 1]) / np.sqrt(
-            offsets.shape[0]
-        )
 
-        return offset, offset_err
+        return offset
 
     def gauss2d(self, x, a, b, x0, y0, sigma_x, sigma_y):
         return a + b * np.exp(
@@ -326,8 +323,6 @@ class NStarSurroundings(BaseGuidingOffset):
             offset = np.unravel_index(np.argmax(corr), corr.shape)
             return offset
 
-        perr = np.sqrt(np.diag(pcov))
-
         MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD = 1e-2
         fit_ydata_restricted = self.gauss2d(xdata_restricted, *popt)
         square_rel_res = np.square(
@@ -341,7 +336,7 @@ class NStarSurroundings(BaseGuidingOffset):
                 f" vs allowed value of {MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD}"
             )
 
-        return (popt[2], popt[3]), (perr[2], perr[3])
+        return (popt[2], popt[3])
 
     def check_if_correlation_max_is_close_to_border(self, corr):
         corr_size = corr.shape[0]
@@ -376,4 +371,4 @@ class NStarSurroundings(BaseGuidingOffset):
         self._pid_dec = PID(Kp, Ki, Kd)
 
 
-__all__ = ["NStarSurroundings"]
+__all__ = ["NStarSurroundingsOffset"]

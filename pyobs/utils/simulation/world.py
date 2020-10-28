@@ -396,10 +396,10 @@ class SimWorld(Module):
 
         # close telescope
         if hasattr(self.telescope, 'close'):
-            self.telescope.open()
+            self.telescope.close()
 
         # close camera
-        if hasattr(self.telescope, 'close'):
+        if hasattr(self.camera, 'close'):
             self.camera.close()
 
     @property

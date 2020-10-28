@@ -222,7 +222,7 @@ class Module(IModule):
         # close sub modules
         for mod in self._sub_modules:
             if hasattr(mod, 'close'):
-                mode.close()
+                mod.close()
 
         # join watchdog and then all threads
         if self._watchdog and self._watchdog.is_alive():

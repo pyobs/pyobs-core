@@ -198,7 +198,7 @@ class Image:
 
     @property
     def pixel_scale(self):
-        """Returns pixel scale in pixels per arc second."""
+        """Returns pixel scale in arcsec/pixel."""
         if 'CD1_1' in self.header:
             return abs(self.header['CD1_1']) * 3600.
         elif 'CDELT1' in self.header:

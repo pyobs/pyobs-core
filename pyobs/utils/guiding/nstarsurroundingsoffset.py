@@ -60,9 +60,9 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         # no reference image?
         if self._ref_box_dimensions is None or self._ref_boxed_images is None:
             log.info("Initialising auto-guiding with new image...")
-            self.star_box_size = self.get_star_box_size_from_max_expected_offset(
+            self.star_box_size = max(5, self.get_star_box_size_from_max_expected_offset(
                 self.max_expected_offset_in_arcsec, image.pixel_scale
-            )
+            ))
 
             # initialize reference image information: dimensions & position of boxes, box images
             (

@@ -39,7 +39,8 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # simulated world
-        self._world = world if world is not None else SimWorld()
+        self._world = world if world is not None else \
+            self._create_sub_module({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._camera: SimCamera = self._world.camera
 
         # init camera

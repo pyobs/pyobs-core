@@ -26,7 +26,8 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
         # init world and get telescope
-        self._world = world if world is not None else SimWorld()
+        self._world = world if world is not None else \
+            self._create_sub_module({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._telescope = self._world.telescope
 
         # automatically send status updates

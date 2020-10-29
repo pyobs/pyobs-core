@@ -413,6 +413,4 @@ class SimWorld(Module):
         return float(self.observer.sun_altaz(self.time).alt.degree)
 
 
-
-
 __all__ = ['SimTelescope', 'SimCamera', 'SimWorld']

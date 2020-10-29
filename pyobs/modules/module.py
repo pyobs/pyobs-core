@@ -1,3 +1,4 @@
+from __future__ import annotations
 import datetime
 import inspect
 import logging
@@ -103,6 +104,9 @@ class Module(IModule):
         # closing event
         self.closing = threading.Event()
 
+        # sub modules
+        self._sub_modules = []
+
         # comm object
         if comm is None:
             self.comm = DummyComm()
@@ -197,6 +201,11 @@ class Module(IModule):
         if self._watchdog:
             self._watchdog.start()
 
+        # open sub modules
+        for mod in self._sub_modules:
+            if hasattr(mod, 'open'):
+                mod.open()
+
         # success
         self._opened = True
 
@@ -209,6 +218,11 @@ class Module(IModule):
 
         # request closing of object (used for long-running methods)
         self.closing.set()
+
+        # close sub modules
+        for mod in self._sub_modules:
+            if hasattr(mod, 'close'):
+                mod.close()
 
         # join watchdog and then all threads
         if self._watchdog and self._watchdog.is_alive():
@@ -405,6 +419,25 @@ class Module(IModule):
         except Exception as e:
             log.exception('Error on remote procedure call: %s' % str(e))
 
+    def _create_sub_module(self, config: dict, **kwargs) -> Module:
+        """Create a new sub-module, which will automatically be opened and closed.
+
+        Args:
+            config: Module definition
+
+        Returns:
+            The created module.
+        """
+
+        # create it
+        module = create_object(config, timezone=self.timezone, location=self.location, **kwargs)
+
+        # add to list
+        self._sub_modules.append(module)
+
+        # return it
+        return module
+
 
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""
@@ -424,8 +457,7 @@ class MultiModule(Module):
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it
-                self._shared[name] = create_object(obj, timezone=self.timezone, location=self.location) \
-                    if isinstance(obj, dict) and 'class' in obj else obj
+                self._shared[name] = self._create_sub_module(obj) if isinstance(obj, dict) and 'class' in obj else obj
 
         # create modules
         self._modules = {}
@@ -436,42 +468,7 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                module = get_object(mod, timezone=self.timezone, location=self.location, **self._shared)
-                self._modules[name] = module
-
-    def open(self):
-        """Open module."""
-
-        # open shared objects
-        for name, obj in self._shared.items():
-            # if it has an open method, call it
-            if hasattr(obj, 'open'):
-                getattr(obj, 'open')()
-
-        # open all modules
-        for name, mod in self._modules.items():
-            log.info('Opening module %s...', name)
-            mod.open()
-
-        # open base
-        Module.open(self)
-
-    def close(self):
-        """Close module."""
-
-        # close all modules
-        for name, mod in self._modules.items():
-            log.info('Closing module %s...', name)
-            mod.close()
-
-        # close shared objects
-        for name, obj in self._shared.items():
-            # if it has an close method, call it
-            if hasattr(obj, 'close'):
-                getattr(obj, 'close')()
-
-        # close base
-        Module.close(self)
+                self._modules[name] = self._create_sub_module(mod, **self._shared)
 
     @property
     def modules(self):

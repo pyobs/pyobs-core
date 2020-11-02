@@ -20,24 +20,30 @@ class CorrelationMaxCloseToBorderError(Exception):
 class NStarSurroundingsOffset(BaseGuidingOffset):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
-    MIN_REQUIRED_SOURCES_IN_IMAGE = 5
-
     def __init__(
-            self, N_stars=1, max_expected_offset_in_arcsec=1e-3 * 3600, *args, **kwargs
+            self,
+            N_stars=1,
+            max_expected_offset_in_arcsec=1e-3 * 3600,
+            min_required_sources_in_image=5,
+            *args,
+            **kwargs,
     ):
         """Initializes a new auto guiding system."""
-        print("Initializing NStarSurroundingsOffset")
+        log.info(f"Initializing NStarSurroundingsOffset with N_starts={N_stars}.")
         self.N_stars = N_stars
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self._ref_box_dimensions = None
         self._ref_boxed_images = None
+
+        self.min_required_sources_in_image = min_required_sources_in_image
+
         self.star_box_size = None
         self._pid_ra = None
         self._pid_dec = None
 
     def reset(self):
         """Resets guiding."""
-        log.info("Reset autp-guiding.")
+        log.info("Reset auto-guiding.")
         self._ref_box_dimensions = None
         self._ref_boxed_images = None
 
@@ -60,15 +66,30 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         # no reference image?
         if self._ref_box_dimensions is None or self._ref_boxed_images is None:
             log.info("Initialising auto-guiding with new image...")
-            self.star_box_size = max(5, self.get_star_box_size_from_max_expected_offset(
-                self.max_expected_offset_in_arcsec, image.pixel_scale
-            ))
+            self.star_box_size = max(
+                5,
+                self.get_star_box_size_from_max_expected_offset(
+                    self.max_expected_offset_in_arcsec, image.pixel_scale
+                ),
+            )
+            log.info(f"Choosing star_box_size={self.star_box_size}")
 
             # initialize reference image information: dimensions & position of boxes, box images
-            (
-                self._ref_box_dimensions,
-                self._ref_boxed_images,
-            ) = self._create_star_boxes_from_ref_image(image)
+            try:
+                (
+                    self._ref_box_dimensions,
+                    self._ref_boxed_images,
+                ) = self._create_star_boxes_from_ref_image(image)
+            except ValueError as e:
+                log.warning(
+                    f"Could not initialize reference image info due to exception '{e}'. Resetting..."
+                )
+                self.reset()
+                return None, None
+
+            log.info(
+                f"Reference image star box dimensions are {self._ref_box_dimensions}"
+            )
             self._init_pid()
             return 0, 0
 
@@ -88,6 +109,19 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         return star_box_size
 
     def _create_star_boxes_from_ref_image(self, image: Image) -> (list, list):
+        """Calculate the boxes around self.N_stars best sources in the image.
+
+        Args:
+             image: Image to process
+
+        Returns:
+            2-tuple with
+                list of dimensions of boxes in "numpy" order: [0'th axis min, 0'th axis max, 1st axis min, 1st axis max]
+                list of images of those boxes
+
+        Raises:
+            ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in filtered list of sources
+        """
         sep = SepPhotometry()
         sources: Table = sep.find_stars(image)
         sources = self.convert_from_fits_to_numpy_index_convention(sources)
@@ -97,7 +131,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
             sources, image.data.shape, self.star_box_size // 2 + 1
         )
         sources = self.remove_bad_sources(sources)
-        self.check_if_enough_sources_in_image(sources, self.N_stars)
+        self.check_if_enough_sources_in_image(sources)
         selected_sources = self.select_top_N_brightest_sources(self.N_stars, sources)
 
         # find positions & dimensions of boxes around the stars, and the corresponding box images
@@ -216,8 +250,20 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
             sources = sources[:N_stars]
         return sources
 
-    def check_if_enough_sources_in_image(self, sources: Table, N_stars=0):
-        n_required_sources = max(self.MIN_REQUIRED_SOURCES_IN_IMAGE, N_stars)
+    def check_if_enough_sources_in_image(self, sources: Table):
+        """Check if enough sources in table.
+
+        Args:
+            sources: astropy table of sources to check.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in sources
+
+        """
+        n_required_sources = max(self.min_required_sources_in_image, self.N_stars)
         if len(sources) < n_required_sources:
             raise ValueError(
                 f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."

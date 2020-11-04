@@ -1,18 +1,14 @@
-import asyncio
 import glob
 import logging
 import threading
 import time
 from datetime import datetime
 from threading import RLock
-
-import numpy as np
 from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.images import Image
-from pyobs.utils.simulation.world import SimWorld, SimCamera
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +16,7 @@ log = logging.getLogger(__name__)
 class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
     """A dummy camera for testing."""
 
-    def __init__(self, readout_time: float = 2, sim: dict = None, world: SimWorld = None, *args, **kwargs):
+    def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy cammera.
 
         Args:
@@ -39,6 +35,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # simulated world
+        from pyobs.utils.simulation.world import SimCamera
         self._world = world if world is not None else \
             self._create_sub_module({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._camera: SimCamera = self._world.camera

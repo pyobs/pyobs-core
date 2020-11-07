@@ -1,4 +1,3 @@
-from __future__ import annotations
 import datetime
 import inspect
 import logging
@@ -419,7 +418,7 @@ class Module(IModule):
         except Exception as e:
             log.exception('Error on remote procedure call: %s' % str(e))
 
-    def _create_sub_module(self, config: dict, **kwargs) -> Module:
+    def _create_sub_module(self, config: dict, **kwargs) -> 'Module':
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:

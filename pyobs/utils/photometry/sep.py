@@ -141,11 +141,15 @@ class SepPhotometry(Photometry):
 
         # match fits conventions
         sources['x'] += 1.0
-        sources['y'] += 1.0
         sources['xpeak'] += 1
-        sources['ypeak'] += 1
         sources['xwin'] += 1.0
+        sources['xmin'] += 1
+        sources['xmax'] += 1
+        sources['y'] += 1.0
+        sources['ypeak'] += 1
         sources['ywin'] += 1.0
+        sources['ymin'] += 1
+        sources['ymax'] += 1
         sources['theta'] = np.degrees(sources['theta'])
 
         # pick columns for catalog

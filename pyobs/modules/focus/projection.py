@@ -75,10 +75,9 @@ class AutoFocusProjection(Module, IAutoFocus):
             exposure_time: Exposure time for images.
 
         Returns:
-            Tuple of obtained best focus value and its uncertainty.
+            Tuple of obtained best focus value and its uncertainty, or Nones if focus series failed.
 
         Raises:
-            ValueError: If focus could not be obtained.
             FileNotFoundException: If image could not be downloaded.
         """
         log.info('Performing auto-focus...')
@@ -98,7 +97,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                 filter_wheel: IFilters = self.proxy(self._filters, IFilters)
                 filter_name = filter_wheel.get_filter().wait()
             except ValueError:
-                log.warning('Filter wheel is not of correct type at the moment.')
+                log.warning('Filter module is not of type IFilters. Could not get filter.')
 
         # get focus as first guess
         try:
@@ -168,7 +167,18 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # check
         if focus is None or focus[0] is None or np.isnan(focus[0]):
-            raise ValueError('Could not fit focus.')
+            log.warning('Focus series failed.')
+
+            # reset to initial values
+            if self._offset:
+                log.info('Resetting focus offset to initial guess of %.3f mm.', guess)
+                focuser.set_focus_offset(focus[0]).wait()
+            else:
+                log.info('Resetting focus to initial guess of %.3f mm.', guess)
+                focuser.set_focus(focus[0]).wait()
+
+            # return Nones
+            return None, None
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
         absolute = None

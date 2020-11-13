@@ -102,7 +102,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             filter_wheel: IFilters = self.proxy(self._filters, IFilters)
             filter_name = filter_wheel.get_filter().wait()
         except ValueError:
-            log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
+            log.warning('Filter module is not of type IFilters. Could not set filter.')
 
         # get focus as first guess
         try:

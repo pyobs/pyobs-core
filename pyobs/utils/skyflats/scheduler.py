@@ -98,7 +98,7 @@ class ExpTimeEval:
         """
         return self(filter_name, binning, self._m * time_offset + self._b)
 
-    def duration(self, filter_name: str, binning: int, count: int, start_time: float = 0, readout: int = 1) -> float:
+    def duration(self, filter_name: str, binning: int, count: int, start_time: float = 0, readout: float = 0) -> float:
         """Estimates the duration for a given amount of flats in the given filter and binning, starting at the given
         start time.
 
@@ -150,7 +150,7 @@ class Scheduler:
     """Scheduler for taking flat fields"""
     def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
                  max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
-                 combine_binnings: bool = True):
+                 combine_binnings: bool = True, readout: dict = None):
         """Initializes a new scheduler for taking flat fields
 
         Args:
@@ -163,6 +163,7 @@ class Scheduler:
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
             combine_binnings: Whether different binnings use the same functions.
+            readout: Dictionary with readout times (in sec) per binning (as BxB).
         """
         self._eval = ExpTimeEval(observer, functions, combine_binnings=combine_binnings)
         self._observer = observer
@@ -174,6 +175,7 @@ class Scheduler:
         self._timespan = timespan
         self._filter_change = filter_change
         self._count = count
+        self._readout = {} if readout is None else readout
 
     def __call__(self, time: Time):
         """Calculate schedule starting at given time
@@ -220,6 +222,10 @@ class Scheduler:
             binning: Used binning
         """
 
+        # get readout time
+        sbin = '%dx%d' % (binning, binning)
+        readout = self._readout[sbin] if sbin in self._readout else 0.
+
         # find first possible start time
         time = 0
         while time < self._timespan:
@@ -229,7 +235,7 @@ class Scheduler:
             # are we in allowed limit?
             if self._min_exptime <= exp_time_start <= self._max_exptime:
                 # seems to fit, get duration
-                duration = self._eval.duration(filter_name, binning, self._count, start_time=time)
+                duration = self._eval.duration(filter_name, binning, self._count, start_time=time, readout=readout)
 
                 # add time for filter change
                 duration += self._filter_change

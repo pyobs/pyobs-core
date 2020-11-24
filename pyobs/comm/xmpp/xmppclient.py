@@ -141,14 +141,5 @@ class XmppClient(sleekxmpp.ClientXMPP):
         self._auth_success = success
         self._auth_event.set()
 
-    @property
-    def online_clients(self) -> list:
-        """Returns list of online clients.
-
-        Returns:
-            List of online clients.
-        """
-        return self._online_clients
-
 
 __all__ = ['XmppClient']

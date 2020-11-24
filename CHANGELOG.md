@@ -5,6 +5,7 @@
 * Changed PyObsModule to Module.
 * Removed possibility for network configs.
 * Added MultiModule, which allows for multiple modules in one process.
+* Flat scheduler: add options for readout times
 
 
 ### v0.11 (2020-10-18)

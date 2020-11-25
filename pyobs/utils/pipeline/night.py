@@ -1,11 +1,11 @@
 import logging
-from typing import Union, Dict
+from typing import Union, Dict, Type
 
 from pyobs.interfaces import ICamera
 from pyobs.object import get_object
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image
+from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
 from pyobs.utils.astrometry import Astrometry
 from pyobs.utils.photometry import Photometry
 from pyobs.utils.archive import Archive
@@ -66,8 +66,7 @@ class Night:
                     raise ValueError('Unknown mask format.')
 
         # cache for master calibration frames
-        self._master_names = {}
-        self._master_data = {}
+        self._master_frames = {}
 
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
@@ -102,6 +101,35 @@ class Night:
         # upload
         self._archive.upload_frames([calibrated])
 
+    def _find_master(self, image_class: Type[CalibrationImage], instrument: str, binning: str,
+                     filter_name: str = None) -> Union[CalibrationImage, None]:
+        """Find master calibration frame for given parameters using a cache.
+
+        Args:
+            image_class: Image class.
+            instrument: Instrument name.
+            binning: Binning.
+            filter_name: Name of filter.
+
+        Returns:
+            Image or None
+        """
+
+        # is in cache?
+        if (image_class, instrument, binning, filter_name) in self._master_frames:
+            return self._master_frames[image_class, instrument, binning, filter_name]
+
+        # try to download one
+        midnight = Time(self._night + ' 23:59:59')
+        calib = image_class.find_master(self._archive, midnight, instrument, binning, filter_name)
+        if calib is not None:
+            # store it
+            self._master_frames[image_class, instrument, binning, filter_name] = calib
+            return calib
+        else:
+            # still nothing
+            return None
+
     def _calib_data(self, instrument: str, binning: str, filter_name: str):
         # get all frames
         infos = self._archive.list_frames(night=self._night, instrument=instrument,
@@ -111,13 +139,10 @@ class Night:
             return
         log.info('Calibrating %d OBJECT frames...', len(infos))
 
-        # midnight
-        midnight = Time(self._night + ' 23:59:59')
-
         # get calibration frames
-        bias = BiasImage.find_master(self._archive, midnight, instrument, binning)
-        dark = DarkImage.find_master(self._archive, midnight, instrument, binning)
-        flat = FlatImage.find_master(self._archive, midnight, instrument, binning, filter_name)
+        bias = self._find_master(BiasImage, instrument, binning)
+        dark = self._find_master(DarkImage, instrument, binning)
+        flat = self._find_master(FlatImage, instrument, binning, filter_name)
 
         # anything missing?
         if bias is None or dark is None or flat is None:
@@ -154,23 +179,26 @@ class Night:
         if len(images) < 3:
             log.warning('Too few (%d) frames found, skipping...', len(infos))
 
-        # midnight
-        midnight = Time(self._night + ' 23:59:59')
-
         # create master
         if image_type == ICamera.ImageType.BIAS:
             # BIAS are easy, just combine
             calib = BiasImage.create_master(images)
 
+            # store in cache
+            self._master_frames[BiasImage, instrument, binning, None] = calib
+
         elif image_type == ICamera.ImageType.DARK:
             # for DARKs, we first need a BIAS
-            bias = BiasImage.find_master(self._archive, midnight, instrument, binning, None)
+            bias = self._find_master(BiasImage, instrument, binning, None)
             if bias is None:
                 log.error('Could not find BIAS frame, skipping...')
                 return
 
             # combine
             calib = DarkImage.create_master(images, bias=bias)
+
+            # store in cache
+            self._master_frames[DarkImage, instrument, binning, None] = calib
 
         elif image_type == ICamera.ImageType.SKYFLAT:
             # got enough frames?
@@ -179,14 +207,17 @@ class Night:
                 return
 
             # for DARKs, we first ne a BIAS and a DARK
-            bias = BiasImage.find_master(self._archive, midnight, instrument, binning, None)
-            dark = DarkImage.find_master(self._archive, midnight, instrument, binning, None)
+            bias = self._find_master(BiasImage, instrument, binning, None)
+            dark = self._find_master(DarkImage, instrument, binning, None)
             if bias is None or dark is None:
                 log.error('Could not find BIAS/DARK frame, skipping...')
                 return
 
             # combine
             calib = FlatImage.create_master(images, bias=bias, dark=dark, method=self._flats_combine)
+
+            # store in cache
+            self._master_frames[FlatImage, instrument, binning, filter_name] = calib
 
         else:
             raise ValueError('Invalid image type')

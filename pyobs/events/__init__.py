@@ -10,6 +10,7 @@ from .moduleclosed import ModuleClosedEvent
 from .moduleopened import ModuleOpenedEvent
 from .motionstatuschanged import MotionStatusChangedEvent
 from .newimage import NewImageEvent
+from .newreducedimage import NewReducedImageEvent
 from .roofclosing import RoofClosingEvent
 from .roofopened import RoofOpenedEvent
 from .taskstarted import TaskStartedEvent

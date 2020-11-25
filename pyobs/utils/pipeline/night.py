@@ -121,9 +121,12 @@ class Night:
 
         # try to download one
         midnight = Time(self._night + ' 23:59:59')
-        calib = image_class.find_master(self._archive, midnight, instrument, binning, filter_name)
-        if calib is not None:
-            # store it
+        frame = image_class.find_master(self._archive, midnight, instrument, binning, filter_name)
+        if frame is not None:
+            # download it
+            calib = self._archive.download_frames([frame])[0]
+
+            # store and return it
             self._master_frames[image_class, instrument, binning, filter_name] = calib
             return calib
         else:

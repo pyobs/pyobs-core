@@ -8,7 +8,7 @@ import logging
 from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from .image import Image
-
+from ..archive import FrameInfo
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class CalibrationImage(Image):
 
     @classmethod
     def find_master(cls: Type[CalibrationImage], archive: 'Archive', time: Time, instrument: str,
-                    binning: str, filter_name: str = None) -> Union[None, CalibrationImage]:
+                    binning: str, filter_name: str = None) -> Union[None, FrameInfo]:
         """Find and download master calibration frame.
 
         Args:
@@ -68,7 +68,7 @@ class CalibrationImage(Image):
             filter_name: Used filter.
 
         Returns:
-            Master calibration frame or None.
+            FrameInfo for master calibration frame or None.
         """
 
         # get image type
@@ -96,8 +96,8 @@ class CalibrationImage(Image):
             info = s[0]
             log.info('Found calibration frame %s.', info.filename)
 
-            # download it
-            return archive.download_frames([info])[0]
+            # return FrameInfo
+            return info
 
 
 __all__ = ['CalibrationImage']

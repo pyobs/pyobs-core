@@ -183,16 +183,16 @@ class XmppComm(Comm):
 
         # get interfaces
         if client not in self._interface_cache:
-            self._interface_cache[client] = self._xmpp.get_interfaces(client)
+            # get interface names
+            interface_names = self._xmpp.get_interfaces(client)
 
-
-        # get names
-        interface_names = self._interface_cache[client]
+            # get interfaces
+            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
 
         # convert to classes
-        return self._interface_names_to_classes(interface_names)
+        return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface: str) -> bool:
+    def _supports_interface(self, client: str, interface) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -207,13 +207,11 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # get interface names
-        if client not in self._interface_cache:
-            return False
-        interface_names = self._interface_cache[client]
+        # update interface cache and get interface names
+        interfaces = self.get_interfaces(client)
 
         # supported?
-        return interface in interface_names
+        return interface in interfaces
 
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.

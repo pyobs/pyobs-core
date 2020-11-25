@@ -94,7 +94,7 @@ class CalibrationImage(Image):
             # sort by diff to time and take first
             s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
             info = s[0]
-            log.info('Found calibration frame %s.', info.filename)
+            log.info('Found %s frame %s.', image_type.name, info.filename)
 
             # return FrameInfo
             return info

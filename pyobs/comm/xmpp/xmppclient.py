@@ -32,7 +32,6 @@ class XmppClient(sleekxmpp.ClientXMPP):
         self._logs_node = 'logs'
         self._auth_event = threading.Event()
         self._auth_success = False
-        self._interface_cache = {}
 
         # auto-accept invitations
         self.auto_authorize = True
@@ -65,37 +64,20 @@ class XmppClient(sleekxmpp.ClientXMPP):
             List of interface names
         """
 
-        # in cache?
-        if jid not in self._interface_cache:
-            # request features
-            try:
-                info = self['xep_0030'].get_info(jid=jid, cached=False)
-            except sleekxmpp.exceptions.IqError:
-                return None
+        # request features
+        try:
+            info = self['xep_0030'].get_info(jid=jid, cached=False)
+        except sleekxmpp.exceptions.IqError:
+            return []
 
-            # extract pyobs interfaces
-            try:
-                if isinstance(info, sleekxmpp.stanza.iq.Iq):
-                    info = info['disco_info']
-                prefix = 'pyobs:interface:'
-                self._interface_cache[jid] = [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
-            except TypeError:
-                return None
-
-        # return it
-        return self._interface_cache[jid]
-
-    def supports_interface(self, jid: str, interface) -> bool:
-        """Checks, whether a client supports a given interface.
-
-        Args:
-            jid: JID of client to check.
-            interface: Interface to check.
-
-        Returns:
-            True, if client supports interface.
-        """
-        return self['xep_0030'].supports(jid=jid, feature='pyobs:interface:%s' % interface.__name__)
+        # extract pyobs interfaces
+        try:
+            if isinstance(info, sleekxmpp.stanza.iq.Iq):
+                info = info['disco_info']
+            prefix = 'pyobs:interface:'
+            return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
+        except TypeError:
+            return []
 
     def wait_connect(self) -> bool:
         """Wait for client to connect.

@@ -48,6 +48,7 @@ class XmppComm(Comm):
         self._command_handlers = {}
         self._event_handlers = {}
         self._online_clients = []
+        self._interface_cache = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -180,10 +181,13 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # fetch interface names
-        interface_names = self._xmpp.get_interfaces(client)
-        if interface_names is None:
-            return None
+        # get interfaces
+        if client not in self._interface_cache:
+            self._interface_cache[client] = self._xmpp.get_interfaces(client)
+
+
+        # get names
+        interface_names = self._interface_cache[client]
 
         # convert to classes
         return self._interface_names_to_classes(interface_names)
@@ -198,7 +202,18 @@ class XmppComm(Comm):
         Returns:
             Whether or not interface is supported.
         """
-        return self._xmpp.supports_interface(self._get_full_client_name(client), interface)
+
+        # full JID given?
+        if '@' not in client:
+            client = '%s@%s/%s' % (client, self._domain, self._resource)
+
+        # get interface names
+        if client not in self._interface_cache:
+            return False
+        interface_names = self._interface_cache[client]
+
+        # supported?
+        return interface in interface_names
 
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.
@@ -220,8 +235,16 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # append to list and send event
-        self._online_clients.append(msg['from'].full)
+        # append to list
+        jid = msg['from'].full
+        if jid not in self._online_clients:
+            self._online_clients.append(jid)
+
+        # clear interface cache, just in case there is something there
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
 
     def _got_offline(self, msg):
@@ -231,8 +254,15 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # remove from list and send event
-        self._online_clients.remove(msg['from'].full)
+        # remove from list
+        jid = msg['from'].full
+        self._online_clients.remove(jid)
+
+        # clear interface cache
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
         self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
 
     @property

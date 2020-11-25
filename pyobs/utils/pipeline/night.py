@@ -1,51 +1,43 @@
 import logging
-from typing import Union, Dict, Type
+from typing import Union, Type
 
 from pyobs.interfaces import ICamera
 from pyobs.object import get_object
+
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
 from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
-from pyobs.utils.astrometry import Astrometry
-from pyobs.utils.photometry import Photometry
 from pyobs.utils.archive import Archive
-
+from .pipeline import Pipeline
 
 log = logging.getLogger(__name__)
 
 
 class Night:
     def __init__(self, site: str, night: str,
-                 archive: Union[dict, Archive], photometry: Union[dict, Photometry],
-                 astrometry: Union[dict, Astrometry], worker_procs: int = 4,
+                 archive: Union[dict, Archive], science: Union[dict, Pipeline], worker_procs: int = 4,
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
-                 filenames: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
-                                  '{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits',
                  flats_combine: Union[str, Image.CombineMethod] = Image.CombineMethod.MEDIAN, flats_min_raw: int = 10,
-                 masks: Dict[str, Union[Image, str]] = None, *args, **kwargs):
+                 *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
             site: Telescope site to use.
             night: Night to reduce.
             archive: Archive to fetch images from and write results to.
-            photometry: Photometry object.
-            astrometry: Astrometry object.
+            science: Science pipeline.
             worker_procs: Number of worker processes.
             filenames_calib: Filename pattern for master calibration files.
-            filenames: Filename pattern for reduced science frames.
             flats_combine: Method to combine flats.
             flats_min_raw: Minimum number of raw frames to create flat field.
-            masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
             *args:
             **kwargs:
         """
 
-        # get archive, photometry and astrometry
+        # get archive and science pipeline
         self._archive = get_object(archive, Archive)
-        self._photometry = get_object(photometry, Photometry)
-        self._astrometry = get_object(astrometry, Astrometry)
+        self._science_pipeline = get_object(science, Pipeline)
 
         # stuff
         self._site = site
@@ -54,23 +46,11 @@ class Night:
         self._flats_combine = Image.CombineMethod(flats_combine) if isinstance(flats_combine, str) else flats_combine
         self._flats_min_raw = flats_min_raw
 
-        # masks
-        self._masks = {}
-        if masks is not None:
-            for binning, mask in masks.items():
-                if isinstance(mask, Image):
-                    self._masks[binning] = mask
-                elif isinstance(mask, str):
-                    self._masks[binning] = Image.from_file(mask)
-                else:
-                    raise ValueError('Unknown mask format.')
-
         # cache for master calibration frames
         self._master_frames = {}
 
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
-        self._fmt_object = FilenameFormatter(filenames)
 
     def _calib_data_frame(self, info, bias, dark, flat):
         # download frame
@@ -158,7 +138,15 @@ class Night:
         # run all science frames
         for i, info in enumerate(infos, 1):
             log.info('Calibrating file %d/%d: %s...', i, len(infos), info.filename)
-            self._calib_data_frame(info, bias, dark, flat)
+
+            # download frame
+            image = self._archive.download_frames([info])[0]
+
+            # calibrate
+            calibrated = self._science_pipeline.calibrate(image, bias, dark, flat)
+
+            # upload
+            self._archive.upload_frames([calibrated])
 
     def _create_master_calib(self, instrument: str, image_type: ICamera.ImageType, binning: str,
                              filter_name: str = None):

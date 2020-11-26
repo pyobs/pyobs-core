@@ -358,7 +358,7 @@ class LcoTaskArchive(TaskArchive):
                     c = cfg['constraints']
                     constraints = [
                         AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
-                        MoonSeparationConstraint(min=c['min_lunar_distance'])
+                        MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg)
                     ]
 
                     # create block

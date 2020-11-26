@@ -15,7 +15,6 @@ from pyobs.utils.time import Time
 from ..taskarchive import TaskArchive
 from .task import LcoTask
 
-
 log = logging.getLogger(__name__)
 
 
@@ -357,7 +356,7 @@ class LcoTaskArchive(TaskArchive):
 
                     # constraints
                     c = cfg['constraints']
-                    constraints = [AirmassConstraint(max=c['max_airmass'])]
+                    constraints = [AirmassConstraint(max=c['max_airmass'], boolean_constraint=False)]
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,

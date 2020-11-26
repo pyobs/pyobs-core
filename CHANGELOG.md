@@ -7,7 +7,9 @@
 * Added MultiModule, which allows for multiple modules in one process.
 * Flat scheduler: add options for readout times.
 * New OnlineReduction module for reduction during the night.
-* Fixed bug that sometimes appears in the interface caching for Comm
+* Fixed bug that sometimes appears in the interface caching for Comm.
+* LcoTaskArchive: added MoonSeparationConstraint, fixed AirmassConstraint.
+* Optimized Scheduler by only scheduling blocks that actually have a window in the given range.
 
 
 ### v0.11 (2020-10-18)

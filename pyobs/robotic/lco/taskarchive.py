@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 import logging
 from typing import Union, List, Dict
 import requests
-from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget
+from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -356,7 +356,10 @@ class LcoTaskArchive(TaskArchive):
 
                     # constraints
                     c = cfg['constraints']
-                    constraints = [AirmassConstraint(max=c['max_airmass'], boolean_constraint=False)]
+                    constraints = [
+                        AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
+                        MoonSeparationConstraint(min=c['min_lunar_distance'])
+                    ]
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,

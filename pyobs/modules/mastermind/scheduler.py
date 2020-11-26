@@ -3,7 +3,7 @@ import json
 import logging
 import threading
 import typing
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule
+from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint
 from astropy.time import TimeDelta
 import astropy.units as u
 from pyobs.events.taskfinished import TaskFinishedEvent
@@ -139,16 +139,35 @@ class Scheduler(Module, IStoppable, IRunnable):
                 if start is None or start < now_plus_safety:
                     # if no ETA exists or is in the past, use safety time
                     start = now_plus_safety
+                end = start + TimeDelta(self._schedule_range * u.hour)
 
-                # remove currently running block
-                blocks = list(filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks))
+                # remove currently running block and filter by start time
+                blocks = []
+                for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks):
+                    time_constraint_found = False
+                    # loop all constraints
+                    for c in b.constraints:
+                        if isinstance(c, TimeConstraint):
+                            # we found a time constraint
+                            time_constraint_found = True
+
+                            # does the window start before the end of the scheduling range?
+                            if c.min < end:
+                                # yes, store block and break loop
+                                blocks.append(b)
+                                break
+                    else:
+                        # loop has finished without breaking
+                        # if no time constraint has been found, we still take the block
+                        if time_constraint_found is False:
+                            blocks.append(b)
 
                 # log it
                 log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
                 # init scheduler and schedule
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-                time_range = Schedule(start, start + TimeDelta(self._schedule_range * u.hour))
+                time_range = Schedule(start, end)
                 schedule = scheduler(blocks, time_range)
 
                 # update

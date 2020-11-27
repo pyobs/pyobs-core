@@ -16,17 +16,19 @@ class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
 
     def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[None, Publisher, dict] = None,
-                 *args, **kwargs):
+                 max_ellipticity: float = 0.2, *args, **kwargs):
         """Creates a new seeing estimator.
 
         Args:
             sources: List of sources (e.g. cameras) to process images from or None for all.
+            max_ellipticity: Maximum ellipticity for sources to consider.
         """
         Module.__init__(self, *args, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
         self._publisher: Publisher = None if publisher is None else get_object(publisher, Publisher)
+        self._max_ellipticity = max_ellipticity
 
     def open(self):
         """Open module."""
@@ -82,7 +84,7 @@ class Seeing(Module):
             return
 
         # filter by ellipticity
-        cat = cat[cat['ellipticity'] < 0.2]
+        cat = cat[cat['ellipticity'] < self._max_ellipticity]
 
         # get WCS and pixel size
         wcs = WCS(image.header)

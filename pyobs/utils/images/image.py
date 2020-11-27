@@ -65,14 +65,23 @@ class Image:
             Image.
         """
 
-        # store
+        # create image
         image = cls()
-        if 'SCI' in data:
-            image.data = data['SCI'].data.astype(np.float)
-            image.header = data['SCI'].header
+
+        # find HDU with image data
+        for hdu in data:
+            if isinstance(hdu, fits.PrimaryHDU) and hdu.header['NAXIS'] > 0 or \
+                    isinstance(hdu, fits.ImageHDU) and hdu.name == 'SCI' or \
+                    isinstance(hdu, fits.CompImageHDU):
+                # found image HDU
+                image_hdu = hdu
+                break
         else:
-            image.data = data[0].data.astype(np.float)
-            image.header = data[0].header
+            raise ValueError('Could not find HDU with main image.')
+
+        # get data
+        image.data = image_hdu.data.astype(np.float)
+        image.header = image_hdu.header
 
         # mask
         if 'BPM' in data:

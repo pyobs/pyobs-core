@@ -1,5 +1,6 @@
 import logging
 from queue import Queue
+from typing import Union, List
 
 from pyobs import Module
 from pyobs.events import NewImageEvent
@@ -11,13 +12,13 @@ log = logging.getLogger(__name__)
 class ImageWriter(Module):
     """Writes new images to disk."""
 
-    def __init__(self, new_images_channel: str = 'new_images', filename: str = '/archive/{FNAME}',
+    def __init__(self, filename: str = '/archive/{FNAME}', sources: Union[str, List[str]] = None,
                  *args, **kwargs):
         """Creates a new image writer.
 
         Args:
-            new_images_channel: Name of new images channel.
             filename: Pattern for filename to store images at.
+            sources: List of sources (e.g. cameras) to process images from or None for all.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -25,8 +26,8 @@ class ImageWriter(Module):
         self._add_thread_func(self._worker, True)
 
         # variables
-        self._new_images_channel = new_images_channel
         self._filename = filename
+        self._sources = [sources] if isinstance(sources, str) else sources
         self._queue = Queue()
 
     def open(self):
@@ -34,7 +35,7 @@ class ImageWriter(Module):
         Module.open(self)
 
         # subscribe to channel with new images
-        if self._new_images_channel:
+        if self.comm is not None:
             log.info('Subscribing to new image events...')
             self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
@@ -48,6 +49,12 @@ class ImageWriter(Module):
         Returns:
             Success
         """
+
+        # filter by source
+        if self._sources is not None and sender not in self._sources:
+            return
+
+        # queue file
         log.info('Received new image event from %s.', sender)
         self._queue.put(event.filename)
 

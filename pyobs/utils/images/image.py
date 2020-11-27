@@ -67,8 +67,12 @@ class Image:
 
         # store
         image = cls()
-        image.data = data['SCI'].data.astype(np.float)
-        image.header = data['SCI'].header
+        if 'SCI' in data:
+            image.data = data['SCI'].data.astype(np.float)
+            image.header = data['SCI'].header
+        else:
+            image.data = data[0].data.astype(np.float)
+            image.header = data[0].header
 
         # mask
         if 'BPM' in data:

@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
+from astropy.table import Table
 
 
 class Image:
@@ -38,6 +39,14 @@ class Image:
             image = klass()
             image.data = data['SCI'].data.astype(np.float)
             image.header = data['SCI'].header
+
+            # mask
+            if 'BPM' in data:
+                image.mask = data['BPM'].data
+
+            # catalog
+            if 'CAT' in data:
+                image.catalog = Table(data['CAT'].data)
 
             # close file
             data.close()

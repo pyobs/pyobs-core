@@ -29,35 +29,56 @@ class Image:
             self.header['NAXIS2'] = self.data.shape[0]
 
     @classmethod
-    def from_bytes(klass, data) -> 'Image':
+    def from_bytes(cls, data) -> 'Image':
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
-            # store
-            image = klass()
-            image.data = data['SCI'].data.astype(np.float)
-            image.header = data['SCI'].header
-
-            # mask
-            if 'BPM' in data:
-                image.mask = data['BPM'].data
-
-            # catalog
-            if 'CAT' in data:
-                image.catalog = Table(data['CAT'].data)
+            # load image
+            image = cls._from_hdu_list(data)
 
             # close file
             data.close()
             return image
 
     @classmethod
-    def from_file(klass, filename: str) -> 'Image':
-        # load file
-        image = klass()
-        data, image.header = fits.getdata(filename, header=True)
-        image.data = data.astype(np.float)
+    def from_file(cls, filename: str) -> 'Image':
+        # open file
+        data = fits.open(filename, memmap=False, lazy_load_hdus=False)
+
+        # load image
+        image = cls._from_hdu_list(data)
+
+        # close file
+        data.close()
+        return image
+
+    @classmethod
+    def _from_hdu_list(cls, data):
+        """Load Image from HDU list.
+
+        Args:
+            data: HDU list.
+
+        Returns:
+            Image.
+        """
+
+        # store
+        image = cls()
+        image.data = data['SCI'].data.astype(np.float)
+        image.header = data['SCI'].header
+
+        # mask
+        if 'BPM' in data:
+            image.mask = data['BPM'].data
+
+        # catalog
+        if 'CAT' in data:
+            image.catalog = Table(data['CAT'].data)
+
+        # finished
         return image
 
     def copy(self):

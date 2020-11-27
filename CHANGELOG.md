@@ -10,6 +10,8 @@
 * Fixed bug that sometimes appears in the interface caching for Comm.
 * LcoTaskArchive: added MoonSeparationConstraint, fixed AirmassConstraint.
 * Optimized Scheduler by only scheduling blocks that actually have a window in the given range.
+* Added module Seeing that extracts FWHMs from the catalogs in reduced images and calculated a median seeing.
+* Introduced concept of Publishers, which can be used to publish data to log, CSV, and hopefully later, database, web, etc.
 
 
 ### v0.11 (2020-10-18)

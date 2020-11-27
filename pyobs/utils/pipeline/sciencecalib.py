@@ -12,20 +12,20 @@ log = logging.getLogger(__name__)
 
 
 class ScienceCalibration(Pipeline):
-    def __init__(self, photometry: Union[dict, Photometry], astrometry: Union[dict, Astrometry],
+    def __init__(self, photometry: Union[dict, Photometry] = None, astrometry: Union[dict, Astrometry] = None,
                  masks: Dict[str, Union[Image, str]] = None, filenames: str = None, *args, **kwargs):
         """Pipeline for science images.
 
         Args:
-            photometry: Photometry object.
-            astrometry: Astrometry object.
+            photometry: Photometry object. If None, no photometry is performed.
+            astrometry: Astrometry object. If None, no astrometry is performed.
             masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
             *args:
             **kwargs:
         """
         # get photometry and astrometry
-        self._photometry = get_object(photometry, Photometry)
-        self._astrometry = get_object(astrometry, Astrometry)
+        self._photometry = None if photometry is None else get_object(photometry, Photometry)
+        self._astrometry = None if astrometry is None else get_object(astrometry, Astrometry)
 
         # masks
         self._masks = {}
@@ -72,12 +72,17 @@ class ScienceCalibration(Pipeline):
             calibrated.header['L1RAW'] = image.header['ORIGNAME']
 
         # do photometry and astrometry
-        self._photometry.find_stars(calibrated)
-        try:
-            self._astrometry.find_solution(calibrated)
-        except ValueError:
-            # error message comes from astrometry
-            pass
+        if self._photometry is not None:
+            # find stars
+            self._photometry.find_stars(calibrated)
+
+            # do astrometry
+            if self._astrometry is not None:
+                try:
+                    self._astrometry.find_solution(calibrated)
+                except ValueError:
+                    # error message comes from astrometry
+                    pass
 
         # return calibrated image
         return calibrated

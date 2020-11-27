@@ -6,7 +6,7 @@ from typing import List, Union, Type
 from astropy.time import Time
 
 from pyobs import Module, get_object
-from pyobs.events import NewImageEvent, NewReducedImageEvent
+from pyobs.events import NewImageEvent
 from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.images import ImageCache, CalibrationImage, BiasImage, DarkImage, FlatImage
@@ -121,7 +121,7 @@ class OnlineReduction(Module):
             # broadcast image path
             if self.comm:
                 log.info('Broadcasting image ID...')
-                self.comm.send_event(NewReducedImageEvent(outfile, filename))
+                self.comm.send_event(NewImageEvent(outfile, ICamera.ImageType.OBJECT, raw=filename))
             log.info('Finished image.')
 
     def _get_master_calibration(self, image_class: Type[CalibrationImage], time: Time, instrument: str, binning: str,

@@ -18,18 +18,22 @@ log = logging.getLogger(__name__)
 class OnlineReduction(Module):
     """Calibrates images online during the night."""
 
-    def __init__(self, archive: Union[dict, Archive], pipeline: Union[dict, Pipeline],
+    def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive] = None,
                  sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):
         """Creates a new image writer.
 
         Args:
+            pipeline: Pipeline to use for reduction.
+            archive: Used for retrieving calibration files. If None, no calibration is done.
+            sources: List of sources (e.g. cameras) to process images from or None for all.
+            cache_size: Size of cache for calibration files.
         """
         Module.__init__(self, *args, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
         self._queue = Queue()
-        self._archive: Archive = get_object(archive, Archive)
+        self._archive: Archive = None if archive is None else get_object(archive, Archive)
         self._pipeline = get_object(pipeline, Pipeline)
         self._cache = ImageCache(size=cache_size)
 
@@ -86,25 +90,28 @@ class OnlineReduction(Module):
                 log.error('Could not download image.')
                 continue
 
-            # get instrument, binning and filter from image
-            try:
-                instrument = image.header['INSTRUME']
-                binning = '%dx%d' % (image.header['XBINNING'], image.header['YBINNING'])
-                filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
-                date_obs = Time(image.header['DATE-OBS'])
-            except KeyError:
-                log.error('Missing header keywords.')
-                continue
+            # only use master calibration frames, if an archive is given
+            bias, dark, flat = None, None, None
+            if self._archive is not None:
+                # get instrument, binning and filter from image
+                try:
+                    instrument = image.header['INSTRUME']
+                    binning = '%dx%d' % (image.header['XBINNING'], image.header['YBINNING'])
+                    filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
+                    date_obs = Time(image.header['DATE-OBS'])
+                except KeyError:
+                    log.error('Missing header keywords.')
+                    continue
 
-            # get master calibration frames
-            bias = self._get_master_calibration(BiasImage, date_obs, instrument, binning)
-            dark = self._get_master_calibration(DarkImage, date_obs, instrument, binning)
-            flat = self._get_master_calibration(FlatImage, date_obs, instrument, binning, filter_name)
+                # get master calibration frames
+                bias = self._get_master_calibration(BiasImage, date_obs, instrument, binning)
+                dark = self._get_master_calibration(DarkImage, date_obs, instrument, binning)
+                flat = self._get_master_calibration(FlatImage, date_obs, instrument, binning, filter_name)
 
-            # anything missing?
-            if bias is None or dark is None or flat is None:
-                log.error('Could not find BIAS/DARK/FLAT, skipping frame...')
-                continue
+                # anything missing?
+                if bias is None or dark is None or flat is None:
+                    log.error('Could not find BIAS/DARK/FLAT, skipping frame...')
+                    continue
 
             # calibrate
             calibrated = self._pipeline.calibrate(image, bias, dark, flat)

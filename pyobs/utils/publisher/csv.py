@@ -1,10 +1,14 @@
-import os
+import pandas as pd
+import logging
 
 from .publisher import Publisher
 
 
+log = logging.getLogger(__name__)
+
+
 class CsvPublisher(Publisher):
-    def __init__(self, filename: str = 'log.csv', *args, **kwargs):
+    def __init__(self, filename: str, *args, **kwargs):
         """Initialize new CSV publisher.
 
         Args:
@@ -22,24 +26,21 @@ class CsvPublisher(Publisher):
             **kwargs: Results to publish.
         """
 
-        # does file exist?
-        if os.path.exists(self._filename):
-            # load header of file
-            with open(self._filename, 'r') as f:
-                columns = [c.strip() for c in f.readline().split(',')]
+        # load data
+        try:
+            # load it
+            csv = self.vfs.read_csv(self._filename, index_col=False)
 
-        else:
-            # new file, just write header and remember columns
-            columns = kwargs.keys()
-            with open(self._filename, 'w') as f:
-                f.write(','.join(columns) + '\n')
+        except FileNotFoundError:
+            # file not found, so start new with row
+            csv = pd.DataFrame()
 
-        # get column values
-        values = [kwargs[c] if c in kwargs else None for c in columns]
+        # create new row from kwargs and append it
+        row = pd.DataFrame(kwargs, index=[0])
+        csv = pd.concat([csv, row], ignore_index=True)
 
         # write it
-        with open(self._filename, 'a') as f:
-            f.write(','.join([str(v) for v in values]) + '\n')
+        self.vfs.write_csv(csv, self._filename, index=False)
 
 
 __all__ = ['CsvPublisher']

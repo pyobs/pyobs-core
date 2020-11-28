@@ -1,4 +1,5 @@
 import asyncio
+import json
 import threading
 
 import pandas as pd
@@ -20,28 +21,36 @@ class MainHandler(tornado.web.RequestHandler):
         self.executor = ThreadPoolExecutor(max_workers=10)
 
     @tornado.gen.coroutine
-    def get(self, filename: str):
+    def get(self, file_type: str):
         """Handle download request.
 
         Args:
-            filename: Name of file to download.
+            file_type: Type of data to return.
         """
 
-        # fetch data
-        data = yield self.executor.submit(self.application.fetch, filename)
-        if data is None:
-            raise tornado.web.HTTPError(404)
-        log.info('Serving file %s...', filename)
+        # get data
+        data = self.application.data
 
-        # set headers and send data
-        self.set_header('content-type', 'application/octet-stream')
-        self.set_header('content-disposition', 'attachment; filename="%s"' % filename)
-        self.write(data)
-        self.finish()
+        # what type?
+        if file_type == 'json':
+            # JSON file
+            self.set_header('content-type', 'application/json')
+            self.write(json.dumps(data))
+            self.finish()
+
+        elif file_type == 'csv':
+            # CSV table, build header and value lines
+            header = ','.join(data.keys())
+            data = ','.join([str(d) for d in data.values()])
+
+            # send to client
+            self.set_header('content-type', 'text/csv')
+            self.write(header + '\n' + data)
+            self.finish()
 
 
 class HttpPublisher(Publisher, tornado.web.Application):
-    def __init__(self, port: int, *args, **kwargs):
+    def __init__(self, port: int = 37077, *args, **kwargs):
         """Initialize new CSV publisher.
 
         Args:
@@ -54,13 +63,14 @@ class HttpPublisher(Publisher, tornado.web.Application):
 
         # init tornado web server
         tornado.web.Application.__init__(self, [
-            (r"/(.*)", MainHandler),
+            (r"/data\.(.*)", MainHandler),
         ])
 
         # store stuff
         self._io_loop = None
         self._lock = threading.RLock()
         self._port = port
+        self.data = {}
 
     def close(self):
         """Close server."""
@@ -91,21 +101,8 @@ class HttpPublisher(Publisher, tornado.web.Application):
             **kwargs: Results to publish.
         """
 
-        # load data
-        try:
-            # load it
-            csv = self.vfs.read_csv(self._filename, index_col=False)
-
-        except FileNotFoundError:
-            # file not found, so start new with row
-            csv = pd.DataFrame()
-
-        # create new row from kwargs and append it
-        row = pd.DataFrame(kwargs, index=[0])
-        csv = pd.concat([csv, row], ignore_index=True)
-
-        # write it
-        self.vfs.write_csv(csv, self._filename, index=False)
+        # store data
+        self.data = kwargs
 
 
 __all__ = ['HttpPublisher']

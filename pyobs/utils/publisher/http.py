@@ -1,10 +1,10 @@
 import asyncio
+import io
 import json
 import threading
 
 import pandas as pd
 import logging
-from concurrent.futures import ThreadPoolExecutor
 import tornado.gen
 import tornado.web
 import tornado.ioloop
@@ -15,46 +15,48 @@ from .publisher import Publisher
 log = logging.getLogger(__name__)
 
 
-class MainHandler(tornado.web.RequestHandler):
-    def initialize(self):
-        """Initializes the handler (instead of in the constructor)"""
-        self.executor = ThreadPoolExecutor(max_workers=10)
-
+class LatestJsonHandler(tornado.web.RequestHandler):
+    """Latest data as JSON."""
     @tornado.gen.coroutine
-    def get(self, file_type: str):
-        """Handle download request.
+    def get(self):
+        # set header
+        self.set_header('content-type', 'application/json')
 
-        Args:
-            file_type: Type of data to return.
-        """
-
-        # get data
+        # no data?
         data = self.application.data
-
-        # what type?
-        if file_type == 'json':
-            # JSON file
-            self.set_header('content-type', 'application/json')
-            self.write(json.dumps(data))
+        if len(data) == 0:
             self.finish()
+            return
 
-        elif file_type == 'csv':
-            # CSV table, build header and value lines
-            header = ','.join(data.keys())
-            data = ','.join([str(d) for d in data.values()])
+        # convert last row to dict
+        row = data.iloc[-1].to_dict()
 
-            # send to client
-            self.set_header('content-type', 'text/csv')
-            self.write(header + '\n' + data)
+        self.set_header('content-type', 'application/json')
+        self.write(json.dumps(row))
+        self.finish()
+
+
+class HistoryCsvHandler(tornado.web.RequestHandler):
+    """History as CSV."""
+    @tornado.gen.coroutine
+    def get(self):
+        # set header
+        self.set_header('content-type', 'text/csv')
+
+        # write data
+        with io.StringIO() as sio:
+            self.application.data.to_csv(sio, index=False)
+            self.write(sio.getvalue())
             self.finish()
 
 
 class HttpPublisher(Publisher, tornado.web.Application):
-    def __init__(self, port: int = 37077, *args, **kwargs):
+    def __init__(self, port: int = 37077, keep: int = 10, *args, **kwargs):
         """Initialize new CSV publisher.
 
         Args:
             filename: Name of file to log in.
+            keep: Number of entries to keep.
         """
         Publisher.__init__(self, *args, **kwargs)
 
@@ -63,14 +65,16 @@ class HttpPublisher(Publisher, tornado.web.Application):
 
         # init tornado web server
         tornado.web.Application.__init__(self, [
-            (r"/data\.(.*)", MainHandler),
+            (r"/latest.json", LatestJsonHandler),
+            (r"/history.csv", HistoryCsvHandler)
         ])
 
         # store stuff
         self._io_loop = None
         self._lock = threading.RLock()
         self._port = port
-        self.data = {}
+        self._keep = keep
+        self._data = pd.DataFrame()
 
     def close(self):
         """Close server."""
@@ -78,6 +82,11 @@ class HttpPublisher(Publisher, tornado.web.Application):
         # close io loop and parent
         self._io_loop.add_callback(self._io_loop.stop)
         Publisher.close(self)
+
+    @property
+    def data(self):
+        with self._lock:
+            return self._data.copy()
 
     def _http(self):
         """Thread function for the web server."""
@@ -101,8 +110,15 @@ class HttpPublisher(Publisher, tornado.web.Application):
             **kwargs: Results to publish.
         """
 
-        # store data
-        self.data = kwargs
+        # lock
+        with self._lock:
+            # append data
+            row = pd.DataFrame(kwargs, index=[0])
+            self._data = pd.concat([self._data, row], ignore_index=True)
+
+            # truncate
+            if len(self.data) > self._keep:
+                self._data = self._data.iloc[-self._keep:]
 
 
 __all__ = ['HttpPublisher']

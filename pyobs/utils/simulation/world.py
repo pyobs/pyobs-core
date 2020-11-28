@@ -13,13 +13,12 @@ from astroquery.gaia import Gaia
 from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
 
-from pyobs import Module
 from pyobs.interfaces import IMotion
-from pyobs.object import create_object
+from pyobs.object import create_object, Object
 from pyobs.utils.images import Image
 
 
-class SimTelescope(Module):
+class SimTelescope(Object):
     """A simulated telescope on an equitorial mount."""
     def __init__(self, world: SimWorld, position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
                  pointing_offset: Tuple[float, float] = None, move_accuracy: float = 2.,
@@ -40,7 +39,7 @@ class SimTelescope(Module):
             drift: RA/Dec drift of telescope in arcsec/sec.
             focal_length: Focal length of telescope in mm.
         """
-        Module.__init__(self, *args, **kwargs)
+        Object.__init__(self, *args, **kwargs)
 
         # store
         self.world = world
@@ -192,7 +191,7 @@ class SimTelescope(Module):
             self.closing.wait(1)
 
 
-class SimCamera(Module):
+class SimCamera(Object):
     """A simulated camera."""
     def __init__(self, world: SimWorld, pixel_size: float = 0.015, *args, **kwargs):
         """Inits a new camera.
@@ -201,7 +200,7 @@ class SimCamera(Module):
             world: World to use.
             pixel_size: Square pixel size in mm.
         """
-        Module.__init__(self, *args, **kwargs)
+        Object.__init__(self, *args, **kwargs)
 
         # store
         self.world = world
@@ -331,7 +330,7 @@ class SimCamera(Module):
         return sources
 
 
-class SimWorld(Module):
+class SimWorld(Object):
     """A simulated world."""
 
     def __init__(self, time: Union[Time, str] = None,
@@ -347,7 +346,7 @@ class SimWorld(Module):
             *args:
             **kwargs:
         """
-        Module.__init__(self, *args, **kwargs)
+        Object.__init__(self, *args, **kwargs)
 
         # get start time
         if time is None:
@@ -380,7 +379,7 @@ class SimWorld(Module):
 
     def open(self):
         """Open module."""
-        Module.open(self)
+        Object.open(self)
 
         # open telescope
         if hasattr(self.telescope, 'open'):
@@ -392,7 +391,7 @@ class SimWorld(Module):
 
     def close(self):
         """Close module."""
-        Module.close(self)
+        Object.close(self)
 
         # close telescope
         if hasattr(self.telescope, 'close'):

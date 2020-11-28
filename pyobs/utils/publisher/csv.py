@@ -10,6 +10,7 @@ class CsvPublisher(Publisher):
         Args:
             filename: Name of file to log in.
         """
+        Publisher.__init__(self, *args, **kwargs)
 
         # store
         self._filename = filename

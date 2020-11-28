@@ -1,10 +1,9 @@
-class Publisher:
-    def open(self):
-        """Open publisher."""
-        pass
+from pyobs.object import Object
 
-    def close(self):
-        """Close publisher."""
+
+class Publisher(Object):
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
 
     def __call__(self, **kwargs):
         """Publish the given results.

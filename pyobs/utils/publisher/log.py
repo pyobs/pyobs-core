@@ -13,6 +13,7 @@ class LogPublisher(Publisher):
         Args:
             level: Level to log on.
         """
+        Publisher.__init__(self, *args, **kwargs)
 
         # set and check level
         if not hasattr(log, level):

@@ -125,6 +125,18 @@ class VirtualFileSystem:
         with self.open_file(filename, 'rb') as f:
             return Image.from_bytes(f.read())
 
+    def write_image(self, filename: str, image: Image, *args, **kwargs):
+        """Convenience function for writing an Image to a FITS file.
+
+        Args:
+            filename: Name of file to write.
+            image: Image to write.
+        """
+
+        # open file
+        with self.open_file(filename, 'wb') as cache:
+            image.writeto(cache, *args, **kwargs)
+
     def read_csv(self, filename: str, *args, **kwargs) -> pd.DataFrame:
         """Convenience function for reading a CSV file into a DataFrame.
 

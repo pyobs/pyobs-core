@@ -72,14 +72,14 @@ class ImageWriter(Module):
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                hdu = self.vfs.read_fits_image(filename)
+                img = self.vfs.read_fits_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue
 
             # output filename
             try:
-                output = format_filename(hdu.header, self._filename)
+                output = format_filename(img.header, self._filename)
             except KeyError as e:
                 log.error('Could not format filename: %s', e)
                 continue
@@ -87,8 +87,7 @@ class ImageWriter(Module):
             try:
                 # open output
                 log.info('Storing image as %s...',  output)
-                with self.vfs.open_file(output, 'wb') as fout:
-                    hdu.writeto(fout)
+                self.vfs.write_image(output, img)
             except Exception:
                 log.error('Could not store image.')
 

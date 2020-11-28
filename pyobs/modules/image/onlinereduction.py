@@ -119,9 +119,8 @@ class OnlineReduction(Module):
             # upload file
             outfile = os.path.join(os.path.dirname(filename), calibrated.header['FNAME'])
             try:
-                with self.vfs.open_file(outfile, 'wb') as cache:
-                    log.info('Uploading image to file server...')
-                    calibrated.writeto(cache)
+                log.info('Uploading image to file server...')
+                self.vfs.write_image(outfile, calibrated)
             except FileNotFoundError:
                 raise ValueError('Could not upload image.')
 

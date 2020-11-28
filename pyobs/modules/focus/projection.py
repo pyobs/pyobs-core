@@ -141,14 +141,12 @@ class AutoFocusProjection(Module, IAutoFocus):
                                          count=1).wait()[0]
             except RemoteException:
                 log.error('Could not take image.')
+                return
 
             # download image
             log.info('Downloading image...')
             try:
-                with self.vfs.open_file(filename, 'rb') as f:
-                    tmp = fits.open(f, memmap=False)
-                    img = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-                    tmp.close()
+                img = self.vfs.read_image(filename)
             except FileNotFoundError:
                 raise ValueError('Could not download image.')
 

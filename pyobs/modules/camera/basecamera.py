@@ -399,9 +399,8 @@ class BaseCamera(Module, ICamera, IAbortable):
 
         # upload file
         try:
-            with self.vfs.open_file(filename, 'wb') as cache:
-                log.info('Uploading image to file server...')
-                image.writeto(cache)
+            log.info('Uploading image to file server...')
+            self.vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError('Could not upload image.')
 

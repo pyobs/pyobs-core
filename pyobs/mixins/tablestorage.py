@@ -54,7 +54,7 @@ class TableStorageMixin:
         try:
             # open file with previous measurements
             log.info('Reading table storage from %s...', self.__table_storage_filename)
-            with self.open_file(self.__table_storage_filename, 'r') as f:
+            with self.vfs.open_file(self.__table_storage_filename, 'r') as f:
                 # read data and return it
                 return pd.read_csv(f, index_col=False, dtype=self.__table_storage_columns)
 
@@ -74,7 +74,7 @@ class TableStorageMixin:
 
         # open file to write
         log.info('Writing table storage to file...')
-        with self.open_file(self.__table_storage_filename, 'w') as f:
+        with self.vfs.open_file(self.__table_storage_filename, 'w') as f:
             # create a StringIO as temporary write target
             with io.StringIO() as sio:
                 # write table to sio

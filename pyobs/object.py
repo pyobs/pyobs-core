@@ -230,19 +230,6 @@ class Object:
             raise InterruptedError
         return True
 
-    def open_file(self, filename: str, mode: str, compression: bool = None):
-        """Open a file. The handling class is chosen depending on the vfs root in the filename.
-
-        Args:
-            filename (str): Name of file to open.
-            mode (str): Opening mode.
-            compression (bool): Automatically (de)compress data if True. Automatically determine from filename if None.
-
-        Returns:
-            (BaseFile) File object for given file.
-        """
-        return self.vfs.open_file(filename, mode, compression)
-
     def _add_child_object(self, config_or_object: Union[dict, object], object_class=None, **kwargs) -> 'Object':
         """Create a new sub-module, which will automatically be opened and closed.
 

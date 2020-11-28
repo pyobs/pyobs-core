@@ -145,7 +145,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             # download image
             log.info('Downloading image...')
             try:
-                with self.open_file(filename, 'rb') as f:
+                with self.vfs.open_file(filename, 'rb') as f:
                     tmp = fits.open(f, memmap=False)
                     img = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
                     tmp.close()

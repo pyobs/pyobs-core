@@ -265,7 +265,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         if self._cache is not None:
             # try to load it
             try:
-                with self.open_file(self._cache, 'r') as f:
+                with self.vfs.open_file(self._cache, 'r') as f:
                     cache = yaml.load(f)
 
                     # get new number
@@ -281,7 +281,7 @@ class BaseCamera(Module, ICamera, IAbortable):
 
             # write file
             try:
-                with self.open_file(self._cache, 'w') as f:
+                with self.vfs.open_file(self._cache, 'w') as f:
                     with io.StringIO() as sio:
                         yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
                         f.write(bytes(sio.getvalue(), 'utf8'))
@@ -399,7 +399,7 @@ class BaseCamera(Module, ICamera, IAbortable):
 
         # upload file
         try:
-            with self.open_file(filename, 'wb') as cache:
+            with self.vfs.open_file(filename, 'wb') as cache:
                 log.info('Uploading image to file server...')
                 image.writeto(cache)
         except FileNotFoundError:

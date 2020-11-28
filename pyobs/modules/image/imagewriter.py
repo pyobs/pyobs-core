@@ -87,7 +87,7 @@ class ImageWriter(Module):
             try:
                 # open output
                 log.info('Storing image as %s...',  output)
-                with self.open_file(output, 'wb') as fout:
+                with self.vfs.open_file(output, 'wb') as fout:
                     hdu.writeto(fout)
             except Exception:
                 log.error('Could not store image.')

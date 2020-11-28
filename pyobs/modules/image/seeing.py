@@ -60,7 +60,7 @@ class Seeing(Module):
         try:
 
             log.info('Downloading file %s...', event.filename)
-            image = self.vfs.download_image(event.filename)
+            image = self.vfs.read_image(event.filename)
         except FileNotFoundError:
             log.error('Could not download image.')
             return

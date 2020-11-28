@@ -149,7 +149,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # download image
             log.info('Downloading image...')
-            image = self.vfs.download_image(filename)
+            image = self.vfs.read_image(filename)
 
             # analyse
             log.info('Analysing picture...')

@@ -72,7 +72,7 @@ class ImageWriter(Module):
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                hdu = self.vfs.download_fits_image(filename)
+                hdu = self.vfs.read_fits_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue

@@ -47,7 +47,7 @@ class AutoGuiding(BaseGuiding):
                 filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False).wait()
 
                 # download image
-                image = self.vfs.download_image(filenames[0])
+                image = self.vfs.read_image(filenames[0])
 
                 # process it
                 log.info('Processing image...')

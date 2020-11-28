@@ -257,7 +257,7 @@ class FlatFielder:
         filename = camera.expose(0, ICamera.ImageType.BIAS, broadcast=False).wait()
 
         # download image
-        bias = self._vfs.download_image(filename[0])
+        bias = self._vfs.read_image(filename[0])
         avg = float(np.median(bias.data))
 
         # return it
@@ -400,7 +400,7 @@ class FlatFielder:
         """
 
         # download image
-        flat_field = self._vfs.download_image(filename)
+        flat_field = self._vfs.read_image(filename)
         if flat_field is None:
             return False
 

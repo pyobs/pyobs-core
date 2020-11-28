@@ -95,8 +95,8 @@ class VirtualFileSystem:
         # return it
         return fd
 
-    def download_fits_image(self, filename) -> fits.PrimaryHDU:
-        """Convenience function that wraps around open_file() to download a FITS file and put it into a astropy FITS
+    def read_fits_image(self, filename) -> fits.PrimaryHDU:
+        """Convenience function that wraps around open_file() to read a FITS file and put it into a astropy FITS
         structure.
 
         Args:
@@ -111,8 +111,8 @@ class VirtualFileSystem:
             tmp.close()
             return hdu
 
-    def download_image(self, filename) -> Image:
-        """Convenience function that wraps around open_file() to download an Image.
+    def read_image(self, filename) -> Image:
+        """Convenience function that wraps around open_file() to read an Image.
 
         Args:
             filename: Name of file to download.

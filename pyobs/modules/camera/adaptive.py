@@ -213,7 +213,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
             # got something?
             if filename is not None:
                 # download image
-                image = self.vfs.download_image(filename)
+                image = self.vfs.read_image(filename)
 
                 # process it
                 self._process_image(image)

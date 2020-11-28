@@ -85,7 +85,7 @@ class OnlineReduction(Module):
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                image = self.vfs.download_image(filename)
+                image = self.vfs.read_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue

@@ -110,7 +110,7 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
 
             # download image
             log.info('Downloading image...')
-            img = self.vfs.download_image(filename)
+            img = self.vfs.read_image(filename)
 
             # get target pixel
             if self._target_pixel is None:

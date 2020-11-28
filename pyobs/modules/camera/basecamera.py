@@ -265,26 +265,23 @@ class BaseCamera(Module, ICamera, IAbortable):
         if self._cache is not None:
             # try to load it
             try:
-                with self.vfs.open_file(self._cache, 'r') as f:
-                    cache = yaml.load(f)
+                # load cache
+                cache = self.vfs.read_yaml(self._cache)
 
-                    # get new number
-                    if cache is not None and 'framenum' in cache:
-                        self._frame_num = cache['framenum'] + 1
+                # get new number
+                if cache is not None and 'framenum' in cache:
+                    self._frame_num = cache['framenum'] + 1
 
-                    # if nights differ, reset count
-                    if cache is not None and 'night' in cache and night != cache['night']:
-                        self._frame_num = 1
+                # if nights differ, reset count
+                if cache is not None and 'night' in cache and night != cache['night']:
+                    self._frame_num = 1
 
             except (FileNotFoundError, ValueError):
-                log.warning('Could not read camera cache file.')
+                pass
 
             # write file
             try:
-                with self.vfs.open_file(self._cache, 'w') as f:
-                    with io.StringIO() as sio:
-                        yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
-                        f.write(bytes(sio.getvalue(), 'utf8'))
+                self.vfs.write_yaml({'night': night, 'framenum': self._frame_num}, self._cache)
             except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 

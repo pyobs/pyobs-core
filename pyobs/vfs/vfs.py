@@ -1,6 +1,8 @@
 import io
 import logging
 import os
+
+import yaml
 from astropy.io import fits
 import pandas as pd
 
@@ -173,6 +175,39 @@ class VirtualFileSystem:
 
                 # and write all content to file
                 f.write(sio.getvalue().encode('utf8'))
+
+    def read_yaml(self, filename: str, *args, **kwargs) -> dict:
+        """Convenience function for reading a YAML file into a dict.
+
+        Args:
+            filename: Name of file to read.
+
+        Returns:
+            Content of file.
+        """
+
+        # open file
+        with self.open_file(filename, 'r') as f:
+            # read YAML
+            return yaml.safe_load(f)
+
+    def write_yaml(self, data: dict, filename: str, *args, **kwargs):
+        """Convenience function for writing a YAML file from a dict.
+
+        Args:
+            data: dict to write.
+            filename: Name of file to write.
+        """
+
+        # open file
+        with self.open_file(filename, 'w') as f:
+            # create StringIO as temp storage
+            with io.StringIO() as sio:
+                # dump to StringIO
+                yaml.dump(data, sio)
+
+                # write file from StringIO
+                f.write(bytes(sio.getvalue(), 'utf8'))
 
     def find(self, path: str, pattern: str):
         """Find a file in the given path.

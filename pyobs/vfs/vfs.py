@@ -1,6 +1,8 @@
+import io
 import logging
 import os
 from astropy.io import fits
+import pandas as pd
 
 from pyobs.object import get_object, get_class_from_string
 from pyobs.utils.images import Image
@@ -122,6 +124,43 @@ class VirtualFileSystem:
         """
         with self.open_file(filename, 'rb') as f:
             return Image.from_bytes(f.read())
+
+    def read_csv(self, filename: str, *args, **kwargs) -> pd.DataFrame:
+        """Convenience function for reading a CSV file into a DataFrame.
+
+        Args:
+            filename: Name of file to read.
+
+        Returns:
+            DataFrame with content of file.
+        """
+
+        try:
+            # open file
+            with self.open_file(filename, 'r') as f:
+                # read data and return it
+                return pd.read_csv(f, *args, **kwargs)
+
+        except pd.errors.EmptyDataError:
+            # on error, return empty dataframe
+            return pd.DataFrame()
+
+    def write_csv(self, df: pd.DataFrame, filename: str, *args, **kwargs):
+        """Convenience function for writing a CSV file from a DataFrame.
+
+        Args:
+            df: DataFrame to write.
+            filename: Name of file to write.
+        """
+
+        with self.open_file(filename, 'w') as f:
+            # create a StringIO as temporary write target
+            with io.StringIO() as sio:
+                # write table to sio
+                df.to_csv(sio, *args, **kwargs)
+
+                # and write all content to file
+                f.write(sio.getvalue().encode('utf8'))
 
     def find(self, path: str, pattern: str):
         """Find a file in the given path.

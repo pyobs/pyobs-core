@@ -1,6 +1,6 @@
 import datetime
 import threading
-from typing import Union, Callable
+from typing import Union, Callable, TypeVar
 import logging
 import pytz
 from astroplan import Observer
@@ -9,8 +9,10 @@ from astropy.coordinates import EarthLocation
 
 log = logging.getLogger(__name__)
 
+ObjectClass = TypeVar('ObjectClass')
 
-def get_object(config_or_object: Union[dict, object], object_class=None, *args, **kwargs):
+
+def get_object(config_or_object: Union[dict, object], object_class: ObjectClass = None, *args, **kwargs) -> ObjectClass:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -230,7 +232,8 @@ class Object:
             raise InterruptedError
         return True
 
-    def _add_child_object(self, config_or_object: Union[dict, object], object_class=None, **kwargs) -> 'Object':
+    def _add_child_object(self, config_or_object: Union[dict, object], object_class: ObjectClass = None, **kwargs) \
+            -> ObjectClass:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:

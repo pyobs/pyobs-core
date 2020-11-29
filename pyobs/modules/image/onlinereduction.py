@@ -33,7 +33,7 @@ class OnlineReduction(Module):
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
         self._queue = Queue()
-        self._archive: Archive = None if archive is None else get_object(archive, Archive)
+        self._archive = None if archive is None else get_object(archive, Archive)
         self._pipeline = get_object(pipeline, Pipeline)
         self._cache = ImageCache(size=cache_size)
 

@@ -39,7 +39,7 @@ class Scheduler(Module, IStoppable, IRunnable):
         Module.__init__(self, *args, **kwargs)
 
         # get scheduler
-        self._task_archive: TaskArchive = get_object(tasks, TaskArchive)
+        self._task_archive = get_object(tasks, TaskArchive)
 
         # store
         self._schedule_range = schedule_range

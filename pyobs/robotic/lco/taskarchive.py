@@ -331,9 +331,22 @@ class LcoTaskArchive(TaskArchive):
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()
 
+        # get proposal priorities
+        r = requests.get(urljoin(self._url, '/api/proposals/'), headers=self._header, proxies=self._proxies)
+        if r.status_code != 200:
+            raise ValueError('Could not fetch list of proposals.')
+        tac_priorities = {p['id']: p['tac_priority'] for p in r.json()['results']}
+
         # loop all request groups
         blocks = []
         for group in schedulable:
+            # get base priority, which is tac_priority * ipp_value
+            proposal = group['proposal']
+            if proposal not in tac_priorities:
+                log.error('Could not find proposal "%s".', proposal)
+                continue
+            base_priority = group['ipp_value'] * tac_priorities[proposal]
+
             # loop all requests in group
             for req in group['requests']:
                 # still pending?
@@ -357,15 +370,15 @@ class LcoTaskArchive(TaskArchive):
                     t = cfg['target']
                     target = SkyCoord(t['ra'] * u.deg, t['dec'] * u.deg, frame=t['type'].lower())
 
-                    # priority
-                    priority = cfg['priority']
-
                     # constraints
                     c = cfg['constraints']
                     constraints = [
                         AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
                         MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg)
                     ]
+
+                    # priority is base_priority times duration in minutes
+                    priority = base_priority * duration.value / 60.
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,

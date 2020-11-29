@@ -175,6 +175,9 @@ class XmppComm(Comm):
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError, if client cannot be found.
         """
 
         # full JID given?

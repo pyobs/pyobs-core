@@ -107,8 +107,9 @@ class Comm:
         # if client doesn't exist or we disabled caching, fetch a new proxy
         if client not in self._proxies or not self._cache_proxies:
             # get interfaces
-            interfaces = self.get_interfaces(client)
-            if interfaces is None:
+            try:
+                interfaces = self.get_interfaces(client)
+            except IndexError:
                 return None
 
             # create new proxy
@@ -207,6 +208,9 @@ class Comm:
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError, if client cannot be found.
         """
         raise NotImplementedError
 

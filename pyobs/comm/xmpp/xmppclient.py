@@ -62,13 +62,16 @@ class XmppClient(sleekxmpp.ClientXMPP):
 
         Returns:
             List of interface names
+
+        Raises:
+            IndexError, if client cannot be found.
         """
 
         # request features
         try:
             info = self['xep_0030'].get_info(jid=jid, cached=False)
         except sleekxmpp.exceptions.IqError:
-            return []
+            raise IndexError()
 
         # extract pyobs interfaces
         try:
@@ -77,7 +80,7 @@ class XmppClient(sleekxmpp.ClientXMPP):
             prefix = 'pyobs:interface:'
             return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
         except TypeError:
-            return []
+            raise IndexError()
 
     def wait_connect(self) -> bool:
         """Wait for client to connect.

@@ -15,19 +15,20 @@ log = logging.getLogger(__name__)
 class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
 
-    def __init__(self, sources: Union[str, List[str]] = None, publishers: List[Union[Publisher, dict]] = None,
+    def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
                  max_ellipticity: float = 0.2, *args, **kwargs):
         """Creates a new seeing estimator.
 
         Args:
             sources: List of sources (e.g. cameras) to process images from or None for all.
+            publisher: Publisher to publish results to.
             max_ellipticity: Maximum ellipticity for sources to consider.
         """
         Module.__init__(self, *args, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._publishers = [] if publishers is None else [self._add_child_object(p) for p in publishers]
+        self._publisher = self._add_child_object(publisher, Publisher)
         self._max_ellipticity = max_ellipticity
 
     def open(self):
@@ -83,8 +84,8 @@ class Seeing(Module):
         log.info('Found seeing of %.2f".', seeing)
 
         # log it
-        for publisher in self._publishers:
-            publisher(time=Time.now().isot, seeing=seeing)
+        if self._publisher is not None:
+            self._publisher(time=Time.now().isot, seeing=seeing)
 
 
 __all__ = ['Seeing']

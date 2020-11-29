@@ -7,15 +7,16 @@ import astropy.units as u
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
 from pyobs import Module
-from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
+from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.images import Image
+from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisition):
+class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
@@ -44,21 +45,8 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
         self._tolerance = tolerance
         self._max_offset = max_offset
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'ra': float,
-            'dec': float,
-            'alt': float,
-            'az': float,
-            'off_ra': float,
-            'off_dec': float,
-            'off_alt': float,
-            'off_az': float
-        }
-
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # init log file
+        self._publisher = CsvPublisher(log_file)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)
@@ -173,7 +161,8 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
 
                 # write log
-                self._append_to_table_storage(**log_entry)
+                if self._publisher is not None:
+                    self._publisher(**log_entry)
 
                 # finished
                 return log_entry

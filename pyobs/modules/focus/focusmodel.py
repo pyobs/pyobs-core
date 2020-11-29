@@ -4,16 +4,16 @@ import pandas as pd
 import numpy as np
 
 from pyobs import Module
-from pyobs.mixins import TableStorageMixin
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
+from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class FocusModel(Module, TableStorageMixin, IFocusModel):
+class FocusModel(Module, IFocusModel):
     """A focus model that is automatically applied to an IFocuser.
 
     If, e.g., the model is defined as:
@@ -110,19 +110,8 @@ class FocusModel(Module, TableStorageMixin, IFocusModel):
             variables.remove(c)
         log.info('Found variables: %s', ', '.join(variables))
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'focus': float,
-            'error': float,
-            'filter': str,
-            'temp': float
-        }
-        for temp in self._temperatures:
-            storage_columns[temp] = float
-
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # init log file
+        self._publisher = CsvPublisher(log_file)
 
         # update model now?
         if update:
@@ -345,8 +334,9 @@ class FocusModel(Module, TableStorageMixin, IFocusModel):
         values['datetime'] = Time.now().isot
         values['filter'] = event.filter_name
 
-        # append to table storage
-        self._append_to_table_storage(**values)
+        # write log
+        if self._publisher is not None:
+            self._publisher(**values)
 
         # finally, calculate new model
         log.info('Re-calculating model...')

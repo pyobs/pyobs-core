@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import List, Type, Union
 import numpy as np
 from astropy.stats import sigma_clip
@@ -56,7 +55,7 @@ class CalibrationImage(Image):
         return img
 
     @classmethod
-    def find_master(cls: Type[CalibrationImage], archive: 'Archive', time: Time, instrument: str,
+    def find_master(cls: Type['CalibrationImage'], archive: 'Archive', time: Time, instrument: str,
                     binning: str, filter_name: str = None) -> Union[None, FrameInfo]:
         """Find and download master calibration frame.
 

@@ -3,9 +3,7 @@ import logging
 import re
 import threading
 import uuid
-from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
-import time
 from typing import Union
 import tornado.ioloop
 import tornado.web

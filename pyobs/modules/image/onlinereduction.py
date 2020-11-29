@@ -9,7 +9,8 @@ from pyobs import Module, get_object
 from pyobs.events import NewImageEvent
 from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
-from pyobs.utils.images import ImageCache, CalibrationImage, BiasImage, DarkImage, FlatImage
+from pyobs.utils.cache import DataCache
+from pyobs.utils.images import CalibrationImage, BiasImage, DarkImage, FlatImage
 from pyobs.utils.pipeline import Pipeline
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ class OnlineReduction(Module):
         self._queue = Queue()
         self._archive = None if archive is None else get_object(archive, Archive)
         self._pipeline = get_object(pipeline, Pipeline)
-        self._cache = ImageCache(size=cache_size)
+        self._cache = DataCache(size=cache_size)
 
         # add thread func
         self._add_thread_func(self._worker, True)

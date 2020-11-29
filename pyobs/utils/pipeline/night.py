@@ -52,35 +52,6 @@ class Night:
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
 
-    def _calib_data_frame(self, info, bias, dark, flat):
-        # download frame
-        img = self._archive.download_frames([info])[0]
-
-        # calibrate and trim to TRIMSEC
-        calibrated = img.calibrate(bias=bias, dark=dark, flat=flat).trim()
-
-        # add mask
-        binning = '%dx%s' % (img.header['XBINNING'], img.header['YBINNING'])
-        if binning in self._masks:
-            calibrated.mask = self._masks[binning].copy()
-        else:
-            log.warning('No mask found for binning of frame.')
-
-        # set (raw) filename
-        calibrated.format_filename(self._fmt_object)
-        calibrated.header['L1RAW'] = info.filename
-
-        # do photometry and astrometry
-        self._photometry.find_stars(calibrated)
-        try:
-            self._astrometry.find_solution(calibrated)
-        except ValueError:
-            # error message comes from astrometry
-            pass
-
-        # upload
-        self._archive.upload_frames([calibrated])
-
     def _find_master(self, image_class: Type[CalibrationImage], instrument: str, binning: str,
                      filter_name: str = None) -> Union[CalibrationImage, None]:
         """Find master calibration frame for given parameters using a cache.

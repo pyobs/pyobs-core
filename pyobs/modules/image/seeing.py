@@ -16,13 +16,14 @@ class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
 
     def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
-                 max_ellipticity: float = 0.2, *args, **kwargs):
+                 max_ellipticity: float = 0.2, correct_for_airmass: bool = True, *args, **kwargs):
         """Creates a new seeing estimator.
 
         Args:
             sources: List of sources (e.g. cameras) to process images from or None for all.
             publisher: Publisher to publish results to.
             max_ellipticity: Maximum ellipticity for sources to consider.
+            correct_for_zenith: Whether to correct seeing for airmass.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -30,6 +31,7 @@ class Seeing(Module):
         self._sources = [sources] if isinstance(sources, str) else sources
         self._publisher = self._add_child_object(publisher, Publisher)
         self._max_ellipticity = max_ellipticity
+        self._correct_for_airmass = correct_for_airmass
 
     def open(self):
         """Open module."""
@@ -81,7 +83,18 @@ class Seeing(Module):
 
         # calculate seeing
         seeing = np.mean(cat['fwhm']) * pix_size
-        log.info('Found seeing of %.2f".', seeing)
+
+        # correct for airmass?
+        if self._correct_for_airmass:
+            # Seeing S as function of seeing S0 at zenith and airmass a:
+            # S = S0 * a^0.6
+            # see https://www.astro.auth.gr/~seeing-gr/seeing_gr_files/theory/node17.html
+            # need airmass
+            if 'AIRMASS' in image.header:
+                seeing /= image.header['AIRMASS']**0.6
+            else:
+                # could not correct
+                return
 
         # log it
         if self._publisher is not None:

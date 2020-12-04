@@ -4,25 +4,26 @@ import astropy.units as u
 
 from pyobs import get_object
 from pyobs.interfaces import ICamera
-from pyobs.utils.archive import Archive, FrameInfo
+from pyobs.utils.archive import Archive
 from pyobs.utils.time import Time
 from .base import SkyflatPriorities
 
 
 class ArchiveSkyflatPriorities(SkyflatPriorities):
-    def __init__(self, archive: typing.Union[dict, Archive], site: str, filter_names: list, binnings: list,
-                 *args, **kwargs):
+    def __init__(self, archive: typing.Union[dict, Archive], site: str, instrument: str, filter_names: list,
+                 binnings: list, *args, **kwargs):
         SkyflatPriorities.__init__(self)
-        self._archive: Archive = get_object(archive, Archive)
+        self._archive = get_object(archive, Archive)
         self._filter_names = filter_names
         self._binnings = binnings
         self._site = site
+        self._instrument = instrument
 
     def __call__(self):
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
         frames = self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now, site=self._site,
-                                           image_type=ICamera.ImageType.SKYFLAT, rlevel=1)
+                                           instrument=self._instrument, image_type=ICamera.ImageType.SKYFLAT, rlevel=1)
 
         # get priorities
         from_archive = {}

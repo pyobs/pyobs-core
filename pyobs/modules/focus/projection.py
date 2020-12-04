@@ -58,9 +58,6 @@ class AutoFocusProjection(Module, IAutoFocus):
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
-    def close(self):
-        """Close module."""
-
     @timeout(600000)
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.

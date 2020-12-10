@@ -193,9 +193,10 @@ class LcoDefaultScript(Script):
 
                 # set binning and window
                 if isinstance(camera, ICameraBinning):
-                    binning = readout_mode['params']['binning']
-                    log.info('Set binning to %dx%d...', binning, binning)
-                    camera.set_binning(binning, binning).wait()
+                    bin_x = readout_mode['validation_schema']['bin_x']['default']
+                    bin_y = readout_mode['validation_schema']['bin_y']['default']
+                    log.info('Set binning to %dx%d...', bin_x, bin_y)
+                    camera.set_binning(bin_x, bin_y).wait()
                 if isinstance(camera, ICameraWindow):
                     full_frame = camera.get_full_frame().wait()
                     camera.set_window(*full_frame).wait()

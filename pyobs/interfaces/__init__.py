@@ -10,7 +10,6 @@ from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .ICameraBinning import ICameraBinning
 from .ICameraWindow import ICameraWindow
-from .IConfigProvider import IConfigProvider
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome

@@ -1,20 +1,12 @@
 import logging
-import os
 import signal
-import sys
 import threading
-import time
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
-
 import yaml
 
-from pyobs.comm.dummy import DummyComm
 from pyobs.object import get_object
 from pyobs.modules import Module
-from pyobs.comm import Comm
-from pyobs.comm.xmpp import XmppComm
-from pyobs.interfaces import IConfigProvider
 from pyobs.utils.config import pre_process_yaml
 
 log = None

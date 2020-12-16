@@ -14,6 +14,7 @@
 * Introduced concept of Publishers, which can be used to publish data to log, CSV, and hopefully later, database, web, etc.
 * Created new Object class that handles most of what Module did before so that Module only adds module specific stuff.
 * Added some convenience methods for reading/writing files to VFS.
+* Removed count parameter from ICamera.expose().
 
 
 ### v0.11 (2020-10-18)

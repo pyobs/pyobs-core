@@ -134,7 +134,7 @@ class LcoDefaultScript(Script):
 
             # get exposure time
             acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000
+            exp_time = acq['exposure_time'] 'exposure_time' in acq else 2.
 
             # do acquisition
             log.info('Performing acquisition...')
@@ -208,7 +208,8 @@ class LcoDefaultScript(Script):
                     # do exposures
                     log.info('Exposing %s image %d/%d for %.2fs...',
                              self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                    camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
+                    camera.set_exposure_time(ic['exposure_time']).wait()
+                    camera.expose(self.image_type).wait()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs

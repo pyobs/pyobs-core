@@ -349,9 +349,8 @@ class FlatFielder:
 
         # do exposures, do not broadcast while testing
         log.info('Exposing test flat field for %.2fs...', self._exptime)
-        filename = camera.expose(exposure_time=int(self._exptime * 1000.),
-                                 image_type=ICamera.ImageType.SKYFLAT,
-                                 broadcast=False).wait()
+        camera.set_exposure_time(self._exptime).wait()
+        filename = camera.expose(ICamera.ImageType.SKYFLAT, broadcast=False).wait()
 
         # analyse image
         self._analyse_image(filename)
@@ -476,13 +475,13 @@ class FlatFielder:
         now = Time.now()
         log.info('Exposing flat field %d/%d for %.2fs...',
                  self._exposures_done + 1, self._exposures_total, self._exptime)
-        filename = camera.expose(exposure_time=int(self._exptime * 1000.),
-                                 image_type=ICamera.ImageType.SKYFLAT).wait()
+        camera.set_exposure_time(self._exptime).wait()
+        filename = camera.expose(ICamera.ImageType.SKYFLAT).wait()
 
         # analyse image
         if self._analyse_image(filename):
             # increase count and quite here, if finished
-            self._exptime_done += int(self._exptime * 1000.)
+            self._exptime_done += self._exptime
             self._exposures_done += 1
             if self._exposures_done >= self._exposures_total:
                 log.info('Finished all requested flat-fields..')

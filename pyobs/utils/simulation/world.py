@@ -244,7 +244,7 @@ class SimCamera(Object):
                 sun_alt = self.world.sun_alt
 
                 # get mean flatfield counts
-                flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time / 1000.
+                flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time
 
                 # create flat
                 image += make_noise_image(shape, distribution='gaussian', mean=flat_counts, stddev=flat_counts / 10.)
@@ -272,7 +272,7 @@ class SimCamera(Object):
 
         # set values
         hdr['DATE-OBS'] = (time.isot, 'Date and time of start of exposure')
-        hdr['EXPTIME'] = (exp_time / 1000., 'Exposure time [s]')
+        hdr['EXPTIME'] = (exp_time, 'Exposure time [s]')
 
         # binning
         hdr['XBINNING'] = hdr['DET-BIN1'] = (int(self.binning[0]), 'Binning factor used on X axis')

@@ -17,7 +17,7 @@ class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
-                 exp_time: int = 1000, acquisition: str = 'acquisition', *args, **kwargs):
+                 exp_time: float = 1., acquisition: str = 'acquisition', *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
@@ -26,7 +26,7 @@ class PointingSeries(Module, IAutonomous):
             num_alt: Number of altitude points to create on grid.
             num_az: Number of azimuth points to create on grid.
             finish: When this number in percent of points have been finished, terminate mastermind.
-            exp_time: Exposure time in ms.
+            exp_time: Exposure time in secs.
             acquisition: IAcquisition unit to use.
         """
         Module.__init__(self, *args, **kwargs)

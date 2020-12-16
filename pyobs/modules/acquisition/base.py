@@ -63,14 +63,14 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
     @timeout(300)
-    def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
+    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Args:
-            exposure_time: Exposure time for acquisition.
+            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -93,8 +93,9 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         # try given number of attempts
         for a in range(self._attempts):
             # take image
-            log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
-            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()
+            log.info('Exposing image for %.1f seconds...', exposure_time)
+            camera.set_exposure_time(exposure_time).wait()
+            filename = camera.expose(ICamera.ImageType.ACQUISITION).wait()
 
             # download image
             log.info('Downloading image...')

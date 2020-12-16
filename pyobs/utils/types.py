@@ -67,11 +67,11 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
         # no response or no annotation at all or Any
         return response
     #elif get_origin(annotation) == tuple or isinstance(annotation, tuple):
-    elif annotation.__origin__ == tuple or isinstance(annotation, tuple):
+    elif hasattr(annotation, '__origin') and annotation.__origin__ == tuple or isinstance(annotation, tuple):
         # parse tuple
         return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
     #elif get_origin(annotation) in [dict]:
-    elif annotation.__origin__ in [dict]:
+    elif hasattr(annotation, '__origin') and annotation.__origin__ in [dict]:
         # just return it
         return response
     else:

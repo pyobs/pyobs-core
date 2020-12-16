@@ -29,7 +29,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         self._add_thread_func(self._cooling_thread, True)
 
         # store
-        self._redout_time = readout_time
+        self._readout_time = readout_time
         self._sim = sim if sim is not None else {}
         if 'images' not in self._sim:
             self._sim['images'] = None
@@ -119,7 +119,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
 
         # readout
         self._change_exposure_status(ICamera.ExposureStatus.READOUT)
-        time.sleep(self._redout_time)
+        time.sleep(self._readout_time)
 
         # get image
         hdu = self._get_image(exposure_time, open_shutter)
@@ -238,6 +238,14 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             Dict containing temperatures.
         """
         return self._cooling['Temperatures']
+
+    def _set_config_readout_time(self, readout_time):
+        """Set readout time."""
+        self._readout_time = readout_time
+
+    def _get_config_readout_time(self):
+        """Returns readout time."""
+        return self._readout_time
 
 
 __all__ = ['DummyCamera']

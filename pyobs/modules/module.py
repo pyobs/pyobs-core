@@ -1,19 +1,13 @@
-import datetime
 import inspect
 import logging
-import threading
-from typing import Union, Type, Any, Callable, Dict
+from typing import Union, Type, Any, Callable, Dict, Tuple
 from py_expression_eval import Parser
-from astropy.coordinates import EarthLocation
-from astroplan import Observer
-import pytz
-from pyobs.comm.dummy import DummyComm
 
+from pyobs.comm.dummy import DummyComm
 from pyobs.object import Object
 from pyobs.comm import Comm
-from pyobs.interfaces import IModule
-from pyobs.object import get_object, create_object
-from pyobs.vfs import VirtualFileSystem
+from pyobs.interfaces import IModule, IConfig
+from pyobs.object import get_object
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
@@ -75,7 +69,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     return timeout_decorator
 
 
-class Module(Object, IModule):
+class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
 
     def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
@@ -92,6 +86,9 @@ class Module(Object, IModule):
         self._interfaces = []
         self._methods = {}
         self._get_interfaces_and_methods()
+
+        # get configuration options, i.e. all parameters from c'tor
+        self._config_options = self._get_config_options()
 
         # comm object
         if comm is None:
@@ -254,6 +251,85 @@ class Module(Object, IModule):
             return cast_response_to_simple(response)
         except Exception as e:
             log.exception('Error on remote procedure call: %s' % str(e))
+
+    def _get_config_options(self) -> dict:
+        """Returns a dictionary with config options."""
+
+        # init dict of options and types
+        opts = {}
+
+        # loop super classes
+        for cls in inspect.getmro(self.__class__):
+            # ignore Object and Module
+            if cls in [Object, Module]:
+                continue
+
+            # get signature
+            sig = inspect.signature(cls.__init__)
+            for name in sig.parameters:
+                # ignore self, args, kwargs
+                if name in ['self', 'args', 'kwargs']:
+                    continue
+
+                # check for getter and setter
+                getter = hasattr(self, '_get_config_' + name)
+                setter = hasattr(self, '_set_config_' + name)
+                opts[name] = (getter, setter)
+
+        # finished
+        return opts
+
+    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
+        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+
+        Returns:
+            Dict with config options
+        """
+        return self._config_options
+
+    def get_config_value(self, name: str, *args, **kwargs) -> Any:
+        """Returns current value of config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Current value.
+
+        Raises:
+            ValueError if config item of given name does not exist.
+        """
+
+        # valid parameter?
+        if name not in self._config_options:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_options[name][0]:
+            raise ValueError('Parameter %s is not remotely accessible.')
+
+        # get getter method and call it
+        getter = getattr(self, '_get_config_' + name)
+        return getter()
+
+    def set_config_value(self, name: str, value: Any, *args, **kwargs):
+        """Sets value of config item with given name.
+
+        Args:
+            name: Name of config item.
+            value: New value.
+
+        Raises:
+            ValueError if config item of given name does not exist or value is invalid.
+        """
+
+        # valid parameter?
+        if name not in self._config_options:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_options[name][1]:
+            raise ValueError('Parameter %s is not remotely settable.')
+
+        # get setter and call it
+        setter = getattr(self, '_set_config_' + name)
+        setter(value)
 
 
 class MultiModule(Module):

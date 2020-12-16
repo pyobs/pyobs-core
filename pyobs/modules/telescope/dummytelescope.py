@@ -118,7 +118,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.focus
 
-    @timeout(60000)
+    @timeout(60)
     def set_focus(self, focus: float, *args, **kwargs):
         """Sets new focus.
 
@@ -186,7 +186,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
             self.comm.send_event(FilterChangedEvent(filter_name))
             logging.info('New filter set.')
 
-    @timeout(60000)
+    @timeout(60)
     def init(self, *args, **kwargs):
         """Initialize telescope.
 
@@ -200,7 +200,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         self._change_motion_status(IMotion.Status.IDLE)
         self.comm.send_event(InitializedEvent())
 
-    @timeout(60000)
+    @timeout(60)
     def park(self, *args, **kwargs):
         """Park telescope.
 

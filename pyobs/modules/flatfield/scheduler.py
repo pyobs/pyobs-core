@@ -59,7 +59,7 @@ class FlatFieldScheduler(Module, IRunnable):
         except ValueError:
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
-    @timeout(7200000)
+    @timeout(7200)
     def run(self, *args, **kwargs):
         """Perform flat-fielding"""
         log.info('Performing flat fielding...')
@@ -98,7 +98,7 @@ class FlatFieldScheduler(Module, IRunnable):
         # finished
         log.info('Finished.')
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()

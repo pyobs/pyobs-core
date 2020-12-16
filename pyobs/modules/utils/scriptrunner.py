@@ -15,7 +15,7 @@ class ScriptRunner(Module, IScriptRunner):
         """Initialize a new script runner."""
         Module.__init__(self, *args, **kwargs)
 
-    @timeout(600000)
+    @timeout(600)
     def run_script(self, script: str, *args, **kwargs):
         """Run the given script.
 

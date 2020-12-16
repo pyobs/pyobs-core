@@ -81,7 +81,7 @@ class FlatField(Module, IFlatField):
             self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
                             filter=filter, binning=binning)
 
-    @timeout(3600000)
+    @timeout(3600)
     def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
         """Do a series of flat fields in the given filter.
 
@@ -133,7 +133,7 @@ class FlatField(Module, IFlatField):
         # return number of taken images
         return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()

@@ -83,7 +83,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
         # get link to camera
         self._camera = self.proxy(self._camera_name, ICamera)
 
-    @timeout('(exposure_time+10000)*count')
+    @timeout('(exposure_time+10)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 

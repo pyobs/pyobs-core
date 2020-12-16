@@ -62,7 +62,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    @timeout(300000)
+    @timeout(300)
     def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 

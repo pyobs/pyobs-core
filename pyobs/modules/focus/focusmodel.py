@@ -307,7 +307,7 @@ class FocusModel(Module, IFocusModel):
         focuser.set_focus(focus).wait()
         log.info('Done.')
 
-    @timeout(60000)
+    @timeout(60)
     def set_optimal_focus(self, *args, **kwargs):
         """Sets optimal focus.
 

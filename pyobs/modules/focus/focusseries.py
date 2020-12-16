@@ -63,7 +63,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     def close(self):
         """Close module."""
 
-    @timeout(600000)
+    @timeout(600)
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
         """Perform an auto-focus series.
 
@@ -208,7 +208,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         """
         return {}
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()

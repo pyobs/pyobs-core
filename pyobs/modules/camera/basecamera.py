@@ -399,7 +399,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         log.info('Finished image %s.', filename)
         return image, filename
 
-    @timeout('(exposure_time+30000)*count')
+    @timeout('exposure_time+30000')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 

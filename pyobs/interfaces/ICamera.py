@@ -29,18 +29,16 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, exposure_time: int, image_type: ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> list:
+    def expose(self, exposure_time: int, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
             image_type: Type of image.
-            count: Number of images to take.
             broadcast: Broadcast existence of image.
 
         Returns:
-            List of references to the image that was taken.
+            Name of image that was taken.
         """
         raise NotImplementedError
 
@@ -49,22 +47,6 @@ class ICamera(IAbortable):
 
         Raises:
             ValueError: If exposure could not be aborted.
-        """
-        raise NotImplementedError
-
-    def abort_sequence(self, *args, **kwargs):
-        """Aborts the current sequence after current exposure.
-
-        Raises:
-            ValueError: If sequemce could not be aborted.
-        """
-        raise NotImplementedError
-
-    def get_exposures_left(self, *args, **kwargs) -> int:
-        """Returns the remaining exposures.
-
-        Returns:
-            Remaining exposures
         """
         raise NotImplementedError
 

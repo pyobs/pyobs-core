@@ -24,6 +24,7 @@ class AdaptiveCameraMode(Enum):
 
 class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
     """A virtual camera for adaptive exposure times."""
+    # TODO: adapt this to new ICamera interface or remove!
 
     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
                  target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000, history: int = 10,
@@ -83,29 +84,27 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
         self._camera = self.proxy(self._camera_name, ICamera)
 
     @timeout('(exposure_time+10000)*count')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> list:
+    def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
             image_type: Type of image.
-            count: Number of images to take.
             broadcast: Broadcast existence of image.
 
         Returns:
-            List of references to the image that was taken.
+            Name of image that was taken.
         """
 
         # reset
         self._abort = threading.Event()
         self._exp_time = exposure_time
-        self._exposure_count = count
         self._exposures_done = 0
 
         # loop exposures
         return_filenames = []
         self._history = [exposure_time]
+        count = 1
         for i in range(count):
             # abort?
             if self._abort.is_set():

@@ -415,18 +415,16 @@ class BaseCamera(Module, ICamera, IAbortable):
         return image, filename
 
     @timeout('(exposure_time+30000)*count')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> list:
+    def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
             image_type: Type of image.
-            count: Number of images to take.
             broadcast: Broadcast existence of image.
 
         Returns:
-            List of references to the image that was taken.
+            Name of image that was taken.
         """
 
         # acquire lock
@@ -443,29 +441,15 @@ class BaseCamera(Module, ICamera, IAbortable):
             # store type
             self._image_type = image_type
 
-            # loop count
-            images = []
-            self._exposures_left = count
-            while self._exposures_left > 0 and not self.expose_abort.is_set():
-                if count > 1:
-                    log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
-
-                # expose
-                image, filename = self.__expose(exposure_time, image_type, broadcast)
-                if image is None:
-                    log.error('Could not take image.')
+            # expose
+            image, filename = self.__expose(exposure_time, image_type, broadcast)
+            if image is None:
+                log.error('Could not take image.')
+            else:
+                if filename is None:
+                    log.warning('Image has not been saved, so cannot be retrieved by filename.')
                 else:
-                    if filename is None:
-                        log.warning('Image has not been saved, so cannot be retrieved by filename.')
-                    else:
-                        images.append(filename)
-
-                # finished
-                self._exposures_left -= 1
-
-            # return id
-            self._exposures_left = 0
-            return images
+                    return filename
 
         finally:
             # reset type

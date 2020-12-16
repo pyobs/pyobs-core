@@ -7,8 +7,6 @@ from typing import Tuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
-import yaml
-import io
 
 from pyobs.comm import TimeoutException
 from pyobs.utils.images import Image
@@ -17,7 +15,7 @@ from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
 from pyobs import Module
-from pyobs.events import NewImageEvent, ExposureStatusChangedEvent, BadWeatherEvent, RoofClosingEvent
+from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
 from pyobs.modules import timeout
 
@@ -63,7 +61,6 @@ class BaseCamera(Module, ICamera, IAbortable):
         self._last_image = None
         self._exposure = None
         self._camera_status = ICamera.ExposureStatus.IDLE
-        self._exposures_left = 0
         self._image_type = None
 
         # multi-threading
@@ -82,10 +79,6 @@ class BaseCamera(Module, ICamera, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
-
-            # bad weather
-            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
-            self.comm.register_event(RoofClosingEvent, self._on_bad_weather)
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -123,14 +116,6 @@ class BaseCamera(Module, ICamera, IAbortable):
         # calculate difference between start of exposure and now, and return in ms
         diff = self._exposure[0] + datetime.timedelta(milliseconds=self._exposure[1]) - datetime.datetime.utcnow()
         return int(diff.total_seconds() * 1000)
-
-    def get_exposures_left(self, *args, **kwargs) -> int:
-        """Returns the remaining exposures.
-
-        Returns:
-            Remaining exposures
-        """
-        return self._exposures_left
 
     def get_exposure_progress(self, *args, **kwargs) -> float:
         """Returns the progress of the current exposure in percent.
@@ -415,18 +400,16 @@ class BaseCamera(Module, ICamera, IAbortable):
         return image, filename
 
     @timeout('(exposure_time+30000)*count')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> list:
+    def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
             image_type: Type of image.
-            count: Number of images to take.
             broadcast: Broadcast existence of image.
 
         Returns:
-            List of references to the image that was taken.
+            Name of image that was taken.
         """
 
         # acquire lock
@@ -443,29 +426,15 @@ class BaseCamera(Module, ICamera, IAbortable):
             # store type
             self._image_type = image_type
 
-            # loop count
-            images = []
-            self._exposures_left = count
-            while self._exposures_left > 0 and not self.expose_abort.is_set():
-                if count > 1:
-                    log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
-
-                # expose
-                image, filename = self.__expose(exposure_time, image_type, broadcast)
-                if image is None:
-                    log.error('Could not take image.')
+            # expose
+            image, filename = self.__expose(exposure_time, image_type, broadcast)
+            if image is None:
+                log.error('Could not take image.')
+            else:
+                if filename is None:
+                    log.warning('Image has not been saved, so cannot be retrieved by filename.')
                 else:
-                    if filename is None:
-                        log.warning('Image has not been saved, so cannot be retrieved by filename.')
-                    else:
-                        images.append(filename)
-
-                # finished
-                self._exposures_left -= 1
-
-            # return id
-            self._exposures_left = 0
-            return images
+                    return filename
 
         finally:
             # reset type
@@ -505,16 +474,6 @@ class BaseCamera(Module, ICamera, IAbortable):
             self._expose_lock.release()
         else:
             raise ValueError('Could not abort exposure.')
-
-    def abort_sequence(self, *args, **kwargs):
-        """Aborts the current sequence after current exposure.
-
-        Returns:
-            Success or not.
-        """
-        if self._exposures_left > 1:
-            log.info('Aborting sequence of images...')
-        self._exposures_left = 0
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
@@ -579,23 +538,6 @@ class BaseCamera(Module, ICamera, IAbortable):
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
-
-    def _on_bad_weather(self, event, sender: str, *args, **kwargs):
-        """Abort exposure if a bad weather event occurs.
-
-        Args:
-            event: The bad weather event.
-            sender: Who sent it.
-        """
-
-        # is current image type one with closed shutter?
-        if self._image_type not in [ICamera.ImageType.DARK, ICamera.ImageType.BIAS]:
-            # ignore it
-            return
-
-        # let's finish current exposure, then abort sequence
-        log.warning('Received bad weather event, aborting sequence...')
-        self.abort_sequence()
 
 
 __all__ = ['BaseCamera', 'CameraException']

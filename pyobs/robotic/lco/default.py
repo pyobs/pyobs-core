@@ -134,7 +134,7 @@ class LcoDefaultScript(Script):
 
             # get exposure time
             acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] 'exposure_time' in acq else 2.
+            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
 
             # do acquisition
             log.info('Performing acquisition...')

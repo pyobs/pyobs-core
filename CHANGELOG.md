@@ -18,6 +18,7 @@
 * Added new IConfig interface which is implemented in every module and allows remote access to config parameters 
   (if getter/setters are implemented).
 * Removed count parameter from ICamera.expose().
+* Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
 
 
 ### v0.11 (2020-10-18)

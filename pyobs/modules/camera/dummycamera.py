@@ -100,9 +100,6 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             ValueError: If exposure was not successful.
         """
 
-        # set exposure time
-        log.info('Setting exposure time to {0:d}ms...'.format(exposure_time))
-
         # do exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
@@ -114,7 +111,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 self._exposing = False
                 self._change_exposure_status(ICamera.ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
-            time.sleep(exposure_time / 1000. / steps)
+            time.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout
@@ -125,7 +122,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         hdu = self._get_image(exposure_time, open_shutter)
 
         # add headers
-        hdu.header['EXPTIME'] = exposure_time / 1000.
+        hdu.header['EXPTIME'] = exposure_time
         hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
         hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._camera.binning[0], 'Binning factor used on X axis')
         hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._camera.binning[1], 'Binning factor used on Y axis')

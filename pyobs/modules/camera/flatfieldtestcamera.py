@@ -55,7 +55,7 @@ class FlatFieldTestCamera(DummyCamera):
         exp_time_30000 = self.exp_time(sun.alt.degree)      # in seconds, while exp_time is in ms!
 
         # get expected count level
-        expected_counts = (30000 - self.bias) / exp_time_30000 * (exp_time / 1000)
+        expected_counts = (30000 - self.bias) / exp_time_30000 * exp_time
 
         # and scale
         data *= expected_counts

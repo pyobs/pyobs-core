@@ -86,7 +86,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
 
@@ -142,7 +142,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 

@@ -105,12 +105,12 @@ class DummyCam(BaseCamera):
     def __init__(self, *args, **kwargs):
         BaseCamera.__init__(self, *args, **kwargs)
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
         # exposing
         self._camera_status = ICamera.ExposureStatus.EXPOSING
 
         # wait for exposure
-        abort_event.wait(exposure_time / 1000.)
+        abort_event.wait(exposure_time)
 
         # raise exception, if aborted
         if abort_event.is_set():
@@ -162,7 +162,8 @@ def test_abort():
 
     def expose():
         with pytest.raises(ValueError):
-            camera.expose(exposure_time=1000, image_type='object')
+            camera.set_exposure_time(1.)
+            camera.expose(image_type='object')
 
     # expose
     thread = threading.Thread(target=expose)

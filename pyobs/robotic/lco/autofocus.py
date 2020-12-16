@@ -116,7 +116,7 @@ class LcoAutoFocusScript(Script):
 
             # get exposure time
             acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000
+            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
 
             # do acquisition
             log.info('Performing acquisition...')

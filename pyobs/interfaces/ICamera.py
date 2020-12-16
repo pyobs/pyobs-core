@@ -29,11 +29,10 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, exposure_time: int, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
-            exposure_time: Exposure time in seconds.
             image_type: Type of image.
             broadcast: Broadcast existence of image.
 
@@ -47,14 +46,6 @@ class ICamera(IAbortable):
 
         Raises:
             ValueError: If exposure could not be aborted.
-        """
-        raise NotImplementedError
-
-    def get_exposure_time_left(self, *args, **kwargs) -> float:
-        """Returns the remaining exposure time on the current exposure in ms.
-
-        Returns:
-            Remaining exposure time in ms.
         """
         raise NotImplementedError
 

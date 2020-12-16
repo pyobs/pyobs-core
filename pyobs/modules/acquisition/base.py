@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, ICameraExposureTime
 from pyobs import Module
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
@@ -62,15 +62,15 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    @timeout(300000)
-    def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
+    @timeout(300)
+    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Args:
-            exposure_time: Exposure time for acquisition.
+            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -92,9 +92,13 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
 
         # try given number of attempts
         for a in range(self._attempts):
-            # take image
-            log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
-            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()
+            # set exposure time and take image
+            if isinstance(camera, ICameraExposureTime):
+                log.info('Exposing image for %.1f seconds...', exposure_time)
+                camera.set_exposure_time(exposure_time).wait()
+            else:
+                log.info('Exposing image...')
+            filename = camera.expose(ICamera.ImageType.ACQUISITION).wait()
 
             # download image
             log.info('Downloading image...')

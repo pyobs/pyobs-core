@@ -5,7 +5,7 @@ import numpy as np
 from typing import Union, Type
 
 from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
-    IAcquisition
+    IAcquisition, ICameraExposureTime
 from pyobs.robotic.scripts import Script
 from pyobs.utils.threads import Future
 
@@ -134,7 +134,7 @@ class LcoDefaultScript(Script):
 
             # get exposure time
             acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000
+            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
 
             # do acquisition
             log.info('Performing acquisition...')
@@ -206,9 +206,14 @@ class LcoDefaultScript(Script):
                     self._check_abort(abort_event)
 
                     # do exposures
-                    log.info('Exposing %s image %d/%d for %.2fs...',
-                             self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                    camera.expose(int(ic['exposure_time'] * 1000), self.image_type).wait()
+                    if isinstance(camera, ICameraExposureTime):
+                        log.info('Exposing %s image %d/%d for %.2fs...',
+                                 self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
+                        camera.set_exposure_time(ic['exposure_time']).wait()
+                    else:
+                        log.info('Exposing %s image %d/%d...',
+                                 self.configuration['type'], exp + 1, ic['exposure_count'])
+                    camera.expose(self.image_type).wait()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs

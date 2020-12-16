@@ -26,7 +26,7 @@ class FlatFieldPointing(Module, IRunnable):
         self._telescope = telescope
         self._pointing = pointing
 
-    @timeout(60000)
+    @timeout(60)
     def run(self, *args, **kwargs):
         """Move telescope to pointing."""
 

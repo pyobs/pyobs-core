@@ -27,7 +27,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
     # TODO: adapt this to new ICamera interface or remove!
 
     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
-                 target_counts: int = 30000, min_exptime: int = 500, max_exptime: int = 60000, history: int = 10,
+                 target_counts: int = 30000, min_exptime: float = 0.5, max_exptime: float = 60, history: int = 10,
                  *args, **kwargs):
         """Creates a new adaptive exposure time camera.
 
@@ -83,7 +83,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
         # get link to camera
         self._camera = self.proxy(self._camera_name, ICamera)
 
-    @timeout('(exposure_time+10000)*count')
+    @timeout('(exposure_time+10)*count')
     def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
@@ -111,7 +111,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
                 break
 
             # do exposure(s), never broadcast
-            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time / 1000.)
+            log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time)
             filename = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
             self._exposures_done += 1
 
@@ -234,8 +234,8 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
         # find peak count
         peak = self._find_target(image)
 
-        # get exposure time from image in ms
-        exp_time = image.header['EXPTIME'] * 1000
+        # get exposure time from image in secs
+        exp_time = image.header['EXPTIME']
 
         # scale exposure time
         exp_time = int(exp_time * self._counts / peak)
@@ -250,7 +250,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
 
         # set it
         self._exp_time = int(np.mean(self._history))
-        log.info('Setting exposure time to %.3fs.', self._exp_time / 1000.)
+        log.info('Setting exposure time to %.3fs.', self._exp_time)
 
     def _find_target(self, image: Image) -> int:
         """Find target in image and return it's peak count.

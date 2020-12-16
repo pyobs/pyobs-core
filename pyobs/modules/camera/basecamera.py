@@ -16,7 +16,7 @@ from pyobs.utils.fits import format_filename
 
 from pyobs import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
-from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
+from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime
 from pyobs.modules import timeout
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,12 @@ class CameraException(Exception):
     pass
 
 
-class BaseCamera(Module, ICamera, IAbortable):
+def calc_expose_timeout(camera, *args, **kwargs):
+    """Calculates timeout for expose()."""
+    return camera.get_exposure_time() + 30
+
+
+class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
     def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
                  flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
@@ -56,6 +61,7 @@ class BaseCamera(Module, ICamera, IAbortable):
         self._flip = flip
         self._filenames = filenames
         self._fits_namespaces = fits_namespaces
+        self._exposure_time = 0
 
         # init camera
         self._last_image = None
@@ -79,6 +85,26 @@ class BaseCamera(Module, ICamera, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
+
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+        """Set the exposure time in seconds.
+
+        Args:
+            exposure_time: Exposure time in seconds.
+
+        Raises:
+            ValueError: If exposure time could not be set.
+        """
+        log.info('Setting exposure time to %.5fs...', exposure_time)
+        self._exposure_time = exposure_time
+
+    def get_exposure_time(self, *args, **kwargs) -> float:
+        """Returns the exposure time in seconds.
+
+        Returns:
+            Exposure time in seconds.
+        """
+        return self._exposure_time
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -399,8 +425,8 @@ class BaseCamera(Module, ICamera, IAbortable):
         log.info('Finished image %s.', filename)
         return image, filename
 
-    @timeout('exposure_time+30000')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+    @timeout(calc_expose_timeout)
+    def expose(self, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -427,7 +453,7 @@ class BaseCamera(Module, ICamera, IAbortable):
             self._image_type = image_type
 
             # expose
-            image, filename = self.__expose(exposure_time, image_type, broadcast)
+            image, filename = self.__expose(self._exposure_time, image_type, broadcast)
             if image is None:
                 log.error('Could not take image.')
             else:

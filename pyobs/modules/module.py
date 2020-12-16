@@ -1,6 +1,6 @@
 import inspect
 import logging
-from typing import Union, Type, Any, Callable, Dict, Tuple
+from typing import Union, Type, Any, Callable, Dict, Tuple, List
 from py_expression_eval import Parser
 
 from pyobs.comm.dummy import DummyComm
@@ -83,8 +83,8 @@ class Module(Object, IModule, IConfig):
         Object.__init__(self, *args, **kwargs)
 
         # get list of client interfaces
-        self._interfaces = []
-        self._methods = {}
+        self._interfaces: List[Type] = []
+        self._methods: Dict[str, Tuple[Callable, inspect.Signature]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration options, i.e. all parameters from c'tor
@@ -92,7 +92,7 @@ class Module(Object, IModule, IConfig):
 
         # comm object
         if comm is None:
-            self.comm = DummyComm()
+            self.comm: Comm = DummyComm()
         elif isinstance(comm, Comm):
             self.comm = comm
         elif isinstance(comm, dict):
@@ -102,12 +102,8 @@ class Module(Object, IModule, IConfig):
             raise ValueError('Invalid Comm object')
 
         # name and label
-        self._name = name
-        if self._name is None:
-            self._name = self.comm.name
-        self._label = label
-        if self._label is None:
-            self._label = self._name
+        self._name: str = name if name is not None else self.comm.name
+        self._label: str = label if label is not None else self._name
 
     def open(self):
         """Open module."""
@@ -346,7 +342,7 @@ class MultiModule(Module):
         Module.__init__(self, name='multi', *args, **kwargs)
 
         # create shared objects
-        self._shared = {}
+        self._shared: Dict[str, Module] = {}
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it

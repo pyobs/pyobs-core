@@ -103,10 +103,10 @@ class BaseCamera(Module, ICamera, IAbortable):
         return self._camera_status
 
     def get_exposure_time_left(self, *args, **kwargs) -> float:
-        """Returns the remaining exposure time on the current exposure in ms.
+        """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:
-            Remaining exposure time in ms.
+            Remaining exposure time in seconds.
         """
 
         # if we're not exposing, there is nothing left
@@ -114,8 +114,8 @@ class BaseCamera(Module, ICamera, IAbortable):
             return 0.
 
         # calculate difference between start of exposure and now, and return in ms
-        diff = self._exposure[0] + datetime.timedelta(milliseconds=self._exposure[1]) - datetime.datetime.utcnow()
-        return int(diff.total_seconds() * 1000)
+        diff = self._exposure[0] + datetime.timedelta(seconds=self._exposure[1]) - datetime.datetime.utcnow()
+        return diff.total_seconds()
 
     def get_exposure_progress(self, *args, **kwargs) -> float:
         """Returns the progress of the current exposure in percent.
@@ -136,7 +136,7 @@ class BaseCamera(Module, ICamera, IAbortable):
             return 100.
         else:
             # return max of 100
-            percentage = (diff.total_seconds() * 1000. / self._exposure[1]) * 100.
+            percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
     def _add_fits_headers(self, hdr: fits.Header):

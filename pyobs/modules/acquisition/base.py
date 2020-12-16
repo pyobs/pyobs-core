@@ -94,7 +94,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         for a in range(self._attempts):
             # take image
             log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
-            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()[0]
+            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()
 
             # download image
             log.info('Downloading image...')

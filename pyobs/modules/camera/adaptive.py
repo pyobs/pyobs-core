@@ -112,18 +112,18 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
 
             # do exposure(s), never broadcast
             log.info('Starting exposure with %d/%d for %.2fs...', i+1, count, self._exp_time / 1000.)
-            filenames = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
+            filename = self._camera.expose(self._exp_time, image_type, 1, broadcast=False).wait()
             self._exposures_done += 1
 
             # store filename
-            return_filenames.append(filenames[0])
+            return_filenames.append(filename)
             with self._process_lock:
                 if self._process_filename is None:
-                    self._process_filename = filenames[0]
+                    self._process_filename = filename
 
             # broadcast image path
             if broadcast and self.comm:
-                self.comm.send_event(NewImageEvent(filenames[0], image_type))
+                self.comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
         self._exposure_count = None

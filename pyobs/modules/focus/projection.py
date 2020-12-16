@@ -134,8 +134,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                filename = camera.expose(exposure_time=exposure_time, image_type=ICamera.ImageType.FOCUS,
-                                         count=1).wait()[0]
+                filename = camera.expose(exposure_time=exposure_time, image_type=ICamera.ImageType.FOCUS).wait()
             except RemoteException:
                 log.error('Could not take image.')
                 return

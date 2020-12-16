@@ -44,10 +44,10 @@ class AutoGuiding(BaseGuiding):
 
                 # take image
                 log.info('Taking image with an exposure time of %dms...', self._exp_time)
-                filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False).wait()
+                filename = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, broadcast=False).wait()
 
                 # download image
-                image = self.vfs.read_image(filenames[0])
+                image = self.vfs.read_image(filename)
 
                 # process it
                 log.info('Processing image...')

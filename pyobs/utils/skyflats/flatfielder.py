@@ -257,7 +257,7 @@ class FlatFielder:
         filename = camera.expose(0, ICamera.ImageType.BIAS, broadcast=False).wait()
 
         # download image
-        bias = self._vfs.read_image(filename[0])
+        bias = self._vfs.read_image(filename)
         avg = float(np.median(bias.data))
 
         # return it
@@ -354,7 +354,7 @@ class FlatFielder:
                                  broadcast=False).wait()
 
         # analyse image
-        self._analyse_image(filename[0])
+        self._analyse_image(filename)
 
         # then evaluate exposure time
         state = self._eval_exptime()
@@ -480,7 +480,7 @@ class FlatFielder:
                                  image_type=ICamera.ImageType.SKYFLAT).wait()
 
         # analyse image
-        if self._analyse_image(filename[0]):
+        if self._analyse_image(filename):
             # increase count and quite here, if finished
             self._exptime_done += int(self._exptime * 1000.)
             self._exposures_done += 1

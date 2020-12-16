@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import threading
-from typing import Tuple
+from typing import Tuple, Optional
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -61,11 +61,11 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
         self._flip = flip
         self._filenames = filenames
         self._fits_namespaces = fits_namespaces
-        self._exposure_time = 0
+        self._exposure_time: float = 0.
 
         # init camera
         self._last_image = None
-        self._exposure = None
+        self._exposure: Optional[Tuple[datetime.datetime, int]] = None
         self._camera_status = ICamera.ExposureStatus.IDLE
         self._image_type = None
 

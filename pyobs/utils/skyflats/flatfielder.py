@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow
+from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime
 from pyobs.object import get_object
 from pyobs.utils.fits import fitssec
 from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
@@ -143,6 +143,10 @@ class FlatFielder:
         Returns:
             Current state of flat fielder.
         """
+
+        # camera must support exposure times
+        if not isinstance(camera, ICameraExposureTime):
+            raise ValueError('Camera must support exposure times.')
 
         # store
         self._cur_filter = filter_name

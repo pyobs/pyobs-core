@@ -12,15 +12,6 @@ class ICamera(IAbortable):
         EXPOSING = 'exposing'
         READOUT = 'readout'
 
-    class ImageType(enum.Enum):
-        """Enumerator specifying the image type."""
-        BIAS = 'bias'
-        DARK = 'dark'
-        OBJECT = 'object'
-        SKYFLAT = 'skyflat'
-        FOCUS = 'focus'
-        ACQUISITION = 'acquisition'
-
     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
@@ -29,11 +20,10 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
-            image_type: Type of image.
             broadcast: Broadcast existence of image.
 
         Returns:

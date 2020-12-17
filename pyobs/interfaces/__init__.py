@@ -20,6 +20,7 @@ from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
+from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
 from .IPipeline import IPipeline

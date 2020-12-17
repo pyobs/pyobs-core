@@ -62,12 +62,12 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
         self._filenames = filenames
         self._fits_namespaces = fits_namespaces
         self._exposure_time: float = 0.
+        self._image_type = ImageType.OBJECT
 
         # init camera
         self._last_image = None
         self._exposure: Optional[Tuple[datetime.datetime, int]] = None
         self._camera_status = ICamera.ExposureStatus.IDLE
-        self._image_type = None
 
         # multi-threading
         self._expose_lock = threading.Lock()
@@ -105,6 +105,23 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
             Exposure time in seconds.
         """
         return self._exposure_time
+
+    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+        """Set the image type.
+
+        Args:
+            image_type: New image type.
+        """
+        log.info('Setting image type to %s...', image_type)
+        self._image_type = image_type
+
+    def get_image_type(self, *args, **kwargs) -> ImageType:
+        """Returns the current image type.
+
+        Returns:
+            Current image type.
+        """
+        return self._image_type
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -299,11 +316,11 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
         # set it
         hdr['FRAMENUM'] = self._frame_num
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
-            exposure_time: The requested exposure time in ms.
+            exposure_time: The requested exposure time in seconds.
             open_shutter: Whether or not to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
@@ -315,11 +332,12 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
         """
         raise NotImplementedError
 
-    def __expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool) -> (Image, str):
+    def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
+            -> Tuple[Optional[Image], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
-            exposure_time: The requested exposure time in ms.
+            exposure_time: The requested exposure time in seconds.
             open_shutter: Whether or not to open the shutter.
             broadcast: Whether or not the new image should be broadcasted.
 
@@ -341,7 +359,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
                 fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type not in [ICamera.ImageType.BIAS, ICamera.ImageType.DARK]
+        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
 
         # do the exposure
         self._exposure = (datetime.datetime.utcnow(), exposure_time)
@@ -417,21 +435,17 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
             log.info('Broadcasting image ID...')
             self.comm.send_event(NewImageEvent(filename, image_type))
 
-        # store new last image
-        self._last_image = {'filename': filename, 'image': image}
-
         # return image and unique
         self._exposure = None
         log.info('Finished image %s.', filename)
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def expose(self, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
-            image_type: Type of image.
             broadcast: Broadcast existence of image.
 
         Returns:
@@ -449,23 +463,18 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
             if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
-            # store type
-            self._image_type = image_type
-
             # expose
-            image, filename = self.__expose(self._exposure_time, image_type, broadcast)
+            image, filename = self.__expose(self._exposure_time, self._image_type, broadcast)
             if image is None:
-                log.error('Could not take image.')
+                raise ValueError('Could not take image.')
             else:
                 if filename is None:
-                    log.warning('Image has not been saved, so cannot be retrieved by filename.')
-                else:
-                    return filename
+                    raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
+
+            # return filename
+            return filename
 
         finally:
-            # reset type
-            self._image_type = None
-
             # release lock
             log.info('Releasing exclusive lock on camera...')
             self._expose_lock.release()

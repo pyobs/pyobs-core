@@ -1,6 +1,8 @@
 import logging
 import threading
 import time
+from typing import Tuple
+
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -226,7 +228,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         self._telescope.set_offsets(dra, ddec)
 
-    def get_radec_offsets(self, *args, **kwargs) -> (float, float):
+    def get_radec_offsets(self, *args, **kwargs) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:
@@ -234,7 +236,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.offsets
 
-    def get_radec(self, *args, **kwargs) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:

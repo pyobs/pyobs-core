@@ -1,4 +1,6 @@
 import logging
+from typing import Tuple
+
 import requests
 import urllib.parse
 import threading
@@ -125,7 +127,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         with self._status_lock:
             return self._status
 
-    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> (str, float):
+    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:

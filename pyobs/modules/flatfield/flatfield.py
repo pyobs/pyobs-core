@@ -1,7 +1,7 @@
 import logging
 import threading
-import typing
 from enum import Enum
+from typing import Union, Tuple
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
@@ -27,8 +27,8 @@ class FlatField(Module, IFlatField):
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, telescope: typing.Union[str, ITelescope], camera: typing.Union[str, ICamera],
-                 filters: typing.Union[str, IFilters], flat_fielder: typing.Union[dict, FlatFielder],
+    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
+                 filters: Union[str, IFilters], flat_fielder: Union[dict, FlatFielder],
                  log_file: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
@@ -82,7 +82,7 @@ class FlatField(Module, IFlatField):
                             filter=filter, binning=binning)
 
     @timeout(3600)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, int]:
         """Do a series of flat fields in the given filter.
 
         Args:

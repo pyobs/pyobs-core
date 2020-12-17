@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
@@ -16,7 +18,7 @@ class ILatLon(Interface):
         """
         raise NotImplementedError
 
-    def get_latlon(self, *args, **kwargs) -> (float, float):
+    def get_latlon(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current Latitude and Longitude.
 
         Returns:

@@ -59,7 +59,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
+    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given

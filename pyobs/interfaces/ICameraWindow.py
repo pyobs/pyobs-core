@@ -1,8 +1,10 @@
-from .interface import *
+from typing import Tuple
+
+from .interface import Interface
 
 
 class ICameraWindow(Interface):
-    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -24,7 +26,7 @@ class ICameraWindow(Interface):
         """
         raise NotImplementedError
 
-    def get_window(self, *args, **kwargs) -> (int, int, int, int):
+    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:

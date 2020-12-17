@@ -4,6 +4,8 @@ import threading
 import time
 from datetime import datetime
 from threading import RLock
+from typing import Tuple
+
 from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
@@ -64,7 +66,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             # sleep for 1 second
             self.closing.wait(1)
 
-    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -145,7 +147,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, *args, **kwargs) -> (int, int, int, int):
+    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -168,7 +170,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
 
-    def get_binning(self, *args, **kwargs) -> (int, int):
+    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -215,7 +217,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
                 'Temperatures': self._cooling['Temperatures']
             }
 
-    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float, dict):
+    def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:

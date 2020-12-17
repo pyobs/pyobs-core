@@ -1,6 +1,6 @@
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional
+from typing import Union, Callable, TypeVar, Optional, Type
 import logging
 import pytz
 from astroplan import Observer
@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 ObjectClass = TypeVar('ObjectClass')
 
 
-def get_object(config_or_object: Union[dict, object], object_class: ObjectClass = None, *args, **kwargs) -> ObjectClass:
+def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None, *args, **kwargs) \
+        -> ObjectClass:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -27,8 +28,8 @@ def get_object(config_or_object: Union[dict, object], object_class: ObjectClass 
     """
 
     if config_or_object is None:
-        # we return None directly
-        return None
+        # nothing to do?
+        raise TypeError('No config or object given.')
 
     elif isinstance(config_or_object, dict):
         # a dict is given, so create object

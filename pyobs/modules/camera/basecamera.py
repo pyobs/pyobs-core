@@ -32,9 +32,9 @@ def calc_expose_timeout(camera, *args, **kwargs):
     return camera.get_exposure_time() + 30
 
 
-class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
-    def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 flip: bool = False,
+class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
+    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
+                 rotation: float = 0., flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
                  fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
@@ -239,8 +239,8 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IAbortable):
 
         # centre pixel
         if self._centre is not None:
-            hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
-            hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX1'] = (self._centre[0], 'x-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX2'] = (self._centre[1], 'y-pixel on mechanical axis in unbinned image')
         else:
             log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 

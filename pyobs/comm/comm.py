@@ -1,7 +1,7 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type
+from typing import Any, Union, Type, Dict
 import threading
 
 import pyobs.interfaces
@@ -20,7 +20,7 @@ class Comm:
     def __init__(self, cache_proxies: bool = True, *args, **kwargs):
         """Creates a comm module."""
 
-        self._proxies = {}
+        self._proxies: Dict[str, Proxy] = {}
         self._module = None
         self._log_queue = queue.Queue()
         self._cache_proxies = cache_proxies
@@ -198,7 +198,7 @@ class Comm:
         Returns:
             (list) List of currently connected clients that implement the given interface.
         """
-        return filter(lambda c: self._supports_interface(c, interface), self.clients)
+        return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
 
     def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.

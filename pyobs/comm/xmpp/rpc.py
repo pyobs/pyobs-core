@@ -1,5 +1,7 @@
 import logging
 from threading import RLock
+from typing import Dict, Optional
+
 import sleekxmpp
 import sleekxmpp.exceptions
 from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
@@ -26,9 +28,8 @@ class RPC(object):
         # store
         self._client = client
         self._lock = RLock()
-        self._futures = {}
-        self._timeout = {}
-        self._handler = None
+        self._futures: Dict[str, Future] = {}
+        self._handler: Optional[Module] = None
         self._methods = {}
 
         # set up callbacks

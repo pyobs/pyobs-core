@@ -3,7 +3,7 @@ import logging
 import re
 import threading
 import time
-from typing import Any
+from typing import Any, Callable, Dict, Type, List, Optional
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
 import xml.sax.saxutils
@@ -13,6 +13,7 @@ from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
+from pyobs.modules.module import Module
 
 log = logging.getLogger(__name__)
 
@@ -25,8 +26,9 @@ class EventStanza(ElementBase):
 class XmppComm(Comm):
     """Comm module for XMPP."""
 
-    def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = 'pyobs',
-                 password: str = None, server: str = None, use_tls: bool = False, *args, **kwargs):
+    def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
+                 resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,
+                 use_tls: bool = False, *args, **kwargs):
         """Create a new XMPP Comm module.
 
         Either a fill JID needs to be provided, or a set of user/domian/resource, from which a JID is built.
@@ -43,12 +45,12 @@ class XmppComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         # variables
-        self._rpc = None
+        self._rpc: Optional[RPC] = None
         self._connected = False
-        self._command_handlers = {}
-        self._event_handlers = {}
-        self._online_clients = []
-        self._interface_cache = {}
+        self._command_handlers: Dict[str, List[Callable]] = {}
+        self._event_handlers: Dict[Type, List[Callable]] = {}
+        self._online_clients: List[str] = []
+        self._interface_cache: Dict[str, List[Type]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -227,7 +229,8 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        return self._rpc.call(self._get_full_client_name(client), method, *args)
+        if self._rpc is not None:
+            return self._rpc.call(self._get_full_client_name(client), method, *args)
 
     def _got_online(self, msg):
         """If a new client connects, add it to list.

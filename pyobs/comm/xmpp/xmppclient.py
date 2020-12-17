@@ -28,7 +28,6 @@ class XmppClient(sleekxmpp.ClientXMPP):
 
         # stuff
         self._connect_event = threading.Event()
-        self._pubsub_callbacks = {}
         self._logs_node = 'logs'
         self._auth_event = threading.Event()
         self._auth_success = False

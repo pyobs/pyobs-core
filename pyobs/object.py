@@ -1,6 +1,6 @@
 import datetime
 import threading
-from typing import Union, Callable, TypeVar
+from typing import Union, Callable, TypeVar, Optional
 import logging
 import pytz
 from astroplan import Observer
@@ -117,7 +117,7 @@ class Object:
             raise ValueError('Unknown format for location.')
 
         # create observer
-        self.observer = None
+        self.observer: Optional[Observer] = None
         if self.location is not None:
             log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
                      self.location.lon, self.location.lat, self.location.height)

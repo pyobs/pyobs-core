@@ -1,7 +1,6 @@
 from threading import Event
 import logging
-from typing import Union
-import typing
+from typing import Union, Dict, Tuple
 
 from pyobs import get_object
 from pyobs.robotic.scripts import Script
@@ -55,7 +54,7 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, config: dict, scripts: typing.Dict[str, Script], *args, **kwargs):
+    def __init__(self, config: dict, scripts: Dict[str, Script], *args, **kwargs):
         """Init LCO task (called request there).
 
         Args:
@@ -88,7 +87,7 @@ class LcoTask(Task):
         """Compares to tasks."""
         return self.config == other.config
 
-    def window(self) -> (Time, Time):
+    def window(self) -> Tuple[Time, Time]:
         """Returns the time window for this task.
 
         Returns:

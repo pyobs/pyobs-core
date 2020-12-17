@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Any, Type, Union
+from typing import Any, Type, Union, TypeVar, Optional
 
 from astroplan import Observer
 
@@ -9,6 +9,9 @@ from pyobs.comm.proxy import Proxy
 from pyobs.robotic import TaskArchive
 
 log = logging.getLogger(__name__)
+
+
+ProxyClass = TypeVar('ProxyClass')
 
 
 class Script:
@@ -64,12 +67,12 @@ class Script:
         """
         return {}
 
-    def _get_proxy(self, name: str, klass: Type) -> Union[None, Proxy, Any]:
+    def _get_proxy(self, name: str, proxy_class: Type[ProxyClass]) -> Optional[ProxyClass]:
         """Returns a single proxy.
 
         Args:
             name: Name of proxy
-            klass: Expected class of proxy
+            proxy_class: Expected class of proxy
 
         Returns:
             Proxy or None on errors
@@ -81,7 +84,7 @@ class Script:
 
         # try to get proxy
         try:
-            return self.comm.proxy(name, klass)
+            return self.comm.proxy(name, proxy_class)
         except ValueError:
             return None
 

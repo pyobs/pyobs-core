@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Union
+from typing import Union, Tuple
 
 from pyobs.interfaces import ICamera, IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic.scripts import Script
@@ -42,7 +42,7 @@ class LcoAutoFocusScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> (IRoof, ITelescope, IAcquisition, IAutoFocus):
+    def _get_proxies(self) -> Tuple[IRoof, ITelescope, IAcquisition, IAutoFocus]:
         """Get proxies for running the task
 
         Returns:

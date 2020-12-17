@@ -213,7 +213,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise ValueError('Could not acquire target within given tolerance.')
 
-    def _get_target_radec(self, img: Image, ra: float, dec: float) -> (float, float):
+    def _get_target_radec(self, img: Image, ra: float, dec: float) -> Tuple[float, float]:
         """Returns RA/Dec coordinates of pixel that needs to be centered.
 
         Params:

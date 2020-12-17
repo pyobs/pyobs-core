@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Tuple
 from astropy.io import fits
 from astropy.wcs import WCS
 
@@ -26,7 +26,7 @@ class AstrometryAcquisition(BaseAcquisition):
         self._photometry = photometry
         self._astrometry = astrometry
 
-    def _get_target_radec(self, img: Image, ra: float, dec: float) -> (float, float):
+    def _get_target_radec(self, img: Image, ra: float, dec: float) -> Tuple[float, float]:
         """Returns RA/Dec coordinates of pixel that needs to be centered.
 
         Params:

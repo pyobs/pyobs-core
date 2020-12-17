@@ -15,13 +15,9 @@ class Image:
 
     def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
         self.data = data
-        self.header = header
+        self.header = fits.Header() if header is None else header
         self.mask = None
         self.catalog = None
-
-        # add header
-        if self.header is None:
-            self.header = fits.Header()
 
         # add basic header stuff
         if data is not None:

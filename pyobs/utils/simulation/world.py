@@ -206,7 +206,7 @@ class SimCamera(Object):
         self.world = world
         self.telescope = world.telescope
         self.full_frame = (0, 0, 512, 512)
-        self.window = tuple(self.full_frame)
+        self.window = (0, 0, 512, 512)
         self.binning = (1, 1)
         self.pixel_size = pixel_size
 
@@ -214,11 +214,11 @@ class SimCamera(Object):
         self._catalog = None
         self._catalog_coords = None
 
-    def get_image(self, exp_time: int, open_shutter: bool) -> Image:
+    def get_image(self, exp_time: float, open_shutter: bool) -> Image:
         """Simulate an image.
 
         Args:
-            exp_time: Exposure time in ms.
+            exp_time: Exposure time in seconds.
             open_shutter: Whether the shutter is opened.
 
         Returns:

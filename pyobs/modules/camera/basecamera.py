@@ -9,6 +9,7 @@ from astropy.io import fits
 import astropy.units as u
 
 from pyobs.comm import TimeoutException
+from pyobs.utils.enums import ImageType
 from pyobs.utils.images import Image
 
 from pyobs.utils.time import Time
@@ -16,7 +17,7 @@ from pyobs.utils.fits import format_filename
 
 from pyobs import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
-from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime
+from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime, IImageType
 from pyobs.modules import timeout
 
 log = logging.getLogger(__name__)

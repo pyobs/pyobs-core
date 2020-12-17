@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import threading
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any, NamedTuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -25,6 +25,12 @@ log = logging.getLogger(__name__)
 
 class CameraException(Exception):
     pass
+
+
+class ExposureInfo(NamedTuple):
+    """Info about a running exposure."""
+    start: datetime.datetime
+    exposure_time: float
 
 
 def calc_expose_timeout(camera, *args, **kwargs):
@@ -66,8 +72,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         self._image_type = ImageType.OBJECT
 
         # init camera
-        self._last_image = None
-        self._exposure: Optional[Tuple[datetime.datetime, int]] = None
+        self._exposure: Optional[ExposureInfo] = None
         self._camera_status = ICamera.ExposureStatus.IDLE
 
         # multi-threading
@@ -158,7 +163,8 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
             return 0.
 
         # calculate difference between start of exposure and now, and return in ms
-        diff = self._exposure[0] + datetime.timedelta(seconds=self._exposure[1]) - datetime.datetime.utcnow()
+        duration = datetime.timedelta(seconds=self._exposure.exposure_time)
+        diff = self._exposure.start + duration - datetime.datetime.utcnow()
         return diff.total_seconds()
 
     def get_exposure_progress(self, *args, **kwargs) -> float:
@@ -176,7 +182,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure[1] == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
+        if self._exposure.exposure_time == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
             return 100.
         else:
             # return max of 100
@@ -231,8 +237,9 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
             hdr['HEIGHT'] = (float(loc.height.value), 'Altitude of the telescope [m]')
 
             # add local sidereal time
-            lst = self.observer.local_sidereal_time(date_obs)
-            hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
+            if self.observer is not None:
+                lst = self.observer.local_sidereal_time(date_obs)
+                hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
 
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
@@ -363,7 +370,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
 
         # do the exposure
-        self._exposure = (datetime.datetime.utcnow(), exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
             image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None:

@@ -89,7 +89,8 @@ class FocusModel(Module, IFocusModel):
         self._update_model = update
         self._min_measurements = min_measurements
         self._enabled = enabled
-        self._temp_station, self._temp_sensor = temp_sensor.split('.')
+        self._temp_station, sensor = temp_sensor.split('.')
+        self._temp_sensor = IWeather.Sensors(sensor)
         self._default_filter = default_filter
         self._filter_offsets = filter_offsets
         self._filter_wheel = filter_wheel
@@ -111,7 +112,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found variables: %s', ', '.join(variables))
 
         # init log file
-        self._publisher = CsvPublisher(log_file)
+        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
         # update model now?
         if update:
@@ -446,13 +447,8 @@ class FocusModel(Module, IFocusModel):
             focus.append(row['focus'])
             error.append(row['error'])
 
-        # to numpy arrays
-        model = np.array(model)
-        focus = np.array(focus)
-        error = np.array(error)
-
         # return residuals
-        return (focus - model) / error
+        return (np.array(focus) - np.array(model)) / np.array(error)
 
     def _on_filter_changed(self, event: FilterChangedEvent, sender: str):
         """Receive FilterChangedEvent and set focus.

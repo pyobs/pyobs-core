@@ -45,12 +45,14 @@ class FlatField(Module, IFlatField):
         self._telescope = telescope
         self._camera = camera
         self._filters = filters
-        self._flat_fielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
-                                        observer=self.observer, callback=self.callback)
         self._abort = threading.Event()
 
+        # flat fielder
+        self._flat_fielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
+                                        observer=self.observer, callback=self.callback)
+
         # init log file
-        self._publisher = CsvPublisher(log_file)
+        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
     def open(self):
         """Open module"""

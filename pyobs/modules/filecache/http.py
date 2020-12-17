@@ -53,9 +53,10 @@ class MainHandler(tornado.web.RequestHandler):
 
         else:
             # store file and return filename
-            filename = yield self.executor.submit(self.application.store, self.request.body, filename)
-            log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
-            self.finish(bytes(filename, 'utf-8'))
+            if isinstance(self.application, HttpFileCacheServer):
+                filename = yield self.executor.submit(self.application.store, self.request.body, filename)
+                log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
+                self.finish(bytes(filename, 'utf-8'))
 
     @tornado.gen.coroutine
     def get(self, filename: str):

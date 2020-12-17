@@ -1,8 +1,7 @@
 import logging
-from typing import Union
+from typing import Union, List, Dict, Tuple
 import threading
 import numpy as np
-from astropy.io import fits
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
@@ -42,7 +41,7 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # storage for data
         self._data_lock = threading.RLock()
-        self._data = []
+        self._data: List[Dict[str, float]]  = []
 
     def open(self):
         """Open module"""
@@ -140,8 +139,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                     camera.set_image_type(ImageType.FOCUS)
                 filename = camera.expose().wait()
             except RemoteException:
-                log.error('Could not take image.')
-                return
+                raise ValueError('Could not take image.')
 
             # download image
             log.info('Downloading image...')
@@ -175,8 +173,8 @@ class AutoFocusProjection(Module, IAutoFocus):
                 log.info('Resetting focus to initial guess of %.3f mm.', guess)
                 focuser.set_focus(focus[0]).wait()
 
-            # return Nones
-            return None, None
+            # raise error
+            raise ValueError('Could not find best focus.')
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
         absolute = None
@@ -262,7 +260,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                                'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
                                'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
-    def _fit_focus(self) -> (float, float):
+    def _fit_focus(self) -> Tuple[float, float]:
         # get data
         focus = [d['focus'] for d in self._data]
         xfwhm = [d['x'] for d in self._data]

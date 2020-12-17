@@ -244,14 +244,17 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         """
         return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
 
-    def get_altaz(self, *args, **kwargs) -> (float, float):
+    def get_altaz(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        alt_az = self.observer.altaz(Time.now(), self._telescope.position)
-        return float(alt_az.alt.degree), float(alt_az.az.degree)
+        if self.observer is not None:
+            alt_az = self.observer.altaz(Time.now(), self._telescope.position)
+            return float(alt_az.alt.degree), float(alt_az.az.degree)
+        else:
+            raise ValueError('No observer given.')
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.
@@ -270,7 +273,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         hdr['TEL-FOCU'] = (self._telescope.focus, 'Focus position [mm]')
 
         # finished
-        return self._filter_fits_namespace(hdr, namespaces, **kwargs)
+        return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.

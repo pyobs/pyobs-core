@@ -1,8 +1,6 @@
 import logging
-import typing
 
-from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IRoof, IMotion, IWeather, IFitsHeaderProvider
+from pyobs.interfaces import IRoof, IMotion, IFitsHeaderProvider
 from pyobs import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 

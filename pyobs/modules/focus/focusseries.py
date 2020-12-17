@@ -40,10 +40,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # create focus series
         self._series: FocusSeries = get_object(series, FocusSeries)
 
-        # storage for data
-        self._data_lock = threading.RLock()
-        self._data = []
-
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, filters=filters, **kwargs)
 
@@ -170,7 +166,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         focus = self._series.fit_focus()
 
         # did focus series fail?
-        if focus is not None or focus[0] is None or np.isnan(focus[0]):
+        if focus is None or focus[0] is None or np.isnan(focus[0]):
             log.warning('Focus series failed.')
 
             # reset to initial values
@@ -181,8 +177,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 log.info('Resetting focus to initial guess of %.3f mm.', guess)
                 focuser.set_focus(focus[0]).wait()
 
-            # return Nones
-            return None, None
+            # raise error
+            raise ValueError('Could not find best focus.')
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
         absolute = None

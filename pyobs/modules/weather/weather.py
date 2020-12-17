@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Any, Dict
 
 import requests
 import urllib.parse
@@ -49,7 +49,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         self._is_good = None
 
         # whole status
-        self._status = {}
+        self._status: Dict[str, Any] = {}
         self._status_lock = threading.RLock()
 
         # add thread func

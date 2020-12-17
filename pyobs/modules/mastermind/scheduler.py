@@ -2,8 +2,9 @@ import functools
 import json
 import logging
 import threading
-import typing
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint
+from typing import Union, List
+
+from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 from pyobs.events.taskfinished import TaskFinishedEvent
@@ -24,7 +25,7 @@ log = logging.getLogger(__name__)
 class Scheduler(Module, IStoppable, IRunnable):
     """Scheduler."""
 
-    def __init__(self, tasks: typing.Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
+    def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
                  twilight: str = 'astronomical', *args, **kwargs):
         """Initialize a new scheduler.
 
@@ -55,8 +56,8 @@ class Scheduler(Module, IStoppable, IRunnable):
         self._current_task_id = None
 
         # blocks
-        self._blocks = []
-        self._scheduled_blocks = []
+        self._blocks: List[ObservingBlock] = []
+        self._scheduled_blocks: List[ObservingBlock] = []
 
         # update thread
         self._add_thread_func(self._schedule_thread, True)

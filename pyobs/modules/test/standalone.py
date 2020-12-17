@@ -19,13 +19,13 @@ class StandAlone(Module):
         Module.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._message, True)
+        self._add_thread_func(self._message_func, True)
 
         # store
         self._message = message
         self._interval = interval
 
-    def _message(self):
+    def _message_func(self):
         """Thread function for async processing."""
         # loop until closing
         while not self.closing.is_set():

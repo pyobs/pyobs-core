@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import logging
 from pyobs import get_object
@@ -51,7 +53,7 @@ class PhotometryFocusSeries(FocusSeries):
         # add to list
         self._data.append({'focus': float(image.header['TEL-FOCU']), 'r': radius, 'rerr': radius_err})
 
-    def fit_focus(self) -> (float, float):
+    def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

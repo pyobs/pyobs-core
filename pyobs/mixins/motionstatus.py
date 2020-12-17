@@ -88,27 +88,24 @@ class MotionStatusMixin:
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    def get_motion_status(self, interface: str = None, *args, **kwargs) -> IMotion.Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> IMotion.Status:
         """Returns current motion status.
 
         Args:
-            interface: Name of interface to get status for, or None.
+            device: Name of device to get status for, or None.
 
         Returns:
             A string from the Status enumerator.
-
-        Raises:
-            KeyError: If interface is not known.
         """
 
         # global or individual?
-        if interface is None:
+        if device is None:
             return self.__motion_status
 
         else:
             # does it exist?
-            if interface in self.__motion_status_single:
-                return self.__motion_status_single[interface]
+            if device in self.__motion_status_single:
+                return self.__motion_status_single[device]
             else:
                 raise KeyError
 

@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 class OnlineReduction(Module):
     """Calibrates images online during the night."""
 
-    def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive] = None,
+    def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive],
                  sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):
         """Creates a new image writer.
 

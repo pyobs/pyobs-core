@@ -88,6 +88,7 @@ class PeriodicJob(Job):
     def _schedule_next_run(self) -> Time:
         if self.interval:
             return Time.now() + TimeDelta(self.interval * u.second)
+        return Time()
 
 
 class JobScheduler(Module):

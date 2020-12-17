@@ -103,7 +103,7 @@ class DummyRoof(BaseRoof, IRoof):
         """Get the percentage the roof is open."""
         return self.open_percentage
 
-    def stop_motion(self, device: str = None):
+    def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.
 
         Args:

@@ -56,7 +56,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._guiding_offset = get_object(offsets, BaseGuidingOffset)
 
         # init log file
-        self._publisher = CsvPublisher(log_file)
+        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
     def open(self):
         """Open module."""

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import logging
 from scipy import ndimage
@@ -85,7 +87,7 @@ class ProjectionFocusSeries(FocusSeries):
                            'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
                            'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
-    def fit_focus(self) -> (float, float):
+    def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

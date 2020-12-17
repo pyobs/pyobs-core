@@ -1,4 +1,6 @@
 import threading
+from typing import Dict, Any, Tuple, Union
+
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
@@ -36,7 +38,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # celestial status
         self._celestial_lock = threading.RLock()
-        self._celestial_headers = {}
+        self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
         self._add_thread_func(self._celestial, True)
@@ -98,6 +100,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             ValueError: If device could not track.
         """
+
+        # check observer
+        if self.observer is None:
+            raise ValueError('No observer given.')
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -190,7 +196,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # define base header
-        hdr = {}
+        hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
 
         # positions
         try:
@@ -220,9 +226,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
 
         # site location
-        hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
-        hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
-        hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
+        if self.observer is not None:
+            hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
+            hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
+            hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

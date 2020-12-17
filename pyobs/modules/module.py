@@ -91,8 +91,9 @@ class Module(Object, IModule, IConfig):
         self._config_options = self._get_config_options()
 
         # comm object
+        self.comm: Comm
         if comm is None:
-            self.comm: Comm = DummyComm()
+            self.comm = DummyComm()
         elif isinstance(comm, Comm):
             self.comm = comm
         elif isinstance(comm, dict):

@@ -4,7 +4,7 @@ from typing import Union
 
 from pyobs.interfaces import ICamera, IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic.scripts import Script
-
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -36,11 +36,11 @@ class LcoAutoFocusScript(Script):
         self._exptime = exptime
 
         # get image type
-        self.image_type = ICamera.ImageType.OBJECT
+        self.image_type = ImageType.OBJECT
         if self.configuration['type'] == 'BIAS':
-            self.image_type = ICamera.ImageType.BIAS
+            self.image_type = ImageType.BIAS
         elif self.configuration['type'] == 'DARK':
-            self.image_type = ICamera.ImageType.DARK
+            self.image_type = ImageType.DARK
 
     def _get_proxies(self) -> (IRoof, ITelescope, IAcquisition, IAutoFocus):
         """Get proxies for running the task

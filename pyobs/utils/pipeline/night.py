@@ -9,6 +9,7 @@ from pyobs.utils.fits import FilenameFormatter
 from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
 from pyobs.utils.archive import Archive
 from .pipeline import Pipeline
+from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ class Night:
     def _calib_data(self, instrument: str, binning: str, filter_name: str):
         # get all frames
         infos = self._archive.list_frames(night=self._night, instrument=instrument,
-                                          image_type=ICamera.ImageType.OBJECT, binning=binning, filter_name=filter_name,
+                                          image_type=ImageType.OBJECT, binning=binning, filter_name=filter_name,
                                           rlevel=0)
         if len(infos) == 0:
             return
@@ -119,7 +120,7 @@ class Night:
             # upload
             self._archive.upload_frames([calibrated])
 
-    def _create_master_calib(self, instrument: str, image_type: ICamera.ImageType, binning: str,
+    def _create_master_calib(self, instrument: str, image_type: ImageType, binning: str,
                              filter_name: str = None):
         # get frames
         infos = self._archive.list_frames(night=self._night, image_type=image_type, filter_name=filter_name,
@@ -142,14 +143,14 @@ class Night:
             log.warning('Too few (%d) frames found, skipping...', len(infos))
 
         # create master
-        if image_type == ICamera.ImageType.BIAS:
+        if image_type == ImageType.BIAS:
             # BIAS are easy, just combine
             calib = BiasImage.create_master(images)
 
             # store in cache
             self._master_frames[BiasImage, instrument, binning, None] = calib
 
-        elif image_type == ICamera.ImageType.DARK:
+        elif image_type == ImageType.DARK:
             # for DARKs, we first need a BIAS
             bias = self._find_master(BiasImage, instrument, binning, None)
             if bias is None:
@@ -162,7 +163,7 @@ class Night:
             # store in cache
             self._master_frames[DarkImage, instrument, binning, None] = calib
 
-        elif image_type == ICamera.ImageType.SKYFLAT:
+        elif image_type == ImageType.SKYFLAT:
             # got enough frames?
             if len(images) < self._flats_min_raw:
                 log.warning('Not enough flat fields found for combining.')
@@ -210,15 +211,15 @@ class Night:
             # loop binnings
             for binning in options['binnings']:
                 # create bias
-                self._create_master_calib(instrument, ICamera.ImageType.BIAS, binning)
+                self._create_master_calib(instrument, ImageType.BIAS, binning)
 
                 # create dark
-                self._create_master_calib(instrument, ICamera.ImageType.DARK, binning)
+                self._create_master_calib(instrument, ImageType.DARK, binning)
 
                 # loop filters
                 for filter_name in options['filters']:
                     # create flat
-                    self._create_master_calib(instrument, ICamera.ImageType.SKYFLAT, binning, filter_name)
+                    self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
 
                     # calibrate science data
                     self._calib_data(instrument, binning, filter_name)

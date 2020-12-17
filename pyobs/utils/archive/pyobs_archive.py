@@ -8,7 +8,7 @@ from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from pyobs.utils.images import Image
 from .archive import Archive, FrameInfo
-
+from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class PyobsArchive(Archive):
 
     def list_options(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build URL
         url = urllib.parse.urljoin(self._url, 'frames/aggregate/')
@@ -69,7 +69,7 @@ class PyobsArchive(Archive):
 
     def list_frames(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None) \
             -> List[PyobsArchiveFrameInfo]:
         # build URL
@@ -91,7 +91,7 @@ class PyobsArchive(Archive):
 
     def _build_query(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build params
         params = {}

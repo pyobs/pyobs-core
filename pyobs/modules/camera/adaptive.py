@@ -9,6 +9,7 @@ from pyobs import Module
 from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 from pyobs.modules import timeout
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
+from pyobs.utils.enums import ImageType
 from pyobs.utils.images import Image
 from pyobs.utils.photometry import SepPhotometry
 
@@ -84,7 +85,7 @@ class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
         self._camera = self.proxy(self._camera_name, ICamera)
 
     @timeout('(exposure_time+10)*count')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, exposure_time: int, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:

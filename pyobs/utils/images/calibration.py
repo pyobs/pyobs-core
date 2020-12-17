@@ -8,6 +8,7 @@ from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from .image import Image
 from ..archive import FrameInfo
+from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -73,9 +74,9 @@ class CalibrationImage(Image):
         # get image type
         from . import BiasImage, DarkImage, FlatImage
         image_type = {
-            BiasImage: ICamera.ImageType.BIAS,
-            DarkImage: ICamera.ImageType.DARK,
-            FlatImage: ICamera.ImageType.SKYFLAT
+            BiasImage: ImageType.BIAS,
+            DarkImage: ImageType.DARK,
+            FlatImage: ImageType.SKYFLAT
         }[cls]
 
         # find reduced frames from +- 30 days

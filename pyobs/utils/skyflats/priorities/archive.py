@@ -7,6 +7,7 @@ from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.time import Time
 from .base import SkyflatPriorities
+from ...enums import ImageType
 
 
 class ArchiveSkyflatPriorities(SkyflatPriorities):
@@ -23,7 +24,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
         frames = self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now, site=self._site,
-                                           instrument=self._instrument, image_type=ICamera.ImageType.SKYFLAT, rlevel=1)
+                                           instrument=self._instrument, image_type=ImageType.SKYFLAT, rlevel=1)
 
         # get priorities
         from_archive = {}

@@ -19,6 +19,8 @@
   (if getter/setters are implemented).
 * Removed count parameter from ICamera.expose().
 * Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
+* Removed image_type parameter from ICamera.expose() and introduced IImageType.
+* Moved ImageType enumerator from ICamera to utils.enums.
 
 
 ### v0.11 (2020-10-18)

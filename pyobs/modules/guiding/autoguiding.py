@@ -1,7 +1,8 @@
 import logging
 
-from pyobs.interfaces import ICamera
+from pyobs.interfaces import ICamera, IImageType, ICameraExposureTime
 from .base import BaseGuiding
+from ...utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -43,8 +44,14 @@ class AutoGuiding(BaseGuiding):
                 camera: ICamera = self.proxy(self._camera, ICamera)
 
                 # take image
-                log.info('Taking image with an exposure time of %dms...', self._exp_time)
-                filename = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, broadcast=False).wait()
+                if isinstance(camera, ICameraExposureTime):
+                    log.info('Taking image with an exposure time of %dms...', self._exp_time)
+                    camera.set_exposure_time(self._exp_time)
+                else:
+                    log.info('Taking image...')
+                if isinstance(camera, IImageType):
+                    camera.set_image_type(ImageType.OBJECT)
+                filename = camera.expose(broadcast=False).wait()
 
                 # download image
                 image = self.vfs.read_image(filename)

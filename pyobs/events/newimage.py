@@ -1,10 +1,9 @@
 from .event import Event
-
-from pyobs.interfaces import ICamera
+from ..utils.enums import ImageType
 
 
 class NewImageEvent(Event):
-    def __init__(self, filename: str = None, image_type: ICamera.ImageType = None, raw: str = None):
+    def __init__(self, filename: str = None, image_type: ImageType = None, raw: str = None):
         """Initializes new NewImageEvent.
 
         Args:
@@ -25,7 +24,7 @@ class NewImageEvent(Event):
 
     @property
     def image_type(self):
-        return ICamera.ImageType(self.data['image_type'])
+        return ImageType(self.data['image_type'])
 
     @property
     def raw(self):

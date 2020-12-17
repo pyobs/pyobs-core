@@ -10,6 +10,7 @@ from pyobs.events import NewImageEvent
 from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.cache import DataCache
+from pyobs.utils.enums import ImageType
 from pyobs.utils.images import CalibrationImage, BiasImage, DarkImage, FlatImage
 from pyobs.utils.pipeline import Pipeline
 
@@ -65,7 +66,7 @@ class OnlineReduction(Module):
             return
 
         # only process OBJECT frames
-        if event.image_type != ICamera.ImageType.OBJECT:
+        if event.image_type != ImageType.OBJECT:
             return
 
         # put into queue
@@ -128,7 +129,7 @@ class OnlineReduction(Module):
             # broadcast image path
             if self.comm:
                 log.info('Broadcasting image ID...')
-                self.comm.send_event(NewImageEvent(outfile, ICamera.ImageType.OBJECT, raw=filename))
+                self.comm.send_event(NewImageEvent(outfile, ImageType.OBJECT, raw=filename))
             log.info('Finished image.')
 
     def _get_master_calibration(self, image_class: Type[CalibrationImage], time: Time, instrument: str, binning: str,

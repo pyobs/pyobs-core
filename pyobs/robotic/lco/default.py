@@ -5,8 +5,9 @@ import numpy as np
 from typing import Union, Type
 
 from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
-    IAcquisition, ICameraExposureTime
+    IAcquisition, ICameraExposureTime, IImageType
 from pyobs.robotic.scripts import Script
+from pyobs.utils.enums import ImageType
 from pyobs.utils.threads import Future
 
 
@@ -41,11 +42,11 @@ class LcoDefaultScript(Script):
         self.acquisition = acquisition
 
         # get image type
-        self.image_type = ICamera.ImageType.OBJECT
+        self.image_type = ImageType.OBJECT
         if self.configuration['type'] == 'BIAS':
-            self.image_type = ICamera.ImageType.BIAS
+            self.image_type = ImageType.BIAS
         elif self.configuration['type'] == 'DARK':
-            self.image_type = ICamera.ImageType.DARK
+            self.image_type = ImageType.DARK
 
     def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters, IAutoGuiding, IAcquisition):
         """Get proxies for running the task
@@ -79,7 +80,7 @@ class LcoDefaultScript(Script):
             return False
 
         # for OBJECT exposure we need more
-        if self.image_type == ICamera.ImageType.OBJECT:
+        if self.image_type == ImageType.OBJECT:
             # we need an open roof and a working telescope
             if roof is None or not roof.is_ready().wait():
                 return False
@@ -122,7 +123,7 @@ class LcoDefaultScript(Script):
         # got a target?
         target = self.configuration['target']
         track = None
-        if self.image_type == ICamera.ImageType.OBJECT:
+        if self.image_type == ImageType.OBJECT:
             log.info('Moving to target %s...', target['name'])
             track = telescope.move_radec(target['ra'], target['dec'])
 
@@ -213,7 +214,9 @@ class LcoDefaultScript(Script):
                     else:
                         log.info('Exposing %s image %d/%d...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'])
-                    camera.expose(self.image_type).wait()
+                    if isinstance(camera, IImageType):
+                        camera.set_image_type(self.image_type)
+                    camera.expose().wait()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs
@@ -241,7 +244,7 @@ class LcoDefaultScript(Script):
 
         # finally, stop telescope
         if not abort_event.is_set():
-            if self.image_type == ICamera.ImageType.OBJECT:
+            if self.image_type == ImageType.OBJECT:
                 log.info('Stopping telescope...')
                 telescope.stop_motion().wait()
 
@@ -259,7 +262,7 @@ class LcoDefaultScript(Script):
         hdr = {}
 
         # which image type?
-        if self.image_type == ICamera.ImageType.OBJECT:
+        if self.image_type == ImageType.OBJECT:
             # add object name
             hdr['OBJECT'] = self.configuration['target']['name'], 'Name of target'
 

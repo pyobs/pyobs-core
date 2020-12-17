@@ -6,11 +6,11 @@ from astropy.io import fits
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters
+from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
 from pyobs import Module
 from pyobs.modules import timeout
-
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -134,7 +134,11 @@ class AutoFocusProjection(Module, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                filename = camera.expose(exposure_time=exposure_time, image_type=ICamera.ImageType.FOCUS).wait()
+                if isinstance(camera, ICameraExposureTime):
+                    camera.set_exposure_time(exposure_time)
+                if isinstance(camera, IImageType):
+                    camera.set_image_type(ImageType.FOCUS)
+                filename = camera.expose().wait()
             except RemoteException:
                 log.error('Could not take image.')
                 return

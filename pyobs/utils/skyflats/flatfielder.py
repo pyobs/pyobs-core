@@ -1,8 +1,9 @@
 import io
 import threading
-import typing
 from enum import Enum
 import logging
+from typing import Dict, Union, Callable
+
 import astropy.units as u
 from astroplan import Observer
 from astropy.time import TimeDelta
@@ -10,8 +11,10 @@ import numpy as np
 import pandas as pd
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime
+from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime, \
+    IImageType
 from pyobs.object import get_object
+from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
 from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 from pyobs.utils.threads import Future
@@ -35,12 +38,12 @@ class FlatFielder:
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, functions: typing.Dict[str, typing.Union[str, typing.Dict[str, str]]] = None,
+    def __init__(self, functions: Dict[str, Union[str, Dict[str, str]]] = None,
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
                  test_frame: tuple = None, counts_frame: tuple = None, allowed_offset_frac: float = 0.2,
-                 min_counts: int = 100, pointing: typing.Union[dict, SkyFlatsBasePointing] = None,
+                 min_counts: int = 100, pointing: Union[dict, SkyFlatsBasePointing] = None,
                  combine_binnings: bool = True, observer: Observer = None, vfs: VirtualFileSystem = None,
-                 callback: typing.Callable = None, *args, **kwargs):
+                 callback: Callable = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
         Depending on the value of combine_binnings, functions must be in a specific format:
@@ -128,7 +131,7 @@ class FlatFielder:
         self._cur_filter = None
         self._cur_binning = None
 
-    def __call__(self, telescope: ITelescope, camera: ICamera, filters: IFilters,
+    def __call__(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters,
                  filter_name: str, count: int = 20, binning: int = 1) -> State:
         """Calls next step in state machine.
 
@@ -207,7 +210,7 @@ class FlatFielder:
             log.info('Flat-field time is still coming, keep going...')
             return True
 
-    def _init_system(self, telescope: ITelescope, camera: ICamera, filters: IFilters):
+    def _init_system(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters):
         """Initialize whole system."""
 
         # do initial check
@@ -244,7 +247,7 @@ class FlatFielder:
         log.info('Waiting for flat-field time...')
         self._state = FlatFielder.State.WAITING
 
-    def _get_bias(self, camera: ICamera) -> float:
+    def _get_bias(self, camera: Union[ICamera, ICameraExposureTime]) -> float:
         """Take bias image to determine bias level.
 
         Returns:
@@ -258,7 +261,10 @@ class FlatFielder:
             camera.set_window(*full_frame).wait()
 
         # take image
-        filename = camera.expose(0, ICamera.ImageType.BIAS, broadcast=False).wait()
+        camera.set_exposure_time(0.)
+        if isinstance(camera, IImageType):
+            camera.set_image_type(ImageType.BIAS)
+        filename = camera.expose(broadcast=False).wait()
 
         # download image
         bias = self._vfs.read_image(filename)
@@ -345,7 +351,7 @@ class FlatFielder:
             # otherwise it seems that we're in the middle of flat-fielding time
             return 0
 
-    def _testing(self, camera: ICamera):
+    def _testing(self, camera: Union[ICamera, ICameraExposureTime]):
         """Take flat-fields but don't store them."""
 
         # set window
@@ -354,7 +360,9 @@ class FlatFielder:
         # do exposures, do not broadcast while testing
         log.info('Exposing test flat field for %.2fs...', self._exptime)
         camera.set_exposure_time(self._exptime).wait()
-        filename = camera.expose(ICamera.ImageType.SKYFLAT, broadcast=False).wait()
+        if isinstance(camera, IImageType):
+            camera.set_image_type(ImageType.SKYFLAT)
+        filename = camera.expose(broadcast=False).wait()
 
         # analyse image
         self._analyse_image(filename)
@@ -371,7 +379,7 @@ class FlatFielder:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatFielder.State.FINISHED
 
-    def _set_window(self, camera: ICamera, testing: bool):
+    def _set_window(self, camera: Union[ICamera, ICameraExposureTime], testing: bool):
         """Set camera window.
 
         Args:
@@ -480,7 +488,7 @@ class FlatFielder:
         log.info('Exposing flat field %d/%d for %.2fs...',
                  self._exposures_done + 1, self._exposures_total, self._exptime)
         camera.set_exposure_time(self._exptime).wait()
-        filename = camera.expose(ICamera.ImageType.SKYFLAT).wait()
+        filename = camera.expose(ImageType.SKYFLAT).wait()
 
         # analyse image
         if self._analyse_image(filename):

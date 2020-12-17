@@ -21,8 +21,8 @@ class Image:
 
         # add basic header stuff
         if data is not None:
-            self.header['NAXIS1'] = self.data.shape[1]
-            self.header['NAXIS2'] = self.data.shape[0]
+            self.header['NAXIS1'] = data.shape[1]
+            self.header['NAXIS2'] = data.shape[0]
 
     @classmethod
     def from_bytes(cls, data) -> 'Image':

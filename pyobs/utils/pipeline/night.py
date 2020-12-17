@@ -1,15 +1,13 @@
 import logging
-from typing import Union, Type
+from typing import Union, Type, Dict, Tuple, Optional
 
-from pyobs.interfaces import ICamera
 from pyobs.object import get_object
-
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
 from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
 from pyobs.utils.archive import Archive
+from pyobs.utils.enums import ImageType
 from .pipeline import Pipeline
-from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -48,13 +46,13 @@ class Night:
         self._flats_min_raw = flats_min_raw
 
         # cache for master calibration frames
-        self._master_frames = {}
+        self._master_frames: Dict[Tuple[Type, str, str, Optional[str]], Image] = {}
 
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
 
     def _find_master(self, image_class: Type[CalibrationImage], instrument: str, binning: str,
-                     filter_name: str = None) -> Union[CalibrationImage, None]:
+                     filter_name: str = None) -> Optional[Image]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -143,6 +141,7 @@ class Night:
             log.warning('Too few (%d) frames found, skipping...', len(infos))
 
         # create master
+        calib: CalibrationImage
         if image_type == ImageType.BIAS:
             # BIAS are easy, just combine
             calib = BiasImage.create_master(images)

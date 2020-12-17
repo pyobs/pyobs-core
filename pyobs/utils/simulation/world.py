@@ -264,7 +264,7 @@ class SimCamera(Object):
         # return it
         return Image(image.astype(np.uint16), header=hdr)
 
-    def _create_header(self, exp_time: int, open_shutter: float, time: Time, data: np.ndarray):
+    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray):
         # create header
         hdr = fits.Header()
         hdr['NAXIS1'] = data.shape[1]
@@ -300,7 +300,7 @@ class SimCamera(Object):
             self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=1. * u.deg)
         return self._catalog
 
-    def _get_sources_table(self, exp_time: int):
+    def _get_sources_table(self, exp_time: float):
         """Create sources table."""
 
         # get catalog
@@ -324,7 +324,7 @@ class SimCamera(Object):
         sources = cat['x', 'y', 'phot_g_mean_flux']
         sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'amplitude'])
         sources.add_column([1.] * len(sources), name='sigma')
-        sources['amplitude'] *= exp_time / 1e4
+        sources['amplitude'] *= exp_time
 
         # finished
         return sources
@@ -371,7 +371,7 @@ class SimWorld(Object):
         if camera is None:
             self.camera = SimCamera(world=self)
         elif isinstance(camera, SimCamera):
-            self.camera = telescope
+            self.camera = camera
         elif isinstance(camera, dict):
             self.camera = create_object(camera, world=self)
         else:

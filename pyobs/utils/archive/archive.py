@@ -1,6 +1,5 @@
 from typing import List
 
-from pyobs.interfaces import ICamera
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
 

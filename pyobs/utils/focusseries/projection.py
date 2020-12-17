@@ -1,12 +1,12 @@
-from typing import Tuple
+from typing import Tuple, Dict, List
 
 import numpy as np
 import logging
 from scipy import ndimage
 
 from .base import FocusSeries
-from ..curvefit import fit_hyperbola
-from ..images import Image
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.utils.images import Image
 
 
 log = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class ProjectionFocusSeries(FocusSeries):
         self._backsub = backsub
         self._xbad = xbad
         self._ybad = ybad
-        self._data = []
+        self._data: List[Dict[str, float]] = []
 
     def reset(self):
         """Reset focus series."""

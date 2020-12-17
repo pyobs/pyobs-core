@@ -1,4 +1,6 @@
 import logging
+from typing import Tuple
+
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
@@ -26,7 +28,7 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         log.info('Reset autp-guiding.')
         self._ref_image = None
 
-    def find_pixel_offset(self, image: Image) -> (float, float):
+    def find_pixel_offset(self, image: Image) -> Tuple[float, float]:
         """Processes an image and return x/y pixel offset to reference.
 
         Args:
@@ -55,7 +57,7 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         dy = self._correlate(sum_y, self._ref_image[1])
         return dx, dy
 
-    def _process(self, image: Image) -> (np.array, np.array):
+    def _process(self, image: Image) -> Tuple[np.array, np.array]:
         """Project image along x and y axes and return results.
 
         Args:
@@ -68,9 +70,15 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         # get image data and header
         data, hdr = image.data, image.header
 
+        # no data?
+        if data is None:
+            raise ValueError('Image contains no data.')
+
         # trimsec
         if 'TRIMSEC' in hdr:
             m = re.match('\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]', hdr['TRIMSEC'])
+            if m is None:
+                raise ValueError('Invalid trimsec.')
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
             data = data[y0 - 1:y1, x0 - 1:x1]
 

@@ -2,7 +2,7 @@ import io
 import threading
 from enum import Enum
 import logging
-from typing import Dict, Union, Callable
+from typing import Dict, Union, Callable, Tuple, Any, Optional
 
 import astropy.units as u
 from astroplan import Observer
@@ -91,6 +91,7 @@ class FlatFielder:
         # parse function
         if functions is None:
             functions = {}
+        self._functions: Dict[Union[str, Tuple[str, str]], Any]
         if combine_binnings:
             # in the simple case, the key is just the filter
             self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
@@ -98,8 +99,12 @@ class FlatFielder:
             # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
             self._functions = {}
             for binning, func in functions.items():
-                for filter_name, func in func.items():
-                    self._functions[binning, filter_name] = Parser().parse(func)
+                # func must be a dict
+                if isinstance(func, dict):
+                    for filter_name, func in func.items():
+                        self._functions[binning, filter_name] = Parser().parse(func)
+                else:
+                    raise ValueError('functions must be a dict of binnings, of combine_binnings is False.')
 
         # abort event
         self._abort = threading.Event()
@@ -128,8 +133,8 @@ class FlatFielder:
         self._twilight = None
 
         # current request
-        self._cur_filter = None
-        self._cur_binning = None
+        self._cur_filter: Optional[str] = None
+        self._cur_binning: Optional[int] = None
 
     def __call__(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters,
                  filter_name: str, count: int = 20, binning: int = 1) -> State:

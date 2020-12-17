@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from typing import Union
 
@@ -27,8 +28,9 @@ class CameraSettingsMixin:
     def _do_camera_settings(self, camera: ICamera):
         """Do camera settings for given camera."""
 
-        # I'm a module!
-        self: Union[Module, CameraSettingsMixin]
+        # check type
+        if not isinstance(self, Module) or not isinstance(self, CameraSettingsMixin):
+            raise ValueError('This is not a module')
 
         # filter
         if self.__camerasettings_filters is not None and self.__camerasettings_filter is not None:

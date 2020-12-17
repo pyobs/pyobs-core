@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 class WaitForMotionMixin:
     """Mixin for a device that should wait for the motion status of another device."""
     def __init__(self, wait_for_modules: List[str] = None, wait_for_states: List[str] = None,
-                 wait_for_timeout: float = None, *args, **kwargs):
+                 wait_for_timeout: float = 0, *args, **kwargs):
         """Initializes the mixin.
 
         Args:
@@ -40,8 +40,9 @@ class WaitForMotionMixin:
         if len(self.__wait_for_modules) == 0:
             return
 
-        # I'm a module!
-        self: Union[WaitForMotionMixin, Module]
+        # check type
+        if not isinstance(self, Module):
+            raise ValueError('This is not a module.')
 
         # get all proxies
         proxies = [self.proxy(device) for device in self.__wait_for_modules]

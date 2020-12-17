@@ -32,7 +32,6 @@ class MotionStatusMixin:
             status: New motion status
             interface: Interface to set motion status for
         """
-        self: (Module, MotionStatusMixin)
 
         # did something change?
         changed = False
@@ -67,6 +66,8 @@ class MotionStatusMixin:
 
         # send event
         if changed:
+            if not isinstance(self, Module):
+                raise ValueError('This is not a module.')
             self.comm.send_event(MotionStatusChangedEvent(status=self.__motion_status,
                                                           interfaces=self.__motion_status_single))
 

@@ -20,7 +20,7 @@ class pyobsDaemon(object):
         self._start_stop_daemon = start_stop_daemon
 
         # find pyobs executable
-        filenames = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'pyobs')),
+        filenames = [os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'pyobs'),
                      '/usr/bin/pyobs', '/usr/local/bin/pyobs']
         for filename in filenames:
             if os.path.exists(filename):

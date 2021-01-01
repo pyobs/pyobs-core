@@ -1,6 +1,6 @@
 ## Changelog
 
-### v0.12 
+### v0.12 (2021-01-01)
 
 * Changed PyObsModule to Module.
 * Removed possibility for network configs.

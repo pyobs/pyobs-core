@@ -1,35 +1,39 @@
 import logging
 import threading
 import time
+from typing import Tuple
+
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, IAltAzOffsets, ITemperatures
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, ITemperatures, IRaDecOffsets
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
+from pyobs.utils.simulation.world import SimWorld
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
+class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, world: SimWorld = None, *args, **kwargs):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
-        # init telescope
-        self._images = {}
-        self._position = {'ra': 12.12, 'dec': 45.45}
-        self._offsets = {'ra': 0, 'dec': 0}
-        self._focus = 52.
-        self._filter = 'V'
+        # init world and get telescope
+        self._world = world if world is not None else \
+            self._add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+        self._telescope = self._world.telescope
+
+        # automatically send status updates
+        self._telescope.status_callback = self._change_motion_status
 
         # some multi-threading stuff
         self._lock_focus = threading.Lock()
@@ -46,7 +50,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
             self.comm.register_event(TelescopeMovingEvent)
 
         # init status
-        self._change_motion_status(IMotion.Status.PARKED)
+        self._change_motion_status(IMotion.Status.IDLE)
 
     def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -60,15 +64,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
             Exception: On any error.
         """
 
-        # send events
-        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        # send event
         self.comm.send_event(TelescopeMovingEvent(ra=ra, dec=dec))
 
         # start slewing
         self.__move(ra, dec, abort_event)
-
-        # finish slewing
-        self._change_motion_status(IMotion.Status.TRACKING, interface='ITelescope')
 
     def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -87,15 +87,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
                           location=self.location, frame='altaz')
         icrs = coords.icrs
 
-        # send events
-        self._change_motion_status(IMotion.Status.SLEWING, interface='ITelescope')
+        # send event
         self.comm.send_event(TelescopeMovingEvent(alt=alt, az=az))
 
         # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
-
-        # set telescope to idle
-        self._change_motion_status(IMotion.Status.IDLE)
 
     def __move(self, ra: float, dec: float, abort_event: threading.Event):
         """Simulate move.
@@ -110,26 +106,11 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
        """
 
         # simulate slew
-        ira = self._position['ra'] * 1.
-        idec = self._position['dec'] * 1.
-        dra = (ra - ira) / 100.
-        ddec = (dec - idec) / 100.
-        for i in range(100):
-            # abort?
-            if abort_event.is_set():
-                self._change_motion_status(IMotion.Status.IDLE)
-                raise ValueError('Movement was aborted.')
+        self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs'))
 
-            # move
-            self._position['ra'] = float(ira + i * dra)
-            self._position['dec'] = float(idec + i * ddec)
-
-            # sleep a little
-            abort_event.wait(0.1)
-
-        # set final coordinates
-        self._position['ra'] = float(ra)
-        self._position['dec'] = float(dec)
+        # wait for it
+        while self._telescope.status == IMotion.Status.SLEWING and not abort_event.is_set():
+            self.closing.wait(1)
 
     def get_focus(self, *args, **kwargs) -> float:
         """Return current focus.
@@ -137,9 +118,9 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Current focus.
         """
-        return self._focus
+        return self._telescope.focus
 
-    @timeout(60000)
+    @timeout(60)
     def set_focus(self, focus: float, *args, **kwargs):
         """Sets new focus.
 
@@ -155,7 +136,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
             self._change_motion_status(IMotion.Status.SLEWING, interface='IFocuser')
-            ifoc = self._focus * 1.
+            ifoc = self._telescope.focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
                 # abort?
@@ -163,10 +144,10 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
                     raise InterruptedError('Setting focus was interrupted.')
 
                 # move focus and sleep a little
-                self._focus = ifoc + i * dfoc
+                self._telescope.focus = ifoc + i * dfoc
                 time.sleep(0.01)
             self._change_motion_status(IMotion.Status.POSITIONED, interface='IFocuser')
-            self._focus = focus
+            self._telescope.focus = focus
 
     def list_filters(self, *args, **kwargs) -> list:
         """List available filters.
@@ -174,7 +155,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             List of available filters.
         """
-        return ['U', 'B', 'V', 'R', 'I']
+        return self._telescope.filters
 
     def get_filter(self, *args, **kwargs) -> str:
         """Get currently set filter.
@@ -182,7 +163,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         Returns:
             Name of currently set filter.
         """
-        return self._filter
+        return self._telescope.filter
 
     def set_filter(self, filter_name: str, *args, **kwargs):
         """Set the current filter.
@@ -195,19 +176,19 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         """
 
         # log and send event
-        if filter_name != self._filter:
+        if filter_name != self._telescope.filter:
             # set it
             logging.info('Setting filter to %s', filter_name)
             self._change_motion_status(IMotion.Status.SLEWING, interface='IFilters')
             time.sleep(3)
             self._change_motion_status(IMotion.Status.POSITIONED, interface='IFilters')
-            self._filter = filter_name
+            self._telescope.filter = filter_name
 
             # send event
             self.comm.send_event(FilterChangedEvent(filter_name))
             logging.info('New filter set.')
 
-    @timeout(60000)
+    @timeout(60)
     def init(self, *args, **kwargs):
         """Initialize telescope.
 
@@ -221,7 +202,7 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         self._change_motion_status(IMotion.Status.IDLE)
         self.comm.send_event(InitializedEvent())
 
-    @timeout(60000)
+    @timeout(60)
     def park(self, *args, **kwargs):
         """Park telescope.
 
@@ -234,44 +215,46 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         time.sleep(5.)
         self._change_motion_status(IMotion.Status.PARKED)
 
-    def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
-        """Move an Alt/Az offset, which will be reset on next call of track.
+    def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
+        """Move an RA/Dec offset.
 
         Args:
-            dalt: Altitude offset in degrees.
-            daz: Azimuth offset in degrees.
+            dra: RA offset in degrees.
+            ddec: Dec offset in degrees.
 
         Raises:
             ValueError: If offset could not be set.
         """
-        log.info("Moving offset dalt=%.5f, daz=%.5f", dalt, daz)
-        self._offsets = {'ra': dalt, 'dec': daz}
+        log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
+        self._telescope.set_offsets(dra, ddec)
 
-    def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
-        """Get Alt/Az offset.
+    def get_radec_offsets(self, *args, **kwargs) -> Tuple[float, float]:
+        """Get RA/Dec offset.
 
         Returns:
-            Tuple with alt and az offsets.
+            Tuple with RA and Dec offsets.
         """
-        return self._offsets['ra'], self._offsets['dec']
+        return self._telescope.offsets
 
-    def get_radec(self, *args, **kwargs) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:
             Tuple of current RA and Dec in degrees.
         """
-        return self._position['ra'], self._position['dec']
+        return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
 
-    def get_altaz(self, *args, **kwargs) -> (float, float):
+    def get_altaz(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        ra_dec = SkyCoord(ra=self._position['ra'] * u.deg, dec=self._position['dec'] * u.deg, frame='icrs')
-        alt_az = self.observer.altaz(Time.now(), ra_dec)
-        return float(alt_az.alt.degree), float(alt_az.az.degree)
+        if self.observer is not None:
+            alt_az = self.observer.altaz(Time.now(), self._telescope.position)
+            return float(alt_az.alt.degree), float(alt_az.az.degree)
+        else:
+            raise ValueError('No observer given.')
 
     def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
         """Returns FITS header for the current status of this module.
@@ -287,13 +270,10 @@ class DummyTelescope(BaseTelescope, IAltAzOffsets, IFocuser, IFilters, IFitsHead
         hdr = BaseTelescope.get_fits_headers(self)
 
         # focus
-        hdr['TEL-FOCU'] = (self._focus, 'Focus position [mm]')
-
-        # filter
-        hdr['FILTER'] = (self._filter, 'Focus position [mm]')
+        hdr['TEL-FOCU'] = (self._telescope.focus, 'Focus position [mm]')
 
         # finished
-        return self._filter_fits_namespace(hdr, namespaces, **kwargs)
+        return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.

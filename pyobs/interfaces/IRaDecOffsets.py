@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
@@ -16,7 +18,7 @@ class IRaDecOffsets(Interface):
         """
         raise NotImplementedError
 
-    def get_radec_offsets(self, *args, **kwargs) -> (float, float):
+    def get_radec_offsets(self, *args, **kwargs) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:

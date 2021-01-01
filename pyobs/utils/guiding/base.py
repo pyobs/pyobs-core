@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 
 from pyobs.utils.images import Image
 
@@ -11,7 +12,7 @@ class BaseGuidingOffset:
         """Resets guiding."""
         raise NotImplementedError
 
-    def find_pixel_offset(self, image: Image) -> (float, float):
+    def find_pixel_offset(self, image: Image) -> Tuple[float, float]:
         """Processes an image and return x/y pixel offset to reference.
 
         Args:

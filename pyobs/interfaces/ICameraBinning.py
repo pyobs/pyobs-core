@@ -1,4 +1,6 @@
-from .interface import *
+from typing import Tuple
+
+from .interface import Interface
 
 
 class ICameraBinning(Interface):
@@ -14,7 +16,7 @@ class ICameraBinning(Interface):
         """
         raise NotImplementedError
 
-    def get_binning(self, *args, **kwargs) -> (int, int):
+    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:

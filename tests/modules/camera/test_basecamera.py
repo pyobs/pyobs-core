@@ -8,6 +8,7 @@ from pyobs.comm.dummy import DummyComm
 from pyobs.environment import Environment
 from pyobs.interfaces import ICamera
 from pyobs.modules.camera import BaseCamera
+from pyobs.utils.enums import ImageType
 
 
 def test_open_close():
@@ -105,12 +106,12 @@ class DummyCam(BaseCamera):
     def __init__(self, *args, **kwargs):
         BaseCamera.__init__(self, *args, **kwargs)
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.ImageHDU:
         # exposing
         self._camera_status = ICamera.ExposureStatus.EXPOSING
 
         # wait for exposure
-        abort_event.wait(exposure_time / 1000.)
+        abort_event.wait(exposure_time)
 
         # raise exception, if aborted
         if abort_event.is_set():
@@ -139,7 +140,9 @@ def test_expose():
     assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()
 
     # expose
-    camera.expose(exposure_time=0, image_type=ICamera.ImageType.OBJECT)
+    camera.set_exposure_time(0)
+    camera.set_image_type(ImageType.OBJECT)
+    camera.expose()
 
     # status must be idle again
     assert ICamera.ExposureStatus.IDLE == camera.get_exposure_status()
@@ -162,7 +165,9 @@ def test_abort():
 
     def expose():
         with pytest.raises(ValueError):
-            camera.expose(exposure_time=1000, image_type='object')
+            camera.set_exposure_time(1.)
+            camera.set_image_type(ImageType.OBJECT)
+            camera.expose()
 
     # expose
     thread = threading.Thread(target=expose)

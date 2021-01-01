@@ -2,8 +2,9 @@ import functools
 import json
 import logging
 import threading
-import typing
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule
+from typing import Union, List
+
+from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 from pyobs.events.taskfinished import TaskFinishedEvent
@@ -14,17 +15,17 @@ from pyobs.events import GoodWeatherEvent
 
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStoppable, IRunnable
-from pyobs import PyObsModule, get_object
+from pyobs import Module, get_object
 from pyobs.robotic import TaskArchive
 
 
 log = logging.getLogger(__name__)
 
 
-class Scheduler(PyObsModule, IStoppable, IRunnable):
+class Scheduler(Module, IStoppable, IRunnable):
     """Scheduler."""
 
-    def __init__(self, tasks: typing.Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
+    def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
                  twilight: str = 'astronomical', *args, **kwargs):
         """Initialize a new scheduler.
 
@@ -36,10 +37,10 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                          still running
             twilight: astronomical or nautical
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # get scheduler
-        self._task_archive: TaskArchive = get_object(tasks, TaskArchive)
+        self._task_archive = get_object(tasks, TaskArchive)
 
         # store
         self._schedule_range = schedule_range
@@ -55,8 +56,8 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
         self._current_task_id = None
 
         # blocks
-        self._blocks = []
-        self._scheduled_blocks = []
+        self._blocks: List[ObservingBlock] = []
+        self._scheduled_blocks: List[ObservingBlock] = []
 
         # update thread
         self._add_thread_func(self._schedule_thread, True)
@@ -64,7 +65,7 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:
@@ -139,23 +140,47 @@ class Scheduler(PyObsModule, IStoppable, IRunnable):
                 if start is None or start < now_plus_safety:
                     # if no ETA exists or is in the past, use safety time
                     start = now_plus_safety
+                end = start + TimeDelta(self._schedule_range * u.hour)
 
-                # remove currently running block
-                blocks = list(filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks))
+                # remove currently running block and filter by start time
+                blocks = []
+                for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks):
+                    time_constraint_found = False
+                    # loop all constraints
+                    for c in b.constraints:
+                        if isinstance(c, TimeConstraint):
+                            # we found a time constraint
+                            time_constraint_found = True
+
+                            # does the window start before the end of the scheduling range?
+                            if c.min < end:
+                                # yes, store block and break loop
+                                blocks.append(b)
+                                break
+                    else:
+                        # loop has finished without breaking
+                        # if no time constraint has been found, we still take the block
+                        if time_constraint_found is False:
+                            blocks.append(b)
 
                 # log it
                 log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
                 # init scheduler and schedule
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-                time_range = Schedule(start, start + TimeDelta(self._schedule_range * u.hour))
+                time_range = Schedule(start, end)
                 schedule = scheduler(blocks, time_range)
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-                log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
-                for i, block in enumerate(schedule.scheduled_blocks, 1):
-                    log.info('  #%d: %s to %s', block.configuration['request']['id'], block.start_time, block.end_time)
+                if len(schedule.scheduled_blocks) > 0:
+                    log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+                    for i, block in enumerate(schedule.scheduled_blocks, 1):
+                        log.info('  #%d: %s to %s (%.1f)',
+                                 block.configuration['request']['id'], block.start_time, block.end_time,
+                                 block.priority)
+                else:
+                    log.info('Finished calculating schedule for 0 blocks.')
 
             # sleep a little
             self.closing.wait(1)

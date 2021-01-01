@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Type, Union
 import numpy as np
 from astropy.stats import sigma_clip
 import astropy.units as u
@@ -7,15 +7,13 @@ import logging
 from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from .image import Image
-
+from ..archive import FrameInfo
+from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
 
 class CalibrationImage(Image):
-    _master_names = {}
-    _master_frames = {}
-
     @staticmethod
     def combine(images: List[Image], method: Image.CombineMethod = Image.CombineMethod.MEAN):
         """Combines images into a single one.
@@ -58,37 +56,32 @@ class CalibrationImage(Image):
         return img
 
     @classmethod
-    def find_master(cls, archive: 'Archive', time: Time, instrument: str, binning: str, filter_name: str = None):
-        # does it not exist?
-        if (cls, instrument, binning, filter_name) not in CalibrationImage._master_names:
-            # try to download one
-            if not cls._download_calib_frame(archive, time, instrument, binning, filter_name):
-                # still nothing...
-                return None
+    def find_master(cls: Type['CalibrationImage'], archive: 'Archive', time: Time, instrument: str,
+                    binning: str, filter_name: str = None) -> Union[None, FrameInfo]:
+        """Find and download master calibration frame.
 
-        # get calib frame
-        filename = CalibrationImage._master_names[cls, instrument, binning, filter_name]
-        calib = CalibrationImage._master_frames[filename]
+        Args:
+            archive: Archive to use for downloading frames.
+            time: Time to search at.
+            instrument: Instrument to use.
+            binning: Used binning.
+            filter_name: Used filter.
 
-        # return
-        return calib
-
-    @classmethod
-    def _download_calib_frame(cls, archive: 'Archive', time: Time, instrument: str, binning: str, filter_name: str) \
-            -> bool:
+        Returns:
+            FrameInfo for master calibration frame or None.
+        """
 
         # get image type
         from . import BiasImage, DarkImage, FlatImage
         image_type = {
-            BiasImage: ICamera.ImageType.BIAS,
-            DarkImage: ICamera.ImageType.DARK,
-            FlatImage: ICamera.ImageType.SKYFLAT
+            BiasImage: ImageType.BIAS,
+            DarkImage: ImageType.DARK,
+            FlatImage: ImageType.SKYFLAT
         }[cls]
 
         # find reduced frames from +- 30 days
-        fltr = '' if filter_name is None else ' in ' + filter_name
         log.info('Searching for %s %s master calibration frames%s from instrument %s.',
-                 binning, image_type.value, fltr, instrument)
+                 binning, image_type.value, '' if filter_name is None else ' in ' + filter_name, instrument)
         infos = archive.list_frames(start=time - 30 * u.day, end=time + 30 * u.day,
                                     instrument=instrument, image_type=image_type, binning=binning,
                                     filter_name=filter_name, rlevel=1)
@@ -96,20 +89,15 @@ class CalibrationImage(Image):
         # found any?
         if len(infos) == 0:
             log.error('Found none.')
-            return False
+            return None
         else:
             # sort by diff to time and take first
             s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
             info = s[0]
-            log.info('Found calibration frame %s.', info.filename)
+            log.info('Found %s frame %s.', image_type.name, info.filename)
 
-            # download it
-            calib = archive.download_frames([info])[0]
-
-            # set it
-            CalibrationImage._master_names[cls, instrument, binning, filter_name] = info.filename
-            CalibrationImage._master_frames[info.filename] = calib
-            return True
+            # return FrameInfo
+            return info
 
 
 __all__ = ['CalibrationImage']

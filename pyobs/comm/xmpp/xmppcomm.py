@@ -3,18 +3,17 @@ import logging
 import re
 import threading
 import time
-from typing import Any
+from typing import Any, Callable, Dict, Type, List, Optional
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
 import xml.sax.saxutils
 
 from pyobs.comm import Comm
-from pyobs.events import Event, LogEvent
-from pyobs.events.clientconnected import ClientConnectedEvent
-from pyobs.events.clientdisconnected import ClientDisconnectedEvent
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
+from pyobs.modules.module import Module
 
 log = logging.getLogger(__name__)
 
@@ -27,8 +26,9 @@ class EventStanza(ElementBase):
 class XmppComm(Comm):
     """Comm module for XMPP."""
 
-    def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = 'pyobs',
-                 password: str = None, server: str = None, use_tls: bool = False, *args, **kwargs):
+    def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
+                 resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,
+                 use_tls: bool = False, *args, **kwargs):
         """Create a new XMPP Comm module.
 
         Either a fill JID needs to be provided, or a set of user/domian/resource, from which a JID is built.
@@ -45,11 +45,12 @@ class XmppComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         # variables
-        self._rpc = None
+        self._rpc: Optional[RPC] = None
         self._connected = False
-        self._command_handlers = {}
-        self._event_handlers = {}
-        self._online_clients = []
+        self._command_handlers: Dict[str, List[Callable]] = {}
+        self._event_handlers: Dict[Type, List[Callable]] = {}
+        self._online_clients: List[str] = []
+        self._interface_cache: Dict[str, List[Type]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -176,21 +177,27 @@ class XmppComm(Comm):
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError, if client cannot be found.
         """
 
         # full JID given?
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # fetch interface names
-        interface_names = self._xmpp.get_interfaces(client)
-        if interface_names is None:
-            return None
+        # get interfaces
+        if client not in self._interface_cache:
+            # get interface names
+            interface_names = self._xmpp.get_interfaces(client)
+
+            # get interfaces
+            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
 
         # convert to classes
-        return self._interface_names_to_classes(interface_names)
+        return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface: str) -> bool:
+    def _supports_interface(self, client: str, interface) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -200,7 +207,16 @@ class XmppComm(Comm):
         Returns:
             Whether or not interface is supported.
         """
-        return self._xmpp.supports_interface(self._get_full_client_name(client), interface)
+
+        # full JID given?
+        if '@' not in client:
+            client = '%s@%s/%s' % (client, self._domain, self._resource)
+
+        # update interface cache and get interface names
+        interfaces = self.get_interfaces(client)
+
+        # supported?
+        return interface in interfaces
 
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.
@@ -213,7 +229,8 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        return self._rpc.call(self._get_full_client_name(client), method, *args)
+        if self._rpc is not None:
+            return self._rpc.call(self._get_full_client_name(client), method, *args)
 
     def _got_online(self, msg):
         """If a new client connects, add it to list.
@@ -222,9 +239,17 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # append to list and send event
-        self._online_clients.append(msg['from'].full)
-        self._send_event_to_module(ClientConnectedEvent(), msg['from'].username)
+        # append to list
+        jid = msg['from'].full
+        if jid not in self._online_clients:
+            self._online_clients.append(jid)
+
+        # clear interface cache, just in case there is something there
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
+        self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
 
     def _got_offline(self, msg):
         """If a new client disconnects, remove it from list.
@@ -233,9 +258,16 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # remove from list and send event
-        self._online_clients.remove(msg['from'].full)
-        self._send_event_to_module(ClientDisconnectedEvent(), msg['from'].username)
+        # remove from list
+        jid = msg['from'].full
+        self._online_clients.remove(jid)
+
+        # clear interface cache
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
+        self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
 
     @property
     def clients(self):

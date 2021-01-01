@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
+from astropy.table import Table
 
 
 class Image:
@@ -12,34 +13,81 @@ class Image:
         MEDIAN = 'median'
         SIGMA = 'sigma'
 
-    def __init__(self, *args, **kwargs):
-        self.data = None
-        self.header = None
+    def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
+        self.data = data
+        self.header = fits.Header() if header is None else header
         self.mask = None
         self.catalog = None
 
+        # add basic header stuff
+        if data is not None:
+            self.header['NAXIS1'] = data.shape[1]
+            self.header['NAXIS2'] = data.shape[0]
+
     @classmethod
-    def from_bytes(klass, data) -> 'Image':
+    def from_bytes(cls, data) -> 'Image':
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
-            # store
-            image = klass()
-            image.data = data['SCI'].data.astype(np.float)
-            image.header = data['SCI'].header
+            # load image
+            image = cls._from_hdu_list(data)
 
             # close file
             data.close()
             return image
 
     @classmethod
-    def from_file(klass, filename: str) -> 'Image':
-        # load file
-        image = klass()
-        data, image.header = fits.getdata(filename, header=True)
-        image.data = data.astype(np.float)
+    def from_file(cls, filename: str) -> 'Image':
+        # open file
+        data = fits.open(filename, memmap=False, lazy_load_hdus=False)
+
+        # load image
+        image = cls._from_hdu_list(data)
+
+        # close file
+        data.close()
+        return image
+
+    @classmethod
+    def _from_hdu_list(cls, data):
+        """Load Image from HDU list.
+
+        Args:
+            data: HDU list.
+
+        Returns:
+            Image.
+        """
+
+        # create image
+        image = cls()
+
+        # find HDU with image data
+        for hdu in data:
+            if isinstance(hdu, fits.PrimaryHDU) and hdu.header['NAXIS'] > 0 or \
+                    isinstance(hdu, fits.ImageHDU) and hdu.name == 'SCI' or \
+                    isinstance(hdu, fits.CompImageHDU):
+                # found image HDU
+                image_hdu = hdu
+                break
+        else:
+            raise ValueError('Could not find HDU with main image.')
+
+        # get data
+        image.data = image_hdu.data.astype(np.float)
+        image.header = image_hdu.header
+
+        # mask
+        if 'BPM' in data:
+            image.mask = data['BPM'].data
+
+        # catalog
+        if 'CAT' in data:
+            image.catalog = Table(data['CAT'].data)
+
+        # finished
         return image
 
     def copy(self):
@@ -189,7 +237,7 @@ class Image:
 
     @property
     def pixel_scale(self):
-        """Returns pixel scale in pixels per arc second."""
+        """Returns pixel scale in arcsec/pixel."""
         if 'CD1_1' in self.header:
             return abs(self.header['CD1_1']) * 3600.
         elif 'CDELT1' in self.header:

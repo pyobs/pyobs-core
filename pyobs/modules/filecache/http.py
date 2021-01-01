@@ -3,15 +3,13 @@ import logging
 import re
 import threading
 import uuid
-from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
-import time
 from typing import Union
 import tornado.ioloop
 import tornado.web
 import tornado.gen
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.utils.cache import DataCache
 
 log = logging.getLogger(__name__)
@@ -55,9 +53,10 @@ class MainHandler(tornado.web.RequestHandler):
 
         else:
             # store file and return filename
-            filename = yield self.executor.submit(self.application.store, self.request.body, filename)
-            log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
-            self.finish(bytes(filename, 'utf-8'))
+            if isinstance(self.application, HttpFileCacheServer):
+                filename = yield self.executor.submit(self.application.store, self.request.body, filename)
+                log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
+                self.finish(bytes(filename, 'utf-8'))
 
     @tornado.gen.coroutine
     def get(self, filename: str):
@@ -80,7 +79,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class HttpFileCacheServer(PyObsModule, tornado.web.Application):
+class HttpFileCacheServer(Module, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
     def __init__(self, port: int = 37075, cache_size: int = 25, *args, **kwargs):
@@ -90,7 +89,7 @@ class HttpFileCacheServer(PyObsModule, tornado.web.Application):
             port: Port for HTTP server.
             cache_size: Size of file cache, i.e. number of files to cache.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # add thread func
         self._add_thread_func(self._http, False)
@@ -113,7 +112,7 @@ class HttpFileCacheServer(PyObsModule, tornado.web.Application):
 
         # close io loop and parent
         self._io_loop.add_callback(self._io_loop.stop)
-        PyObsModule.close(self)
+        Module.close(self)
 
     @property
     def opened(self) -> bool:

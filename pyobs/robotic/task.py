@@ -1,5 +1,6 @@
 import threading
 from threading import Event
+from typing import Tuple
 
 from astroplan import Observer
 
@@ -28,7 +29,7 @@ class Task:
         """Returns estimated duration of task in seconds."""
         raise NotImplementedError
 
-    def window(self) -> (Time, Time):
+    def window(self) -> Tuple[Time, Time]:
         """Returns the time window for this task.
 
         Returns:

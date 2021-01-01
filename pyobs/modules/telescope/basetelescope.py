@@ -1,10 +1,12 @@
 import threading
+from typing import Dict, Any, Tuple, Union
+
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
 from pyobs.interfaces import ITelescope, IMotion
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort
@@ -13,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, PyObsModule):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, Module):
     """Base class for telescopes."""
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
@@ -24,7 +26,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             min_altitude: Minimal altitude for telescope.
             wait_for_dome: Name of dome module to wait for.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -36,7 +38,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # celestial status
         self._celestial_lock = threading.RLock()
-        self._celestial_headers = {}
+        self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
         self._add_thread_func(self._celestial, True)
@@ -51,7 +53,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # open mixins
         WeatherAwareMixin.open(self)
@@ -86,7 +88,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
 
@@ -98,6 +100,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             ValueError: If device could not track.
         """
+
+        # check observer
+        if self.observer is None:
+            raise ValueError('No observer given.')
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -142,7 +148,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
@@ -190,7 +196,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # define base header
-        hdr = {}
+        hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
 
         # positions
         try:
@@ -220,9 +226,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
 
         # site location
-        hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
-        hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
-        hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
+        if self.observer is not None:
+            hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
+            hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
+            hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

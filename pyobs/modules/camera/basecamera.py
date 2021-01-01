@@ -3,21 +3,21 @@ import logging
 import math
 import os
 import threading
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any, NamedTuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
-import yaml
-import io
 
 from pyobs.comm import TimeoutException
+from pyobs.utils.enums import ImageType
+from pyobs.utils.images import Image
 
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
-from pyobs import PyObsModule
-from pyobs.events import NewImageEvent, ExposureStatusChangedEvent, BadWeatherEvent, RoofClosingEvent
-from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable
+from pyobs import Module
+from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
+from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime, IImageType
 from pyobs.modules import timeout
 
 log = logging.getLogger(__name__)
@@ -27,11 +27,22 @@ class CameraException(Exception):
     pass
 
 
-class BaseCamera(PyObsModule, ICamera, IAbortable):
-    def __init__(self, fits_headers: dict = None, centre: Tuple[float, float] = None, rotation: float = None,
-                 flip: bool = False,
+class ExposureInfo(NamedTuple):
+    """Info about a running exposure."""
+    start: datetime.datetime
+    exposure_time: float
+
+
+def calc_expose_timeout(camera, *args, **kwargs):
+    """Calculates timeout for expose()."""
+    return camera.get_exposure_time() + 30
+
+
+class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
+    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
+                 rotation: float = 0., flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 cache: str = '/pyobs/camera_cache.json', fits_namespaces: list = None, *args, **kwargs):
+                 fits_namespaces: list = None, *args, **kwargs):
         """Creates a new BaseCamera.
 
         Args:
@@ -42,7 +53,7 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # check
         if self.comm is None:
@@ -57,34 +68,66 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         self._flip = flip
         self._filenames = filenames
         self._fits_namespaces = fits_namespaces
+        self._exposure_time: float = 0.
+        self._image_type = ImageType.OBJECT
 
         # init camera
-        self._last_image = None
-        self._exposure = None
+        self._exposure: Optional[ExposureInfo] = None
         self._camera_status = ICamera.ExposureStatus.IDLE
-        self._exposures_left = 0
-        self._image_type = None
 
         # multi-threading
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
 
         # night exposure number
-        self._cache = cache
+        self._cache = '/pyobs/modules/%s/cache.yaml' % self.name()
         self._frame_num = 0
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
 
-            # bad weather
-            self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
-            self.comm.register_event(RoofClosingEvent, self._on_bad_weather)
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+        """Set the exposure time in seconds.
+
+        Args:
+            exposure_time: Exposure time in seconds.
+
+        Raises:
+            ValueError: If exposure time could not be set.
+        """
+        log.info('Setting exposure time to %.5fs...', exposure_time)
+        self._exposure_time = exposure_time
+
+    def get_exposure_time(self, *args, **kwargs) -> float:
+        """Returns the exposure time in seconds.
+
+        Returns:
+            Exposure time in seconds.
+        """
+        return self._exposure_time
+
+    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+        """Set the image type.
+
+        Args:
+            image_type: New image type.
+        """
+        log.info('Setting image type to %s...', image_type)
+        self._image_type = image_type
+
+    def get_image_type(self, *args, **kwargs) -> ImageType:
+        """Returns the current image type.
+
+        Returns:
+            Current image type.
+        """
+        return self._image_type
 
     def _change_exposure_status(self, status: ICamera.ExposureStatus):
         """Change exposure status and send event,
@@ -109,10 +152,10 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         return self._camera_status
 
     def get_exposure_time_left(self, *args, **kwargs) -> float:
-        """Returns the remaining exposure time on the current exposure in ms.
+        """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:
-            Remaining exposure time in ms.
+            Remaining exposure time in seconds.
         """
 
         # if we're not exposing, there is nothing left
@@ -120,16 +163,9 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             return 0.
 
         # calculate difference between start of exposure and now, and return in ms
-        diff = self._exposure[0] + datetime.timedelta(milliseconds=self._exposure[1]) - datetime.datetime.utcnow()
-        return int(diff.total_seconds() * 1000)
-
-    def get_exposures_left(self, *args, **kwargs) -> int:
-        """Returns the remaining exposures.
-
-        Returns:
-            Remaining exposures
-        """
-        return self._exposures_left
+        duration = datetime.timedelta(seconds=self._exposure.exposure_time)
+        diff = self._exposure.start + duration - datetime.datetime.utcnow()
+        return diff.total_seconds()
 
     def get_exposure_progress(self, *args, **kwargs) -> float:
         """Returns the progress of the current exposure in percent.
@@ -146,11 +182,11 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure[1] == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
+        if self._exposure.exposure_time == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
             return 100.
         else:
             # return max of 100
-            percentage = (diff.total_seconds() * 1000. / self._exposure[1]) * 100.
+            percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
     def _add_fits_headers(self, hdr: fits.Header):
@@ -201,16 +237,17 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             hdr['HEIGHT'] = (float(loc.height.value), 'Altitude of the telescope [m]')
 
             # add local sidereal time
-            lst = self.observer.local_sidereal_time(date_obs)
-            hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
+            if self.observer is not None:
+                lst = self.observer.local_sidereal_time(date_obs)
+                hdr['LST'] = (lst.to_string(unit=u.hour, sep=':'), 'Local sidereal time')
 
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(self.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
         # centre pixel
         if self._centre is not None:
-            hdr['DET-CPX1'] = (self._centre['x'], 'x-pixel on mechanical axis in unbinned image')
-            hdr['DET-CPX2'] = (self._centre['y'], 'y-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX1'] = (self._centre[0], 'x-pixel on mechanical axis in unbinned image')
+            hdr['DET-CPX2'] = (self._centre[1], 'y-pixel on mechanical axis in unbinned image')
         else:
             log.warning('Could not calculate DET-CPX1/DET-CPX2 (centre not given in config).')
 
@@ -264,37 +301,34 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         if self._cache is not None:
             # try to load it
             try:
-                with self.open_file(self._cache, 'r') as f:
-                    cache = yaml.load(f)
+                # load cache
+                cache = self.vfs.read_yaml(self._cache)
 
-                    # get new number
-                    if cache is not None and 'framenum' in cache:
-                        self._frame_num = cache['framenum'] + 1
+                # get new number
+                if cache is not None and 'framenum' in cache:
+                    self._frame_num = cache['framenum'] + 1
 
-                    # if nights differ, reset count
-                    if cache is not None and 'night' in cache and night != cache['night']:
-                        self._frame_num = 1
+                # if nights differ, reset count
+                if cache is not None and 'night' in cache and night != cache['night']:
+                    self._frame_num = 1
 
             except (FileNotFoundError, ValueError):
-                log.warning('Could not read camera cache file.')
+                pass
 
             # write file
             try:
-                with self.open_file(self._cache, 'w') as f:
-                    with io.StringIO() as sio:
-                        yaml.dump({'night': night, 'framenum': self._frame_num}, sio)
-                        f.write(bytes(sio.getvalue(), 'utf8'))
+                self.vfs.write_yaml({'night': night, 'framenum': self._frame_num}, self._cache)
             except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 
         # set it
         hdr['FRAMENUM'] = self._frame_num
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
-            exposure_time: The requested exposure time in ms.
+            exposure_time: The requested exposure time in seconds.
             open_shutter: Whether or not to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
@@ -306,11 +340,12 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         """
         raise NotImplementedError
 
-    def __expose(self, exposure_time: int, image_type: ICamera.ImageType, broadcast: bool) -> (fits.PrimaryHDU, str):
+    def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
+            -> Tuple[Optional[Image], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
-            exposure_time: The requested exposure time in ms.
+            exposure_time: The requested exposure time in seconds.
             open_shutter: Whether or not to open the shutter.
             broadcast: Whether or not the new image should be broadcasted.
 
@@ -332,13 +367,13 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                 fits_header_futures[client] = future
 
         # open the shutter?
-        open_shutter = image_type not in [ICamera.ImageType.BIAS, ICamera.ImageType.DARK]
+        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
 
         # do the exposure
-        self._exposure = (datetime.datetime.utcnow(), exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
-            hdu = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if hdu is None:
+            image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
+            if image is None:
                 self._exposure = None
                 return None, None
         except:
@@ -348,13 +383,13 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
 
         # flip it?
         if self._flip:
-            hdu.data = np.flip(hdu.data, axis=0)
+            image.data = np.flip(image.data, axis=0)
 
         # add HDU name
-        hdu.name = 'SCI'
+        image.header['EXTNAME'] = 'SCI'
 
         # add image type
-        hdu.header['IMAGETYP'] = image_type.value
+        image.header['IMAGETYP'] = image_type.value
 
         # get fits headers from other clients
         for client, future in fits_header_futures.items():
@@ -373,34 +408,33 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
                     # if value is not a string, it may be a list of value and comment
                     if type(value) is list:
                         # convert list to tuple
-                        hdu.header[key] = tuple(value)
+                        image.header[key] = tuple(value)
                     else:
-                        hdu.header[key] = value
+                        image.header[key] = value
 
         # add static fits headers
         for key, value in self._fits_headers.items():
-            hdu.header[key] = tuple(value)
+            image.header[key] = tuple(value)
 
         # add more fits headers
         log.info("Adding FITS headers...")
-        self._add_fits_headers(hdu.header)
+        self._add_fits_headers(image.header)
 
         # don't want to save?
         if self._filenames is None:
-            return hdu, None
+            return image, None
 
         # create a temporary filename
-        filename = format_filename(hdu.header, self._filenames)
-        hdu.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
-        hdu.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
+        filename = format_filename(image.header, self._filenames)
+        image.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')
+        image.header['FNAME'] = (os.path.basename(filename), 'FITS file file name')
         if filename is None:
             raise ValueError('Cannot save image.')
 
         # upload file
         try:
-            with self.open_file(filename, 'wb') as cache:
-                log.info('Uploading image to file server...')
-                hdu.writeto(cache)
+            log.info('Uploading image to file server...')
+            self.vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError('Could not upload image.')
 
@@ -409,27 +443,21 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             log.info('Broadcasting image ID...')
             self.comm.send_event(NewImageEvent(filename, image_type))
 
-        # store new last image
-        self._last_image = {'filename': filename, 'fits': hdu}
-
         # return image and unique
         self._exposure = None
         log.info('Finished image %s.', filename)
-        return hdu, filename
+        return image, filename
 
-    @timeout('(exposure_time+30000)*count')
-    def expose(self, exposure_time: int, image_type: ICamera.ImageType, count: int = 1, broadcast: bool = True,
-               *args, **kwargs) -> list:
+    @timeout(calc_expose_timeout)
+    def expose(self, broadcast: bool = True, *args, **kwargs) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
             exposure_time: Exposure time in seconds.
-            image_type: Type of image.
-            count: Number of images to take.
             broadcast: Broadcast existence of image.
 
         Returns:
-            List of references to the image that was taken.
+            Name of image that was taken.
         """
 
         # acquire lock
@@ -443,37 +471,18 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             if self._camera_status != ICamera.ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
-            # store type
-            self._image_type = image_type
+            # expose
+            image, filename = self.__expose(self._exposure_time, self._image_type, broadcast)
+            if image is None:
+                raise ValueError('Could not take image.')
+            else:
+                if filename is None:
+                    raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
 
-            # loop count
-            images = []
-            self._exposures_left = count
-            while self._exposures_left > 0 and not self.expose_abort.is_set():
-                if count > 1:
-                    log.info('Taking image %d/%d...', count-self._exposures_left+1, count)
-
-                # expose
-                hdu, filename = self.__expose(exposure_time, image_type, broadcast)
-                if hdu is None:
-                    log.error('Could not take image.')
-                else:
-                    if filename is None:
-                        log.warning('Image has not been saved, so cannot be retrieved by filename.')
-                    else:
-                        images.append(filename)
-
-                # finished
-                self._exposures_left -= 1
-
-            # return id
-            self._exposures_left = 0
-            return images
+            # return filename
+            return filename
 
         finally:
-            # reset type
-            self._image_type = None
-
             # release lock
             log.info('Releasing exclusive lock on camera...')
             self._expose_lock.release()
@@ -508,16 +517,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
             self._expose_lock.release()
         else:
             raise ValueError('Could not abort exposure.')
-
-    def abort_sequence(self, *args, **kwargs):
-        """Aborts the current sequence after current exposure.
-
-        Returns:
-            Success or not.
-        """
-        if self._exposures_left > 1:
-            log.info('Aborting sequence of images...')
-        self._exposures_left = 0
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
@@ -582,23 +581,6 @@ class BaseCamera(PyObsModule, ICamera, IAbortable):
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
-
-    def _on_bad_weather(self, event, sender: str, *args, **kwargs):
-        """Abort exposure if a bad weather event occurs.
-
-        Args:
-            event: The bad weather event.
-            sender: Who sent it.
-        """
-
-        # is current image type one with closed shutter?
-        if self._image_type not in [ICamera.ImageType.DARK, ICamera.ImageType.BIAS]:
-            # ignore it
-            return
-
-        # let's finish current exposure, then abort sequence
-        log.warning('Received bad weather event, aborting sequence...')
-        self.abort_sequence()
 
 
 __all__ = ['BaseCamera', 'CameraException']

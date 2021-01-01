@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 import logging
 from typing import Union, List, Dict
 import requests
-from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget
+from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -15,7 +15,6 @@ from pyobs.utils.time import Time
 from ..taskarchive import TaskArchive
 from .task import LcoTask
 
-
 log = logging.getLogger(__name__)
 
 
@@ -25,7 +24,8 @@ class LcoTaskArchive(TaskArchive):
     def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
                  roof: str = None, autoguider: str = None, update: bool = True, scripts: dict = None,
                  portal_enclosure: str = None, portal_telescope: str = None, portal_instrument: str = None,
-                 portal_instrument_type: str = None, period: int = 24, *args, **kwargs):
+                 portal_instrument_type: str = None, period: int = 24, proxies: List[str] = None,
+                 *args, **kwargs):
         """Creates a new LCO scheduler.
 
         Args:
@@ -44,6 +44,7 @@ class LcoTaskArchive(TaskArchive):
             portal_instrument: Instrument for new schedules.
             portal_instrument_type: Instrument type to schedule.
             period: Period to schedule in hours
+            proxies: Proxies for requests.
         """
         TaskArchive.__init__(self, *args, **kwargs)
 
@@ -65,6 +66,7 @@ class LcoTaskArchive(TaskArchive):
         self._last_schedule_time = None
         self._last_schedule_lock = threading.RLock()
         self.scripts = scripts
+        self._proxies = {} if proxies is None else proxies
 
         # buffers in case of errors
         self._last_scheduled = None
@@ -106,7 +108,7 @@ class LcoTaskArchive(TaskArchive):
 
         # get instruments
         url = urljoin(self._url, '/api/instruments/')
-        res = requests.get(url, headers=self._header)
+        res = requests.get(url, headers=self._header, proxies=self._proxies)
         if res.status_code != 200:
             raise RuntimeError('Invalid response from portal.')
 
@@ -198,7 +200,7 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # do request
-        r = requests.get(url, params=params, headers=self._header, timeout=10)
+        r = requests.get(url, params=params, headers=self._header, timeout=10, proxies=self._proxies)
 
         # success?
         if r.status_code != 200:
@@ -277,7 +279,7 @@ class LcoTaskArchive(TaskArchive):
 
         # do request
         try:
-            r = requests.patch(url, json=status, headers=self._header, timeout=10)
+            r = requests.patch(url, json=status, headers=self._header, timeout=10, proxies=self._proxies)
             if r.status_code != 200:
                 log.error('Could not update configuration status: %s', r.text)
         except Timeout:
@@ -288,7 +290,8 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10,
+                             proxies=self._proxies)
             if r.status_code != 200:
                 raise ValueError
             self._last_changed = r.json()['last_change_time']
@@ -303,7 +306,8 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            r = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10)
+            r = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10,
+                             proxies=self._proxies)
             if r.status_code != 200:
                 raise ValueError
             self._last_scheduled = Time(r.json()['last_schedule_time'])
@@ -321,14 +325,28 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get requests
-        r = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header)
+        r = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header,
+                         proxies=self._proxies)
         if r.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
         schedulable = r.json()
 
+        # get proposal priorities
+        r = requests.get(urljoin(self._url, '/api/proposals/'), headers=self._header, proxies=self._proxies)
+        if r.status_code != 200:
+            raise ValueError('Could not fetch list of proposals.')
+        tac_priorities = {p['id']: p['tac_priority'] for p in r.json()['results']}
+
         # loop all request groups
         blocks = []
         for group in schedulable:
+            # get base priority, which is tac_priority * ipp_value
+            proposal = group['proposal']
+            if proposal not in tac_priorities:
+                log.error('Could not find proposal "%s".', proposal)
+                continue
+            base_priority = group['ipp_value'] * tac_priorities[proposal]
+
             # loop all requests in group
             for req in group['requests']:
                 # still pending?
@@ -352,12 +370,15 @@ class LcoTaskArchive(TaskArchive):
                     t = cfg['target']
                     target = SkyCoord(t['ra'] * u.deg, t['dec'] * u.deg, frame=t['type'].lower())
 
-                    # priority
-                    priority = cfg['priority']
-
                     # constraints
                     c = cfg['constraints']
-                    constraints = [AirmassConstraint(max=c['max_airmass'])]
+                    constraints = [
+                        AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
+                        MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg)
+                    ]
+
+                    # priority is base_priority times duration in minutes
+                    priority = base_priority * duration.value / 60.
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,
@@ -400,7 +421,8 @@ class LcoTaskArchive(TaskArchive):
         # cancel schedule
         r = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
                           headers={'Authorization': 'Token ' + self._token,
-                                   'Content-Type': 'application/json; charset=utf8'})
+                                   'Content-Type': 'application/json; charset=utf8'},
+                          proxies=self._proxies)
         if r.status_code != 200:
             raise ValueError('Could not cancel schedule.')
 
@@ -452,7 +474,8 @@ class LcoTaskArchive(TaskArchive):
         # submit obervations
         r = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
                           headers={'Authorization': 'Token ' + self._token,
-                                   'Content-Type': 'application/json; charset=utf8'})
+                                   'Content-Type': 'application/json; charset=utf8'},
+                          proxies=self._proxies)
         if r.status_code != 201:
             raise ValueError('Could not submit observations.')
 

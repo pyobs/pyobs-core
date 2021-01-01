@@ -1,16 +1,13 @@
 import inspect
 import logging
-import threading
-from typing import Union, Type, Any, Callable
+from typing import Union, Type, Any, Callable, Dict, Tuple, List
 from py_expression_eval import Parser
-from astropy.coordinates import EarthLocation
-from astroplan import Observer
-import pytz
 
-from pyobs.environment import Environment
+from pyobs.comm.dummy import DummyComm
+from pyobs.object import Object
 from pyobs.comm import Comm
+from pyobs.interfaces import IModule, IConfig
 from pyobs.object import get_object
-from pyobs.vfs import VirtualFileSystem
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
@@ -24,7 +21,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     """
 
     def timeout_decorator(func):
-        def _timeout(*args, **kwargs):
+        def _timeout(obj, *args, **kwargs):
             # define variables as non-local
             nonlocal func_timeout, func
 
@@ -39,12 +36,12 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
                     try:
                         if hasattr(func_timeout, 'timeout'):
                             # call timeout method, only works if this has the same parameters
-                            to = func_timeout.timeout(*args, **kwargs)
+                            to = func_timeout.timeout(obj, *args, **kwargs)
                         else:
                             # call method directly
-                            to = func_timeout(*args, **kwargs)
+                            to = func_timeout(obj, *args, **kwargs)
                     except:
-                        log.error('Could not call timeout method.')
+                        log.exception('Could not call timeout method.')
 
                 elif isinstance(func_timeout, str):
                     # this is a string with a function, so evaluate it
@@ -72,142 +69,61 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
     return timeout_decorator
 
 
-class PyObsModule:
+class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
 
-    def __init__(self, name: str = None, comm: Union[Comm, dict] = None, vfs: Union[VirtualFileSystem, dict] = None,
-                 timezone: str = 'utc', location: Union[str, dict] = None, plugins: list = None,
-                 *args, **kwargs):
+    def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
         """Initializes a new pyobs module.
 
         Args:
-            name: Name of module.
+            name: Name of module. If None, ID from comm object is used.
+            label: Label for module. If None, name is used.
             comm: Comm object to use
-            vfs: VFS to use (either object or config)
-            timezone: Timezone at observatory.
-            location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
-            plugins: List of plugins to start.
         """
-
-        # an event that will be fired when closing the module
-        self.closing = threading.Event()
-
-        # name
-        self._name = name
+        Object.__init__(self, *args, **kwargs)
 
         # get list of client interfaces
-        self._interfaces = []
-        self._methods = {}
+        self._interfaces: List[Type] = []
+        self._methods: Dict[str, Tuple[Callable, inspect.Signature]] = {}
         self._get_interfaces_and_methods()
 
-        # closing event
-        self.closing = threading.Event()
+        # get configuration options, i.e. all parameters from c'tor
+        self._config_options = self._get_config_options()
 
-        # connect comm module
-        self.comm = comm
-        if comm:
-            self.comm.module = self
-
-        # create vfs
-        if vfs:
-            self.vfs = get_object(vfs)
+        # comm object
+        self.comm: Comm
+        if comm is None:
+            self.comm = DummyComm()
+        elif isinstance(comm, Comm):
+            self.comm = comm
+        elif isinstance(comm, dict):
+            log.info('Creating comm object...')
+            self.comm = get_object(comm)
         else:
-            from pyobs.vfs import VirtualFileSystem
-            self.vfs = VirtualFileSystem()
+            raise ValueError('Invalid Comm object')
 
-        # timezone
-        self.timezone = pytz.timezone(timezone)
-        log.info('Using timezone %s.', timezone)
-
-        # location
-        if location is None:
-            self.location = None
-        elif isinstance(location, str):
-            self.location = EarthLocation.of_site(location)
-        elif isinstance(location, dict):
-            self.location = EarthLocation.from_geodetic(location['longitude'], location['latitude'],
-                                                        location['elevation'])
-        else:
-            raise ValueError('Unknown format for location.')
-
-        # create observer
-        self.observer = None
-        if self.location is not None:
-            log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
-                     self.location.lon, self.location.lat, self.location.height)
-            self.observer = Observer(location=self.location, timezone=timezone)
-
-        # plugins
-        self._plugins = []
-        if plugins:
-            for cfg in plugins.values():
-                plg = get_object(cfg)   # Type: PyObsModule
-                plg.comm = self.comm
-                plg.observer = self.observer
-                self._plugins.append(plg)
-
-        # opened?
-        self._opened = False
-
-        # thread function(s)
-        self._threads = {}
-        self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
-
-    def _add_thread_func(self, func: Callable, restart: bool = True):
-        """Add a new thread func.
-
-        MUST be called in constructor of derived class or at least before calling open() on the module.
-
-        Args:
-            func: Func to add.
-            restart: Whether to restart this function.
-        """
-
-        # create thread
-        t = threading.Thread(target=PyObsModule._thread_func, name=func.__name__, args=(func,))
-
-        # add it
-        self._threads[t] = (func, restart)
+        # name and label
+        self._name: str = name if name is not None else self.comm.name
+        self._label: str = label if label is not None else self._name
 
     def open(self):
         """Open module."""
+        Object.open(self)
 
-        # open plugins
-        if self._plugins:
-            log.info('Opening plugins...')
-            for plg in self._plugins:
-                plg.open()
-
-        # start threads and watchdog
-        for thread, (target, _) in self._threads.items():
-            log.info('Starting thread for %s...', target.__name__)
-            thread.start()
-        if self._watchdog:
-            self._watchdog.start()
-
-        # success
-        self._opened = True
-
-    @property
-    def opened(self):
-        return self._opened
+        # open comm
+        if self.comm is not None:
+            # open it and connect module
+            self.comm.open()
+            self.comm.module = self
 
     def close(self):
         """Close module."""
+        Object.close(self)
 
-        # request closing of object (used for long-running methods)
-        self.closing.set()
-
-        # join watchdog and then all threads
-        if self._watchdog and self._watchdog.is_alive():
-            self._watchdog.join()
-        [t.join() for t in self._threads.keys() if t.is_alive()]
-
-        # close plugins
-        if self._plugins:
-            log.info('Closing plugins...')
-            for plg in self._plugins:
-                plg.close()
+        # close comm
+        if self.comm is not None:
+            log.info('Closing connection to server...')
+            self.comm.close()
 
     def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
@@ -232,63 +148,18 @@ class PyObsModule:
         """
         return self.comm.proxy(name_or_object, obj_type)
 
-    @staticmethod
-    def _thread_func(target):
-        """Run given function.
-
-        Args:
-            target: Function to run.
-        """
-        try:
-            target()
-        except:
-            log.exception('Exception in thread method %s.' % target.__name__)
-
-    def _watchdog_func(self):
-        """Watchdog thread that tries to restart threads if they quit."""
-
-        while not self.closing.is_set():
-            # get dead threads that need to be restarted
-            dead = {}
-            for thread, (target, restart) in self._threads.items():
-                if not thread.is_alive():
-                    dead[thread] = (target, restart)
-
-            # restart dead threads or quit
-            for thread, (target, restart) in dead.items():
-                if restart:
-                    log.error('Thread for %s has died, restarting...', target.__name__)
-                    del self._threads[thread]
-                    thread = threading.Thread(target=target, name=target.__name__)
-                    thread.start()
-                    self._threads[thread] = target
-                else:
-                    log.error('Thread for %s has died, quitting...', target.__name__)
-                    self.quit()
-                    return
-
-            # sleep a little
-            self.closing.wait(1)
-
-    def check_running(self):
-        """Check, whether an object should be closing. Can be polled by long-running methods.
-
-        Raises:
-            InterruptedError: Raised when object should be closing.
-        """
-        if self.closing.is_set():
-            raise InterruptedError
-        return True
-
     def main(self):
         """Main loop for application."""
         while not self.closing.is_set():
             self.closing.wait(1)
 
-    @property
-    def name(self):
-        """Name of module."""
+    def name(self, *args, **kwargs) -> str:
+        """Returns name of module."""
         return self._name
+
+    def label(self, *args, **kwargs) -> str:
+        """Returns label of module."""
+        return self._label
 
     def implements(self, interface):
         """checks, whether this object implements a given interface"""
@@ -334,19 +205,6 @@ class PyObsModule:
         """Quit module."""
         self.closing.set()
 
-    def open_file(self, filename: str, mode: str, compression: bool = None):
-        """Open a file. The handling class is chosen depending on the vfs root in the filename.
-
-        Args:
-            filename (str): Name of file to open.
-            mode (str): Opening mode.
-            compression (bool): Automatically (de)compress data if True. Automatically determine from filename if None.
-
-        Returns:
-            (BaseFile) File object for given file.
-        """
-        return self.vfs.open_file(filename, mode, compression)
-
     def execute(self, method, *args, **kwargs) -> Any:
         """Execute a local method safely with type conversion
 
@@ -391,5 +249,128 @@ class PyObsModule:
         except Exception as e:
             log.exception('Error on remote procedure call: %s' % str(e))
 
+    def _get_config_options(self) -> dict:
+        """Returns a dictionary with config options."""
 
-__all__ = ['PyObsModule', 'timeout']
+        # init dict of options and types
+        opts = {}
+
+        # loop super classes
+        for cls in inspect.getmro(self.__class__):
+            # ignore Object and Module
+            if cls in [Object, Module]:
+                continue
+
+            # get signature
+            sig = inspect.signature(cls.__init__)
+            for name in sig.parameters:
+                # ignore self, args, kwargs
+                if name in ['self', 'args', 'kwargs']:
+                    continue
+
+                # check for getter and setter
+                getter = hasattr(self, '_get_config_' + name)
+                setter = hasattr(self, '_set_config_' + name)
+                opts[name] = (getter, setter)
+
+        # finished
+        return opts
+
+    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
+        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+
+        Returns:
+            Dict with config options
+        """
+        return self._config_options
+
+    def get_config_value(self, name: str, *args, **kwargs) -> Any:
+        """Returns current value of config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Current value.
+
+        Raises:
+            ValueError if config item of given name does not exist.
+        """
+
+        # valid parameter?
+        if name not in self._config_options:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_options[name][0]:
+            raise ValueError('Parameter %s is not remotely accessible.')
+
+        # get getter method and call it
+        getter = getattr(self, '_get_config_' + name)
+        return getter()
+
+    def set_config_value(self, name: str, value: Any, *args, **kwargs):
+        """Sets value of config item with given name.
+
+        Args:
+            name: Name of config item.
+            value: New value.
+
+        Raises:
+            ValueError if config item of given name does not exist or value is invalid.
+        """
+
+        # valid parameter?
+        if name not in self._config_options:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_options[name][1]:
+            raise ValueError('Parameter %s is not remotely settable.')
+
+        # get setter and call it
+        setter = getattr(self, '_set_config_' + name)
+        setter(value)
+
+
+class MultiModule(Module):
+    """Wrapper for running multiple modules in a single process."""
+
+    def __init__(self, modules: Dict[str, Union[Module, dict]], shared: Dict[str, Union[object, dict]] = None,
+                 *args, **kwargs):
+        """Initializes a new pyobs multi module.
+
+        Args:
+            modules: Dictionary with modules.
+            shared: Shared objects between modules.
+        """
+        Module.__init__(self, name='multi', *args, **kwargs)
+
+        # create shared objects
+        self._shared: Dict[str, Module] = {}
+        if shared:
+            for name, obj in shared.items():
+                # if obj is an object definition, create it, otherwise just set it
+                self._shared[name] = self._add_child_object(obj)
+
+        # create modules
+        self._modules = {}
+        for name, mod in modules.items():
+            # what is it?
+            if isinstance(mod, Module):
+                # it's a module already, store it
+                self._modules[name] = mod
+            elif isinstance(mod, dict):
+                # dictionary, create it
+                self._modules[name] = self._add_child_object(mod, **self._shared)
+
+    @property
+    def modules(self):
+        return self._modules
+
+    def __contains__(self, name: str) -> bool:
+        """Checks, whether this multi-module contains a module of given name."""
+        return name in self._modules
+
+    def __getitem__(self, name: str) -> Module:
+        """Returns module of given name."""
+        return self._modules[name]
+
+
+__all__ = ['Module', 'MultiModule', 'timeout']

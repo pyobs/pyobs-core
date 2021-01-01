@@ -1,12 +1,11 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type
+from typing import Any, Union, Type, Dict
 import threading
 
 import pyobs.interfaces
-from pyobs.events import Event, LogEvent
-from pyobs.events.clientdisconnected import ClientDisconnectedEvent
+from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
@@ -21,7 +20,7 @@ class Comm:
     def __init__(self, cache_proxies: bool = True, *args, **kwargs):
         """Creates a comm module."""
 
-        self._proxies = {}
+        self._proxies: Dict[str, Proxy] = {}
         self._module = None
         self._log_queue = queue.Queue()
         self._cache_proxies = cache_proxies
@@ -61,7 +60,7 @@ class Comm:
         self.variables.open()
 
         # some events
-        self.register_event(ClientDisconnectedEvent, self._client_disconnected)
+        self.register_event(ModuleClosedEvent, self._client_disconnected)
 
     def close(self):
         """Close module."""
@@ -108,8 +107,9 @@ class Comm:
         # if client doesn't exist or we disabled caching, fetch a new proxy
         if client not in self._proxies or not self._cache_proxies:
             # get interfaces
-            interfaces = self.get_interfaces(client)
-            if interfaces is None:
+            try:
+                interfaces = self.get_interfaces(client)
+            except IndexError:
                 return None
 
             # create new proxy
@@ -162,7 +162,7 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def _client_disconnected(self, event: ClientDisconnectedEvent, sender: str, *args, **kwargs):
+    def _client_disconnected(self, event: ModuleClosedEvent, sender: str, *args, **kwargs):
         """Called when a client disconnects.
 
         Args:
@@ -198,7 +198,7 @@ class Comm:
         Returns:
             (list) List of currently connected clients that implement the given interface.
         """
-        return filter(lambda c: self._supports_interface(c, interface), self.clients)
+        return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
 
     def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.
@@ -208,6 +208,9 @@ class Comm:
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError, if client cannot be found.
         """
         raise NotImplementedError
 

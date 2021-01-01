@@ -5,13 +5,13 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from pyobs.comm import RemoteException
 
-from pyobs import PyObsModule
+from pyobs import Module
 from pyobs.interfaces import IAltAz, IRaDec, IReady
 
 log = logging.getLogger(__name__)
 
 
-def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> (float, float):
+def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> Tuple[float, float]:
     """Gets coordinates from object
 
     Args:
@@ -22,10 +22,12 @@ def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> 
         Return from method call.
     """
 
-    if mode == IAltAz:
+    if mode == IAltAz and isinstance(obj, IAltAz):
         return obj.get_altaz()
-    else:
+    elif mode == IRaDec and isinstance(obj, IRaDec):
         return obj.get_radec()
+    else:
+        raise ValueError('Unknown mode.')
 
 
 def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]) -> SkyCoord:
@@ -71,7 +73,8 @@ class FollowMixin:
 
         # add thread function only, if device is given
         if self.__follow_device is not None:
-            self: Union[PyObsModule, FollowMixin]
+            if not isinstance(self, Module):
+                raise ValueError('This is not a module.')
             self._add_thread_func(self.__update_follow)
 
     @property
@@ -83,7 +86,7 @@ class FollowMixin:
         """Update function."""
 
         # I'm a module!
-        self: Union[PyObsModule, FollowMixin]
+        self: Union[Module, FollowMixin]
 
         # wait a little
         self.closing.wait(10)

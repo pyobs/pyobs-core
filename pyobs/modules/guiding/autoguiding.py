@@ -1,7 +1,8 @@
 import logging
 
-from pyobs.interfaces import ICamera
+from pyobs.interfaces import ICamera, IImageType, ICameraExposureTime
 from .base import BaseGuiding
+from ...utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -14,19 +15,19 @@ class AutoGuiding(BaseGuiding):
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # store
-        self._exp_time = 1000
+        self._exp_time = 1.
 
         # add thread func
         self._add_thread_func(self._auto_guiding, True)
 
-    def set_exposure_time(self, exp_time: int):
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
         """Set the exposure time for the auto-guider.
 
         Args:
-            exp_time: Exposure time in ms.
+            exposure_time: Exposure time in secs.
         """
-        log.info('Setting exposure time to %dms...', exp_time)
-        self._exp_time = exp_time
+        log.info('Setting exposure time to %ds...', exposure_time)
+        self._exp_time = exposure_time
         self._loop_closed = False
         self._guiding_offset.reset()
 
@@ -43,11 +44,17 @@ class AutoGuiding(BaseGuiding):
                 camera: ICamera = self.proxy(self._camera, ICamera)
 
                 # take image
-                log.info('Taking image with an exposure time of %dms...', self._exp_time)
-                filenames = camera.expose(self._exp_time, ICamera.ImageType.OBJECT, 1, False).wait()
+                if isinstance(camera, ICameraExposureTime):
+                    log.info('Taking image with an exposure time of %dms...', self._exp_time)
+                    camera.set_exposure_time(self._exp_time)
+                else:
+                    log.info('Taking image...')
+                if isinstance(camera, IImageType):
+                    camera.set_image_type(ImageType.OBJECT)
+                filename = camera.expose(broadcast=False).wait()
 
                 # download image
-                image = self.vfs.download_image(filenames[0])
+                image = self.vfs.read_image(filename)
 
                 # process it
                 log.info('Processing image...')

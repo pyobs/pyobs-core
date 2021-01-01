@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
@@ -17,7 +19,7 @@ class IRaDec(Interface):
         """
         raise NotImplementedError
 
-    def get_radec(self, *args, **kwargs) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:

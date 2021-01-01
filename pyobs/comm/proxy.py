@@ -1,7 +1,7 @@
 import inspect
 import types
 
-from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_real, cast_bound_arguments_to_simple
+from pyobs.utils.types import cast_bound_arguments_to_simple
 
 
 class Proxy:

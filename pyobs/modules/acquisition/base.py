@@ -5,17 +5,20 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
-from pyobs import PyObsModule
-from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, ICameraExposureTime, \
+    IImageType
+from pyobs import Module
+from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
+from pyobs.utils.enums import ImageType
 from pyobs.utils.images import Image
+from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcquisition):
+class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
@@ -32,7 +35,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store telescope and camera
         self._telescope = telescope
@@ -44,28 +47,15 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
         self._tolerance = tolerance
         self._max_offset = max_offset
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'ra': float,
-            'dec': float,
-            'alt': float,
-            'az': float,
-            'off_ra': float,
-            'off_dec': float,
-            'off_alt': float,
-            'off_az': float
-        }
-
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # init log file
+        self._publisher = CsvPublisher(log_file)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)
 
     def open(self):
         """Open module"""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check telescope and camera
         try:
@@ -74,15 +64,15 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    @timeout(300000)
-    def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
+    @timeout(300)
+    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Args:
-            exposure_time: Exposure time for acquisition.
+            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -104,13 +94,19 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
 
         # try given number of attempts
         for a in range(self._attempts):
-            # take image
-            log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
-            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()[0]
+            # set exposure time and image type and take image
+            if isinstance(camera, ICameraExposureTime):
+                log.info('Exposing image for %.1f seconds...', exposure_time)
+                camera.set_exposure_time(exposure_time).wait()
+            else:
+                log.info('Exposing image...')
+            if isinstance(camera, IImageType):
+                camera.set_image_type(ImageType.ACQUISITION)
+            filename = camera.expose().wait()
 
             # download image
             log.info('Downloading image...')
-            img = self.vfs.download_image(filename)
+            img = self.vfs.read_image(filename)
 
             # get target pixel
             if self._target_pixel is None:
@@ -173,7 +169,8 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
 
                 # write log
-                self._append_to_table_storage(**log_entry)
+                if self._publisher is not None:
+                    self._publisher(**log_entry)
 
                 # finished
                 return log_entry
@@ -216,7 +213,7 @@ class BaseAcquisition(PyObsModule, TableStorageMixin, CameraSettingsMixin, IAcqu
         # could not acquire target
         raise ValueError('Could not acquire target within given tolerance.')
 
-    def _get_target_radec(self, img: Image, ra: float, dec: float) -> (float, float):
+    def _get_target_radec(self, img: Image, ra: float, dec: float) -> Tuple[float, float]:
         """Returns RA/Dec coordinates of pixel that needs to be centered.
 
         Params:

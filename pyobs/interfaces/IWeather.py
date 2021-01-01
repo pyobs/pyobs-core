@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+from typing import Union, Tuple
 
 from .interface import Interface
 
@@ -34,7 +34,7 @@ class IWeather(Interface):
         """
         raise NotImplementedError
 
-    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) -> (str, float):
+    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:

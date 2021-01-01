@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from pyobs.utils.images import Image
 
 
@@ -14,7 +16,7 @@ class FocusSeries:
         """
         raise NotImplementedError
 
-    def fit_focus(self) -> (float, float):
+    def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

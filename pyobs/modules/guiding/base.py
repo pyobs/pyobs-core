@@ -4,11 +4,11 @@ import numpy as np
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
-from pyobs.utils.time import Time
 
+from pyobs.utils.publisher import CsvPublisher
+from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
-from pyobs import PyObsModule, get_object
-from pyobs.mixins import TableStorageMixin
+from pyobs import Module, get_object
 from pyobs.utils.guiding.base import BaseGuidingOffset
 from pyobs.utils.images import Image
 
@@ -16,7 +16,7 @@ from pyobs.utils.images import Image
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvider):
+class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
                  min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
@@ -34,7 +34,7 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._camera = camera
@@ -53,27 +53,14 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         self._ref_header = None
 
         # create auto-guiding system
-        self._guiding_offset: BaseGuidingOffset = get_object(offsets, BaseGuidingOffset)
+        self._guiding_offset = get_object(offsets, BaseGuidingOffset)
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'ra': float,
-            'dec': float,
-            'alt': float,
-            'az': float,
-            'dra': float,
-            'ddec': float,
-            'dalt': float,
-            'daz': float
-        }
-
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # init log file
+        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # check telescope
         try:
@@ -267,7 +254,8 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
         if isinstance(telescope, IRaDecOffsets):
             # log
             log_entry['dra'], log_entry['ddec'] = dra, ddec
-            self._append_to_table_storage(**log_entry)
+            if self._publisher is not None:
+                self._publisher(**log_entry)
 
             # get current offset
             cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
@@ -290,7 +278,8 @@ class BaseGuiding(PyObsModule, TableStorageMixin, IAutoGuiding, IFitsHeaderProvi
 
             # log
             log_entry['dalt'], log_entry['daz'] = dalt, daz
-            self._append_to_table_storage(**log_entry)
+            if self._publisher is not None:
+                self._publisher(**log_entry)
 
             # get current offset
             cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()

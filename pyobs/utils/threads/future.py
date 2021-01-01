@@ -50,8 +50,8 @@ class Future(object):
 
             # got an additional timeout?
             if self._timeout is not None and self._timeout > 10:
-                # timeout is in ms, so convert to s and subtract already waited 10s
-                self._event.wait(self._timeout / 1000. - 10)
+                # we already waited 10s, so subtract it
+                self._event.wait(self._timeout - 10.)
 
         # got an exception?
         if self._exception:

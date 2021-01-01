@@ -1,4 +1,6 @@
 import logging
+from typing import Tuple, Any, Dict
+
 import requests
 import urllib.parse
 import threading
@@ -7,7 +9,7 @@ import astropy.units as u
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderProvider
-from pyobs import PyObsModule
+from pyobs import Module
 
 
 log = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ FITS_HEADERS = {
 }
 
 
-class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
+class Weather(Module, IWeather, IFitsHeaderProvider):
     """Connection to pyobs-weather."""
 
     def __init__(self, url: str = None, system_init_time: int = 300, *args, **kwargs):
@@ -36,7 +38,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
             url: URL to weather station
             system_init_time: Time in seconds the full system needs to initialize
         """
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store and create session
         self._system_init_time = system_init_time
@@ -47,7 +49,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
         self._is_good = None
 
         # whole status
-        self._status = {}
+        self._status: Dict[str, Any] = {}
         self._status_lock = threading.RLock()
 
         # add thread func
@@ -55,7 +57,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # subscribe to events
         if self.comm:
@@ -125,7 +127,7 @@ class Weather(PyObsModule, IWeather, IFitsHeaderProvider):
         with self._status_lock:
             return self._status
 
-    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> (str, float):
+    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:

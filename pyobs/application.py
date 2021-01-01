@@ -1,20 +1,12 @@
 import logging
-import os
 import signal
-import sys
 import threading
-import time
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
-
 import yaml
 
-from pyobs.comm.dummy import DummyComm
 from pyobs.object import get_object
-from pyobs.modules import PyObsModule
-from pyobs.comm import Comm
-from pyobs.comm.xmpp import XmppComm
-from pyobs.interfaces import IConfigProvider
+from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
 
 log = None
@@ -72,58 +64,23 @@ class Application:
         self._comm = None
         self._module = None
 
-    def run(self, config: str = None, username: str = None, password: str = None, server: str = None, comm: str = None):
+    def run(self, config: str):
         """Actually run the application.
 
         Args:
             config: Name of config file, if any.
-            username: Username for server connection (overrides the one in config).
-            password: Password for server connection (overrides the one in config).
-            server: Server to connect to (overrides the one in config).
-            comm: Type of comm object to use (overrides the one in config), defaults to 'xmpp'.
         """
 
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
-            # do we have a config?
-            if config:
-                # yes, load it
-                log.info('Loading configuration from {0:s}...'.format(config))
-                with StringIO(pre_process_yaml(config)) as f:
-                    cfg = yaml.safe_load(f)
-            else:
-                # create empty config
-                cfg = {}
-
-            # get comm object and open it
-            log.info('Creating comm object...')
-            self._comm = self._create_comm(cfg, username, password, server, comm)
-            log.info('Opening connection to server...')
-            self._comm.open()
-
-            # remove comm from config, since we don't want to pass it to the module
-            if 'comm' in cfg:
-                del cfg['comm']
-
-            # now, do we have a class definition?
-            if 'class' not in cfg:
-                log.info('No module definition found, trying to find a config provider and fetch get config...')
-
-                # sleep a little to allow the comm object to get other clients
-                time.sleep(2)
-
-                # fetch network config
-                cfg = self._get_network_config(self._comm)
-
-                # still no config?
-                if 'class' not in cfg:
-                    raise ValueError('No configuration found.')
-                else:
-                    log.info('Successfully fetched module configuration from network.')
+            # load config
+            log.info('Loading configuration from {0:s}...'.format(config))
+            with StringIO(pre_process_yaml(config)) as f:
+                cfg = yaml.safe_load(f)
 
             # create module and open it
             log.info('Creating module...')
-            self._module = get_object(cfg, comm=self._comm)   # type: PyObsModule
+            self._module: Module = get_object(cfg)
             log.info('Opening module...')
             self._module.open()
             log.info('Started successfully.')
@@ -143,10 +100,6 @@ class Application:
             if self._module is not None:
                 log.info('Closing module...')
                 self._module.close()
-            # close comm
-            if self._comm is not None:
-                log.info('Closing connection to server...')
-                self._comm.close()
 
             # finished
             log.info('Finished shutting down.')
@@ -164,72 +117,6 @@ class Application:
     def _signal_handler(self, signum, frame):
         """React to signals and quit module."""
         self._module.quit()
-
-    def _create_comm(self, config: dict = None, username: str = None, password: str = None, server: str = None,
-                     comm: str = None):
-        """Create a comm object.
-
-        If username/password are provided as parameters or in the environment, they are used. Otherwise those from
-        the config are used.
-
-        Args:
-            config: Configuration dictionary.
-            username: Username for server connection (overrides the one in config).
-            password: Password for server connection (overrides the one in config).
-            server: Server to connect to (overrides the one in config).
-            comm: Type of comm object to use (overrides the one in config), defaults to 'xmpp'.
-
-        Returns:
-            A comm object.
-        """
-
-        # create comm object and return it
-        if username is not None and password is not None and comm == 'xmpp':
-            # create comm object from command line or environment
-            return XmppComm(jid=username, password=password, server=server)
-        else:
-            if 'comm' in config:
-                # create comm object from config
-                return get_object(config['comm'])
-            else:
-                # create a dummy comm object
-                return DummyComm()
-
-    def _get_network_config(self, comm: Comm, attempts=10, wait_time=10) -> dict:
-        """Fetches a configuration for the module from the network.
-
-        Tries to find an IConfigProvider in the network and requests config from there.
-
-        Args:
-            comm: The comm object to use.
-            attempts: Number of attempts before giving up.
-            wait_time: Waiting time between attempts.
-
-        Returns:
-            The module configuration.
-        """
-
-        # loop IConfigProviders
-        for client in comm.clients_with_interface(IConfigProvider):
-            try:
-                # get proxy
-                proxy = comm[client]  # type: IConfigProvider
-
-                # get config and return it
-                return proxy.get_config(comm.name).wait()
-
-            except FileNotFoundError:
-                # seems that this config provider doesn't have a config for this client
-                pass
-
-        # seems we didn't find a config, try again?
-        if attempts > 0:
-            # sleep a little
-            log.warning('No config found, trying to connect again in %d seconds...', wait_time)
-            time.sleep(wait_time)
-
-            # try again
-            return self._get_network_config(comm, attempts=attempts - 1, wait_time=wait_time)
 
     def _hack_threading(self):
         """Bad hack to set thread name on OS level."""

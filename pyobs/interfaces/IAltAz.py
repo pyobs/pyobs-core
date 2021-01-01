@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
@@ -16,7 +18,7 @@ class IAltAz(Interface):
         """
         raise NotImplementedError
 
-    def get_altaz(self, *args, **kwargs) -> (float, float):
+    def get_altaz(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:

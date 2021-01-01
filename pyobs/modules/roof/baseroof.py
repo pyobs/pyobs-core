@@ -1,21 +1,19 @@
 import logging
-import typing
 
-from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IRoof, IMotion, IWeather, IFitsHeaderProvider
-from pyobs import PyObsModule
+from pyobs.interfaces import IRoof, IMotion, IFitsHeaderProvider
+from pyobs import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 
 
 log = logging.getLogger(__name__)
 
 
-class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider, PyObsModule):
+class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider, Module):
     """Base class for roofs."""
 
     def __init__(self, *args, **kwargs):
         """Initialize a new base roof."""
-        PyObsModule.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
@@ -23,7 +21,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
 
     def open(self):
         """Open module."""
-        PyObsModule.open(self)
+        Module.open(self)
 
         # open mixins
         WeatherAwareMixin.open(self)

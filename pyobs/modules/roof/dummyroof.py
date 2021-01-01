@@ -28,7 +28,7 @@ class DummyRoof(BaseRoof, IRoof):
         self.comm.register_event(RoofOpenedEvent)
         self.comm.register_event(RoofClosingEvent)
 
-    @timeout(15000)
+    @timeout(15)
     def open_roof(self, *args, **kwargs):
         """Open the roof.
 
@@ -65,7 +65,7 @@ class DummyRoof(BaseRoof, IRoof):
                 # send event
                 self.comm.send_event(RoofOpenedEvent())
 
-    @timeout(15000)
+    @timeout(15)
     def close_roof(self, *args, **kwargs):
         """Close the roof.
 
@@ -103,7 +103,7 @@ class DummyRoof(BaseRoof, IRoof):
         """Get the percentage the roof is open."""
         return self.open_percentage
 
-    def stop_motion(self, device: str = None):
+    def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.
 
         Args:

@@ -17,7 +17,7 @@ setup(
             'pyobsw=pyobs.cli.pyobsw:main',
         ]
     },
-    python_requires='>3.7',
+    python_requires='>=3.7',
     install_requires=[
         'scipy',
         'paramiko',

@@ -492,7 +492,7 @@ class FlatFielder:
         now = Time.now()
         log.info('Exposing flat field %d/%d for %.2fs...',
                  self._exposures_done + 1, self._exposures_total, self._exptime)
-        camera.set_exposure_time(self._exptime).wait()
+        camera.set_exposure_time(float(self._exptime)).wait()
         camera.set_image_type(ImageType.SKYFLAT)
         filename = camera.expose().wait()
 

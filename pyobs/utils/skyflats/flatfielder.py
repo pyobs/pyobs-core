@@ -364,7 +364,7 @@ class FlatFielder:
 
         # do exposures, do not broadcast while testing
         log.info('Exposing test flat field for %.2fs...', self._exptime)
-        camera.set_exposure_time(self._exptime).wait()
+        camera.set_exposure_time(float(self._exptime)).wait()
         if isinstance(camera, IImageType):
             camera.set_image_type(ImageType.SKYFLAT)
         filename = camera.expose(broadcast=False).wait()

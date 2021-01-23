@@ -1,6 +1,9 @@
 import logging
 from enum import Enum
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import CallbackQueryHandler, CallbackContext
+
 from pyobs.events import Event
 from pyobs import Module
 from pyobs.interfaces import IAutonomous
@@ -11,7 +14,9 @@ log = logging.getLogger(__name__)
 
 class TelegramUserState(Enum):
     IDLE = 0,
-    AUTH = 1
+    AUTH = 1,
+    EXEC_MODULE = 2,
+    EXEC_METHOD = 3
 
 
 class Telegram(Module):
@@ -50,6 +55,8 @@ class Telegram(Module):
         # add text handler
         echo_handler = MessageHandler(Filters.text & (~Filters.command), self._process_message)
         dispatcher.add_handler(echo_handler)
+
+        dispatcher.add_handler(CallbackQueryHandler(self.button))
 
         # start polling
         self._updater.start_polling()
@@ -104,8 +111,43 @@ class Telegram(Module):
             return
 
         # list modules
-        clients = '\n'.join(self.comm.clients)
-        context.bot.send_message(chat_id=update.effective_chat.id, text='Modules:\n' + clients)
+        #clients = '\n'.join(self.comm.clients)
+        #context.bot.send_message(chat_id=update.effective_chat.id, text='Modules:\n' + clients)
+
+        keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self.comm.clients]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_text('Please choose module:', reply_markup=reply_markup)
+
+        self._user_states[update.message.from_user.id] = TelegramUserState.EXEC_MODULE
+
+    def button(self, update: Update, context: CallbackContext) -> None:
+        query = update.callback_query
+
+        # CallbackQueries need to be answered, even if no notification to the user is needed
+        # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+        query.answer()
+
+        # what state are we in?
+        user_id = query.from_user.id
+        if self._user_states[user_id] == TelegramUserState.EXEC_MODULE:
+            # get proxy for selected module
+            proxy = self.proxy(query.data)
+
+            keyboard = [[InlineKeyboardButton(m, callback_data='%s.%s' % (query.data, m))]
+                        for m in proxy.method_names]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            query.edit_message_text(text='Chose method in %s:' % query.data)
+            query.edit_message_reply_markup(reply_markup)
+
+            self._user_states[user_id] = TelegramUserState.EXEC_METHOD
+
+        elif self._user_states[user_id] == TelegramUserState.EXEC_METHOD:
+            # get proxy for selected
+            query.edit_message_text(text='Enter parameters for %s:' % query.data)
+            #query.edit_message_reply_markup(InlineKeyboardMarkup([]))
+
+
+        #query.edit_message_text(text=f"Selected option: {query.data}")
 
     def _process_message(self, update, context):
         # get user id and create state, if necessary

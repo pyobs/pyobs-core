@@ -214,7 +214,7 @@ class Object:
                     del self._threads[thread]
                     thread = threading.Thread(target=target, name=target.__name__)
                     thread.start()
-                    self._threads[thread] = target
+                    self._threads[thread] = (target, restart)
                 else:
                     log.error('Thread for %s has died, quitting...', target.__name__)
                     self.quit()

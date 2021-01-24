@@ -17,7 +17,8 @@ class TelegramUserState(Enum):
     AUTH = 1,
     EXEC_MODULE = 2,
     EXEC_METHOD = 3,
-    EXEC_PARAMS = 4
+    EXEC_PARAMS = 4,
+    LOG_LEVEL = 5
 
 
 class Telegram(Module):
@@ -51,6 +52,7 @@ class Telegram(Module):
         dispatcher.add_handler(CommandHandler('start', self._command_start))
         dispatcher.add_handler(CommandHandler('exec', self._command_exec))
         dispatcher.add_handler(CommandHandler('modules', self._command_modules))
+        dispatcher.add_handler(CommandHandler('loglevel', self._command_loglevel))
 
         # add text handler
         echo_handler = MessageHandler(Filters.text & (~Filters.command), self._process_message)
@@ -69,6 +71,22 @@ class Telegram(Module):
         # stop telegram
         self._updater.stop()
 
+    def _load_users(self) -> dict:
+        """Load user file."""
+        # try to load file
+        try:
+            return self.vfs.read_yaml('/pyobs/telegram.yaml')
+        except FileNotFoundError:
+            return {}
+
+    def _save_users(self, users: dict):
+        """Save user file.
+
+        Args:
+            users: Users dictionary.
+        """
+        self.vfs.write_yaml(users, '/pyobs/telegram.yaml')
+
     def _is_user_authorized(self, user_id: int) -> bool:
         """Is user authorized?
 
@@ -78,15 +96,8 @@ class Telegram(Module):
         Returns:
             Whether user is known and authorized to give commands.
         """
-
-        # try to load file
-        try:
-            config = self.vfs.read_yaml('/pyobs/telegram.yaml')
-        except FileNotFoundError:
-            return False
-
-        # does user exist in file_
-        return 'user_ids' in config and user_id in config['user_ids']
+        users = self._load_users()
+        return 'users' in users and user_id in users['users']
 
     def _store_user(self, user_id: int, name: str):
         """Store new user in auth database.
@@ -96,21 +107,13 @@ class Telegram(Module):
             name: Name of user.
         """
 
-        # load config
-        try:
-            config = self.vfs.read_yaml('/pyobs/telegram.yaml')
-        except FileNotFoundError:
-            config = {}
-
         # add user
-        if 'user_ids' not in config:
-            config['user_ids'] = {}
-
-        # append user
-        config['user_ids'][user_id] = name
-
-        # store it
-        self.vfs.write_yaml(config, '/pyobs/telegram.yaml')
+        users = self._load_users()
+        users['users'][user_id] = {
+            'name': name,
+            'log_level': None
+        }
+        self._save_users(users)
 
     def _command_start(self, update: Update, context: CallbackContext):
         """Handle /start command.
@@ -222,6 +225,16 @@ class Telegram(Module):
 
             # see whether this command runs without parameters
             self._handle_params(update, context)
+
+        elif context.user_data['state'] == TelegramUserState.LOG_LEVEL:
+            # set log level
+            users = self._load_users()
+            users['users'][query.from_user.id]['loglevel'] = query.data
+            self._save_users(users)
+
+            # change to IDLE state
+            query.edit_message_text(text='Changed log level to %s.' % query.data)
+            context.user_data['state'] = TelegramUserState.IDLE
 
     def _handle_params(self, update: Update, context: CallbackContext):
         """Handle input of params when in EXEC_PARAMS state.
@@ -367,6 +380,37 @@ class Telegram(Module):
         # list all modules
         message = 'Available modules:\n' + '\n'.join(['- ' + c for c in self.comm.clients])
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+
+    def _command_loglevel(self, update: Update, context: CallbackContext):
+        """Handle /loglevel command that sets the log level
+
+        Args:
+            update: Message to process.
+            context: Telegram context.
+        """
+
+        # not logged in?
+        if not self._is_user_authorized(update.message.from_user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in')
+            return
+
+        # set state
+        context.user_data['state'] = TelegramUserState.LOG_LEVEL
+
+        # get named log levels
+        levels = [logging.getLevelName(x) for x in range(1, 101)
+                  if not logging.getLevelName(x).startswith('Level')]
+
+        # get current level
+        users = self._load_users()
+        current_level = users['users'][update.message.from_user.id]['loglevel']
+
+        # create buttons for all log levels
+        keyboard = [[InlineKeyboardButton(l, callback_data=l)] for l in levels] + \
+                   [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
+                                  reply_markup=reply_markup)
 
 
 __all__ = ['Telegram']

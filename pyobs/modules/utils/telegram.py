@@ -47,11 +47,10 @@ class Telegram(Module):
         self._updater = Updater(token=self._token)
         dispatcher = self._updater.dispatcher
 
-        # add /start handler
-        start_handler = CommandHandler('start', self._command_start)
-        dispatcher.add_handler(start_handler)
-        exec_handler = CommandHandler('exec', self._command_exec)
-        dispatcher.add_handler(exec_handler)
+        # add command handler
+        dispatcher.add_handler(CommandHandler('start', self._command_start))
+        dispatcher.add_handler(CommandHandler('exec', self._command_exec))
+        dispatcher.add_handler(CommandHandler('modules', self._command_modules))
 
         # add text handler
         echo_handler = MessageHandler(Filters.text & (~Filters.command), self._process_message)
@@ -351,6 +350,23 @@ class Telegram(Module):
         elif context.user_data['state'] == TelegramUserState.EXEC_PARAMS:
             # we're expecting params, so handle them
             self._handle_params(update, context)
+
+    def _command_modules(self, update: Update, context: CallbackContext):
+        """Handle /modules command that shows list of modules.
+
+        Args:
+            update: Message to process.
+            context: Telegram context.
+        """
+
+        # not logged in?
+        if not self._is_user_authorized(update.message.from_user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in')
+            return
+
+        # list all modules
+        message = 'Available modules:\n' + '\n'.join(['- ' + c for c in self.comm.clients])
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
 
 __all__ = ['Telegram']

@@ -25,12 +25,13 @@ class TelegramUserState(Enum):
 class Telegram(Module):
     """A telegram bot."""
 
-    def __init__(self, token: str, password: str, *args, **kwargs):
+    def __init__(self, token: str, password: str, allow_new_users: bool = True, *args, **kwargs):
         """Initialize a new bot.
 
         Args:
             token: The telegram API token.
             password: Password for users to log in.
+            allow_new_users: Whether new users are allowed to connect.
 
         """
         Module.__init__(self, *args, **kwargs)
@@ -38,6 +39,7 @@ class Telegram(Module):
         # store
         self._token = token
         self._password = password
+        self._allow_new_users = allow_new_users
         self._updater = None
 
         # get log levels
@@ -139,11 +141,19 @@ class Telegram(Module):
             # welcome him back
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text='Welcome back %s!' % update.message.from_user.first_name)
+
         else:
-            # go to AUTH state
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text="I'm the pyobs bot for IAG50. Password?")
-            context.user_data['state'] = TelegramUserState.AUTH
+            # do we allow for new users?
+            if self._allow_new_users:
+                # go to AUTH state
+                context.bot.send_message(chat_id=update.effective_chat.id,
+                                         text="Password?")
+                context.user_data['state'] = TelegramUserState.AUTH
+
+            else:
+                # show message
+                context.bot.send_message(chat_id=update.effective_chat.id,
+                                         text="No new users allowed in the system.")
 
     def _command_exec(self, update: Update, context: CallbackContext):
         """Handle /exec command.

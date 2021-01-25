@@ -8,6 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
 from pyobs import Module
+from pyobs.events import LogEvent
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +64,9 @@ class Telegram(Module):
 
         # start polling
         self._updater.start_polling()
+
+        # listen to log events
+        self.comm.register_event(LogEvent, self._process_log_entry)
 
     def close(self):
         """Close module."""
@@ -411,6 +415,16 @@ class Telegram(Module):
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
                                   reply_markup=reply_markup)
+
+    def _process_log_entry(self, entry: LogEvent, sender: str):
+        """Process a new log entry.
+
+        Args:
+            entry: The log event.
+            sender: Name of sender.
+        """
+
+        print(entry)
 
 
 __all__ = ['Telegram']

@@ -105,7 +105,7 @@ class FollowMixin:
                 device = self.proxy(self.__follow_device, self.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
-                log.error('Cannot follow module, since it is of wrong type.')
+                log.warning('Cannot follow module, since it is of wrong type.')
                 self.closing.wait(self.__follow_interval * 10)
                 continue
 

@@ -34,7 +34,7 @@ class AstrometryDotNet(Astrometry):
 
         # nothing?
         if cat is None or len(cat) < 3:
-            log.error('Not enough sources for astrometry.')
+            log.warning('Not enough sources for astrometry.')
             image.header['WCSERR'] = 1
             return False
 
@@ -72,9 +72,9 @@ class AstrometryDotNet(Astrometry):
             # set error
             image.header['WCSERR'] = 1
             if 'error' in r.json():
-                log.error('Received error from astrometry service: %s', r.json()['error'])
+                log.warning('Received error from astrometry service: %s', r.json()['error'])
             else:
-                log.error('Could not connect to astrometry service.')
+                log.warning('Could not connect to astrometry service.')
             return False
 
         else:

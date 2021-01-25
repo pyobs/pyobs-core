@@ -91,7 +91,7 @@ class WeatherAwareMixin:
                         try:
                             self.park()
                         except:
-                            log.error('Could not close roof.')
+                            log.error('Could not close roof on bad weather.')
                 else:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 

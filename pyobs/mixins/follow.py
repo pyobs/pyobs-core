@@ -92,6 +92,7 @@ class FollowMixin:
         self.closing.wait(10)
 
         # run until closing
+        connected = None
         while not self.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
@@ -113,9 +114,12 @@ class FollowMixin:
                 my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
                 x, y = get_coord(device, self.__follow_mode).wait()
                 other_coords = build_skycoord((x, y), self.__follow_mode)
+                connected = True
             except (ValueError, RemoteException):
-                log.error('Could not fetch coordinates.')
-                self.closing.wait(self.__follow_interval * 10)
+                if not connected:
+                    log.error('Could not fetch coordinates.')
+                connected = False
+                self.closing.wait(self.__follow_interval * 10.)
                 continue
 
             # is separation larger than tolerance?

@@ -305,6 +305,13 @@ class Telegram(Module):
                                           message_id=context.user_data['exec_query_message'],
                                           chat_id=context.user_data['exec_query_chat'])
 
+            # send message
+            command = context.user_data['method'] + '(' + \
+                      ', '.join(['"%s"' % p if isinstance(p, str) else str(p)
+                                 for p in context.user_data['params']]) + \
+                      ')'
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Executing #%d:\n%s' % (call_id, command))
+
             # start call
             Thread(target=self._call_method, args=(context, update.effective_chat.id, call_id,
                                                    context.user_data['method'],
@@ -347,10 +354,16 @@ class Telegram(Module):
         func = getattr(proxy, method_name)
         response = func(*params).wait()
 
-        # format message
-        with io.StringIO() as sio:
-            pprint(response, stream=sio, indent=2, sort_dicts=False)
-            message = 'Finished #%d:\n%s' % (call_id, sio.getvalue())
+        # set message
+        if response is None:
+            message = 'Finished #%d.' % call_id
+
+        else:
+            # format message
+            with io.StringIO() as sio:
+                # format response
+                pprint(response, stream=sio, indent=2, sort_dicts=False)
+                message = 'Finished #%d:\n%s' % (call_id, sio.getvalue())
 
         # send reply
         context.bot.send_message(chat_id=chat_id, text=message)

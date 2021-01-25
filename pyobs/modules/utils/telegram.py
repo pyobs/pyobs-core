@@ -41,7 +41,7 @@ class Telegram(Module):
         self._updater = None
 
         # get log levels
-        self._log_levels = {x: logging.getLevelName(x) for x in range(1, 101)
+        self._log_levels = {logging.getLevelName(x): x for x in range(1, 101)
                             if not logging.getLevelName(x).startswith('Level')}
 
     def open(self):
@@ -314,7 +314,6 @@ class Telegram(Module):
             next_param: Parameter = params[nparams][1]
 
             # format it
-            print(next_param.default, type(next_param.default))
             message = 'Value for ' + next_param.name
             if next_param.annotation is not None:
                 message += ': ' + next_param.annotation.__name__
@@ -409,16 +408,12 @@ class Telegram(Module):
         # set state
         context.user_data['state'] = TelegramUserState.LOG_LEVEL
 
-        # get named log levels
-        levels = [logging.getLevelName(x) for x in range(1, 101)
-                  if not logging.getLevelName(x).startswith('Level')]
-
         # get current level
         s = context.bot_data['storage']
         current_level = s['users'][update.message.from_user.id]['loglevel']
 
         # create buttons for all log levels
-        keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in levels] + \
+        keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in self._log_levels.keys()] + \
                    [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
@@ -432,7 +427,24 @@ class Telegram(Module):
             sender: Name of sender.
         """
 
-        print(entry)
+        # get numerical value for log level
+        level = self._log_levels[entry.level]
+
+        # build log message
+        message = '(%s) %s: %s' % (entry.level, sender, entry.message)
+
+        # get storage
+        s = self._updater.dispatcher.bot_data['storage']
+
+        # loop users
+        for user_id, user in s['users'].items():
+            # get user log level
+            user_level = self._log_levels[user['loglevel']] if user['loglevel'] in self._log_levels else 100
+
+            # is it larger than the log entry level?
+            if level >= user_level:
+                # send message
+                self._updater.bot.send_message(chat_id=user_id, text=message)
 
 
 __all__ = ['Telegram']

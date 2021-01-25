@@ -39,6 +39,10 @@ class Telegram(Module):
         self._password = password
         self._updater = None
 
+        # get log levels
+        self._log_levels = {x: logging.getLevelName(x) for x in range(1, 101)
+                            if not logging.getLevelName(x).startswith('Level')}
+
     def open(self):
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
@@ -61,6 +65,12 @@ class Telegram(Module):
         # add callback handler for buttons
         dispatcher.add_handler(CallbackQueryHandler(self._handle_buttons))
 
+        # load storage file
+        try:
+            dispatcher.bot_data['storage'] = self.vfs.read_yaml('/pyobs/telegram.yaml')
+        except FileNotFoundError:
+            dispatcher.bot_data['storage'] = {}
+
         # start polling
         self._updater.start_polling()
 
@@ -71,49 +81,46 @@ class Telegram(Module):
         # stop telegram
         self._updater.stop()
 
-    def _load_users(self) -> dict:
-        """Load user file."""
-        # try to load file
-        try:
-            return self.vfs.read_yaml('/pyobs/telegram.yaml')
-        except FileNotFoundError:
-            return {}
-
-    def _save_users(self, users: dict):
-        """Save user file.
+    def _save_storage(self, context: CallbackContext):
+        """Save storage file.
 
         Args:
-            users: Users dictionary.
+            context: Telegram context.
         """
-        self.vfs.write_yaml(users, '/pyobs/telegram.yaml')
+        self.vfs.write_yaml(context.bot_data['storage'], '/pyobs/telegram.yaml')
 
-    def _is_user_authorized(self, user_id: int) -> bool:
+    @staticmethod
+    def _is_user_authorized(context: CallbackContext, user_id: int) -> bool:
         """Is user authorized?
 
         Args:
+            context: Telegram context.
             user_id: ID of user.
 
         Returns:
             Whether user is known and authorized to give commands.
         """
-        users = self._load_users()
-        return 'users' in users and user_id in users['users']
+        s = context.bot_data['storage']
+        return 'users' in s and user_id in s['users']
 
-    def _store_user(self, user_id: int, name: str):
+    def _store_user(self, context: CallbackContext, user_id: int, name: str):
         """Store new user in auth database.
 
         Args:
+            context: Telegram context.
             user_id: ID of user.
             name: Name of user.
         """
 
         # add user
-        users = self._load_users()
-        users['users'][user_id] = {
+        s = context.bot_data['storage']
+        if 'users' not in s:
+            s['users'] = {}
+        s['users'][user_id] = {
             'name': name,
-            'log_level': None
+            'loglevel': None
         }
-        self._save_users(users)
+        self._save_storage(context)
 
     def _command_start(self, update: Update, context: CallbackContext):
         """Handle /start command.
@@ -124,7 +131,7 @@ class Telegram(Module):
         """
 
         # is user already known?
-        if self._is_user_authorized(update.message.from_user.id):
+        if self._is_user_authorized(context, update.message.from_user.id):
             # welcome him back
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text='Welcome back %s!' % update.message.from_user.first_name)
@@ -143,8 +150,8 @@ class Telegram(Module):
         """
 
         # not logged in?
-        if not self._is_user_authorized(update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in')
+        if not self._is_user_authorized(context, update.message.from_user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
             return
 
         # create buttons for all modules
@@ -156,7 +163,8 @@ class Telegram(Module):
         # go to EXEC_MODULE state
         context.user_data['state'] = TelegramUserState.EXEC_MODULE
 
-    def _reset_state(self, context):
+    @staticmethod
+    def _reset_state(context):
         """Reset state."""
         context.user_data['state'] = TelegramUserState.IDLE
         context.user_data['method'] = None
@@ -175,8 +183,8 @@ class Telegram(Module):
         query = update.callback_query
 
         # not logged in?
-        if not self._is_user_authorized(query.from_user.id):
-            query.edit_message_text(text='Not logged in.')
+        if not self._is_user_authorized(context, query.from_user.id):
+            query.edit_message_text(text='Not logged in, use /start.')
             return
 
         # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -228,9 +236,9 @@ class Telegram(Module):
 
         elif context.user_data['state'] == TelegramUserState.LOG_LEVEL:
             # set log level
-            users = self._load_users()
-            users['users'][query.from_user.id]['loglevel'] = query.data
-            self._save_users(users)
+            s = context.bot_data['storage']
+            s['users'][query.from_user.id]['loglevel'] = query.data
+            self._save_storage(context)
 
             # change to IDLE state
             query.edit_message_text(text='Changed log level to %s.' % query.data)
@@ -355,7 +363,7 @@ class Telegram(Module):
                 # Yes, successful AUTH
                 context.bot.send_message(chat_id=update.effective_chat.id, text='AUTH successful.')
                 context.user_data['state'] = TelegramUserState.IDLE
-                self._store_user(update.message.from_user.id, update.message.from_user.first_name)
+                self._store_user(context, update.message.from_user.id, update.message.from_user.first_name)
 
             else:
                 context.bot.send_message(chat_id=update.effective_chat.id, text='AUTH failed, try again.')
@@ -373,8 +381,8 @@ class Telegram(Module):
         """
 
         # not logged in?
-        if not self._is_user_authorized(update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in')
+        if not self._is_user_authorized(context, update.message.from_user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
             return
 
         # list all modules
@@ -390,8 +398,8 @@ class Telegram(Module):
         """
 
         # not logged in?
-        if not self._is_user_authorized(update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in')
+        if not self._is_user_authorized(context, update.message.from_user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
             return
 
         # set state
@@ -402,11 +410,11 @@ class Telegram(Module):
                   if not logging.getLevelName(x).startswith('Level')]
 
         # get current level
-        users = self._load_users()
-        current_level = users['users'][update.message.from_user.id]['loglevel']
+        s = context.bot_data['storage']
+        current_level = s['users'][update.message.from_user.id]['loglevel']
 
         # create buttons for all log levels
-        keyboard = [[InlineKeyboardButton(l, callback_data=l)] for l in levels] + \
+        keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in levels] + \
                    [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,

@@ -88,7 +88,10 @@ class WeatherAwareMixin:
                     if self.__is_weather_good is False and \
                             self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.PARKING]:
                         log.warning('Weather seems to be bad, shutting down.')
-                        self.park()
+                        try:
+                            self.park()
+                        except:
+                            log.error('Could not close roof.')
                 else:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 

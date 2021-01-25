@@ -72,9 +72,13 @@ class AstrometryDotNet(Astrometry):
             # set error
             image.header['WCSERR'] = 1
             if 'error' in r.json():
-                log.warning('Received error from astrometry service: %s', r.json()['error'])
+                # "Could not find WCS file." is just an info, which means that WCS was not successful
+                if r.json()['error'] == 'Could not find WCS file.':
+                    log.info('Could not determine WCS.')
+                else:
+                    log.warning('Received error from astrometry service: %s', r.json()['error'])
             else:
-                log.warning('Could not connect to astrometry service.')
+                log.error('Could not connect to astrometry service.')
             return False
 
         else:

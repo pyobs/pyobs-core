@@ -109,12 +109,12 @@ class FollowMixin:
                 continue
 
             # get coordinates from other and from myself
-            my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
             try:
+                my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
                 x, y = get_coord(device, self.__follow_mode).wait()
                 other_coords = build_skycoord((x, y), self.__follow_mode)
-            except RemoteException:
-                log.error('Module currently not available.')
+            except (ValueError, RemoteException):
+                log.error('Could not fetch coordinates.')
                 self.closing.wait(self.__follow_interval * 10)
                 continue
 

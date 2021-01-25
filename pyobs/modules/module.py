@@ -240,14 +240,11 @@ class Module(Object, IModule, IConfig):
         del ba.arguments['args']
         del ba.arguments['kwargs']
 
-        try:
-            # call method
-            response = func(*func_args, **ba.arguments, **func_kwargs)
+        # call method
+        response = func(*func_args, **ba.arguments, **func_kwargs)
 
-            # finished
-            return cast_response_to_simple(response)
-        except Exception as e:
-            log.exception('Error on remote procedure call: %s' % str(e))
+        # finished
+        return cast_response_to_simple(response)
 
     def _get_config_options(self) -> dict:
         """Returns a dictionary with config options."""

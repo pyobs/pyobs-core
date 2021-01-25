@@ -299,14 +299,8 @@ class Telegram(Module):
             context.user_data['ncalls'] += 1
             call_id = context.user_data['ncalls']
 
-            # build command
-            command = '/exec ' + context.user_data['method'] + '(' + \
-                      ', '.join(['"%s"' % p if isinstance(p, str) else str(p)
-                                 for p in context.user_data['params']]) + \
-                      ')'
-
             # remove cancel button, and show command
-            msg = 'Executing #%d:\n%s' % (call_id, command)
+            msg = 'Executing %s...' % context.user_data['method']
             context.bot.edit_message_text(text=msg,
                                           message_id=context.user_data['exec_query_message'],
                                           chat_id=context.user_data['exec_query_chat'])

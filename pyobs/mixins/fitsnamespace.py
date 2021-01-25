@@ -25,7 +25,7 @@ class FitsNamespaceMixin:
         """
 
         # no namespaces?
-        if self.__namespaces is None:
+        if not self.__namespaces:
             return hdr
 
         # get list of FITS headers that we let pass

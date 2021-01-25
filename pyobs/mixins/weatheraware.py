@@ -72,13 +72,15 @@ class WeatherAwareMixin:
                     self.__is_weather_good = True
 
                 else:
-                    # get proxy
-                    weather: IWeather = self.proxy(self.__weather, IWeather)
-
-                    # get good status
                     try:
+                        # get proxy
+                        weather: IWeather = self.proxy(self.__weather, IWeather)
+
+                        # get good status
                         self.__is_weather_good = weather.is_weather_good().wait()
+
                     except:
+                        # could either not connect or weather is not good
                         self.__is_weather_good = False
 
                 # if not good, park now

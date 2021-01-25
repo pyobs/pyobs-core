@@ -102,7 +102,7 @@ class OnlineReduction(Module):
                     filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
                     date_obs = Time(image.header['DATE-OBS'])
                 except KeyError:
-                    log.error('Missing header keywords.')
+                    log.warning('Missing header keywords.')
                     continue
 
                 # get master calibration frames
@@ -112,7 +112,7 @@ class OnlineReduction(Module):
 
                 # anything missing?
                 if bias is None or dark is None or flat is None:
-                    log.error('Could not find BIAS/DARK/FLAT, skipping frame...')
+                    log.warning('Could not find BIAS/DARK/FLAT, skipping frame...')
                     continue
 
             # calibrate

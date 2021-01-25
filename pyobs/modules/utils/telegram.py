@@ -362,7 +362,7 @@ class Telegram(Module):
             # format message
             with io.StringIO() as sio:
                 # format response
-                pprint(response, stream=sio, indent=2, sort_dicts=False)
+                pprint(response, stream=sio, indent=2)
                 message = 'Finished #%d:\n%s' % (call_id, sio.getvalue())
 
         # send reply

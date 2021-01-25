@@ -21,8 +21,6 @@ class WeatherAwareMixin:
 
     def open(self):
         """Open mixin."""
-        self: (Module, WeatherAwareMixin)
-
         # subscribe to events
         if self.comm:
             self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
@@ -85,7 +83,8 @@ class WeatherAwareMixin:
 
                 # if not good, park now
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-                    if self.__is_weather_good is False and self.get_motion_status() != IMotion.Status.PARKED:
+                    if self.__is_weather_good is False and \
+                            self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.PARKING]:
                         log.warning('Weather seems to be bad, shutting down.')
                         self.park()
                 else:

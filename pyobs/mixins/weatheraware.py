@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional, Union
 
 from pyobs import Module
@@ -64,6 +65,9 @@ class WeatherAwareMixin:
             # wait a little
             self.closing.wait(10)
 
+            # time of last park attempt
+            last_park_attempt = None
+
             # run until closing
             while not self.closing.is_set():
                 # got a weather module?
@@ -87,11 +91,19 @@ class WeatherAwareMixin:
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
                     if self.__is_weather_good is False and \
                             self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.PARKING]:
-                        log.warning('Weather seems to be bad, shutting down.')
                         try:
                             self.park()
+                            log.info('Weather seems to be bad, shutting down.')
                         except:
-                            log.error('Could not close roof on bad weather.')
+                            # only log, if last attempt is more than 60s ago
+                            # this is useful, so that we don't get log messages every 10 seconds but only the first one
+                            # in a series
+                            if last_park_attempt is None or time.time() - last_park_attempt > 60:
+                                log.error('Could not park on bad weather.')
+
+                        # store attempt time
+                        last_park_attempt = time.time()
+
                 else:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 

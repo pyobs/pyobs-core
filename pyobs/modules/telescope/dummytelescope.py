@@ -11,7 +11,6 @@ from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, I
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
-from pyobs.utils.simulation.world import SimWorld
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
@@ -22,7 +21,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
 
-    def __init__(self, world: SimWorld = None, *args, **kwargs):
+    def __init__(self, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, *args, **kwargs)

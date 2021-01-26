@@ -42,6 +42,12 @@ class AstrometryDotNet(Astrometry):
         cat.sort(['flux'], reverse=True)
         cat = cat[:self.source_count]
 
+        # no CDELT1?
+        if 'CDELT1' not in image.header:
+            log.warning('No CDELT1 found in header.')
+            image.header['WCSERR'] = 1
+            return False
+
         # build request data
         scale = abs(image.header['CDELT1']) * 3600
         data = {

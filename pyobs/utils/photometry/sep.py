@@ -120,8 +120,8 @@ class SepPhotometry(Photometry):
         sources['ywin'] = ywin
 
         # perform aperture photometry for diameters of 1" to 8"
-        if image.pixel_scale is not None:
-            for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
+        for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
+            if image.pixel_scale is not None:
                 flux, fluxerr, flag = sep.sum_circle(data, sources['x'], sources['y'],
                                                      diameter / 2. / image.pixel_scale,
                                                      mask=mask, err=bkg.rms(), gain=gain)
@@ -129,6 +129,10 @@ class SepPhotometry(Photometry):
                 sources['fluxerr{0}'.format(diameter)] = fluxerr
                 sources['flag'] |= flag
                 sources['flag'] |= flag
+
+            else:
+                sources['fluxaper{0}'.format(diameter)] = None
+                sources['fluxerr{0}'.format(diameter)] = None
 
         # average background at each source
         # since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area

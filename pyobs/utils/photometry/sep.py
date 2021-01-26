@@ -131,8 +131,8 @@ class SepPhotometry(Photometry):
                 sources['flag'] |= flag
 
             else:
-                sources['fluxaper{0}'.format(diameter)] = None
-                sources['fluxerr{0}'.format(diameter)] = None
+                sources['fluxaper{0}'.format(diameter)] = 0
+                sources['fluxerr{0}'.format(diameter)] = 0
 
         # average background at each source
         # since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area

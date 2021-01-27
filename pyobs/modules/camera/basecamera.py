@@ -8,7 +8,7 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-from pyobs.comm import TimeoutException
+from pyobs.comm import TimeoutException, InvocationException
 from pyobs.utils.enums import ImageType
 from pyobs.utils.images import Image
 
@@ -399,6 +399,9 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
                 headers = future.wait()
             except TimeoutException:
                 log.error('Fetching FITS headers from %s timed out.', client)
+                continue
+            except InvocationException as e:
+                log.error('Could not fetch FITS headers from %s: %s.', client, e.get_message())
                 continue
 
             # add them to fits file

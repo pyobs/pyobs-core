@@ -205,7 +205,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             alt, az = self.get_altaz()
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
         except:
-            log.error('Could not fetch telescope position.')
+            log.warning('Could not fetch telescope position.')
             coords_ra_dec, coords_alt_az = None, None
 
         # set coordinate headers

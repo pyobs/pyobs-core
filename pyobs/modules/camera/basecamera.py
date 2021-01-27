@@ -398,10 +398,10 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
             try:
                 headers = future.wait()
             except TimeoutException:
-                log.error('Fetching FITS headers from %s timed out.', client)
+                log.warning('Fetching FITS headers from %s timed out.', client)
                 continue
             except InvocationException as e:
-                log.error('Could not fetch FITS headers from %s: %s.', client, e.get_message())
+                log.warning('Could not fetch FITS headers from %s: %s.', client, e.get_message())
                 continue
 
             # add them to fits file

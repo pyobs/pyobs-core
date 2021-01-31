@@ -198,7 +198,7 @@ class LcoTaskArchive(TaskArchive):
             'start_before': start_before.isot,
             'state': state,
             'request_state': state,
-            'limit': 100
+            'limit': 1000
         }
 
         # do request

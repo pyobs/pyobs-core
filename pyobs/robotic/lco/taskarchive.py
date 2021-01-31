@@ -196,7 +196,9 @@ class LcoTaskArchive(TaskArchive):
             'site': self._site,
             'end_after': end_after.isot,
             'start_before': start_before.isot,
-            'state': state
+            'state': state,
+            'request_state': state,
+            'limit': 100
         }
 
         # do request

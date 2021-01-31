@@ -133,7 +133,7 @@ class FlatField(Module, IFlatField):
         log.info('Flat-fielding finished.')
 
         # return number of taken images
-        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+        return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
     @timeout(20)
     def abort(self, *args, **kwargs):

@@ -78,8 +78,11 @@ class PyobsArchive(Archive):
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
                                    filter_name, rlevel)
+
+        # set offset and limit
+        # TODO: instead of setting large limit, request multiple pages, if necessary
         params['offset'] = 0
-        params['limit'] = 1000
+        params['limit'] = 10000
 
         # do request
         r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)

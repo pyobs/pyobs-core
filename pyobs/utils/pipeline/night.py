@@ -96,7 +96,7 @@ class Night:
         # get calibration frames
         bias = self._find_master(BiasImage, instrument, binning)
         dark = self._find_master(DarkImage, instrument, binning)
-        flat = self._find_master(FlatImage, instrument, binning, filter_name, max_days=60)
+        flat = self._find_master(FlatImage, instrument, binning, filter_name, max_days=90)
 
         # anything missing?
         if bias is None or dark is None or flat is None:

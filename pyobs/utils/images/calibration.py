@@ -89,7 +89,7 @@ class CalibrationImage(Image):
 
         # found any?
         if len(infos) == 0:
-            log.warning('Could not find any matching calibration frames.')
+            log.warning('Could not find any matching %s calibration frames.', image_type.value)
             return None
         else:
             # sort by diff to time and take first

@@ -57,7 +57,7 @@ class CalibrationImage(Image):
 
     @classmethod
     def find_master(cls: Type['CalibrationImage'], archive: 'Archive', time: Time, instrument: str,
-                    binning: str, filter_name: str = None) -> Union[None, FrameInfo]:
+                    binning: str, filter_name: str = None, max_days: float = 30.) -> Union[None, FrameInfo]:
         """Find and download master calibration frame.
 
         Args:
@@ -66,6 +66,7 @@ class CalibrationImage(Image):
             instrument: Instrument to use.
             binning: Used binning.
             filter_name: Used filter.
+            max_days: Maximum number of days from DATE-OBS to find frames.
 
         Returns:
             FrameInfo for master calibration frame or None.
@@ -82,7 +83,7 @@ class CalibrationImage(Image):
         # find reduced frames from +- 30 days
         log.info('Searching for %s %s master calibration frames%s from instrument %s.',
                  binning, image_type.value, '' if filter_name is None else ' in ' + filter_name, instrument)
-        infos = archive.list_frames(start=time - 30 * u.day, end=time + 30 * u.day,
+        infos = archive.list_frames(start=time - max_days * u.day, end=time + max_days * u.day,
                                     instrument=instrument, image_type=image_type, binning=binning,
                                     filter_name=filter_name, rlevel=1)
 

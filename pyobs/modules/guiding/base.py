@@ -194,7 +194,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         dx, dy = self._guiding_offset.find_pixel_offset(image)
 
         if dx is None or dy is None:
-            log.error('Could not correlate image with reference.')
+            log.warning('Could not correlate image with reference.')
             return
         else:
             log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)

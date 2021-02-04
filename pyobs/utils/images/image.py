@@ -245,5 +245,41 @@ class Image:
         else:
             return None
 
+    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytearray:
+        """Returns a JPEG image created from this image.
+
+        Returns:
+            The image.
+        """
+
+        # import PIL Image
+        import PIL
+
+        # copy data
+        data = np.copy(self.data)
+
+        # no vmin/vmax?
+        if vmin is None or vmax is None:
+            flattened = sorted(data.flatten())
+            vmin = flattened[int(0.05 * len(flattened))]
+            vmax = flattened[int(0.95 * len(flattened))]
+
+        # Clip data to brightness limits
+        data[data > vmax] = vmax
+        data[data < vmin] = vmin
+
+        # Scale data to range [0, 1]
+        data = (data - vmin) / (vmax - vmin)
+
+        # Convert to 8-bit integer
+        data = (255 * data).astype(np.uint8)
+
+        # Invert y axis
+        data = data[::-1, :]
+
+        # create image from data array
+        image = PIL.Image.fromarray(data, 'L')
+        return image.to_jpeg()
+
 
 __all__ = ['Image']

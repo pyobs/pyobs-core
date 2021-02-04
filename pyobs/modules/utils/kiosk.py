@@ -1,10 +1,12 @@
 import asyncio
+import io
 import logging
 import threading
 from typing import Union
 import tornado.ioloop
 import tornado.web
 import tornado.gen
+import numpy as np
 
 from pyobs import Module
 from pyobs.interfaces import ICamera, ICameraExposureTime, IStoppable, ICameraWindow
@@ -18,13 +20,31 @@ class MainHandler(tornado.web.RequestHandler):
     def initialize(self):
         """Initializes the handler (instead of in the constructor)"""
 
+        # create empty image
+        from PIL import Image, ImageDraw
+        img = Image.new('RGB', (300, 300), color=(0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.text((110, 150), "No image taken yet", fill=(255, 255, 255))
+
+        # create image from data array
+        with io.BytesIO() as bio:
+            img.save(bio, format='jpeg')
+            self._empty = bio.getvalue()
+
     @tornado.gen.coroutine
     def get(self):
         """Handle download request."""
 
+        # get image
+        image = self.application.image()
+
+        # none?
+        if image is None:
+            image = self._empty
+
         # set headers and send data
-        self.set_header('content-type', 'image/jpg')
-        self.write(self.application.image())
+        self.set_header('content-type', 'image/jpeg')
+        self.write(image)
         self.finish()
 
 
@@ -57,6 +77,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
         self._port = port
         self._exp_time = 2
         self._running = False
+        self._image = None
 
     def close(self):
         """Close server."""
@@ -126,17 +147,28 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
                 camera.set_window(*full_frame).wait()
 
             # do exposure
-            filename = camera.expose(False)
+            filename = camera.expose(False).wait()
 
             # download image
             try:
-                image = self.vfs.read_fits_image(filename)
+                image = self.vfs.read_image(filename)
             except FileNotFoundError:
                 continue
 
             # convert it to JPEG
             with self._lock:
                 self._image = image.to_jpeg()
+
+            # adjust exposure time?
+            if isinstance(camera, ICameraExposureTime):
+                # get max value in image
+                max_val = np.max(image.data)
+
+                # adjust
+                self._exp_time = self._exp_time / max_val * 40000
+
+                # cut
+                self._exp_time = max(self._exp_time, 30)
 
     def image(self):
         """Return image data."""

@@ -245,7 +245,7 @@ class Image:
         else:
             return None
 
-    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytearray:
+    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytes:
         """Returns a JPEG image created from this image.
 
         Returns:
@@ -253,7 +253,7 @@ class Image:
         """
 
         # import PIL Image
-        import PIL
+        import PIL.Image
 
         # copy data
         data = np.copy(self.data)
@@ -279,7 +279,9 @@ class Image:
 
         # create image from data array
         image = PIL.Image.fromarray(data, 'L')
-        return image.to_jpeg()
+        with io.BytesIO() as bio:
+            image.save(bio, format='jpeg')
+            return bio.getvalue()
 
 
 __all__ = ['Image']

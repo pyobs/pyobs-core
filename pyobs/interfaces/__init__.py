@@ -10,7 +10,6 @@ from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .ICameraBinning import ICameraBinning
 from .ICameraExposureTime import ICameraExposureTime
-from .ICameraMode import ICameraMode
 from .ICameraWindow import ICameraWindow
 from .IConfig import IConfig
 from .ICooling import ICooling
@@ -21,6 +20,7 @@ from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
+from .IImageFormat import IImageFormat
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion

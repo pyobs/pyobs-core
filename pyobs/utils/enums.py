@@ -11,4 +11,13 @@ class ImageType(Enum):
     ACQUISITION = 'acquisition'
 
 
-__all__ = ['ImageType']
+class ImageFormat(Enum):
+    """Enumerator for image formats."""
+    INT8 = 'int8'
+    INT16 = 'int16'
+    FLOAT32 = 'float32'
+    FLOAT64 = 'float64'
+    RGB24 = 'rgb24'
+
+
+__all__ = ['ImageType', 'ImageFormat']

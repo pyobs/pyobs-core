@@ -324,7 +324,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # set it
         hdr['FRAMENUM'] = self._frame_num
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:

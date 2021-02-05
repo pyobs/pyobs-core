@@ -82,12 +82,13 @@ class MainHandler(tornado.web.RequestHandler):
 class HttpFileCacheServer(Module, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
-    def __init__(self, port: int = 37075, cache_size: int = 25, *args, **kwargs):
+    def __init__(self, port: int = 37075, cache_size: int = 25, max_file_size: int = 100, *args, **kwargs):
         """Initializes file cache.
 
         Args:
             port: Port for HTTP server.
             cache_size: Size of file cache, i.e. number of files to cache.
+            max_file_size: Maximum file size in MB.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -106,6 +107,7 @@ class HttpFileCacheServer(Module, tornado.web.Application):
         self._is_listening = False
         self._port = port
         self._cache_size = cache_size
+        self._max_file_size = max_file_size
 
     def close(self):
         """Close server."""
@@ -129,7 +131,7 @@ class HttpFileCacheServer(Module, tornado.web.Application):
 
         # start listening
         log.info('Starting HTTP file cache on port %d...', self._port)
-        self.listen(self._port)
+        self.listen(self._port, max_buffer_size=self._max_file_size * 1024 * 1024)
 
         # start the io loop
         self._is_listening = True

@@ -76,7 +76,7 @@ class Image:
             raise ValueError('Could not find HDU with main image.')
 
         # get data
-        image.data = image_hdu.data.astype(np.float)
+        image.data = image_hdu.data
         image.header = image_hdu.header
 
         # mask

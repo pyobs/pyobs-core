@@ -215,7 +215,8 @@ class SimCamera(Object):
         self.binning = (1, 1)
         self.pixel_size = pixel_size
         self.image_format = ImageFormat.INT16
-        self.images = [] if images is None else sorted(glob.glob(images))
+        self.images = [] if images is None else sorted(glob.glob(images)) \
+            if '*' in images or '?' in images else [images]
 
         # private stuff
         self._catalog = None

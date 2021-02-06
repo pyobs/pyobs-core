@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import glob
 import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -10,11 +11,12 @@ import random
 from astropy.wcs import WCS
 from astropy.io import fits
 from astroquery.gaia import Gaia
-from photutils.datasets import make_gaussian_prf_sources_image
+from photutils.datasets import make_gaussian_prf_sources_image, make_gaussian_sources_image
 from photutils.datasets import make_noise_image
 
 from pyobs.interfaces import IMotion
 from pyobs.object import create_object, Object
+from pyobs.utils.enums import ImageFormat
 from pyobs.utils.images import Image
 
 
@@ -193,22 +195,27 @@ class SimTelescope(Object):
 
 class SimCamera(Object):
     """A simulated camera."""
-    def __init__(self, world: SimWorld, pixel_size: float = 0.015, *args, **kwargs):
+    def __init__(self, world: SimWorld, image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
+                 images: str = None, *args, **kwargs):
         """Inits a new camera.
 
         Args:
             world: World to use.
+            image_size: Size of image.
             pixel_size: Square pixel size in mm.
+            images: Filename pattern (e.g. /path/to/*.fits) for files to return instead of simulated images.
         """
         Object.__init__(self, *args, **kwargs)
 
         # store
         self.world = world
         self.telescope = world.telescope
-        self.full_frame = (0, 0, 512, 512)
-        self.window = (0, 0, 512, 512)
+        self.full_frame = tuple([0, 0] + list(image_size)) if image_size is not None else (0, 0, 512, 512)
+        self.window = self.full_frame
         self.binning = (1, 1)
         self.pixel_size = pixel_size
+        self.image_format = ImageFormat.INT16
+        self.images = [] if images is None else sorted(glob.glob(images))
 
         # private stuff
         self._catalog = None
@@ -228,15 +235,43 @@ class SimCamera(Object):
         # get now
         now = Time.now()
 
+        # simulate or what?
+        if self.images:
+            # take image from list
+            filename = self.images.pop(0)
+            data = fits.getdata(filename)
+            self.images.append(filename)
+
+        else:
+            # simulate
+            data = self._simulate_image(exp_time, open_shutter)
+
+        # create header
+        hdr = self._create_header(exp_time, open_shutter, now, data)
+
+        # return it
+        return Image(data, header=hdr)
+
+    def _simulate_image(self, exp_time: float, open_shutter: bool) -> Image:
+        """Simulate an image.
+
+        Args:
+            exp_time: Exposure time in seconds.
+            open_shutter: Whether the shutter is opened.
+
+        Returns:
+            numpy array with image.
+        """
+
         # get shape for image
         shape = (int(self.window[3]), int(self.window[2]))
 
         # create image with Gaussian noise for BIAS
-        image = make_noise_image(shape, distribution='gaussian', mean=1e3, stddev=100.)
+        data = make_noise_image(shape, distribution='gaussian', mean=1e3, stddev=100.)
 
         # add DARK
         if exp_time > 0:
-            image += make_noise_image(shape, distribution='gaussian', mean=exp_time / 1e4, stddev=exp_time / 1e5)
+            data += make_noise_image(shape, distribution='gaussian', mean=exp_time / 1e4, stddev=exp_time / 1e5)
 
             # add stars and stuff
             if open_shutter:
@@ -247,22 +282,19 @@ class SimCamera(Object):
                 flat_counts = 30000 / np.exp(-1.28 * (4.209 + sun_alt)) * exp_time
 
                 # create flat
-                image += make_noise_image(shape, distribution='gaussian', mean=flat_counts, stddev=flat_counts / 10.)
+                data += make_noise_image(shape, distribution='gaussian', mean=flat_counts, stddev=flat_counts / 10.)
 
                 # get catalog with sources
                 sources = self._get_sources_table(exp_time)
 
                 # create image
-                image += make_gaussian_prf_sources_image(shape, sources)
+                data += make_gaussian_prf_sources_image(shape, sources)
 
         # saturate
-        image[image > 65535] = 65535
+        data[data > 65535] = 65535
 
-        # create header
-        hdr = self._create_header(exp_time, open_shutter, now, image)
-
-        # return it
-        return Image(image.astype(np.uint16), header=hdr)
+        # finished
+        return data.astype(np.uint16)
 
     def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray):
         # create header
@@ -296,6 +328,8 @@ class SimCamera(Object):
 
     def _get_catalog(self):
         """Returns GAIA catalog for current telescope coordinates."""
+
+        # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
             self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=1. * u.deg)
         return self._catalog
@@ -317,13 +351,16 @@ class SimCamera(Object):
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
+        # set fwhm to 2" in pixels
+        fwhm = 2. / 3600. / cdelt1
+
         # convert world to pixel coordinates
         cat['x'], cat['y'] = w.wcs_world2pix(cat['ra'], cat['dec'], 0)
 
         # get columns
         sources = cat['x', 'y', 'phot_g_mean_flux']
         sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'amplitude'])
-        sources.add_column([1.] * len(sources), name='sigma')
+        sources.add_column([fwhm] * len(sources), name='sigma')
         sources['amplitude'] *= exp_time
 
         # finished

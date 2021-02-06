@@ -383,7 +383,11 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
 
         # flip it?
         if self._flip:
-            image.data = np.flip(image.data, axis=0)
+            # do we have three dimensions in array? need this for deciding which axis to flip
+            is_3d = len(image.data.shape) == 3
+
+            # flip image and make contiguous again
+            image.data = np.ascontiguousarray(np.flip(image.data, axis=1 if is_3d else 0))
 
         # add HDU name
         image.header['EXTNAME'] = 'SCI'

@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import threading
+import warnings
 from typing import Tuple, Optional, Dict, Any, NamedTuple
 import numpy as np
 from astropy.io import fits
@@ -588,6 +589,17 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
+
+    def list_binnings(self, *args, **kwargs) -> list:
+        """List available binnings.
+
+        Returns:
+            List of available binnings.
+        """
+
+        warnings.warn('The default implementation for list_binnings() in BaseCamera will be removed in future versions',
+                      DeprecationWarning)
+        return [1, 2, 3]
 
 
 __all__ = ['BaseCamera', 'CameraException']

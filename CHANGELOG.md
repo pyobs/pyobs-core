@@ -4,6 +4,7 @@
 * Added a Telegram bot module.
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
+* Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
 
 
 ### v0.12 (2021-01-01)

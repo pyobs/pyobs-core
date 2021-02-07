@@ -24,5 +24,13 @@ class ICameraBinning(Interface):
         """
         raise NotImplementedError
 
+    def list_binnings(self, *args, **kwargs) -> list:
+        """List available binnings.
+
+        Returns:
+            List of available binnings.
+        """
+        raise NotImplementedError
+
 
 __all__ = ['ICameraBinning']

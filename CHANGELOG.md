@@ -1,5 +1,11 @@
 ## Changelog
 
+### v0.13 ()
+* Added a Telegram bot module.
+* Added a module for a Kiosk mode, in which pictures are published on a webpage.
+* Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
+
+
 ### v0.12 (2021-01-01)
 
 * Changed PyObsModule to Module.

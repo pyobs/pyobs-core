@@ -594,12 +594,12 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         """List available binnings.
 
         Returns:
-            List of available binnings.
+            List of available binnings as (x, y) tuples.
         """
 
         warnings.warn('The default implementation for list_binnings() in BaseCamera will be removed in future versions',
                       DeprecationWarning)
-        return [1, 2, 3]
+        return [(1, 1), (2, 2), (3, 3)]
 
 
 __all__ = ['BaseCamera', 'CameraException']

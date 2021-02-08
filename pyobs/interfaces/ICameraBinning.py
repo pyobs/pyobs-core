@@ -28,7 +28,7 @@ class ICameraBinning(Interface):
         """List available binnings.
 
         Returns:
-            List of available binnings.
+            List of available binnings as (x, y) tuples.
         """
         raise NotImplementedError
 

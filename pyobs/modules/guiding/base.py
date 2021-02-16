@@ -5,6 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
+from pyobs.utils.pipeline import SoftBinPipelineStep
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
@@ -20,7 +21,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
                  min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
-                 log_file: str = None, *args, **kwargs):
+                 log_file: str = None, soft_bin: int = None, *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
@@ -33,6 +34,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
+            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -57,6 +59,9 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
+
+        # binning
+        self._soft_bin = None if soft_bin is None else SoftBinPipelineStep(binning=soft_bin)
 
     def open(self):
         """Open module."""
@@ -141,6 +146,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
             return
+
+        # bin?
+        if self._soft_bin is not None:
+            image = self._soft_bin(image)
 
         # reference header?
         if self._ref_header is None:

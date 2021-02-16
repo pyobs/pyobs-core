@@ -12,6 +12,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
 from pyobs.utils.images import Image
+from pyobs.utils.pipeline import SoftBinPipelineStep
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
@@ -23,7 +24,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
-                 max_offset: float = 120, log_file: str = None, *args, **kwargs):
+                 max_offset: float = 120, log_file: str = None, soft_bin: int = None, *args, **kwargs):
         """Create a new base acquisition.
 
         Args:
@@ -34,6 +35,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
+            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -49,6 +51,9 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
 
         # init log file
         self._publisher = CsvPublisher(log_file)
+
+        # binning
+        self._soft_bin = None if soft_bin is None else SoftBinPipelineStep(binning=soft_bin)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)
@@ -107,6 +112,10 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             # download image
             log.info('Downloading image...')
             img = self.vfs.read_image(filename)
+
+            # bin?
+            if self._soft_bin is not None:
+                img = self._soft_bin(img)
 
             # get target pixel
             if self._target_pixel is None:

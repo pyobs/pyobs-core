@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs import Module
-from pyobs.interfaces import IAcquisition, IAutonomous
+from pyobs.interfaces import IAcquisition, IAutonomous, ITelescope
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -17,7 +17,8 @@ class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
-                 exp_time: float = 1., acquisition: str = 'acquisition', *args, **kwargs):
+                 exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
+                 *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
@@ -28,6 +29,7 @@ class PointingSeries(Module, IAutonomous):
             finish: When this number in percent of points have been finished, terminate mastermind.
             exp_time: Exposure time in secs.
             acquisition: IAcquisition unit to use.
+            telescope: ITelescope unit to use.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -39,6 +41,7 @@ class PointingSeries(Module, IAutonomous):
         self._finish = 1. - finish / 100.
         self._exp_time = exp_time
         self._acquisition = acquisition
+        self._telescope = telescope
 
         # add thread func
         self._add_thread_func(self._run_thread, False)
@@ -69,8 +72,9 @@ class PointingSeries(Module, IAutonomous):
         # to dataframe
         grid = pd.DataFrame(grid).set_index(['alt', 'az'])
 
-        # get acquisition unit
+        # get acquisition and telescope units
         acquisition: IAcquisition = self.proxy(self._acquisition, IAcquisition)
+        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
 
         # loop until finished
         while not self.closing.is_set():
@@ -116,9 +120,16 @@ class PointingSeries(Module, IAutonomous):
 
             # acquire target and process result
             try:
-                acq = acquisition.acquire_target(self._exp_time, float(radec.ra.degree), float(radec.dec.degree)).wait()
+                # move telescope
+                telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree)).wait()
+
+                # acquire target
+                acq = acquisition.acquire_target(self._exp_time).wait()
+
+                #  process result
                 if acq is not None:
                     self._process_acquisition(**acq)
+
             except ValueError:
                 log.info('Could not acquire target.')
                 continue

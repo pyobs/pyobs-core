@@ -21,8 +21,8 @@ class PointingSeries(Module, IAutonomous):
         """Initialize a new auto focus system.
 
         Args:
-            min_alt: Mininum altitude to use.
-            max_alt: Maximum altidude to use.
+            min_alt: Minimum altitude to use.
+            max_alt: Maximum altitude to use.
             num_alt: Number of altitude points to create on grid.
             num_az: Number of azimuth points to create on grid.
             finish: When this number in percent of points have been finished, terminate mastermind.

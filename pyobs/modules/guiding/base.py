@@ -44,6 +44,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._camera = camera
         self._telescope = telescope
         self._enabled = False
+        self._min_offset = min_offset
         self._max_offset = max_offset
         self._max_exposure_time = max_exposure_time
         self._min_interval = min_interval

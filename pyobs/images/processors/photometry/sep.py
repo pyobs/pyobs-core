@@ -47,7 +47,7 @@ class SepPhotometry(Photometry):
         import sep
 
         # get data and make it continuous
-        data = image.data.copy()
+        data = image.data.astype(np.float)
 
         # mask?
         mask = image.mask.data if image.mask is not None else None

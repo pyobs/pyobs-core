@@ -32,12 +32,12 @@ class SoftBin(ImageProcessor):
         image.header['NAXIS2'], image.header['NAXIS1'] = image.data.shape
 
         # divide some header entries by binning
-        for key in ['CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2']:
+        for key in ['CRPIX1', 'CRPIX2']:
             if key in image.header:
                 image.header[key] /= self.binning
 
         # multiply some header entries with binning
-        for key in ['DET-BIN1', 'DET-BIN2', 'XBINNING', 'YBINNING']:
+        for key in ['DET-BIN1', 'DET-BIN2', 'XBINNING', 'YBINNING', 'CDELT1', 'CDELT2']:
             if key in image.header:
                 image.header[key] *= self.binning
 

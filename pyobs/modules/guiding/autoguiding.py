@@ -59,7 +59,7 @@ class AutoGuiding(BaseGuiding):
                 if isinstance(camera, ICameraExposureTime):
                     # set exposure time
                     exp_time = self._exposure_time if self._exposure_time is not None else self._initial_exposure_time
-                    log.info('Taking image with an exposure time of %dms...', exp_time)
+                    log.info('Taking image with an exposure time of %.2fs...', exp_time)
                     camera.set_exposure_time(exp_time)
                 else:
                     log.info('Taking image...')
@@ -73,7 +73,6 @@ class AutoGuiding(BaseGuiding):
                 # need to estimate exposure time?
                 if self._exposure_time is None and exp_time_estimator is not None:
                     new_exp_time = exp_time_estimator(image)
-                    print(new_exp_time, exp_time_estimator.coordinates)
                     self._exposure_time = max(min(new_exp_time, 5), 0.1)
 
                 # process it

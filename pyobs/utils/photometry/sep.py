@@ -3,7 +3,7 @@ import logging
 import numpy as np
 
 from .photometry import Photometry
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,6 @@ class SepPhotometry(Photometry):
         Photometry.__init__(self, *args, **kwargs)
 
         # test imports
-        import sep
 
         # store
         self.threshold = threshold

@@ -10,7 +10,7 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 

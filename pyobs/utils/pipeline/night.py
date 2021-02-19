@@ -4,7 +4,7 @@ from typing import Union, Type, Dict, Tuple, Optional
 from pyobs.object import get_object
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
+from pyobs.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from .pipeline import Pipeline

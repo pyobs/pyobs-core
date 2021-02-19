@@ -7,7 +7,7 @@ from astropy.io import fits
 import pandas as pd
 
 from pyobs.object import get_object, get_class_from_string
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 

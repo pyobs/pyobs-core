@@ -1,6 +1,6 @@
 from typing import List
 
-from pyobs.utils.images import BiasImage, CalibrationImage, Image
+from pyobs.images import BiasImage, CalibrationImage, Image
 
 
 class DarkImage(CalibrationImage):

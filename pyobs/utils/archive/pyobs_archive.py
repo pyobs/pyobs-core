@@ -4,9 +4,8 @@ import requests
 import urllib.parse
 import logging
 
-from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .archive import Archive, FrameInfo
 from ..enums import ImageType
 

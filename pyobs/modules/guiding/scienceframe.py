@@ -2,7 +2,7 @@ import logging
 import threading
 
 from pyobs.events import NewImageEvent
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .base import BaseGuiding
 
 

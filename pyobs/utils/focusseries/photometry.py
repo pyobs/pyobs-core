@@ -7,7 +7,7 @@ from pyobs import get_object
 from pyobs.utils.photometry import Photometry
 from .base import FocusSeries
 from pyobs.utils.curvefit import fit_hyperbola
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)

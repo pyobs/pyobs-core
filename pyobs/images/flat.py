@@ -1,7 +1,7 @@
 from typing import List
 import numpy as np
 
-from pyobs.utils.images import BiasImage, DarkImage, CalibrationImage, Image
+from pyobs.images import BiasImage, DarkImage, CalibrationImage, Image
 
 
 class FlatImage(CalibrationImage):

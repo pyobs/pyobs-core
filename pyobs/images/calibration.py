@@ -7,8 +7,8 @@ import logging
 from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
 from .image import Image
-from ..archive import FrameInfo
-from ..enums import ImageType
+from pyobs.utils.archive import FrameInfo
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 

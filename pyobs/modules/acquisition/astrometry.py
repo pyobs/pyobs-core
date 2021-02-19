@@ -1,11 +1,10 @@
 import logging
 from typing import Union, Tuple
-from astropy.io import fits
 from astropy.wcs import WCS
 
 from pyobs import get_object
 from pyobs.utils.astrometry import Astrometry
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from pyobs.utils.photometry import Photometry
 from .base import BaseAcquisition
 

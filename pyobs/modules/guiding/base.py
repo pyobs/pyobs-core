@@ -11,7 +11,7 @@ from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
 from pyobs import Module, get_object
 from pyobs.utils.guiding.base import BaseGuidingOffset
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)

@@ -7,11 +7,10 @@ from astropy.time import Time
 
 from pyobs import Module, get_object
 from pyobs.events import NewImageEvent
-from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
-from pyobs.utils.images import CalibrationImage, BiasImage, DarkImage, FlatImage
+from pyobs.images import CalibrationImage, BiasImage, DarkImage, FlatImage
 from pyobs.utils.pipeline import Pipeline
 
 log = logging.getLogger(__name__)

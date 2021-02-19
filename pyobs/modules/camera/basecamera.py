@@ -11,7 +11,7 @@ import astropy.units as u
 
 from pyobs.comm import TimeoutException, InvocationException
 from pyobs.utils.enums import ImageType
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename

@@ -4,7 +4,7 @@ from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .astrometry import Astrometry
 
 

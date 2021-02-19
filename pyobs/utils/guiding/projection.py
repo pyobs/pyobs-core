@@ -6,7 +6,7 @@ from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
 import re
 
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from pyobs.utils.pid import PID
 from .base import BaseGuidingOffset
 

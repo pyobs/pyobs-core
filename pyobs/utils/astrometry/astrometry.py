@@ -1,4 +1,4 @@
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 class Astrometry:

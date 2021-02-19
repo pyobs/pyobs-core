@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple
 
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)

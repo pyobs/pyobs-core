@@ -3,7 +3,7 @@ from typing import Union, Dict
 
 from pyobs.object import get_object
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image
+from pyobs.images import BiasImage, DarkImage, FlatImage, Image
 from pyobs.utils.astrometry import Astrometry
 from pyobs.utils.photometry import Photometry
 from .pipeline import Pipeline

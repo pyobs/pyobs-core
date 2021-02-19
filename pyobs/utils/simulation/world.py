@@ -11,13 +11,13 @@ import random
 from astropy.wcs import WCS
 from astropy.io import fits
 from astroquery.gaia import Gaia
-from photutils.datasets import make_gaussian_prf_sources_image, make_gaussian_sources_image
+from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
 
 from pyobs.interfaces import IMotion
 from pyobs.object import create_object, Object
 from pyobs.utils.enums import ImageFormat
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 class SimTelescope(Object):

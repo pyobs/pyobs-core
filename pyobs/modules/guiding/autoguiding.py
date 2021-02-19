@@ -25,6 +25,7 @@ class AutoGuiding(BaseGuiding):
         self._initial_exposure_time = exposure_time
         self._exposure_time = None
         self._bias = None
+        self._restart = True
         self._photometry = SepPhotometry()
 
         # add thread func
@@ -40,6 +41,7 @@ class AutoGuiding(BaseGuiding):
         self._initial_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
+        self._restart = True
         self._guiding_offset.reset()
 
     def _init_guiding(self, camera: ICamera):
@@ -80,9 +82,10 @@ class AutoGuiding(BaseGuiding):
                 # take image
                 if isinstance(camera, ICameraExposureTime):
                     # did we restart guiding?
-                    if not self._loop_closed:
+                    if self._restart:
                         self._init_guiding(camera)
                         exp_time_estimator = StarExpTimeEstimator(self._photometry, bias=self._bias)
+                        self._restart = False
 
                     # set exposure time
                     exp_time = self._exposure_time if self._exposure_time is not None else self._initial_exposure_time

@@ -238,10 +238,11 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
         # too large or too small?
-        if abs(dra * 3600.) < self._min_offset or abs(ddec * 3600.) < self._min_offset:
+        diff = np.sqrt((dra * 3600.)**2. + (ddec * 3600.))
+        if diff < self._min_offset:
             log.warning('Shift too small, skipping auto-guiding for now...')
             return
-        if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
+        if diff > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return
 

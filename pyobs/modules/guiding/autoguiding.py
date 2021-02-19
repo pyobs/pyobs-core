@@ -80,7 +80,7 @@ class AutoGuiding(BaseGuiding):
                 # take image
                 if isinstance(camera, ICameraExposureTime):
                     # did we restart guiding?
-                    if self._loop_closed:
+                    if not self._loop_closed:
                         self._init_guiding(camera)
                         exp_time_estimator = StarExpTimeEstimator(self._photometry, bias=self._bias)
 
@@ -98,7 +98,7 @@ class AutoGuiding(BaseGuiding):
                 image = self.vfs.read_image(filename)
 
                 # need to estimate exposure time?
-                if self._exposure_time is None:
+                if self._exposure_time is None and exp_time_estimator is not None:
                     new_exp_time = exp_time_estimator(image)
                     print(new_exp_time, exp_time_estimator.coordinates)
                     self._exposure_time = max(min(new_exp_time, 5), 0.1)

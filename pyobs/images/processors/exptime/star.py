@@ -60,6 +60,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         # get brightest star, get its peak flux and store its coordinates
         star = catalog[0]
         peak = star['peak']
+        log.info('Found peak of %.2f at %.1fx%.1f.', star['peak'], star['x'], star['y'])
         self.coordinates = (star['x'], star['y'])
 
         # get exposure time of image

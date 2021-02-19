@@ -12,10 +12,11 @@ log = logging.getLogger(__name__)
 
 
 class AstrometryDotNet(Astrometry):
-    def __init__(self, url: str, source_count: int = 50, *args, **kwargs):
+    def __init__(self, url: str, source_count: int = 50, radius: float = 3., *args, **kwargs):
         # URL to web-service
         self.url = url
         self.source_count = source_count
+        self.radius = radius
 
     def __call__(self, image: Image):
         """Find astrometric solution on given image.
@@ -52,6 +53,7 @@ class AstrometryDotNet(Astrometry):
             'dec': image.header['TEL-DEC'],
             'scale_low': scale * 0.9,
             'scale_high': scale * 1.1,
+            'radius': self.radius,
             'nx': image.header['NAXIS1'],
             'ny': image.header['NAXIS2'],
             'x': cat['x'].tolist(),

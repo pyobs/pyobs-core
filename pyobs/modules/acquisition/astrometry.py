@@ -52,6 +52,7 @@ class AstrometryAcquisition(BaseAcquisition):
         photometry(image)
         if len(image.catalog) == 0:
             raise ValueError('Could not find any stars in image.')
+        log.info('Found %d stars.' % len(image.catalog))
 
         # do astrometry
         log.info('Calculating astrometric solution...')

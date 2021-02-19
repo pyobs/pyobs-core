@@ -13,8 +13,6 @@ log = logging.getLogger(__name__)
 
 class AstrometryDotNet(Astrometry):
     def __init__(self, url: str, source_count: int = 50, *args, **kwargs):
-        Astrometry.__init__(self, *args, **kwargs)
-
         # URL to web-service
         self.url = url
         self.source_count = source_count

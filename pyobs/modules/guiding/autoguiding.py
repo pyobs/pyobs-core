@@ -1,5 +1,4 @@
 import logging
-import numpy as np
 
 from pyobs.interfaces import ICamera, IImageType, ICameraExposureTime
 from .base import BaseGuiding
@@ -24,8 +23,6 @@ class AutoGuiding(BaseGuiding):
         # store
         self._initial_exposure_time = exposure_time
         self._exposure_time = None
-        self._bias = None
-        self._restart = True
         self._photometry = SepPhotometry()
 
         # add thread func
@@ -41,38 +38,17 @@ class AutoGuiding(BaseGuiding):
         self._initial_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
-        self._restart = True
         self._guiding_offset.reset()
-
-    def _init_guiding(self, camera: ICamera):
-        """Init guiding after reset.
-
-        Args:
-            camera: Camera to use.
-        """
-
-        # take bias image
-        log.info('Taking BIAS image...')
-        if isinstance(camera, ICameraExposureTime):
-            camera.set_exposure_time(0.)
-        if isinstance(camera, IImageType):
-            camera.set_image_type(ImageType.BIAS)
-        filename = camera.expose(broadcast=False).wait()
-
-        # download image and calculate median bias
-        bias = self.vfs.read_image(filename)
-        self._bias = float(np.median(bias.data))
 
     def _auto_guiding(self):
         # exposure time estimator
-        exp_time_estimator = None
+        exp_time_estimator = StarExpTimeEstimator(self._photometry)
 
         # run until closed
         while not self.closing.is_set():
             # not running?
             if not self._enabled:
                 self.closing.wait(1)
-                self._restart = True
                 continue
 
             try:
@@ -81,12 +57,6 @@ class AutoGuiding(BaseGuiding):
 
                 # take image
                 if isinstance(camera, ICameraExposureTime):
-                    # did we restart guiding?
-                    if self._restart:
-                        self._init_guiding(camera)
-                        exp_time_estimator = StarExpTimeEstimator(self._photometry, bias=self._bias)
-                        self._restart = False
-
                     # set exposure time
                     exp_time = self._exposure_time if self._exposure_time is not None else self._initial_exposure_time
                     log.info('Taking image with an exposure time of %dms...', exp_time)

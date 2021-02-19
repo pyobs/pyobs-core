@@ -1,8 +1,8 @@
-from .pipelinestep import PipelineStep
+from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 
 
-class SoftBinPipelineStep(PipelineStep):
+class SoftBin(ImageProcessor):
     def __init__(self, binning: int = 2, *args, **kwargs):
         """Init a new software binning pipeline step.
 
@@ -11,7 +11,7 @@ class SoftBinPipelineStep(PipelineStep):
         """
         self.binning = binning
 
-    def __call__(self, image: Image) -> Image:
+    def __call__(self, image: Image):
         """Bin an image.
 
         Args:
@@ -31,8 +31,5 @@ class SoftBinPipelineStep(PipelineStep):
         # set NAXIS1/2
         image.header['NAXIS2'], image.header['NAXIS1'] = image.data.shape
 
-        # return it
-        return image
 
-
-__all__ = ['SoftBinPipelineStep']
+__all__ = ['SoftBin']

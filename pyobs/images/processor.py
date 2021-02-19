@@ -1,17 +1,19 @@
+from typing import Any
+
 from pyobs.images import Image
 
 
-class PipelineStep:
-    def __call__(self, image: Image) -> Image:
+class ImageProcessor:
+    def __call__(self, image: Image) -> Any:
         """Processes an image.
 
         Args:
             image: Image to process.
 
         Returns:
-            Processed image.
+            Whatever the process wants to return.
         """
         raise NotImplementedError
 
 
-__all__ = ['PipelineStep']
+__all__ = ['ImageProcessor']

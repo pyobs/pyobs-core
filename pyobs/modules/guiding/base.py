@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.utils.pipeline import SoftBinPipelineStep
+from pyobs.images.processors import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
@@ -61,7 +61,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._publisher = None if log_file is None else CsvPublisher(log_file)
 
         # binning
-        self._soft_bin = None if soft_bin is None else SoftBinPipelineStep(binning=soft_bin)
+        self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
 
     def open(self):
         """Open module."""
@@ -149,7 +149,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         # bin?
         if self._soft_bin is not None:
-            image = self._soft_bin(image)
+            self._soft_bin(image)
 
         # reference header?
         if self._ref_header is None:

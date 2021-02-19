@@ -12,7 +12,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
 from pyobs.images import Image
-from pyobs.utils.pipeline import SoftBinPipelineStep
+from pyobs.images.processors import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
@@ -53,7 +53,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         self._publisher = CsvPublisher(log_file)
 
         # binning
-        self._soft_bin = None if soft_bin is None else SoftBinPipelineStep(binning=soft_bin)
+        self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)
@@ -115,7 +115,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
 
             # bin?
             if self._soft_bin is not None:
-                img = self._soft_bin(img)
+                self._soft_bin(img)
 
             # get target pixel
             if self._target_pixel is None:

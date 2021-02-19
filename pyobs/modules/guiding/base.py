@@ -19,14 +19,16 @@ log = logging.getLogger(__name__)
 
 class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: Union[dict, Offsets], max_offset: float = 30, max_exposure_time: float = None,
-                 min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
-                 log_file: str = None, soft_bin: int = None, *args, **kwargs):
+                 offsets: Union[dict, Offsets], min_offset: float = 0.5, max_offset: float = 30,
+                 max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
+                 separation_reset: float = None, pid: bool = False, log_file: str = None, soft_bin: int = None,
+                 *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
             telescope: Telescope to use.
             offsets: Auto-guider to use
+            min_offset: Min offset in arcsec to move.
             max_offset: Max offset in arcsec to move.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
             min_interval: Minimum interval in sec between two images.
@@ -234,7 +236,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         ddec = radec2.dec.degree - radec1.dec.degree
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
-        # too large?
+        # too large or too small?
+        if abs(dra * 3600.) < self._min_offset or abs(ddec * 3600.) < self._min_offset:
+            log.warning('Shift too small, skipping auto-guiding for now...')
+            return
         if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return

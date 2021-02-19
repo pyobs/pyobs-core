@@ -5,7 +5,7 @@ from pyobs.object import get_object
 from pyobs.utils.fits import FilenameFormatter
 from pyobs.images import BiasImage, DarkImage, FlatImage, Image
 from pyobs.images.processors.astrometry import Astrometry
-from pyobs.utils.photometry import Photometry
+from pyobs.images.processors.photometry import Photometry
 from .pipeline import Pipeline
 
 log = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ScienceCalibration(Pipeline):
         # do photometry and astrometry
         if self._photometry is not None:
             # find stars
-            self._photometry.find_stars(calibrated)
+            self._photometry(calibrated)
 
             # do astrometry
             if self._astrometry is not None:

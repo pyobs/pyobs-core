@@ -27,10 +27,6 @@ class SepPhotometry(Photometry):
             **kwargs:
         """
 
-        Photometry.__init__(self, *args, **kwargs)
-
-        # test imports
-
         # store
         self.threshold = threshold
         self.minarea = minarea
@@ -39,7 +35,7 @@ class SepPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def find_stars(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Table:
         """Find stars in given image and append catalog.
 
         Args:

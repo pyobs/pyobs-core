@@ -4,7 +4,7 @@ import numpy as np
 import logging
 from pyobs import get_object
 
-from pyobs.utils.photometry import Photometry
+from pyobs.images.processors.photometry import Photometry
 from .base import FocusSeries
 from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.images import Image
@@ -38,7 +38,7 @@ class PhotometryFocusSeries(FocusSeries):
         """
 
         # do photometry
-        sources = self._photometry.find_stars(image)
+        sources = self._photometry(image)
         sources = sources[sources['ellipticity'] < 0.1]
         sources = sources[sources['peak'] > 1000]
         sources = sources[sources['radius'] > 0]

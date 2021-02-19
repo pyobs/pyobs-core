@@ -5,7 +5,7 @@ from astropy.wcs import WCS
 from pyobs import get_object
 from pyobs.images.processors.astrometry import Astrometry
 from pyobs.images import Image
-from pyobs.utils.photometry import Photometry
+from pyobs.images.processors.photometry import Photometry
 from .base import BaseAcquisition
 
 log = logging.getLogger(__name__)
@@ -49,7 +49,8 @@ class AstrometryAcquisition(BaseAcquisition):
 
         # find stars
         log.info('Searching for stars...')
-        if len(photometry.find_stars(image)) == 0:
+        photometry(image)
+        if len(image.catalog) == 0:
             raise ValueError('Could not find any stars in image.')
 
         # do astrometry

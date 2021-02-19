@@ -1,13 +1,11 @@
 from astropy.table import Table
 
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 
 
-class Photometry:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def find_stars(self, image: Image) -> Table:
+class Photometry(ImageProcessor):
+    def __call__(self, image: Image) -> Table:
         """Find stars in given image and append catalog.
 
         Args:

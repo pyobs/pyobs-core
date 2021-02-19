@@ -58,7 +58,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         catalog = catalog[catalog['peak'] <= max_peak]
 
         # get brightest star, get its peak flux and store its coordinates
-        star = catalog.iloc[0]
+        star = catalog[0]
         peak = star['peak']
         self.coordinates = (star['x'], star['y'])
 

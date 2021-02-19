@@ -10,7 +10,7 @@ from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
 from pyobs import Module, get_object
-from pyobs.utils.guiding.base import BaseGuidingOffset
+from pyobs.images.processors.offsets import Offsets
 from pyobs.images import Image
 
 
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
+                 offsets: Union[dict, Offsets], max_offset: float = 30, max_exposure_time: float = None,
                  min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
                  log_file: str = None, soft_bin: int = None, *args, **kwargs):
         """Initializes a new science frame auto guiding system.
@@ -55,7 +55,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._ref_header = None
 
         # create auto-guiding system
-        self._guiding_offset = get_object(offsets, BaseGuidingOffset)
+        self._guiding_offset = get_object(offsets, Offsets)
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
@@ -130,7 +130,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._guiding_offset.reset()
         if image is not None:
             # if image is given, process it
-            self._guiding_offset.find_pixel_offset(image)
+            self._guiding_offset(image)
 
     def _process_image(self, image: Image):
         """Processes a single image and offsets telescope.
@@ -200,7 +200,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = image.header
 
         # get offset
-        dx, dy = self._guiding_offset.find_pixel_offset(image)
+        dx, dy = self._guiding_offset(image)
 
         if dx is None or dy is None:
             log.warning('Could not correlate image with reference.')

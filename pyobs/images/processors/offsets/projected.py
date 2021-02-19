@@ -8,13 +8,13 @@ import re
 
 from pyobs.images import Image
 from pyobs.utils.pid import PID
-from .base import BaseGuidingOffset
+from .offsets import Offsets
 
 
 log = logging.getLogger(__name__)
 
 
-class ProjectionGuidingOffset(BaseGuidingOffset):
+class ProjectedOffsets(Offsets):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
 
     def __init__(self, *args, **kwargs):
@@ -25,10 +25,10 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
 
     def reset(self):
         """Resets guiding."""
-        log.info('Reset autp-guiding.')
+        log.info('Reset auto-guiding.')
         self._ref_image = None
 
-    def find_pixel_offset(self, image: Image) -> Tuple[float, float]:
+    def __call__(self, image: Image) -> Tuple[float, float]:
         """Processes an image and return x/y pixel offset to reference.
 
         Args:
@@ -98,7 +98,7 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
 
     @staticmethod
     def _gaussian_fit(pars, y, x):
-        err = y - ProjectionGuidingOffset._gaussian(pars, x)
+        err = y - ProjectedOffsets._gaussian(pars, x)
         return (err * err).sum()
 
     @staticmethod
@@ -123,7 +123,7 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         guesses = [np.max(y), m, m2]
 
         # perform fit
-        result = fmin(ProjectionGuidingOffset._gaussian_fit, guesses, args=(y, x), disp=False)
+        result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)
 
         # sanity check and finish up
         shift = result[1]
@@ -171,4 +171,4 @@ class ProjectionGuidingOffset(BaseGuidingOffset):
         return data - cont
 
 
-__all__ = ['ProjectionGuidingOffset']
+__all__ = ['ProjectedOffsets']

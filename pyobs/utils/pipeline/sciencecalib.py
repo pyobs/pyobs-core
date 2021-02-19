@@ -4,7 +4,7 @@ from typing import Union, Dict
 from pyobs.object import get_object
 from pyobs.utils.fits import FilenameFormatter
 from pyobs.images import BiasImage, DarkImage, FlatImage, Image
-from pyobs.utils.astrometry import Astrometry
+from pyobs.images.processors.astrometry import Astrometry
 from pyobs.utils.photometry import Photometry
 from .pipeline import Pipeline
 
@@ -79,7 +79,7 @@ class ScienceCalibration(Pipeline):
             # do astrometry
             if self._astrometry is not None:
                 try:
-                    self._astrometry.find_solution(calibrated)
+                    self._astrometry(calibrated)
                 except ValueError:
                     # error message comes from astrometry
                     pass

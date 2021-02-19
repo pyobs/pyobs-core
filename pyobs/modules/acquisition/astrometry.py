@@ -3,7 +3,7 @@ from typing import Union, Tuple
 from astropy.wcs import WCS
 
 from pyobs import get_object
-from pyobs.utils.astrometry import Astrometry
+from pyobs.images.processors.astrometry import Astrometry
 from pyobs.images import Image
 from pyobs.utils.photometry import Photometry
 from .base import BaseAcquisition
@@ -54,7 +54,8 @@ class AstrometryAcquisition(BaseAcquisition):
 
         # do astrometry
         log.info('Calculating astrometric solution...')
-        if not astrometry.find_solution(image):
+        astrometry(image)
+        if image.header['WCSERR'] == 1:
             raise ValueError('Could not find astrometric solution.')
 
         # get WCS on new image return x/y coordinates of requested RA/Dec

@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
-    def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 120, allowed_overrun: int = 300,
+    def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300,
                  *args, **kwargs):
         """Initialize a new auto focus system.
 

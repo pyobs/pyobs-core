@@ -18,16 +18,19 @@ log = logging.getLogger(__name__)
 class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
-    def __init__(self, tasks: Union[TaskArchive, dict], allowed_overrun: int = 300, *args, **kwargs):
+    def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 120, allowed_overrun: int = 300,
+                 *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
             tasks: Task archive to use
+            allowed_late_start: Allowed seconds to start late.
             allowed_overrun: Allowed time for a task to exceed it's window in seconds
         """
         Module.__init__(self, *args, **kwargs)
 
         # store
+        self._allowed_late_start = allowed_late_start
         self._allowed_overrun = allowed_overrun
         self._running = False
 
@@ -83,6 +86,9 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
         # wait a little
         self.closing.wait(1)
 
+        # flags
+        first_late_start_warning = True
+
         # run until closed
         while not self.closing.is_set():
             # not running?
@@ -101,11 +107,27 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
                 self.closing.wait(10)
                 continue
 
+            # task window
+            window = task.window()
+
+            # starting too late?
+            late_start = now - window[0]
+            if late_start > self._allowed_late_start * u.second:
+                # only warn once
+                if first_late_start_warning:
+                    log.warning('Time since start of window (%.1f) too long (>%.1f), skipping task...',
+                                late_start, self._allowed_late_start)
+                first_late_start_warning = False
+
+                # sleep a little and skip
+                self.closing.wait(10)
+                continue
+
+            # reset warning
+            first_late_start_warning = True
+
             # set it
             self._task = task
-
-            # task window
-            window = self._task.window()
 
             # ETA
             eta = now + self._task.duration * u.second

@@ -116,7 +116,7 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
                 # only warn once
                 if first_late_start_warning:
                     log.warning('Time since start of window (%.1f) too long (>%.1f), skipping task...',
-                                late_start, self._allowed_late_start)
+                                late_start.to_value('second'), self._allowed_late_start)
                 first_late_start_warning = False
 
                 # sleep a little and skip

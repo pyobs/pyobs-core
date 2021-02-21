@@ -163,6 +163,11 @@ class Scheduler(Module, IStoppable, IRunnable):
                         if time_constraint_found is False:
                             blocks.append(b)
 
+                # if need new update, skip here
+                if self._need_update:
+                    log.info('Not running scheduler, since update was requested.')
+                    continue
+
                 # log it
                 log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
@@ -170,6 +175,11 @@ class Scheduler(Module, IStoppable, IRunnable):
                 scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
                 time_range = Schedule(start, end)
                 schedule = scheduler(blocks, time_range)
+
+                # if need new update, skip here
+                if self._need_update:
+                    log.info('Not using scheduler results, since update was requested.')
+                    continue
 
                 # update
                 self._task_archive.update_schedule(schedule.scheduled_blocks, start)

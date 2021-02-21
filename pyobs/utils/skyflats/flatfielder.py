@@ -193,7 +193,7 @@ class FlatFielder:
     def total_exptime(self):
         return self._exptime_done
 
-    def _inital_check(self) -> bool:
+    def _initial_check(self) -> bool:
         """Do a quick initial check.
 
         Returns:
@@ -218,8 +218,15 @@ class FlatFielder:
     def _init_system(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters):
         """Initialize whole system."""
 
+        # which twilight are we in?
+        sun = self._observer.sun_altaz(Time.now())
+        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
+        self._twilight = FlatFielder.Twilight.DUSK \
+            if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
+        log.info('We are currently in %s twilight.', self._twilight.value)
+
         # do initial check
-        if not self._inital_check():
+        if not self._initial_check():
             return
 
         # set binning
@@ -229,13 +236,6 @@ class FlatFielder:
 
         # get bias level
         self._bias_level = self._get_bias(camera)
-
-        # which twilight are we in?
-        sun = self._observer.sun_altaz(Time.now())
-        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
-        self._twilight = FlatFielder.Twilight.DUSK \
-            if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
-        log.info('We are currently in %s twilight.', self._twilight.value)
 
         # move telescope
         future_track = self._pointing(telescope)

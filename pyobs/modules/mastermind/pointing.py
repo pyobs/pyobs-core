@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,14 +18,13 @@ log = logging.getLogger(__name__)
 class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
 
-    def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
+    def __init__(self, alt_range: Tuple[float, float] = (30., 85.), num_alt: int = 8, num_az: int = 24, finish: int = 90,
                  exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
                  min_moon_dist: float = 15., *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
-            min_alt: Minimum altitude to use.
-            max_alt: Maximum altitude to use.
+            alt_range: Range to use in altitude.
             num_alt: Number of altitude points to create on grid.
             num_az: Number of azimuth points to create on grid.
             finish: When this number in percent of points have been finished, terminate mastermind.
@@ -36,8 +36,7 @@ class PointingSeries(Module, IAutonomous):
         Module.__init__(self, *args, **kwargs)
 
         # store
-        self._min_alt = min_alt
-        self._max_alt = max_alt
+        self._alt_range = alt_range
         self._num_alt = num_alt
         self._num_az = num_az
         self._finish = 1. - finish / 100.
@@ -67,7 +66,7 @@ class PointingSeries(Module, IAutonomous):
         # create grid
         grid = {'alt': [], 'az': [], 'done': []}
         for az in np.linspace(0, 360 - 360 / self._num_az, self._num_az):
-            for alt in np.linspace(self._min_alt, self._max_alt, self._num_alt):
+            for alt in np.linspace(self._alt_range[0], self._alt_range[1], self._num_alt):
                 grid['alt'] += [alt]
                 grid['az'] += [az]
                 grid['done'] += [False]

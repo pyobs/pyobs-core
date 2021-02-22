@@ -18,7 +18,8 @@ log = logging.getLogger(__name__)
 class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
 
-    def __init__(self, alt_range: Tuple[float, float] = (30., 85.), num_alt: int = 8, num_az: int = 24,
+    def __init__(self, alt_range: Tuple[float, float] = (30., 85.), num_alt: int = 8,
+                 az_range: Tuple[float, float] = (0., 360.), num_az: int = 24,
                  dec_range: Tuple[float, float] = (-80., 80.), min_moon_dist: float = 15., finish: int = 90,
                  exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
                  *args, **kwargs):
@@ -27,6 +28,7 @@ class PointingSeries(Module, IAutonomous):
         Args:
             alt_range: Range in degrees to use in altitude.
             num_alt: Number of altitude points to create on grid.
+            az_range: Range in degrees to use in azimuth.
             num_az: Number of azimuth points to create on grid.
             dec_range: Range in declination in degrees to use.
             min_moon_dist: Minimum moon distance in degrees.
@@ -38,8 +40,9 @@ class PointingSeries(Module, IAutonomous):
         Module.__init__(self, *args, **kwargs)
 
         # store
-        self._alt_range = alt_range
+        self._alt_range = tuple(alt_range)
         self._num_alt = num_alt
+        self._az_range = tuple(az_range)
         self._num_az = num_az
         self._dec_range = dec_range
         self._min_moon_dist = min_moon_dist
@@ -47,6 +50,10 @@ class PointingSeries(Module, IAutonomous):
         self._exp_time = exp_time
         self._acquisition = acquisition
         self._telescope = telescope
+
+        # if Az range is [0, 360], we got north double, so remove one step
+        if self._az_range == (0., 360.):
+            self._az_range = (0., 360. - 360. / self._num_az)
 
         # add thread func
         self._add_thread_func(self._run_thread, False)
@@ -68,7 +75,7 @@ class PointingSeries(Module, IAutonomous):
 
         # create grid
         grid = {'alt': [], 'az': [], 'done': []}
-        for az in np.linspace(0, 360 - 360 / self._num_az, self._num_az):
+        for az in np.linspace(self._az_range[0], self._az_range[1], self._num_az):
             for alt in np.linspace(self._alt_range[0], self._alt_range[1], self._num_alt):
                 grid['alt'] += [alt]
                 grid['az'] += [az]

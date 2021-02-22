@@ -19,7 +19,7 @@ class PointingSeries(Module, IAutonomous):
 
     def __init__(self, min_alt: int = 30, max_alt: int = 85, num_alt: int = 8, num_az: int = 24, finish: int = 90,
                  exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
-                 *args, **kwargs):
+                 min_moon_dist: float = 15., *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
@@ -31,6 +31,7 @@ class PointingSeries(Module, IAutonomous):
             exp_time: Exposure time in secs.
             acquisition: IAcquisition unit to use.
             telescope: ITelescope unit to use.
+            min_moon_dist: Minimum moon distance in degrees.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -43,6 +44,7 @@ class PointingSeries(Module, IAutonomous):
         self._exp_time = exp_time
         self._acquisition = acquisition
         self._telescope = telescope
+        self._min_moon_dist = min_moon_dist
 
         # add thread func
         self._add_thread_func(self._run_thread, False)
@@ -102,7 +104,7 @@ class PointingSeries(Module, IAutonomous):
                                  location=self.observer.location)
 
                 # moon far enough away?
-                if altaz.separation(moon).degree > 30:
+                if altaz.separation(moon).degree > self._min_moon_dist:
                     # yep, stop here
                     break
 

@@ -111,17 +111,18 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
             window = task.window()
 
             # starting too late?
-            late_start = now - window[0]
-            if late_start > self._allowed_late_start * u.second:
-                # only warn once
-                if first_late_start_warning:
-                    log.warning('Time since start of window (%.1f) too long (>%.1f), skipping task...',
-                                late_start.to_value('second'), self._allowed_late_start)
-                first_late_start_warning = False
+            if not task.can_start_late:
+                late_start = now - window[0]
+                if late_start > self._allowed_late_start * u.second:
+                    # only warn once
+                    if first_late_start_warning:
+                        log.warning('Time since start of window (%.1f) too long (>%.1f), skipping task...',
+                                    late_start.to_value('second'), self._allowed_late_start)
+                    first_late_start_warning = False
 
-                # sleep a little and skip
-                self.closing.wait(10)
-                continue
+                    # sleep a little and skip
+                    self.closing.wait(10)
+                    continue
 
             # reset warning
             first_late_start_warning = True

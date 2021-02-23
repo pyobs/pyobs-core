@@ -95,6 +95,24 @@ class LcoTask(Task):
         """
         return self.config['start'], self.config['end']
 
+    @property
+    def observation_type(self) -> str:
+        """Returns observation_type of this task.
+
+        Returns:
+            observation_type of this task.
+        """
+        return self.config['observation_type']
+
+    @property
+    def can_start_late(self) -> bool:
+        """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.
+
+        Returns:
+            True, if task can start late.
+        """
+        return self.observation_type == 'DIRECT'
+
     def _get_config_script(self, config: dict) -> Script:
         """Get config script for given configuration.
 

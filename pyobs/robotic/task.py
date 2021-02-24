@@ -45,6 +45,15 @@ class Task:
         """
         raise NotImplementedError
 
+    @property
+    def can_start_late(self) -> bool:
+        """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.
+
+        Returns:
+            True, if task can start late.
+        """
+        raise NotImplementedError
+
     def run(self, abort_event: Event):
         """Run a task
 

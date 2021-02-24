@@ -144,8 +144,10 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             radec_target = SkyCoord(ra=ra_target * u.deg, dec=dec_target * u.deg, frame='icrs',
                                     obstime=date_obs, location=self.location)
 
-            # get current position
+            # get current position (without offsets!)
             cur_ra, cur_dec = telescope.get_radec().wait()
+            radec_current = SkyCoord(ra=cur_ra * u.deg, dec=cur_dec * u.deg, frame='icrs',
+                                     obstime=date_obs, location=self.location)
 
             # calculate offsets and return them
             dra = (radec_target.ra.degree - radec_center.ra.degree) * np.cos(np.radians(cur_dec))
@@ -194,9 +196,16 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
+                # calculate total offsets
+                total_dra, total_ddec = float(cur_dra + dra), float(cur_ddec + ddec)
+
                 # move offset
-                log.info('Offsetting telescope...')
-                telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
+                log.info('Offsetting telescope to dRA=%.2f", dDec=%.2f"...', total_dra * 3600., total_ddec * 3600.)
+                telescope.set_radec_offsets(total_dra, total_ddec).wait()
+
+                # for testing, calculate offsets from current
+                t1, t2 = radec_current.spherical_offsets_to(radec_target)
+                log.info('TESTING: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
 
             elif isinstance(telescope, IAltAzOffsets):
                 # transform both to Alt/AZ

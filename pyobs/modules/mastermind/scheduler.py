@@ -116,7 +116,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             self.closing.wait(5)
 
     def _schedule_thread(self):
-        # only constraint is the night
+        # only global constraint is the night
         if self._twilight == 'astronomical':
             constraints = [AtNightConstraint.twilight_astronomical()]
         elif self._twilight == 'nautical':
@@ -126,6 +126,9 @@ class Scheduler(Module, IStoppable, IRunnable):
 
         # we don't need any transitions
         transitioner = Transitioner()
+
+        # create scheduler
+        scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
 
         # run forever
         while not self.closing.is_set():
@@ -171,8 +174,7 @@ class Scheduler(Module, IStoppable, IRunnable):
                 # log it
                 log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
-                # init scheduler and schedule
-                scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+                # run scheduler
                 time_range = Schedule(start, end)
                 schedule = scheduler(blocks, time_range)
 

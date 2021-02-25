@@ -2,7 +2,8 @@ import json
 import logging
 from multiprocessing import Process
 from typing import Union, List
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock
+from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
+    PriorityScheduler
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -142,7 +143,8 @@ class Scheduler(Module, IStoppable, IRunnable):
         transitioner = Transitioner()
 
         # create scheduler
-        scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+        #scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+        scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
 
         # get start time for scheduler
         start = self._schedule_start

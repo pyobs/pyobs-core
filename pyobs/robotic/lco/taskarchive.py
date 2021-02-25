@@ -503,5 +503,14 @@ class LcoTaskArchive(TaskArchive):
         if res.status_code != 201:
             raise ValueError('Could not submit observations.')
 
+        # log
+        json = res.json()
+        log.info('%d observations created.', json['num_created'])
+
+        # errors?
+        if 'errors' in json:
+            for err in json['errors'].values():
+                log.warning('Error from portal: %s', err['non_field_errors'])
+
 
 __all__ = ['LcoTaskArchive']

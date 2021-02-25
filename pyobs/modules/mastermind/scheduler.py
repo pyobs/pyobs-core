@@ -195,7 +195,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             return
 
         # update
-        #self._task_archive.update_schedule(schedule.scheduled_blocks, start)
+        self._task_archive.update_schedule(schedule.scheduled_blocks, start)
         if len(schedule.scheduled_blocks) > 0:
             log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
             for i, block in enumerate(schedule.scheduled_blocks, 1):

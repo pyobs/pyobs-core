@@ -145,8 +145,8 @@ class Scheduler(Module, IStoppable, IRunnable):
         transitioner = Transitioner()
 
         # create scheduler
-        #scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-        scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
+        scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
+        #scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
 
         # get start time for scheduler
         start = self._schedule_start

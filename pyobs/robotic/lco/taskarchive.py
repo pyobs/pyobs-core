@@ -400,7 +400,7 @@ class LcoTaskArchive(TaskArchive):
                     ]
 
                     # priority is base_priority times duration in minutes
-                    priority = base_priority * duration.value / 60.
+                    priority = 1. / (base_priority * duration.value / 60.)
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,

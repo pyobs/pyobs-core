@@ -1,18 +1,14 @@
-import functools
 import json
 import logging
-import threading
+from multiprocessing import Process
 from typing import Union, List
-
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
+
 from pyobs.events.taskfinished import TaskFinishedEvent
-
 from pyobs.events.taskstarted import TaskStartedEvent
-
 from pyobs.events import GoodWeatherEvent
-
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStoppable, IRunnable
 from pyobs import Module, get_object
@@ -116,6 +112,24 @@ class Scheduler(Module, IStoppable, IRunnable):
             self.closing.wait(5)
 
     def _schedule_thread(self):
+        # run forever
+        while not self.closing.is_set():
+            # need update?
+            if self._need_update:
+                # reset need for update
+                self._need_update = False
+
+                # run scheduler in separate process and wait for it
+                p = Process(target=self._schedule)
+                p.start()
+                p.join()
+
+            # sleep a little
+            self.closing.wait(1)
+
+    def _schedule(self):
+        """Actually do the scheduling, usually run in a separate process."""
+
         # only global constraint is the night
         if self._twilight == 'astronomical':
             constraints = [AtNightConstraint.twilight_astronomical()]
@@ -130,72 +144,62 @@ class Scheduler(Module, IStoppable, IRunnable):
         # create scheduler
         scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
 
-        # run forever
-        while not self.closing.is_set():
-            # need update?
+        # get start time for scheduler
+        start = self._schedule_start
+        now_plus_safety = Time.now() + self._safety_time * u.second
+        if start is None or start < now_plus_safety:
+            # if no ETA exists or is in the past, use safety time
+            start = now_plus_safety
+        end = start + TimeDelta(self._schedule_range * u.hour)
+
+        # remove currently running block and filter by start time
+        blocks = []
+        for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks):
+            time_constraint_found = False
+            # loop all constraints
+            for c in b.constraints:
+                if isinstance(c, TimeConstraint):
+                    # we found a time constraint
+                    time_constraint_found = True
+
+                    # does the window start before the end of the scheduling range?
+                    if c.min < end:
+                        # yes, store block and break loop
+                        blocks.append(b)
+                        break
+            else:
+                # loop has finished without breaking
+                # if no time constraint has been found, we still take the block
+                if time_constraint_found is False:
+                    blocks.append(b)
+
+            # if need new update, skip here
             if self._need_update:
-                # reset need for update
-                self._need_update = False
+                log.info('Not running scheduler, since update was requested.')
+                continue
 
-                # get start time for scheduler
-                start = self._schedule_start
-                now_plus_safety = Time.now() + self._safety_time * u.second
-                if start is None or start < now_plus_safety:
-                    # if no ETA exists or is in the past, use safety time
-                    start = now_plus_safety
-                end = start + TimeDelta(self._schedule_range * u.hour)
+            # log it
+            log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
-                # remove currently running block and filter by start time
-                blocks = []
-                for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks):
-                    time_constraint_found = False
-                    # loop all constraints
-                    for c in b.constraints:
-                        if isinstance(c, TimeConstraint):
-                            # we found a time constraint
-                            time_constraint_found = True
+            # run scheduler
+            time_range = Schedule(start, end)
+            schedule = scheduler(blocks, time_range)
 
-                            # does the window start before the end of the scheduling range?
-                            if c.min < end:
-                                # yes, store block and break loop
-                                blocks.append(b)
-                                break
-                    else:
-                        # loop has finished without breaking
-                        # if no time constraint has been found, we still take the block
-                        if time_constraint_found is False:
-                            blocks.append(b)
+            # if need new update, skip here
+            if self._need_update:
+                log.info('Not using scheduler results, since update was requested.')
+                continue
 
-                # if need new update, skip here
-                if self._need_update:
-                    log.info('Not running scheduler, since update was requested.')
-                    continue
-
-                # log it
-                log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
-
-                # run scheduler
-                time_range = Schedule(start, end)
-                schedule = scheduler(blocks, time_range)
-
-                # if need new update, skip here
-                if self._need_update:
-                    log.info('Not using scheduler results, since update was requested.')
-                    continue
-
-                # update
-                self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-                if len(schedule.scheduled_blocks) > 0:
-                    log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
-                    for i, block in enumerate(schedule.scheduled_blocks, 1):
-                        log.info('  #%d: %s to %s (%.1f)',
-                                 block.configuration['request']['id'], block.start_time, block.end_time,
-                                 block.priority)
-                else:
-                    log.info('Finished calculating schedule for 0 blocks.')
-
-            # sleep a little
-            self.closing.wait(1)
+            # update
+            self._task_archive.update_schedule(schedule.scheduled_blocks, start)
+            if len(schedule.scheduled_blocks) > 0:
+                log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+                for i, block in enumerate(schedule.scheduled_blocks, 1):
+                    log.info('  #%d: %s to %s (%.1f)',
+                             block.configuration['request']['id'], block.start_time, block.end_time,
+                             block.priority)
+            else:
+                log.info('Finished calculating schedule for 0 blocks.')
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

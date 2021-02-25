@@ -376,7 +376,10 @@ class LcoTaskArchive(TaskArchive):
                 duration = req['duration'] * u.second
 
                 # time constraints
-                time_constraints = [TimeConstraint(Time(wnd['start']), Time(wnd['end'])) for wnd in req['windows']]
+                # make them 15s shorter at each end: for whatever reason astroplan's PriorityScheduler doesn't
+                # stick exactly to the times...
+                time_constraints = [TimeConstraint(Time(wnd['start']) + 15 * u.second,
+                                                   Time(wnd['end']) - 15 * u.second) for wnd in req['windows']]
 
                 # loop configs
                 for cfg in req['configurations']:

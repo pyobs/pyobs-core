@@ -400,6 +400,7 @@ class LcoTaskArchive(TaskArchive):
                     ]
 
                     # priority is base_priority times duration in minutes
+                    # TODO: find a better way than 1/prio
                     priority = 1. / (base_priority * duration.value / 60.)
 
                     # create block

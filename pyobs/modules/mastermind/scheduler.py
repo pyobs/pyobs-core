@@ -44,6 +44,7 @@ class Scheduler(Module, IStoppable, IRunnable):
         self._safety_time = safety_time
         self._twilight = twilight
         self._running = True
+        self._initial_update_done = False
         self._need_update = False
 
         # time to start next schedule from
@@ -108,6 +109,7 @@ class Scheduler(Module, IStoppable, IRunnable):
 
                 # remember now
                 last_change = Time.now()
+                self._initial_update_done = True
 
             # sleep a little
             self.closing.wait(5)
@@ -116,7 +118,7 @@ class Scheduler(Module, IStoppable, IRunnable):
         # run forever
         while not self.closing.is_set():
             # need update?
-            if self._need_update:
+            if self._need_update and self._initial_update_done:
                 # reset need for update
                 self._need_update = False
 
@@ -175,33 +177,33 @@ class Scheduler(Module, IStoppable, IRunnable):
                 if time_constraint_found is False:
                     blocks.append(b)
 
-            # if need new update, skip here
-            if self._need_update:
-                log.info('Not running scheduler, since update was requested.')
-                continue
+        # if need new update, skip here
+        if self._need_update:
+            log.info('Not running scheduler, since update was requested.')
+            return
 
-            # log it
-            log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
+        # log it
+        log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
-            # run scheduler
-            time_range = Schedule(start, end)
-            schedule = scheduler(blocks, time_range)
+        # run scheduler
+        time_range = Schedule(start, end)
+        schedule = scheduler(blocks, time_range)
 
-            # if need new update, skip here
-            if self._need_update:
-                log.info('Not using scheduler results, since update was requested.')
-                continue
+        # if need new update, skip here
+        if self._need_update:
+            log.info('Not using scheduler results, since update was requested.')
+            return
 
-            # update
-            self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-            if len(schedule.scheduled_blocks) > 0:
-                log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
-                for i, block in enumerate(schedule.scheduled_blocks, 1):
-                    log.info('  #%d: %s to %s (%.1f)',
-                             block.configuration['request']['id'], block.start_time, block.end_time,
-                             block.priority)
-            else:
-                log.info('Finished calculating schedule for 0 blocks.')
+        # update
+        #self._task_archive.update_schedule(schedule.scheduled_blocks, start)
+        if len(schedule.scheduled_blocks) > 0:
+            log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+            for i, block in enumerate(schedule.scheduled_blocks, 1):
+                log.info('  #%d: %s to %s (%.1f)',
+                         block.configuration['request']['id'], block.start_time, block.end_time,
+                         block.priority)
+        else:
+            log.info('Finished calculating schedule for 0 blocks.')
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

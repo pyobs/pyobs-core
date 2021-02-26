@@ -36,10 +36,10 @@ class SepPhotometry(Photometry):
         self.clean_param = clean_param
 
     def __call__(self, image: Image) -> Table:
-        """Find stars in given image and append catalog.
+        """Do aperture photometry on given image.
 
         Args:
-            image: Image to find stars in.
+            image: Image to do aperture photometry on.
 
         Returns:
             Full table with results.

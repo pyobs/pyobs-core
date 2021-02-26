@@ -169,8 +169,8 @@ class Scheduler(Module, IStoppable, IRunnable):
             # it also doesn't match the requested observing windows exactly, so we make them a little smaller.
             for constraint in block.constraints:
                 if isinstance(constraint, TimeConstraint):
-                    constraint.min += 15 * u.second
-                    constraint.max -= 15 * u.second
+                    constraint.min += 30 * u.second
+                    constraint.max -= 30 * u.second
 
         # remove currently running block and filter by start time
         blocks = []

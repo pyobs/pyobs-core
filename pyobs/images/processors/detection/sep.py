@@ -98,9 +98,8 @@ class SepSourceDetection(SourceDetection):
         sources['fluxerr'] = fluxerr
 
         # match fits conventions
-        for col in ['', 'peak', 'min', 'max']:
-            sources['x' + col] += 1
-            sources['y' + col] += 1
+        sources['x'] += 1
+        sources['y'] += 1
 
         # theta in degrees
         sources['theta'] = np.degrees(sources['theta'])
@@ -109,10 +108,7 @@ class SepSourceDetection(SourceDetection):
         sources = sources[sources['flag'] < 8]
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'xpeak', 'ypeak',
-                      'flux', 'fluxerr', 'peak', 'fwhm',
-                      'a', 'b', 'theta', 'kronrad', 'ellipticity',
-                      'x2', 'y2', 'xy']
+        cat = sources['x', 'y', 'flux', 'fluxerr', 'peak', 'fwhm', 'a', 'b', 'theta', 'kronrad', 'ellipticity']
 
         # set it
         image.catalog = cat

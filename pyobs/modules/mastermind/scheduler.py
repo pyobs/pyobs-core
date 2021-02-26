@@ -216,7 +216,9 @@ class Scheduler(Module, IStoppable, IRunnable):
             log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
             for i, block in enumerate(schedule.scheduled_blocks, 1):
                 log.info('  #%d: %s to %s (%.1f)',
-                         block.configuration['request']['id'], block.start_time.isot, block.end_time.isot,
+                         block.configuration['request']['id'],
+                         block.start_time.strftime('%H:%M:%S'),
+                         block.end_time.strftime('%H:%M:%S'),
                          block.priority)
         else:
             log.info('Finished calculating schedule for 0 blocks.')

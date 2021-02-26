@@ -4,23 +4,23 @@ from typing import Union
 from pyobs import get_object
 from pyobs.images import Image
 from pyobs.images.processors.exptime.exptime import ExpTimeEstimator
-from pyobs.images.processors.photometry import Photometry
+from pyobs.images.processors.detection import SourceDetection
 
 log = logging.getLogger(__name__)
 
 
 class StarExpTimeEstimator(ExpTimeEstimator):
-    def __init__(self, photometry: Union[dict, Photometry], edge: float = 0.1, bias: float = 0., saturated: float = 0.7,
+    def __init__(self, source_detection: Union[dict, SourceDetection], edge: float = 0.1, bias: float = 0., saturated: float = 0.7,
                  *args, **kwargs):
         """Create new exp time estimator from single star.
 
         Args:
-            photometry: Photometry to use.
+            source_detection: Source detection to use.
             edge: Fraction of image to ignore at each border.
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
         """
-        self._photometry = photometry
+        self._source_detection = source_detection
         self._edge = edge
         self._bias = bias
         self._saturated = saturated
@@ -37,10 +37,10 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         """
 
         # get object
-        photometry = get_object(self._photometry, Photometry)
+        source_detection = get_object(self._source_detection, SourceDetection)
 
         # do photometry and get copy of catalog
-        catalog = photometry(image).copy(True)
+        catalog = source_detection(image).copy(True)
 
         # sort catalog by peak flux
         catalog.sort('peak')

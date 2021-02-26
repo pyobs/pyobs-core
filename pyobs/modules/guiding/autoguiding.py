@@ -3,7 +3,7 @@ import logging
 from pyobs.interfaces import ICamera, IImageType, ICameraExposureTime
 from .base import BaseGuiding
 from ...images.processors.exptime.star import StarExpTimeEstimator
-from ...images.processors.photometry import SepPhotometry
+from ...images.processors.detection import SepSourceDetection
 from ...utils.enums import ImageType
 
 log = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class AutoGuiding(BaseGuiding):
         # store
         self._initial_exposure_time = exposure_time
         self._exposure_time = None
-        self._photometry = SepPhotometry()
+        self._source_detection = SepSourceDetection()
 
         # add thread func
         self._add_thread_func(self._auto_guiding, True)
@@ -42,7 +42,7 @@ class AutoGuiding(BaseGuiding):
 
     def _auto_guiding(self):
         # exposure time estimator
-        exp_time_estimator = StarExpTimeEstimator(self._photometry)
+        exp_time_estimator = StarExpTimeEstimator(self._source_detection)
 
         # run until closed
         while not self.closing.is_set():

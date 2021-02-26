@@ -6,24 +6,28 @@ from pyobs.utils.fits import FilenameFormatter
 from pyobs.images import BiasImage, DarkImage, FlatImage, Image
 from pyobs.images.processors.astrometry import Astrometry
 from pyobs.images.processors.photometry import Photometry
+from pyobs.images.processors.detection import SourceDetection
 from .pipeline import Pipeline
 
 log = logging.getLogger(__name__)
 
 
 class ScienceCalibration(Pipeline):
-    def __init__(self, photometry: Union[dict, Photometry] = None, astrometry: Union[dict, Astrometry] = None,
+    def __init__(self, source_detection: Union[dict, SourceDetection] = None,
+                 photometry: Union[dict, Photometry] = None, astrometry: Union[dict, Astrometry] = None,
                  masks: Dict[str, Union[Image, str]] = None, filenames: str = None, *args, **kwargs):
         """Pipeline for science images.
 
         Args:
+            source_detection: SourceDetection object. If None, no detection is performed.
             photometry: Photometry object. If None, no photometry is performed.
             astrometry: Astrometry object. If None, no astrometry is performed.
             masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
             *args:
             **kwargs:
         """
-        # get photometry and astrometry
+        # get objects
+        self._source_detection = None if source_detection is None else get_object(source_detection, SourceDetection)
         self._photometry = None if photometry is None else get_object(photometry, Photometry)
         self._astrometry = None if astrometry is None else get_object(astrometry, Astrometry)
 
@@ -71,18 +75,22 @@ class ScienceCalibration(Pipeline):
         if 'ORIGNAME' in image.header:
             calibrated.header['L1RAW'] = image.header['ORIGNAME']
 
-        # do photometry and astrometry
-        if self._photometry is not None:
+        # search stars and do photometry and astrometry
+        if self._source_detection is not None:
             # find stars
-            self._photometry(calibrated)
+            self._source_detection(calibrated)
 
-            # do astrometry
-            if self._astrometry is not None:
-                try:
-                    self._astrometry(calibrated)
-                except ValueError:
-                    # error message comes from astrometry
-                    pass
+            if self._photometry is not None:
+                # find stars
+                self._photometry(calibrated)
+
+                # do astrometry
+                if self._astrometry is not None:
+                    try:
+                        self._astrometry(calibrated)
+                    except ValueError:
+                        # error message comes from astrometry
+                        pass
 
         # return calibrated image
         return calibrated

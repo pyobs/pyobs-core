@@ -9,7 +9,6 @@ from astropy.time import TimeDelta
 import astropy.units as u
 from requests import Timeout
 
-from pyobs.object import get_object
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from ..taskarchive import TaskArchive
@@ -376,10 +375,7 @@ class LcoTaskArchive(TaskArchive):
                 duration = req['duration'] * u.second
 
                 # time constraints
-                # make them 15s shorter at each end: for whatever reason astroplan's PriorityScheduler doesn't
-                # stick exactly to the times...
-                time_constraints = [TimeConstraint(Time(wnd['start']) + 15 * u.second,
-                                                   Time(wnd['end']) - 15 * u.second) for wnd in req['windows']]
+                time_constraints = [TimeConstraint(Time(wnd['start']), Time(wnd['end'])) for wnd in req['windows']]
 
                 # loop configs
                 for cfg in req['configurations']:
@@ -400,8 +396,7 @@ class LcoTaskArchive(TaskArchive):
                     ]
 
                     # priority is base_priority times duration in minutes
-                    # TODO: find a better way than 1/prio
-                    priority = 1. / (base_priority * duration.value / 60.)
+                    priority = base_priority * duration.value / 60.
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,

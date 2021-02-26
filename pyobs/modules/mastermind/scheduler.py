@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 from multiprocessing import Process
@@ -156,9 +157,22 @@ class Scheduler(Module, IStoppable, IRunnable):
             start = now_plus_safety
         end = start + TimeDelta(self._schedule_range * u.hour)
 
+        # make shallow copies of all blocks and loop them
+        copied_blocks = [copy.copy(block) for block in self._blocks]
+        for block in copied_blocks:
+            # astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
+            # inverse of our priorities to match that requirement
+            block.priority = 1. / block.priority
+
+            # it also doesn't match the requested observing windows exactly, so we make them a little smaller.
+            for constraint in block.constraints:
+                if isinstance(constraint, TimeConstraint):
+                    constraint.min += 15 * u.second
+                    constraint.max -= 15 * u.second
+
         # remove currently running block and filter by start time
         blocks = []
-        for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, self._blocks):
+        for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, blocks):
             time_constraint_found = False
             # loop all constraints
             for c in b.constraints:

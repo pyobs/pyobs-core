@@ -161,8 +161,10 @@ class Scheduler(Module, IStoppable, IRunnable):
         copied_blocks = [copy.copy(block) for block in self._blocks]
         for block in copied_blocks:
             # astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
-            # inverse of our priorities to match that requirement
-            block.priority = 1. / block.priority
+            # 1000 - priority
+            block.priority = 1000. - block.priority
+            if block.priority < 0:
+                block.priority = 0
 
             # it also doesn't match the requested observing windows exactly, so we make them a little smaller.
             for constraint in block.constraints:

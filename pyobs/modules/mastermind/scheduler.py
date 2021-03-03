@@ -173,6 +173,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             block_end = Time(running_block['end']) + 10. * u.second
             if start < block_end:
                 start = block_end
+                log.info('Start time would be within currently running block, shifting to %s.', start.isot)
 
         # calculate end time
         end = start + TimeDelta(self._schedule_range * u.hour)

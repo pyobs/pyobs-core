@@ -157,16 +157,16 @@ class Scheduler(Module, IStoppable, IRunnable):
                     constraint.min += 30 * u.second
                     constraint.max -= 30 * u.second
 
-        # get running block, if any
-        tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id, copied_blocks))
-        running_block = tmp[0] if len(tmp) > 0 else None
-
         # get start time for scheduler
         start = self._schedule_start
         now_plus_safety = Time.now() + self._safety_time * u.second
         if start is None or start < now_plus_safety:
             # if no ETA exists or is in the past, use safety time
             start = now_plus_safety
+
+        # get running scheduled block, if any
+        tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id, self._scheduled_blocks))
+        running_block = tmp[0] if len(tmp) > 0 else None
 
         # if start is before end time of currently running block, change that
         if running_block is not None:
@@ -234,6 +234,9 @@ class Scheduler(Module, IStoppable, IRunnable):
                          block.priority)
         else:
             log.info('Finished calculating schedule for 0 blocks.')
+
+        # store
+        self._scheduled_blocks = schedule.scheduled_blocks
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

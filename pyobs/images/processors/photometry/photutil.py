@@ -62,7 +62,6 @@ class PhotUtilsPhotometry(Photometry):
         for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
             # extraction radius in pixels
             radius = diameter / 2. / image.pixel_scale
-            print(diameter, radius)
             if radius < 1:
                 continue
 
@@ -86,6 +85,7 @@ class PhotUtilsPhotometry(Photometry):
             bkg_median = np.array(bkg_median)
             aper_bkg = bkg_median * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
+            sources['bkgaper%d' % diameter] = bkg_median
 
         # set catalog
         image.catalog = sources

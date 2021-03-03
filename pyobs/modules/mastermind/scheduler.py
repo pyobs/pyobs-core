@@ -170,7 +170,7 @@ class Scheduler(Module, IStoppable, IRunnable):
 
         # if start is before end time of currently running block, change that
         if running_block is not None:
-            block_end = Time(running_block['end']) + 10. * u.second
+            block_end = running_block.end_time + 10. * u.second
             if start < block_end:
                 start = block_end
                 log.info('Start time would be within currently running block, shifting to %s.', start.isot)

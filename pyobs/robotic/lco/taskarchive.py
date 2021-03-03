@@ -437,6 +437,7 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # cancel schedule
+        log.info('Deleting all schedules after %s...', now.isot)
         res = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'},

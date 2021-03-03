@@ -158,7 +158,7 @@ class Scheduler(Module, IStoppable, IRunnable):
                     constraint.max -= 30 * u.second
 
         # get running block, if any
-        tmp = filter(lambda b: b.configuration['request']['id'] == self._current_task_id, copied_blocks)
+        tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id, copied_blocks))
         running_block = tmp[0] if len(tmp) > 0 else None
 
         # get start time for scheduler

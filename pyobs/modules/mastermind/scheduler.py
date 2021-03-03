@@ -142,21 +142,6 @@ class Scheduler(Module, IStoppable, IRunnable):
         else:
             raise ValueError('Unknown twilight type.')
 
-        # we don't need any transitions
-        transitioner = Transitioner()
-
-        # create scheduler
-        #scheduler = SequentialScheduler(constraints, self.observer, transitioner=transitioner)
-        scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
-
-        # get start time for scheduler
-        start = self._schedule_start
-        now_plus_safety = Time.now() + self._safety_time * u.second
-        if start is None or start < now_plus_safety:
-            # if no ETA exists or is in the past, use safety time
-            start = now_plus_safety
-        end = start + TimeDelta(self._schedule_range * u.hour)
-
         # make shallow copies of all blocks and loop them
         copied_blocks = [copy.copy(block) for block in self._blocks]
         for block in copied_blocks:
@@ -171,6 +156,26 @@ class Scheduler(Module, IStoppable, IRunnable):
                 if isinstance(constraint, TimeConstraint):
                     constraint.min += 30 * u.second
                     constraint.max -= 30 * u.second
+
+        # get running block, if any
+        tmp = filter(lambda b: b.configuration['request']['id'] == self._current_task_id, copied_blocks)
+        running_block = tmp[0] if len(tmp) > 0 else None
+
+        # get start time for scheduler
+        start = self._schedule_start
+        now_plus_safety = Time.now() + self._safety_time * u.second
+        if start is None or start < now_plus_safety:
+            # if no ETA exists or is in the past, use safety time
+            start = now_plus_safety
+
+        # if start is before end time of currently running block, change that
+        if running_block is not None:
+            block_end = Time(running_block['end']) + 10. * u.second
+            if start < block_end:
+                start = block_end
+
+        # calculate end time
+        end = start + TimeDelta(self._schedule_range * u.hour)
 
         # remove currently running block and filter by start time
         blocks = []
@@ -200,6 +205,12 @@ class Scheduler(Module, IStoppable, IRunnable):
 
         # log it
         log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
+
+        # we don't need any transitions
+        transitioner = Transitioner()
+
+        # create scheduler
+        scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
 
         # run scheduler
         time_range = Schedule(start, end)

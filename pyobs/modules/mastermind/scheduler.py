@@ -165,11 +165,24 @@ class Scheduler(Module, IStoppable, IRunnable):
             start = now_plus_safety
 
         # get running scheduled block, if any
-        tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id, self._scheduled_blocks))
-        running_block = tmp[0] if len(tmp) > 0 else None
+        if self._current_task_id is None:
+            log.info('No running block found.')
+            running_block = None
+        else:
+            log.info('Trying to find running block in %s blocks from last schedule.' % len(self._scheduled_blocks))
+            tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id,
+                              self._scheduled_blocks))
+            if len(tmp) > 0:
+                running_block = tmp[0]
+            else:
+                log.info('Running block not found in last schedule.')
+                running_block = None
 
         # if start is before end time of currently running block, change that
         if running_block is not None:
+            log.info('Found running block that ends at %s.', running_block.end_time.isot)
+
+            # get block end plus some safety
             block_end = running_block.end_time + 10. * u.second
             if start < block_end:
                 start = block_end

@@ -123,23 +123,18 @@ class Scheduler(Module, IStoppable, IRunnable):
                 # reset need for update
                 self._need_update = False
 
-                # create queue
-                ctx = mp.get_context('spawn')
-                queue = ctx.Queue()
-
                 # run scheduler in separate process and wait for it
-                p = ctx.Process(target=self._schedule, args=(queue,))
+                p = mp.Process(target=self._schedule)
                 p.start()
                 p.join()
 
                 # get result
-                self._scheduled_blocks = [] if queue.empty() else queue.get()
-                log.info('Storing %s scheduled blocks for next run.' % len(self._scheduled_blocks))
+                log.info('Stored %s scheduled blocks for next run.' % len(self._scheduled_blocks))
 
             # sleep a little
             self.closing.wait(1)
 
-    def _schedule(self, queue: mp.Queue):
+    def _schedule(self):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
@@ -257,7 +252,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             log.info('Finished calculating schedule for 0 blocks.')
 
         # store
-        queue.put(schedule.scheduled_blocks)
+        self._scheduled_blocks = copy.copy(schedule.scheduled_blocks)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

@@ -1,3 +1,4 @@
+import functools
 import json
 import logging
 import re
@@ -349,7 +350,18 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__)
+        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__, block=False,
+                                       callback=functools.partial(self._send_event_callback, event=event))
+
+    @staticmethod
+    def _send_event_callback(iq, event: Event = None):
+        """Called when an event has been successfully sent.
+
+        Args:
+            iq: Response package.
+            event: Sent event.
+        """
+        log.debug('%s successfully sent.', event.__class__.__name__)
 
     def register_event(self, event_class, handler=None):
         """Register an event type. If a handler is given, we also receive those events, otherwise we just

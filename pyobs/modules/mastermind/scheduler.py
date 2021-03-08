@@ -139,7 +139,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             # sleep a little
             self.closing.wait(1)
 
-    def _schedule(self, queue: Queue):
+    def _schedule(self, queue: mp.Queue):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night

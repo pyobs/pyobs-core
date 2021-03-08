@@ -165,6 +165,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             start = now_plus_safety
 
         # get running scheduled block, if any
+        log.info('Found %s blocks from last schedule.' % len(self._scheduled_blocks))
         if self._current_task_id is None:
             log.info('No running block found.')
             running_block = None

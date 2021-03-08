@@ -1,8 +1,7 @@
 import copy
 import json
 import logging
-from multiprocessing import Process
-from multiprocessing.queues import Queue
+import multiprocessing as mp
 from typing import Union, List
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
     PriorityScheduler
@@ -125,10 +124,11 @@ class Scheduler(Module, IStoppable, IRunnable):
                 self._need_update = False
 
                 # create queue
-                queue = Queue()
+                ctx = mp.get_context('spawn')
+                queue = ctx.Queue()
 
                 # run scheduler in separate process and wait for it
-                p = Process(target=self._schedule, args=(queue,))
+                p = ctx.Process(target=self._schedule, args=(queue,))
                 p.start()
                 p.join()
 

@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 from multiprocessing import Process
+from multiprocessing.queues import Queue
 from typing import Union, List
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
     PriorityScheduler
@@ -123,15 +124,22 @@ class Scheduler(Module, IStoppable, IRunnable):
                 # reset need for update
                 self._need_update = False
 
+                # create queue
+                queue = Queue()
+
                 # run scheduler in separate process and wait for it
-                p = Process(target=self._schedule)
+                p = Process(target=self._schedule, args=(queue,))
                 p.start()
                 p.join()
+
+                # get result
+                self._scheduled_blocks = [] if queue.empty() else queue.get()
+                log.info('Storing %s scheduled blocks for next run.' % len(self._scheduled_blocks))
 
             # sleep a little
             self.closing.wait(1)
 
-    def _schedule(self):
+    def _schedule(self, queue: Queue):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
@@ -165,7 +173,6 @@ class Scheduler(Module, IStoppable, IRunnable):
             start = now_plus_safety
 
         # get running scheduled block, if any
-        log.info('Found %s blocks from last schedule.' % len(self._scheduled_blocks))
         if self._current_task_id is None:
             log.info('No running block found.')
             running_block = None
@@ -250,7 +257,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             log.info('Finished calculating schedule for 0 blocks.')
 
         # store
-        self._scheduled_blocks = copy.copy(schedule.scheduled_blocks)
+        queue.put(schedule.scheduled_blocks)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

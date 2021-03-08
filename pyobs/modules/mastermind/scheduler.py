@@ -249,7 +249,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             log.info('Finished calculating schedule for 0 blocks.')
 
         # store
-        self._scheduled_blocks = schedule.scheduled_blocks
+        self._scheduled_blocks = copy.copy(schedule.scheduled_blocks)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

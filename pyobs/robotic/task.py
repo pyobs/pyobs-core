@@ -29,12 +29,14 @@ class Task:
         """Returns estimated duration of task in seconds."""
         raise NotImplementedError
 
-    def window(self) -> Tuple[Time, Time]:
-        """Returns the time window for this task.
+    @property
+    def start(self) -> Time:
+        """Start time for task"""
+        raise NotImplementedError
 
-        Returns:
-            Start and end time for this observation window.
-        """
+    @property
+    def end(self) -> Time:
+        """End time for task"""
         raise NotImplementedError
 
     def can_run(self) -> bool:

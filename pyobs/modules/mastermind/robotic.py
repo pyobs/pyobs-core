@@ -107,12 +107,9 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
                 self.closing.wait(10)
                 continue
 
-            # task window
-            window = task.window()
-
             # starting too late?
             if not task.can_start_late:
-                late_start = now - window[0]
+                late_start = now - task.start
                 if late_start > self._allowed_late_start * u.second:
                     # only warn once
                     if first_late_start_warning:

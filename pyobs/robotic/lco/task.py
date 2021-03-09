@@ -87,13 +87,15 @@ class LcoTask(Task):
         """Compares to tasks."""
         return self.config == other.config
 
-    def window(self) -> Tuple[Time, Time]:
-        """Returns the time window for this task.
+    @property
+    def start(self) -> Time:
+        """Start time for task"""
+        return self.config['start']
 
-        Returns:
-            Start and end time for this observation window.
-        """
-        return self.config['start'], self.config['end']
+    @property
+    def end(self) -> Time:
+        """End time for task"""
+        return self.config['end']
 
     @property
     def observation_type(self) -> str:

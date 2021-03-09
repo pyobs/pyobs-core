@@ -182,11 +182,11 @@ class Scheduler(Module, IStoppable, IRunnable):
                 running_block = None
 
         # if start is before end time of currently running block, change that
-        if running_block is not None:
-            log.info('Found running block that ends at %s.', running_block.end_time.isot)
+        if running_task is not None:
+            log.info('Found running block that ends at %s.', running_task.end)
 
             # get block end plus some safety
-            block_end = running_block.end_time + 10. * u.second
+            block_end = running_task.end + 10. * u.second
             if start < block_end:
                 start = block_end
                 log.info('Start time would be within currently running block, shifting to %s.', start.isot)

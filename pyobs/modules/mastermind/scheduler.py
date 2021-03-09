@@ -56,7 +56,6 @@ class Scheduler(Module, IStoppable, IRunnable):
 
         # blocks
         self._blocks: List[ObservingBlock] = []
-        self._scheduled_blocks: List[ObservingBlock] = []
 
         # update thread
         self._add_thread_func(self._schedule_thread, True)
@@ -128,9 +127,6 @@ class Scheduler(Module, IStoppable, IRunnable):
                 p.start()
                 p.join()
 
-                # get result
-                log.info('Stored %s scheduled blocks for next run.' % len(self._scheduled_blocks))
-
             # sleep a little
             self.closing.wait(1)
 
@@ -173,7 +169,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             running_task = None
         else:
             # get running task from archive
-            log.info('Trying to find running block in %s blocks from last schedule.' % len(self._scheduled_blocks))
+            log.info('Trying to find running block in current schedule...')
             now = Time.now()
             tasks = self._task_archive.get_pending_tasks(now, now, include_running=True)
             if self._current_task_id in tasks:
@@ -221,6 +217,12 @@ class Scheduler(Module, IStoppable, IRunnable):
             log.info('Not running scheduler, since update was requested.')
             return
 
+        # no blocks found?
+        if len(blocks) == 0:
+            log.info('No blocks left for scheduling.')
+            self._task_archive.update_schedule([], start)
+            return
+
         # log it
         log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
 
@@ -251,9 +253,6 @@ class Scheduler(Module, IStoppable, IRunnable):
                          block.priority)
         else:
             log.info('Finished calculating schedule for 0 blocks.')
-
-        # store
-        self._scheduled_blocks = copy.copy(schedule.scheduled_blocks)
 
     def run(self, *args, **kwargs):
         """Trigger a re-schedule."""

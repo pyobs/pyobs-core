@@ -15,7 +15,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
+class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300,
@@ -183,4 +183,4 @@ class RoboticMastermind(Module, IAutonomous, IFitsHeaderProvider):
             return {}
 
 
-__all__ = ['RoboticMastermind']
+__all__ = ['Mastermind']

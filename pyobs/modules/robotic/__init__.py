@@ -1,3 +1,3 @@
 from .pointing import PointingSeries
-from .robotic import RoboticMastermind
+from .mastermind import Mastermind
 from .scheduler import Scheduler

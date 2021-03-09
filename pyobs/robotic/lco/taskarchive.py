@@ -153,7 +153,8 @@ class LcoTaskArchive(TaskArchive):
 
             # need update!
             try:
-                tasks = self.fetch_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour), state='PENDING')
+                tasks = self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
+                                               include_running=False)
             except Timeout:
                 log.error('Request timed out')
                 self._closing.wait(60)
@@ -173,13 +174,13 @@ class LcoTaskArchive(TaskArchive):
             # finished
             self._last_schedule_time = now
 
-    def fetch_tasks(self, end_after: Time, start_before: Time, state: str = 'PENDING') -> Dict[str, Task]:
-        """Fetch tasks from portal.
+    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+        """Fetch pending tasks from portal.
 
         Args:
-            end_after: Task must end after this time.
             start_before: Task must start before this time.
-            state: State of tasks.
+            end_after: Task must end after this time.
+            include_running: Whether to include a currently running task.
 
         Returns:
             Dictionary with tasks.
@@ -189,14 +190,19 @@ class LcoTaskArchive(TaskArchive):
             ValueError if something goes wrong.
         """
 
+        # define states
+        states = ['PENDING']
+        if include_running:
+            states += ['IN_PROGRESS']
+
         # get url and params
         url = urljoin(self._url, '/api/observations/')
         params = {
             'site': self._site,
             'end_after': end_after.isot,
             'start_before': start_before.isot,
-            'state': state,
-            'request_state': state,
+            'state': states,
+            'request_state': states,
             'limit': 1000
         }
 
@@ -238,11 +244,8 @@ class LcoTaskArchive(TaskArchive):
         # loop all tasks
         with self._update_lock:
             for task in self._tasks.values():
-                # get start and end
-                start, end = task.window()
-
                 # running now?
-                if start <= time < end and not task.is_finished():
+                if task.start <= time < task.end and not task.is_finished():
                     return task
 
         # nothing found

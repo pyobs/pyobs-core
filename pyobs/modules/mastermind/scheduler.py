@@ -170,16 +170,17 @@ class Scheduler(Module, IStoppable, IRunnable):
         # get running scheduled block, if any
         if self._current_task_id is None:
             log.info('No running block found.')
-            running_block = None
+            running_task = None
         else:
+            # get running task from archive
             log.info('Trying to find running block in %s blocks from last schedule.' % len(self._scheduled_blocks))
-            tmp = list(filter(lambda b: b.configuration['request']['id'] == self._current_task_id,
-                              self._scheduled_blocks))
-            if len(tmp) > 0:
-                running_block = tmp[0]
+            now = Time.now()
+            tasks = self._task_archive.get_pending_tasks(now, now, include_running=True)
+            if self._current_task_id in tasks:
+                running_task = tasks[self._current_task_id]
             else:
                 log.info('Running block not found in last schedule.')
-                running_block = None
+                running_task = None
 
         # if start is before end time of currently running block, change that
         if running_task is not None:

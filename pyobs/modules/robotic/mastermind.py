@@ -147,7 +147,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
                     break
 
                 # closing?
-                if self.closing.is_set() or Time.now() > window[1] + self._allowed_overrun * u.second:
+                if self.closing.is_set() or Time.now() > task.end + self._allowed_overrun * u.second:
                     # set event and wait for thread
                     abort_event.set()
                     task_thread.join()

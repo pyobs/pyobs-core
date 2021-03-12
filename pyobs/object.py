@@ -233,8 +233,8 @@ class Object:
             raise InterruptedError
         return True
 
-    def _add_child_object(self, config_or_object: Union[dict, object], object_class: ObjectClass = None, **kwargs) \
-            -> ObjectClass:
+    def _add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
+                          **kwargs) -> ObjectClass:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:
@@ -244,9 +244,27 @@ class Object:
             The created module.
         """
 
-        # create it
-        obj = get_object(config_or_object, object_class=object_class,
-                         timezone=self.timezone, location=self.location, **kwargs)
+        # what did we get?
+        if isinstance(config_or_object, dict):
+            # create it fro
+            obj = get_object(config_or_object, object_class=object_class,
+                             timezone=self.timezone, location=self.location, **kwargs)
+
+        elif config_or_object is not None:
+            # seems we got an object directly, try to set timezone and location
+            obj = config_or_object
+            if hasattr(config_or_object, 'timezone'):
+                config_or_object.timezone = self.timezone
+            if hasattr(config_or_object, 'location'):
+                config_or_object.location = self.location
+
+        elif object_class is not None:
+            # no config or object given, do we have a class?
+            obj = object_class(**kwargs, timezone=self.timezone, location=self.location, **kwargs)
+
+        else:
+            # not successful
+            raise ValueError('No valid object description given.')
 
         # add to list
         self._child_objects.append(obj)

@@ -266,9 +266,8 @@ class Object:
             # not successful
             raise ValueError('No valid object description given.')
 
-        # add to list?
-        if obj not in self._child_objects:
-            self._child_objects.append(obj)
+        # add to list
+        self._child_objects.append(obj)
 
         # return it
         return obj

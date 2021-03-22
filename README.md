@@ -23,6 +23,10 @@ Create a test configuration test.yaml:
 And run it:
    
     pyobs test.yaml
+    
+Documentation
+------------
+See http://pyobs.github.io/
 
 
 Contributors

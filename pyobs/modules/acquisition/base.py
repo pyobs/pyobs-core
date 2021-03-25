@@ -156,6 +156,12 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f", giving %.2f" in total.',
                      dra * 3600., ddec * 3600., dist * 3600.)
 
+            # for testing, calculate offsets from current
+            t1, t2 = radec_current.spherical_offsets_to(radec_target)
+            log.info('TESTING current->target: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
+            t1, t2 = radec_center.spherical_offsets_to(radec_target)
+            log.info('TESTING center->target: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
+
             # get distance
             if dist * 3600. < self._tolerance:
                 # we're finished!
@@ -202,10 +208,6 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 # move offset
                 log.info('Offsetting telescope to dRA=%.2f", dDec=%.2f"...', total_dra * 3600., total_ddec * 3600.)
                 telescope.set_radec_offsets(total_dra, total_ddec).wait()
-
-                # for testing, calculate offsets from current
-                t1, t2 = radec_current.spherical_offsets_to(radec_target)
-                log.info('TESTING: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
 
             elif isinstance(telescope, IAltAzOffsets):
                 # transform both to Alt/AZ

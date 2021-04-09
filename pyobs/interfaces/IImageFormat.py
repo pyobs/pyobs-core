@@ -1,3 +1,5 @@
+from typing import List
+
 from .interface import Interface
 from ..utils.enums import ImageFormat
 
@@ -24,7 +26,7 @@ class IImageFormat(Interface):
         """
         raise NotImplementedError
 
-    def list_image_formats(self, *args, **kwargs) -> list:
+    def list_image_formats(self, *args, **kwargs) -> List[str]:
         """List available image formats.
 
         Returns:

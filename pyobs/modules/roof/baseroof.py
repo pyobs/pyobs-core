@@ -1,4 +1,5 @@
 import logging
+from typing import List, Dict, Tuple, Any
 
 from pyobs.interfaces import IRoof, IMotion, IFitsHeaderProvider
 from pyobs import Module
@@ -27,7 +28,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

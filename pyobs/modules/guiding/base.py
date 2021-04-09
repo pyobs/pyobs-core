@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List, Dict, Tuple, Any
 import logging
 import numpy as np
 from astropy.coordinates import SkyCoord, AltAz
@@ -100,7 +100,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         """
         return self._enabled
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -115,7 +115,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         # return header
         return {
-            'AGSTATE': state
+            'AGSTATE': (state, 'Autoguider state')
         }
 
     def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] = None):

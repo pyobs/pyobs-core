@@ -1,8 +1,10 @@
+from typing import List, Dict, Tuple, Any
+
 from .interface import *
 
 
 class IFitsHeaderProvider(Interface):
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

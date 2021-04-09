@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Tuple
+from typing import Tuple, List, Dict, Any
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -255,7 +255,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

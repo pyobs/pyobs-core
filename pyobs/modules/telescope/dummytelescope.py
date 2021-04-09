@@ -148,7 +148,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
             self._change_motion_status(IMotion.Status.POSITIONED, interface='IFocuser')
             self._telescope.focus = focus
 
-    def list_filters(self, *args, **kwargs) -> list:
+    def list_filters(self, *args, **kwargs) -> List[str]:
         """List available filters.
 
         Returns:

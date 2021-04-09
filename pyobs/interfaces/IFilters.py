@@ -1,8 +1,10 @@
+from typing import List
+
 from .IMotion import IMotion
 
 
 class IFilters(IMotion):
-    def list_filters(self, *args, **kwargs) -> list:
+    def list_filters(self, *args, **kwargs) -> List[str]:
         """List available filters.
 
         Returns:

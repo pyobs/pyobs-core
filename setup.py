@@ -36,6 +36,7 @@ setup(
             'photutils',
             'lmfit',
             'tornado',
+            'python-telegram-bot',
             'sep;platform_system=="Linux"',
             'pyinotify;platform_system=="Linux"',
             'python-daemon;platform_system=="Linux"'

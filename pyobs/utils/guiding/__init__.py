@@ -1,2 +1,3 @@
 from .projection import ProjectionGuidingOffset
 from .nstarsurroundingsoffset import NStarSurroundingsOffset
+from .croppedstarsoffset import CroppedStarsOffset

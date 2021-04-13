@@ -5,7 +5,7 @@
 # import pandas as pd
 # import numpy as np
 #
-# from pyobs import Module
+# from pyobs.modules import Module
 # from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 # from pyobs.modules import timeout
 # from pyobs.events import NewImageEvent, ExposureStatusChangedEvent

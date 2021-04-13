@@ -7,7 +7,7 @@ from threading import Thread
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import LogEvent
 
 log = logging.getLogger(__name__)

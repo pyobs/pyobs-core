@@ -4,7 +4,7 @@ import os
 from queue import Queue
 from astropy.io import fits
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)

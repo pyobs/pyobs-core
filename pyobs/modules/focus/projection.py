@@ -7,7 +7,7 @@ from scipy import optimize, ndimage
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
 

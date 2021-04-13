@@ -1,7 +1,7 @@
 import logging
 
 from pyobs.events import Event
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 

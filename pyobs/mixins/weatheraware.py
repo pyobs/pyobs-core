@@ -2,7 +2,7 @@ import logging
 import time
 from typing import Optional, Union
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IMotion
 from pyobs.mixins import MotionStatusMixin

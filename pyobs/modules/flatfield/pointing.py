@@ -2,7 +2,7 @@ import logging
 import typing
 
 from pyobs.interfaces import ITelescope, IRunnable
-from pyobs import Module, get_object
+from pyobs.modules import Module, get_object
 from pyobs.modules import timeout
 from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 

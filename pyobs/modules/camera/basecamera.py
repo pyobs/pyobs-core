@@ -16,7 +16,7 @@ from pyobs.images import Image
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime, IImageType
 from pyobs.modules import timeout

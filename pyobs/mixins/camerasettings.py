@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Union
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import ICamera, IFilters, ICameraWindow, ICameraBinning
 
 log = logging.getLogger(__name__)

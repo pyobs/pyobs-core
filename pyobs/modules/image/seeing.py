@@ -4,7 +4,7 @@ from typing import List, Union
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent
 from pyobs.utils.publisher import Publisher
 from pyobs.utils.time import Time

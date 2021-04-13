@@ -5,7 +5,7 @@ from typing import List, Union, Type
 
 from astropy.time import Time
 
-from pyobs import Module, get_object
+from pyobs.modules import Module, get_object
 from pyobs.events import NewImageEvent
 from pyobs.utils.archive import Archive
 from pyobs.utils.cache import DataCache

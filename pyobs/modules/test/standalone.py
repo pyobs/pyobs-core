@@ -1,6 +1,6 @@
 import logging
 
-from pyobs import Module
+from pyobs.modules import Module
 
 
 log = logging.getLogger(__name__)

@@ -3,7 +3,7 @@ import threading
 import typing
 
 from pyobs.interfaces import IRunnable, IFlatField
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.object import get_object
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities

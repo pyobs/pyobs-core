@@ -3,7 +3,7 @@ from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent

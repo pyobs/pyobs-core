@@ -1,7 +1,7 @@
 import logging
 from typing import List, Union, Dict, Optional
 
-from pyobs import Module
+from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 

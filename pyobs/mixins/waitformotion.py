@@ -3,7 +3,7 @@ import time
 from threading import Event
 from typing import Union, List
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IMotion
 
 log = logging.getLogger(__name__)

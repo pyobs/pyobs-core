@@ -9,7 +9,7 @@ import astropy.units as u
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderProvider
-from pyobs import Module
+from pyobs.modules import Module
 
 
 log = logging.getLogger(__name__)

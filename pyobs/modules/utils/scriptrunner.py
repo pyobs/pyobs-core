@@ -1,7 +1,7 @@
 import logging
 
 from pyobs.interfaces import IScriptRunner
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 
 

@@ -7,7 +7,7 @@ import astropy.units as u
 
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, ICameraExposureTime, \
     IImageType
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType

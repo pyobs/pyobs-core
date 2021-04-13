@@ -2,7 +2,7 @@ import logging
 from queue import Queue
 from typing import Union, List
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent
 from pyobs.utils.fits import format_filename
 

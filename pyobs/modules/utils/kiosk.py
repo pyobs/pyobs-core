@@ -8,7 +8,7 @@ import tornado.web
 import tornado.gen
 import numpy as np
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import ICamera, ICameraExposureTime, IStoppable, ICameraWindow
 
 log = logging.getLogger(__name__)

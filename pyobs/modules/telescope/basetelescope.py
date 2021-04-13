@@ -6,7 +6,7 @@ import astropy.units as u
 import logging
 
 from pyobs.interfaces import ITelescope, IMotion, IFitsHeaderProvider
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.threads import LockWithAbort

@@ -5,7 +5,7 @@ from typing import Union, Tuple
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
-from pyobs import Module, get_object
+from pyobs.modules import Module, get_object
 from pyobs.modules import timeout
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats.flatfielder import FlatFielder

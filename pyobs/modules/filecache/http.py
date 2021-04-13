@@ -9,7 +9,7 @@ import tornado.ioloop
 import tornado.web
 import tornado.gen
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.utils.cache import DataCache
 
 log = logging.getLogger(__name__)

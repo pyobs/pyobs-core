@@ -13,7 +13,7 @@ from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.events import GoodWeatherEvent
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStoppable, IRunnable
-from pyobs import Module, get_object
+from pyobs.modules import Module, get_object
 from pyobs.robotic import TaskArchive
 
 

@@ -1,6 +1,6 @@
 import logging
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import MotionStatusChangedEvent
 from pyobs.interfaces import IMotion
 

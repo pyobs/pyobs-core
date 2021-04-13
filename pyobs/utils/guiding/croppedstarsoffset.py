@@ -10,19 +10,29 @@ from .base import BaseGuidingOffset
 
 log = logging.getLogger(__name__)
 
+
 class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
 class CroppedStarsOffset(BaseGuidingOffset):
-    """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
+    """An auto-guiding system based on comparing complete 2D images that are created by finding all clear sources in the image
+    and setting the rest of the image to zero."""
 
-    def __init__(self, max_expected_offset_in_arcsec=1e-3 * 3600,
-                 min_required_sources_in_image=5, *args, **kwargs):
+    def __init__(
+            self,
+            max_expected_offset_in_arcsec=4,
+            min_required_sources_in_image=1,
+            min_pixels_above_threshold_per_source=3,
+            *args,
+            **kwargs,
+    ):
         """Initializes a new auto guiding system."""
         log.info("Initializing CroppedStarsOffset")
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self.max_expected_offset_in_pixels = None
+        self.min_pixels_above_threshold_per_source = min_pixels_above_threshold_per_source
+
         self._ref_cropped_stars_image = None
 
         self.min_required_sources_in_image = min_required_sources_in_image
@@ -33,8 +43,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
     def reset(self):
         """Resets guiding."""
         log.info("Reset auto-guiding.")
-        self._ref_box_dimensions = None
-        self._ref_boxed_images = None
+        self._ref_cropped_stars_image = None
 
     def find_pixel_offset(
             self,
@@ -60,7 +69,15 @@ class CroppedStarsOffset(BaseGuidingOffset):
             log.info("Initialising auto-guiding with new image...")
 
             # initialize reference image
-            self._ref_cropped_stars_image = self.get_cropped_stars_image(image)
+            try:
+                self._ref_cropped_stars_image = self.get_cropped_stars_image(image)
+            except ValueError as e:
+                log.warning(
+                    f"Could not initialize reference image info due to exception '{e}'. Resetting..."
+                )
+                self.reset()
+                return None, None
+
             self._init_pid()
             return 0, 0
 
@@ -83,7 +100,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
         sources = self.remove_bad_sources(sources)
 
         self.check_if_enough_sources_in_image(sources)
-        log.info(f"Found {len(sources)} in image.")
+        log.info(f"Found {len(sources)} source(s) in image.")
 
         # build image with stars cut out in circles of radius FWHM_factor_for_radius * FWHM of stars
         cropped_stars_image = np.zeros(image.data.shape)
@@ -99,6 +116,8 @@ class CroppedStarsOffset(BaseGuidingOffset):
             cropped_stars_image[within_radius_mask] = (
                     image.data[within_radius_mask] - source["background"]
             )
+
+        cropped_stars_image[cropped_stars_image <= 0] = 0
 
         return cropped_stars_image
 
@@ -142,29 +161,28 @@ class CroppedStarsOffset(BaseGuidingOffset):
 
         sources_result = sources[
             np.where(
-                sources["min_distance_from_border"] > min_distance_from_border_in_pixels*2
+                sources["min_distance_from_border"]
+                > min_distance_from_border_in_pixels * 2
             )
         ]
         return sources_result
 
-    @staticmethod
     def remove_bad_sources(
+            self,
             sources: Table,
-            MIN_NPIX_IN_SOURCE = 3,
             MAX_ELLIPTICITY=0.4,
             MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
     ) -> Table:
 
-        # remove large and small sources
+        # remove small sources
+        sources = sources[np.where(sources['tnpix'] >= self.min_pixels_above_threshold_per_source)]
+
+        # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
-        sources.sort("tnpix")
         sources = sources[
             np.where(
-                np.logical_and(
-                    MIN_NPIX_IN_SOURCE <= sources["tnpix"],
-                    sources["tnpix"] <= tnpix_median + 2 * tnpix_std,
-                )
+                sources["tnpix"] <= tnpix_median + 2 * tnpix_std,
             )
         ]
 
@@ -173,7 +191,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
         sources = sources[np.where(sources["ellipticity"] <= MAX_ELLIPTICITY)]
 
         # remove saturated
-        sources = sources[np.where(sources['peak'] + sources['background'] < 6e5)]
+        sources = sources[np.where(sources["peak"] + sources["background"] < 6e5)]
 
         # remove sources with background <= 0
         sources = sources[np.where(sources["background"] > 0)]
@@ -197,18 +215,21 @@ class CroppedStarsOffset(BaseGuidingOffset):
             self,
             current_image: Image,
     ) -> tuple:
-        log.info(f"Maximum expected offset in pixels is {self.max_expected_offset_in_pixels}.")
         # create images cropped around stars
         current_cropped_star_image = self.get_cropped_stars_image(current_image)
-        corr = self.calculate_correlation(
-            current_cropped_star_image,
-            self._ref_cropped_stars_image,
-            max_expected_offset=self.max_expected_offset_in_pixels,
-        )
+        try:
+            corr = self.calculate_correlation(
+                current_cropped_star_image,
+                self._ref_cropped_stars_image,
+                max_expected_offset=self.max_expected_offset_in_pixels,
+            )
 
-        offset, offset_err = self.calculate_offset_from_2d_correlation(corr)
+            offset = self.calculate_offset_from_2d_correlation(corr)
+        except Exception as e:
+            log.warning(str(e))
+            return None, None
 
-        return offset, offset_err
+        return offset
 
     @staticmethod
     def gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):
@@ -233,20 +254,13 @@ class CroppedStarsOffset(BaseGuidingOffset):
             correlation_size = int(4 * max_expected_offset) + 1
             padding_size = correlation_size // 2
 
-            cropped_im1, cropped_im2 = im1, im2 #self.crop_images_to_enforce_time_limit(im1, im2, correlation_size)
+            cropped_im1, cropped_im2 = (
+                im1,
+                im2,
+            )  # self.crop_images_to_enforce_time_limit(im1, im2, correlation_size)
 
             # pad with zeros to allow use of 'valid' mode in correlation
             cropped_im1_padded = self.pad_with_zeros(cropped_im1, padding_size)
-
-            # plt.ion()
-            # plt.figure()
-            # plt.imshow(cropped_im1, vmin=0, vmax=2500)
-            # plt.colorbar()
-            #
-            # plt.figure()
-            # plt.imshow(cropped_im2, vmin=0, vmax=2500)
-            # plt.colorbar()
-            # plt.pause(1e-5)
 
             corr = signal.correlate2d(cropped_im1_padded, cropped_im2, mode="valid")
             try:
@@ -342,17 +356,25 @@ class CroppedStarsOffset(BaseGuidingOffset):
         x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
         self.check_if_correlation_max_is_close_to_border(corr)
 
-        sigma_x, sigma_y = 3, 3  # TODO: dependence on binning
+        # estimate width of correlation peak as radius of area with values above half maximum
+        half_max = np.max(corr - a) / 2 + a
+        greater_than_half_max_area = np.sum(corr >= half_max)
+        sigma_x = np.sqrt(greater_than_half_max_area / np.pi)
+        sigma_y = sigma_x
+
+        # initial values for fit
         p0 = [a, b, x0, y0, sigma_x, sigma_y]
         bounds = (
-            [-np.inf, -np.inf, x0 - sigma_x, y0 - sigma_y, 0, 0],
-            [np.inf, np.inf, x0 + sigma_x, y0 + sigma_y, np.inf, np.inf],
+            [a - 1, -np.inf, x0 - 2 * sigma_x, y0 - 2 * sigma_y, 1e-3, 1e-3],
+            [a + 1, np.inf, x0 + 2 * sigma_x, y0 + 2 * sigma_y, corr.shape[0], corr.shape[1]],
         )
+
+        # restrict part of correlation that is going to be used for fit
         # only use data that clearly belong to peak to avoid border effects
-        mask_value_above_background = ydata > -1e5  # a + .1*b
-        mask_circle_around_peak = (X.ravel() - x0) ** 2 + (Y.ravel() - y0) ** 2 < 4 * (
-                sigma_x ** 2 + sigma_y ** 2
-        ) / 2
+        mask_value_above_background = ydata > 0  # a + .1*b
+        mask_circle_around_peak = (X.ravel() - x0) ** 2 + (Y.ravel() - y0) ** 2 < (
+                (2 * sigma_x) ** 2 + (2 * sigma_y) ** 2
+        )
         mask = np.logical_and(mask_value_above_background, mask_circle_around_peak)
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]
@@ -374,19 +396,6 @@ class CroppedStarsOffset(BaseGuidingOffset):
             log.info("Returning pixel position with maximal value in correlation.")
             offset = np.unravel_index(np.argmax(corr), corr.shape)
             return offset
-
-        MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD = 1e-2
-        fit_ydata_restricted = self.gauss2d(xdata_restricted, *popt)
-        square_rel_res = np.square(
-            (fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted
-        )
-        median_squared_rel_res = np.median(np.square(square_rel_res))
-
-        if median_squared_rel_res > MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD:
-            raise Exception(
-                f"Bad fit with median squared relative residue = {median_squared_rel_res}"
-                f" vs allowed value of {MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD}"
-            )
 
         return (popt[2], popt[3])
 

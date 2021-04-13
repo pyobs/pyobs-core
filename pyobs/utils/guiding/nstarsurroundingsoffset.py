@@ -23,19 +23,31 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
     def __init__(
             self,
             N_stars=1,
-            max_expected_offset_in_arcsec=1e-3 * 3600,
-            min_required_sources_in_image=5,
+            max_expected_offset_in_arcsec=4,
+            min_pixels_above_threshold_per_source=3,
+            min_required_sources_in_image=1,
             *args,
             **kwargs,
     ):
-        """Initializes a new auto guiding system."""
+        """Initializes a new auto guiding system.
+
+        Args:
+            N_stars: maximum number of stars to use to calculate offset from boxes around them
+            max_expected_offset_in_arcsec: the maximal expected offset in arc seconds. Determines the size of boxes around stars.
+            min_pixels_above_threshold_per_source: minimum required number of pixels above threshold for source to be used for offset calculation.
+
+        Returns:
+            None
+        """
         log.info(f"Initializing NStarSurroundingsOffset with N_starts={N_stars}.")
         self.N_stars = N_stars
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
-        self._ref_box_dimensions = None
-        self._ref_boxed_images = None
+        self.min_pixels_above_threshold_per_source = min_pixels_above_threshold_per_source
 
         self.min_required_sources_in_image = min_required_sources_in_image
+
+        self._ref_box_dimensions = None
+        self._ref_boxed_images = None
 
         self.star_box_size = None
         self._pid_ra = None
@@ -207,23 +219,22 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         ]
         return sources_result
 
-    @staticmethod
     def remove_bad_sources(
+            self,
             sources: Table,
             MAX_ELLIPTICITY=0.4,
             MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
     ) -> Table:
 
-        # remove large and small sources
+        # remove small sources
+        sources = sources[np.where(sources['tnpix'] >= self.min_pixels_above_threshold_per_source)]
+
+        # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
-        sources.sort("tnpix")
         sources = sources[
             np.where(
-                np.logical_and(
-                    tnpix_median - tnpix_std / 2 <= sources["tnpix"],
-                    sources["tnpix"] <= tnpix_median + 2 * tnpix_std,
-                )
+                sources["tnpix"] <= tnpix_median + 2 * tnpix_std,
             )
         ]
 
@@ -233,6 +244,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
 
         # remove sources with background <= 0
         sources = sources[np.where(sources["background"] > 0)]
+
         # remove sources with low contrast to background
         sources = sources[
             np.where(
@@ -263,7 +275,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
             ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in sources
 
         """
-        n_required_sources = max(self.min_required_sources_in_image, self.N_stars)
+        n_required_sources = self.min_required_sources_in_image
         if len(sources) < n_required_sources:
             raise ValueError(
                 f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."
@@ -331,7 +343,12 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
         self.check_if_correlation_max_is_close_to_border(corr)
 
-        sigma_x, sigma_y = 3, 3  # TODO: dependence on binning
+        # estimate width of correlation peak as radius of area with values above half maximum
+        half_max = np.max(corr - a) / 2 + a
+        greater_than_half_max_area = np.sum(corr >= half_max)
+        sigma_x = np.sqrt(greater_than_half_max_area / np.pi)
+        sigma_y = sigma_x
+
         p0 = [a, b, x0, y0, sigma_x, sigma_y]
         bounds = (
             [-np.inf, -np.inf, x0 - sigma_x, y0 - sigma_y, 0, 0],

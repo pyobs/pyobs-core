@@ -9,7 +9,8 @@ from pyobs.images.processors import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
-from pyobs.modules import Module, get_object
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.images.processors.offsets import Offsets
 from pyobs.images import Image
 

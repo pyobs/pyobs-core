@@ -6,9 +6,9 @@ import numpy as np
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
-from pyobs.modules import Module, get_object
+from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import timeout
+from pyobs.modules import timeout, Module
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
 

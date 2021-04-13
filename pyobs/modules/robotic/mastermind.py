@@ -3,7 +3,8 @@ import threading
 from typing import Union, List, Dict, Tuple, Any
 import astropy.units as u
 
-from pyobs.modules import Module, get_object
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderProvider, IAutonomous

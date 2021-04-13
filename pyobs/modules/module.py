@@ -1,3 +1,7 @@
+"""
+A module in *pyobs* is the smalles executable unit. The base class for all modules is :class:`~pyobs.modules.Module`.
+"""
+
 import inspect
 import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List

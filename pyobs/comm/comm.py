@@ -1,3 +1,28 @@
+"""
+The Comm object is responsible for all communication between modules (see :mod:`pyobs.modules.module`). The base
+class for all implementations is :class:`pyobs.comm.Comm`.
+
+The user usually only has contact with the Comm object when writing the configuration for an existing module or when
+developing a new module that needs to communicate with other modules.
+
+In a configuration file, the Comm object is defined at top-level like this::
+
+    comm:
+        class: pyobs.comm.xmpp.XmppComm
+
+Except for a single parameter defined in :class:`~pyobs.comm.Comm`'s constructor, all parameters are defined in derived
+classes.
+
+There is currently one one implementation of the Comm interface:
+
+* :class:`~pyobs.comm.xmpp.XmppComm` uses the XMPP protocol for communication.
+
+.. seealso::
+
+   Module :mod:`~pyobs.modules.module`
+      Description for modules, to which Comm objects are usually assigned.
+"""
+
 import inspect
 import logging
 import queue
@@ -39,10 +64,12 @@ class Comm:
 
     @property
     def module(self):
+        """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
     def module(self, module):
+        """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
         if hasattr(self, '_set_module'):
             self._set_module(module)

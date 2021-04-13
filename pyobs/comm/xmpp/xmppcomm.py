@@ -24,7 +24,55 @@ class EventStanza(ElementBase):
 
 
 class XmppComm(Comm):
-    """Comm module for XMPP."""
+    """A Comm class using XMPP.
+
+    This Comm class uses an XMPP server (e.g. `ejabberd <https://www.ejabberd.im>`_) for communication between modules.
+    Essentially required for a connection to the server is a JID, a JabberID. It can be specified in the configuration
+    like this::
+
+        comm:
+            class: pyobs.xmpp.XmppComm
+            jid:  someuser@example.com/pyobs
+
+    Using this, *pyobs* tries to connect to example.com as user ``someuser`` with resource ``pyobs``. Since ``pyobs``
+    is the default resource, it can be omitted::
+
+        jid:  someuser@example.com
+
+    Alternatively, one can split the user, domain, and resource (if required) into three different parameters::
+
+        user: someuser
+        domain: example.com
+
+    This comes in handy, if one wants to put the basic Comm configuration into a separate file. Imagine a ``_comm.yaml``
+    in the same directory as the module config::
+
+        comm_cfg: &comm
+            class: pyobs.comm.xmpp.XmppComm
+            domain: example.com
+
+    Now in the module configuration, one can simply do this::
+
+        {include _comm.yaml}
+
+        comm:
+            <<: *comm
+            user: someuser
+            password: supersecret
+
+    This allows for a super easy change of the domain for all configurations, which especially makes developing on
+    different machines a lot easier.
+
+    The ``server`` parameter can be used, when the server's hostname is different from the XMPP domain. This might,
+    e.g., be the case, when connecting to a server via SSH port forwarding::
+
+        jid:  someuser@example.com/pyobs
+        server: localhost:52222
+
+    Finally, always make sure that ``use_tls`` is set according to the server's settings, i.e. if it uses TLS, this
+    parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
+
+    """
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
                  resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,

@@ -1,3 +1,11 @@
+"""
+:class:`~pyobs.object.Object` is the base class for almost all classe in *pyobs*. It adds some convenience methods
+and helper methods for creating other Objects.
+
+:func:`~pyobs.object.get_object` is a convenience function for creating objects from dictionaries.
+"""
+
+from __future__ import annotations
 import datetime
 import threading
 from typing import Union, Callable, TypeVar, Optional, Type
@@ -5,6 +13,7 @@ import logging
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
+import pyobs
 
 
 log = logging.getLogger(__name__)
@@ -17,7 +26,8 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
-        config_or_object: A configuration dict or an object itself to create/check.
+        config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
+            is given, a new object is created.
         object_class: Class to check object against.
 
     Returns:
@@ -67,10 +77,10 @@ def create_object(config: dict, *args, **kwargs):
 
 class Object:
     """Base class for all pyobs objects."""
-
-    def __init__(self, vfs: Union['VirtualFileSystem', dict] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
-                 location: Union[str, dict, EarthLocation] = None, *args, **kwargs):
-        """Initializes a new pyobs module.
+    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
+                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
+                 *args, **kwargs):
+        """Initializes a new object.
 
         Args:
             vfs: VFS to use (either object or config)

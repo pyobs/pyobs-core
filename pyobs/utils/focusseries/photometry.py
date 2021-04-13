@@ -2,7 +2,7 @@ from typing import Tuple, Dict, List
 
 import numpy as np
 import logging
-from pyobs import get_object
+from pyobs.object import get_object
 
 from pyobs.images.processors.detection import SourceDetection
 from .base import FocusSeries

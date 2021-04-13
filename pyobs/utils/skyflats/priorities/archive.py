@@ -2,7 +2,7 @@ import typing
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.time import Time

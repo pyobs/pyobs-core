@@ -2,7 +2,7 @@ from threading import Event
 import logging
 from typing import Union, Dict, Tuple
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time

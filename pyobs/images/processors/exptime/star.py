@@ -1,7 +1,7 @@
 import logging
 from typing import Union
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.images import Image
 from pyobs.images.processors.exptime.exptime import ExpTimeEstimator
 from pyobs.images.processors.detection import SourceDetection

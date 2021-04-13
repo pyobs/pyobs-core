@@ -262,33 +262,6 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def add_command_handler(self, command: str, handler):
-        """Add a command handler.
-
-        Args:
-            command (str): Name of command to handle.
-            handler: Method that handles the command
-        """
-        raise NotImplementedError
-
-    def del_command_handler(self, command: str, handler):
-        """Delete a command handler.
-
-        Args:
-            command: Name of command to handle.
-            handler: Method that handles the command
-        """
-        raise NotImplementedError
-
-    def send_text_message(self, client: str, msg: str):
-        """Send a text message to another client.
-
-        Args:
-            client: ID of client to send message to.
-            msg: Message to send.
-        """
-        raise NotImplementedError
-
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.
 

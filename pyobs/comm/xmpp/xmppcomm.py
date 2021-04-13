@@ -14,7 +14,6 @@ from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
-from pyobs.modules.module import Module
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +47,6 @@ class XmppComm(Comm):
         # variables
         self._rpc: Optional[RPC] = None
         self._connected = False
-        self._command_handlers: Dict[str, List[Callable]] = {}
         self._event_handlers: Dict[Type, List[Callable]] = {}
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, List[Type]] = {}
@@ -81,7 +79,6 @@ class XmppComm(Comm):
 
         # create client
         self._xmpp = XmppClient(self._jid, password)
-        self._xmpp.add_event_handler('message', self._handle_message)
         self._xmpp.add_event_handler('pubsub_publish', self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
@@ -287,53 +284,6 @@ class XmppComm(Comm):
             The XMPP client.
         """
         return self._xmpp
-
-    def _handle_message(self, msg):
-        """Handle a new incoming XMPP message.
-
-        Args:
-            msg: Received XMPP message.
-        """
-
-        cmd = msg['body']
-        if cmd in self._command_handlers:
-            for handler in self._command_handlers[cmd]:
-                # create thread and start it
-                thread = threading.Thread(name="cmd_%s" % handler.__name__,
-                                          target=handler, args=(msg['from'], cmd),
-                                          daemon=True)
-                thread.start()
-
-    def add_command_handler(self, command: str, handler):
-        """Add a command handler.
-
-        Args:
-            command (str): Name of command to handle.
-            handler: Method that handles the command
-        """
-        if command not in self._command_handlers:
-            self._command_handlers[command] = []
-        self._command_handlers[command].append(handler)
-
-    def del_command_handler(self, command: str, handler):
-        """Delete a command handler.
-
-        Args:
-            command: Name of command to handle.
-            handler: Method that handles the command
-        """
-        if command not in self._command_handlers:
-            return
-        self._command_handlers[command].remove(handler)
-
-    def send_text_message(self, client: str, msg: str):
-        """Send a text message to another client.
-
-        Args:
-            client: ID of client to send message to.
-            msg: Message to send.
-        """
-        self._xmpp.send_message(client, msg)
 
     def send_event(self, event: Event):
         """Send an event to other clients.

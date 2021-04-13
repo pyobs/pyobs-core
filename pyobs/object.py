@@ -8,7 +8,7 @@ and helper methods for creating other Objects.
 from __future__ import annotations
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict
 import logging
 import pytz
 from astroplan import Observer
@@ -76,7 +76,23 @@ def create_object(config: dict, *args, **kwargs):
 
 
 class Object:
-    """Base class for all pyobs objects."""
+    """Base class for all objects in *pyobs*.
+
+    .. note::
+
+        Objects must always be opened and closed using :meth:`~pyobs.object.Object.open` and
+        :meth:`~pyobs.object.Object.close`, respectively.
+
+    This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
+    observer object is automatically created.
+
+    Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object._add_thread_func`
+    method as well as a watchdog thread that automatically restarts threads, if requested.
+
+    Using :meth:`~pyobs.object.Object._add_child_object`, other objects can be (created an) attached to this object,
+    which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
+    on those objects.
+    """
     def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
                  *args, **kwargs):
@@ -96,13 +112,12 @@ class Object:
         self.closing = threading.Event()
 
         # child objects
-        self._child_objects = []
+        self._child_objects: List[Object] = []
 
         # create vfs
         if vfs:
-            self.vfs = get_object(vfs)
+            self.vfs = get_object(vfs, VirtualFileSystem)
         else:
-            from pyobs.vfs import VirtualFileSystem
             self.vfs = VirtualFileSystem()
 
         # timezone
@@ -138,11 +153,11 @@ class Object:
         self._opened = False
 
         # thread function(s)
-        self._threads = {}
+        self._threads: Dict[threading.Thread, Tuple] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
     def _add_thread_func(self, func: Callable, restart: bool = True):
-        """Add a new thread func.
+        """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
 
@@ -164,7 +179,7 @@ class Object:
         for thread, (target, _) in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
             thread.start()
-        if self._watchdog:
+        if len(self._threads) > 0 and self._watchdog:
             self._watchdog.start()
 
         # open child objects
@@ -177,6 +192,7 @@ class Object:
 
     @property
     def opened(self):
+        """Whether object has been opened."""
         return self._opened
 
     def close(self):

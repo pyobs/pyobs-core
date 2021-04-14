@@ -4,6 +4,8 @@ from .event import Event
 
 
 class GoodWeatherEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, eta: Time = None):
         """Initializes a new good weather event.
 

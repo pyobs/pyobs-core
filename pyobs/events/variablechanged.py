@@ -2,6 +2,8 @@ from .event import Event
 
 
 class VariableChangedEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, name=None, value=None):
         Event.__init__(self)
         self.data = {'name': name, 'value': value}

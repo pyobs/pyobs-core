@@ -5,6 +5,8 @@ from .event import Event
 
 
 class TaskStartedEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, name: str = None, id: typing.Any = None, eta: Time = None):
         """Initializes a new task started event.
 

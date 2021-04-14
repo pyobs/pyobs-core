@@ -4,6 +4,7 @@ import uuid
 
 
 class Event(object):
+    __module__ = 'pyobs.events'
     local = False
 
     def __init__(self):

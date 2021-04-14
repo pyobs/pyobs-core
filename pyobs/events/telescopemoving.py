@@ -2,6 +2,8 @@ from .event import Event
 
 
 class TelescopeMovingEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, ra: float = None, dec: float = None, alt: float = None, az: float = None):
         """Initializes a new telescope moving event.
 

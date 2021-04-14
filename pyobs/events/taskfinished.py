@@ -4,6 +4,8 @@ from .event import Event
 
 
 class TaskFinishedEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, name: str = None, id: typing.Any = None,):
         """Initializes a new task finished event.
 

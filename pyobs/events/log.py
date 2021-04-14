@@ -2,6 +2,8 @@ from .event import Event
 
 
 class LogEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, time=None, level=None, filename=None, function=None, line=None, message=None):
         Event.__init__(self)
         self.data = {

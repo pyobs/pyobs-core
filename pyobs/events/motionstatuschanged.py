@@ -5,6 +5,8 @@ from .event import Event
 
 
 class MotionStatusChangedEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, status: IMotion.Status = None, interfaces: typing.Dict[str, IMotion.Status] = None):
         Event.__init__(self)
         self.data = {}

@@ -3,6 +3,8 @@ from .event import Event
 
 
 class ExposureStatusChangedEvent(Event):
+    __module__ = 'pyobs.events'
+
     def __init__(self, last: ICamera.ExposureStatus = None, current: ICamera.ExposureStatus = None):
         Event.__init__(self)
         self.data = None

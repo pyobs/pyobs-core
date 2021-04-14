@@ -5,6 +5,7 @@ from .interface import Interface
 
 class IAltAzOffsets(Interface):
     """Telescopes on an altaz mount should also implement this interface."""
+    __module__ = 'pyobs.interfaces'
 
     def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset.

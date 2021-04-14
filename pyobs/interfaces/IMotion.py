@@ -10,6 +10,7 @@ class IMotion(IReady):
     There are no generic motion methods - these have to be defined in daughter
     interfaces.
     """
+    __module__ = 'pyobs.interfaces'
 
     class Status(Enum):
         """

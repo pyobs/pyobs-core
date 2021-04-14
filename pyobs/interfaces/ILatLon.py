@@ -5,6 +5,7 @@ from .interface import Interface
 
 class ILatLon(Interface):
     """Base interface for everything that can move to Lat/Lon coordinates."""
+    __module__ = 'pyobs.interfaces'
 
     def move_latlon(self, lat: float, lon: float, *args, **kwargs):
         """Moves to given coordinates.

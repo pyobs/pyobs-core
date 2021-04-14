@@ -2,6 +2,8 @@ from .IMotion import IMotion
 
 
 class IRotation(IMotion):
+    __module__ = 'pyobs.interfaces'
+
     def set_rotation(self, angle, *args, **kwargs):
         """ Sets the rotation angle to the given value in degrees. """
         raise NotImplementedError

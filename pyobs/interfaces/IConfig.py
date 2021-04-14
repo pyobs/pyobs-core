@@ -5,6 +5,7 @@ from .interface import Interface
 
 class IConfig(Interface):
     """Interface for getting/setting values that were configured in the YAML file."""
+    __module__ = 'pyobs.interfaces'
 
     def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
         """Returns dict of all config options. First value is whether it has a getter, second is for the setter.

@@ -5,6 +5,7 @@ from .ITemperatures import ITemperatures
 
 class ICooling(ITemperatures):
     """Interface for all devices that allow for some kind of cooling."""
+    __module__ = 'pyobs.interfaces'
 
     def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.

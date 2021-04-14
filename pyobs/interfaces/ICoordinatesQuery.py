@@ -2,6 +2,8 @@ from .interface import *
 
 
 class ICoordinatesQuery(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def query_coordinates_by_name(self, name: str, *args, **kwargs) -> list:
         """Queries coordinates for an object with the given name.
 

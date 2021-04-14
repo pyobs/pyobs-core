@@ -6,6 +6,7 @@ from ..utils.enums import ImageFormat
 
 class IImageFormat(Interface):
     """For cameras supporting different image formats, e.g. INT16 or RGB24"""
+    __module__ = 'pyobs.interfaces'
 
     def set_image_format(self, format: ImageFormat, *args, **kwargs):
         """Set the camera image format.

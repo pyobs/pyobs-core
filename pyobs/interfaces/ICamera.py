@@ -5,6 +5,7 @@ from .IAbortable import IAbortable
 
 class ICamera(IAbortable):
     """Basic interface for all cameras."""
+    __module__ = 'pyobs.interfaces'
 
     class ExposureStatus(enum.Enum):
         """Enumerator for camera status."""

@@ -4,6 +4,8 @@ from .interface import Interface
 
 
 class ICameraBinning(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
 

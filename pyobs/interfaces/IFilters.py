@@ -4,6 +4,8 @@ from .IMotion import IMotion
 
 
 class IFilters(IMotion):
+    __module__ = 'pyobs.interfaces'
+
     def list_filters(self, *args, **kwargs) -> List[str]:
         """List available filters.
 

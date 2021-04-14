@@ -4,6 +4,8 @@ from .interface import Interface
 
 
 class ICameraWindow(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 

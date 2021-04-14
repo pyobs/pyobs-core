@@ -2,6 +2,8 @@ from .interface import *
 
 
 class IStoppable(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def start(self, *args, **kwargs):
         """Starts a service."""
         raise NotImplementedError

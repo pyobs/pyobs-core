@@ -2,6 +2,8 @@ from .interface import *
 
 
 class IAcquisition(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 

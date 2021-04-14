@@ -3,6 +3,8 @@ from pyobs.utils.enums import ImageType
 
 
 class IImageType(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def set_image_type(self, image_type: ImageType, *args, **kwargs):
         """Set the image type.
 

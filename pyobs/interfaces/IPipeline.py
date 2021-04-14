@@ -3,6 +3,8 @@ from .interface import *
 
 
 class IPipeline(Interface):
+    __module__ = 'pyobs.interfaces'
+
     def reduce_range(self, start: Time, end: Time, *args, **kwargs):
         """Reduces all data within a given range of time.
 

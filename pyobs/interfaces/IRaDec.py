@@ -5,6 +5,7 @@ from .interface import Interface
 
 class IRaDec(Interface):
     """Base interface for everything that can move to RA/Dec coordinates."""
+    __module__ = 'pyobs.interfaces'
 
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.

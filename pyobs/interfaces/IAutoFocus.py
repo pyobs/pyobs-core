@@ -4,6 +4,8 @@ from .IAbortable import IAbortable
 
 
 class IAutoFocus(IAbortable):
+    __module__ = 'pyobs.interfaces'
+
     def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> Tuple[float, float]:
         """Perform an auto-focus series.
 

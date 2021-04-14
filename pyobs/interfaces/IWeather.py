@@ -5,6 +5,8 @@ from .interface import Interface
 
 
 class IWeather(Interface):
+    __module__ = 'pyobs.interfaces'
+
     class Sensors(Enum):
         TIME = 'time'               # in iso format
         TEMPERATURE = 'temp'        # in °C

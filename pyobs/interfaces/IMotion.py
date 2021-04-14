@@ -1,6 +1,7 @@
 from enum import Enum
 
 from .IReady import IReady
+from ..utils.enums import MotionStatus
 
 
 class IMotion(IReady):
@@ -11,31 +12,6 @@ class IMotion(IReady):
     interfaces.
     """
     __module__ = 'pyobs.interfaces'
-
-    class Status(Enum):
-        """
-        Enumerator for moving device status:
-            - PARKED means that the device needs to be initialized or positioned or
-              moved (depending upon the device; some devices don't need a formal
-              initialization); presumedly, this is the safe "off" state.
-            - INITIALIZING means that the device is transitioning from a PARKED state
-              to an active state but is not yet fully operable.
-            - unPARKED is either IDLE (operating but in no particular state) or
-              POSITIONED (operating in a well-defined state)
-            - SLEWING means that the device is moving to some targeted state (e.g.
-              to POSITIONED or TRACKING) but has not yet arrived at that state
-            - TRACKING means that the device is moving as commanded
-        """
-        ABORTING = 'aborting'
-        ERROR = 'error'
-        IDLE = 'idle'
-        INITIALIZING = 'initializing'
-        PARKING = 'parking'
-        PARKED = 'parked'
-        POSITIONED = 'positioned'
-        SLEWING = 'slewing'
-        TRACKING = 'tracking'
-        UNKNOWN = 'unknown'
 
     def init(self, *args, **kwargs):
         """Initialize device.
@@ -53,7 +29,7 @@ class IMotion(IReady):
         """
         raise NotImplementedError
 
-    def get_motion_status(self, device: str = None, *args, **kwargs) -> Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> MotionStatus:
         """Returns current motion status.
 
         Args:

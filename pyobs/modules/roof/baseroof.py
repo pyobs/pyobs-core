@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Any
 from pyobs.interfaces import IRoof, IMotion, IFitsHeaderProvider
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
-
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
             Dictionary containing FITS headers.
         """
         return {
-            'ROOF-OPN': (self.get_motion_status() in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING],
+            'ROOF-OPN': (self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                          'True for open, false for closed roof')
         }
 
@@ -50,8 +50,8 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         """
 
         # check that motion is not in one of the states listed below
-        return self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.INITIALIZING,
-                                                IMotion.Status.PARKING, IMotion.Status.ERROR, IMotion.Status.UNKNOWN]
+        return self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.INITIALIZING,
+                                                MotionStatus.PARKING, MotionStatus.ERROR, MotionStatus.UNKNOWN]
 
 
 __all__ = ['BaseRoof']

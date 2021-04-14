@@ -6,6 +6,7 @@ from pyobs.modules import Module
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IMotion
 from pyobs.mixins import MotionStatusMixin
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class WeatherAwareMixin:
 
         # do we need to park?
         if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-            if self.get_motion_status() != IMotion.Status.PARKED:
+            if self.get_motion_status() != MotionStatus.PARKED:
                 log.warning('Received bad weather event, shutting down.')
                 self.park()
         else:
@@ -90,7 +91,7 @@ class WeatherAwareMixin:
                 # if not good, park now
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
                     if self.__is_weather_good is False and \
-                            self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.PARKING]:
+                            self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
                         try:
                             self.park()
                             log.info('Weather seems to be bad, shutting down.')

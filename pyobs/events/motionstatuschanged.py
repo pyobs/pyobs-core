@@ -1,13 +1,13 @@
 import typing
 
-from pyobs.interfaces import IMotion
 from .event import Event
+from ..utils.enums import MotionStatus
 
 
 class MotionStatusChangedEvent(Event):
     __module__ = 'pyobs.events'
 
-    def __init__(self, status: IMotion.Status = None, interfaces: typing.Dict[str, IMotion.Status] = None):
+    def __init__(self, status: MotionStatus = None, interfaces: typing.Dict[str, MotionStatus] = None):
         Event.__init__(self)
         self.data = {}
         if status is not None:
@@ -19,13 +19,13 @@ class MotionStatusChangedEvent(Event):
     def status(self):
         if self.data is None or 'status' not in self.data:
             return None
-        return IMotion.Status(self.data['status'])
+        return MotionStatus(self.data['status'])
 
     @property
     def interfaces(self):
         if self.data is None or 'interfaces' not in self.data:
             return {}
-        return {k: IMotion.Status(v) for k, v in self.data['interfaces'].items()}
+        return {k: MotionStatus(v) for k, v in self.data['interfaces'].items()}
 
 
 __all__ = ['MotionStatusChangedEvent']

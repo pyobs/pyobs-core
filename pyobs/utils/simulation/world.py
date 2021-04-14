@@ -16,7 +16,7 @@ from photutils.datasets import make_noise_image
 
 from pyobs.interfaces import IMotion
 from pyobs.object import create_object, Object
-from pyobs.utils.enums import ImageFormat
+from pyobs.utils.enums import ImageFormat, MotionStatus
 from pyobs.images import Image
 
 
@@ -45,7 +45,7 @@ class SimTelescope(Object):
 
         # store
         self.world = world
-        self.status = IMotion.Status.IDLE
+        self.status = MotionStatus.IDLE
         self.status_callback = None
 
         # init
@@ -79,7 +79,7 @@ class SimTelescope(Object):
     def offsets(self):
         return self._offsets
 
-    def _change_motion_status(self, status: IMotion.Status):
+    def _change_motion_status(self, status: MotionStatus):
         """Change the current motion status.
 
         Args:
@@ -113,7 +113,7 @@ class SimTelescope(Object):
         """
 
         # change status
-        self._change_motion_status(IMotion.Status.SLEWING)
+        self._change_motion_status(MotionStatus.SLEWING)
 
         # calculate random RA/Dec offsets
         acc = self.move_accuracy / 3600.
@@ -159,7 +159,7 @@ class SimTelescope(Object):
                     # set it
                     with self._pos_lock:
                         # set position and reset destination
-                        self._change_motion_status(IMotion.Status.TRACKING)
+                        self._change_motion_status(MotionStatus.TRACKING)
                         self._position = self._dest_coords
                         self._dest_coords = None
 
@@ -174,7 +174,7 @@ class SimTelescope(Object):
 
                     # apply it
                     with self._pos_lock:
-                        self._change_motion_status(IMotion.Status.SLEWING)
+                        self._change_motion_status(MotionStatus.SLEWING)
                         self._position = SkyCoord(ra=self._position.ra + dra,
                                                   dec=self._position.dec + ddec,
                                                   frame='icrs')

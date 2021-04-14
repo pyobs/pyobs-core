@@ -9,6 +9,7 @@ from pyobs.interfaces import ITelescope, IMotion, IFitsHeaderProvider
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
@@ -49,7 +50,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         WaitForMotionMixin.__init__(self,
                                     wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
                                     wait_for_timeout=60000,
-                                    wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
+                                    wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING])
 
     def open(self):
         """Open module."""
@@ -116,7 +117,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
-            self._change_motion_status(IMotion.Status.SLEWING)
+            self._change_motion_status(MotionStatus.SLEWING)
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
@@ -129,7 +130,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(IMotion.Status.TRACKING)
+            self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()
@@ -169,7 +170,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
-            self._change_motion_status(IMotion.Status.SLEWING)
+            self._change_motion_status(MotionStatus.SLEWING)
 
             # move telescope
             self._move_altaz(alt, az, abort_event=self._abort_move)
@@ -179,7 +180,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(IMotion.Status.POSITIONED)
+            self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()

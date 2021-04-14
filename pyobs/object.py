@@ -93,6 +93,7 @@ class Object:
     which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
     on those objects.
     """
+
     def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
                  *args, **kwargs):

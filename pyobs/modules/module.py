@@ -76,6 +76,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
 
 class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
+    __module__ = 'pyobs.modules'
 
     def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
         """Initializes a new pyobs module.
@@ -374,5 +375,7 @@ class MultiModule(Module):
         """Returns module of given name."""
         return self._modules[name]
 
+
+#Module.__module__ = 'pyobs.modules'
 
 __all__ = ['Module', 'MultiModule', 'timeout']

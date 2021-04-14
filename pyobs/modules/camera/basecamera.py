@@ -10,7 +10,7 @@ from astropy.io import fits
 import astropy.units as u
 
 from pyobs.comm import TimeoutException, InvocationException
-from pyobs.utils.enums import ImageType
+from pyobs.utils.enums import ImageType, ExposureStatus
 from pyobs.images import Image
 
 from pyobs.utils.time import Time
@@ -74,7 +74,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
 
         # init camera
         self._exposure: Optional[ExposureInfo] = None
-        self._camera_status = ICamera.ExposureStatus.IDLE
+        self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
         self._expose_lock = threading.Lock()
@@ -130,7 +130,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         """
         return self._image_type
 
-    def _change_exposure_status(self, status: ICamera.ExposureStatus):
+    def _change_exposure_status(self, status: ExposureStatus):
         """Change exposure status and send event,
 
         Args:
@@ -144,7 +144,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # set it
         self._camera_status = status
 
-    def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
+    def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -183,7 +183,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure.exposure_time == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
+        if self._exposure.exposure_time == 0. or self._camera_status == ExposureStatus.READOUT:
             return 100.
         else:
             # return max of 100
@@ -476,7 +476,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # make sure that we release the lock
         try:
             # are we exposing?
-            if self._camera_status != ICamera.ExposureStatus.IDLE:
+            if self._camera_status != ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
             # expose

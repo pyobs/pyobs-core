@@ -1,11 +1,11 @@
-from pyobs.interfaces import ICamera
 from .event import Event
+from ..utils.enums import ExposureStatus
 
 
 class ExposureStatusChangedEvent(Event):
     __module__ = 'pyobs.events'
 
-    def __init__(self, last: ICamera.ExposureStatus = None, current: ICamera.ExposureStatus = None):
+    def __init__(self, last: ExposureStatus = None, current: ExposureStatus = None):
         Event.__init__(self)
         self.data = None
         if last is not None and current is not None:
@@ -13,11 +13,11 @@ class ExposureStatusChangedEvent(Event):
 
     @property
     def last(self):
-        return None if self.data is None else ICamera.ExposureStatus(self.data['last'])
+        return None if self.data is None else ExposureStatus(self.data['last'])
 
     @property
     def current(self):
-        return None if self.data is None else ICamera.ExposureStatus(self.data['current'])
+        return None if self.data is None else ExposureStatus(self.data['current'])
 
 
 __all__ = ['ExposureStatusChangedEvent']

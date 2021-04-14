@@ -11,6 +11,7 @@ from astropy.io import fits
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
+from pyobs.utils.enums import ExposureStatus
 
 log = logging.getLogger(__name__)
 
@@ -115,19 +116,19 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # do exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
+        self._change_exposure_status(ExposureStatus.EXPOSING)
         self._exposing = True
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+                self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
             time.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout
-        self._change_exposure_status(ICamera.ExposureStatus.READOUT)
+        self._change_exposure_status(ExposureStatus.READOUT)
         time.sleep(self._readout_time)
 
         # get image
@@ -146,7 +147,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
 
         # finished
         log.info('Exposure finished.')
-        self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+        self._change_exposure_status(ExposureStatus.IDLE)
         return hdu
 
     def _abort_exposure(self):

@@ -1,6 +1,14 @@
 from enum import Enum
 
 
+class ExposureStatus(Enum):
+    """Enumerator for camera status."""
+    IDLE = 'idle'
+    EXPOSING = 'exposing'
+    READOUT = 'readout'
+    ERROR = 'error'
+
+
 class ImageType(Enum):
     """Enumerator specifying the image type."""
     BIAS = 'bias'
@@ -20,4 +28,4 @@ class ImageFormat(Enum):
     RGB24 = 'rgb24'
 
 
-__all__ = ['ImageType', 'ImageFormat']
+__all__ = ['ExposureStatus', 'ImageType', 'ImageFormat']

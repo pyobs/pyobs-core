@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IMotion, IFitsHeaderProvider
+from pyobs.interfaces import ITelescope, IFitsHeaderProvider
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout

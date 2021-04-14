@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, Tuple, Any
 
-from pyobs.interfaces import IRoof, IMotion, IFitsHeaderProvider
+from pyobs.interfaces import IRoof, IFitsHeaderProvider
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.utils.enums import MotionStatus

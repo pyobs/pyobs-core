@@ -2,7 +2,6 @@ import logging
 
 from pyobs.modules import Module
 from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IMotion
 from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)

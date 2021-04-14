@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, ITemperatures, IRaDecOffsets
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, ITemperatures, IRaDecOffsets
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout

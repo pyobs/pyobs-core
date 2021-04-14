@@ -14,7 +14,6 @@ from astroquery.gaia import Gaia
 from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
 
-from pyobs.interfaces import IMotion
 from pyobs.object import create_object, Object
 from pyobs.utils.enums import ImageFormat, MotionStatus
 from pyobs.images import Image

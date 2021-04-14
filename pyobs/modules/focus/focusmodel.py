@@ -7,6 +7,7 @@ from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
+from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
@@ -90,7 +91,7 @@ class FocusModel(Module, IFocusModel):
         self._min_measurements = min_measurements
         self._enabled = enabled
         self._temp_station, sensor = temp_sensor.split('.')
-        self._temp_sensor = IWeather.Sensors(sensor)
+        self._temp_sensor = WeatherSensors(sensor)
         self._default_filter = default_filter
         self._filter_offsets = filter_offsets
         self._filter_wheel = filter_wheel

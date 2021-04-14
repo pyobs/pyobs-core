@@ -1,23 +1,11 @@
-from enum import Enum
-from typing import Union, Tuple
+from typing import Tuple
 
 from .interface import Interface
+from ..utils.enums import WeatherSensors
 
 
 class IWeather(Interface):
     __module__ = 'pyobs.interfaces'
-
-    class Sensors(Enum):
-        TIME = 'time'               # in iso format
-        TEMPERATURE = 'temp'        # in °C
-        HUMIDITY = 'humid'          # in %
-        PRESSURE = 'press'          # in hPa
-        WINDDIR = 'winddir'         # in degrees azimuth
-        WINDSPEED = 'windspeed'     # in km/h
-        RAIN = 'rain'               # 0/1
-        SKYTEMP = 'skytemp'         # in °C
-        DEWPOINT = 'dewpoint'       # in °C
-        PARTICLES = 'particles'     # in particles per m³
 
     def get_weather_status(self, *args, **kwargs) -> dict:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
@@ -36,7 +24,7 @@ class IWeather(Interface):
         """
         raise NotImplementedError
 
-    def get_sensor_value(self, station: str, sensor: Sensors, *args, **kwargs) -> Tuple[str, float]:
+    def get_sensor_value(self, station: str, sensor: WeatherSensors, *args, **kwargs) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:

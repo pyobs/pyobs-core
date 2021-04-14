@@ -53,4 +53,17 @@ class MotionStatus(Enum):
     UNKNOWN = 'unknown'
 
 
-__all__ = ['ExposureStatus', 'ImageType', 'ImageFormat', 'MotionStatus']
+class WeatherSensors(Enum):
+    TIME = 'time'               # in iso format
+    TEMPERATURE = 'temp'        # in °C
+    HUMIDITY = 'humid'          # in %
+    PRESSURE = 'press'          # in hPa
+    WINDDIR = 'winddir'         # in degrees azimuth
+    WINDSPEED = 'windspeed'     # in km/h
+    RAIN = 'rain'               # 0/1
+    SKYTEMP = 'skytemp'         # in °C
+    DEWPOINT = 'dewpoint'       # in °C
+    PARTICLES = 'particles'     # in particles per m³
+
+
+__all__ = ['ExposureStatus', 'ImageType', 'ImageFormat', 'MotionStatus', 'WeatherSensors']

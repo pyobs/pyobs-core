@@ -6,6 +6,7 @@ import urllib.parse
 import threading
 import astropy.units as u
 
+from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderProvider
@@ -16,15 +17,15 @@ log = logging.getLogger(__name__)
 
 
 FITS_HEADERS = {
-    IWeather.Sensors.TEMPERATURE: ('WS-TEMP', 'Ambient temperature average during exposure, C', float),
-    IWeather.Sensors.HUMIDITY: ('WS-HUMID', 'Ambient rel. humidity average, %', float),
-    IWeather.Sensors.PRESSURE: ('WS-PRESS', 'Average atmospheric pressure, hPa', float),
-    IWeather.Sensors.WINDDIR: ('WS-AZ', 'Average wind direction, not corrected for overlap, deg', float),
-    IWeather.Sensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, km/h', float),
-    IWeather.Sensors.RAIN: ('WS-PREC', 'Ambient precipitation [0/1]', bool),
-    IWeather.Sensors.SKYTEMP: ('WS-SKY', 'Average sky temperature, C', float),
-    IWeather.Sensors.DEWPOINT: ('WS-TDEW', 'Ambient dewpoint average during expsoure, C', float),
-    IWeather.Sensors.PARTICLES: ('WS-DUST', 'Average particle count during exposure, ppcm', float)
+    WeatherSensors.TEMPERATURE: ('WS-TEMP', 'Ambient temperature average during exposure, C', float),
+    WeatherSensors.HUMIDITY: ('WS-HUMID', 'Ambient rel. humidity average, %', float),
+    WeatherSensors.PRESSURE: ('WS-PRESS', 'Average atmospheric pressure, hPa', float),
+    WeatherSensors.WINDDIR: ('WS-AZ', 'Average wind direction, not corrected for overlap, deg', float),
+    WeatherSensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, km/h', float),
+    WeatherSensors.RAIN: ('WS-PREC', 'Ambient precipitation [0/1]', bool),
+    WeatherSensors.SKYTEMP: ('WS-SKY', 'Average sky temperature, C', float),
+    WeatherSensors.DEWPOINT: ('WS-TDEW', 'Ambient dewpoint average during expsoure, C', float),
+    WeatherSensors.PARTICLES: ('WS-DUST', 'Average particle count during exposure, ppcm', float)
 }
 
 
@@ -127,7 +128,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         with self._status_lock:
             return self._status
 
-    def get_sensor_value(self, station: str, sensor: IWeather.Sensors, *args, **kwargs) -> Tuple[str, float]:
+    def get_sensor_value(self, station: str, sensor: WeatherSensors, *args, **kwargs) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:
@@ -174,7 +175,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
 
         # loop sensor types
         header = {}
-        for sensor_type in IWeather.Sensors:
+        for sensor_type in WeatherSensors:
             # got a value for this type?
             if sensor_type.value in sensors:
                 # get value

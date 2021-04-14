@@ -30,6 +30,7 @@ class ImageFormat(Enum):
 
 class MotionStatus(Enum):
     """Enumerator for moving device status:
+
         - PARKED means that the device needs to be initialized or positioned or
           moved (depending upon the device; some devices don't need a formal
           initialization); presumedly, this is the safe "off" state.

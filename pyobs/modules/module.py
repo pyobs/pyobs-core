@@ -297,7 +297,7 @@ class Module(Object, IModule, IConfig):
             Current value.
 
         Raises:
-            ValueError if config item of given name does not exist.
+            ValueError: If config item of given name does not exist.
         """
 
         # valid parameter?
@@ -318,7 +318,7 @@ class Module(Object, IModule, IConfig):
             value: New value.
 
         Raises:
-            ValueError if config item of given name does not exist or value is invalid.
+            ValueError: If config item of given name does not exist or value is invalid.
         """
 
         # valid parameter?

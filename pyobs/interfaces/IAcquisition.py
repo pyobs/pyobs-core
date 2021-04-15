@@ -17,7 +17,7 @@ class IAcquisition(Interface):
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
 
         Raises:
-            ValueError if target could not be acquired.
+            ValueError: If target could not be acquired.
         """
         raise NotImplementedError
 

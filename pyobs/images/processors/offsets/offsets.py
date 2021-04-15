@@ -23,7 +23,7 @@ class Offsets(ImageProcessor):
             x/y pixel offset to reference.
 
         Raises:
-            ValueError if offset could not be found.
+            ValueError: If offset could not be found.
         """
         raise NotImplementedError
 

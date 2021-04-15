@@ -83,7 +83,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
 
         Raises:
-            ValueError if target could not be acquired.
+            ValueError: If target could not be acquired.
         """
 
         # get telescope
@@ -245,7 +245,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             (ra, dec) of pixel that needs to be moved to the centre of the image.
 
         Raises:
-            ValueError if target coordinates could not be determined.
+            ValueError: If target coordinates could not be determined.
         """
         raise NotImplemented
 

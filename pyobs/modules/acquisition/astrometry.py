@@ -38,7 +38,7 @@ class AstrometryAcquisition(BaseAcquisition):
             (ra, dec) of pixel that needs to be moved to the centre of the image.
 
         Raises:
-            ValueError if target coordinates could not be determined.
+            ValueError: If target coordinates could not be determined.
         """
 
         # get objects

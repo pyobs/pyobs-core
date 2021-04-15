@@ -71,7 +71,7 @@ class DataCache(object):
             Data from entry in cache.
 
         Raises:
-            IndexError if entry does not exists.
+            IndexError: If entry does not exists.
         """
 
         # return data or raise IndexError

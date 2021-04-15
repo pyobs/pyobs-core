@@ -237,7 +237,7 @@ class Comm:
             List of supported interfaces.
 
         Raises:
-            IndexError, if client cannot be found.
+            IndexError: If client cannot be found.
         """
         raise NotImplementedError
 

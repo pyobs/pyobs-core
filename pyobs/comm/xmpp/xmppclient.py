@@ -63,7 +63,7 @@ class XmppClient(sleekxmpp.ClientXMPP):
             List of interface names
 
         Raises:
-            IndexError, if client cannot be found.
+            IndexError: If client cannot be found.
         """
 
         # request features

@@ -61,8 +61,8 @@ class TaskArchive:
             Dictionary with tasks.
 
         Raises:
-            Timeout if request timed out.
-            ValueError if something goes wrong.
+            Timeout: If request timed out.
+            ValueError: If something goes wrong.
         """
         raise NotImplementedError
 

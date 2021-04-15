@@ -11,7 +11,7 @@ class ICoordinatesQuery(Interface):
             name (str): Name of object to query coordinates for.
 
         Returns:
-            (list) List of dictionaries with the following keys:
+            (list): List of dictionaries with the following keys:
                 - name: Name of object
                 - ra: Right ascension [sexagesimal]
                 - ra_d: Right ascension [degrees]

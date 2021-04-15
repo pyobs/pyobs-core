@@ -35,7 +35,7 @@ class WaitForMotionMixin:
             event: Abort event.
 
         Raises:
-            TimeoutError if wait timed out.
+            TimeoutError: If wait timed out.
         """
 
         # no device?

@@ -11,10 +11,10 @@ class ICooling(ITemperatures):
         """Returns the current status for the cooling.
 
         Returns:
-            Tuple containing:
-                Enabled (bool):         Whether the cooling is enabled
-                SetPoint (float):       Setpoint for the cooling in celsius.
-                Power (float):          Current cooling power in percent or None.
+            (tuple): Tuple containing:
+                Enabled:  Whether the cooling is enabled
+                SetPoint: Setpoint for the cooling in celsius.
+                Power:    Current cooling power in percent or None.
         """
         raise NotImplementedError
 

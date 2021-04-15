@@ -1,6 +1,6 @@
 """
 A module in *pyobs* is the smalles executable unit. The base class for all modules is
-:class:`~pyobs.modules.module.Module`.
+:class:`~pyobs.modules.Module`.
 """
 
 import inspect

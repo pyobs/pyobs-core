@@ -13,11 +13,14 @@ log = logging.getLogger(__name__)
 
 
 class VFSFile:
+    """Base class for all VFS file classes."""
+    __module__ = 'pyobs.vfs'
     pass
 
 
 class VirtualFileSystem:
     """Base for a virtual file system."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, roots: dict = None, compression: dict = None, *args, **kwargs):
         """Create a new VFS.

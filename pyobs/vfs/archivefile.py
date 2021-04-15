@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 class ArchiveFile(HttpFile):
     """Wraps a file in an archive. To be used in combination with pyobs-archive."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str, mode: str = 'w', url: str = None, token: str = None, *args, **kwargs):
         """Creates a new archive file.

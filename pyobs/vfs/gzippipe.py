@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 class GzipReader(VFSFile, io.RawIOBase):
     """A pipe object that takes a file-like object as input and acts itself like a stream,
     decompressing data on the fly."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, fd, close_fd=True):
         """Create a new GZIP reader pipe.

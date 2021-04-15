@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 class TarFile(VFSFile):
     """Write a TAR file from a list of input files."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str = None, mode: str = 'rb', source: FileList = None, vfs: VirtualFileSystem = None,
                  *args, **kwargs):

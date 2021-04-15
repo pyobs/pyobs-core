@@ -1,4 +1,4 @@
-from .vfs import VirtualFileSystem
+from .vfs import VirtualFileSystem, VFSFile
 from .localfile import LocalFile
 from .httpfile import HttpFile
 from .memfile import MemoryFile

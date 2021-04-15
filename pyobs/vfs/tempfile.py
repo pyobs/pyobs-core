@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 class TempFile(VFSFile, FileIO):
     """A temporary file."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str = None, mode: str = 'r', prefix: str = None, suffix: str = None,
                  root: str = '/tmp/pyobs/', mkdir: bool = True, *args, **kwargs):

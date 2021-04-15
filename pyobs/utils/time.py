@@ -30,9 +30,7 @@ class Time(astropy.time.Time):
             function.  Generally that means it is set by the accuracy of
             your system clock.
 
-        Returns
-        -------
-        nowtime
+        Returns:
             A new `Time` object (or a subclass of `Time` if this is called from
             such a subclass) at the current time.
         """

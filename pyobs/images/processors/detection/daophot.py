@@ -11,6 +11,8 @@ log = logging.getLogger(__name__)
 
 
 class DaophotSourceDetection(SourceDetection):
+    """Detect source using Daophot."""
+
     def __init__(self, fwhm: float = 3., threshold: float = 4., bkg_sigma: float = 3.,
                  bkg_box_size: Tuple[int, int] = (50, 50), bkg_filter_size: Tuple[int, int] = (3, 3),
                  *args, **kwargs):

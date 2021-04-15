@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 
 class StarExpTimeEstimator(ExpTimeEstimator):
+    """Estimate exposure time from a star."""
+
     def __init__(self, source_detection: Union[dict, SourceDetection], edge: float = 0.1, bias: float = 0., saturated: float = 0.7,
                  *args, **kwargs):
         """Create new exp time estimator from single star.

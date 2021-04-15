@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 
 class AstrometryDotNet(Astrometry):
+    """Perform astrometry using astrometry.net"""
     def __init__(self, url: str, source_count: int = 50, radius: float = 3., *args, **kwargs):
         # URL to web-service
         self.url = url

@@ -12,7 +12,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
 from pyobs.images import Image
-from pyobs.images.processors import SoftBin
+from pyobs.images.processors.misc import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 

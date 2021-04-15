@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 
 class Offsets(ImageProcessor):
+    """Base class for determining offsets."""
+
     def reset(self):
         """Resets guiding."""
         raise NotImplementedError

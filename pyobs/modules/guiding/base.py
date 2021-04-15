@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.images.processors import SoftBin
+from pyobs.images.processors.misc import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera

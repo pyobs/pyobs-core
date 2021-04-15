@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 
 class SepPhotometry(Photometry):
+    """Perform photometry using SEP."""
+
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
                  deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
         """Initializes a wrapper for SEP. See its documentation for details.

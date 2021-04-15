@@ -1,3 +1,7 @@
+"""
+Image class.
+"""
+
 import io
 from enum import Enum
 
@@ -8,6 +12,7 @@ from astropy.table import Table
 
 
 class Image:
+    """Image class."""
     __module__ = 'pyobs.images'
 
     class CombineMethod(Enum):

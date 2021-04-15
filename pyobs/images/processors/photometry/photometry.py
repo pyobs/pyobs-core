@@ -5,6 +5,8 @@ from pyobs.images.processor import ImageProcessor
 
 
 class Photometry(ImageProcessor):
+    """Base class for photometry processors."""
+
     def __call__(self, image: Image) -> Table:
         """Do aperture photometry on given image.
 

@@ -1,3 +1,7 @@
+"""
+Some info about :class:`pyobs.images.Image`.
+"""
+
 from .image import Image
 from .calibration import CalibrationImage
 from .bias import BiasImage

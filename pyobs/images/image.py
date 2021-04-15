@@ -8,6 +8,8 @@ from astropy.table import Table
 
 
 class Image:
+    __module__ = 'pyobs.images'
+
     class CombineMethod(Enum):
         MEAN = 'mean'
         MEDIAN = 'median'

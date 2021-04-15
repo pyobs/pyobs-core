@@ -18,6 +18,7 @@ import pyobs
 
 log = logging.getLogger(__name__)
 
+"""Class of an Object."""
 ObjectClass = TypeVar('ObjectClass')
 
 

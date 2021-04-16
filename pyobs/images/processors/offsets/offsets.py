@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class Offsets(ImageProcessor):
     """Base class for determining offsets."""
+    __module__ = 'pyobs.images.processors.offsets'
 
     def reset(self):
         """Resets guiding."""

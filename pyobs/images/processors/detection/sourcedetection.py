@@ -6,6 +6,7 @@ from pyobs.images.processor import ImageProcessor
 
 class SourceDetection(ImageProcessor):
     """Base class for source detection."""
+    __module__ = 'pyobs.images.processors.detection'
 
     def __call__(self, image: Image) -> Table:
         """Find stars in given image and append catalog.

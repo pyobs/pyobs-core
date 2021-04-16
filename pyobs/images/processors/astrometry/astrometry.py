@@ -4,6 +4,8 @@ from pyobs.images.processor import ImageProcessor
 
 class Astrometry(ImageProcessor):
     """Base class for astrometry processors"""
+    __module__ = 'pyobs.images.processors.astrometry'
+
     def __call__(self, image: Image):
         """Find astrometric solution on given image.
 

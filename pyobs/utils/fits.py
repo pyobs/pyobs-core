@@ -1,3 +1,10 @@
+"""
+FITS utilities (pyobs.utils.fits)
+---------------------------------
+
+TODO: write doc
+"""
+
 import logging
 import re
 from typing import Union

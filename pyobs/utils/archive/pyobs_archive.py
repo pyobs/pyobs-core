@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
+    """Frame info for pyobs archive."""
     def __init__(self, info: dict, *args, **kwargs):
         self.info = info
 
@@ -42,6 +43,7 @@ class PyobsArchiveFrameInfo(FrameInfo):
 
 
 class PyobsArchive(Archive):
+    """Connector class to running pyobs-archive instance."""
     def __init__(self, url: str, token: str, proxies: dict = None, *args, **kwargs):
         self._url = url
         self._headers = {'Authorization': 'Token ' + token}

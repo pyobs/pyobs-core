@@ -14,6 +14,8 @@ log = logging.getLogger(__name__)
 
 
 class PhotometryFocusSeries(FocusSeries):
+    """Focus series based on source detection."""
+
     def __init__(self, source_detection: SourceDetection, radius_column: str = 'radius', *args, **kwargs):
         """Initialize a new projection focus series.
 

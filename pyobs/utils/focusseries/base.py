@@ -4,6 +4,8 @@ from pyobs.images import Image
 
 
 class FocusSeries:
+    """Base class for focus series helper classes."""
+
     def reset(self):
         """Reset focus series."""
         raise NotImplementedError

@@ -1,5 +1,11 @@
-import datetime
+"""
+Time (pyobs.utils.time)
+-----------------------
 
+TODO: write doc
+"""
+
+import datetime
 import astropy.time
 import astropy.units as u
 import pytz
@@ -7,6 +13,7 @@ from astroplan import Observer
 
 
 class Time(astropy.time.Time):
+    """Hashable Time class."""
     _now_offset = astropy.time.TimeDelta(0 * u.second)
 
     def __hash__(self):

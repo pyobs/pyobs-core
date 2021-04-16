@@ -29,7 +29,7 @@ class Seeing(Module):
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._publisher = self._add_child_object(publisher, Publisher)
+        self._publisher = self.add_child_object(publisher, Publisher)
         self._max_ellipticity = max_ellipticity
         self._correct_for_airmass = correct_for_airmass
 

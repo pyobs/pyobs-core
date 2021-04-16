@@ -59,8 +59,8 @@ class Scheduler(Module, IStoppable, IRunnable):
         self._blocks: List[ObservingBlock] = []
 
         # update thread
-        self._add_thread_func(self._schedule_thread, True)
-        self._add_thread_func(self._update_thread, True)
+        self.add_thread_func(self._schedule_thread, True)
+        self.add_thread_func(self._update_thread, True)
 
     def open(self):
         """Open module."""

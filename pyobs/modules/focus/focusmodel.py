@@ -78,7 +78,7 @@ class FocusModel(Module, IFocusModel):
 
         # add thread func
         if interval is not None and interval > 0:
-            self._add_thread_func(self._run_thread, True)
+            self.add_thread_func(self._run_thread, True)
 
         # store
         self._focuser = focuser

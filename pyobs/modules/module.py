@@ -350,7 +350,7 @@ class MultiModule(Module):
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it
-                self._shared[name] = self._add_child_object(obj)
+                self._shared[name] = self.add_child_object(obj)
 
         # create modules
         self._modules = {}
@@ -361,7 +361,7 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                self._modules[name] = self._add_child_object(mod, **self._shared)
+                self._modules[name] = self.add_child_object(mod, **self._shared)
 
     @property
     def modules(self):

@@ -61,8 +61,8 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
         Module.__init__(self, *args, **kwargs)
 
         # add thread funcs
-        self._add_thread_func(self._http_thread)
-        self._add_thread_func(self._camera_thread)
+        self.add_thread_func(self._http_thread)
+        self.add_thread_func(self._camera_thread)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [

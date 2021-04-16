@@ -23,7 +23,7 @@ class ImageWriter(Module):
         Module.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._worker, True)
+        self.add_thread_func(self._worker, True)
 
         # variables
         self._filename = filename

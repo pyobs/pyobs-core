@@ -19,7 +19,7 @@ class StandAlone(Module):
         Module.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._message_func, True)
+        self.add_thread_func(self._message_func, True)
 
         # store
         self._message = message

@@ -26,7 +26,7 @@ class AutoGuiding(BaseGuiding):
         self._source_detection = SepSourceDetection()
 
         # add thread func
-        self._add_thread_func(self._auto_guiding, True)
+        self.add_thread_func(self._auto_guiding, True)
 
     def set_exposure_time(self, exposure_time: float, *args, **kwargs):
         """Set the exposure time for the auto-guider.

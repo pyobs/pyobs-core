@@ -42,7 +42,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
-        self._add_thread_func(self._celestial, True)
+        self.add_thread_func(self._celestial, True)
 
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)

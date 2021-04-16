@@ -42,9 +42,9 @@ class AutonomousWarning(Module):
         self._autonomous = False
 
         # threads
-        self._add_thread_func(self._heartbeat)
-        self._add_thread_func(self._check_autonomous)
-        self._add_thread_func(self._check_trigger)
+        self.add_thread_func(self._heartbeat)
+        self.add_thread_func(self._check_autonomous)
+        self.add_thread_func(self._check_trigger)
 
     def _play_sound(self, sound: str):
         """Play a sound.

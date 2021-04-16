@@ -36,7 +36,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         BaseCamera.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._cooling_thread, True)
+        self.add_thread_func(self._cooling_thread, True)
 
         # store
         self._readout_time = readout_time
@@ -47,7 +47,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # simulated world
         from pyobs.utils.simulation.world import SimCamera
         self._world = world if world is not None else \
-            self._add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._camera: SimCamera = self._world.camera
 
         # init camera

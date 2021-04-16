@@ -36,7 +36,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
         self._running = False
 
         # add thread func
-        self._add_thread_func(self._run_thread, True)
+        self.add_thread_func(self._run_thread, True)
 
         # get task archive
         self._task_archive: TaskArchive = get_object(tasks, object_class=TaskArchive,

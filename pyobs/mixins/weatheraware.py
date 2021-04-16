@@ -17,7 +17,7 @@ class WeatherAwareMixin:
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
         if isinstance(self, Module):
-            self._add_thread_func(self.__weather_check, True)
+            self.add_thread_func(self.__weather_check, True)
         else:
             raise ValueError('This is not a module.')
 

@@ -1,4 +1,7 @@
 """
+Objects (pyobs.object)
+======================
+
 :class:`~pyobs.object.Object` is the base class for almost all classe in *pyobs*. It adds some convenience methods
 and helper methods for creating other Objects.
 
@@ -158,7 +161,7 @@ class Object:
         self._threads: Dict[threading.Thread, Tuple] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    def _add_thread_func(self, func: Callable, restart: bool = True):
+    def add_thread_func(self, func: Callable, restart: bool = True):
         """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -261,8 +264,8 @@ class Object:
             raise InterruptedError
         return True
 
-    def _add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
-                          **kwargs) -> ObjectClass:
+    def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
+                         **kwargs) -> ObjectClass:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:

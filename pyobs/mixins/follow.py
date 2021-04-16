@@ -75,7 +75,7 @@ class FollowMixin:
         if self.__follow_device is not None:
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self._add_thread_func(self.__update_follow)
+            self.add_thread_func(self.__update_follow)
 
     @property
     def is_following(self) -> bool:

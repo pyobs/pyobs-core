@@ -62,7 +62,7 @@ class SimTelescope(Object):
         self._pos_lock = threading.RLock()
 
         # threads
-        self._add_thread_func(self._move_thread)
+        self.add_thread_func(self._move_thread)
 
     @property
     def position(self):

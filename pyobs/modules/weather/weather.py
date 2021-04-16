@@ -54,7 +54,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         self._status_lock = threading.RLock()
 
         # add thread func
-        self._add_thread_func(self._update, True)
+        self.add_thread_func(self._update, True)
 
     def open(self):
         """Open module."""

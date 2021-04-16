@@ -40,7 +40,7 @@ class OnlineReduction(Module):
         self._cache = DataCache(size=cache_size)
 
         # add thread func
-        self._add_thread_func(self._worker, True)
+        self.add_thread_func(self._worker, True)
 
     def open(self):
         """Open image writer."""

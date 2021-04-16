@@ -56,7 +56,7 @@ class PointingSeries(Module, IAutonomous):
             self._az_range = (0., 360. - 360. / self._num_az)
 
         # add thread func
-        self._add_thread_func(self._run_thread, False)
+        self.add_thread_func(self._run_thread, False)
 
     def start(self, *args, **kwargs):
         """Starts a service."""

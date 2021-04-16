@@ -17,7 +17,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._auto_guiding, True)
+        self.add_thread_func(self._auto_guiding, True)
 
         # variables
         self._next_image: Image = None

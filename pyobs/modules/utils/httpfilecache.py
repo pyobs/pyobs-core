@@ -53,7 +53,7 @@ class MainHandler(tornado.web.RequestHandler):
 
         else:
             # store file and return filename
-            if isinstance(self.application, HttpFileCacheServer):
+            if isinstance(self.application, HttpFileCache):
                 filename = yield self.executor.submit(self.application.store, self.request.body, filename)
                 log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
                 self.finish(bytes(filename, 'utf-8'))
@@ -79,7 +79,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class HttpFileCacheServer(Module, tornado.web.Application):
+class HttpFileCache(Module, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
     def __init__(self, port: int = 37075, cache_size: int = 25, max_file_size: int = 100, *args, **kwargs):
@@ -177,4 +177,4 @@ class HttpFileCacheServer(Module, tornado.web.Application):
             return self._cache[filename] if filename in self._cache else None
 
 
-__all__ = ['HttpFileCacheServer']
+__all__ = ['HttpFileCache']

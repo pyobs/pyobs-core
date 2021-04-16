@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 
 class StandAlone(Module):
     """Example module that only logs the given message forever in the given interval."""
+    __module__ = 'pyobs.modules.test'
 
     def __init__(self, message: str = 'Hello world', interval: int = 10, *args, **kwargs):
         """Creates a new StandAlone object.

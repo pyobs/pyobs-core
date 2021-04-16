@@ -80,33 +80,32 @@ def create_object(config: dict, *args, **kwargs):
 
 
 class Object:
-    """Base class for all objects in *pyobs*.
-
-    .. note::
-
-        Objects must always be opened and closed using :meth:`~pyobs.object.Object.open` and
-        :meth:`~pyobs.object.Object.close`, respectively.
-
-    This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
-    observer object is automatically created.
-
-    Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_thread_func`
-    method as well as a watchdog thread that automatically restarts threads, if requested.
-
-    Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
-    which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
-    on those objects.
-    """
+    """Base class for all objects in *pyobs*."""
 
     def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
                  *args, **kwargs):
-        """Initializes a new object.
+        """
+        .. note::
+
+            Objects must always be opened and closed using :meth:`~pyobs.object.Object.open` and
+            :meth:`~pyobs.object.Object.close`, respectively.
+
+        This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
+        observer object is automatically created.
+
+        Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_thread_func`
+        method as well as a watchdog thread that automatically restarts threads, if requested.
+
+        Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
+        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
+        on those objects.
 
         Args:
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
+
         """
         from pyobs.vfs import VirtualFileSystem
 

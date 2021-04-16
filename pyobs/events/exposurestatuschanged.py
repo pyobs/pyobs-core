@@ -3,6 +3,7 @@ from ..utils.enums import ExposureStatus
 
 
 class ExposureStatusChangedEvent(Event):
+    """Event to be sent, when the exposure status of a device changes."""
     __module__ = 'pyobs.events'
 
     def __init__(self, last: ExposureStatus = None, current: ExposureStatus = None):

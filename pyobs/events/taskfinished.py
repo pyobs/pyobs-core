@@ -4,6 +4,7 @@ from .event import Event
 
 
 class TaskFinishedEvent(Event):
+    """Event to be sent when a task has finished."""
     __module__ = 'pyobs.events'
 
     def __init__(self, name: str = None, id: typing.Any = None,):

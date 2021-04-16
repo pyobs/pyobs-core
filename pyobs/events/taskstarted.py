@@ -5,6 +5,7 @@ from .event import Event
 
 
 class TaskStartedEvent(Event):
+    """Event to be sent when a task has started."""
     __module__ = 'pyobs.events'
 
     def __init__(self, name: str = None, id: typing.Any = None, eta: Time = None):

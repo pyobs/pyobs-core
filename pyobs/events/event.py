@@ -4,6 +4,7 @@ import uuid
 
 
 class Event(object):
+    """Base class for all events."""
     __module__ = 'pyobs.events'
     local = False
 

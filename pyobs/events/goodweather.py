@@ -4,6 +4,7 @@ from .event import Event
 
 
 class GoodWeatherEvent(Event):
+    """Event to be sent on good weather."""
     __module__ = 'pyobs.events'
 
     def __init__(self, eta: Time = None):

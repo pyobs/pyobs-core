@@ -1,3 +1,10 @@
+"""
+Events
+======
+
+TODO: write doc
+"""
+
 from .badweather import BadWeatherEvent
 from .exposurestatuschanged import ExposureStatusChangedEvent
 from .event import Event

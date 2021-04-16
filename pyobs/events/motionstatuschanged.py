@@ -5,6 +5,7 @@ from ..utils.enums import MotionStatus
 
 
 class MotionStatusChangedEvent(Event):
+    """Event to be sent when the motion status of a device has changed."""
     __module__ = 'pyobs.events'
 
     def __init__(self, status: MotionStatus = None, interfaces: typing.Dict[str, MotionStatus] = None):

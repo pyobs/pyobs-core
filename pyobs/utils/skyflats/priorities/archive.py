@@ -11,6 +11,9 @@ from ...enums import ImageType
 
 
 class ArchiveSkyflatPriorities(SkyflatPriorities):
+    """Calculate flat priorities from an archive."""
+    __module__ = 'pyobs.utils.skyflats.priorities'
+
     def __init__(self, archive: typing.Union[dict, Archive], site: str, instrument: str, filter_names: list,
                  binnings: list, *args, **kwargs):
         SkyflatPriorities.__init__(self)

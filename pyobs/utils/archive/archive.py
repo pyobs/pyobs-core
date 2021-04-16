@@ -16,6 +16,8 @@ class FrameInfo:
 
 class Archive:
     """Base class for image archives."""
+    __module__ = 'pyobs.utils.archive'
+
     def list_options(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
                      image_type: ImageType = None, binning: str = None, filter_name: str = None,

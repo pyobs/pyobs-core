@@ -13,6 +13,8 @@ from pyobs.utils.enums import MotionStatus
 
 class SimTelescope(Object):
     """A simulated telescope on an equitorial mount."""
+    ___module__ = 'pyobs.utils.simulation'
+
     def __init__(self, world: 'SimWorld', position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
                  pointing_offset: Tuple[float, float] = None, move_accuracy: float = 2.,
                  speed: float = 20., focus: float = 50, filters: List[str] = None, filter: str = 'clear',

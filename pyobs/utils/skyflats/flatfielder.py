@@ -1,14 +1,12 @@
-import io
+from __future__ import annotations
 import threading
 from enum import Enum
 import logging
 from typing import Dict, Union, Callable, Tuple, Any, Optional
-
 import astropy.units as u
 from astroplan import Observer
 from astropy.time import TimeDelta
 import numpy as np
-import pandas as pd
 from py_expression_eval import Parser
 
 from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime, \
@@ -16,10 +14,10 @@ from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICam
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
-from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
+from .pointing import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
 

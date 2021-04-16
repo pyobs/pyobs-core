@@ -4,15 +4,14 @@ from astropy.time import Time
 from typing import Union
 
 from pyobs.object import create_object, Object
-from pyobs.utils.simulation.camera import SimCamera
-from pyobs.utils.simulation.telescope import SimTelescope
 
 
 class SimWorld(Object):
     """A simulated world."""
+    ___module__ = 'pyobs.utils.simulation'
 
     def __init__(self, time: Union[Time, str] = None,
-                 telescope: Union[SimTelescope, dict] = None, camera: Union[SimCamera, dict] = None,
+                 telescope: Union['SimTelescope', dict] = None, camera: Union['SimCamera', dict] = None,
                  *args, **kwargs):
         """Initializes a new simulated world.
 
@@ -24,6 +23,8 @@ class SimWorld(Object):
             *args:
             **kwargs:
         """
+        from .camera import SimCamera
+        from .telescope import SimTelescope
         Object.__init__(self, *args, **kwargs)
 
         # get start time

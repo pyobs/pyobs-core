@@ -4,7 +4,7 @@ import astropy.units as u
 from astroplan import Observer
 import operator
 
-from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
+from .priorities import SkyflatPriorities
 
 
 class ExpTimeEval:

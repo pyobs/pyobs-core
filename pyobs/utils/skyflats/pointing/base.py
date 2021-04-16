@@ -5,6 +5,9 @@ from pyobs.utils.threads import Future
 
 
 class SkyFlatsBasePointing:
+    """Base class for flat poinings."""
+    __module__ = 'pyobs.utils.skyflats.pointing'
+
     def __init__(self, observer: Observer, *args, **kwargs):
         self.observer = observer
 

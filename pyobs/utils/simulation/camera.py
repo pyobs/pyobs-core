@@ -17,6 +17,8 @@ from pyobs.images import Image
 
 class SimCamera(Object):
     """A simulated camera."""
+    ___module__ = 'pyobs.utils.simulation'
+
     def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
                  images: str = None, *args, **kwargs):
         """Inits a new camera.

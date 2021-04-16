@@ -44,6 +44,8 @@ class PyobsArchiveFrameInfo(FrameInfo):
 
 class PyobsArchive(Archive):
     """Connector class to running pyobs-archive instance."""
+    __module__ = 'pyobs.utils.archive'
+
     def __init__(self, url: str, token: str, proxies: dict = None, *args, **kwargs):
         self._url = url
         self._headers = {'Authorization': 'Token ' + token}

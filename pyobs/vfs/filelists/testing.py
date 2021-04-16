@@ -7,6 +7,8 @@ log = logging.getLogger(__name__)
 
 
 class TestingFileList(FileList):
+    """File list for testing."""
+
     def __init__(self, *args, **kwargs):
         pass
 

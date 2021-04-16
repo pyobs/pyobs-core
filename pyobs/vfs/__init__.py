@@ -1,3 +1,10 @@
+"""
+Virtual File System (pyobs.vfs)
+===============================
+
+TODO: write doc
+"""
+
 from .vfs import VirtualFileSystem, VFSFile
 from .localfile import LocalFile
 from .httpfile import HttpFile

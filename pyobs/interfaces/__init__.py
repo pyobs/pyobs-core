@@ -1,3 +1,20 @@
+"""
+Interfaces (pyobs.interfaces)
+-----------------------------
+
+Using interface, a :class:`~pyobs.modules.Module` signals another one, what functionality it provides for remote
+procedure calls. The base class for all interfaces in *pyobs* is:
+
+.. autoclass:: pyobs.interfaces.Interface
+   :members:
+
+Modules need to implement the required interfaces. For instance, if a module operates a camera, it probably should
+implement :class:`~pyobs.interfaces.ICamera`.
+
+List of interfaces
+******************
+"""
+
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
 from .IAltAz import IAltAz

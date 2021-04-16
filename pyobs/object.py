@@ -90,10 +90,10 @@ class Object:
     This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
     observer object is automatically created.
 
-    Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object._add_thread_func`
+    Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_thread_func`
     method as well as a watchdog thread that automatically restarts threads, if requested.
 
-    Using :meth:`~pyobs.object.Object._add_child_object`, other objects can be (created an) attached to this object,
+    Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
     which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
     on those objects.
     """

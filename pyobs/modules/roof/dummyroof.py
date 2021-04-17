@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 class DummyRoof(BaseRoof, IRoof):
     """A dummy camera for testing."""
+    __module__ = 'pyobs.modules.roof'
 
     def __init__(self, *args, **kwargs):
         """Creates a new dummy root."""

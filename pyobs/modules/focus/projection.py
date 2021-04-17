@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class AutoFocusProjection(Module, IAutoFocus):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters] = None,
                  offset: bool = False, *args, **kwargs):

@@ -93,6 +93,7 @@ class PeriodicJob(Job):
 
 class JobScheduler(Module):
     """Job scheduler."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new job scheduler."""

@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 class PointingSeries(Module, IAutonomous):
     """Module for running pointing series."""
+    __module__ = 'pyobs.modules.robotic'
 
     def __init__(self, alt_range: Tuple[float, float] = (30., 85.), num_alt: int = 8,
                  az_range: Tuple[float, float] = (0., 360.), num_az: int = 24,

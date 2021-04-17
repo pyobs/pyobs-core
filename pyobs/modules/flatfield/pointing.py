@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 class FlatFieldPointing(Module, IRunnable):
     """Module for pointing a telescope."""
+    __module__ = 'pyobs.modules.flatfield'
 
     def __init__(self, telescope: typing.Union[str, ITelescope], pointing: typing.Union[dict, SkyFlatsBasePointing],
                  *args, **kwargs):

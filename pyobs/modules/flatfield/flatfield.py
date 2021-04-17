@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class FlatField(Module, IFlatField):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.flatfield'
 
     class Twilight(Enum):
         DUSK = 'dusk'

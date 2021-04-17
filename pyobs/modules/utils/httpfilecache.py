@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 class MainHandler(tornado.web.RequestHandler):
     """The request handler for the HTTP filecache."""
+    __module__ = 'pyobs.modules.utils'
 
     def initialize(self):
         """Initializes the handler (instead of in the constructor)"""

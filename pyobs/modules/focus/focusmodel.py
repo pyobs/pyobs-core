@@ -48,6 +48,7 @@ class FocusModel(Module, IFocusModel):
 
     Only this way it is possible to automatically re-calculate the model.
     """
+    __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,

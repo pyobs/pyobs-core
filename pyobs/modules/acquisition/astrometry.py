@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 class AstrometryAcquisition(BaseAcquisition):
     """Module for acquiring telescope using astrometry."""
+    __module__ = 'pyobs.modules.acquisition'
 
     def __init__(self, source_detection: Union[dict, SourceDetection], astrometry: Union[dict, Astrometry],
                  *args, **kwargs):

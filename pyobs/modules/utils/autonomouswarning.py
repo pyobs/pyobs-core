@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 class AutonomousWarning(Module):
     """A module that can plays a warning sound while an IAutonomous module is running."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, warn_sound: str, warn_interval: float = 1,
                  start_sound: str = None, started_sound: str = None, stop_sound: str = None, stopped_sound: str = None,

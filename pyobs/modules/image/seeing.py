@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
                  max_ellipticity: float = 0.2, correct_for_airmass: bool = True, *args, **kwargs):

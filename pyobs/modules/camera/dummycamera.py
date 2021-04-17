@@ -25,6 +25,7 @@ class CoolingStatus(NamedTuple):
 
 class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
     """A dummy camera for testing."""
+    __module__ = 'pyobs.modules.camera'
 
     def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy cammera.

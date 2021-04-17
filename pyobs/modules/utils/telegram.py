@@ -24,6 +24,7 @@ class TelegramUserState(Enum):
 
 class Telegram(Module):
     """A telegram bot."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, token: str, password: str, allow_new_users: bool = True, *args, **kwargs):
         """Initialize a new bot.

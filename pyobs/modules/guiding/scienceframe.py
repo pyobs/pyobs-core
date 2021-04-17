@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
+    __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, *args, **kwargs):
         """Initializes a new science frame auto guiding system."""

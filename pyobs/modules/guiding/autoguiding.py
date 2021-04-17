@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 class AutoGuiding(BaseGuiding):
     """An auto-guiding system."""
+    __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, exposure_time: float = 1.,  *args, **kwargs):
         """Initializes a new auto guiding system.

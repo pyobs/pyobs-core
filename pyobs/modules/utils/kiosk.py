@@ -50,6 +50,7 @@ class MainHandler(tornado.web.RequestHandler):
 
 class Kiosk(Module, tornado.web.Application, IStoppable):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, camera: Union[ICamera, str], port: int = 37077, *args, **kwargs):
         """Initializes file cache.

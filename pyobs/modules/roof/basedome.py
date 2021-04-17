@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class BaseDome(IDome, BaseRoof):
     """Base class for domes."""
+    __module__ = 'pyobs.modules.roof'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new base dome."""

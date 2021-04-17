@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
+    __module__ = 'pyobs.modules.acquisition'
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,

@@ -31,6 +31,7 @@ FITS_HEADERS = {
 
 class Weather(Module, IWeather, IFitsHeaderProvider):
     """Connection to pyobs-weather."""
+    __module__ = 'pyobs.modules.weather'
 
     def __init__(self, url: str, system_init_time: int = 300, *args, **kwargs):
         """Initialize a new pyobs-weather connector.

@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 
 class Scheduler(Module, IStoppable, IRunnable):
     """Scheduler."""
+    __module__ = 'pyobs.modules.robotic'
 
     def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
                  twilight: str = 'astronomical', *args, **kwargs):

@@ -16,6 +16,7 @@ class ImageWatcher(Module):
     Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
     the file is deleted.
     """
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, watchpath: str = None, destinations: list = None, *args, **kwargs):
         """Create a new image watcher.

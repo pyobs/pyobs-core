@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class ScriptRunner(Module, IScriptRunner):
     """Config provider."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new script runner."""

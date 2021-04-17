@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 class ImageWriter(Module):
     """Writes new images to disk."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, filename: str = '/archive/{FNAME}', sources: Union[str, List[str]] = None,
                  *args, **kwargs):

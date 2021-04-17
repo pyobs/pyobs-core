@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
+    __module__ = 'pyobs.modules.telescope'
 
     def __init__(self, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy telescope."""

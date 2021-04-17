@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderProvider, Module):
     """Base class for telescopes."""
+    __module__ = 'pyobs.modules.telescope'
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
         """Initialize a new base telescope.

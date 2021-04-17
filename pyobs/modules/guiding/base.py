@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 
 
 class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
+    """Base class for guiding modules."""
+    __module__ = 'pyobs.modules.guiding'
+
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: Union[dict, Offsets], min_offset: float = 0.5, max_offset: float = 30,
                  max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,

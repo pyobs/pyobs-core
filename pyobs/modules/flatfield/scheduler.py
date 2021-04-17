@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class FlatFieldScheduler(Module, IRunnable):
     """Run the flat-field scheduler."""
+    __module__ = 'pyobs.modules.flatfield'
 
     def __init__(self, flatfield: typing.Union[str, IFlatField], functions: typing.Dict[str, str],
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,

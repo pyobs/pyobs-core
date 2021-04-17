@@ -40,6 +40,9 @@ def calc_expose_timeout(camera, *args, **kwargs):
 
 
 class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
+    """Base class for all camera modules."""
+    __module__ = 'pyobs.modules.camera'
+
     def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
                  rotation: float = 0., flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',

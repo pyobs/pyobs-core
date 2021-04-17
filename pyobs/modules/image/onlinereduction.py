@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 class OnlineReduction(Module):
     """Calibrates images online during the night."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive],
                  sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):

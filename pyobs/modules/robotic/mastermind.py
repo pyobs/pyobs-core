@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
     """Mastermind for a full robotic mode."""
+    __module__ = 'pyobs.modules.robotic'
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300,
                  *args, **kwargs):

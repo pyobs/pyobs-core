@@ -1,7 +1,4 @@
 """
-Objects (pyobs.object)
-======================
-
 :class:`~pyobs.object.Object` is the base class for almost all classe in *pyobs*. It adds some convenience methods
 and helper methods for creating other Objects.
 

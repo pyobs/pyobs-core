@@ -1,10 +1,8 @@
 """
-Auto-guiding (pyobs.modules.guiding)
-------------------------------------
-
 Modules for performing auto-guiding.
 TODO: write doc
 """
+__title__ = 'Auto-guiding'
 
 from .base import BaseGuiding
 from .autoguiding import AutoGuiding

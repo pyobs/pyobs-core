@@ -1,10 +1,8 @@
 """
-Utility modules (pyobs.modules.utils)
--------------------------------------
-
 Utilities
 TODO: write doc
 """
+__title__ = 'Utility modules'
 
 from .autonomouswarning import AutonomousWarning
 from .httpfilecache import HttpFileCache

@@ -1,7 +1,4 @@
 """
-Interfaces (pyobs.interfaces)
------------------------------
-
 Using interface, a :class:`~pyobs.modules.Module` signals another one, what functionality it provides for remote
 procedure calls. The base class for all interfaces in *pyobs* is:
 
@@ -14,6 +11,7 @@ implement :class:`~pyobs.interfaces.ICamera`.
 List of interfaces
 ******************
 """
+__title__ = 'Interfaces'
 
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition

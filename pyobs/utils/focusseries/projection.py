@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 class ProjectionFocusSeries(FocusSeries):
     """Focus series from projected x/y."""
+    __module__ = 'pyobs.utils.focusseries'
 
     def __init__(self, backsub: bool = True, xbad: list = None, ybad: list = None):
         """Initialize a new projection focus series.

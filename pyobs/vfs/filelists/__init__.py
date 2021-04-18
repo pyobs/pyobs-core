@@ -1,7 +1,4 @@
 """
-File lists for VFS (pyobs.vfs.filelists)
-----------------------------------------
-
 TODO: write doc
 """
 

@@ -1,7 +1,4 @@
 """
-Events
-======
-
 TODO: write doc
 """
 

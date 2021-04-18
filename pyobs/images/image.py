@@ -1,7 +1,3 @@
-"""
-Image class.
-"""
-
 import io
 from enum import Enum
 

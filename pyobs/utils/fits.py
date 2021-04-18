@@ -1,9 +1,7 @@
 """
-FITS utilities (pyobs.utils.fits)
----------------------------------
-
 TODO: write doc
 """
+__title__ = 'FITS utilities'
 
 import logging
 import re

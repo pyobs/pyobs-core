@@ -1,9 +1,7 @@
 """
-Sky flat priorities (pyobs.utils.skyflats.priorities)
-*****************************************************
-
 TODO: write docs
 """
+__title__ = 'Sky flat priorities'
 
 from .base import SkyflatPriorities
 from .archive import ArchiveSkyflatPriorities

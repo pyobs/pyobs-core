@@ -1,9 +1,7 @@
 """
-Time (pyobs.utils.time)
------------------------
-
 TODO: write doc
 """
+__title__ = 'Time'
 
 import datetime
 import astropy.time

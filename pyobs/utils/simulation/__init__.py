@@ -1,9 +1,7 @@
 """
-Simulations (pyobs.utils.simulations)
--------------------------------------
-
 TODO: write docs
 """
+__title__ = 'Simulations'
 
 from .world import SimWorld
 from .camera import SimCamera

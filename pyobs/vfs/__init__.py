@@ -1,9 +1,7 @@
 """
-Virtual File System (pyobs.vfs)
-===============================
-
 TODO: write doc
 """
+__title__ = 'Virtual File System'
 
 from .vfs import VirtualFileSystem, VFSFile
 from .localfile import LocalFile

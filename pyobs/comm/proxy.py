@@ -1,3 +1,4 @@
+from __future__ import annotations
 import inspect
 import types
 
@@ -6,6 +7,7 @@ from pyobs.utils.types import cast_bound_arguments_to_simple
 
 class Proxy:
     """A proxy for remote pyobs modules."""
+    __module__ = 'pyobs.comm'
 
     def __init__(self, comm: 'Comm', client: str, interfaces: list):
         """Creates a new proxy.
@@ -15,9 +17,10 @@ class Proxy:
             client: Name of client to connect to.
             interfaces: List of interfaces supported by client.
         """
+        from .comm import Comm
 
         # set client and interfaces
-        self._comm = comm
+        self._comm: Comm = comm
         self._client = client
         self._interfaces = interfaces
 

@@ -29,7 +29,7 @@ In this case, interval would have to its default value of 10.
 
 Quite often, a parameter will accept both an object of a given type and a dict. If this is the case, the dict must
 be another class definition with a ``class`` keyword, referring to a class of the given type. See, for example, the
-``comm`` parameter of :class:`~pyobs.modules.Module`: it takes both a dict and a :class:`pyobs.comm.comm.Comm`.
+``comm`` parameter of :class:`~pyobs.modules.Module`: it takes both a dict and a :class:`pyobs.comm.Comm`.
 So in a configuration file, we can always specify a Comm object like this::
 
     comm:
@@ -37,8 +37,13 @@ So in a configuration file, we can always specify a Comm object like this::
         jid: someone@example.com
         password: secret
 
-An object of type :class:`~pyobs.comm.xmpp.xmppcomm.XmppComm` (which is a class derived from
-:class:`~pyobs.comm.comm.Comm`) will automatically be created.
+An object of type :class:`~pyobs.comm.xmpp.XmppComm` (which is a class derived from
+:class:`~pyobs.comm.Comm`) will automatically be created.
+
+With a Comm object, proxies to other modules can easily be created (see :mod:`~pyobs.comm` for details)::
+
+    camera: ICamera = self.comm['camera']
+    camera.expose()
 
 Sometimes, multiple modules have to run in a single process, so that they can access a common resource. For this case
 a :class:`~pyobs.modules.MultiModule` can contain multiple module descriptions.

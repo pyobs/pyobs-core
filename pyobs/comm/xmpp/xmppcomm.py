@@ -73,6 +73,7 @@ class XmppComm(Comm):
     parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
 
     """
+    __module__ = 'pyobs.comm.xmpp'
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
                  resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,

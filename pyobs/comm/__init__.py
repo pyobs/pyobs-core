@@ -1,5 +1,5 @@
 """
-The Comm object is responsible for all communication between modules (see :mod:`pyobs.modules.module`). The base
+The Comm object is responsible for all communication between modules (see :mod:`pyobs.modules`). The base
 class for all implementations is :class:`~pyobs.comm.Comm`.
 
 The user usually only has contact with the Comm object when writing the configuration for an existing module or when
@@ -20,7 +20,7 @@ the module named 'camera' implements the :class:`~pyobs.interfaces.ICamera` inte
     camera: ICamera = comm['camera']
     camera.expose()
 
-Each :class:`~pyobs.modules.Module` that was configured with a Comm object (see :mod:`~pyobs.modules.module`) has
+Each :class:`~pyobs.modules.Module` that was configured with a Comm object (see :mod:`~pyobs.modules`) has
 an attribute ``comm`` for easy access.
 
 There is currently one one implementation of the Comm interface:
@@ -29,7 +29,7 @@ There is currently one one implementation of the Comm interface:
 
 .. seealso::
 
-   Module :mod:`~pyobs.modules.module`
+   Module :mod:`~pyobs.modules`
       Description for modules, to which Comm objects are usually assigned.
 """
 

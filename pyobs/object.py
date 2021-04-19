@@ -1,5 +1,5 @@
 """
-:class:`~pyobs.object.Object` is the base class for almost all classe in *pyobs*. It adds some convenience methods
+:class:`~pyobs.object.Object` is the base for almost all classes in *pyobs*. It adds some convenience methods
 and helper methods for creating other Objects.
 
 :func:`~pyobs.object.get_object` is a convenience function for creating objects from dictionaries.

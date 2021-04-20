@@ -41,6 +41,17 @@ a different handling class that, e.g., accesses the file via SSH. Still, the fil
 machines. So A could store a file as ``/storage/file.ext``, send the filename to B, which then can access the file
 via the same filename.
 
+Currently supported are these types of file access:
+    - :class:`~pyobs.vfs.LocalFile`: Local file on the machine the module is running on.
+    - :class:`~pyobs.vfs.HttpFile`: File on a HTTP server.
+    - :class:`~pyobs.vfs.MemoryFile`: File in memory.
+    - :class:`~pyobs.vfs.SSHFile`: File on different machine that is accessible via SSH.
+    - :class:`~pyobs.vfs.TarFile`: Wrapper for a dynamically created TAR file. Can only be read from.
+    - :class:`~pyobs.vfs.TempFile`: Temporary file that will be deleted after being closed.
+    - :class:`~pyobs.vfs.ArchiveFile`: Wrapper for a file in the :ref:`pyobs-archive` image archive.
+
+The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
+
 """
 __title__ = 'Virtual File System'
 

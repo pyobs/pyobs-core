@@ -26,7 +26,7 @@ class VirtualFileSystem:
         """Create a new VFS.
 
         Args:
-            roots: Dictionary containing roots.
+            roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
             compression: Dictionary containing files that should be compressed.
         """
 

@@ -7,9 +7,6 @@ procedure calls. The base class for all interfaces in *pyobs* is:
 
 Modules need to implement the required interfaces. For instance, if a module operates a camera, it probably should
 implement :class:`~pyobs.interfaces.ICamera`.
-
-List of interfaces
-******************
 """
 __title__ = 'Interfaces'
 
@@ -39,7 +36,6 @@ from .IImageFormat import IImageFormat
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
-from .IPipeline import IPipeline
 from .IRaDec import IRaDec
 from .IRaDecOffsets import IRaDecOffsets
 from .IReady import IReady

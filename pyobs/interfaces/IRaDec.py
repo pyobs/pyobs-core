@@ -4,7 +4,7 @@ from .interface import Interface
 
 
 class IRaDec(Interface):
-    """Base interface for everything that can move to RA/Dec coordinates."""
+    """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):

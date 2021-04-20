@@ -2,6 +2,7 @@ from .interface import *
 
 
 class IStoppable(Interface):
+    """The module can be started and stopped."""
     __module__ = 'pyobs.interfaces'
 
     def start(self, *args, **kwargs):

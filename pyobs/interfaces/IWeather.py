@@ -5,6 +5,7 @@ from ..utils.enums import WeatherSensors
 
 
 class IWeather(Interface):
+    """The module acts as a weather station."""
     __module__ = 'pyobs.interfaces'
 
     def get_weather_status(self, *args, **kwargs) -> dict:

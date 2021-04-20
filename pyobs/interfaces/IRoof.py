@@ -2,7 +2,7 @@ from .IMotion import IMotion
 
 
 class IRoof(IMotion):
-    """Base interface for all observatory enclosures."""
+    """The module controls a roof."""
     __module__ = 'pyobs.interfaces'
     pass
 

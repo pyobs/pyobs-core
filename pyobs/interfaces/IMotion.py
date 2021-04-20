@@ -5,12 +5,7 @@ from ..utils.enums import MotionStatus
 
 
 class IMotion(IReady):
-    """
-    Basic interface for all devices that move.
-
-    There are no generic motion methods - these have to be defined in daughter
-    interfaces.
-    """
+    """The module controls a device that can move."""
     __module__ = 'pyobs.interfaces'
 
     def init(self, *args, **kwargs):

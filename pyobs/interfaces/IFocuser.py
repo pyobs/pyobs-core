@@ -2,7 +2,7 @@ from .IMotion import IMotion
 
 
 class IFocuser(IMotion):
-    """Generic focussing device with states corresponding to IMotionDevice.MotionState."""
+    """The module is a focusing device."""
     __module__ = 'pyobs.interfaces'
 
     def set_focus(self, focus: float, *args, **kwargs):

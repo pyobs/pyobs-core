@@ -4,6 +4,7 @@ from .IMotion import IMotion
 
 
 class IFilters(IMotion):
+    """The module can change filters in a device."""
     __module__ = 'pyobs.interfaces'
 
     def list_filters(self, *args, **kwargs) -> List[str]:

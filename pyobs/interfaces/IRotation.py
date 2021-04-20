@@ -2,6 +2,7 @@ from .IMotion import IMotion
 
 
 class IRotation(IMotion):
+    """The module controls a device that can rotate."""
     __module__ = 'pyobs.interfaces'
 
     def set_rotation(self, angle, *args, **kwargs):

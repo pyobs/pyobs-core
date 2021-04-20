@@ -5,7 +5,7 @@ from pyobs.utils.enums import ExposureStatus
 
 
 class ICamera(IAbortable):
-    """Basic interface for all cameras."""
+    """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 
     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:

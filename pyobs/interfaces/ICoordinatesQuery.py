@@ -2,6 +2,7 @@ from .interface import *
 
 
 class ICoordinatesQuery(Interface):
+    """The module perfoms a search for coordinates."""
     __module__ = 'pyobs.interfaces'
 
     def query_coordinates_by_name(self, name: str, *args, **kwargs) -> list:

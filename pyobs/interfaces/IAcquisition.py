@@ -2,6 +2,7 @@ from .interface import *
 
 
 class IAcquisition(Interface):
+    """The module can acquire a target, usually by accessing a telescope and a camera."""
     __module__ = 'pyobs.interfaces'
 
     def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:

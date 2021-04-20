@@ -2,7 +2,8 @@ from .interface import *
 
 
 class ISyncTarget(Interface):
-    """Interface for all devices that can be synchronized on a target."""
+    """The module can synchronize a target, e.g. via a telescope control software behinde an
+    :class:`~pyobs.interfaces.Telescope`."""
     __module__ = 'pyobs.interfaces'
 
     def sync_target(self, *args, **kwargs):

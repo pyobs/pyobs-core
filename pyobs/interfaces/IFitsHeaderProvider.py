@@ -4,6 +4,7 @@ from .interface import *
 
 
 class IFitsHeaderProvider(Interface):
+    """The module provides some additional header entries for FITS headers."""
     __module__ = 'pyobs.interfaces'
 
     def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:

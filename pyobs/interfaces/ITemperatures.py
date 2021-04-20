@@ -2,7 +2,7 @@ from .interface import Interface
 
 
 class ITemperatures(Interface):
-    """Interface for all devices that measure temperatures."""
+    """The module can return temperatures measured on some device."""
     __module__ = 'pyobs.interfaces'
 
     def get_temperatures(self, *args, **kwargs) -> dict:

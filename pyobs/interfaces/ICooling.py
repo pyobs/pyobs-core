@@ -4,7 +4,7 @@ from .ITemperatures import ITemperatures
 
 
 class ICooling(ITemperatures):
-    """Interface for all devices that allow for some kind of cooling."""
+    """The module can control the cooling of a device."""
     __module__ = 'pyobs.interfaces'
 
     def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:

@@ -8,7 +8,7 @@ from pyobs.object import create_object, Object
 
 class SimWorld(Object):
     """A simulated world."""
-    ___module__ = 'pyobs.utils.simulation'
+    __module__ = 'pyobs.utils.simulation'
 
     def __init__(self, time: Union[Time, str] = None,
                  telescope: Union['SimTelescope', dict] = None, camera: Union['SimCamera', dict] = None,

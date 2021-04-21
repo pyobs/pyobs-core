@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 class CameraSettingsMixin:
     """Mixin for a device that should be able to set camera settings."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, filters: Union[str, IFilters] = None, filter_name: str = None, binning: int = None,
                  *args, **kwargs):
         """Initializes the mixin.

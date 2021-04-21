@@ -49,6 +49,8 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]
 
 class FollowMixin:
     """Mixin for a device that should follow the motion of another."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IAltAz, IRaDec]],
                  *args, **kwargs):
         """Initializes the mixin.

@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 class MotionStatusMixin:
     """Mixin for IMotion devices for handling status."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, motion_status_interfaces: list = None, *args, **kwargs):
         """Initializes the mixin.
 

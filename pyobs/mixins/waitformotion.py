@@ -12,6 +12,8 @@ log = logging.getLogger(__name__)
 
 class WaitForMotionMixin:
     """Mixin for a device that should wait for the motion status of another device."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, wait_for_modules: List[str] = None, wait_for_states: List[Union[MotionStatus, str]] = None,
                  wait_for_timeout: float = 0, *args, **kwargs):
         """Initializes the mixin.

@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 
 class WeatherAwareMixin:
     """Mixin for IMotion devices that should park(), when weather gets bad."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, weather: Union[str, IWeather] = None, *args, **kwargs):
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None

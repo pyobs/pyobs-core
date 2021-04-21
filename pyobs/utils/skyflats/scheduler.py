@@ -148,6 +148,8 @@ class SchedulerItem:
 
 class Scheduler:
     """Scheduler for taking flat fields"""
+    __module__ = 'pyobs.utils.skyflats'
+
     def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
                  max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
                  combine_binnings: bool = True, readout: dict = None):

@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 class HttpFile(VFSFile, io.RawIOBase):
     """Wraps a file on a HTTP server that can be accessed via GET/POST.
-    Especially useful in combination with :class:`pyobs.modules.utils.HttpFileCache`."""
+    Especially useful in combination with :class:`~pyobs.modules.utils.HttpFileCache`."""
     __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None,

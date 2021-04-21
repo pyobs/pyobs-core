@@ -9,7 +9,7 @@ from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
 from pyobs.utils.publisher import CsvPublisher
-from pyobs.utils.skyflats.flatfielder import FlatFielder
+from pyobs.utils.skyflats import FlatFielder
 
 log = logging.getLogger(__name__)
 

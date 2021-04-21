@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 
 class FlatFielder:
     """Automatized flat-fielding."""
+    __module__ = 'pyobs.utils.skyflats'
 
     class Twilight(Enum):
         DUSK = 'dusk'

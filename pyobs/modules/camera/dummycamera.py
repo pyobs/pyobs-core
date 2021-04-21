@@ -229,11 +229,10 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """Returns the current status for the cooling.
 
         Returns:
-            Tuple containing:
-                Enabled (bool):         Whether the cooling is enabled
-                SetPoint (float):       Setpoint for the cooling in celsius.
-                Power (float):          Current cooling power in percent or None.
-                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
+            (tuple): Tuple containing:
+                Enabled:  Whether the cooling is enabled
+                SetPoint: Setpoint for the cooling in celsius.
+                Power:    Current cooling power in percent or None.
         """
         with self._coolingLock:
             return self._cooling.enabled, self._cooling.set_point, self._cooling.power

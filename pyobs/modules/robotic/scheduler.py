@@ -26,7 +26,8 @@ class Scheduler(Module, IStoppable, IRunnable):
     __module__ = 'pyobs.modules.robotic'
 
     def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
-                 twilight: str = 'astronomical', *args, **kwargs):
+                 twilight: str = 'astronomical', trigger_on_task_started: bool = False,
+                 trigger_on_task_finished: bool = False, *args, **kwargs):
         """Initialize a new scheduler.
 
         Args:
@@ -36,6 +37,8 @@ class Scheduler(Module, IStoppable, IRunnable):
                          this time in seconds to make sure that we don't schedule for a time when the scheduler is
                          still running
             twilight: astronomical or nautical
+            trigger_on_task_started: Whether to trigger a re-calculation of schedule, when task has started.
+            trigger_on_task_finishes: Whether to trigger a re-calculation of schedule, when task has finished.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -49,6 +52,8 @@ class Scheduler(Module, IStoppable, IRunnable):
         self._running = True
         self._initial_update_done = False
         self._need_update = False
+        self._trigger_on_task_started = trigger_on_task_started
+        self._trigger_on_task_finished = trigger_on_task_finished
 
         # time to start next schedule from
         self._schedule_start = None
@@ -268,14 +273,16 @@ class Scheduler(Module, IStoppable, IRunnable):
             sender: Who sent it.
         """
 
-        # get ETA in minutes
-        eta = (event.eta - Time.now()).sec / 60
-        log.info('Received task started event with ETA of %.0f minutes, triggering new scheduler run...', eta)
+        # trigger?
+        if self._trigger_on_task_started:
+            # get ETA in minutes
+            eta = (event.eta - Time.now()).sec / 60
+            log.info('Received task started event with ETA of %.0f minutes, triggering new scheduler run...', eta)
 
-        # set it
-        self._need_update = True
-        self._schedule_start = event.eta
-        self._current_task_id = event.id
+            # set it
+            self._need_update = True
+            self._schedule_start = event.eta
+            self._current_task_id = event.id
 
     def _on_task_finished(self, event: TaskFinishedEvent, sender: str, *args, **kwargs):
         """Reset current task, when it has finished.
@@ -284,7 +291,18 @@ class Scheduler(Module, IStoppable, IRunnable):
             event: The task finished event.
             sender: Who sent it.
         """
+
+        # reset current task
         self._current_task_id = None
+
+        # trigger?
+        if self._trigger_on_task_finished:
+            # get ETA in minutes
+            log.info('Received task finished event, triggering new scheduler run...')
+
+            # set it
+            self._need_update = True
+            self._schedule_start = Time.now()
 
     def _on_good_weather(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
         """Re-schedule on incoming good weather event.

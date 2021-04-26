@@ -108,7 +108,7 @@ class Scheduler(Module, IStoppable, IRunnable):
                 log.info('Found update in schedulable block, downloading them...')
                 blocks = sorted(self._task_archive.get_schedulable_blocks(),
                                 key=lambda x: json.dumps(x.configuration, sort_keys=True))
-                log.info('Downloaded %d schedulable block(s).', len(self._blocks))
+                log.info('Downloaded %d schedulable block(s).', len(blocks))
 
                 # compare new and old lists
                 removed, added = Scheduler._compare_block_lists(self._blocks, blocks)

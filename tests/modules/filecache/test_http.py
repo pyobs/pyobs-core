@@ -1,13 +1,12 @@
 import time
 import requests
 
-from pyobs.modules import Module
-from pyobs.modules.filecache import HttpFileCacheServer
+from pyobs.modules.utils import HttpFileCache
 
 
 def test_upload_download():
     # create server
-    server = HttpFileCacheServer(port=37075)
+    server = HttpFileCache(port=37075)
     server.open()
 
     # wait for server to start listening

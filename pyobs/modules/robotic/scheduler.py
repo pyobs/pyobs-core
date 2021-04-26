@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import multiprocessing as mp
-from typing import Union, List
+from typing import Union, List, Tuple
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
     PriorityScheduler
 from astropy.time import TimeDelta
@@ -106,13 +106,34 @@ class Scheduler(Module, IStoppable, IRunnable):
             if last_change is None or last_change < t:
                 # get schedulable blocks and sort them
                 log.info('Found update in schedulable block, downloading them...')
-                self._blocks = sorted(self._task_archive.get_schedulable_blocks(),
-                                      key=lambda x: json.dumps(x.configuration, sort_keys=True))
+                blocks = sorted(self._task_archive.get_schedulable_blocks(),
+                                key=lambda x: json.dumps(x.configuration, sort_keys=True))
                 log.info('Downloaded %d schedulable block(s).', len(self._blocks))
 
+                # compare new and old lists
+                removed, added = Scheduler._compare_block_lists(self._blocks, blocks)
+
                 # schedule update
-                log.info('Triggering scheduler run...')
                 self._need_update = True
+
+                # no changes?
+                if len(removed) == 0 and len(added) == 0:
+                    # no need to re-schedule
+                    log.info('No change in list of blocks detected.')
+                    self._need_update = False
+
+                # has only the current block been removed?
+                if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._current_task_id:
+                    # no need to re-schedule
+                    log.info('Only one removed block detected, which is the one currently running.')
+                    self._need_update = False
+
+                # store blocks
+                self._blocks = blocks
+
+                # schedule update
+                if self._need_update:
+                    log.info('Triggering scheduler run...')
 
                 # remember now
                 last_change = Time.now()
@@ -120,6 +141,35 @@ class Scheduler(Module, IStoppable, IRunnable):
 
             # sleep a little
             self.closing.wait(5)
+
+    @staticmethod
+    def _compare_block_lists(blocks1: List[ObservingBlock], blocks2: List[ObservingBlock]) \
+            -> Tuple[List[ObservingBlock], List[ObservingBlock]]:
+        """Compares two lists of ObservingBlocks and returns two lists, containing those that are missing in list 1
+        and list 2, respectively.
+
+        Args:
+            blocks1: First list of blocks.
+            blocks2: Second list of blocks.
+
+        Returns:
+            (tuple): Tuple containing:
+                unique1:  Blocks that exist in blocks1, but not in blocks2.
+                unique2:  Blocks that exist in blocks2, but not in blocks1.
+        """
+
+        # get dictionaries with block names
+        names1 = {b.target.name: b for b in blocks1}
+        names2 = {b.target.name: b for b in blocks2}
+
+        # find elements in names1 that are missing in names2 and vice versa
+        additional1 = set(names1.keys()).difference(names2.keys())
+        additional2 = set(names2.keys()).difference(names1.keys())
+
+        # get blocks for names and return them
+        unique1 = [names1[n] for n in additional1]
+        unique2 = [names2[n] for n in additional2]
+        return unique1, unique2
 
     def _schedule_thread(self):
         # run forever

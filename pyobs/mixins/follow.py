@@ -52,7 +52,7 @@ class FollowMixin:
     __module__ = 'pyobs.mixins'
 
     def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IAltAz, IRaDec]],
-                 *args, **kwargs):
+                 only_follow_when_ready: bool = True, *args, **kwargs):
         """Initializes the mixin.
 
         Args:
@@ -60,7 +60,7 @@ class FollowMixin:
             interval: Interval in seconds between position checks.
             tolerance: Tolerance in degrees between both devices to trigger new movement.
             mode: Set to "altaz" to follow Alt/Az coordinates or "radec" to follow RA/Dec.
-
+            only_follow_when_ready: Only follow if is_ready() is True.
         """
 
         # store
@@ -68,6 +68,7 @@ class FollowMixin:
         self.__follow_interval = interval
         self.__follow_tolerance = tolerance
         self.__follow_mode = mode
+        self.__follow_only_when_ready = only_follow_when_ready
 
         # check
         if not isinstance(self, self.__follow_mode):
@@ -98,7 +99,7 @@ class FollowMixin:
         while not self.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
-                if not self.is_ready():
+                if not self.is_ready() and self.__follow_only_when_ready:
                     self.closing.wait(self.__follow_interval)
                     continue
 

@@ -83,8 +83,8 @@ class Image:
         image.header = image_hdu.header
 
         # mask
-        if 'BPM' in data:
-            image.mask = data['BPM'].data
+        if 'MASK' in data:
+            image.mask = data['MASK'].data
 
         # catalog
         if 'CAT' in data:

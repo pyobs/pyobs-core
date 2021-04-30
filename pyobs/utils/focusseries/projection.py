@@ -6,13 +6,16 @@ from scipy import ndimage
 
 from .base import FocusSeries
 from pyobs.utils.curvefit import fit_hyperbola
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)
 
 
 class ProjectionFocusSeries(FocusSeries):
+    """Focus series from projected x/y."""
+    __module__ = 'pyobs.utils.focusseries'
+
     def __init__(self, backsub: bool = True, xbad: list = None, ybad: list = None):
         """Initialize a new projection focus series.
 
@@ -23,7 +26,6 @@ class ProjectionFocusSeries(FocusSeries):
         """
 
         # test imports
-        import lmfit
 
         # stuff
         self._backsub = backsub

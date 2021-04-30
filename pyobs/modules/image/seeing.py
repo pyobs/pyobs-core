@@ -4,7 +4,7 @@ from typing import List, Union
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent
 from pyobs.utils.publisher import Publisher
 from pyobs.utils.time import Time
@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
                  max_ellipticity: float = 0.2, correct_for_airmass: bool = True, *args, **kwargs):
@@ -29,7 +30,7 @@ class Seeing(Module):
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._publisher = self._add_child_object(publisher, Publisher)
+        self._publisher = self.add_child_object(publisher, Publisher)
         self._max_ellipticity = max_ellipticity
         self._correct_for_airmass = correct_for_airmass
 

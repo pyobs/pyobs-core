@@ -6,9 +6,9 @@ import numpy as np
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
-from pyobs import Module, get_object
+from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import timeout
+from pyobs.modules import timeout, Module
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
 
@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
                  series: FocusSeries, offset: bool = False, *args, **kwargs):
@@ -66,7 +67,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
         step size. With count=3, step=1 and guess=10, this takes images at the following focus values:
-            7, 8, 9, 10, 11, 12, 13
+        7, 8, 9, 10, 11, 12, 13
 
         Args:
             count: Number of images to take on each side of the initial guess. Should be an odd number.

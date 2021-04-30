@@ -3,6 +3,7 @@ from .event import Event
 
 class FocusFoundEvent(Event):
     """Event to be sent when a new best focus has been found, e.g. after a focus series."""
+    __module__ = 'pyobs.events'
 
     def __init__(self, focus: float = None, error: float = None, filter_name: str = None):
         Event.__init__(self)

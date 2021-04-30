@@ -2,7 +2,7 @@ import logging
 import threading
 
 from pyobs.events import NewImageEvent
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .base import BaseGuiding
 
 
@@ -11,13 +11,14 @@ log = logging.getLogger(__name__)
 
 class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
+    __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, *args, **kwargs):
         """Initializes a new science frame auto guiding system."""
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._auto_guiding, True)
+        self.add_thread_func(self._auto_guiding, True)
 
         # variables
         self._next_image: Image = None

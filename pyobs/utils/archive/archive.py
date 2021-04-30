@@ -5,6 +5,7 @@ from pyobs.utils.time import Time
 
 
 class FrameInfo:
+    """Base class for frame infos."""
     def __init__(self):
         self.id = None
         self.filename = None
@@ -14,6 +15,9 @@ class FrameInfo:
 
 
 class Archive:
+    """Base class for image archives."""
+    __module__ = 'pyobs.utils.archive'
+
     def list_options(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
                      image_type: ImageType = None, binning: str = None, filter_name: str = None,

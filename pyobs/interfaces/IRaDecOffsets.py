@@ -4,7 +4,9 @@ from .interface import Interface
 
 
 class IRaDecOffsets(Interface):
-    """Interface for any device that supports offsets in RA/Dec."""
+    """The module supports RA/Dec offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
+    :class:`~pyobs.interfaces.IRaDec`."""
+    __module__ = 'pyobs.interfaces'
 
     def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.

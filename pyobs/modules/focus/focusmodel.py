@@ -3,10 +3,11 @@ from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
+from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
@@ -47,6 +48,7 @@ class FocusModel(Module, IFocusModel):
 
     Only this way it is possible to automatically re-calculate the model.
     """
+    __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
                  model: str = None, coefficients: dict = None, update: bool = False,
@@ -77,7 +79,7 @@ class FocusModel(Module, IFocusModel):
 
         # add thread func
         if interval is not None and interval > 0:
-            self._add_thread_func(self._run_thread, True)
+            self.add_thread_func(self._run_thread, True)
 
         # store
         self._focuser = focuser
@@ -90,7 +92,7 @@ class FocusModel(Module, IFocusModel):
         self._min_measurements = min_measurements
         self._enabled = enabled
         self._temp_station, sensor = temp_sensor.split('.')
-        self._temp_sensor = IWeather.Sensors(sensor)
+        self._temp_sensor = WeatherSensors(sensor)
         self._default_filter = default_filter
         self._filter_offsets = filter_offsets
         self._filter_wheel = filter_wheel

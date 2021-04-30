@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from pyobs.comm import RemoteException
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IAltAz, IRaDec, IReady
 
 log = logging.getLogger(__name__)
@@ -49,8 +49,10 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]
 
 class FollowMixin:
     """Mixin for a device that should follow the motion of another."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IAltAz, IRaDec]],
-                 *args, **kwargs):
+                 only_follow_when_ready: bool = True, *args, **kwargs):
         """Initializes the mixin.
 
         Args:
@@ -58,7 +60,7 @@ class FollowMixin:
             interval: Interval in seconds between position checks.
             tolerance: Tolerance in degrees between both devices to trigger new movement.
             mode: Set to "altaz" to follow Alt/Az coordinates or "radec" to follow RA/Dec.
-
+            only_follow_when_ready: Only follow if is_ready() is True.
         """
 
         # store
@@ -66,6 +68,7 @@ class FollowMixin:
         self.__follow_interval = interval
         self.__follow_tolerance = tolerance
         self.__follow_mode = mode
+        self.__follow_only_when_ready = only_follow_when_ready
 
         # check
         if not isinstance(self, self.__follow_mode):
@@ -75,7 +78,7 @@ class FollowMixin:
         if self.__follow_device is not None:
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self._add_thread_func(self.__update_follow)
+            self.add_thread_func(self.__update_follow)
 
     @property
     def is_following(self) -> bool:
@@ -92,10 +95,11 @@ class FollowMixin:
         self.closing.wait(10)
 
         # run until closing
+        connected = None
         while not self.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
-                if not self.is_ready():
+                if not self.is_ready() and self.__follow_only_when_ready:
                     self.closing.wait(self.__follow_interval)
                     continue
 
@@ -104,18 +108,21 @@ class FollowMixin:
                 device = self.proxy(self.__follow_device, self.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
-                log.error('Cannot follow module, since it is of wrong type.')
+                log.warning('Cannot follow module, since it is of wrong type.')
                 self.closing.wait(self.__follow_interval * 10)
                 continue
 
             # get coordinates from other and from myself
-            my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
             try:
+                my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
                 x, y = get_coord(device, self.__follow_mode).wait()
                 other_coords = build_skycoord((x, y), self.__follow_mode)
-            except RemoteException:
-                log.error('Module currently not available.')
-                self.closing.wait(self.__follow_interval * 10)
+                connected = True
+            except (ValueError, RemoteException):
+                if not connected:
+                    log.error('Could not fetch coordinates.')
+                connected = False
+                self.closing.wait(self.__follow_interval * 10.)
                 continue
 
             # is separation larger than tolerance?

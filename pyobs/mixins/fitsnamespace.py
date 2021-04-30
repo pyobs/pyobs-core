@@ -1,13 +1,15 @@
 import logging
 from typing import List, Union, Dict, Optional
 
-from pyobs import Module
+from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
 
 class FitsNamespaceMixin:
     """Mixin for IFitsHeaderProvider modules that filters FITS headers by namespace."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, *args, **kwargs):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
@@ -25,7 +27,7 @@ class FitsNamespaceMixin:
         """
 
         # no namespaces?
-        if self.__namespaces is None:
+        if not self.__namespaces:
             return hdr
 
         # get list of FITS headers that we let pass

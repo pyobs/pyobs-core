@@ -2,7 +2,7 @@ import logging
 import threading
 import typing
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 
 

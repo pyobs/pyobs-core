@@ -8,7 +8,7 @@ import astropy.units as u
 
 from pyobs.comm import Comm
 from pyobs.comm.proxy import Proxy
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
@@ -93,6 +93,7 @@ class PeriodicJob(Job):
 
 class JobScheduler(Module):
     """Job scheduler."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new job scheduler."""

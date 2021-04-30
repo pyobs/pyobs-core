@@ -2,6 +2,9 @@ from .interface import *
 
 
 class ICameraExposureTime(Interface):
+    """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
+    __module__ = 'pyobs.interfaces'
+
     def set_exposure_time(self, exposure_time: float, *args, **kwargs):
         """Set the exposure time in seconds.
 

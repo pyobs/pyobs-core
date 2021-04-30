@@ -33,6 +33,7 @@ class CsvPublisher(Publisher):
 
         except FileNotFoundError:
             # file not found, so start new with row
+            log.warning('No previous CSV file found, creating new one...')
             csv = pd.DataFrame()
 
         # create new row from kwargs and append it

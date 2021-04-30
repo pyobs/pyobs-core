@@ -4,7 +4,7 @@ import os
 from queue import Queue
 from astropy.io import fits
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ class ImageWatcher(Module):
     Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
     the file is deleted.
     """
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, watchpath: str = None, destinations: list = None, *args, **kwargs):
         """Create a new image watcher.
@@ -30,7 +31,7 @@ class ImageWatcher(Module):
         import pyinotify
 
         # add thread func
-        self._add_thread_func(self._worker, True)
+        self.add_thread_func(self._worker, True)
 
         # variables
         self._watchpath = watchpath

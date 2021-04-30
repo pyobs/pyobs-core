@@ -9,7 +9,6 @@ from astropy.time import TimeDelta
 import astropy.units as u
 from requests import Timeout
 
-from pyobs.object import get_object
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from ..taskarchive import TaskArchive
@@ -154,7 +153,8 @@ class LcoTaskArchive(TaskArchive):
 
             # need update!
             try:
-                tasks = self.fetch_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour), state='PENDING')
+                tasks = self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
+                                               include_running=False)
             except Timeout:
                 log.error('Request timed out')
                 self._closing.wait(60)
@@ -174,21 +174,26 @@ class LcoTaskArchive(TaskArchive):
             # finished
             self._last_schedule_time = now
 
-    def fetch_tasks(self, end_after: Time, start_before: Time, state: str = 'PENDING') -> Dict[str, Task]:
-        """Fetch tasks from portal.
+    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+        """Fetch pending tasks from portal.
 
         Args:
-            end_after: Task must end after this time.
             start_before: Task must start before this time.
-            state: State of tasks.
+            end_after: Task must end after this time.
+            include_running: Whether to include a currently running task.
 
         Returns:
             Dictionary with tasks.
 
         Raises:
-            Timeout if request timed out.
-            ValueError if something goes wrong.
+            Timeout: If request timed out.
+            ValueError: If something goes wrong.
         """
+
+        # define states
+        states = ['PENDING']
+        if include_running:
+            states += ['IN_PROGRESS']
 
         # get url and params
         url = urljoin(self._url, '/api/observations/')
@@ -196,7 +201,9 @@ class LcoTaskArchive(TaskArchive):
             'site': self._site,
             'end_after': end_after.isot,
             'start_before': start_before.isot,
-            'state': state
+            'state': states,
+            'request_state': 'PENDING',
+            'limit': 1000
         }
 
         # do request
@@ -221,6 +228,7 @@ class LcoTaskArchive(TaskArchive):
             tasks[sched['request']['id']] = task
 
         # finished
+        r.close()
         return tasks
 
     def get_task(self, time: Time) -> Union[Task, None]:
@@ -236,11 +244,8 @@ class LcoTaskArchive(TaskArchive):
         # loop all tasks
         with self._update_lock:
             for task in self._tasks.values():
-                # get start and end
-                start, end = task.window()
-
                 # running now?
-                if start <= time < end and not task.is_finished():
+                if task.start <= time < task.end and not task.is_finished():
                     return task
 
         # nothing found
@@ -278,44 +283,58 @@ class LcoTaskArchive(TaskArchive):
         url = urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
 
         # do request
+        res = None
         try:
-            r = requests.patch(url, json=status, headers=self._header, timeout=10, proxies=self._proxies)
-            if r.status_code != 200:
-                log.error('Could not update configuration status: %s', r.text)
+            res = requests.patch(url, json=status, headers=self._header, timeout=10, proxies=self._proxies)
+            if res.status_code != 200:
+                log.error('Could not update configuration status: %s', res.text)
         except Timeout:
             log.error('Request timed out.')
+        finally:
+            if res is not None:
+                res.close()
 
     def last_changed(self) -> Time:
         """Returns time when last time any blocks changed."""
 
         # try to update time
+        res = None
         try:
-            r = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10,
-                             proxies=self._proxies)
-            if r.status_code != 200:
+            res = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10,
+                               proxies=self._proxies)
+            if res.status_code != 200:
                 raise ValueError
-            self._last_changed = r.json()['last_change_time']
+            self._last_changed = res.json()['last_change_time']
             return self._last_changed
 
         except:
             # in case of errors, return last time
             return self._last_changed
+
+        finally:
+            if res is not None:
+                res.close()
 
     def last_scheduled(self) -> Time:
         """Returns time of last scheduler run."""
 
         # try to update time
+        res = None
         try:
-            r = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10,
-                             proxies=self._proxies)
-            if r.status_code != 200:
+            res = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10,
+                               proxies=self._proxies)
+            if res.status_code != 200:
                 raise ValueError
-            self._last_scheduled = Time(r.json()['last_schedule_time'])
+            self._last_scheduled = Time(res.json()['last_schedule_time'])
             return self._last_scheduled
 
         except:
             # in case of errors, return last time
             return self._last_scheduled
+
+        finally:
+            if res is not None:
+                res.close()
 
     def get_schedulable_blocks(self) -> list:
         """Returns list of schedulable blocks.
@@ -325,17 +344,19 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # get requests
-        r = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header,
+        res = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header,
                          proxies=self._proxies)
-        if r.status_code != 200:
+        if res.status_code != 200:
             raise ValueError('Could not fetch list of schedulable requests.')
-        schedulable = r.json()
+        schedulable = res.json()
+        res.close()
 
         # get proposal priorities
-        r = requests.get(urljoin(self._url, '/api/proposals/'), headers=self._header, proxies=self._proxies)
-        if r.status_code != 200:
+        res = requests.get(urljoin(self._url, '/api/proposals/'), headers=self._header, proxies=self._proxies)
+        if res.status_code != 200:
             raise ValueError('Could not fetch list of proposals.')
-        tac_priorities = {p['id']: p['tac_priority'] for p in r.json()['results']}
+        tac_priorities = {p['id']: p['tac_priority'] for p in res.json()['results']}
+        res.close()
 
         # loop all request groups
         blocks = []
@@ -419,11 +440,13 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # cancel schedule
-        r = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
+        log.info('Deleting all scheduled tasks after %s...', now.isot)
+        res = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'},
                           proxies=self._proxies)
-        if r.status_code != 200:
+        res.close()
+        if res.status_code != 200:
             raise ValueError('Could not cancel schedule.')
 
     def _create_observations(self, blocks: list) -> list:
@@ -472,12 +495,22 @@ class LcoTaskArchive(TaskArchive):
             return
 
         # submit obervations
-        r = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
+        res = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
                           headers={'Authorization': 'Token ' + self._token,
                                    'Content-Type': 'application/json; charset=utf8'},
                           proxies=self._proxies)
-        if r.status_code != 201:
+        res.close()
+        if res.status_code != 201:
             raise ValueError('Could not submit observations.')
+
+        # log
+        json = res.json()
+        log.info('%d observations created.', json['num_created'])
+
+        # errors?
+        if 'errors' in json:
+            for err in json['errors'].values():
+                log.warning('Error from portal: %s', err['non_field_errors'])
 
 
 __all__ = ['LcoTaskArchive']

@@ -1,28 +1,30 @@
 import logging
+import time
 from typing import Optional, Union
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IMotion
 from pyobs.mixins import MotionStatusMixin
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
 
 class WeatherAwareMixin:
     """Mixin for IMotion devices that should park(), when weather gets bad."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, weather: Union[str, IWeather] = None, *args, **kwargs):
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
         if isinstance(self, Module):
-            self._add_thread_func(self.__weather_check, True)
+            self.add_thread_func(self.__weather_check, True)
         else:
             raise ValueError('This is not a module.')
 
     def open(self):
         """Open mixin."""
-        self: (Module, WeatherAwareMixin)
-
         # subscribe to events
         if self.comm:
             self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
@@ -41,7 +43,7 @@ class WeatherAwareMixin:
 
         # do we need to park?
         if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-            if self.get_motion_status() != IMotion.Status.PARKED:
+            if self.get_motion_status() != MotionStatus.PARKED:
                 log.warning('Received bad weather event, shutting down.')
                 self.park()
         else:
@@ -66,6 +68,9 @@ class WeatherAwareMixin:
             # wait a little
             self.closing.wait(10)
 
+            # time of last park attempt
+            last_park_attempt = None
+
             # run until closing
             while not self.closing.is_set():
                 # got a weather module?
@@ -74,20 +79,34 @@ class WeatherAwareMixin:
                     self.__is_weather_good = True
 
                 else:
-                    # get proxy
-                    weather: IWeather = self.proxy(self.__weather, IWeather)
-
-                    # get good status
                     try:
+                        # get proxy
+                        weather: IWeather = self.proxy(self.__weather, IWeather)
+
+                        # get good status
                         self.__is_weather_good = weather.is_weather_good().wait()
+
                     except:
+                        # could either not connect or weather is not good
                         self.__is_weather_good = False
 
                 # if not good, park now
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-                    if self.__is_weather_good is False and self.get_motion_status() != IMotion.Status.PARKED:
-                        log.warning('Weather seems to be bad, shutting down.')
-                        self.park()
+                    if self.__is_weather_good is False and \
+                            self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
+                        try:
+                            self.park()
+                            log.info('Weather seems to be bad, shutting down.')
+                        except:
+                            # only log, if last attempt is more than 60s ago
+                            # this is useful, so that we don't get log messages every 10 seconds but only the first one
+                            # in a series
+                            if last_park_attempt is None or time.time() - last_park_attempt > 60:
+                                log.error('Could not park on bad weather.')
+
+                        # store attempt time
+                        last_park_attempt = time.time()
+
                 else:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 

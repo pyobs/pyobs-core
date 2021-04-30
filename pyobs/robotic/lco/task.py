@@ -2,7 +2,7 @@ from threading import Event
 import logging
 from typing import Union, Dict, Tuple
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -87,13 +87,33 @@ class LcoTask(Task):
         """Compares to tasks."""
         return self.config == other.config
 
-    def window(self) -> Tuple[Time, Time]:
-        """Returns the time window for this task.
+    @property
+    def start(self) -> Time:
+        """Start time for task"""
+        return self.config['start']
+
+    @property
+    def end(self) -> Time:
+        """End time for task"""
+        return self.config['end']
+
+    @property
+    def observation_type(self) -> str:
+        """Returns observation_type of this task.
 
         Returns:
-            Start and end time for this observation window.
+            observation_type of this task.
         """
-        return self.config['start'], self.config['end']
+        return self.config['observation_type']
+
+    @property
+    def can_start_late(self) -> bool:
+        """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.
+
+        Returns:
+            True, if task can start late.
+        """
+        return self.observation_type == 'DIRECT'
 
     def _get_config_script(self, config: dict) -> Script:
         """Get config script for given configuration.

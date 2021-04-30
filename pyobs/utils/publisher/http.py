@@ -61,7 +61,7 @@ class HttpPublisher(Publisher, tornado.web.Application):
         Publisher.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._http, False)
+        self.add_thread_func(self._http, False)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [

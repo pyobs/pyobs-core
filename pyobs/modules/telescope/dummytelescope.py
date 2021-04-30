@@ -1,17 +1,17 @@
 import logging
 import threading
 import time
-from typing import Tuple
+from typing import Tuple, List, Dict, Any
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, IMotion, ITemperatures, IRaDecOffsets
+from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, ITemperatures, IRaDecOffsets
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
-from pyobs.utils.simulation.world import SimWorld
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
@@ -21,15 +21,16 @@ log = logging.getLogger(__name__)
 class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
+    __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, world: SimWorld = None, *args, **kwargs):
+    def __init__(self, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, *args, **kwargs)
 
         # init world and get telescope
         self._world = world if world is not None else \
-            self._add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._telescope = self._world.telescope
 
         # automatically send status updates
@@ -50,7 +51,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
             self.comm.register_event(TelescopeMovingEvent)
 
         # init status
-        self._change_motion_status(IMotion.Status.IDLE)
+        self._change_motion_status(MotionStatus.IDLE)
 
     def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -109,7 +110,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs'))
 
         # wait for it
-        while self._telescope.status == IMotion.Status.SLEWING and not abort_event.is_set():
+        while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
             self.closing.wait(1)
 
     def get_focus(self, *args, **kwargs) -> float:
@@ -135,7 +136,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         # acquire lock
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
-            self._change_motion_status(IMotion.Status.SLEWING, interface='IFocuser')
+            self._change_motion_status(MotionStatus.SLEWING, interface='IFocuser')
             ifoc = self._telescope.focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
@@ -146,10 +147,10 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
                 # move focus and sleep a little
                 self._telescope.focus = ifoc + i * dfoc
                 time.sleep(0.01)
-            self._change_motion_status(IMotion.Status.POSITIONED, interface='IFocuser')
+            self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
             self._telescope.focus = focus
 
-    def list_filters(self, *args, **kwargs) -> list:
+    def list_filters(self, *args, **kwargs) -> List[str]:
         """List available filters.
 
         Returns:
@@ -179,9 +180,9 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         if filter_name != self._telescope.filter:
             # set it
             logging.info('Setting filter to %s', filter_name)
-            self._change_motion_status(IMotion.Status.SLEWING, interface='IFilters')
+            self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
             time.sleep(3)
-            self._change_motion_status(IMotion.Status.POSITIONED, interface='IFilters')
+            self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
             self._telescope.filter = filter_name
 
             # send event
@@ -197,9 +198,9 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         """
 
         # INIT, wait a little, then IDLE
-        self._change_motion_status(IMotion.Status.INITIALIZING)
+        self._change_motion_status(MotionStatus.INITIALIZING)
         time.sleep(5.)
-        self._change_motion_status(IMotion.Status.IDLE)
+        self._change_motion_status(MotionStatus.IDLE)
         self.comm.send_event(InitializedEvent())
 
     @timeout(60)
@@ -211,9 +212,9 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         """
 
         # PARK, wait a little, then PARKED
-        self._change_motion_status(IMotion.Status.PARKING)
+        self._change_motion_status(MotionStatus.PARKING)
         time.sleep(5.)
-        self._change_motion_status(IMotion.Status.PARKED)
+        self._change_motion_status(MotionStatus.PARKED)
 
     def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.
@@ -256,7 +257,7 @@ class DummyTelescope(BaseTelescope, IRaDecOffsets, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

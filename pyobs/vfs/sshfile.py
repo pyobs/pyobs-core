@@ -7,6 +7,7 @@ from .vfs import VFSFile
 
 class SSHFile(VFSFile, paramiko.SFTPFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: str = None, port: int = 22,
                  username: str = None, password: str = None, keyfile: str = None, root: str = None, mkdir: bool = True,

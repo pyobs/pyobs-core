@@ -5,16 +5,18 @@ from typing import Union, Tuple
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
-from pyobs import Module, get_object
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.modules import timeout
 from pyobs.utils.publisher import CsvPublisher
-from pyobs.utils.skyflats.flatfielder import FlatFielder
+from pyobs.utils.skyflats import FlatFielder
 
 log = logging.getLogger(__name__)
 
 
 class FlatField(Module, IFlatField):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.flatfield'
 
     class Twilight(Enum):
         DUSK = 'dusk'
@@ -84,7 +86,7 @@ class FlatField(Module, IFlatField):
                             filter=filter, binning=binning)
 
     @timeout(3600)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, int]:
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -133,7 +135,7 @@ class FlatField(Module, IFlatField):
         log.info('Flat-fielding finished.')
 
         # return number of taken images
-        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+        return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
     @timeout(20)
     def abort(self, *args, **kwargs):

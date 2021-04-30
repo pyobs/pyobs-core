@@ -4,7 +4,8 @@ from .IMotion import IMotion
 
 
 class ITelescope(IMotion, IAltAz, IRaDec):
-    """Generic interface for an astronomical telescope."""
+    """The module controls a telescope."""
+    __module__ = 'pyobs.interfaces'
     pass
 
 

@@ -1,14 +1,24 @@
+"""
+:class:`~pyobs.object.Object` is the base for almost all classes in *pyobs*. It adds some convenience methods
+and helper methods for creating other Objects.
+
+:func:`~pyobs.object.get_object` is a convenience function for creating objects from dictionaries.
+"""
+
+from __future__ import annotations
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict
 import logging
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
+import pyobs
 
 
 log = logging.getLogger(__name__)
 
+"""Class of an Object."""
 ObjectClass = TypeVar('ObjectClass')
 
 
@@ -17,7 +27,8 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
-        config_or_object: A configuration dict or an object itself to create/check.
+        config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
+            is given, a new object is created.
         object_class: Class to check object against.
 
     Returns:
@@ -66,16 +77,32 @@ def create_object(config: dict, *args, **kwargs):
 
 
 class Object:
-    """Base class for all pyobs objects."""
+    """Base class for all objects in *pyobs*."""
 
-    def __init__(self, vfs: Union['VirtualFileSystem', dict] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
-                 location: Union[str, dict, EarthLocation] = None, *args, **kwargs):
-        """Initializes a new pyobs module.
+    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
+                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
+                 *args, **kwargs):
+        """
+        .. note::
+
+            Objects must always be opened and closed using :meth:`~pyobs.object.Object.open` and
+            :meth:`~pyobs.object.Object.close`, respectively.
+
+        This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
+        observer object is automatically created.
+
+        Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_thread_func`
+        method as well as a watchdog thread that automatically restarts threads, if requested.
+
+        Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
+        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
+        on those objects.
 
         Args:
             vfs: VFS to use (either object or config)
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
+
         """
         from pyobs.vfs import VirtualFileSystem
 
@@ -86,13 +113,12 @@ class Object:
         self.closing = threading.Event()
 
         # child objects
-        self._child_objects = []
+        self._child_objects: List[Object] = []
 
         # create vfs
         if vfs:
-            self.vfs = get_object(vfs)
+            self.vfs = get_object(vfs, VirtualFileSystem)
         else:
-            from pyobs.vfs import VirtualFileSystem
             self.vfs = VirtualFileSystem()
 
         # timezone
@@ -128,11 +154,11 @@ class Object:
         self._opened = False
 
         # thread function(s)
-        self._threads = {}
+        self._threads: Dict[threading.Thread, Tuple] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    def _add_thread_func(self, func: Callable, restart: bool = True):
-        """Add a new thread func.
+    def add_thread_func(self, func: Callable, restart: bool = True):
+        """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
 
@@ -154,7 +180,7 @@ class Object:
         for thread, (target, _) in self._threads.items():
             log.info('Starting thread for %s...', target.__name__)
             thread.start()
-        if self._watchdog:
+        if len(self._threads) > 0 and self._watchdog:
             self._watchdog.start()
 
         # open child objects
@@ -167,6 +193,7 @@ class Object:
 
     @property
     def opened(self):
+        """Whether object has been opened."""
         return self._opened
 
     def close(self):
@@ -214,7 +241,7 @@ class Object:
                     del self._threads[thread]
                     thread = threading.Thread(target=target, name=target.__name__)
                     thread.start()
-                    self._threads[thread] = target
+                    self._threads[thread] = (target, restart)
                 else:
                     log.error('Thread for %s has died, quitting...', target.__name__)
                     self.quit()
@@ -233,8 +260,8 @@ class Object:
             raise InterruptedError
         return True
 
-    def _add_child_object(self, config_or_object: Union[dict, object], object_class: ObjectClass = None, **kwargs) \
-            -> ObjectClass:
+    def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
+                         **kwargs) -> ObjectClass:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:
@@ -244,9 +271,27 @@ class Object:
             The created module.
         """
 
-        # create it
-        obj = get_object(config_or_object, object_class=object_class,
-                         timezone=self.timezone, location=self.location, **kwargs)
+        # what did we get?
+        if isinstance(config_or_object, dict):
+            # create it fro
+            obj = get_object(config_or_object, object_class=object_class,
+                             timezone=self.timezone, location=self.location, **kwargs)
+
+        elif config_or_object is not None:
+            # seems we got an object directly, try to set timezone and location
+            obj = config_or_object
+            if hasattr(config_or_object, 'timezone'):
+                config_or_object.timezone = self.timezone
+            if hasattr(config_or_object, 'location'):
+                config_or_object.location = self.location
+
+        elif object_class is not None:
+            # no config or object given, do we have a class?
+            obj = object_class(**kwargs, timezone=self.timezone, location=self.location, **kwargs)
+
+        else:
+            # not successful
+            raise ValueError('No valid object description given.')
 
         # add to list
         self._child_objects.append(obj)

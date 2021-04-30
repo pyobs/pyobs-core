@@ -1,6 +1,6 @@
 import logging
 
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image
+from pyobs.images import BiasImage, DarkImage, FlatImage, Image
 
 
 log = logging.getLogger(__name__)

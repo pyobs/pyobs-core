@@ -10,7 +10,8 @@ from astropy.io import fits
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.images import Image
+from pyobs.images import Image
+from pyobs.utils.enums import ExposureStatus
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class CoolingStatus(NamedTuple):
 
 class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
     """A dummy camera for testing."""
+    __module__ = 'pyobs.modules.camera'
 
     def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, *args, **kwargs):
         """Creates a new dummy cammera.
@@ -35,7 +37,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         BaseCamera.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._cooling_thread, True)
+        self.add_thread_func(self._cooling_thread, True)
 
         # store
         self._readout_time = readout_time
@@ -46,7 +48,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # simulated world
         from pyobs.utils.simulation.world import SimCamera
         self._world = world if world is not None else \
-            self._add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
         self._camera: SimCamera = self._world.camera
 
         # init camera
@@ -115,19 +117,19 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # do exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
+        self._change_exposure_status(ExposureStatus.EXPOSING)
         self._exposing = True
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+                self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
             time.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout
-        self._change_exposure_status(ICamera.ExposureStatus.READOUT)
+        self._change_exposure_status(ExposureStatus.READOUT)
         time.sleep(self._readout_time)
 
         # get image
@@ -146,7 +148,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
 
         # finished
         log.info('Exposure finished.')
-        self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+        self._change_exposure_status(ExposureStatus.IDLE)
         return hdu
 
     def _abort_exposure(self):
@@ -227,11 +229,10 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """Returns the current status for the cooling.
 
         Returns:
-            Tuple containing:
-                Enabled (bool):         Whether the cooling is enabled
-                SetPoint (float):       Setpoint for the cooling in celsius.
-                Power (float):          Current cooling power in percent or None.
-                Temperatures (dict):    Dictionary of sensor name/value pairs with temperatures
+            (tuple): Tuple containing:
+                Enabled:  Whether the cooling is enabled
+                SetPoint: Setpoint for the cooling in celsius.
+                Power:    Current cooling power in percent or None.
         """
         with self._coolingLock:
             return self._cooling.enabled, self._cooling.set_point, self._cooling.power

@@ -7,6 +7,7 @@ from .vfs import VFSFile
 
 class LocalFile(VFSFile, FileIO):
     """Wraps a local file with the virtual file system."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str, mode: str = 'r', root: str = None, mkdir: bool = True, *args, **kwargs):
         """Open a local file.

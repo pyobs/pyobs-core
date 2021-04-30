@@ -1,16 +1,12 @@
 import enum
 
 from .IAbortable import IAbortable
+from pyobs.utils.enums import ExposureStatus
 
 
 class ICamera(IAbortable):
-    """Basic interface for all cameras."""
-
-    class ExposureStatus(enum.Enum):
-        """Enumerator for camera status."""
-        IDLE = 'idle'
-        EXPOSING = 'exposing'
-        READOUT = 'readout'
+    """The module controls a camera."""
+    __module__ = 'pyobs.interfaces'
 
     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.

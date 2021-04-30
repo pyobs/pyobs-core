@@ -1,12 +1,11 @@
 import logging
 from typing import Union, Tuple
-from astropy.io import fits
 from astropy.wcs import WCS
 
-from pyobs import get_object
-from pyobs.utils.astrometry import Astrometry
-from pyobs.utils.images import Image
-from pyobs.utils.photometry import Photometry
+from pyobs.object import get_object
+from pyobs.images.processors.astrometry import Astrometry
+from pyobs.images import Image
+from pyobs.images.processors.detection import SourceDetection
 from .base import BaseAcquisition
 
 log = logging.getLogger(__name__)
@@ -14,16 +13,18 @@ log = logging.getLogger(__name__)
 
 class AstrometryAcquisition(BaseAcquisition):
     """Module for acquiring telescope using astrometry."""
+    __module__ = 'pyobs.modules.acquisition'
 
-    def __init__(self, photometry: Union[dict, Photometry], astrometry: Union[dict, Astrometry], *args, **kwargs):
+    def __init__(self, source_detection: Union[dict, SourceDetection], astrometry: Union[dict, Astrometry],
+                 *args, **kwargs):
         """Acquire using astrometry.
 
         Args:
-            photometry: Photometry class to use.
+            source_detection: Source detection class to use.
             astrometry: Astrometry class to use.
         """
         BaseAcquisition.__init__(self, *args, **kwargs)
-        self._photometry = photometry
+        self._source_detection = source_detection
         self._astrometry = astrometry
 
     def _get_target_radec(self, img: Image, ra: float, dec: float) -> Tuple[float, float]:
@@ -38,11 +39,11 @@ class AstrometryAcquisition(BaseAcquisition):
             (ra, dec) of pixel that needs to be moved to the centre of the image.
 
         Raises:
-            ValueError if target coordinates could not be determined.
+            ValueError: If target coordinates could not be determined.
         """
 
         # get objects
-        photometry = get_object(self._photometry, Photometry)
+        source_detection = get_object(self._source_detection, SourceDetection)
         astrometry = get_object(self._astrometry, Astrometry)
 
         # copy image
@@ -50,12 +51,15 @@ class AstrometryAcquisition(BaseAcquisition):
 
         # find stars
         log.info('Searching for stars...')
-        if len(photometry.find_stars(image)) == 0:
+        source_detection(image)
+        if len(image.catalog) == 0:
             raise ValueError('Could not find any stars in image.')
+        log.info('Found %d stars.' % len(image.catalog))
 
         # do astrometry
         log.info('Calculating astrometric solution...')
-        if not astrometry.find_solution(image):
+        astrometry(image)
+        if image.header['WCSERR'] == 1:
             raise ValueError('Could not find astrometric solution.')
 
         # get WCS on new image return x/y coordinates of requested RA/Dec

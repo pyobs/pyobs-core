@@ -3,6 +3,9 @@ from ..utils.enums import ImageType
 
 
 class NewImageEvent(Event):
+    """Event to be sent on a new image."""
+    __module__ = 'pyobs.events'
+
     def __init__(self, filename: str = None, image_type: ImageType = None, raw: str = None):
         """Initializes new NewImageEvent.
 

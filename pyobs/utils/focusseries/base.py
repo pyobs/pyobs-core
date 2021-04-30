@@ -1,9 +1,12 @@
 from typing import Tuple
 
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 
 class FocusSeries:
+    """Base class for focus series helper classes."""
+    __module__ = 'pyobs.utils.focusseries'
+
     def reset(self):
         """Reset focus series."""
         raise NotImplementedError

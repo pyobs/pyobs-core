@@ -2,7 +2,7 @@ import logging
 from queue import Queue
 from typing import Union, List
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent
 from pyobs.utils.fits import format_filename
 
@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 class ImageWriter(Module):
     """Writes new images to disk."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, filename: str = '/archive/{FNAME}', sources: Union[str, List[str]] = None,
                  *args, **kwargs):
@@ -23,7 +24,7 @@ class ImageWriter(Module):
         Module.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._worker, True)
+        self.add_thread_func(self._worker, True)
 
         # variables
         self._filename = filename
@@ -72,7 +73,7 @@ class ImageWriter(Module):
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                img = self.vfs.read_fits_image(filename)
+                img = self.vfs.read_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue

@@ -4,7 +4,7 @@ from typing import Union, Type, Dict, Tuple, Optional
 from pyobs.object import get_object
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.utils.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
+from pyobs.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from .pipeline import Pipeline
@@ -52,7 +52,7 @@ class Night:
         self._fmt_calib = FilenameFormatter(filenames_calib)
 
     def _find_master(self, image_class: Type[CalibrationImage], instrument: str, binning: str,
-                     filter_name: str = None) -> Optional[Image]:
+                     filter_name: str = None, max_days: float = 30.) -> Optional[Image]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -60,6 +60,7 @@ class Night:
             instrument: Instrument name.
             binning: Binning.
             filter_name: Name of filter.
+            max_days: Maximum number of days from DATE-OBS to find frames.
 
         Returns:
             Image or None
@@ -71,7 +72,7 @@ class Night:
 
         # try to download one
         midnight = Time(self._night + ' 23:59:59')
-        frame = image_class.find_master(self._archive, midnight, instrument, binning, filter_name)
+        frame = image_class.find_master(self._archive, midnight, instrument, binning, filter_name, max_days=max_days)
         if frame is not None:
             # download it
             calib = self._archive.download_frames([frame])[0]
@@ -95,7 +96,7 @@ class Night:
         # get calibration frames
         bias = self._find_master(BiasImage, instrument, binning)
         dark = self._find_master(DarkImage, instrument, binning)
-        flat = self._find_master(FlatImage, instrument, binning, filter_name)
+        flat = self._find_master(FlatImage, instrument, binning, filter_name, max_days=90)
 
         # anything missing?
         if bias is None or dark is None or flat is None:

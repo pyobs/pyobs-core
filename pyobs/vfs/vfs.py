@@ -7,23 +7,26 @@ from astropy.io import fits
 import pandas as pd
 
 from pyobs.object import get_object, get_class_from_string
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 
 
 class VFSFile:
+    """Base class for all VFS file classes."""
+    __module__ = 'pyobs.vfs'
     pass
 
 
 class VirtualFileSystem:
     """Base for a virtual file system."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, roots: dict = None, compression: dict = None, *args, **kwargs):
         """Create a new VFS.
 
         Args:
-            roots: Dictionary containing roots.
+            roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
             compression: Dictionary containing files that should be compressed.
         """
 

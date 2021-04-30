@@ -1,31 +1,38 @@
-from typing import Union
+from typing import Union, List, Dict, Tuple, Any
 import logging
 import numpy as np
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
+from pyobs.images.processors.misc import SoftBin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
-from pyobs import Module, get_object
-from pyobs.utils.guiding.base import BaseGuidingOffset
-from pyobs.utils.images import Image
+from pyobs.modules import Module
+from pyobs.object import get_object
+from pyobs.images.processors.offsets import Offsets
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)
 
 
 class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
+    """Base class for guiding modules."""
+    __module__ = 'pyobs.modules.guiding'
+
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: Union[dict, BaseGuidingOffset], max_offset: float = 30, max_exposure_time: float = None,
-                 min_interval: float = 0, max_interval: float = 600, separation_reset: float = None, pid: bool = False,
-                 log_file: str = None, *args, **kwargs):
+                 offsets: Union[dict, Offsets], min_offset: float = 0.5, max_offset: float = 30,
+                 max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
+                 separation_reset: float = None, pid: bool = False, log_file: str = None, soft_bin: int = None,
+                 *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
             telescope: Telescope to use.
             offsets: Auto-guider to use
+            min_offset: Min offset in arcsec to move.
             max_offset: Max offset in arcsec to move.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
             min_interval: Minimum interval in sec between two images.
@@ -33,6 +40,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
+            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -40,6 +48,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._camera = camera
         self._telescope = telescope
         self._enabled = False
+        self._min_offset = min_offset
         self._max_offset = max_offset
         self._max_exposure_time = max_exposure_time
         self._min_interval = min_interval
@@ -53,10 +62,13 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._ref_header = None
 
         # create auto-guiding system
-        self._guiding_offset = get_object(offsets, BaseGuidingOffset)
+        self._guiding_offset = get_object(offsets, Offsets)
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
+
+        # binning
+        self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
 
     def open(self):
         """Open module."""
@@ -92,7 +104,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         """
         return self._enabled
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -107,7 +119,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         # return header
         return {
-            'AGSTATE': state
+            'AGSTATE': (state, 'Autoguider state')
         }
 
     def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] = None):
@@ -125,7 +137,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._guiding_offset.reset()
         if image is not None:
             # if image is given, process it
-            self._guiding_offset.find_pixel_offset(image)
+            self._guiding_offset(image)
 
     def _process_image(self, image: Image):
         """Processes a single image and offsets telescope.
@@ -141,6 +153,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
             return
+
+        # bin?
+        if self._soft_bin is not None:
+            self._soft_bin(image)
 
         # reference header?
         if self._ref_header is None:
@@ -191,10 +207,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = image.header
 
         # get offset
-        dx, dy = self._guiding_offset.find_pixel_offset(image)
+        dx, dy = self._guiding_offset(image)
 
         if dx is None or dy is None:
-            log.error('Could not correlate image with reference.')
+            log.warning('Could not correlate image with reference.')
             return
         else:
             log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
@@ -225,8 +241,12 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         ddec = radec2.dec.degree - radec1.dec.degree
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
 
-        # too large?
-        if abs(dra * 3600.) > self._max_offset or abs(ddec * 3600.) > self._max_offset:
+        # too large or too small?
+        diff = np.sqrt((dra * 3600.)**2. + (ddec * 3600.))
+        if diff < self._min_offset:
+            log.warning('Shift too small, skipping auto-guiding for now...')
+            return
+        if diff > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return
 

@@ -3,19 +3,20 @@ import logging
 import math
 import os
 import threading
+import warnings
 from typing import Tuple, Optional, Dict, Any, NamedTuple
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
 
-from pyobs.comm import TimeoutException
-from pyobs.utils.enums import ImageType
-from pyobs.utils.images import Image
+from pyobs.comm import TimeoutException, InvocationException
+from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.images import Image
 
 from pyobs.utils.time import Time
 from pyobs.utils.fits import format_filename
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IFitsHeaderProvider, IAbortable, ICameraExposureTime, IImageType
 from pyobs.modules import timeout
@@ -39,6 +40,9 @@ def calc_expose_timeout(camera, *args, **kwargs):
 
 
 class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
+    """Base class for all camera modules."""
+    __module__ = 'pyobs.modules.camera'
+
     def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
                  rotation: float = 0., flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
@@ -73,7 +77,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
 
         # init camera
         self._exposure: Optional[ExposureInfo] = None
-        self._camera_status = ICamera.ExposureStatus.IDLE
+        self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
         self._expose_lock = threading.Lock()
@@ -129,7 +133,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         """
         return self._image_type
 
-    def _change_exposure_status(self, status: ICamera.ExposureStatus):
+    def _change_exposure_status(self, status: ExposureStatus):
         """Change exposure status and send event,
 
         Args:
@@ -143,7 +147,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # set it
         self._camera_status = status
 
-    def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
+    def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -182,7 +186,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure.exposure_time == 0. or self._camera_status == ICamera.ExposureStatus.READOUT:
+        if self._exposure.exposure_time == 0. or self._camera_status == ExposureStatus.READOUT:
             return 100.
         else:
             # return max of 100
@@ -324,7 +328,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # set it
         hdr['FRAMENUM'] = self._frame_num
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -383,7 +387,11 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
 
         # flip it?
         if self._flip:
-            image.data = np.flip(image.data, axis=0)
+            # do we have three dimensions in array? need this for deciding which axis to flip
+            is_3d = len(image.data.shape) == 3
+
+            # flip image and make contiguous again
+            image.data = np.ascontiguousarray(np.flip(image.data, axis=1 if is_3d else 0))
 
         # add HDU name
         image.header['EXTNAME'] = 'SCI'
@@ -398,7 +406,10 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
             try:
                 headers = future.wait()
             except TimeoutException:
-                log.error('Fetching FITS headers from %s timed out.', client)
+                log.warning('Fetching FITS headers from %s timed out.', client)
+                continue
+            except InvocationException as e:
+                log.warning('Could not fetch FITS headers from %s: %s.', client, e.get_message())
                 continue
 
             # add them to fits file
@@ -468,7 +479,7 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # make sure that we release the lock
         try:
             # are we exposing?
-            if self._camera_status != ICamera.ExposureStatus.IDLE:
+            if self._camera_status != ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
             # expose
@@ -581,6 +592,17 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
+
+    def list_binnings(self, *args, **kwargs) -> list:
+        """List available binnings.
+
+        Returns:
+            List of available binnings as (x, y) tuples.
+        """
+
+        warnings.warn('The default implementation for list_binnings() in BaseCamera will be removed in future versions',
+                      DeprecationWarning)
+        return [(1, 1), (2, 2), (3, 3)]
 
 
 __all__ = ['BaseCamera', 'CameraException']

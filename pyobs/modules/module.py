@@ -71,10 +71,10 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
 
 class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
+    __module__ = 'pyobs.modules'
 
     def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
-        """Initializes a new pyobs module.
-
+        """
         Args:
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
@@ -240,14 +240,11 @@ class Module(Object, IModule, IConfig):
         del ba.arguments['args']
         del ba.arguments['kwargs']
 
-        try:
-            # call method
-            response = func(*func_args, **ba.arguments, **func_kwargs)
+        # call method
+        response = func(*func_args, **ba.arguments, **func_kwargs)
 
-            # finished
-            return cast_response_to_simple(response)
-        except Exception as e:
-            log.exception('Error on remote procedure call: %s' % str(e))
+        # finished
+        return cast_response_to_simple(response)
 
     def _get_config_options(self) -> dict:
         """Returns a dictionary with config options."""
@@ -294,7 +291,7 @@ class Module(Object, IModule, IConfig):
             Current value.
 
         Raises:
-            ValueError if config item of given name does not exist.
+            ValueError: If config item of given name does not exist.
         """
 
         # valid parameter?
@@ -315,7 +312,7 @@ class Module(Object, IModule, IConfig):
             value: New value.
 
         Raises:
-            ValueError if config item of given name does not exist or value is invalid.
+            ValueError: If config item of given name does not exist or value is invalid.
         """
 
         # valid parameter?
@@ -331,11 +328,11 @@ class Module(Object, IModule, IConfig):
 
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""
+    __module__ = 'pyobs.modules'
 
     def __init__(self, modules: Dict[str, Union[Module, dict]], shared: Dict[str, Union[object, dict]] = None,
                  *args, **kwargs):
-        """Initializes a new pyobs multi module.
-
+        """
         Args:
             modules: Dictionary with modules.
             shared: Shared objects between modules.
@@ -347,7 +344,7 @@ class MultiModule(Module):
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it
-                self._shared[name] = self._add_child_object(obj)
+                self._shared[name] = self.add_child_object(obj)
 
         # create modules
         self._modules = {}
@@ -358,7 +355,7 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                self._modules[name] = self._add_child_object(mod, **self._shared)
+                self._modules[name] = self.add_child_object(mod, **self._shared)
 
     @property
     def modules(self):

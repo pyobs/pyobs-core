@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 class MemoryFile(VFSFile, io.RawIOBase):
     """A file stored in memory."""
+    __module__ = 'pyobs.vfs'
 
     """Global buffer."""
     _buffer = {}

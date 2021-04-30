@@ -5,7 +5,7 @@
 # import pandas as pd
 # import numpy as np
 #
-# from pyobs import Module
+# from pyobs.modules import Module
 # from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
 # from pyobs.modules import timeout
 # from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
@@ -142,7 +142,7 @@
 #         self._abort.set()
 #         self._camera.abort().wait()
 #
-#     def get_exposure_status(self, *args, **kwargs) -> ICamera.ExposureStatus:
+#     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
 #         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 #
 #         Returns:

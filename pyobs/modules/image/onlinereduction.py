@@ -5,13 +5,13 @@ from typing import List, Union, Type
 
 from astropy.time import Time
 
-from pyobs import Module, get_object
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.events import NewImageEvent
-from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
-from pyobs.utils.images import CalibrationImage, BiasImage, DarkImage, FlatImage
+from pyobs.images import CalibrationImage, BiasImage, DarkImage, FlatImage
 from pyobs.utils.pipeline import Pipeline
 
 log = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 class OnlineReduction(Module):
     """Calibrates images online during the night."""
+    __module__ = 'pyobs.modules.image'
 
     def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive],
                  sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):
@@ -40,7 +41,7 @@ class OnlineReduction(Module):
         self._cache = DataCache(size=cache_size)
 
         # add thread func
-        self._add_thread_func(self._worker, True)
+        self.add_thread_func(self._worker, True)
 
     def open(self):
         """Open image writer."""
@@ -102,7 +103,7 @@ class OnlineReduction(Module):
                     filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
                     date_obs = Time(image.header['DATE-OBS'])
                 except KeyError:
-                    log.error('Missing header keywords.')
+                    log.warning('Missing header keywords.')
                     continue
 
                 # get master calibration frames
@@ -112,7 +113,7 @@ class OnlineReduction(Module):
 
                 # anything missing?
                 if bias is None or dark is None or flat is None:
-                    log.error('Could not find BIAS/DARK/FLAT, skipping frame...')
+                    log.warning('Could not find BIAS/DARK/FLAT, skipping frame...')
                     continue
 
             # calibrate

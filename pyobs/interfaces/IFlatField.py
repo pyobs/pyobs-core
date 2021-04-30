@@ -4,7 +4,10 @@ from .IAbortable import IAbortable
 
 
 class IFlatField(IAbortable):
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, int]:
+    """The module performs flat-fielding."""
+    __module__ = 'pyobs.interfaces'
+
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:

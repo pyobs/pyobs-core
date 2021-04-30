@@ -14,7 +14,7 @@ class LcoAutoFocusScript(Script):
 
     def __init__(self, roof: Union[str, IRoof] = None, telescope: Union[str, ITelescope] = None,
                  acquisition: Union[str, IAcquisition] = None, autofocus: Union[str, IAutoFocus] = None,
-                 count: int = 5, step: float = 0.1, exptime: int = 2000,
+                 count: int = 5, step: float = 0.1, exptime: float = 2.,
                  *args, ** kwargs):
         """Initialize a new LCO auto focus script.
 

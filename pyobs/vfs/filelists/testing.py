@@ -7,6 +7,9 @@ log = logging.getLogger(__name__)
 
 
 class TestingFileList(FileList):
+    """File list for testing."""
+    __module__ = 'pyobs.vfs.filelists'
+
     def __init__(self, *args, **kwargs):
         pass
 

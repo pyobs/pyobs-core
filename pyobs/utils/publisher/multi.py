@@ -19,7 +19,7 @@ class MultiPublisher(Publisher):
         Publisher.__init__(self, *args, **kwargs)
 
         # store
-        self._publishers: List[Publisher] = [] if publishers is None else [self._add_child_object(p) for p in publishers]
+        self._publishers: List[Publisher] = [] if publishers is None else [self.add_child_object(p) for p in publishers]
 
     def __call__(self, **kwargs):
         """Publish the given results.

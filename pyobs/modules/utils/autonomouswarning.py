@@ -3,7 +3,7 @@ import os
 import subprocess
 
 from pyobs.events import Event
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 
@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 class AutonomousWarning(Module):
     """A module that can plays a warning sound while an IAutonomous module is running."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, warn_sound: str, warn_interval: float = 1,
                  start_sound: str = None, started_sound: str = None, stop_sound: str = None, stopped_sound: str = None,
@@ -42,9 +43,9 @@ class AutonomousWarning(Module):
         self._autonomous = False
 
         # threads
-        self._add_thread_func(self._heartbeat)
-        self._add_thread_func(self._check_autonomous)
-        self._add_thread_func(self._check_trigger)
+        self.add_thread_func(self._heartbeat)
+        self.add_thread_func(self._check_autonomous)
+        self.add_thread_func(self._check_trigger)
 
     def _play_sound(self, sound: str):
         """Play a sound.

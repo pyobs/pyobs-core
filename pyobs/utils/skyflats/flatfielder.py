@@ -1,14 +1,12 @@
-import io
+from __future__ import annotations
 import threading
 from enum import Enum
 import logging
 from typing import Dict, Union, Callable, Tuple, Any, Optional
-
 import astropy.units as u
 from astroplan import Observer
 from astropy.time import TimeDelta
 import numpy as np
-import pandas as pd
 from py_expression_eval import Parser
 
 from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime, \
@@ -16,16 +14,17 @@ from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICam
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
-from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
+from .pointing import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
 
 
 class FlatFielder:
     """Automatized flat-fielding."""
+    __module__ = 'pyobs.utils.skyflats'
 
     class Twilight(Enum):
         DUSK = 'dusk'
@@ -193,7 +192,7 @@ class FlatFielder:
     def total_exptime(self):
         return self._exptime_done
 
-    def _inital_check(self) -> bool:
+    def _initial_check(self) -> bool:
         """Do a quick initial check.
 
         Returns:
@@ -218,8 +217,15 @@ class FlatFielder:
     def _init_system(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters):
         """Initialize whole system."""
 
+        # which twilight are we in?
+        sun = self._observer.sun_altaz(Time.now())
+        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
+        self._twilight = FlatFielder.Twilight.DUSK \
+            if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
+        log.info('We are currently in %s twilight.', self._twilight.value)
+
         # do initial check
-        if not self._inital_check():
+        if not self._initial_check():
             return
 
         # set binning
@@ -229,13 +235,6 @@ class FlatFielder:
 
         # get bias level
         self._bias_level = self._get_bias(camera)
-
-        # which twilight are we in?
-        sun = self._observer.sun_altaz(Time.now())
-        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
-        self._twilight = FlatFielder.Twilight.DUSK \
-            if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
-        log.info('We are currently in %s twilight.', self._twilight.value)
 
         # move telescope
         future_track = self._pointing(telescope)
@@ -364,7 +363,7 @@ class FlatFielder:
 
         # do exposures, do not broadcast while testing
         log.info('Exposing test flat field for %.2fs...', self._exptime)
-        camera.set_exposure_time(self._exptime).wait()
+        camera.set_exposure_time(float(self._exptime)).wait()
         if isinstance(camera, IImageType):
             camera.set_image_type(ImageType.SKYFLAT)
         filename = camera.expose(broadcast=False).wait()
@@ -492,8 +491,9 @@ class FlatFielder:
         now = Time.now()
         log.info('Exposing flat field %d/%d for %.2fs...',
                  self._exposures_done + 1, self._exposures_total, self._exptime)
-        camera.set_exposure_time(self._exptime).wait()
-        filename = camera.expose(ImageType.SKYFLAT).wait()
+        camera.set_exposure_time(float(self._exptime)).wait()
+        camera.set_image_type(ImageType.SKYFLAT)
+        filename = camera.expose().wait()
 
         # analyse image
         if self._analyse_image(filename):

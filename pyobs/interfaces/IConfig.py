@@ -4,7 +4,8 @@ from .interface import Interface
 
 
 class IConfig(Interface):
-    """Interface for getting/setting values that were configured in the YAML file."""
+    """The module allows access to some of its configuration options."""
+    __module__ = 'pyobs.interfaces'
 
     def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
         """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
@@ -24,7 +25,7 @@ class IConfig(Interface):
             Current value.
 
         Raises:
-            ValueError if config item of given name does not exist.
+            ValueError: If config item of given name does not exist.
         """
         raise NotImplementedError
 
@@ -36,7 +37,7 @@ class IConfig(Interface):
             value: New value.
 
         Raises:
-            ValueError if config item of given name does not exist or value is invalid.
+            ValueError: If config item of given name does not exist or value is invalid.
         """
         raise NotImplementedError
 

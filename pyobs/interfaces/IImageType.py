@@ -3,6 +3,9 @@ from pyobs.utils.enums import ImageType
 
 
 class IImageType(Interface):
+    """The module supports different image types (e.g. object, bias, dark, etc), mainly used by cameras."""
+    __module__ = 'pyobs.interfaces'
+
     def set_image_type(self, image_type: ImageType, *args, **kwargs):
         """Set the image type.
 

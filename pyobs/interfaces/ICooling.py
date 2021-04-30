@@ -4,16 +4,17 @@ from .ITemperatures import ITemperatures
 
 
 class ICooling(ITemperatures):
-    """Interface for all devices that allow for some kind of cooling."""
+    """The module can control the cooling of a device."""
+    __module__ = 'pyobs.interfaces'
 
     def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
-            Tuple containing:
-                Enabled (bool):         Whether the cooling is enabled
-                SetPoint (float):       Setpoint for the cooling in celsius.
-                Power (float):          Current cooling power in percent or None.
+            (tuple): Tuple containing:
+                Enabled:  Whether the cooling is enabled
+                SetPoint: Setpoint for the cooling in celsius.
+                Power:    Current cooling power in percent or None.
         """
         raise NotImplementedError
 

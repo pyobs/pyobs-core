@@ -3,7 +3,7 @@ import threading
 import typing
 from astroplan import Observer
 
-from pyobs import get_object
+from pyobs.object import get_object
 from pyobs.comm import Comm
 from pyobs.interfaces import IMotion, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script

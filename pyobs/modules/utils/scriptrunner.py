@@ -1,7 +1,7 @@
 import logging
 
 from pyobs.interfaces import IScriptRunner
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
 
 
@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class ScriptRunner(Module, IScriptRunner):
     """Config provider."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new script runner."""

@@ -4,9 +4,8 @@ import requests
 import urllib.parse
 import logging
 
-from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .archive import Archive, FrameInfo
 from ..enums import ImageType
 
@@ -14,6 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
+    """Frame info for pyobs archive."""
     def __init__(self, info: dict, *args, **kwargs):
         self.info = info
 
@@ -43,6 +43,9 @@ class PyobsArchiveFrameInfo(FrameInfo):
 
 
 class PyobsArchive(Archive):
+    """Connector class to running pyobs-archive instance."""
+    __module__ = 'pyobs.utils.archive'
+
     def __init__(self, url: str, token: str, proxies: dict = None, *args, **kwargs):
         self._url = url
         self._headers = {'Authorization': 'Token ' + token}
@@ -78,8 +81,11 @@ class PyobsArchive(Archive):
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
                                    filter_name, rlevel)
+
+        # set offset and limit
+        # TODO: instead of setting large limit, request multiple pages, if necessary
         params['offset'] = 0
-        params['limit'] = 1000
+        params['limit'] = 10000
 
         # do request
         r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)

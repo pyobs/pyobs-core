@@ -1,9 +1,12 @@
-from typing import Tuple
+from typing import Tuple, List
 
 from .interface import Interface
 
 
 class ICameraBinning(Interface):
+    """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
+    __module__ = 'pyobs.interfaces'
+
     def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
 
@@ -21,6 +24,14 @@ class ICameraBinning(Interface):
 
         Returns:
             Tuple with x and y.
+        """
+        raise NotImplementedError
+
+    def list_binnings(self, *args, **kwargs) -> List[Tuple[int, int]]:
+        """List available binnings.
+
+        Returns:
+            List of available binnings as (x, y) tuples.
         """
         raise NotImplementedError
 

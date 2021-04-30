@@ -1,7 +1,7 @@
 import logging
 
 from pyobs.events import Event
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
 from pyobs.object import get_class_from_string
 
@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class Trigger(Module, IAutonomous):
     """A module that can call another module's methods when a specific event occurs."""
+    __module__ = 'pyobs.modules.utils'
 
     def __init__(self, triggers: list, *args, **kwargs):
         """Initialize a new trigger module.

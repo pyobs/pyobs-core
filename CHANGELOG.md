@@ -1,10 +1,16 @@
 ## Changelog
 
-### v0.13 ()
+### v0.13 (2021-04-30)
 * Added a Telegram bot module.
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
+* Moved more enums into utils.enums, like WeatherSensors and MotionStatus.
 * Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
+* Restructured image processors into pyobs.image.processors.
+* Split photometry into separate SourceDetection and Photometry interfaces, added DaophotSourceDetection, and 
+  PhotUtilsPhotometry.
+* Sending events non-blocking, which might solve some problems with disappeared XMPP clients.
+* Added lots of documentation, which included setting `__module__` for many classes.
 
 
 ### v0.12 (2021-01-01)

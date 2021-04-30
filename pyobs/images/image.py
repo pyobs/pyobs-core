@@ -1,3 +1,4 @@
+from __future__ import annotations
 import io
 from enum import Enum
 
@@ -5,6 +6,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
+from astropy.nddata import CCDData
 
 
 class Image:
@@ -20,6 +22,7 @@ class Image:
         self.data = data
         self.header = fits.Header() if header is None else header
         self.mask = None
+        self.uncertainty = None
         self.catalog = None
 
         # add basic header stuff
@@ -28,7 +31,7 @@ class Image:
             self.header['NAXIS2'] = data.shape[0]
 
     @classmethod
-    def from_bytes(cls, data) -> 'Image':
+    def from_bytes(cls, data) -> Image:
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
@@ -42,7 +45,7 @@ class Image:
             return image
 
     @classmethod
-    def from_file(cls, filename: str) -> 'Image':
+    def from_file(cls, filename: str) -> Image:
         # open file
         data = fits.open(filename, memmap=False, lazy_load_hdus=False)
 
@@ -51,6 +54,14 @@ class Image:
 
         # close file
         data.close()
+        return image
+
+    @classmethod
+    def from_ccddata(cls, image: CCDData) -> Image:
+        # create image and assign data
+        image = Image(data=image.data, header=image.header)
+        image.mask = image.mask
+        image.uncertainty = image.uncertainty
         return image
 
     @classmethod
@@ -85,6 +96,10 @@ class Image:
         # mask
         if 'MASK' in data:
             image.mask = data['MASK'].data
+
+        # uncertainties
+        if 'UNCERT' in data:
+            image.uncertainty = data['UNCERT'].data
 
         # catalog
         if 'CAT' in data:
@@ -121,7 +136,13 @@ class Image:
         # mask?
         if self.mask is not None:
             hdu = ImageHDU(self.mask.data.astype(np.uint8))
-            hdu.name = 'BPM'
+            hdu.name = 'MASK'
+            hdu_list.append(hdu)
+
+        # errors?
+        if self.uncertainty is not None:
+            hdu = ImageHDU(self.uncertainty.data)
+            hdu.name = 'UNCERT'
             hdu_list.append(hdu)
 
         # write it
@@ -133,6 +154,10 @@ class Image:
 
         # create HDU and write it
         table_to_hdu(self.catalog).writeto(f, *args, **kwargs)
+
+    def to_ccddata(self) -> CCDData:
+        """Convert Image to CCDData"""
+        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty)
 
     def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
         """Trim an image to TRIMSEC or BIASSEC.

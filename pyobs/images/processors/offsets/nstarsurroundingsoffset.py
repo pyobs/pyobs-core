@@ -5,10 +5,10 @@ from astropy.nddata import NDData
 from astropy.table import Table, Column
 import photutils
 
-from pyobs.utils.images import Image
-from pyobs.utils.photometry.sep import SepPhotometry
 from pyobs.utils.pid import PID
-from .base import BaseGuidingOffset
+from . import Offsets
+from ..photometry import SepPhotometry
+from ... import Image
 
 log = logging.getLogger(__name__)
 
@@ -17,18 +17,11 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class NStarSurroundingsOffset(BaseGuidingOffset):
+class NStarSurroundingsOffset(Offsets):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
-    def __init__(
-            self,
-            N_stars=1,
-            max_expected_offset_in_arcsec=4,
-            min_pixels_above_threshold_per_source=3,
-            min_required_sources_in_image=1,
-            *args,
-            **kwargs,
-    ):
+    def __init__(self, N_stars=1, max_expected_offset_in_arcsec=4, min_pixels_above_threshold_per_source=3,
+                 min_required_sources_in_image=1, *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:
@@ -59,10 +52,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         self._ref_box_dimensions = None
         self._ref_boxed_images = None
 
-    def find_pixel_offset(
-            self,
-            image: Image,
-    ) -> (float, float):
+    def find_pixel_offset(self, image: Image) -> (float, float):
         """Processes an image and return x/y pixel offset to reference.
 
         Args:
@@ -111,9 +101,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         return dx, dy
 
     @staticmethod
-    def get_star_box_size_from_max_expected_offset(
-            max_expected_offset_in_arcsec, pixel_scale
-    ):
+    def get_star_box_size_from_max_expected_offset(max_expected_offset_in_arcsec, pixel_scale):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         star_box_size = int(
             4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20
@@ -186,9 +174,8 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         sources["ypeak"] -= 1
         return sources
 
-    def remove_sources_close_to_border(
-            self, sources: Table, image_shape: tuple, min_distance_from_border_in_pixels
-    ) -> Table:
+    def remove_sources_close_to_border(self, sources: Table, image_shape: tuple,
+                                       min_distance_from_border_in_pixels) -> Table:
         """Remove table rows from sources when closer than min_distance_from_border_in_pixels from border of image."""
         width, height = image_shape
 
@@ -219,12 +206,8 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
         ]
         return sources_result
 
-    def remove_bad_sources(
-            self,
-            sources: Table,
-            MAX_ELLIPTICITY=0.4,
-            MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
-    ) -> Table:
+    def remove_bad_sources(self, sources: Table, MAX_ELLIPTICITY=0.4,
+                           MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5) -> Table:
 
         # remove small sources
         sources = sources[np.where(sources['tnpix'] >= self.min_pixels_above_threshold_per_source)]
@@ -281,10 +264,7 @@ class NStarSurroundingsOffset(BaseGuidingOffset):
                 f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."
             )
 
-    def calculate_offset(
-            self,
-            current_image: Image,
-    ) -> tuple:
+    def calculate_offset(self, current_image: Image) -> tuple:
 
         # calculate offset for each star
         offsets = []

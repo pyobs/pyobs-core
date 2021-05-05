@@ -3,10 +3,10 @@ import numpy as np
 from scipy import signal, optimize
 from astropy.table import Table, Column
 
-from pyobs.utils.images import Image
-from pyobs.utils.photometry.sep import SepPhotometry
 from pyobs.utils.pid import PID
-from .base import BaseGuidingOffset
+from . import Offsets
+from ..photometry import SepPhotometry
+from ... import Image
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class CroppedStarsOffset(BaseGuidingOffset):
+class CroppedStarsOffset(Offsets):
     """An auto-guiding system based on comparing complete 2D images that are created by finding all clear sources in the image
     and setting the rest of the image to zero."""
 
@@ -45,10 +45,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
         log.info("Reset auto-guiding.")
         self._ref_cropped_stars_image = None
 
-    def find_pixel_offset(
-            self,
-            image: Image,
-    ) -> (float, float):
+    def find_pixel_offset(self, image: Image) -> (float, float):
         """Processes an image and return x/y pixel offset to reference.
 
         Args:
@@ -133,9 +130,8 @@ class CroppedStarsOffset(BaseGuidingOffset):
         sources["ypeak"] -= 1
         return sources
 
-    def remove_sources_close_to_border(
-            self, sources: Table, image_shape: tuple, min_distance_from_border_in_pixels
-    ) -> Table:
+    def remove_sources_close_to_border(self, sources: Table, image_shape: tuple,
+                                       min_distance_from_border_in_pixels) -> Table:
         """Remove table rows from sources when closer than min_distance_from_border_in_pixels from border of image."""
         width, height = image_shape
 
@@ -167,12 +163,8 @@ class CroppedStarsOffset(BaseGuidingOffset):
         ]
         return sources_result
 
-    def remove_bad_sources(
-            self,
-            sources: Table,
-            MAX_ELLIPTICITY=0.4,
-            MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5,
-    ) -> Table:
+    def remove_bad_sources(self, sources: Table, MAX_ELLIPTICITY=0.4,
+                           MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5) -> Table:
 
         # remove small sources
         sources = sources[np.where(sources['tnpix'] >= self.min_pixels_above_threshold_per_source)]
@@ -211,10 +203,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
                 f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."
             )
 
-    def calculate_offset(
-            self,
-            current_image: Image,
-    ) -> tuple:
+    def calculate_offset(self,current_image: Image) -> tuple:
         # create images cropped around stars
         current_cropped_star_image = self.get_cropped_stars_image(current_image)
         try:
@@ -238,9 +227,7 @@ class CroppedStarsOffset(BaseGuidingOffset):
             - (x[1] - y0) ** 2 / (2 * sigma_y ** 2)
         )
 
-    def calculate_correlation(
-            self, im1: np.ndarray, im2: np.ndarray, max_expected_offset
-    ) -> np.ndarray:
+    def calculate_correlation(self, im1: np.ndarray, im2: np.ndarray, max_expected_offset) -> np.ndarray:
 
         # maximal expected offsets to be tried.
         # (if-condition so that max_expected_offset is included in the last offset to be tried)
@@ -281,9 +268,8 @@ class CroppedStarsOffset(BaseGuidingOffset):
         )
         return corr
 
-    def crop_images_to_enforce_time_limit(
-            self, cropped_im1: np.ndarray, cropped_im2: np.ndarray, correlation_size: int
-    ) -> (np.ndarray, np.ndarray):
+    def crop_images_to_enforce_time_limit(self, cropped_im1: np.ndarray, cropped_im2: np.ndarray,
+                                          correlation_size: int) -> (np.ndarray, np.ndarray):
         """Calculate cropping of images to allow calculation of correlation in less than max_allowed_time"""
 
         max_allowed_time = 1  # TODO: find optimal value

@@ -1,17 +1,17 @@
 import logging
-import typing
+from typing import List, Dict, Tuple, Any
 
-from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IRoof, IMotion, IWeather, IFitsHeaderProvider
-from pyobs import Module
+from pyobs.interfaces import IRoof, IFitsHeaderProvider
+from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
-
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
 
 class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider, Module):
     """Base class for roofs."""
+    __module__ = 'pyobs.modules.roof'
 
     def __init__(self, *args, **kwargs):
         """Initialize a new base roof."""
@@ -29,7 +29,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -39,7 +39,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
             Dictionary containing FITS headers.
         """
         return {
-            'ROOF-OPN': (self.get_motion_status() in [IMotion.Status.POSITIONED, IMotion.Status.TRACKING],
+            'ROOF-OPN': (self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                          'True for open, false for closed roof')
         }
 
@@ -51,8 +51,8 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         """
 
         # check that motion is not in one of the states listed below
-        return self.get_motion_status() not in [IMotion.Status.PARKED, IMotion.Status.INITIALIZING,
-                                                IMotion.Status.PARKING, IMotion.Status.ERROR, IMotion.Status.UNKNOWN]
+        return self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.INITIALIZING,
+                                                MotionStatus.PARKING, MotionStatus.ERROR, MotionStatus.UNKNOWN]
 
 
 __all__ = ['BaseRoof']

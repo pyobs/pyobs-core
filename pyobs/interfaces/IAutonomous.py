@@ -2,7 +2,8 @@ from .IStoppable import IStoppable
 
 
 class IAutonomous(IStoppable):
-    """Base class for all modules that act autonomously."""
+    """The module does some autonomous actions, mainly used for warnings to users."""
+    __module__ = 'pyobs.interfaces'
     pass
 
 

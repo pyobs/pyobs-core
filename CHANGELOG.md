@@ -1,10 +1,39 @@
 ## Changelog
 
-### v0.12 
+### v0.13 (2021-04-30)
+* Added a Telegram bot module.
+* Added a module for a Kiosk mode, in which pictures are published on a webpage.
+* Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
+* Moved more enums into utils.enums, like WeatherSensors and MotionStatus.
+* Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
+* Restructured image processors into pyobs.image.processors.
+* Split photometry into separate SourceDetection and Photometry interfaces, added DaophotSourceDetection, and 
+  PhotUtilsPhotometry.
+* Sending events non-blocking, which might solve some problems with disappeared XMPP clients.
+* Added lots of documentation, which included setting `__module__` for many classes.
+
+
+### v0.12 (2021-01-01)
 
 * Changed PyObsModule to Module.
 * Removed possibility for network configs.
 * Added MultiModule, which allows for multiple modules in one process.
+* Flat scheduler: add options for readout times.
+* New OnlineReduction module for reduction during the night.
+* Fixed bug that sometimes appears in the interface caching for Comm.
+* LcoTaskArchive: added MoonSeparationConstraint, fixed AirmassConstraint.
+* Optimized Scheduler by only scheduling blocks that actually have a window in the given range.
+* Added module Seeing that extracts FWHMs from the catalogs in reduced images and calculated a median seeing.
+* Introduced concept of Publishers, which can be used to publish data to log, CSV, and hopefully later, database, 
+  web, etc.
+* Created new Object class that handles most of what Module did before so that Module only adds module specific stuff.
+* Added some convenience methods for reading/writing files to VFS.
+* Added new IConfig interface which is implemented in every module and allows remote access to config parameters 
+  (if getter/setters are implemented).
+* Removed count parameter from ICamera.expose().
+* Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
+* Removed image_type parameter from ICamera.expose() and introduced IImageType.
+* Moved ImageType enumerator from ICamera to utils.enums.
 
 
 ### v0.11 (2020-10-18)

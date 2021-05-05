@@ -9,18 +9,27 @@ class Response:
         self.content = content
 
 
-def test_upload_download(monkeypatch):
-    # mock it
-    uploaded = None
-    def requests_get(url, params=None, **kwargs):
+uploaded = None
+
+
+class Session:
+    def mount(self, *args, **kwargs):
+        pass
+
+    def get(self, url, params=None, **kwargs):
         global uploaded
         return Response(200, uploaded)
-    def requests_post(url, data=None, json=None, **kwargs):
+
+    def post(self, url, data=None, json=None, **kwargs):
         global uploaded
         uploaded = data
         return Response(200, None)
-    monkeypatch.setattr(requests, 'get', requests_get)
-    monkeypatch.setattr(requests, 'post', requests_post)
+
+
+def test_upload_download(monkeypatch):
+    # mock it
+    global uploaded
+    monkeypatch.setattr(requests, 'Session', lambda: Session())
 
     # create config
     upload = 'http://localhost:37075/'

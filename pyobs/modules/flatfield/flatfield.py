@@ -1,20 +1,22 @@
 import logging
 import threading
-import typing
 from enum import Enum
+from typing import Union, Tuple
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IMotion
-from pyobs import Module, get_object
-from pyobs.mixins import TableStorageMixin
+from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.modules import timeout
-from pyobs.utils.skyflats.flatfielder import FlatFielder
+from pyobs.utils.publisher import CsvPublisher
+from pyobs.utils.skyflats import FlatFielder
 
 log = logging.getLogger(__name__)
 
 
-class FlatField(Module, TableStorageMixin, IFlatField):
+class FlatField(Module, IFlatField):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.flatfield'
 
     class Twilight(Enum):
         DUSK = 'dusk'
@@ -27,8 +29,8 @@ class FlatField(Module, TableStorageMixin, IFlatField):
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, telescope: typing.Union[str, ITelescope], camera: typing.Union[str, ICamera],
-                 filters: typing.Union[str, IFilters], flat_fielder: typing.Union[dict, FlatFielder],
+    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
+                 filters: Union[str, IFilters], flat_fielder: Union[dict, FlatFielder],
                  log_file: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
@@ -45,22 +47,14 @@ class FlatField(Module, TableStorageMixin, IFlatField):
         self._telescope = telescope
         self._camera = camera
         self._filters = filters
-        self._flat_fielder: FlatFielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
-                                                     observer=self.observer, callback=self.callback)
         self._abort = threading.Event()
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'solalt': float,
-            'exptime': float,
-            'counts': float,
-            'filter': str,
-            'binning': int
-        }
+        # flat fielder
+        self._flat_fielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
+                                        observer=self.observer, callback=self.callback)
 
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # init log file
+        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
     def open(self):
         """Open module"""
@@ -86,11 +80,13 @@ class FlatField(Module, TableStorageMixin, IFlatField):
 
     def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str, binning: int):
         """Callback for flat-field class to call with statistics."""
-        self._append_to_table_storage(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
-                                      filter=filter, binning=binning)
+        # write log
+        if self._publisher is not None:
+            self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
+                            filter=filter, binning=binning)
 
-    @timeout(3600000)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> (int, int):
+    @timeout(3600)
+    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -139,9 +135,9 @@ class FlatField(Module, TableStorageMixin, IFlatField):
         log.info('Flat-fielding finished.')
 
         # return number of taken images
-        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+        return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()

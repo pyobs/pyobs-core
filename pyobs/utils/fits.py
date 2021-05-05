@@ -1,3 +1,8 @@
+"""
+TODO: write doc
+"""
+__title__ = 'FITS utilities'
+
 import logging
 import re
 from typing import Union

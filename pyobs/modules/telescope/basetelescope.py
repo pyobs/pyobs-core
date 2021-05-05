@@ -1,20 +1,24 @@
 import threading
+from typing import Dict, Any, Tuple, Union, List
+
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IMotion
-from pyobs import Module
+from pyobs.interfaces import ITelescope, IFitsHeaderProvider
+from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, Module):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderProvider, Module):
     """Base class for telescopes."""
+    __module__ = 'pyobs.modules.telescope'
 
     def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
         """Initialize a new base telescope.
@@ -36,10 +40,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # celestial status
         self._celestial_lock = threading.RLock()
-        self._celestial_headers = {}
+        self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
-        self._add_thread_func(self._celestial, True)
+        self.add_thread_func(self._celestial, True)
 
         # init mixins
         WeatherAwareMixin.__init__(self, *args, **kwargs)
@@ -47,7 +51,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         WaitForMotionMixin.__init__(self,
                                     wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
                                     wait_for_timeout=60000,
-                                    wait_for_states=[IMotion.Status.POSITIONED, IMotion.Status.TRACKING])
+                                    wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING])
 
     def open(self):
         """Open module."""
@@ -86,7 +90,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
 
@@ -99,6 +103,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             ValueError: If device could not track.
         """
 
+        # check observer
+        if self.observer is None:
+            raise ValueError('No observer given.')
+
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
         alt_az = self.observer.altaz(Time.now(), ra_dec)
@@ -110,7 +118,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # acquire lock
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
-            self._change_motion_status(IMotion.Status.SLEWING)
+            self._change_motion_status(MotionStatus.SLEWING)
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
@@ -123,7 +131,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(IMotion.Status.TRACKING)
+            self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()
@@ -142,7 +150,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    @timeout(1200000)
+    @timeout(1200)
     def move_altaz(self, alt: float, az: float, *args, **kwargs):
         """Moves to given coordinates.
 
@@ -163,7 +171,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
-            self._change_motion_status(IMotion.Status.SLEWING)
+            self._change_motion_status(MotionStatus.SLEWING)
 
             # move telescope
             self._move_altaz(alt, az, abort_event=self._abort_move)
@@ -173,13 +181,13 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(IMotion.Status.POSITIONED)
+            self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
-    def get_fits_headers(self, namespaces: list = None, *args, **kwargs) -> dict:
+    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -190,7 +198,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # define base header
-        hdr = {}
+        hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
 
         # positions
         try:
@@ -198,8 +206,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
             alt, az = self.get_altaz()
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
-        except:
-            log.error('Could not fetch telescope position.')
+
+        except Exception as e:
+            log.warning('Could not fetch telescope position: %s', e)
             coords_ra_dec, coords_alt_az = None, None
 
         # set coordinate headers
@@ -220,9 +229,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
 
         # site location
-        hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
-        hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
-        hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
+        if self.observer is not None:
+            hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
+            hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
+            hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
 
         # add static fits headers
         for key, value in self._fits_headers.items():

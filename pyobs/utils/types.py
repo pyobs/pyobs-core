@@ -34,18 +34,18 @@ def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Sig
         annotation = signature.parameters[key].annotation
 
         # special cases
-        if value is None:
-            # keep None
+        if value is None or annotation == Parameter.empty or annotation == Any:
+            # if value is None or no annotation is given, just copy it
             bound_arguments.arguments[key] = value
-        elif issubclass(annotation, Enum):
+        elif annotation == Enum:
             # cast to enum
             bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
-        elif isinstance(value, str):
+        elif annotation == str:
             # unescape strings
             bound_arguments.arguments[key] = xml.sax.saxutils.unescape(value)
         else:
-            # cast to type, if exists
-            bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
+            # cast to type
+            bound_arguments.arguments[key] = annotation(value)
 
 
 def cast_response_to_real(response: Any, signature: Signature) -> Any:
@@ -62,11 +62,27 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
     # get return annotation
     annotation = signature.return_annotation
 
-    # tuple or single value?
-    if type(annotation) == tuple:
-        return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
+    # TODO: For future Python versions (3.9?)
+    # - use get_origin() instead of __origin__
+    # - handle dicts and tuples
+
+    # any annotations?
+    if response is None or annotation == Parameter.empty or annotation == Any:
+        # no response or no annotation at all or Any
+        return response
+    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == tuple) or isinstance(annotation, tuple):
+        # parse tuple
+        # return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
+        return response
+    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == list) or isinstance(annotation, list):
+        # parse list
+        return response
+    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == dict) or isinstance(annotation, dict):
+        # just return it
+        return response
     else:
-        return response if annotation == Parameter.empty or response is None else annotation(response)
+        # type cast response
+        return annotation(response)
 
 
 def cast_response_to_simple(response: Any) -> Any:

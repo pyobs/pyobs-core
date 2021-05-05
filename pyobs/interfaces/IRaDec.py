@@ -1,8 +1,11 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
 class IRaDec(Interface):
-    """Base interface for everything that can move to RA/Dec coordinates."""
+    """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
+    __module__ = 'pyobs.interfaces'
 
     def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
         """Starts tracking on given coordinates.
@@ -17,7 +20,7 @@ class IRaDec(Interface):
         """
         raise NotImplementedError
 
-    def get_radec(self, *args, **kwargs) -> (float, float):
+    def get_radec(self, *args, **kwargs) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:

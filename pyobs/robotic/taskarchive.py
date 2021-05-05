@@ -1,4 +1,6 @@
 import threading
+from typing import Dict
+
 from astroplan import Observer
 
 from pyobs.comm import Comm
@@ -44,6 +46,23 @@ class TaskArchive:
         Args:
             blocks: Scheduled blocks.
             start_time: Start time for schedule.
+        """
+        raise NotImplementedError
+
+    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+        """Fetch pending tasks from portal.
+
+        Args:
+            start_before: Task must start before this time.
+            end_after: Task must end after this time.
+            include_running: Whether to include a currently running task.
+
+        Returns:
+            Dictionary with tasks.
+
+        Raises:
+            Timeout: If request timed out.
+            ValueError: If something goes wrong.
         """
         raise NotImplementedError
 

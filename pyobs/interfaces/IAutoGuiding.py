@@ -2,11 +2,14 @@ from .IStoppable import IStoppable
 
 
 class IAutoGuiding(IStoppable):
-    def set_exposure_time(self, exp_time: int):
+    """The module can perform auto-guiding."""
+    __module__ = 'pyobs.interfaces'
+
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
         """Set the exposure time for the auto-guider.
 
         Args:
-            exp_time: Exposure time in ms.
+            exposure_time: Exposure time in secs.
         """
         raise NotImplementedError
 

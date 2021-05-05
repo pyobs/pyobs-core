@@ -1,6 +1,36 @@
 import time
 from collections import namedtuple
-from typing import Any
+from threading import Lock
+from typing import Any, List, Dict
+
+
+class DataCacheEntry:
+    """A single entry in the data cache."""
+
+    def __init__(self, name: str, data: Any = None):
+        """Create a new entry for the data cache
+
+        Args:
+            name: Name of item
+            data: Data for this item or None.
+        """
+        self.name = name
+        self._data = data
+        self.time = time.time()
+
+    def update(self):
+        """Update time for this item."""
+        self.time = time.time()
+
+    @property
+    def data(self) -> Any:
+        """Update usage time and return data for entry."""
+
+        # update time
+        self.update()
+
+        # return data
+        return self._data
 
 
 class DataCache(object):
@@ -15,67 +45,73 @@ class DataCache(object):
         Args:
             size: Cache size.
         """
-        self._entries = []
+        self._lock = Lock()
+        self._cache: Dict[str, DataCacheEntry] = {}
         self._size = size
 
+    def __contains__(self, name: str) -> bool:
+        """Checks, whether entry is in cache.
+
+        Args:
+            name: Name of entry.
+
+        Returns:
+            Whether it exists in cache.
+        """
+        with self._lock:
+            return name in self._cache
+
+    def __getitem__(self, name: str) -> Any:
+        """Returns data from entry in cache.
+
+        Args:
+            name: Name of data.
+
+        Returns:
+            Data from entry in cache.
+
+        Raises:
+            IndexError: If entry does not exists.
+        """
+
+        # return data or raise IndexError
+        with self._lock:
+            return self._cache[name].data
+
     def __setitem__(self, name: str, data: Any):
-        """Set new item in the cache.
+        """Set new entry in the cache.
 
         Args:
             name: Name for data to store.
             data: Date of file.
         """
 
-        # append
-        self._entries.append(DataCache.Entry(time.time(), name, data))
+        # lock cache
+        with self._lock:
+            # does it exist already?
+            if name in self._cache:
+                # delete it
+                del self._cache[name]
 
-        # too many entries?
-        if len(self._entries) > self._size:
-            # sort by time diff
-            now = time.time()
-            self._entries.sort(key=lambda e: now - e.time)
+            # create new entry
+            self._cache[name] = DataCacheEntry(name, data)
 
-            # pick first
-            self._entries = self._entries[:self._size]
+            # check size
+            if len(self._cache) > self._size:
+                # sort cache values by update time
+                cache = sorted(self._cache.values(), key=lambda c: c.time, reverse=True)
 
-    def __getitem__(self, name: str) -> Any:
-        """Retrieve data from the cache.
+                # delete all elements except for the latest N
+                for c in cache[self._size:]:
+                    del self._cache[c.name]
 
-        Args:
-            name: Name for data to retrieve.
-
-        Returns:
-            The requested data.
-
-        Raises:
-            IndexError: If data does not exist.
-        """
-
-        # loop entries in cache and return data if found.
-        for e in self._entries:
-            if e.name == name:
-                return e.data
-
-        # nothing found, so raise exception
-        raise IndexError
-
-    def __contains__(self, name):
-        """Whether cache contains data of given name.
+    def __delitem__(self, name: str):
+        """Delete entry in cache.
 
         Args:
-            name: Name of data to check.
-
-        Returns:
-            Whether it exists.
+            name: Name of entry to delete.
         """
-
-        # loop entries and return True, if name was found
-        for e in self._entries:
-            if e.name == name:
-                return True
-
-        # name not found, return False
-        return False
+        del self._cache[name]
 
 
 __all__ = ['DataCache']

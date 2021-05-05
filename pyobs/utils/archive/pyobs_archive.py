@@ -4,16 +4,16 @@ import requests
 import urllib.parse
 import logging
 
-from pyobs.interfaces import ICamera
 from pyobs.utils.time import Time
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .archive import Archive, FrameInfo
-
+from ..enums import ImageType
 
 log = logging.getLogger(__name__)
 
 
 class PyobsArchiveFrameInfo(FrameInfo):
+    """Frame info for pyobs archive."""
     def __init__(self, info: dict, *args, **kwargs):
         self.info = info
 
@@ -43,13 +43,17 @@ class PyobsArchiveFrameInfo(FrameInfo):
 
 
 class PyobsArchive(Archive):
-    def __init__(self, url: str, token: str, *args, **kwargs):
+    """Connector class to running pyobs-archive instance."""
+    __module__ = 'pyobs.utils.archive'
+
+    def __init__(self, url: str, token: str, proxies: dict = None, *args, **kwargs):
         self._url = url
         self._headers = {'Authorization': 'Token ' + token}
+        self._proxies = proxies
 
     def list_options(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build URL
         url = urllib.parse.urljoin(self._url, 'frames/aggregate/')
@@ -59,7 +63,7 @@ class PyobsArchive(Archive):
                                    filter_name, rlevel)
 
         # do request
-        r = requests.get(url, params=params, headers=self._headers)
+        r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
         if r.status_code != 200:
             raise ValueError('Could not query frames')
 
@@ -68,7 +72,7 @@ class PyobsArchive(Archive):
 
     def list_frames(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None) \
             -> List[PyobsArchiveFrameInfo]:
         # build URL
@@ -77,11 +81,14 @@ class PyobsArchive(Archive):
         # and params
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
                                    filter_name, rlevel)
+
+        # set offset and limit
+        # TODO: instead of setting large limit, request multiple pages, if necessary
         params['offset'] = 0
-        params['limit'] = 1000
+        params['limit'] = 10000
 
         # do request
-        r = requests.get(url, params=params, headers=self._headers)
+        r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
         if r.status_code != 200:
             raise ValueError('Could not query frames')
 
@@ -90,7 +97,7 @@ class PyobsArchive(Archive):
 
     def _build_query(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,
-                    image_type: ICamera.ImageType = None, binning: str = None, filter_name: str = None,
+                    image_type: ImageType = None, binning: str = None, filter_name: str = None,
                     rlevel: int = None):
         # build params
         params = {}
@@ -122,7 +129,7 @@ class PyobsArchive(Archive):
         for info in infos:
             # download
             url = urllib.parse.urljoin(self._url, info.url)
-            r = requests.get(url, headers=self._headers)
+            r = requests.get(url, headers=self._headers, proxies=self._proxies)
 
             # create image
             try:
@@ -142,7 +149,7 @@ class PyobsArchive(Archive):
         session = requests.session()
 
         # do some initial GET request for getting the csrftoken
-        session.get(self._url, headers=self._headers)
+        session.get(self._url, headers=self._headers, proxies=self._proxies)
 
         # define list of files and url
         files = {}
@@ -160,7 +167,7 @@ class PyobsArchive(Archive):
 
         # post it
         r = session.post(url, data={'csrfmiddlewaretoken': session.cookies['csrftoken']},
-                         files=files, headers=self._headers)
+                         files=files, headers=self._headers, proxies=self._proxies)
 
         # success, if status code is 200
         if r.status_code != 200:

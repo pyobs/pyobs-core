@@ -1,5 +1,7 @@
 import logging
 from threading import RLock
+from typing import Dict, Optional
+
 import sleekxmpp
 import sleekxmpp.exceptions
 from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
@@ -26,9 +28,8 @@ class RPC(object):
         # store
         self._client = client
         self._lock = RLock()
-        self._futures = {}
-        self._timeout = {}
-        self._handler = None
+        self._futures: Dict[str, Future] = {}
+        self._handler: Optional[Module] = None
         self._methods = {}
 
         # set up callbacks
@@ -112,7 +113,7 @@ class RPC(object):
 
             # do we have a timeout?
             if hasattr(method, 'timeout'):
-                timeout = method.timeout(**ba.arguments)
+                timeout = method.timeout(self._handler, **ba.arguments)
                 if timeout:
                     # yes, send it!
                     response = self._client.plugin['xep_0009_timeout'].\
@@ -135,7 +136,9 @@ class RPC(object):
 
         except Exception as e:
             # something else went wrong
-            # log.exception('Error during call to %s: %s', pmethod, str(e))
+            log.warning('Error during call to %s: %s', pmethod, str(e), exc_info=True)
+
+            # send response
             fault = dict()
             fault['code'] = 500
             fault['string'] = str(e)
@@ -154,6 +157,7 @@ class RPC(object):
             args = xml2py(iq['rpc_query']['method_response']['params'])
         except ValueError:
             log.error('Could not parse method response: %s', iq)
+            return
 
         # get future
         pid = iq['id']

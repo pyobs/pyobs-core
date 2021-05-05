@@ -1,22 +1,22 @@
 import logging
-from typing import Union
+from typing import Union, List, Dict, Tuple
 import threading
 import numpy as np
-from astropy.io import fits
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters
+from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
-
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
 
 class AutoFocusProjection(Module, IAutoFocus):
     """Module for auto-focusing a telescope."""
+    __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters] = None,
                  offset: bool = False, *args, **kwargs):
@@ -42,7 +42,7 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # storage for data
         self._data_lock = threading.RLock()
-        self._data = []
+        self._data: List[Dict[str, float]]  = []
 
     def open(self):
         """Open module"""
@@ -58,16 +58,13 @@ class AutoFocusProjection(Module, IAutoFocus):
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
-    def close(self):
-        """Close module."""
-
-    @timeout(600000)
-    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> (float, float):
+    @timeout(600)
+    def auto_focus(self, count: int, step: float, exposure_time: float, *args, **kwargs) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
         step size. With count=3, step=1 and guess=10, this takes images at the following focus values:
-            7, 8, 9, 10, 11, 12, 13
+        7, 8, 9, 10, 11, 12, 13
 
         Args:
             count: Number of images to take on each side of the initial guess. Should be an odd number.
@@ -75,10 +72,9 @@ class AutoFocusProjection(Module, IAutoFocus):
             exposure_time: Exposure time for images.
 
         Returns:
-            Tuple of obtained best focus value and its uncertainty.
+            Tuple of obtained best focus value and its uncertainty, or Nones if focus series failed.
 
         Raises:
-            ValueError: If focus could not be obtained.
             FileNotFoundException: If image could not be downloaded.
         """
         log.info('Performing auto-focus...')
@@ -98,7 +94,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                 filter_wheel: IFilters = self.proxy(self._filters, IFilters)
                 filter_name = filter_wheel.get_filter().wait()
             except ValueError:
-                log.warning('Filter wheel is not of correct type at the moment.')
+                log.warning('Filter module is not of type IFilters. Could not get filter.')
 
         # get focus as first guess
         try:
@@ -138,18 +134,18 @@ class AutoFocusProjection(Module, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                filename = camera.expose(exposure_time=exposure_time, image_type=ICamera.ImageType.FOCUS,
-                                         count=1).wait()[0]
+                if isinstance(camera, ICameraExposureTime):
+                    camera.set_exposure_time(exposure_time)
+                if isinstance(camera, IImageType):
+                    camera.set_image_type(ImageType.FOCUS)
+                filename = camera.expose().wait()
             except RemoteException:
-                log.error('Could not take image.')
+                raise ValueError('Could not take image.')
 
             # download image
             log.info('Downloading image...')
             try:
-                with self.open_file(filename, 'rb') as f:
-                    tmp = fits.open(f, memmap=False)
-                    img = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-                    tmp.close()
+                img = self.vfs.read_image(filename)
             except FileNotFoundError:
                 raise ValueError('Could not download image.')
 
@@ -168,7 +164,18 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # check
         if focus is None or focus[0] is None or np.isnan(focus[0]):
-            raise ValueError('Could not fit focus.')
+            log.warning('Focus series failed.')
+
+            # reset to initial values
+            if self._offset:
+                log.info('Resetting focus offset to initial guess of %.3f mm.', guess)
+                focuser.set_focus_offset(focus[0]).wait()
+            else:
+                log.info('Resetting focus to initial guess of %.3f mm.', guess)
+                focuser.set_focus(focus[0]).wait()
+
+            # raise error
+            raise ValueError('Could not find best focus.')
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
         absolute = None
@@ -202,7 +209,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                 'series': self._data
             }
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()
@@ -254,7 +261,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                                'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
                                'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
-    def _fit_focus(self) -> (float, float):
+    def _fit_focus(self) -> Tuple[float, float]:
         # get data
         focus = [d['focus'] for d in self._data]
         xfwhm = [d['x'] for d in self._data]

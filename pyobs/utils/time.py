@@ -1,5 +1,9 @@
-import datetime
+"""
+TODO: write doc
+"""
+__title__ = 'Time'
 
+import datetime
 import astropy.time
 import astropy.units as u
 import pytz
@@ -7,6 +11,7 @@ from astroplan import Observer
 
 
 class Time(astropy.time.Time):
+    """Hashable Time class."""
     _now_offset = astropy.time.TimeDelta(0 * u.second)
 
     def __hash__(self):
@@ -30,9 +35,7 @@ class Time(astropy.time.Time):
             function.  Generally that means it is set by the accuracy of
             your system clock.
 
-        Returns
-        -------
-        nowtime
+        Returns:
             A new `Time` object (or a subclass of `Time` if this is called from
             such a subclass) at the current time.
         """

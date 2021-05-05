@@ -1,28 +1,33 @@
+from typing import Tuple, Dict, List
+
 import numpy as np
 import logging
-from pyobs import get_object
+from pyobs.object import get_object
 
-from pyobs.utils.photometry import Photometry
+from pyobs.images.processors.detection import SourceDetection
 from .base import FocusSeries
-from ..curvefit import fit_hyperbola
-from ..images import Image
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)
 
 
 class PhotometryFocusSeries(FocusSeries):
-    def __init__(self, photometry: Photometry, radius_column: str = 'radius', *args, **kwargs):
+    """Focus series based on source detection."""
+    __module__ = 'pyobs.utils.focusseries'
+
+    def __init__(self, source_detection: SourceDetection, radius_column: str = 'radius', *args, **kwargs):
         """Initialize a new projection focus series.
 
         Args:
-            photometry: Photometry to use for estimating PSF sizes
+            source_detection: Photometry to use for estimating PSF sizes
         """
 
         # stuff
-        self._photometry: Photometry = get_object(photometry, Photometry)
+        self._source_detection: SourceDetection = get_object(source_detection, SourceDetection)
         self._radius_col = radius_column
-        self._data = []
+        self._data: List[Dict[str, float]] = []
 
     def reset(self):
         """Reset focus series."""
@@ -36,7 +41,7 @@ class PhotometryFocusSeries(FocusSeries):
         """
 
         # do photometry
-        sources = self._photometry(image)
+        sources = self._source_detection(image)
         sources = sources[sources['ellipticity'] < 0.1]
         sources = sources[sources['peak'] > 1000]
         sources = sources[sources['radius'] > 0]
@@ -51,7 +56,7 @@ class PhotometryFocusSeries(FocusSeries):
         # add to list
         self._data.append({'focus': float(image.header['TEL-FOCU']), 'r': radius, 'rerr': radius_err})
 
-    def fit_focus(self) -> (float, float):
+    def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

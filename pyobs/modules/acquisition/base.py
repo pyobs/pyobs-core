@@ -5,22 +5,27 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets
-from pyobs import Module
-from pyobs.mixins import TableStorageMixin, CameraSettingsMixin
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, ICameraExposureTime, \
+    IImageType
+from pyobs.modules import Module
+from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
-from pyobs.utils.images import Image
+from pyobs.utils.enums import ImageType
+from pyobs.images import Image
+from pyobs.images.processors.misc import SoftBin
+from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisition):
+class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
     """Base class for telescope acquisition."""
+    __module__ = 'pyobs.modules.acquisition'
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
-                 max_offset: float = 120, log_file: str = None, *args, **kwargs):
+                 max_offset: float = 120, log_file: str = None, soft_bin: int = None, *args, **kwargs):
         """Create a new base acquisition.
 
         Args:
@@ -31,6 +36,7 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
+            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -44,21 +50,11 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
         self._tolerance = tolerance
         self._max_offset = max_offset
 
-        # columns for storage
-        storage_columns = {
-            'datetime': str,
-            'ra': float,
-            'dec': float,
-            'alt': float,
-            'az': float,
-            'off_ra': float,
-            'off_dec': float,
-            'off_alt': float,
-            'off_az': float
-        }
+        # init log file
+        self._publisher = CsvPublisher(log_file)
 
-        # init table storage and load measurements
-        TableStorageMixin.__init__(self, filename=log_file, columns=storage_columns, reload_always=True)
+        # binning
+        self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)
@@ -74,21 +70,21 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    @timeout(300000)
-    def acquire_target(self, exposure_time: int, *args, **kwargs) -> dict:
+    @timeout(300)
+    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
 
         Args:
-            exposure_time: Exposure time for acquisition.
+            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
 
         Raises:
-            ValueError if target could not be acquired.
+            ValueError: If target could not be acquired.
         """
 
         # get telescope
@@ -104,13 +100,23 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
 
         # try given number of attempts
         for a in range(self._attempts):
-            # take image
-            log.info('Exposing image for %.1f seconds...', exposure_time / 1000.)
-            filename = camera.expose(exposure_time, ICamera.ImageType.ACQUISITION).wait()[0]
+            # set exposure time and image type and take image
+            if isinstance(camera, ICameraExposureTime):
+                log.info('Exposing image for %.1f seconds...', exposure_time)
+                camera.set_exposure_time(exposure_time).wait()
+            else:
+                log.info('Exposing image...')
+            if isinstance(camera, IImageType):
+                camera.set_image_type(ImageType.ACQUISITION)
+            filename = camera.expose().wait()
 
             # download image
             log.info('Downloading image...')
-            img = self.vfs.download_image(filename)
+            img = self.vfs.read_image(filename)
+
+            # bin?
+            if self._soft_bin is not None:
+                self._soft_bin(img)
 
             # get target pixel
             if self._target_pixel is None:
@@ -139,8 +145,10 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
             radec_target = SkyCoord(ra=ra_target * u.deg, dec=dec_target * u.deg, frame='icrs',
                                     obstime=date_obs, location=self.location)
 
-            # get current position
+            # get current position (without offsets!)
             cur_ra, cur_dec = telescope.get_radec().wait()
+            radec_current = SkyCoord(ra=cur_ra * u.deg, dec=cur_dec * u.deg, frame='icrs',
+                                     obstime=date_obs, location=self.location)
 
             # calculate offsets and return them
             dra = (radec_target.ra.degree - radec_center.ra.degree) * np.cos(np.radians(cur_dec))
@@ -148,6 +156,12 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
             dist = radec_center.separation(radec_target).degree
             log.info('Found RA/Dec shift of dRA=%.2f", dDec=%.2f", giving %.2f" in total.',
                      dra * 3600., ddec * 3600., dist * 3600.)
+
+            # for testing, calculate offsets from current
+            t1, t2 = radec_current.spherical_offsets_to(radec_target)
+            log.info('TESTING current->target: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
+            t1, t2 = radec_center.spherical_offsets_to(radec_target)
+            log.info('TESTING center->target: dRA=%.2f", dDec=%.2f"', t1.arcsec, t2.arcsec)
 
             # get distance
             if dist * 3600. < self._tolerance:
@@ -173,7 +187,8 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
 
                 # write log
-                self._append_to_table_storage(**log_entry)
+                if self._publisher is not None:
+                    self._publisher(**log_entry)
 
                 # finished
                 return log_entry
@@ -188,9 +203,12 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
+                # calculate total offsets
+                total_dra, total_ddec = float(cur_dra + dra), float(cur_ddec + ddec)
+
                 # move offset
-                log.info('Offsetting telescope...')
-                telescope.set_radec_offsets(float(cur_dra + dra), float(cur_ddec + ddec)).wait()
+                log.info('Offsetting telescope to dRA=%.2f", dDec=%.2f"...', total_dra * 3600., total_ddec * 3600.)
+                telescope.set_radec_offsets(total_dra, total_ddec).wait()
 
             elif isinstance(telescope, IAltAzOffsets):
                 # transform both to Alt/AZ
@@ -216,7 +234,7 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
         # could not acquire target
         raise ValueError('Could not acquire target within given tolerance.')
 
-    def _get_target_radec(self, img: Image, ra: float, dec: float) -> (float, float):
+    def _get_target_radec(self, img: Image, ra: float, dec: float) -> Tuple[float, float]:
         """Returns RA/Dec coordinates of pixel that needs to be centered.
 
         Params:
@@ -228,7 +246,7 @@ class BaseAcquisition(Module, TableStorageMixin, CameraSettingsMixin, IAcquisiti
             (ra, dec) of pixel that needs to be moved to the centre of the image.
 
         Raises:
-            ValueError if target coordinates could not be determined.
+            ValueError: If target coordinates could not be determined.
         """
         raise NotImplemented
 

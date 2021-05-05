@@ -1,8 +1,12 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
 class IRaDecOffsets(Interface):
-    """Interface for any device that supports offsets in RA/Dec."""
+    """The module supports RA/Dec offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
+    :class:`~pyobs.interfaces.IRaDec`."""
+    __module__ = 'pyobs.interfaces'
 
     def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.
@@ -16,7 +20,7 @@ class IRaDecOffsets(Interface):
         """
         raise NotImplementedError
 
-    def get_radec_offsets(self, *args, **kwargs) -> (float, float):
+    def get_radec_offsets(self, *args, **kwargs) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:

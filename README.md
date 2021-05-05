@@ -30,4 +30,4 @@ Contributors
 
 - Tim-Oliver Husser (thusser@uni-goettingen.de)
 - Frederick V. Hessman
-- Karl Wessel
+- Karl Royen

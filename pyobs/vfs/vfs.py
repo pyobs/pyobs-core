@@ -1,25 +1,32 @@
+import io
 import logging
 import os
+
+import yaml
 from astropy.io import fits
+import pandas as pd
 
 from pyobs.object import get_object, get_class_from_string
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 
 
 class VFSFile:
+    """Base class for all VFS file classes."""
+    __module__ = 'pyobs.vfs'
     pass
 
 
 class VirtualFileSystem:
     """Base for a virtual file system."""
+    __module__ = 'pyobs.vfs'
 
     def __init__(self, roots: dict = None, compression: dict = None, *args, **kwargs):
         """Create a new VFS.
 
         Args:
-            roots: Dictionary containing roots.
+            roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
             compression: Dictionary containing files that should be compressed.
         """
 
@@ -95,8 +102,8 @@ class VirtualFileSystem:
         # return it
         return fd
 
-    def download_fits_image(self, filename) -> fits.PrimaryHDU:
-        """Convenience function that wraps around open_file() to download a FITS file and put it into a astropy FITS
+    def read_fits_image(self, filename) -> fits.PrimaryHDU:
+        """Convenience function that wraps around open_file() to read a FITS file and put it into a astropy FITS
         structure.
 
         Args:
@@ -111,8 +118,8 @@ class VirtualFileSystem:
             tmp.close()
             return hdu
 
-    def download_image(self, filename) -> Image:
-        """Convenience function that wraps around open_file() to download an Image.
+    def read_image(self, filename) -> Image:
+        """Convenience function that wraps around open_file() to read an Image.
 
         Args:
             filename: Name of file to download.
@@ -122,6 +129,88 @@ class VirtualFileSystem:
         """
         with self.open_file(filename, 'rb') as f:
             return Image.from_bytes(f.read())
+
+    def write_image(self, filename: str, image: Image, *args, **kwargs):
+        """Convenience function for writing an Image to a FITS file.
+
+        Args:
+            filename: Name of file to write.
+            image: Image to write.
+        """
+
+        # open file
+        with self.open_file(filename, 'wb') as cache:
+            image.writeto(cache, *args, **kwargs)
+
+    def read_csv(self, filename: str, *args, **kwargs) -> pd.DataFrame:
+        """Convenience function for reading a CSV file into a DataFrame.
+
+        Args:
+            filename: Name of file to read.
+
+        Returns:
+            DataFrame with content of file.
+        """
+
+        try:
+            # open file
+            with self.open_file(filename, 'r') as f:
+                # read data and return it
+                return pd.read_csv(f, *args, **kwargs)
+
+        except pd.errors.EmptyDataError:
+            # on error, return empty dataframe
+            return pd.DataFrame()
+
+    def write_csv(self, df: pd.DataFrame, filename: str, *args, **kwargs):
+        """Convenience function for writing a CSV file from a DataFrame.
+
+        Args:
+            df: DataFrame to write.
+            filename: Name of file to write.
+        """
+
+        with self.open_file(filename, 'w') as f:
+            # create a StringIO as temporary write target
+            with io.StringIO() as sio:
+                # write table to sio
+                df.to_csv(sio, *args, **kwargs)
+
+                # and write all content to file
+                f.write(sio.getvalue().encode('utf8'))
+
+    def read_yaml(self, filename: str, *args, **kwargs) -> dict:
+        """Convenience function for reading a YAML file into a dict.
+
+        Args:
+            filename: Name of file to read.
+
+        Returns:
+            Content of file.
+        """
+
+        # open file
+        with self.open_file(filename, 'r') as f:
+            # read YAML
+            return yaml.safe_load(f)
+
+    def write_yaml(self, data: dict, filename: str, *args, **kwargs):
+        """Convenience function for writing a YAML file from a dict.
+
+        Args:
+            data: dict to write.
+            filename: Name of file to write.
+        """
+
+        # open file
+        with self.open_file(filename, 'w') as f:
+            # create StringIO as temp storage
+            with io.StringIO() as sio:
+                # dump to StringIO
+                yaml.dump(data, sio)
+
+                # write file from StringIO
+                f.write(bytes(sio.getvalue(), 'utf8'))
 
     def find(self, path: str, pattern: str):
         """Find a file in the given path.

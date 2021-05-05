@@ -11,6 +11,19 @@ log = logging.getLogger(__name__)
 
 
 class Environment:
+    """An Environment object hold information about the location of the observatory and provides some convenience
+    methode.
+
+    An object of this type is usually never instantiated manually, but is part of a :class:`~pyobs.modules.Module`,
+    automatically created from the configuration file like this::
+
+        timezone: Africa/Johannesburg
+        location:
+            longitude: 20.810808
+            latitude: -32.375823
+            elevation: 1798.
+    """
+
     def __init__(self, timezone: str = 'utc', location: Union[dict, EarthLocation] = None, *args, **kwargs):
         # get timezone
         self._timezone = pytz.timezone(timezone)
@@ -38,15 +51,25 @@ class Environment:
                      self._location.lon, self._location.lat, self._location.height)
 
     @property
-    def timezone(self) -> pytz.timezone:
+    def timezone(self) -> datetime.tzinfo:
+        """Returns the timezone of the observatory."""
         return self._timezone
 
     @property
     def location(self):
+        """Returns the location of the observatory."""
         return self._location
 
     @functools.lru_cache()
     def localtime(self, utc: datetime.datetime = None):
+        """Returns the local time at the observatory, either for a given UTC time or for now, if none is given.
+
+        Args:
+            utc: UTC to convert. Use now if none is given.
+
+        Returns:
+            Local time.
+        """
         # get UTC
         if utc is None:
             utc = datetime.datetime.utcnow()
@@ -57,6 +80,15 @@ class Environment:
 
     @functools.lru_cache()
     def night_obs(self, time: Union[datetime.datetime, Time] = None) -> datetime.date:
+        """Returns the date of the night for the given night, i.e. the date of the start of the night.
+
+        Args:
+            time: Time to return night for. If none is given, current time is used.
+
+        Returns:
+            Night of observation.
+        """
+
         # None given?
         if time is None:
             time = Time.now()
@@ -73,6 +105,15 @@ class Environment:
 
     @functools.lru_cache()
     def lst(self, time: Union[datetime.datetime, Time]) -> Longitude:
+        """Returns the local sidereal time for a given time.
+
+        Args:
+            time: Time to convert to LST.
+
+        Returns:
+            Local sidereal time.
+        """
+
         # convert to Time
         if not isinstance(time, Time):
             time = Time(time)
@@ -81,18 +122,44 @@ class Environment:
 
     @functools.lru_cache()
     def zenith_position(self, lst: Longitude) -> SkyCoord:
-        # return zenith position
+        """Returns the RA/Dec position of the zenith.
+
+        Args:
+            lst: Local sidereal time to use.
+
+        Returns:
+            SkyCoord with current zenith position.
+        """
         return SkyCoord(lst, self._location.lat, frame=ICRS)
 
     def now(self) -> Time:
+        """Returns current time."""
         return Time.now()
 
     def to_altaz(self, radec: SkyCoord, time: Time = None):
+        """Converts a given set of RA/Dec to Alt/Az for the current location at a given time.
+
+        Args:
+            radec: RA/Dec coordinates to convert.
+            time: Time to use, or none for now.
+
+        Returns:
+            Alt/Az coordinates for given RA/Dec.
+        """
         if time is None:
             time = Time.now()
         return radec.transform_to(AltAz(obstime=time, location=self.location))
 
     def to_radec(self, altaz: SkyCoord, time: Time = None):
+        """Converts a given set of Alt/Az to RA/Dec for the current location at a given time.
+
+        Args:
+            altaz: Alt/Az coordinates to convert.
+            time: Time to use, or none for now.
+
+        Returns:
+            RA/Dec coordinates for given Alt/Az.
+        """
         if time is None:
             time = Time.now()
         altaz.location = self.location
@@ -101,6 +168,16 @@ class Environment:
 
     @functools.lru_cache()
     def sun(self, time: Time, altaz=True):
+        """Returns the position of the sun, either as RA/Dec or Alt/Az for the given time.
+
+        Args:
+            time: Time to calculate position for.
+            altaz: If True, Alt/Az is returned, otherwise RA/Dec.
+
+        Returns:
+            Coordinates of sun.
+        """
+
         # alt/az or ra/dec?
         if altaz:
             return self.to_altaz(get_sun(time), time)

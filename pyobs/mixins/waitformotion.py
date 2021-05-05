@@ -3,16 +3,19 @@ import time
 from threading import Event
 from typing import Union, List
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import IMotion
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
 
 class WaitForMotionMixin:
     """Mixin for a device that should wait for the motion status of another device."""
-    def __init__(self, wait_for_modules: List[str] = None, wait_for_states: List[str] = None,
-                 wait_for_timeout: float = None, *args, **kwargs):
+    __module__ = 'pyobs.mixins'
+
+    def __init__(self, wait_for_modules: List[str] = None, wait_for_states: List[Union[MotionStatus, str]] = None,
+                 wait_for_timeout: float = 0, *args, **kwargs):
         """Initializes the mixin.
 
         Args:
@@ -23,7 +26,8 @@ class WaitForMotionMixin:
 
         # store
         self.__wait_for_modules = wait_for_modules if wait_for_modules is not None else []
-        self.__wait_for_states = [IMotion.Status(s) for s in wait_for_states] if wait_for_states is not None else []
+        self.__wait_for_states = [s if isinstance(s, MotionStatus) else MotionStatus(s)
+                                  for s in wait_for_states] if wait_for_states is not None else []
         self.__wait_for_timeout = wait_for_timeout
 
     def _wait_for_motion(self, abort: Event):
@@ -33,15 +37,16 @@ class WaitForMotionMixin:
             event: Abort event.
 
         Raises:
-            TimeoutError if wait timed out.
+            TimeoutError: If wait timed out.
         """
 
         # no device?
         if len(self.__wait_for_modules) == 0:
             return
 
-        # I'm a module!
-        self: Union[WaitForMotionMixin, Module]
+        # check type
+        if not isinstance(self, Module):
+            raise ValueError('This is not a module.')
 
         # get all proxies
         proxies = [self.proxy(device) for device in self.__wait_for_modules]

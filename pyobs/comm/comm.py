@@ -1,11 +1,11 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type
+from typing import Any, Union, Type, Dict
 import threading
 
 import pyobs.interfaces
-from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
+from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
@@ -16,11 +16,12 @@ log = logging.getLogger(__name__)
 
 class Comm:
     """Base class for all Comm modules in pyobs."""
+    __module__ = 'pyobs.comm'
 
     def __init__(self, cache_proxies: bool = True, *args, **kwargs):
         """Creates a comm module."""
 
-        self._proxies = {}
+        self._proxies: Dict[str, Proxy] = {}
         self._module = None
         self._log_queue = queue.Queue()
         self._cache_proxies = cache_proxies
@@ -39,10 +40,12 @@ class Comm:
 
     @property
     def module(self):
+        """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
     def module(self, module):
+        """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
         if hasattr(self, '_set_module'):
             self._set_module(module)
@@ -107,8 +110,9 @@ class Comm:
         # if client doesn't exist or we disabled caching, fetch a new proxy
         if client not in self._proxies or not self._cache_proxies:
             # get interfaces
-            interfaces = self.get_interfaces(client)
-            if interfaces is None:
+            try:
+                interfaces = self.get_interfaces(client)
+            except IndexError:
                 return None
 
             # create new proxy
@@ -197,7 +201,7 @@ class Comm:
         Returns:
             (list) List of currently connected clients that implement the given interface.
         """
-        return filter(lambda c: self._supports_interface(c, interface), self.clients)
+        return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
 
     def get_interfaces(self, client: str) -> list:
         """Returns list of interfaces for given client.
@@ -207,6 +211,9 @@ class Comm:
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError: If client cannot be found.
         """
         raise NotImplementedError
 
@@ -257,33 +264,6 @@ class Comm:
             if not found:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
-
-    def add_command_handler(self, command: str, handler):
-        """Add a command handler.
-
-        Args:
-            command (str): Name of command to handle.
-            handler: Method that handles the command
-        """
-        raise NotImplementedError
-
-    def del_command_handler(self, command: str, handler):
-        """Delete a command handler.
-
-        Args:
-            command: Name of command to handle.
-            handler: Method that handles the command
-        """
-        raise NotImplementedError
-
-    def send_text_message(self, client: str, msg: str):
-        """Send a text message to another client.
-
-        Args:
-            client: ID of client to send message to.
-            msg: Message to send.
-        """
-        raise NotImplementedError
 
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.

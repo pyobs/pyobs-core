@@ -3,9 +3,9 @@ import threading
 import typing
 
 from pyobs.interfaces import IRunnable, IFlatField
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.modules import timeout
-from pyobs.object import create_object
+from pyobs.object import get_object
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.threads import Future
@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class FlatFieldScheduler(Module, IRunnable):
     """Run the flat-field scheduler."""
+    __module__ = 'pyobs.modules.flatfield'
 
     def __init__(self, flatfield: typing.Union[str, IFlatField], functions: typing.Dict[str, str],
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
@@ -42,10 +43,10 @@ class FlatFieldScheduler(Module, IRunnable):
         self._abort = threading.Event()
 
         # priorities
-        priorities = create_object(priorities, SkyflatPriorities)
+        prio = get_object(priorities, SkyflatPriorities)
 
         # create scheduler
-        self._scheduler = Scheduler(functions, priorities, self.observer, min_exptime=min_exptime,
+        self._scheduler = Scheduler(functions, prio, self.observer, min_exptime=min_exptime,
                                     max_exptime=max_exptime, timespan=timespan, filter_change=filter_change,
                                     count=count)
 
@@ -59,7 +60,7 @@ class FlatFieldScheduler(Module, IRunnable):
         except ValueError:
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
-    @timeout(7200000)
+    @timeout(7200)
     def run(self, *args, **kwargs):
         """Perform flat-fielding"""
         log.info('Performing flat fielding...')
@@ -98,7 +99,7 @@ class FlatFieldScheduler(Module, IRunnable):
         # finished
         log.info('Finished.')
 
-    @timeout(20000)
+    @timeout(20)
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()

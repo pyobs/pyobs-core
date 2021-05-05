@@ -1,14 +1,16 @@
 import logging
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.events import MotionStatusChangedEvent
-from pyobs.interfaces import IMotion
+from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)
 
 
 class MotionStatusMixin:
     """Mixin for IMotion devices for handling status."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, motion_status_interfaces: list = None, *args, **kwargs):
         """Initializes the mixin.
 
@@ -16,8 +18,8 @@ class MotionStatusMixin:
             interfaces: List of interfaces to handle or None
         """
         self.__motion_status_interfaces = [] if motion_status_interfaces is None else motion_status_interfaces
-        self.__motion_status = IMotion.Status.UNKNOWN
-        self.__motion_status_single = {i: IMotion.Status.UNKNOWN for i in self.__motion_status_interfaces}
+        self.__motion_status = MotionStatus.UNKNOWN
+        self.__motion_status_single = {i: MotionStatus.UNKNOWN for i in self.__motion_status_interfaces}
 
     def open(self):
         # subscribe to events
@@ -25,14 +27,13 @@ class MotionStatusMixin:
         if self.comm:
             self.comm.register_event(MotionStatusChangedEvent)
 
-    def _change_motion_status(self, status: IMotion.Status, interface: str = None):
+    def _change_motion_status(self, status: MotionStatus, interface: str = None):
         """Change motion status and send event,
 
         Args:
             status: New motion status
             interface: Interface to set motion status for
         """
-        self: (Module, MotionStatusMixin)
 
         # did something change?
         changed = False
@@ -67,6 +68,8 @@ class MotionStatusMixin:
 
         # send event
         if changed:
+            if not isinstance(self, Module):
+                raise ValueError('This is not a module.')
             self.comm.send_event(MotionStatusChangedEvent(status=self.__motion_status,
                                                           interfaces=self.__motion_status_single))
 
@@ -79,35 +82,32 @@ class MotionStatusMixin:
 
         # if any interface is of state ERROR, UNKNOWN, INITIALIZING, PARKING, SLEWING
         # we use that as global status (in that order)
-        for status in [IMotion.Status.ERROR, IMotion.Status.UNKNOWN,
-                       IMotion.Status.INITIALIZING, IMotion.Status.PARKING, IMotion.Status.SLEWING]:
+        for status in [MotionStatus.ERROR, MotionStatus.UNKNOWN,
+                       MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.SLEWING]:
             if status in self.__motion_status_single.values():
                 return status
 
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    def get_motion_status(self, interface: str = None, *args, **kwargs) -> IMotion.Status:
+    def get_motion_status(self, device: str = None, *args, **kwargs) -> MotionStatus:
         """Returns current motion status.
 
         Args:
-            interface: Name of interface to get status for, or None.
+            device: Name of device to get status for, or None.
 
         Returns:
             A string from the Status enumerator.
-
-        Raises:
-            KeyError: If interface is not known.
         """
 
         # global or individual?
-        if interface is None:
+        if device is None:
             return self.__motion_status
 
         else:
             # does it exist?
-            if interface in self.__motion_status_single:
-                return self.__motion_status_single[interface]
+            if device in self.__motion_status_single:
+                return self.__motion_status_single[device]
             else:
                 raise KeyError
 

@@ -2,7 +2,8 @@ from .interface import *
 
 
 class IScriptRunner(Interface):
-    """Interface for running a script."""
+    """The module can execute a script."""
+    __module__ = 'pyobs.interfaces'
 
     def run_script(self, script: str, *args, **kwargs):
         """Run the given script.

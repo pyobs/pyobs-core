@@ -12,6 +12,9 @@ log = logging.getLogger(__name__)
 
 
 class SkyFlatsStaticPointing(SkyFlatsBasePointing):
+    """Static flat pointing."""
+    __module__ = 'pyobs.utils.skyflats.pointing'
+
     def __init__(self, initialized: bool = False, *args, **kwargs):
         """Inits new static pointing for sky flats.
 

@@ -1,8 +1,12 @@
+from typing import Tuple
+
 from .interface import Interface
 
 
 class IAltAzOffsets(Interface):
-    """Telescopes on an altaz mount should also implement this interface."""
+    """The module supports Alt/Az offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
+    :class:`~pyobs.interfaces.IAltAz`."""
+    __module__ = 'pyobs.interfaces'
 
     def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset.
@@ -16,7 +20,7 @@ class IAltAzOffsets(Interface):
         """
         raise NotImplementedError
 
-    def get_altaz_offsets(self, *args, **kwargs) -> (float, float):
+    def get_altaz_offsets(self, *args, **kwargs) -> Tuple[float, float]:
         """Get Alt/Az offset.
 
         Returns:

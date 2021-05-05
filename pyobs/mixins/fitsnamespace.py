@@ -1,16 +1,19 @@
 import logging
+from typing import List, Union, Dict, Optional
 
-from pyobs import Module
+from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
 
 class FitsNamespaceMixin:
     """Mixin for IFitsHeaderProvider modules that filters FITS headers by namespace."""
-    def __init__(self, fits_namespaces: dict = None, *args, **kwargs):
-        self.__namespaces = fits_namespaces
+    __module__ = 'pyobs.mixins'
 
-    def _filter_fits_namespace(self, hdr: dict, namespaces: list, sender: str, *args, **kwargs):
+    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, *args, **kwargs):
+        self.__namespaces = {} if fits_namespaces is None else fits_namespaces
+
+    def _filter_fits_namespace(self, hdr: dict, sender: str, namespaces: List[str] = None, *args, **kwargs):
         """Filter FITS header keywords by given namespaces. If no namespaces are given, let all through. Always
         let keywords with this module's name as namespace pass.
 
@@ -24,11 +27,11 @@ class FitsNamespaceMixin:
         """
 
         # no namespaces?
-        if self.__namespaces is None:
+        if not self.__namespaces:
             return hdr
 
         # get list of FITS headers that we let pass
-        keywords = []
+        keywords: List[str] = []
 
         # is the sender name in my namespaces?
         if sender in self.__namespaces:

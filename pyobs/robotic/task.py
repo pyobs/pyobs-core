@@ -1,5 +1,6 @@
 import threading
 from threading import Event
+from typing import Tuple
 
 from astroplan import Observer
 
@@ -28,12 +29,14 @@ class Task:
         """Returns estimated duration of task in seconds."""
         raise NotImplementedError
 
-    def window(self) -> (Time, Time):
-        """Returns the time window for this task.
+    @property
+    def start(self) -> Time:
+        """Start time for task"""
+        raise NotImplementedError
 
-        Returns:
-            Start and end time for this observation window.
-        """
+    @property
+    def end(self) -> Time:
+        """End time for task"""
         raise NotImplementedError
 
     def can_run(self) -> bool:
@@ -41,6 +44,15 @@ class Task:
 
         Returns:
             True, if task can run now.
+        """
+        raise NotImplementedError
+
+    @property
+    def can_start_late(self) -> bool:
+        """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.
+
+        Returns:
+            True, if task can start late.
         """
         raise NotImplementedError
 

@@ -1,7 +1,8 @@
+from __future__ import annotations
 import logging
 from typing import Union
 
-from pyobs import Module
+from pyobs.modules import Module
 from pyobs.interfaces import ICamera, IFilters, ICameraWindow, ICameraBinning
 
 log = logging.getLogger(__name__)
@@ -9,6 +10,8 @@ log = logging.getLogger(__name__)
 
 class CameraSettingsMixin:
     """Mixin for a device that should be able to set camera settings."""
+    __module__ = 'pyobs.mixins'
+
     def __init__(self, filters: Union[str, IFilters] = None, filter_name: str = None, binning: int = None,
                  *args, **kwargs):
         """Initializes the mixin.
@@ -27,8 +30,9 @@ class CameraSettingsMixin:
     def _do_camera_settings(self, camera: ICamera):
         """Do camera settings for given camera."""
 
-        # I'm a module!
-        self: Union[Module, CameraSettingsMixin]
+        # check type
+        if not isinstance(self, Module) or not isinstance(self, CameraSettingsMixin):
+            raise ValueError('This is not a module')
 
         # filter
         if self.__camerasettings_filters is not None and self.__camerasettings_filter is not None:

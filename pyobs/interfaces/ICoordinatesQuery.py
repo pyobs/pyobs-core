@@ -2,6 +2,9 @@ from .interface import *
 
 
 class ICoordinatesQuery(Interface):
+    """The module perfoms a search for coordinates."""
+    __module__ = 'pyobs.interfaces'
+
     def query_coordinates_by_name(self, name: str, *args, **kwargs) -> list:
         """Queries coordinates for an object with the given name.
 
@@ -9,7 +12,7 @@ class ICoordinatesQuery(Interface):
             name (str): Name of object to query coordinates for.
 
         Returns:
-            (list) List of dictionaries with the following keys:
+            (list): List of dictionaries with the following keys:
                 - name: Name of object
                 - ra: Right ascension [sexagesimal]
                 - ra_d: Right ascension [degrees]

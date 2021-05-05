@@ -2,9 +2,8 @@ from .interface import Interface
 
 
 class ICalibrate(Interface):
-    """
-    Interface for devices that can be calibrated.
-    """
+    """The module can calibrate a device."""
+    __module__ = 'pyobs.interfaces'
 
     def calibrate(self, *args, **kwargs):
         """Calibrate the device."""

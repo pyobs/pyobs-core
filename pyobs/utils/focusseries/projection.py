@@ -1,16 +1,21 @@
+from typing import Tuple, Dict, List
+
 import numpy as np
 import logging
 from scipy import ndimage
 
 from .base import FocusSeries
-from ..curvefit import fit_hyperbola
-from ..images import Image
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.images import Image
 
 
 log = logging.getLogger(__name__)
 
 
 class ProjectionFocusSeries(FocusSeries):
+    """Focus series from projected x/y."""
+    __module__ = 'pyobs.utils.focusseries'
+
     def __init__(self, backsub: bool = True, xbad: list = None, ybad: list = None):
         """Initialize a new projection focus series.
 
@@ -21,13 +26,12 @@ class ProjectionFocusSeries(FocusSeries):
         """
 
         # test imports
-        import lmfit
 
         # stuff
         self._backsub = backsub
         self._xbad = xbad
         self._ybad = ybad
-        self._data = []
+        self._data: List[Dict[str, float]] = []
 
     def reset(self):
         """Reset focus series."""
@@ -85,7 +89,7 @@ class ProjectionFocusSeries(FocusSeries):
                            'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
                            'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
 
-    def fit_focus(self) -> (float, float):
+    def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

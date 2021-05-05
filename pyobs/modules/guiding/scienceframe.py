@@ -2,7 +2,7 @@ import logging
 import threading
 
 from pyobs.events import NewImageEvent
-from pyobs.utils.images import Image
+from pyobs.images import Image
 from .base import BaseGuiding
 
 
@@ -11,13 +11,14 @@ log = logging.getLogger(__name__)
 
 class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
+    __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, *args, **kwargs):
         """Initializes a new science frame auto guiding system."""
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # add thread func
-        self._add_thread_func(self._auto_guiding, True)
+        self.add_thread_func(self._auto_guiding, True)
 
         # variables
         self._next_image: Image = None
@@ -31,11 +32,11 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.add_image)
 
-    def set_exposure_time(self, exp_time: int):
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
         """Set the exposure time for the auto-guider.
 
         Args:
-            exp_time: Exposure time in ms.
+            exposure_time: Exposure time in secs.
         """
         raise NotImplementedError
 
@@ -53,7 +54,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info('Received new image.')
 
         # download image
-        image = self.vfs.download_image(event.filename)
+        image = self.vfs.read_image(event.filename)
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':

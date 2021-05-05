@@ -1,10 +1,10 @@
 import logging
 import threading
-from typing import Union
+from typing import Union, Tuple
 
 from pyobs.interfaces import ICamera, IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic.scripts import Script
-
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class LcoAutoFocusScript(Script):
 
     def __init__(self, roof: Union[str, IRoof] = None, telescope: Union[str, ITelescope] = None,
                  acquisition: Union[str, IAcquisition] = None, autofocus: Union[str, IAutoFocus] = None,
-                 count: int = 5, step: float = 0.1, exptime: int = 2000,
+                 count: int = 5, step: float = 0.1, exptime: float = 2.,
                  *args, ** kwargs):
         """Initialize a new LCO auto focus script.
 
@@ -36,13 +36,13 @@ class LcoAutoFocusScript(Script):
         self._exptime = exptime
 
         # get image type
-        self.image_type = ICamera.ImageType.OBJECT
+        self.image_type = ImageType.OBJECT
         if self.configuration['type'] == 'BIAS':
-            self.image_type = ICamera.ImageType.BIAS
+            self.image_type = ImageType.BIAS
         elif self.configuration['type'] == 'DARK':
-            self.image_type = ICamera.ImageType.DARK
+            self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> (IRoof, ITelescope, IAcquisition, IAutoFocus):
+    def _get_proxies(self) -> Tuple[IRoof, ITelescope, IAcquisition, IAutoFocus]:
         """Get proxies for running the task
 
         Returns:
@@ -116,7 +116,7 @@ class LcoAutoFocusScript(Script):
 
             # get exposure time
             acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] * 1000 if 'exposure_time' in acq else 2000
+            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
 
             # do acquisition
             log.info('Performing acquisition...')

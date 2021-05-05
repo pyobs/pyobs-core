@@ -1,8 +1,13 @@
+from typing import List
+
 from .IMotion import IMotion
 
 
 class IFilters(IMotion):
-    def list_filters(self, *args, **kwargs) -> list:
+    """The module can change filters in a device."""
+    __module__ = 'pyobs.interfaces'
+
+    def list_filters(self, *args, **kwargs) -> List[str]:
         """List available filters.
 
         Returns:

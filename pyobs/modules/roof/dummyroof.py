@@ -2,9 +2,10 @@ import logging
 import threading
 
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
-from pyobs.interfaces import IRoof, IMotion
+from pyobs.interfaces import IRoof
 from pyobs.modules import timeout
 from pyobs.modules.roof import BaseRoof
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 
 log = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ log = logging.getLogger(__name__)
 
 class DummyRoof(BaseRoof, IRoof):
     """A dummy camera for testing."""
+    __module__ = 'pyobs.modules.roof'
 
     def __init__(self, *args, **kwargs):
         """Creates a new dummy root."""
@@ -28,7 +30,7 @@ class DummyRoof(BaseRoof, IRoof):
         self.comm.register_event(RoofOpenedEvent)
         self.comm.register_event(RoofClosingEvent)
 
-    @timeout(15000)
+    @timeout(15)
     def open_roof(self, *args, **kwargs):
         """Open the roof.
 
@@ -41,7 +43,7 @@ class DummyRoof(BaseRoof, IRoof):
             # acquire lock
             with LockWithAbort(self._lock_motion, self._abort_motion):
                 # change status
-                self._change_motion_status(IMotion.Status.INITIALIZING)
+                self._change_motion_status(MotionStatus.INITIALIZING)
 
                 # open roof
                 while self.open_percentage < 100:
@@ -50,7 +52,7 @@ class DummyRoof(BaseRoof, IRoof):
 
                     # abort?
                     if self._abort_motion.is_set():
-                        self._change_motion_status(IMotion.Status.IDLE)
+                        self._change_motion_status(MotionStatus.IDLE)
                         return
 
                     # wait a little
@@ -60,12 +62,12 @@ class DummyRoof(BaseRoof, IRoof):
                 self.open_percentage = 100
 
                 # change status
-                self._change_motion_status(IMotion.Status.IDLE)
+                self._change_motion_status(MotionStatus.IDLE)
 
                 # send event
                 self.comm.send_event(RoofOpenedEvent())
 
-    @timeout(15000)
+    @timeout(15)
     def close_roof(self, *args, **kwargs):
         """Close the roof.
 
@@ -78,7 +80,7 @@ class DummyRoof(BaseRoof, IRoof):
             # acquire lock
             with LockWithAbort(self._lock_motion, self._abort_motion):
                 # change status
-                self._change_motion_status(IMotion.Status.PARKING)
+                self._change_motion_status(MotionStatus.PARKING)
 
                 # send event
                 self.comm.send_event(RoofClosingEvent())
@@ -90,20 +92,20 @@ class DummyRoof(BaseRoof, IRoof):
 
                     # abort?
                     if self._abort_motion.is_set():
-                        self._change_motion_status(IMotion.Status.IDLE)
+                        self._change_motion_status(MotionStatus.IDLE)
                         return
 
                     # wait a little
                     self.closing.wait(0.1)
 
                 # change status
-                self._change_motion_status(IMotion.Status.PARKED)
+                self._change_motion_status(MotionStatus.PARKED)
 
     def get_percent_open(self) -> float:
         """Get the percentage the roof is open."""
         return self.open_percentage
 
-    def stop_motion(self, device: str = None):
+    def stop_motion(self, device: str = None, *args, **kwargs):
         """Stop the motion.
 
         Args:
@@ -114,13 +116,13 @@ class DummyRoof(BaseRoof, IRoof):
         """
 
         # change status
-        self._change_motion_status(IMotion.Status.ABORTING)
+        self._change_motion_status(MotionStatus.ABORTING)
 
         # abort
         # acquire lock
         with LockWithAbort(self._lock_motion, self._abort_motion):
             # change status
-            self._change_motion_status(IMotion.Status.IDLE)
+            self._change_motion_status(MotionStatus.IDLE)
 
 
 __all__ = ['DummyRoof']

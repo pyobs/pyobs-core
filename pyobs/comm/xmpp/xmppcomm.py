@@ -1,9 +1,10 @@
+import functools
 import json
 import logging
 import re
 import threading
 import time
-from typing import Any
+from typing import Any, Callable, Dict, Type, List, Optional
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
 import xml.sax.saxutils
@@ -23,10 +24,60 @@ class EventStanza(ElementBase):
 
 
 class XmppComm(Comm):
-    """Comm module for XMPP."""
+    """A Comm class using XMPP.
 
-    def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = 'pyobs',
-                 password: str = None, server: str = None, use_tls: bool = False, *args, **kwargs):
+    This Comm class uses an XMPP server (e.g. `ejabberd <https://www.ejabberd.im>`_) for communication between modules.
+    Essentially required for a connection to the server is a JID, a JabberID. It can be specified in the configuration
+    like this::
+
+        comm:
+            class: pyobs.xmpp.XmppComm
+            jid:  someuser@example.com/pyobs
+
+    Using this, *pyobs* tries to connect to example.com as user ``someuser`` with resource ``pyobs``. Since ``pyobs``
+    is the default resource, it can be omitted::
+
+        jid:  someuser@example.com
+
+    Alternatively, one can split the user, domain, and resource (if required) into three different parameters::
+
+        user: someuser
+        domain: example.com
+
+    This comes in handy, if one wants to put the basic Comm configuration into a separate file. Imagine a ``_comm.yaml``
+    in the same directory as the module config::
+
+        comm_cfg: &comm
+            class: pyobs.comm.xmpp.XmppComm
+            domain: example.com
+
+    Now in the module configuration, one can simply do this::
+
+        {include _comm.yaml}
+
+        comm:
+            <<: *comm
+            user: someuser
+            password: supersecret
+
+    This allows for a super easy change of the domain for all configurations, which especially makes developing on
+    different machines a lot easier.
+
+    The ``server`` parameter can be used, when the server's hostname is different from the XMPP domain. This might,
+    e.g., be the case, when connecting to a server via SSH port forwarding::
+
+        jid:  someuser@example.com/pyobs
+        server: localhost:52222
+
+    Finally, always make sure that ``use_tls`` is set according to the server's settings, i.e. if it uses TLS, this
+    parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
+
+    """
+    __module__ = 'pyobs.comm.xmpp'
+
+    def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
+                 resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,
+                 use_tls: bool = False, *args, **kwargs):
         """Create a new XMPP Comm module.
 
         Either a fill JID needs to be provided, or a set of user/domian/resource, from which a JID is built.
@@ -43,11 +94,11 @@ class XmppComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         # variables
-        self._rpc = None
+        self._rpc: Optional[RPC] = None
         self._connected = False
-        self._command_handlers = {}
-        self._event_handlers = {}
-        self._online_clients = []
+        self._event_handlers: Dict[Type, List[Callable]] = {}
+        self._online_clients: List[str] = []
+        self._interface_cache: Dict[str, List[Type]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -77,7 +128,6 @@ class XmppComm(Comm):
 
         # create client
         self._xmpp = XmppClient(self._jid, password)
-        self._xmpp.add_event_handler('message', self._handle_message)
         self._xmpp.add_event_handler('pubsub_publish', self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
@@ -174,21 +224,27 @@ class XmppComm(Comm):
 
         Returns:
             List of supported interfaces.
+
+        Raises:
+            IndexError: If client cannot be found.
         """
 
         # full JID given?
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # fetch interface names
-        interface_names = self._xmpp.get_interfaces(client)
-        if interface_names is None:
-            return None
+        # get interfaces
+        if client not in self._interface_cache:
+            # get interface names
+            interface_names = self._xmpp.get_interfaces(client)
+
+            # get interfaces
+            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
 
         # convert to classes
-        return self._interface_names_to_classes(interface_names)
+        return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface: str) -> bool:
+    def _supports_interface(self, client: str, interface) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -198,7 +254,16 @@ class XmppComm(Comm):
         Returns:
             Whether or not interface is supported.
         """
-        return self._xmpp.supports_interface(self._get_full_client_name(client), interface)
+
+        # full JID given?
+        if '@' not in client:
+            client = '%s@%s/%s' % (client, self._domain, self._resource)
+
+        # update interface cache and get interface names
+        interfaces = self.get_interfaces(client)
+
+        # supported?
+        return interface in interfaces
 
     def execute(self, client: str, method: str, *args) -> Any:
         """Execute a given method on a remote client.
@@ -211,7 +276,8 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        return self._rpc.call(self._get_full_client_name(client), method, *args)
+        if self._rpc is not None:
+            return self._rpc.call(self._get_full_client_name(client), method, *args)
 
     def _got_online(self, msg):
         """If a new client connects, add it to list.
@@ -220,8 +286,16 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # append to list and send event
-        self._online_clients.append(msg['from'].full)
+        # append to list
+        jid = msg['from'].full
+        if jid not in self._online_clients:
+            self._online_clients.append(jid)
+
+        # clear interface cache, just in case there is something there
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
 
     def _got_offline(self, msg):
@@ -231,8 +305,15 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # remove from list and send event
-        self._online_clients.remove(msg['from'].full)
+        # remove from list
+        jid = msg['from'].full
+        self._online_clients.remove(jid)
+
+        # clear interface cache
+        if jid in self._interface_cache:
+            del self._interface_cache[jid]
+
+        # send event
         self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
 
     @property
@@ -253,53 +334,6 @@ class XmppComm(Comm):
         """
         return self._xmpp
 
-    def _handle_message(self, msg):
-        """Handle a new incoming XMPP message.
-
-        Args:
-            msg: Received XMPP message.
-        """
-
-        cmd = msg['body']
-        if cmd in self._command_handlers:
-            for handler in self._command_handlers[cmd]:
-                # create thread and start it
-                thread = threading.Thread(name="cmd_%s" % handler.__name__,
-                                          target=handler, args=(msg['from'], cmd),
-                                          daemon=True)
-                thread.start()
-
-    def add_command_handler(self, command: str, handler):
-        """Add a command handler.
-
-        Args:
-            command (str): Name of command to handle.
-            handler: Method that handles the command
-        """
-        if command not in self._command_handlers:
-            self._command_handlers[command] = []
-        self._command_handlers[command].append(handler)
-
-    def del_command_handler(self, command: str, handler):
-        """Delete a command handler.
-
-        Args:
-            command: Name of command to handle.
-            handler: Method that handles the command
-        """
-        if command not in self._command_handlers:
-            return
-        self._command_handlers[command].remove(handler)
-
-    def send_text_message(self, client: str, msg: str):
-        """Send a text message to another client.
-
-        Args:
-            client: ID of client to send message to.
-            msg: Message to send.
-        """
-        self._xmpp.send_message(client, msg)
-
     def send_event(self, event: Event):
         """Send an event to other clients.
 
@@ -315,7 +349,18 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__)
+        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__, block=False,
+                                       callback=functools.partial(self._send_event_callback, event=event))
+
+    @staticmethod
+    def _send_event_callback(iq, event: Event = None):
+        """Called when an event has been successfully sent.
+
+        Args:
+            iq: Response package.
+            event: Sent event.
+        """
+        log.debug('%s successfully sent.', event.__class__.__name__)
 
     def register_event(self, event_class, handler=None):
         """Register an event type. If a handler is given, we also receive those events, otherwise we just

@@ -1,10 +1,10 @@
 import logging
-from typing import Union, Type, Dict, Tuple, Optional
+from typing import Union, Type, Dict, Tuple, Optional, List
 
 from pyobs.object import get_object
 from pyobs.utils.time import Time
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.images import BiasImage, DarkImage, FlatImage, Image, CalibrationImage
+from pyobs.images import Image
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from .pipeline import Pipeline
@@ -120,6 +120,16 @@ class Night:
             # upload
             self._archive.upload_frames([calibrated])
 
+    def _create_master_bias(self, images: List[Image]) -> Image:
+        return Image()
+
+    def _create_master_dark(self, images: List[Image], bias: Image) -> Image:
+        return Image()
+
+    def _create_master_flat(self, images: List[Image], bias: Image, dark: Image) -> Image:
+        return Image()
+
+
     def _create_master_calib(self, instrument: str, image_type: ImageType, binning: str,
                              filter_name: str = None):
         # get frames
@@ -143,10 +153,9 @@ class Night:
             log.warning('Too few (%d) frames found, skipping...', len(infos))
 
         # create master
-        calib: CalibrationImage
         if image_type == ImageType.BIAS:
             # BIAS are easy, just combine
-            calib = BiasImage.create_master(images)
+            calib = self._create_master_bias(images)
 
             # store in cache
             self._master_frames[ImageType.BIAS, instrument, binning, None] = calib
@@ -159,7 +168,7 @@ class Night:
                 return
 
             # combine
-            calib = DarkImage.create_master(images, bias=bias)
+            calib = self._create_master_dark(images, bias=bias)
 
             # store in cache
             self._master_frames[ImageType.DARK, instrument, binning, None] = calib
@@ -178,7 +187,7 @@ class Night:
                 return
 
             # combine
-            calib = FlatImage.create_master(images, bias=bias, dark=dark, method=self._flats_combine)
+            calib = self._create_master_flat(images, bias=bias, dark=dark)
 
             # store in cache
             self._master_frames[ImageType.SKYFLAT, instrument, binning, filter_name] = calib

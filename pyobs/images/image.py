@@ -108,6 +108,11 @@ class Image:
         # finished
         return image
 
+    @property
+    def unit(self):
+        return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
+
+
     def copy(self):
         img = Image()
         img.data = self.data.copy()
@@ -158,7 +163,7 @@ class Image:
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
         return CCDData(data=self.data,
-                       header=self.header,
+                       meta=self.header,
                        mask=self.mask,
                        uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
                        unit='adu')

@@ -1,9 +1,9 @@
 import logging
-from typing import Union
+from typing import Union, Optional, List
 import astropy.units as u
 
-from pyobs.images import BiasImage, DarkImage, FlatImage, Image
-from pyobs.utils.archive import FrameInfo
+from pyobs.images import Image
+from pyobs.utils.archive import FrameInfo, Archive
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
 
@@ -11,7 +11,42 @@ log = logging.getLogger(__name__)
 
 
 class Pipeline:
-    def calibrate(self, image: Image, bias: BiasImage = None, dark: DarkImage = None, flat: FlatImage = None) -> Image:
+    def create_master_bias(self, images: List[Image]) -> Image:
+        """Create master bias frame.
+
+        Args:
+            images: List of raw bias frames.
+
+        Returns:
+            Master bias frame.
+        """
+        raise NotImplementedError
+
+    def create_master_dark(self, images: List[Image], bias: Image) -> Image:
+        """Create master dark frame.
+
+        Args:
+            images: List of raw dark frames.
+            bias: Bias frame to subtract from images.
+
+        Returns:
+            Master dark frame.
+        """
+        raise NotImplementedError
+
+    def create_master_flat(self, images: List[Image], bias: Image) -> Image:
+        """Create master flat frame.
+
+        Args:
+            images: List of raw flat frames.
+            bias: Bias frame to subtract from images.
+
+        Returns:
+            Master flat frame.
+        """
+        raise NotImplementedError
+
+    def calibrate(self, image: Image, bias: Image = None, dark: Image = None, flat: Image = None) -> Image:
         """Calibrate a single science frame.
 
         Args:
@@ -25,14 +60,13 @@ class Pipeline:
         """
         raise NotImplementedError
 
-    @staticmethod
-    def find_master(image_type: ImageType , archive: 'Archive', time: Time, instrument: str,
-                    binning: str, filter_name: str = None, max_days: float = 30.) -> Union[None, FrameInfo]:
+    def find_master(self, archive: Archive, image_type: ImageType, time: Time, instrument: str,
+                    binning: str, filter_name: str = None, max_days: float = 30.) -> Optional[Image]:
         """Find and download master calibration frame.
 
         Args:
+            archive: Image archive.
             image_type: Image type.
-            archive: Archive to use for downloading frames.
             time: Time to search at.
             instrument: Instrument to use.
             binning: Used binning.
@@ -50,18 +84,18 @@ class Pipeline:
                                     instrument=instrument, image_type=image_type, binning=binning,
                                     filter_name=filter_name, rlevel=1)
 
-        # found any?
+        # found none?
         if len(infos) == 0:
             log.warning('Could not find any matching %s calibration frames.', image_type.value)
             return None
-        else:
-            # sort by diff to time and take first
-            s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
-            info = s[0]
-            log.info('Found %s frame %s.', image_type.name, info.filename)
 
-            # return FrameInfo
-            return info
+        # sort by diff to time and take first
+        s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
+        info = s[0]
+        log.info('Found %s frame %s.', image_type.name, info.filename)
+
+        # download it
+        return archive.download_frames([info])[0]
 
 
 __all__ = ['Pipeline']

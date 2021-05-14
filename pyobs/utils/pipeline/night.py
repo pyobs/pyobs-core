@@ -14,10 +14,10 @@ log = logging.getLogger(__name__)
 
 class Night:
     def __init__(self, site: str, night: str,
-                 archive: Union[dict, Archive], science: Union[dict, Pipeline], worker_procs: int = 4,
+                 archive: Union[dict, Archive], pipeline: Union[dict, Pipeline], worker_procs: int = 4,
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
-                 flats_combine: Union[str, Image.CombineMethod] = Image.CombineMethod.MEDIAN, flats_min_raw: int = 10,
+                 min_flats: int = 10,
                  *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
@@ -25,25 +25,23 @@ class Night:
             site: Telescope site to use.
             night: Night to reduce.
             archive: Archive to fetch images from and write results to.
-            science: Science pipeline.
+            pipeline: Science pipeline.
             worker_procs: Number of worker processes.
             filenames_calib: Filename pattern for master calibration files.
-            flats_combine: Method to combine flats.
-            flats_min_raw: Minimum number of raw frames to create flat field.
+            min_flats: Minimum number of raw frames to create flat field.
             *args:
             **kwargs:
         """
 
         # get archive and science pipeline
         self._archive = get_object(archive, Archive)
-        self._science_pipeline = get_object(science, Pipeline)
+        self._pipeline = get_object(pipeline, Pipeline, archive=archive)
 
         # stuff
         self._site = site
         self._night = night
         self._worker_processes = worker_procs
-        self._flats_combine = Image.CombineMethod(flats_combine) if isinstance(flats_combine, str) else flats_combine
-        self._flats_min_raw = flats_min_raw
+        self._min_flats = min_flats
 
         # cache for master calibration frames
         self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
@@ -72,18 +70,91 @@ class Night:
 
         # try to download one
         midnight = Time(self._night + ' 23:59:59')
-        frame = Pipeline.find_master(image_type, self._archive, midnight, instrument, binning, filter_name,
-                                     max_days=max_days)
-        if frame is not None:
-            # download it
-            calib = self._archive.download_frames([frame])[0]
-
+        image = self._pipeline.find_master(self._archive, image_type, midnight, instrument, binning, filter_name,
+                                           max_days=max_days)
+        if image is not None:
             # store and return it
-            self._master_frames[image_type, instrument, binning, filter_name] = calib
-            return calib
+            self._master_frames[image_type, instrument, binning, filter_name] = image
+            return image
         else:
             # still nothing
             return None
+
+    def _create_master_calib(self, instrument: str, image_type: ImageType, binning: str,
+                             filter_name: str = None):
+        # get frames
+        infos = self._archive.list_frames(night=self._night, image_type=image_type, filter_name=filter_name,
+                                          instrument=instrument, binning=binning, rlevel=0)
+
+        # log it
+        fltr = '' if filter_name is None else ' in ' + filter_name
+        log.info('Found %d %s %s frames%s from instrument %s.',
+                 len(infos), binning, image_type.value, fltr, instrument)
+
+        # if too few, we're finished
+        if len(infos) < 3:
+            if len(infos) > 0:
+                log.warning('Too few (%d) frames found, skipping...', len(infos))
+            return None
+
+        # download frames
+        images = self._archive.download_frames(infos)
+        if len(images) < 3:
+            log.warning('Too few (%d) frames found, skipping...', len(infos))
+
+        # create master
+        if image_type == ImageType.BIAS:
+            # BIAS are easy, just combine
+            calib = self._pipeline.create_master_bias(images)
+
+            # store in cache
+            self._master_frames[ImageType.BIAS, instrument, binning, None] = calib
+
+        elif image_type == ImageType.DARK:
+            # for DARKs, we first need a BIAS
+            bias = self._find_master(ImageType.BIAS, instrument, binning, None)
+            if bias is None:
+                log.error('Could not find BIAS frame, skipping...')
+                return
+
+            # combine
+            calib = self._pipeline.create_master_dark(images, bias=bias)
+
+            # store in cache
+            self._master_frames[ImageType.DARK, instrument, binning, None] = calib
+
+        elif image_type == ImageType.SKYFLAT:
+            # got enough frames?
+            if len(images) < self._min_flats:
+                log.warning('Not enough flat fields found for combining.')
+                return
+
+            # for SKYFLATs, we first need a BIAS
+            bias = self._find_master(ImageType.BIAS, instrument, binning, None)
+            if bias is None:
+                log.error('Could not find BIAS frame, skipping...')
+                return
+
+            # combine
+            calib = self._pipeline.create_master_flat(images, bias=bias)
+
+            # store in cache
+            self._master_frames[ImageType.SKYFLAT, instrument, binning, filter_name] = calib
+
+        else:
+            raise ValueError('Invalid image type')
+
+        # filename
+        calib.format_filename(self._fmt_calib)
+
+        # upload
+        fname = calib.header['FNAME']
+        calib.writeto(f'data/{fname}.fits', overwrite=True)
+        #log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
+        #self._archive.upload_frames([calib])
+
+        # finished
+        return calib
 
     def _calib_data(self, instrument: str, binning: str, filter_name: str):
         # get all frames
@@ -115,95 +186,12 @@ class Night:
             image = self._archive.download_frames([info])[0]
 
             # calibrate
-            calibrated = self._science_pipeline.calibrate(image, bias, dark, flat)
+            calibrated = self._pipeline.calibrate(image, bias, dark, flat)
 
             # upload
-            self._archive.upload_frames([calibrated])
-
-    def _create_master_bias(self, images: List[Image]) -> Image:
-        return Image()
-
-    def _create_master_dark(self, images: List[Image], bias: Image) -> Image:
-        return Image()
-
-    def _create_master_flat(self, images: List[Image], bias: Image, dark: Image) -> Image:
-        return Image()
-
-
-    def _create_master_calib(self, instrument: str, image_type: ImageType, binning: str,
-                             filter_name: str = None):
-        # get frames
-        infos = self._archive.list_frames(night=self._night, image_type=image_type, filter_name=filter_name,
-                                          instrument=instrument, binning=binning, rlevel=0)
-
-        # log it
-        fltr = '' if filter_name is None else ' in ' + filter_name
-        log.info('Found %d %s %s frames%s from instrument %s.',
-                 len(infos), binning, image_type.value, fltr, instrument)
-
-        # if too few, we're finished
-        if len(infos) < 3:
-            if len(infos) > 0:
-                log.warning('Too few (%d) frames found, skipping...', len(infos))
-            return None
-
-        # download frames
-        images = self._archive.download_frames(infos)
-        if len(images) < 3:
-            log.warning('Too few (%d) frames found, skipping...', len(infos))
-
-        # create master
-        if image_type == ImageType.BIAS:
-            # BIAS are easy, just combine
-            calib = self._create_master_bias(images)
-
-            # store in cache
-            self._master_frames[ImageType.BIAS, instrument, binning, None] = calib
-
-        elif image_type == ImageType.DARK:
-            # for DARKs, we first need a BIAS
-            bias = self._find_master(ImageType.BIAS, instrument, binning, None)
-            if bias is None:
-                log.error('Could not find BIAS frame, skipping...')
-                return
-
-            # combine
-            calib = self._create_master_dark(images, bias=bias)
-
-            # store in cache
-            self._master_frames[ImageType.DARK, instrument, binning, None] = calib
-
-        elif image_type == ImageType.SKYFLAT:
-            # got enough frames?
-            if len(images) < self._flats_min_raw:
-                log.warning('Not enough flat fields found for combining.')
-                return
-
-            # for DARKs, we first ne a BIAS and a DARK
-            bias = self._find_master(ImageType.BIAS, instrument, binning, None)
-            dark = self._find_master(ImageType.DARK, instrument, binning, None)
-            if bias is None or dark is None:
-                log.error('Could not find BIAS/DARK frame, skipping...')
-                return
-
-            # combine
-            calib = self._create_master_flat(images, bias=bias, dark=dark)
-
-            # store in cache
-            self._master_frames[ImageType.SKYFLAT, instrument, binning, filter_name] = calib
-
-        else:
-            raise ValueError('Invalid image type')
-
-        # filename
-        calib.format_filename(self._fmt_calib)
-
-        # upload
-        log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
-        self._archive.upload_frames([calib])
-
-        # finished
-        return calib
+            #self._archive.upload_frames([calibrated])
+            fname = calibrated.header['FNAME']
+            calibrated.writeto(f'data/{fname}.fits', overwrite=True)
 
     def __call__(self):
         """Reduces all data im this night."""

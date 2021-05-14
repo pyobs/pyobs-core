@@ -1,3 +1,3 @@
 from .night import Night
 from .pipeline import Pipeline
-from .sciencecalib import ScienceCalibration
+from .astropy_ccdproc import ccdprocPipeline

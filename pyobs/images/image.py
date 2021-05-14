@@ -57,11 +57,11 @@ class Image:
         return image
 
     @classmethod
-    def from_ccddata(cls, image: CCDData) -> Image:
+    def from_ccddata(cls, data: CCDData) -> Image:
         # create image and assign data
-        image = Image(data=image.data, header=image.header)
-        image.mask = image.mask
-        image.uncertainty = image.uncertainty
+        image = Image(data=data.data, header=data.header)
+        image.mask = data.mask
+        image.uncertainty = data.uncertainty
         return image
 
     @classmethod
@@ -157,7 +157,7 @@ class Image:
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
-        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty)
+        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty, unit='adu')
 
     def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
         """Trim an image to TRIMSEC or BIASSEC.

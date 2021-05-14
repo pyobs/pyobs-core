@@ -47,6 +47,9 @@ class SoftBin(ImageProcessor):
             if key in img.header:
                 img.header[key] *= self.binning
 
+        # return result
+        return img
+
 
 __all__ = ['SoftBin']
 

@@ -62,13 +62,9 @@ class SepSourceDetection(SourceDetection):
         bkg.subfrom(data)
 
         # extract sources
-        try:
-            sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
-                                  deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
-                                  clean=self.clean, clean_param=self.clean_param, mask=mask)
-        except:
-            log.exception('An error has occured.')
-            return Table()
+        sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
+                              deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
+                              clean=self.clean, clean_param=self.clean_param, mask=mask)
 
         # convert to astropy table
         sources = Table(sources)

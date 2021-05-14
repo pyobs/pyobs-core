@@ -72,8 +72,8 @@ class Night:
 
         # try to download one
         midnight = Time(self._night + ' 23:59:59')
-        frame = CalibrationImage.find_master(image_type, self._archive, midnight, instrument, binning, filter_name,
-                                             max_days=max_days)
+        frame = Pipeline.find_master(image_type, self._archive, midnight, instrument, binning, filter_name,
+                                     max_days=max_days)
         if frame is not None:
             # download it
             calib = self._archive.download_frames([frame])[0]

@@ -8,10 +8,7 @@ from pyobs.object import get_object
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import FilenameFormatter
-from pyobs.images import Image
-from pyobs.images.processors.astrometry import Astrometry
-from pyobs.images.processors.photometry import Photometry
-from pyobs.images.processors.detection import SourceDetection
+from pyobs.images import Image, ImageProcessor
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -20,8 +17,7 @@ log = logging.getLogger(__name__)
 class Pipeline:
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, source_detection: Union[dict, SourceDetection] = None,
-                 photometry: Union[dict, Photometry] = None, astrometry: Union[dict, Astrometry] = None,
+    def __init__(self, steps: List[Union[dict, ImageProcessor]],
                  masks: Dict[str, Union[Image, str]] = None, filenames: str = None, *args, **kwargs):
         """Pipeline for science images.
 
@@ -35,9 +31,7 @@ class Pipeline:
         """
 
         # get objects
-        self._source_detection = None if source_detection is None else get_object(source_detection, SourceDetection)
-        self._photometry = None if photometry is None else get_object(photometry, Photometry)
-        self._astrometry = None if astrometry is None else get_object(astrometry, Astrometry)
+        self._steps = [get_object(s, ImageProcessor) for s in steps]
 
         # masks
         self._masks = {}
@@ -180,22 +174,9 @@ class Pipeline:
         if 'ORIGNAME' in image.header:
             calibrated.header['L1RAW'] = image.header['ORIGNAME']
 
-        # search stars and do photometry and astrometry
-        if self._source_detection is not None:
-            # find stars
-            self._source_detection(calibrated)
-
-            if self._photometry is not None:
-                # find stars
-                self._photometry(calibrated)
-
-                # do astrometry
-                if self._astrometry is not None:
-                    try:
-                        self._astrometry(calibrated)
-                    except ValueError:
-                        # error message comes from astrometry
-                        pass
+        # loop steps
+        for step in self._steps:
+            step(calibrated)
 
         # return calibrated image
         return calibrated

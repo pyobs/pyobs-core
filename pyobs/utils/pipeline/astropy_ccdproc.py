@@ -74,7 +74,7 @@ class ccdprocPipeline(Pipeline):
 
         # normalize?
         if normalize:
-            data = [d.divide(np.median(d.data)) for d in data]
+            data = [d.divide(np.median(d.data), handle_meta='first_found') for d in data]
 
         # combine image
         combined = ccdproc.combine(data, method=method,
@@ -84,11 +84,10 @@ class ccdprocPipeline(Pipeline):
 
         # normalize?
         if normalize:
-            combined = combined.divide(np.median(combined.data))
+            combined = combined.divide(np.median(combined.data), handle_meta='first_found')
 
         # to Image and copy header
         image = Image.from_ccddata(combined)
-        image.header = images[0].header.copy()
 
         # add history
         for i, src in enumerate(images, 1):
@@ -165,6 +164,7 @@ class ccdprocPipeline(Pipeline):
 
         # to image
         calibrated = Image.from_ccddata(calibrated)
+        calibrated.header['BUNIT'] = ('electron', 'Unit of pixel values')
 
         # add mask
         binning = '%dx%s' % (image.header['XBINNING'], image.header['YBINNING'])

@@ -176,7 +176,10 @@ class Pipeline:
 
         # loop steps
         for step in self._steps:
-            step(calibrated)
+            try:
+                calibrated = step(calibrated)
+            except Exception as e:
+                log.error(f'Could not run pipeline step {step}: {e}')
 
         # return calibrated image
         return calibrated

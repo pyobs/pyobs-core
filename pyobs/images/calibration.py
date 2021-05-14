@@ -55,12 +55,13 @@ class CalibrationImage(Image):
         # finished
         return img
 
-    @classmethod
-    def find_master(cls: Type['CalibrationImage'], archive: 'Archive', time: Time, instrument: str,
+    @staticmethod
+    def find_master(image_type: ImageType , archive: 'Archive', time: Time, instrument: str,
                     binning: str, filter_name: str = None, max_days: float = 30.) -> Union[None, FrameInfo]:
         """Find and download master calibration frame.
 
         Args:
+            image_type: Image type.
             archive: Archive to use for downloading frames.
             time: Time to search at.
             instrument: Instrument to use.
@@ -72,15 +73,7 @@ class CalibrationImage(Image):
             FrameInfo for master calibration frame or None.
         """
 
-        # get image type
-        from . import BiasImage, DarkImage, FlatImage
-        image_type = {
-            BiasImage: ImageType.BIAS,
-            DarkImage: ImageType.DARK,
-            FlatImage: ImageType.SKYFLAT
-        }[cls]
-
-        # find reduced frames from +- 30 days
+        # find reduced frames from +- N days
         log.info('Searching for %s %s master calibration frames%s from instrument %s.',
                  binning, image_type.value, '' if filter_name is None else ' in ' + filter_name, instrument)
         infos = archive.list_frames(start=time - max_days * u.day, end=time + max_days * u.day,

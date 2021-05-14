@@ -36,14 +36,14 @@ class SepSourceDetection(SourceDetection):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
             image: Image to find stars in.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         import sep
 
@@ -113,11 +113,10 @@ class SepSourceDetection(SourceDetection):
         # pick columns for catalog
         cat = sources['x', 'y', 'flux', 'fluxerr', 'peak', 'fwhm', 'a', 'b', 'theta', 'kronrad', 'ellipticity']
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['SepSourceDetection']

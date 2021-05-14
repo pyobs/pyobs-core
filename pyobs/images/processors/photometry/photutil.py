@@ -37,14 +37,14 @@ class PhotUtilsPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
 
         # no pixel scale given?
@@ -90,11 +90,10 @@ class PhotUtilsPhotometry(Photometry):
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
             sources['bkgaper%d' % diameter] = bkg_median
 
-        # set catalog
-        image.catalog = sources
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = sources
+        return img
 
 
 __all__ = ['PhotUtilsPhotometry']

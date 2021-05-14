@@ -11,14 +11,18 @@ class ExpTimeEstimator(ImageProcessor):
     """Estimate exposure time."""
     __module__ = 'pyobs.images.processors.exptime'
 
-    def __call__(self, image: Image) -> float:
-        """Processes an image and returns a new best exposure time in seconds.
+    def __init__(self, *args, **kwargs):
+        ExpTimeEstimator.__init__(self, *args, **kwargs)
+        self.exp_time = None
+
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and stores new exposure time in exp_time attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            New best exposure time in seconds.
+            Original image.
         """
         raise NotImplementedError
 

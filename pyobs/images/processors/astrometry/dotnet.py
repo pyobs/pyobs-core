@@ -21,7 +21,7 @@ class AstrometryDotNet(Astrometry):
         self.source_count = source_count
         self.radius = radius
 
-    def __call__(self, image: Image):
+    def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
 
         Writes WCSERR=1 into FITS header on failure.
@@ -33,32 +33,35 @@ class AstrometryDotNet(Astrometry):
         # get catalog
         cat = image.catalog
 
+        # copy image
+        img = image.copy()
+
         # nothing?
         if cat is None or len(cat) < 3:
             log.warning('Not enough sources for astrometry.')
-            image.header['WCSERR'] = 1
-            return
+            img.header['WCSERR'] = 1
+            return img
 
         # sort it and take N brightest sources
         cat.sort(['flux'], reverse=True)
         cat = cat[:self.source_count]
 
         # no CDELT1?
-        if 'CDELT1' not in image.header:
+        if 'CDELT1' not in img.header:
             log.warning('No CDELT1 found in header.')
-            image.header['WCSERR'] = 1
-            return
+            img.header['WCSERR'] = 1
+            return img
 
         # build request data
-        scale = abs(image.header['CDELT1']) * 3600
+        scale = abs(img.header['CDELT1']) * 3600
         data = {
-            'ra': image.header['TEL-RA'],
-            'dec': image.header['TEL-DEC'],
+            'ra': img.header['TEL-RA'],
+            'dec': img.header['TEL-DEC'],
             'scale_low': scale * 0.9,
             'scale_high': scale * 1.1,
             'radius': self.radius,
-            'nx': image.header['NAXIS1'],
-            'ny': image.header['NAXIS2'],
+            'nx': img.header['NAXIS1'],
+            'ny': img.header['NAXIS2'],
             'x': cat['x'].tolist(),
             'y': cat['y'].tolist(),
             'flux': cat['flux'].tolist()
@@ -66,7 +69,7 @@ class AstrometryDotNet(Astrometry):
 
         # log it
         ra_dec = SkyCoord(ra=data['ra'] * u.deg, dec=data['dec'] * u.deg, frame='icrs')
-        cx, cy = image.header['CRPIX1'], image.header['CRPIX2']
+        cx, cy = img.header['CRPIX1'], img.header['CRPIX2']
         log.info('Found original RA=%s (%.4f), Dec=%s (%.4f) at pixel %.2f,%.2f.',
                  ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), data['ra'],
                  ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), data['dec'],
@@ -78,7 +81,7 @@ class AstrometryDotNet(Astrometry):
         # success?
         if r.status_code != 200 or 'error' in r.json():
             # set error
-            image.header['WCSERR'] = 1
+            img.header['WCSERR'] = 1
             if 'error' in r.json():
                 # "Could not find WCS file." is just an info, which means that WCS was not successful
                 if r.json()['error'] == 'Could not find WCS file.':
@@ -87,7 +90,7 @@ class AstrometryDotNet(Astrometry):
                     log.warning('Received error from astrometry service: %s', r.json()['error'])
             else:
                 log.error('Could not connect to astrometry service.')
-            return
+            return img
 
         else:
             # copy keywords
@@ -95,19 +98,19 @@ class AstrometryDotNet(Astrometry):
             header_keywords_to_update = ['CTYPE1', 'CTYPE2', 'CRPIX1', 'CRPIX2', 'CRVAL1',
                                          'CRVAL2', 'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
             for keyword in header_keywords_to_update:
-                image.header[keyword] = hdr[keyword]
+                img.header[keyword] = hdr[keyword]
 
             # astrometry.net gives a CD matrix, so we have to delete the PC matrix and the CDELT* parameters
             for keyword in ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2', 'CDELT1', 'CDELT2']:
-                del image.header[keyword]
+                del img.header[keyword]
 
             # calculate world coordinates for all sources in catalog
-            image_wcs = WCS(image.header)
-            ras, decs = image_wcs.all_pix2world(image.catalog['x'], image.catalog['y'], 1)
+            image_wcs = WCS(img.header)
+            ras, decs = image_wcs.all_pix2world(img.catalog['x'], img.catalog['y'], 1)
 
             # set them
-            image.catalog['ra'] = ras
-            image.catalog['dec'] = decs
+            img.catalog['ra'] = ras
+            img.catalog['dec'] = decs
 
             # RA/Dec at center pos
             final_ra, final_dec = image_wcs.all_pix2world(cx, cy, 0)
@@ -120,7 +123,7 @@ class AstrometryDotNet(Astrometry):
                      cx, cy)
 
             # success
-            image.header['WCSERR'] = 0
+            img.header['WCSERR'] = 0
 
 
 __all__ = ['AstrometryDotNet']

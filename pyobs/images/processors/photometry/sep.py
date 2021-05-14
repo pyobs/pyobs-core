@@ -38,14 +38,14 @@ class SepPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         import sep
 
@@ -124,11 +124,10 @@ class SepPhotometry(Photometry):
                        'fluxrad25', 'fluxrad50', 'fluxrad75']
         cat = sources[image.catalog.colnames + new_columns]
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['SepPhotometry']

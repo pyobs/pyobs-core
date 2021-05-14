@@ -34,14 +34,14 @@ class DaophotSourceDetection(SourceDetection):
         self.bkg_box_size = bkg_box_size
         self.bkg_filter_size = bkg_filter_size
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
             image: Image to find stars in.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         from astropy.stats import SigmaClip, sigma_clipped_stats
         from photutils import Background2D, MedianBackground, DAOStarFinder
@@ -77,11 +77,10 @@ class DaophotSourceDetection(SourceDetection):
         # pick columns for catalog
         cat = sources['x', 'y', 'flux', 'peak']
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['DaophotSourceDetection']

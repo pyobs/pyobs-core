@@ -20,6 +20,7 @@ class ProjectedOffsets(Offsets):
 
     def __init__(self, *args, **kwargs):
         """Initializes a new auto guiding system."""
+        Offsets.__init__(self, *args, **kwargs)
         self._ref_image = None
         self._pid_ra = None
         self._pid_dec = None
@@ -29,14 +30,14 @@ class ProjectedOffsets(Offsets):
         log.info('Reset auto-guiding.')
         self._ref_image = None
 
-    def __call__(self, image: Image) -> Tuple[float, float]:
-        """Processes an image and return x/y pixel offset to reference.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            x/y pixel offset to reference.
+            Original image.
 
         Raises:
             ValueError: If offset could not be found.
@@ -47,7 +48,8 @@ class ProjectedOffsets(Offsets):
             log.info('Initialising auto-guiding with new image...')
             self._ref_image = self._process(image)
             self._init_pid()
-            return 0, 0
+            self.offset = (0, 0)
+            return image
 
         # process it
         log.info('Perform auto-guiding on new image...')
@@ -56,7 +58,8 @@ class ProjectedOffsets(Offsets):
         # find peaks and return them
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
-        return dx, dy
+        self.offset = (dx, dy)
+        return image
 
     def _process(self, image: Image) -> Tuple[np.array, np.array]:
         """Project image along x and y axes and return results.

@@ -6,7 +6,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
 
 
 class Image:
@@ -59,9 +59,9 @@ class Image:
     @classmethod
     def from_ccddata(cls, data: CCDData) -> Image:
         # create image and assign data
-        image = Image(data=data.data, header=data.header)
+        image = Image(data=data.data.astype(np.float32), header=data.header)
         image.mask = data.mask
-        image.uncertainty = data.uncertainty
+        image.uncertainty = None if data.uncertainty is None else data.uncertainty.array.astype(np.float32)
         return image
 
     @classmethod
@@ -157,7 +157,11 @@ class Image:
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
-        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty, unit='adu')
+        return CCDData(data=self.data,
+                       header=self.header,
+                       mask=self.mask,
+                       uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
+                       unit='adu')
 
     def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
         """Trim an image to TRIMSEC or BIASSEC.

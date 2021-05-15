@@ -63,8 +63,7 @@ class NStarOffsets(Offsets):
         """
 
         # remove background
-        bkg = RemoveBackground()
-        image = bkg(image)
+        image = RemoveBackground()(image)
 
         # no reference image?
         if self.ref_boxes is None:
@@ -113,6 +112,8 @@ class NStarOffsets(Offsets):
         Raises:
             ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in filtered list of sources
         """
+
+        # do photometry and get catalog
         detection = SepSourceDetection()
         photometry = SepPhotometry()
         sources = self.convert_from_fits_to_numpy_index_convention(photometry(detection(image)).catalog)

@@ -51,11 +51,6 @@ class PhotUtilsPhotometry(Photometry):
         if image.pixel_scale is None:
             raise ValueError('No pixel scale provided by image.')
 
-        # get data and mask
-        data = image.data.astype(np.float).copy()
-        mask = image.mask.data if image.mask is not None else None
-        uncertainty = image.uncertainty
-
         # fetch catalog
         sources = image.catalog.copy()
 
@@ -77,13 +72,13 @@ class PhotUtilsPhotometry(Photometry):
             # loop annuli
             bkg_median = []
             for m in annulus_masks:
-                annulus_data = m.multiply(data)
+                annulus_data = m.multiply(image.data)
                 annulus_data_1d = annulus_data[m.data > 0]
                 _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = aperture_photometry(data, aperture, mask=mask, error=uncertainty)
+            phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
 
             # calc flux
             bkg_median = np.array(bkg_median)

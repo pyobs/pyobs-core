@@ -18,8 +18,7 @@ log = logging.getLogger(__name__)
 class Pipeline:
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: List[Union[dict, ImageProcessor]],
-                 masks: Dict[str, Union[np.ndarray, str]] = None, filenames: str = None, *args, **kwargs):
+    def __init__(self, steps: List[Union[dict, ImageProcessor]], filenames: str = None, *args, **kwargs):
         """Pipeline for science images.
 
         Args:
@@ -33,17 +32,6 @@ class Pipeline:
 
         # get objects
         self._steps = [get_object(s, ImageProcessor) for s in steps]
-
-        # masks
-        self._masks = {}
-        if masks is not None:
-            for binning, mask in masks.items():
-                if isinstance(mask, np.ndarray):
-                    self._masks[binning] = mask
-                elif isinstance(mask, str):
-                    self._masks[binning] = fits.getdata(mask)
-                else:
-                    raise ValueError('Unknown mask format.')
 
         # default filename patterns
         if filenames is None:
@@ -150,13 +138,6 @@ class Pipeline:
                 calibrated = step(calibrated)
             except Exception as e:
                 log.exception(f'Could not run pipeline step {step.__class__.__name__}: {e}')
-
-        # add mask
-        binning = '%dx%s' % (image.header['XBINNING'], image.header['YBINNING'])
-        if binning in self._masks:
-            calibrated.mask = self._masks[binning].copy()
-        else:
-            log.warning('No mask found for binning of frame.')
 
         # set (raw) filename
         calibrated.format_filename(self._formatter)

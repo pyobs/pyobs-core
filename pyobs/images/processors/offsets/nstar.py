@@ -6,9 +6,11 @@ from astropy.nddata import NDData
 from astropy.table import Table, Column
 import photutils
 
+from pyobs.images import Image
+from pyobs.images.processors.detection import SepSourceDetection
+from pyobs.images.processors.photometry import SepPhotometry
 from . import Offsets
-from ..photometry import SepPhotometry
-from ... import Image
+
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class NStarOffset(Offsets):
+class NStarOffsets(Offsets):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
     def __init__(self, num_stars: int = 1, max_expected_offset_in_arcsec: float = 4,
@@ -110,8 +112,9 @@ class NStarOffset(Offsets):
         Raises:
             ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in filtered list of sources
         """
-        sep = SepPhotometry()
-        sources = self.convert_from_fits_to_numpy_index_convention(sep(image).catalog)
+        detection = SepSourceDetection()
+        photometry = SepPhotometry()
+        sources = self.convert_from_fits_to_numpy_index_convention(photometry(detection(image)).catalog)
 
         # filter sources
         sources = self.remove_sources_close_to_border(
@@ -143,14 +146,9 @@ class NStarOffset(Offsets):
 
     @staticmethod
     def convert_from_fits_to_numpy_index_convention(sources: Table) -> Table:
-        sources["x"] -= 1
-        sources["y"] -= 1
-        sources["xmin"] -= 1
-        sources["xmax"] -= 1
-        sources["ymin"] -= 1
-        sources["ymax"] -= 1
-        sources["xpeak"] -= 1
-        sources["ypeak"] -= 1
+        for k in ['x', 'y', 'xmin', 'xmax', 'ymin', 'ymax', 'xpeak', 'ypeak']:
+            if k in sources:
+                sources[k] -= 1
         return sources
 
     @staticmethod
@@ -339,4 +337,4 @@ class NStarOffset(Offsets):
             )
 
 
-__all__ = ["NStarOffset"]
+__all__ = ["NStarOffsets"]

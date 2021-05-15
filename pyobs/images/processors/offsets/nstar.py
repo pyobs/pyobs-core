@@ -129,17 +129,13 @@ class NStarOffset(Offsets):
             stars = photutils.psf.extract_stars(NDData(image.data), single_source_catalog, size=self.star_box_size)
             boxed_star_image = stars.all_stars[0].data
 
-            box_dimensions.append(
-                [
-                    stars.all_stars[0].origin[1],
-                    stars.all_stars[0].origin[1] + boxed_star_image.shape[0],
-                    stars.all_stars[0].origin[0],
-                    stars.all_stars[0].origin[0] + boxed_star_image.shape[1],
-                ]
-            )
+            box_dimensions.append([stars.all_stars[0].origin[1],
+                                   stars.all_stars[0].origin[1] + boxed_star_image.shape[0],
+                                   stars.all_stars[0].origin[0],
+                                   stars.all_stars[0].origin[0] + boxed_star_image.shape[1]])
 
             boxed_star_image = image.data[box_dimensions[-1][0]: box_dimensions[-1][1],
-                               box_dimensions[-1][2]: box_dimensions[-1][3]]
+                                          box_dimensions[-1][2]: box_dimensions[-1][3]]
 
             boxed_images.append(boxed_star_image)
 
@@ -157,7 +153,8 @@ class NStarOffset(Offsets):
         sources["ypeak"] -= 1
         return sources
 
-    def remove_sources_close_to_border(self, sources: Table, image_shape: tuple,
+    @staticmethod
+    def remove_sources_close_to_border(sources: Table, image_shape: tuple,
                                        min_distance_from_border_in_pixels) -> Table:
         """Remove table rows from sources when closer than min_distance_from_border_in_pixels from border of image."""
         width, height = image_shape
@@ -180,8 +177,8 @@ class NStarOffset(Offsets):
         sources_result = sources[np.where(sources["min_distance_from_border"] > min_distance_from_border_in_pixels)]
         return sources_result
 
-    def remove_bad_sources(self, sources: Table, MAX_ELLIPTICITY=0.4,
-                           MIN_FACTOR_ABOVE_LOCAL_BACKGROUND: float = 1.5) -> Table:
+    def remove_bad_sources(self, sources: Table, max_ellipticity=0.4,
+                           min_factor_above_local_background: float = 1.5) -> Table:
 
         # remove small sources
         sources = sources[np.where(sources['tnpix'] >= self.min_pixels_above_threshold_per_source)]
@@ -193,7 +190,7 @@ class NStarOffset(Offsets):
 
         # remove highly elliptic sources
         sources.sort("ellipticity")
-        sources = sources[np.where(sources["ellipticity"] <= MAX_ELLIPTICITY)]
+        sources = sources[np.where(sources["ellipticity"] <= max_ellipticity)]
 
         # remove sources with background <= 0
         sources = sources[np.where(sources["background"] > 0)]
@@ -201,7 +198,7 @@ class NStarOffset(Offsets):
         # remove sources with low contrast to background
         sources = sources[
             np.where(
-                (sources["peak"] + sources["background"]) / sources["background"] > MIN_FACTOR_ABOVE_LOCAL_BACKGROUND
+                (sources["peak"] + sources["background"]) / sources["background"] > min_factor_above_local_background
             )
         ]
         return sources
@@ -260,7 +257,7 @@ class NStarOffset(Offsets):
     def gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):
         return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
 
-    def calculate_offset_from_2d_correlation(self, corr):
+    def calculate_offset_from_2d_correlation(self, corr) -> Tuple[float, float]:
         """Fit 2d correlation data with a 2d gaussian + constant offset.
         raise CorrelationMaxCloseToBorderError if the correlation maximum is not well separated from border."""
         # calc positions corresponding to the values in the correlation
@@ -307,34 +304,33 @@ class NStarOffset(Offsets):
             # if fit fails return max pixel
             log.info(e)
             log.info("Returning pixel position with maximal value in correlation.")
-            offset = np.unravel_index(np.argmax(corr), corr.shape)
-            return offset
+            return tuple(np.unravel_index(np.argmax(corr), corr.shape))
 
-        MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD = 1e-2
+        median_squared_relative_residue_threshold = 1e-2
         fit_ydata_restricted = self.gauss2d(xdata_restricted, *popt)
         square_rel_res = np.square(
             (fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted
         )
         median_squared_rel_res = np.median(np.square(square_rel_res))
 
-        if median_squared_rel_res > MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD:
+        if median_squared_rel_res > median_squared_relative_residue_threshold:
             raise Exception(
                 f"Bad fit with median squared relative residue = {median_squared_rel_res}"
-                f" vs allowed value of {MEDIAN_SQUARED_RELATIVE_RESIDUE_THRESHOLD}"
+                f" vs allowed value of {median_squared_relative_residue_threshold}"
             )
 
-        return (popt[2], popt[3])
+        return popt[2], popt[3]
 
-    def check_if_correlation_max_is_close_to_border(self, corr):
+    @staticmethod
+    def check_if_correlation_max_is_close_to_border(corr):
         corr_size = corr.shape[0]
 
         xs = np.arange(-corr.shape[0] / 2, corr.shape[0] / 2) + 0.5
         ys = np.arange(-corr.shape[1] / 2, corr.shape[1] / 2) + 0.5
-
-        X, Y = np.meshgrid(xs, ys)
+        x, y = np.meshgrid(xs, ys)
 
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
-        x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
+        x0, y0 = x[tuple(max_index)], y[tuple(max_index)]
 
         if x0 < -corr_size / 4 or x0 > corr_size / 4 or y0 < -corr_size / 4 or y0 > corr_size / 4:
             raise CorrelationMaxCloseToBorderError(

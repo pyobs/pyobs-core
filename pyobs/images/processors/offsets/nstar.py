@@ -212,7 +212,6 @@ class NStarOffsets(Offsets):
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
     def calculate_offset(self, current_image: Image) -> Tuple:
-        print('calc', self.ref_boxes)
         # calculate offset for each star
         offsets = []
         for box in self.ref_boxes:

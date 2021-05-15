@@ -139,7 +139,7 @@ class Image:
 
         # mask?
         if self.mask is not None:
-            hdu = ImageHDU(self.mask.data.astype(np.uint8))
+            hdu = ImageHDU(self.mask.astype(np.uint8))
             hdu.name = 'MASK'
             hdu_list.append(hdu)
 
@@ -163,7 +163,7 @@ class Image:
         """Convert Image to CCDData"""
         return CCDData(data=self.data,
                        meta=self.header,
-                       mask=None if self.mask is None else self.mask.data,
+                       mask=None if self.mask is None else self.mask,
                        uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
                        unit='adu')
 

@@ -3,6 +3,7 @@ from typing import Union, Dict, List, Optional
 import ccdproc
 import numpy as np
 import astropy.units as u
+from astropy.io import fits
 
 from pyobs.object import get_object
 from pyobs.utils.archive import Archive
@@ -18,7 +19,7 @@ class Pipeline:
     """Pipeline based on the astropy package ccdproc."""
 
     def __init__(self, steps: List[Union[dict, ImageProcessor]],
-                 masks: Dict[str, Union[Image, str]] = None, filenames: str = None, *args, **kwargs):
+                 masks: Dict[str, Union[np.ndarray, str]] = None, filenames: str = None, *args, **kwargs):
         """Pipeline for science images.
 
         Args:
@@ -37,10 +38,10 @@ class Pipeline:
         self._masks = {}
         if masks is not None:
             for binning, mask in masks.items():
-                if isinstance(mask, Image):
+                if isinstance(mask, np.ndarray):
                     self._masks[binning] = mask
                 elif isinstance(mask, str):
-                    self._masks[binning] = Image.from_file(mask)
+                    self._masks[binning] = fits.getdata(mask)
                 else:
                     raise ValueError('Unknown mask format.')
 

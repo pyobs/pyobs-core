@@ -112,11 +112,13 @@ class Image:
     def unit(self):
         return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
 
-
     def copy(self):
         img = Image()
         img.data = self.data.copy()
-        img.header = self.header
+        img.header = self.header.copy()
+        img.mask = None if self.mask is None else self.mask.copy()
+        img.uncertainty = None if self.uncertainty is None else self.uncertainty.copy()
+        img.catalog = None if self.catalog is None else self.catalog.copy()
         return img
 
     def __truediv__(self, other):

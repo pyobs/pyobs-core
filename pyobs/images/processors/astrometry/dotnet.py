@@ -125,5 +125,8 @@ class AstrometryDotNet(Astrometry):
             # success
             img.header['WCSERR'] = 0
 
+        # finished
+        return img
+
 
 __all__ = ['AstrometryDotNet']

@@ -203,15 +203,15 @@ class Night:
             # loop binnings
             for binning in options['binnings']:
                 # create bias
-                #self._create_master_calib(instrument, ImageType.BIAS, binning)
+                self._create_master_calib(instrument, ImageType.BIAS, binning)
 
                 # create dark
-                #self._create_master_calib(instrument, ImageType.DARK, binning)
+                self._create_master_calib(instrument, ImageType.DARK, binning)
 
                 # loop filters
                 for filter_name in options['filters']:
                     # create flat
-                    #self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
+                    self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
 
                     # calibrate science data
                     self._calib_data(instrument, binning, filter_name)

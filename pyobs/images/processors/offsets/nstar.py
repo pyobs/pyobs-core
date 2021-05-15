@@ -249,9 +249,7 @@ class NStarOffsets(Offsets):
         """Fit 2d correlation data with a 2d gaussian + constant offset.
         raise CorrelationMaxCloseToBorderError if the correlation maximum is not well separated from border."""
         # calc positions corresponding to the values in the correlation
-        xs = np.arange(-corr.shape[0] / 2, corr.shape[0] / 2) + 0.5
-        ys = np.arange(-corr.shape[1] / 2, corr.shape[1] / 2) + 0.5
-        x, y = np.meshgrid(xs, ys)
+        x, y = NStarOffsets.corr_grid(corr)
 
         # format data as needed by R^2 -> R curve_fit
         xdata = np.vstack((x.ravel(), y.ravel()))
@@ -311,12 +309,15 @@ class NStarOffsets(Offsets):
         return popt[2], popt[3]
 
     @staticmethod
-    def check_if_correlation_max_is_close_to_border(corr):
-        corr_size = corr.shape[0]
-
+    def corr_grid(corr):
         xs = np.arange(-corr.shape[0] / 2, corr.shape[0] / 2) + 0.5
         ys = np.arange(-corr.shape[1] / 2, corr.shape[1] / 2) + 0.5
-        x, y = np.meshgrid(xs, ys)
+        return np.meshgrid(xs, ys)
+
+    @staticmethod
+    def check_if_correlation_max_is_close_to_border(corr):
+        corr_size = corr.shape[0]
+        x, y = NStarOffsets.corr_grid(corr)
 
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
         x0, y0 = x[tuple(max_index)], y[tuple(max_index)]

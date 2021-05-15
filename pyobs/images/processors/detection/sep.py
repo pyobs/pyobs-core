@@ -36,39 +36,32 @@ class SepSourceDetection(SourceDetection):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
             image: Image to find stars in.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         import sep
 
         # get data and make it continuous
         data = image.data.astype(np.float)
 
-        # mask?
-        mask = image.mask.data if image.mask is not None else None
-
         # estimate background, probably we need to byte swap, and subtract it
         try:
-            bkg = sep.Background(data, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
         except ValueError as e:
             data = data.byteswap(True).newbyteorder()
-            bkg = sep.Background(data, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
         bkg.subfrom(data)
 
         # extract sources
-        try:
-            sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
-                                  deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
-                                  clean=self.clean, clean_param=self.clean_param, mask=mask)
-        except:
-            log.exception('An error has occured.')
-            return Table()
+        sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
+                              deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
+                              clean=self.clean, clean_param=self.clean_param, mask=image.mask)
 
         # convert to astropy table
         sources = Table(sources)
@@ -94,7 +87,7 @@ class SepSourceDetection(SourceDetection):
 
         # equivalent of FLUX_AUTO
         flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
-                                              sources['theta'], 2.5 * kronrad, subpix=1, mask=mask,
+                                              sources['theta'], 2.5 * kronrad, subpix=1, mask=image.mask,
                                               err=bkg.rms(), gain=gain)
         sources['flag'] |= flag
         sources['flux'] = flux
@@ -113,11 +106,10 @@ class SepSourceDetection(SourceDetection):
         # pick columns for catalog
         cat = sources['x', 'y', 'flux', 'fluxerr', 'peak', 'fwhm', 'a', 'b', 'theta', 'kronrad', 'ellipticity']
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['SepSourceDetection']

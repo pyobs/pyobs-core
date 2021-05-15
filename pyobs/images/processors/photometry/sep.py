@@ -38,29 +38,26 @@ class SepPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         import sep
 
         # get data and make it continuous
         data = image.data.astype(np.float)
 
-        # mask?
-        mask = image.mask.data if image.mask is not None else None
-
         # estimate background, probably we need to byte swap, and subtract it
         try:
-            bkg = sep.Background(data, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
         except ValueError as e:
             data = data.byteswap(True).newbyteorder()
-            bkg = sep.Background(data, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
         bkg.subfrom(data)
 
         # fetch catalog
@@ -124,11 +121,10 @@ class SepPhotometry(Photometry):
                        'fluxrad25', 'fluxrad50', 'fluxrad75']
         cat = sources[image.catalog.colnames + new_columns]
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['SepPhotometry']

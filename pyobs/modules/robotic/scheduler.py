@@ -58,8 +58,9 @@ class Scheduler(Module, IStoppable, IRunnable):
         # time to start next schedule from
         self._schedule_start = None
 
-        # ID of currently running task
+        # ID of currently running task, and current (or last if finished) block
         self._current_task_id = None
+        self._last_task_id = None
 
         # blocks
         self._blocks: List[ObservingBlock] = []
@@ -123,7 +124,11 @@ class Scheduler(Module, IStoppable, IRunnable):
                     self._need_update = False
 
                 # has only the current block been removed?
-                if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._current_task_id:
+                log.info('Removed: %d, added: %d', len(removed), len(added))
+                if len(removed) == 1:
+                    log.info('Found 1 removed block with ID %d. Last task ID was %s, current is %s.',
+                             removed[0].target.name, str(self._last_task_id), str(self._current_task_id))
+                if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._last_task_id:
                     # no need to re-schedule
                     log.info('Only one removed block detected, which is the one currently running.')
                     self._need_update = False
@@ -333,6 +338,7 @@ class Scheduler(Module, IStoppable, IRunnable):
             self._need_update = True
             self._schedule_start = event.eta
             self._current_task_id = event.id
+            self._last_task_id = event.id
 
     def _on_task_finished(self, event: TaskFinishedEvent, sender: str, *args, **kwargs):
         """Reset current task, when it has finished.

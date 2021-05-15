@@ -37,23 +37,19 @@ class PhotUtilsPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
 
         # no pixel scale given?
         if image.pixel_scale is None:
             raise ValueError('No pixel scale provided by image.')
-
-        # get data and mask
-        data = image.data.astype(np.float).copy()
-        mask = image.mask.data if image.mask is not None else None
 
         # fetch catalog
         sources = image.catalog.copy()
@@ -76,25 +72,25 @@ class PhotUtilsPhotometry(Photometry):
             # loop annuli
             bkg_median = []
             for m in annulus_masks:
-                annulus_data = m.multiply(data)
+                annulus_data = m.multiply(image.data)
                 annulus_data_1d = annulus_data[m.data > 0]
                 _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = aperture_photometry(data, aperture, mask=mask)
+            phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
 
             # calc flux
             bkg_median = np.array(bkg_median)
             aper_bkg = bkg_median * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
+            sources['fluerr%d' % diameter] = phot['aperture_sum_err']
             sources['bkgaper%d' % diameter] = bkg_median
 
-        # set catalog
-        image.catalog = sources
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = sources
+        return img
 
 
 __all__ = ['PhotUtilsPhotometry']

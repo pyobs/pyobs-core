@@ -10,7 +10,7 @@ from pyobs.images import Image
 from pyobs.images.processors.detection import SepSourceDetection
 from pyobs.images.processors.photometry import SepPhotometry
 from . import Offsets
-
+from ..misc.removebackground import RemoveBackground
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,10 @@ class NStarOffsets(Offsets):
             ValueError: If offset could not be found.
         """
 
+        # remove background
+        bkg = RemoveBackground()
+        image = bkg(image)
+
         # no reference image?
         if self.ref_boxes is None:
             log.info("Initialising auto-guiding with new image...")
@@ -76,7 +80,6 @@ class NStarOffsets(Offsets):
             # initialize reference image information: dimensions & position of boxes, box images
             try:
                 self.ref_boxes = self._create_star_boxes_from_ref_image(image)
-                print(self.ref_boxes[0].origin, self.ref_boxes[0].data.shape)
             except ValueError as e:
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()

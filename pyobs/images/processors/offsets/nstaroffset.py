@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 import numpy as np
 from scipy import signal, optimize
 from astropy.nddata import NDData
@@ -19,12 +20,13 @@ class CorrelationMaxCloseToBorderError(Exception):
 class NStarOffset(Offsets):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
-    def __init__(self, N_stars=1, max_expected_offset_in_arcsec=4, min_pixels_above_threshold_per_source=3,
-                 min_required_sources_in_image=1, *args, **kwargs):
+    def __init__(self, num_stars: int = 1, max_expected_offset_in_arcsec: float = 4,
+                 min_pixels_above_threshold_per_source: int = 3, min_required_sources_in_image: int = 1,
+                 *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:
-            N_stars: maximum number of stars to use to calculate offset from boxes around them
+            num_stars: maximum number of stars to use to calculate offset from boxes around them
             max_expected_offset_in_arcsec: the maximal expected offset in arc seconds. Determines the size of boxes
                 around stars.
             min_pixels_above_threshold_per_source: minimum required number of pixels above threshold for source to be
@@ -32,16 +34,13 @@ class NStarOffset(Offsets):
         """
         Offsets.__init__(self, *args, **kwargs)
 
-        log.info(f"Initializing NStarSurroundingsOffset with N_starts={N_stars}.")
-        self.N_stars = N_stars
+        # store
+        self.num_stars = num_stars
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self.min_pixels_above_threshold_per_source = min_pixels_above_threshold_per_source
-
         self.min_required_sources_in_image = min_required_sources_in_image
-
         self._ref_box_dimensions = None
         self._ref_boxed_images = None
-
         self.star_box_size = None
 
     def reset(self):
@@ -76,19 +75,14 @@ class NStarOffset(Offsets):
 
             # initialize reference image information: dimensions & position of boxes, box images
             try:
-                (
-                    self._ref_box_dimensions,
-                    self._ref_boxed_images,
-                ) = self._create_star_boxes_from_ref_image(image)
+                self._ref_box_dimensions, self._ref_boxed_images = self._create_star_boxes_from_ref_image(image)
             except ValueError as e:
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
                 self.offset = None, None
                 return image
 
-            log.info(
-                f"Reference image star box dimensions are {self._ref_box_dimensions}"
-            )
+            log.info(f"Reference image star box dimensions are {self._ref_box_dimensions}")
             self.offset = 0, 0
             return image
 
@@ -100,10 +94,7 @@ class NStarOffset(Offsets):
     @staticmethod
     def get_star_box_size_from_max_expected_offset(max_expected_offset_in_arcsec, pixel_scale):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
-        star_box_size = int(
-            4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20
-        )
-        return star_box_size
+        return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
     def _create_star_boxes_from_ref_image(self, image: Image) -> (list, list):
         """Calculate the boxes around self.N_stars best sources in the image.
@@ -128,7 +119,7 @@ class NStarOffset(Offsets):
         )
         sources = self.remove_bad_sources(sources)
         self.check_if_enough_sources_in_image(sources)
-        selected_sources = self.select_top_N_brightest_sources(self.N_stars, sources)
+        selected_sources = self.select_top_n_brightest_sources(self.num_stars, sources)
 
         # find positions & dimensions of boxes around the stars, and the corresponding box images
         box_dimensions, boxed_images = [], []
@@ -216,11 +207,11 @@ class NStarOffset(Offsets):
         return sources
 
     @staticmethod
-    def select_top_N_brightest_sources(N_stars: int, sources: Table):
+    def select_top_n_brightest_sources(num_stars: int, sources: Table):
         sources.sort("flux")
         sources.reverse()
-        if 0 < N_stars < len(sources):
-            sources = sources[:N_stars]
+        if 0 < num_stars < len(sources):
+            sources = sources[:num_stars]
         return sources
 
     def check_if_enough_sources_in_image(self, sources: Table):
@@ -240,8 +231,7 @@ class NStarOffset(Offsets):
         if len(sources) < n_required_sources:
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
-    def calculate_offset(self, current_image: Image) -> tuple:
-
+    def calculate_offset(self, current_image: Image) -> Tuple:
         # calculate offset for each star
         offsets = []
         for ref_box_dimension, ref_boxed_image in zip(self._ref_box_dimensions, self._ref_boxed_images):
@@ -258,7 +248,7 @@ class NStarOffset(Offsets):
                 pass
 
         if len(offsets) == 0:
-            log.info(f"All {self.N_stars} fits on boxed star correlations failed.")
+            log.info(f"All {self.num_stars} fits on boxed star correlations failed.")
             return None, None
         offsets = np.array(offsets)
 
@@ -346,12 +336,7 @@ class NStarOffset(Offsets):
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
         x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
 
-        if (
-                x0 < -corr_size / 4
-                or x0 > corr_size / 4
-                or y0 < -corr_size / 4
-                or y0 > corr_size / 4
-        ):
+        if x0 < -corr_size / 4 or x0 > corr_size / 4 or y0 < -corr_size / 4 or y0 > corr_size / 4:
             raise CorrelationMaxCloseToBorderError(
                 "Maximum of correlation is outside center half of axes. "
                 "This means that either the given image data is bad, or the offset is larger than expected."

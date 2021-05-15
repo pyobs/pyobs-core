@@ -165,19 +165,6 @@ class Night:
             return
         log.info('Calibrating %d OBJECT frames...', len(infos))
 
-        # get calibration frames
-        bias = self._find_master(ImageType.BIAS, instrument, binning)
-        dark = self._find_master(ImageType.DARK, instrument, binning)
-        flat = self._find_master(ImageType.SKYFLAT, instrument, binning, filter_name, max_days=90)
-
-        # anything missing?
-        if bias is None or dark is None or flat is None:
-            log.error('Could not find BIAS/DARK/FLAT, skipping %d frames...', len(infos))
-            return
-        log.info('Using BIAS frame: %s', bias.header['FNAME'])
-        log.info('Using DARK frame: %s', dark.header['FNAME'])
-        log.info('Using SKYFLAT frame: %s', flat.header['FNAME'])
-
         # run all science frames
         for i, info in enumerate(infos, 1):
             log.info('Calibrating file %d/%d: %s...', i, len(infos), info.filename)
@@ -186,7 +173,7 @@ class Night:
             image = self._archive.download_frames([info])[0]
 
             # calibrate
-            calibrated = self._pipeline.calibrate(image, bias, dark, flat)
+            calibrated = self._pipeline.calibrate(image)
 
             # upload
             #self._archive.upload_frames([calibrated])
@@ -209,15 +196,15 @@ class Night:
             # loop binnings
             for binning in options['binnings']:
                 # create bias
-                self._create_master_calib(instrument, ImageType.BIAS, binning)
+                #self._create_master_calib(instrument, ImageType.BIAS, binning)
 
                 # create dark
-                self._create_master_calib(instrument, ImageType.DARK, binning)
+                #self._create_master_calib(instrument, ImageType.DARK, binning)
 
                 # loop filters
                 for filter_name in options['filters']:
                     # create flat
-                    self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
+                    #self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
 
                     # calibrate science data
                     self._calib_data(instrument, binning, filter_name)

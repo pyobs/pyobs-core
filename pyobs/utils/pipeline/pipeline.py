@@ -129,38 +129,26 @@ class Pipeline:
         """
         return self._combine_calib_images(images, bias=bias, normalize=True, method='median')
 
-    def calibrate(self, image: Image, bias: Image = None, dark: Image = None, flat: Image = None) -> Image:
+    def calibrate(self, image: Image) -> Image:
         """Calibrate a single science frame.
 
         Args:
             image: Image to calibrate.
-            bias: Bias frame to use.
-            dark: Dark frame to use.
-            flat: Flat frame to use.
 
         Returns:
             Calibrated image.
         """
 
-        # calibrate image
-        calibrated = ccdproc.ccd_process(image.to_ccddata(),
-                                         oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
-                                         trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
-                                         error=True,
-                                         master_bias=None if bias is None else bias.to_ccddata(),
-                                         dark_frame=None if dark is None else dark.to_ccddata(),
-                                         master_flat=None if flat is None else flat.to_ccddata(),
-                                         bad_pixel_mask=None,
-                                         gain=image.header['det-gain'] * u.electron / u.adu,
-                                         readnoise=image.header['det-ron'] * u.electron,
-                                         dark_exposure=None if dark is None else dark.header['exptime'] * u.second,
-                                         data_exposure=image.header['exptime'] * u.second,
-                                         dark_scale=True,
-                                         gain_corrected=False)
+        # copy image
+        calibrated = image.copy()
 
-        # to image
-        calibrated = Image.from_ccddata(calibrated)
-        calibrated.header['BUNIT'] = ('electron', 'Unit of pixel values')
+        # loop steps
+        for step in self._steps:
+            try:
+                log.info(f'Running step {step.__class__.__name__}...')
+                calibrated = step(calibrated)
+            except Exception as e:
+                log.exception(f'Could not run pipeline step {step.__class__.__name__}: {e}')
 
         # add mask
         binning = '%dx%s' % (image.header['XBINNING'], image.header['YBINNING'])
@@ -171,15 +159,6 @@ class Pipeline:
 
         # set (raw) filename
         calibrated.format_filename(self._formatter)
-        if 'ORIGNAME' in image.header:
-            calibrated.header['L1RAW'] = image.header['ORIGNAME']
-
-        # loop steps
-        for step in self._steps:
-            try:
-                calibrated = step(calibrated)
-            except Exception as e:
-                log.error(f'Could not run pipeline step {step}: {e}')
 
         # return calibrated image
         return calibrated

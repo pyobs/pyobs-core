@@ -166,7 +166,7 @@ class Image:
         """Convert Image to CCDData"""
         return CCDData(data=self.data,
                        meta=self.header,
-                       mask=self.mask,
+                       mask=None if self.mask is None else self.mask.data,
                        uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
                        unit='adu')
 

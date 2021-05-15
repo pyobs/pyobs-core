@@ -73,6 +73,12 @@ class Calibration(ImageProcessor):
         # to image
         calibrated = Image.from_ccddata(calibrated)
         calibrated.header['BUNIT'] = ('electron', 'Unit of pixel values')
+
+        # set raw filename
+        if 'ORIGNAME' in image.header:
+            calibrated.header['L1RAW'] = image.header['ORIGNAME']
+
+        # finished
         return calibrated
 
     def _find_master(self, image: Image, image_type: ImageType) -> Optional[Image]:
@@ -95,7 +101,7 @@ class Calibration(ImageProcessor):
         # get mode
         try:
             instrument = image.header['INSTRUME']
-            binning = image.header['XBINNING']
+            binning = '{0}x{0}'.format(image.header['XBINNING'])
             filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
             time = Time(image.header['DATE-OBS'])
             mode = image_type, instrument, binning, filter_name

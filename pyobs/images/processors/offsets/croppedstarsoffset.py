@@ -3,7 +3,6 @@ import numpy as np
 from scipy import signal, optimize
 from astropy.table import Table, Column
 
-from pyobs.utils.pid import PID
 from . import Offsets
 from ..photometry import SepPhotometry
 from ... import Image
@@ -19,15 +18,11 @@ class CroppedStarsOffset(Offsets):
     """An auto-guiding system based on comparing complete 2D images that are created by finding all clear sources in the image
     and setting the rest of the image to zero."""
 
-    def __init__(
-            self,
-            max_expected_offset_in_arcsec=4,
-            min_required_sources_in_image=1,
-            min_pixels_above_threshold_per_source=3,
-            *args,
-            **kwargs,
-    ):
+    def __init__(self, max_expected_offset_in_arcsec: float = 4., min_required_sources_in_image: int = 1,
+                 min_pixels_above_threshold_per_source: int = 3, *args, **kwargs):
         """Initializes a new auto guiding system."""
+        Offsets.__init__(self, *args, **kwargs)
+
         log.info("Initializing CroppedStarsOffset")
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self.max_expected_offset_in_pixels = None
@@ -37,30 +32,26 @@ class CroppedStarsOffset(Offsets):
 
         self.min_required_sources_in_image = min_required_sources_in_image
 
-        self._pid_ra = None
-        self._pid_dec = None
-
     def reset(self):
         """Resets guiding."""
         log.info("Reset auto-guiding.")
         self._ref_cropped_stars_image = None
 
-    def find_pixel_offset(self, image: Image) -> (float, float):
-        """Processes an image and return x/y pixel offset to reference.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            x/y pixel offset to reference.
+            Original image.
 
         Raises:
-            ValueError if offset could not be found.
+            ValueError: If offset could not be found.
         """
 
-        self.max_expected_offset_in_pixels = (
-                self.max_expected_offset_in_arcsec / image.pixel_scale
-        )
+        self.max_expected_offset_in_pixels = (self.max_expected_offset_in_arcsec / image.pixel_scale
+                                              )
         # no reference image?
         if self._ref_cropped_stars_image is None:
             log.info("Initialising auto-guiding with new image...")
@@ -69,25 +60,23 @@ class CroppedStarsOffset(Offsets):
             try:
                 self._ref_cropped_stars_image = self.get_cropped_stars_image(image)
             except ValueError as e:
-                log.warning(
-                    f"Could not initialize reference image info due to exception '{e}'. Resetting..."
-                )
+                log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
-                return None, None
+                self.offset = None, None
+                return image
 
-            self._init_pid()
-            return 0, 0
+            self.offset = 0, 0
+            return image
 
         # process it
         log.info("Perform auto-guiding on new image...")
-        dx, dy = self.calculate_offset(image)
-        return dx, dy
+        self.offset = self.calculate_offset(image)
+        return image
 
     def get_cropped_stars_image(self, image: Image) -> np.ndarray:
         # extract sources
         sep = SepPhotometry()
-        sources = sep.find_stars(image)
-        sources = self.convert_from_fits_to_numpy_index_convention(sources)
+        sources = self.convert_from_fits_to_numpy_index_convention(sep(image).catalog)
 
         sources = self.remove_sources_close_to_border(
             sources,
@@ -104,15 +93,11 @@ class CroppedStarsOffset(Offsets):
         FWHM_factor_for_radius = 1.5
         xs = np.arange(image.data.shape[0])
         ys = np.arange(image.data.shape[1])
-        X, Y = np.meshgrid(ys, xs)
+        x, y = np.meshgrid(ys, xs)
         for source in sources:
             radius2 = (FWHM_factor_for_radius * source["fwhm"]) ** 2
-            within_radius_mask = (X - source["x"]) ** 2 + (
-                    Y - source["y"]
-            ) ** 2 < radius2
-            cropped_stars_image[within_radius_mask] = (
-                    image.data[within_radius_mask] - source["background"]
-            )
+            within_radius_mask = (x - source["x"]) ** 2 + (y - source["y"]) ** 2 < radius2
+            cropped_stars_image[within_radius_mask] = (image.data[within_radius_mask] - source["background"])
 
         cropped_stars_image[cropped_stars_image <= 0] = 0
 
@@ -147,20 +132,10 @@ class CroppedStarsOffset(Offsets):
                 axis=0,
             )
 
-        sources.add_column(
-            Column(
-                name="min_distance_from_border",
-                data=min_distance_from_border(sources),
-            )
-        )
+        sources.add_column(Column(name="min_distance_from_border", data=min_distance_from_border(sources)))
         sources.sort("min_distance_from_border")
 
-        sources_result = sources[
-            np.where(
-                sources["min_distance_from_border"]
-                > min_distance_from_border_in_pixels * 2
-            )
-        ]
+        sources_result = sources[np.where(sources["min_distance_from_border"] > min_distance_from_border_in_pixels * 2)]
         return sources_result
 
     def remove_bad_sources(self, sources: Table, MAX_ELLIPTICITY=0.4,
@@ -172,11 +147,7 @@ class CroppedStarsOffset(Offsets):
         # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
-        sources = sources[
-            np.where(
-                sources["tnpix"] <= tnpix_median + 2 * tnpix_std,
-            )
-        ]
+        sources = sources[np.where(sources["tnpix"] <= tnpix_median + 2 * tnpix_std)]
 
         # remove highly elliptic sources
         sources.sort("ellipticity")
@@ -199,19 +170,15 @@ class CroppedStarsOffset(Offsets):
     def check_if_enough_sources_in_image(self, sources: Table, N_stars=0):
         n_required_sources = max(self.min_required_sources_in_image, N_stars)
         if len(sources) < n_required_sources:
-            raise ValueError(
-                f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required."
-            )
+            raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
-    def calculate_offset(self,current_image: Image) -> tuple:
+    def calculate_offset(self, current_image: Image) -> tuple:
         # create images cropped around stars
         current_cropped_star_image = self.get_cropped_stars_image(current_image)
         try:
-            corr = self.calculate_correlation(
-                current_cropped_star_image,
-                self._ref_cropped_stars_image,
-                max_expected_offset=self.max_expected_offset_in_pixels,
-            )
+            corr = self.calculate_correlation(current_cropped_star_image,
+                                              self._ref_cropped_stars_image,
+                                              max_expected_offset=self.max_expected_offset_in_pixels)
 
             offset = self.calculate_offset_from_2d_correlation(corr)
         except Exception as e:
@@ -222,18 +189,13 @@ class CroppedStarsOffset(Offsets):
 
     @staticmethod
     def gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):
-        return a + b * np.exp(
-            -((x[0] - x0) ** 2) / (2 * sigma_x ** 2)
-            - (x[1] - y0) ** 2 / (2 * sigma_y ** 2)
-        )
+        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
 
     def calculate_correlation(self, im1: np.ndarray, im2: np.ndarray, max_expected_offset) -> np.ndarray:
 
         # maximal expected offsets to be tried.
         # (if-condition so that max_expected_offset is included in the last offset to be tried)
-        max_expected_offsets = [
-            offset for offset in [4, 8, 16, 32] if offset / 2 <= max_expected_offset
-        ]
+        max_expected_offsets = [offset for offset in [4, 8, 16, 32] if offset / 2 <= max_expected_offset]
 
         for max_expected_offset in max_expected_offsets:
             # multiply by four to have space for fit on all sides
@@ -241,10 +203,8 @@ class CroppedStarsOffset(Offsets):
             correlation_size = int(4 * max_expected_offset) + 1
             padding_size = correlation_size // 2
 
-            cropped_im1, cropped_im2 = (
-                im1,
-                im2,
-            )  # self.crop_images_to_enforce_time_limit(im1, im2, correlation_size)
+            cropped_im1, cropped_im2 = (im1, im2)
+            # self.crop_images_to_enforce_time_limit(im1, im2, correlation_size)
 
             # pad with zeros to allow use of 'valid' mode in correlation
             cropped_im1_padded = self.pad_with_zeros(cropped_im1, padding_size)
@@ -263,9 +223,7 @@ class CroppedStarsOffset(Offsets):
                 f"max_expected_offset = {max_expected_offsets[-1]}."
             )
 
-        log.info(
-            f"Calculated correlation with max_expected_offset = {max_expected_offset}."
-        )
+        log.info(f"Calculated correlation with max_expected_offset = {max_expected_offset}.")
         return corr
 
     def crop_images_to_enforce_time_limit(self, cropped_im1: np.ndarray, cropped_im2: np.ndarray,
@@ -285,28 +243,16 @@ class CroppedStarsOffset(Offsets):
             over_time_ratio = expected_time / max_allowed_time
             reduce_factor = 1 - 1 / np.sqrt(over_time_ratio)
 
-            reduce_image_width_by_pixels = (
-                    int(reduce_factor * (cropped_im1.shape[0])) // 2 * 2
-            )  # make even
-            reduce_image_height_by_pixels = (
-                    int(reduce_factor * (cropped_im1.shape[1])) // 2 * 2
-            )  # make even
+            reduce_image_width_by_pixels = (int(reduce_factor * (cropped_im1.shape[0])) // 2 * 2)  # make even
+            reduce_image_height_by_pixels = (int(reduce_factor * (cropped_im1.shape[1])) // 2 * 2)  # make even
 
-            cropped_im1 = cropped_im1[
-                          reduce_image_width_by_pixels // 2: -reduce_image_width_by_pixels // 2,
-                          reduce_image_height_by_pixels
-                          // 2: -reduce_image_height_by_pixels
-                                // 2,
-                          ]
+            cropped_im1 = cropped_im1[reduce_image_width_by_pixels // 2: -reduce_image_width_by_pixels // 2,
+                          reduce_image_height_by_pixels // 2: -reduce_image_height_by_pixels // 2]
             log.info(
                 f"Cropping images from {cropped_im2.shape} to {cropped_im1.shape} to enforce time limit on correlation."
             )
-            cropped_im2 = cropped_im2[
-                          reduce_image_width_by_pixels // 2: -reduce_image_width_by_pixels // 2,
-                          reduce_image_height_by_pixels
-                          // 2: -reduce_image_height_by_pixels
-                                // 2,
-                          ]
+            cropped_im2 = cropped_im2[reduce_image_width_by_pixels // 2: -reduce_image_width_by_pixels // 2,
+                          reduce_image_height_by_pixels // 2: -reduce_image_height_by_pixels // 2]
 
         return cropped_im1, cropped_im2
 
@@ -366,16 +312,8 @@ class CroppedStarsOffset(Offsets):
         xdata_restricted = xdata[:, mask]
 
         try:
-            popt, pcov = optimize.curve_fit(
-                self.gauss2d,
-                xdata_restricted,
-                ydata_restricted,
-                p0,
-                bounds=bounds,
-                maxfev=int(1e5),
-                ftol=1e-12,
-                # verbose=2
-            )
+            popt, pcov = optimize.curve_fit(self.gauss2d, xdata_restricted, ydata_restricted, p0,
+                                            bounds=bounds, maxfev=int(1e5), ftol=1e-12)
         except Exception as e:
             # if fit fails return max pixel
             log.info(e)
@@ -396,26 +334,11 @@ class CroppedStarsOffset(Offsets):
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
         x0, y0 = X[tuple(max_index)], Y[tuple(max_index)]
 
-        if (
-                x0 < -corr_size / 4
-                or x0 > corr_size / 4
-                or y0 < -corr_size / 4
-                or y0 > corr_size / 4
-        ):
+        if x0 < -corr_size / 4 or x0 > corr_size / 4 or y0 < -corr_size / 4 or y0 > corr_size / 4:
             raise CorrelationMaxCloseToBorderError(
                 "Maximum of correlation is outside center half of axes. "
                 "This means that either the given image data is bad, or the offset is larger than expected."
             )
-
-    def _init_pid(self):
-        # init pids
-        Kp = 0.2
-        Ki = 0.16
-        Kd = 0.83
-
-        # reset
-        self._pid_ra = PID(Kp, Ki, Kd)
-        self._pid_dec = PID(Kp, Ki, Kd)
 
 
 __all__ = ["CroppedStarsOffset"]

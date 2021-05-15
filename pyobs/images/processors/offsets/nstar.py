@@ -22,7 +22,7 @@ class CorrelationMaxCloseToBorderError(Exception):
 class NStarOffsets(Offsets):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
-    def __init__(self, num_stars: int = 1, max_expected_offset_in_arcsec: float = 4,
+    def __init__(self, num_stars: int = 10, max_expected_offset_in_arcsec: float = 4.,
                  min_pixels_above_threshold_per_source: int = 3, min_required_sources_in_image: int = 1,
                  *args, **kwargs):
         """Initializes a new auto guiding system.
@@ -304,7 +304,8 @@ class NStarOffsets(Offsets):
             log.info("Returning pixel position with maximal value in correlation.")
             return tuple(np.unravel_index(np.argmax(corr), corr.shape))
 
-        median_squared_relative_residue_threshold = 1e-2
+        #median_squared_relative_residue_threshold = 1e-2
+        median_squared_relative_residue_threshold = 1e-1
         fit_ydata_restricted = self.gauss2d(xdata_restricted, *popt)
         square_rel_res = np.square(
             (fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted

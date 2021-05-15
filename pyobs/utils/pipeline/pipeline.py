@@ -18,25 +18,15 @@ log = logging.getLogger(__name__)
 class Pipeline:
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: List[Union[dict, ImageProcessor]], filenames: str = None, *args, **kwargs):
+    def __init__(self, steps: List[Union[dict, ImageProcessor]], *args, **kwargs):
         """Pipeline for science images.
 
         Args:
-            source_detection: SourceDetection object. If None, no detection is performed.
-            photometry: Photometry object. If None, no photometry is performed.
-            astrometry: Astrometry object. If None, no astrometry is performed.
-            masks: Dictionary with masks to use for each binning given as, e.g., 1x1.
-            *args:
-            **kwargs:
+            steps: List of pipeline steps to perform.
         """
 
         # get objects
         self._steps = [get_object(s, ImageProcessor) for s in steps]
-
-        # default filename patterns
-        if filenames is None:
-            filenames = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits'
-        self._formatter = FilenameFormatter(filenames)
 
     def _combine_calib_images(self, images: List[Image], bias: Image = None, normalize: bool = False,
                               method: str = 'average'):
@@ -138,9 +128,6 @@ class Pipeline:
                 calibrated = step(calibrated)
             except Exception as e:
                 log.exception(f'Could not run pipeline step {step.__class__.__name__}: {e}')
-
-        # set (raw) filename
-        calibrated.format_filename(self._formatter)
 
         # return calibrated image
         return calibrated

@@ -224,7 +224,7 @@ class NStarOffsets(Offsets):
             current_boxed_image = current_image.data[box_ymin:box_ymax, box_xmin:box_xmax]
 
             # correlate
-            corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
+            corr = signal.correlate2d(current_boxed_image, box.data)
 
             try:
                 offset = self.calculate_offset_from_2d_correlation(corr)

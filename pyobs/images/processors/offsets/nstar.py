@@ -236,10 +236,7 @@ class NStarOffsets(Offsets):
             log.info(f"All {self.num_stars} fits on boxed star correlations failed.")
             return None, None
         offsets = np.array(offsets)
-
-        offset = np.mean(offsets[:, 0]), np.mean(offsets[:, 1])
-
-        return offset
+        return np.mean(offsets[:, 0]), np.mean(offsets[:, 1])
 
     @staticmethod
     def gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):

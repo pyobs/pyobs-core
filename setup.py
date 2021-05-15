@@ -18,29 +18,5 @@ setup(
         ]
     },
     python_requires='>=3.7',
-    install_requires=[
-        'scipy',
-        'paramiko',
-        'pandas',
-        'pytz',
-        'astropy',
-        'astroplan',
-        'PyYAML',
-        'numpy',
-        'sleekxmpp',
-        'py_expression_eval',
-        'requests',
-        'ccdproc',
-        'photutils',
-        'lmfit',
-        'tornado',
-        'python-telegram-bot'
-    ],
-    extras_require={
-        'full':  [
-            'sep;platform_system=="Linux"',
-            'pyinotify;platform_system=="Linux"',
-            'python-daemon;platform_system=="Linux"'
-        ]
-    }
+    install_requires=[line.strip() for line in open("requirements.txt").readlines()]
 )

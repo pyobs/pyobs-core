@@ -4,14 +4,14 @@ from pyobs.images import Image
 
 
 class ImageProcessor:
-    def __call__(self, image: Image) -> Any:
+    def __call__(self, image: Image) -> Image:
         """Processes an image.
 
         Args:
             image: Image to process.
 
         Returns:
-            Whatever the process wants to return.
+            Processed image.
         """
         raise NotImplementedError
 

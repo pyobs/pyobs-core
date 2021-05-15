@@ -73,7 +73,8 @@ class AutoGuiding(BaseGuiding):
 
                 # need to estimate exposure time?
                 if self._exposure_time is None and exp_time_estimator is not None:
-                    new_exp_time = exp_time_estimator(image)
+                    exp_time_estimator(image)
+                    new_exp_time = exp_time_estimator.exp_time
                     self._exposure_time = max(min(new_exp_time, 5), 0.1)
 
                 # process it

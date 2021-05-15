@@ -51,14 +51,14 @@ class AstrometryAcquisition(BaseAcquisition):
 
         # find stars
         log.info('Searching for stars...')
-        source_detection(image)
+        image = source_detection(image)
         if len(image.catalog) == 0:
             raise ValueError('Could not find any stars in image.')
         log.info('Found %d stars.' % len(image.catalog))
 
         # do astrometry
         log.info('Calculating astrometric solution...')
-        astrometry(image)
+        image = astrometry(image)
         if image.header['WCSERR'] == 1:
             raise ValueError('Could not find astrometric solution.')
 

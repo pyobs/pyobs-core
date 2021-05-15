@@ -29,14 +29,15 @@ setup(
         'numpy',
         'sleekxmpp',
         'py_expression_eval',
-        'requests'
+        'requests',
+        'ccdproc',
+        'photutils',
+        'lmfit',
+        'tornado',
+        'python-telegram-bot'
     ],
     extras_require={
         'full':  [
-            'photutils',
-            'lmfit',
-            'tornado',
-            'python-telegram-bot',
             'sep;platform_system=="Linux"',
             'pyinotify;platform_system=="Linux"',
             'python-daemon;platform_system=="Linux"'

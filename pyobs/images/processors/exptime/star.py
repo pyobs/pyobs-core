@@ -23,20 +23,22 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
         """
+        ExpTimeEstimator.__init__(self, *args, **kwargs)
+
         self._source_detection = source_detection
         self._edge = edge
         self._bias = bias
         self._saturated = saturated
         self.coordinates = (None, None)
 
-    def __call__(self, image: Image) -> float:
-        """Processes an image and returns a new best exposure time in seconds.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and stores new exposure time in exp_time attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            New best exposure time in seconds.
+            Original image.
         """
 
         # get object
@@ -70,8 +72,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         exp_time = image.header['EXPTIME']
 
         # calculate new exposure time and return it
-        new_exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
-        return new_exp_time
+        self.exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
+        return image
 
 
 __all__ = ['StarExpTimeEstimator']

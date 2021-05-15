@@ -14,7 +14,7 @@ class SoftBin(ImageProcessor):
         """
         self.binning = binning
 
-    def __call__(self, image: Image):
+    def __call__(self, image: Image) -> Image:
         """Bin an image.
 
         Args:
@@ -24,25 +24,31 @@ class SoftBin(ImageProcessor):
             Binned image.
         """
 
+        # copy image
+        img = image.copy()
+
         # calculate new shape, in which all binned pixels are in a higher dimension
-        shape = (image.data.shape[0] // self.binning, self.binning,
-                 image.data.shape[1] // self.binning, self.binning)
+        shape = (img.data.shape[0] // self.binning, self.binning,
+                 img.data.shape[1] // self.binning, self.binning)
 
         # reshape and average
-        image.data = image.data.reshape(shape).mean(-1).mean(1)
+        img.data = img.data.reshape(shape).mean(-1).mean(1)
 
         # set NAXIS1/2
-        image.header['NAXIS2'], image.header['NAXIS1'] = image.data.shape
+        img.header['NAXIS2'], img.header['NAXIS1'] = img.data.shape
 
         # divide some header entries by binning
         for key in ['CRPIX1', 'CRPIX2']:
-            if key in image.header:
-                image.header[key] /= self.binning
+            if key in img.header:
+                img.header[key] /= self.binning
 
         # multiply some header entries with binning
         for key in ['DET-BIN1', 'DET-BIN2', 'XBINNING', 'YBINNING', 'CDELT1', 'CDELT2']:
-            if key in image.header:
-                image.header[key] *= self.binning
+            if key in img.header:
+                img.header[key] *= self.binning
+
+        # return result
+        return img
 
 
 __all__ = ['SoftBin']

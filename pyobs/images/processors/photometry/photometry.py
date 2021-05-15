@@ -8,14 +8,14 @@ class Photometry(ImageProcessor):
     """Base class for photometry processors."""
     __module__ = 'pyobs.images.processors.photometry'
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         raise NotImplementedError
 

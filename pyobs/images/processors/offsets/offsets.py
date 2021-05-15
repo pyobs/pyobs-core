@@ -12,18 +12,22 @@ class Offsets(ImageProcessor):
     """Base class for determining offsets."""
     __module__ = 'pyobs.images.processors.offsets'
 
+    def __init__(self, *args, **kwargs):
+        ImageProcessor.__init__(self, *args, **kwargs)
+        self.offset = (None, None)
+
     def reset(self):
         """Resets guiding."""
         raise NotImplementedError
 
-    def __call__(self, image: Image) -> Tuple[float, float]:
-        """Processes an image and return x/y pixel offset to reference.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            x/y pixel offset to reference.
+            Original image.
 
         Raises:
             ValueError: If offset could not be found.

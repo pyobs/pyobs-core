@@ -6,7 +6,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
 
 
 class Image:
@@ -18,12 +18,13 @@ class Image:
         MEDIAN = 'median'
         SIGMA = 'sigma'
 
-    def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
+    def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
+                 uncertainty: np.ndarray = None, catalog: Table = None, *args, **kwargs):
         self.data = data
-        self.header = fits.Header() if header is None else header
-        self.mask = None
-        self.uncertainty = None
-        self.catalog = None
+        self.header = fits.Header() if header is None else header.copy()
+        self.mask = None if mask is None else mask.copy()
+        self.uncertainty = None if uncertainty is None else uncertainty.copy()
+        self.catalog = None if catalog is None else catalog.copy()
 
         # add basic header stuff
         if data is not None:
@@ -57,11 +58,12 @@ class Image:
         return image
 
     @classmethod
-    def from_ccddata(cls, image: CCDData) -> Image:
+    def from_ccddata(cls, data: CCDData) -> Image:
         # create image and assign data
-        image = Image(data=image.data, header=image.header)
-        image.mask = image.mask
-        image.uncertainty = image.uncertainty
+        image = Image(data=data.data.astype(np.float32),
+                      header=data.header,
+                      mask=None if data.mask is None else data.mask,
+                      uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32))
         return image
 
     @classmethod
@@ -108,11 +110,13 @@ class Image:
         # finished
         return image
 
+    @property
+    def unit(self):
+        return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
+
     def copy(self):
-        img = Image()
-        img.data = self.data.copy()
-        img.header = self.header
-        return img
+        return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
+                     catalog=self.catalog)
 
     def __truediv__(self, other):
         img = self.copy()
@@ -135,7 +139,7 @@ class Image:
 
         # mask?
         if self.mask is not None:
-            hdu = ImageHDU(self.mask.data.astype(np.uint8))
+            hdu = ImageHDU(self.mask.astype(np.uint8))
             hdu.name = 'MASK'
             hdu_list.append(hdu)
 
@@ -157,7 +161,11 @@ class Image:
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
-        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty)
+        return CCDData(data=self.data,
+                       meta=self.header,
+                       mask=None if self.mask is None else self.mask,
+                       uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
+                       unit='adu')
 
     def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
         """Trim an image to TRIMSEC or BIASSEC.

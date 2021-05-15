@@ -16,7 +16,7 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class NStarSurroundingsOffset(Offsets):
+class NStarOffset(Offsets):
     """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
 
     def __init__(self, N_stars=1, max_expected_offset_in_arcsec=4, min_pixels_above_threshold_per_source=3,
@@ -358,4 +358,4 @@ class NStarSurroundingsOffset(Offsets):
             )
 
 
-__all__ = ["NStarSurroundingsOffset"]
+__all__ = ["NStarOffset"]

@@ -18,12 +18,13 @@ class Image:
         MEDIAN = 'median'
         SIGMA = 'sigma'
 
-    def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
+    def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
+                 uncertainty: np.ndarray = None, catalog: Table = None, *args, **kwargs):
         self.data = data
-        self.header = fits.Header() if header is None else header
-        self.mask = None
-        self.uncertainty = None
-        self.catalog = None
+        self.header = fits.Header() if header is None else header.copy()
+        self.mask = None if mask is None else mask.copy()
+        self.uncertainty = None if uncertainty is None else uncertainty.copy()
+        self.catalog = None if catalog is None else catalog.copy()
 
         # add basic header stuff
         if data is not None:
@@ -59,9 +60,10 @@ class Image:
     @classmethod
     def from_ccddata(cls, data: CCDData) -> Image:
         # create image and assign data
-        image = Image(data=data.data.astype(np.float32), header=data.header)
-        image.mask = data.mask
-        image.uncertainty = None if data.uncertainty is None else data.uncertainty.array.astype(np.float32)
+        image = Image(data=data.data.astype(np.float32),
+                      header=data.header,
+                      mask=None if data.mask is None else data.mask,
+                      uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32))
         return image
 
     @classmethod
@@ -113,13 +115,8 @@ class Image:
         return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
 
     def copy(self):
-        img = Image()
-        img.data = self.data.copy()
-        img.header = self.header.copy()
-        img.mask = None if self.mask is None else self.mask.copy()
-        img.uncertainty = None if self.uncertainty is None else self.uncertainty.copy()
-        img.catalog = None if self.catalog is None else self.catalog.copy()
-        return img
+        return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
+                     catalog=self.catalog)
 
     def __truediv__(self, other):
         img = self.copy()

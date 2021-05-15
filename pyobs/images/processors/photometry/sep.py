@@ -90,7 +90,7 @@ class SepPhotometry(Photometry):
             if image.pixel_scale is not None:
                 flux, fluxerr, flag = sep.sum_circle(data, sources['x'], sources['y'],
                                                      diameter / 2. / image.pixel_scale,
-                                                     mask=mask, err=bkg.rms(), gain=gain)
+                                                     mask=image.mask, err=bkg.rms(), gain=gain)
                 sources['fluxaper{0}'.format(diameter)] = flux
                 sources['fluxerr{0}'.format(diameter)] = fluxerr
                 sources['flag'] |= flag

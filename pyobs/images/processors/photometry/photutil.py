@@ -54,6 +54,7 @@ class PhotUtilsPhotometry(Photometry):
         # get data and mask
         data = image.data.astype(np.float).copy()
         mask = image.mask.data if image.mask is not None else None
+        uncertainty = image.uncertainty
 
         # fetch catalog
         sources = image.catalog.copy()
@@ -82,12 +83,13 @@ class PhotUtilsPhotometry(Photometry):
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = aperture_photometry(data, aperture, mask=mask)
+            phot = aperture_photometry(data, aperture, mask=mask, error=uncertainty)
 
             # calc flux
             bkg_median = np.array(bkg_median)
             aper_bkg = bkg_median * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
+            sources['fluerr%d' % diameter] = phot['aperture_sum_err']
             sources['bkgaper%d' % diameter] = bkg_median
 
         # copy image, set catalog and return it

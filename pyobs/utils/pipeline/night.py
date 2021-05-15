@@ -1,4 +1,5 @@
 import logging
+import os.path
 from typing import Union, Type, Dict, Tuple, Optional, List
 
 from pyobs.object import get_object
@@ -17,8 +18,7 @@ class Night:
                  archive: Union[dict, Archive], pipeline: Union[dict, Pipeline], worker_procs: int = 4,
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
-                 min_flats: int = 10,
-                 *args, **kwargs):
+                 min_flats: int = 10, store_local: str = None, *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
@@ -29,8 +29,7 @@ class Night:
             worker_procs: Number of worker processes.
             filenames_calib: Filename pattern for master calibration files.
             min_flats: Minimum number of raw frames to create flat field.
-            *args:
-            **kwargs:
+            store_local: If True, files are stored in given local directory instead of uploaded to archive.
         """
 
         # get archive and science pipeline
@@ -42,6 +41,7 @@ class Night:
         self._night = night
         self._worker_processes = worker_procs
         self._min_flats = min_flats
+        self._store_local = store_local
 
         # cache for master calibration frames
         self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
@@ -147,11 +147,14 @@ class Night:
         # filename
         calib.format_filename(self._fmt_calib)
 
-        # upload
-        fname = calib.header['FNAME']
-        calib.writeto(f'data/{fname}.fits', overwrite=True)
-        #log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
-        #self._archive.upload_frames([calib])
+        # save/upload
+        if self._store_local:
+            path = os.path.join(self._store_local, calib.header['FNAME'] + '.fits')
+            log.info('Storing master calibration frame as %s...', path)
+            calib.writeto(path, overwrite=True)
+        else:
+            log.info('Uploading master calibration frame as %s...', calib.header['FNAME'])
+            self._archive.upload_frames([calib])
 
         # finished
         return calib
@@ -175,10 +178,14 @@ class Night:
             # calibrate
             calibrated = self._pipeline.calibrate(image)
 
-            # upload
-            #self._archive.upload_frames([calibrated])
-            fname = calibrated.header['FNAME']
-            calibrated.writeto(f'data/{fname}.fits', overwrite=True)
+            # save/upload
+            if self._store_local:
+                path = os.path.join(self._store_local, calibrated.header['FNAME'] + '.fits')
+                log.info('Storing calibrated images as %s...', path)
+                calibrated.writeto(path, overwrite=True)
+            else:
+                log.info('Uploading calibrated images as %s...', calibrated.header['FNAME'])
+                self._archive.upload_frames([calibrated])
 
     def __call__(self):
         """Reduces all data im this night."""

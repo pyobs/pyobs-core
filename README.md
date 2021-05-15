@@ -25,9 +25,13 @@ And run it:
     pyobs test.yaml
 
 
+Documentation
+-------------
+See http://pyobs.github.io/.
+
+
 Contributors
 ------------
-
 - Tim-Oliver Husser (thusser@uni-goettingen.de)
 - Frederick V. Hessman
 - Karl Royen

@@ -149,7 +149,7 @@ class Night:
 
         # save/upload
         if self._store_local:
-            path = os.path.join(self._store_local, calib.header['FNAME'] + '.fits')
+            path = os.path.join(self._store_local, calib.header['FNAME'])
             log.info('Storing master calibration frame as %s...', path)
             calib.writeto(path, overwrite=True)
         else:
@@ -180,7 +180,7 @@ class Night:
 
             # save/upload
             if self._store_local:
-                path = os.path.join(self._store_local, calibrated.header['FNAME'] + '.fits')
+                path = os.path.join(self._store_local, calibrated.header['FNAME'])
                 log.info('Storing calibrated images as %s...', path)
                 calibrated.writeto(path, overwrite=True)
             else:

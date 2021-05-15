@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 from scipy import signal, optimize
 from astropy.nddata import NDData
@@ -41,15 +41,13 @@ class NStarOffsets(Offsets):
         self.max_expected_offset_in_arcsec = max_expected_offset_in_arcsec
         self.min_pixels_above_threshold_per_source = min_pixels_above_threshold_per_source
         self.min_required_sources_in_image = min_required_sources_in_image
-        self._ref_box_dimensions = None
-        self._ref_boxed_images = None
         self.star_box_size = None
+        self.ref_boxes = None
 
     def reset(self):
         """Resets guiding."""
         log.info("Reset auto-guiding.")
-        self._ref_box_dimensions = None
-        self._ref_boxed_images = None
+        self.ref_boxes = None
 
     def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -65,7 +63,7 @@ class NStarOffsets(Offsets):
         """
 
         # no reference image?
-        if self._ref_box_dimensions is None or self._ref_boxed_images is None:
+        if self.ref_boxes is None:
             log.info("Initialising auto-guiding with new image...")
             self.star_box_size = max(
                 5,
@@ -77,14 +75,14 @@ class NStarOffsets(Offsets):
 
             # initialize reference image information: dimensions & position of boxes, box images
             try:
-                self._ref_box_dimensions, self._ref_boxed_images = self._create_star_boxes_from_ref_image(image)
+                self.ref_boxes = self._create_star_boxes_from_ref_image(image)
+                print(self.ref_boxes[0].origin, self.ref_boxes[0].data.shape)
             except ValueError as e:
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
                 self.offset = None, None
                 return image
 
-            log.info(f"Reference image star box dimensions are {self._ref_box_dimensions}")
             self.offset = 0, 0
             return image
 
@@ -98,7 +96,7 @@ class NStarOffsets(Offsets):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
-    def _create_star_boxes_from_ref_image(self, image: Image) -> (list, list):
+    def _create_star_boxes_from_ref_image(self, image: Image) -> List:
         """Calculate the boxes around self.N_stars best sources in the image.
 
         Args:
@@ -124,25 +122,8 @@ class NStarOffsets(Offsets):
         self.check_if_enough_sources_in_image(sources)
         selected_sources = self.select_top_n_brightest_sources(self.num_stars, sources)
 
-        # find positions & dimensions of boxes around the stars, and the corresponding box images
-        box_dimensions, boxed_images = [], []
-        for i_selected_source, _ in enumerate(selected_sources):
-            # make astropy table with only the selected source
-            single_source_catalog = Table(rows=selected_sources[i_selected_source])
-            stars = photutils.psf.extract_stars(NDData(image.data), single_source_catalog, size=self.star_box_size)
-            boxed_star_image = stars.all_stars[0].data
-
-            box_dimensions.append([stars.all_stars[0].origin[1],
-                                   stars.all_stars[0].origin[1] + boxed_star_image.shape[0],
-                                   stars.all_stars[0].origin[0],
-                                   stars.all_stars[0].origin[0] + boxed_star_image.shape[1]])
-
-            boxed_star_image = image.data[box_dimensions[-1][0]: box_dimensions[-1][1],
-                                          box_dimensions[-1][2]: box_dimensions[-1][3]]
-
-            boxed_images.append(boxed_star_image)
-
-        return box_dimensions, boxed_images
+        # extract boxes
+        return photutils.psf.extract_stars(NDData(image.data), selected_sources, size=self.star_box_size).all_stars
 
     @staticmethod
     def convert_from_fits_to_numpy_index_convention(sources: Table) -> Table:
@@ -227,13 +208,19 @@ class NStarOffsets(Offsets):
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
     def calculate_offset(self, current_image: Image) -> Tuple:
+        print('calc', self.ref_boxes)
         # calculate offset for each star
         offsets = []
-        for ref_box_dimension, ref_boxed_image in zip(self._ref_box_dimensions, self._ref_boxed_images):
-            box_ymin, box_ymax, box_xmin, box_xmax = ref_box_dimension
+        for box in self.ref_boxes:
+            # get box dimensions
+            box_ymin, box_ymax = box.origin[1], box.origin[1] + box.data.shape[0]
+            box_xmin, box_xmax = box.origin[0], box.origin[0] + box.data.shape[1]
+
+            # extract box
             current_boxed_image = current_image.data[box_ymin:box_ymax, box_xmin:box_xmax]
 
-            corr = signal.correlate2d(current_boxed_image, ref_boxed_image, mode="same", boundary="wrap")
+            # correlate
+            corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
 
             try:
                 offset = self.calculate_offset_from_2d_correlation(corr)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Tuple
 from astropy.table import Table
 import logging
 import numpy as np
@@ -47,16 +49,8 @@ class SepSourceDetection(SourceDetection):
         """
         import sep
 
-        # get data and make it continuous
-        data = image.data.astype(np.float)
-
-        # estimate background, probably we need to byte swap, and subtract it
-        try:
-            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
-        except ValueError as e:
-            data = data.byteswap(True).newbyteorder()
-            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
-        bkg.subfrom(data)
+        # remove background
+        data, bkg = SepSourceDetection.remove_background(image.data, image.mask)
 
         # extract sources
         sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
@@ -76,40 +70,52 @@ class SepSourceDetection(SourceDetection):
         fwhm = 2.0 * (np.log(2) * (sources['a'] ** 2.0 + sources['b'] ** 2.0)) ** 0.5
         sources['fwhm'] = fwhm
 
-        # get gain
-        gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
-
-        # Kron radius
-        kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
-                                          sources['theta'], 6.0)
-        sources['flag'] |= krflag
-        sources['kronrad'] = kronrad
-
-        # equivalent of FLUX_AUTO
-        flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
-                                              sources['theta'], 2.5 * kronrad, subpix=1, mask=image.mask,
-                                              err=bkg.rms(), gain=gain)
-        sources['flag'] |= flag
-        sources['flux'] = flux
-        sources['fluxerr'] = fluxerr
-
-        # match fits conventions
-        sources['x'] += 1
-        sources['y'] += 1
-
         # theta in degrees
         sources['theta'] = np.degrees(sources['theta'])
 
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
 
+        # match fits conventions
+        sources['x'] += 1
+        sources['y'] += 1
+
         # pick columns for catalog
-        cat = sources['x', 'y', 'flux', 'fluxerr', 'peak', 'fwhm', 'a', 'b', 'theta', 'kronrad', 'ellipticity', 'tnpix']
+        cat = sources['x', 'y', 'peak', 'fwhm', 'ellipticity', 'npix']
 
         # copy image, set catalog and return it
         img = image.copy()
         img.catalog = cat
         return img
+
+    @staticmethod
+    def remove_background(data: np.ndarray, mask: np.ndarray = None) -> Tuple[np.ndarray, 'sep.Background']:
+        """Remove background from image in data.
+
+        Args:
+            data: Data to remove background from.
+            mask: Mask to use for estimating background.
+
+        Returns:
+            Image without background.
+        """
+        import sep
+
+        # get data and make it continuous
+        d = data.astype(np.float)
+
+        # estimate background, probably we need to byte swap
+        try:
+            bkg = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
+        except ValueError as e:
+            d = d.byteswap(True).newbyteorder()
+            bkg = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
+
+        # subtract it
+        bkg.subfrom(d)
+
+        # return data without background and background
+        return d, bkg
 
 
 __all__ = ['SepSourceDetection']

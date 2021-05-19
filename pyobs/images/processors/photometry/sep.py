@@ -48,17 +48,10 @@ class SepPhotometry(Photometry):
             Image with attached catalog.
         """
         import sep
+        from pyobs.images.processors.detection import SepSourceDetection
 
-        # get data and make it continuous
-        data = image.data.astype(np.float)
-
-        # estimate background, probably we need to byte swap, and subtract it
-        try:
-            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
-        except ValueError as e:
-            data = data.byteswap(True).newbyteorder()
-            bkg = sep.Background(data, mask=image.mask, bw=32, bh=32, fw=3, fh=3)
-        bkg.subfrom(data)
+        # remove background
+        data, bkg = SepSourceDetection.remove_background(image.data, image.mask)
 
         # fetch catalog
         sources = image.catalog.copy()
@@ -67,10 +60,27 @@ class SepPhotometry(Photometry):
         sources['xsep'] = sources['x'] - 1
         sources['ysep'] = sources['y'] - 1
 
+        # get gain
+        gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
+
+        # Kron radius
+        kronrad, krflag = sep.kron_radius(data, sources['x'], sources['y'], sources['a'], sources['b'],
+                                          sources['theta'], 6.0)
+        sources['flag'] |= krflag
+        sources['kronrad'] = kronrad
+
+        # equivalent of FLUX_AUTO
+        flux, fluxerr, flag = sep.sum_ellipse(data, sources['x'], sources['y'], sources['a'], sources['b'],
+                                              sources['theta'], 2.5 * kronrad, subpix=1, mask=image.mask,
+                                              err=bkg.rms(), gain=gain)
+        sources['flag'] |= flag
+        sources['flux'] = flux
+        sources['fluxerr'] = fluxerr
+
         # radii at 0.25, 0.5, and 0.75 flux
         flux_radii, flag = sep.flux_radius(data, sources['xsep'], sources['ysep'], 6.0 * sources['a'],
                                            [0.25, 0.5, 0.75], normflux=sources['flux'], subpix=5)
-        sources['flag'] = flag
+        sources['flag'] |= flag
         sources['fluxrad25'] = flux_radii[:, 0]
         sources['fluxrad50'] = flux_radii[:, 1]
         sources['fluxrad75'] = flux_radii[:, 2]
@@ -93,8 +103,6 @@ class SepPhotometry(Photometry):
                                                      mask=image.mask, err=bkg.rms(), gain=gain)
                 sources['fluxaper{0}'.format(diameter)] = flux
                 sources['fluxerr{0}'.format(diameter)] = fluxerr
-                sources['flag'] |= flag
-                sources['flag'] |= flag
 
             else:
                 sources['fluxaper{0}'.format(diameter)] = 0
@@ -115,7 +123,8 @@ class SepPhotometry(Photometry):
         sources = sources[sources['flag'] < 8]
 
         # pick columns for catalog
-        new_columns = ['fluxaper1', 'fluxerr1', 'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
+        new_columns = ['kronrad', 'flux', 'fluxerr',
+                       'fluxaper1', 'fluxerr1', 'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
                        'fluxaper4', 'fluxerr4', 'fluxaper5', 'fluxerr5', 'fluxaper6', 'fluxerr6',
                        'fluxaper7', 'fluxerr7', 'fluxaper8', 'fluxerr8', 'background',
                        'fluxrad25', 'fluxrad50', 'fluxrad75']

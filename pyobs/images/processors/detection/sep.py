@@ -62,6 +62,7 @@ class SepSourceDetection(SourceDetection):
 
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
+        x, y = sources['x'], sources['y']
 
         # Calculate the ellipticity
         sources['ellipticity'] = 1.0 - (sources['b'] / sources['a'])
@@ -73,6 +74,19 @@ class SepSourceDetection(SourceDetection):
         # theta in degrees
         sources['theta'] = np.degrees(sources['theta'])
 
+        # Kron radius
+        kronrad, krflag = sep.kron_radius(data, x, y, sources['a'], sources['b'], sources['theta'], 6.0)
+        sources['flag'] |= krflag
+        sources['kronrad'] = kronrad
+
+        # equivalent of FLUX_AUTO
+        gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
+        flux, fluxerr, flag = sep.sum_ellipse(data, x, y, sources['a'], sources['b'],
+                                              np.radians(sources['theta']), 2.5 * kronrad,
+                                              subpix=1, mask=image.mask, gain=gain)
+        sources['flag'] |= flag
+        sources['flux'] = flux
+
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
 
@@ -81,7 +95,7 @@ class SepSourceDetection(SourceDetection):
         sources['y'] += 1
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'peak', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'npix']
+        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'npix', 'kronrad']
 
         # copy image, set catalog and return it
         img = image.copy()

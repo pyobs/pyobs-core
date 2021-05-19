@@ -84,7 +84,8 @@ class PhotUtilsPhotometry(Photometry):
             bkg_median = np.array(bkg_median)
             aper_bkg = bkg_median * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
-            sources['fluerr%d' % diameter] = phot['aperture_sum_err']
+            if 'aperture_sum_err' in phot:
+                sources['fluerr%d' % diameter] = phot['aperture_sum_err']
             sources['bkgaper%d' % diameter] = bkg_median
 
         # copy image, set catalog and return it

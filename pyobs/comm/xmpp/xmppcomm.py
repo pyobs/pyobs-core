@@ -2,6 +2,7 @@ import functools
 import json
 import logging
 import re
+import ssl
 import threading
 import time
 from typing import Any, Callable, Dict, Type, List, Optional
@@ -162,6 +163,7 @@ class XmppComm(Comm):
         server = () if self._server is None else tuple(self._server.split(':'))
 
         # connect
+        self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
         if self._xmpp.connect(server, use_tls=self._use_tls, reattempt=False):
             # start processing
             self._xmpp.process(block=False)

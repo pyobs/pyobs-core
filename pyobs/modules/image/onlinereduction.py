@@ -4,6 +4,7 @@ from queue import Queue
 from typing import List, Union, Type
 from astropy.time import Time
 
+from pyobs.images import Image
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.events import NewImageEvent
@@ -105,9 +106,9 @@ class OnlineReduction(Module):
                     continue
 
                 # get master calibration frames
-                bias = self._get_master_calibration(BiasImage, date_obs, instrument, binning)
-                dark = self._get_master_calibration(DarkImage, date_obs, instrument, binning)
-                flat = self._get_master_calibration(FlatImage, date_obs, instrument, binning, filter_name)
+                bias = self._get_master_calibration(Image, date_obs, instrument, binning)
+                dark = self._get_master_calibration(Image, date_obs, instrument, binning)
+                flat = self._get_master_calibration(Image, date_obs, instrument, binning, filter_name)
 
                 # anything missing?
                 if bias is None or dark is None or flat is None:
@@ -131,8 +132,8 @@ class OnlineReduction(Module):
                 self.comm.send_event(NewImageEvent(outfile, ImageType.OBJECT, raw=filename))
             log.info('Finished image.')
 
-    def _get_master_calibration(self, image_class: Type[CalibrationImage], time: Time, instrument: str, binning: str,
-                                filter_name: str = None) -> Union[CalibrationImage, None]:
+    def _get_master_calibration(self, image_class: Type[Image], time: Time, instrument: str, binning: str,
+                                filter_name: str = None) -> Union[Image, None]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:

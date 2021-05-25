@@ -19,15 +19,6 @@ def init_cli():
     parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
                         default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
 
-    # comm
-    parser.add_argument('--username', type=str, help='Username for connecting to server',
-                        default=os.environ.get('PYOBS_USERNAME'))
-    parser.add_argument('--password', type=str, help='Password for connecting to server',
-                        default=os.environ.get('PYOBS_PASSWORD'))
-    parser.add_argument('--server', type=str, help='server:port for server to connect to',
-                        default=os.environ.get('PYOBS_SERVER'))
-    parser.add_argument('--comm', type=str, choices=['xmpp'], default='xmpp')
-
     # debug stuff
     parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
                         default=os.environ.get('PYOBS_DEBUG_TIME'))

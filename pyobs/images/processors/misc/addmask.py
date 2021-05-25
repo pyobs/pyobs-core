@@ -14,17 +14,18 @@ class AddMask(ImageProcessor):
     """Add mask to image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, masks: Dict[str, Union[np.ndarray, str]], *args, **kwargs):
+    def __init__(self, masks: Dict[str, Dict[str, Union[np.ndarray, str]]], *args, **kwargs):
         """Init an image processor that adds a mask to an image.
 
         Args:
-            masks: Dictionary containing binning->mask.
+            masks: Dictionary containing instrument->binning->mask, with binning as string, e.g. '1x1'.
         """
 
         # masks
         self._masks = {}
-        if masks is not None:
-            for binning, mask in masks.items():
+        for instrument, group in masks.items():
+            self._masks[instrument] = {}
+            for binning, mask in group.items():
                 if isinstance(mask, np.ndarray):
                     self._masks[binning] = mask
                 elif isinstance(mask, str):

@@ -197,9 +197,10 @@ def main():
 
     # init parser
     parser = argparse.ArgumentParser(description="Daemon for pyobs")
-    parser.add_argument('-c', '--config-path', type=str, default=config.get('config-path', '/opt/pyobs/config'))
-    parser.add_argument('-r', '--run-path', type=str, default=config.get('run-path', '/opt/pyobs/run'))
-    parser.add_argument('-l', '--log-path', type=str, default=config.get('log-path', '/opt/pyobs/log'))
+    parser.add_argument('-p', '--path', type=str, default=config.get('path', '/opt/pyobs'))
+    parser.add_argument('-c', '--config-path', type=str, default=config.get('config-path', 'config'))
+    parser.add_argument('-r', '--run-path', type=str, default=config.get('run-path', 'run'))
+    parser.add_argument('-l', '--log-path', type=str, default=config.get('log-path', 'log'))
     parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
                         default=config.get('log-level', 'info'))
     parser.add_argument('--chuid', type=str, default=config.get('chuid', 'pyobs:pyobs'))
@@ -210,8 +211,12 @@ def main():
     args = parser.parse_args()
 
     # init daemon
-    daemon = pyobsDaemon(args.config_path, args.run_path, args.log_path,
-                         log_level=args.log_level, chuid=args.chuid, start_stop_daemon=args.start_stop_daemon)
+    daemon = pyobsDaemon(os.path.join(args.path, args.config_path),
+                         os.path.join(args.path, args.run_path),
+                         os.path.join(args.path, args.log_path),
+                         log_level=args.log_level,
+                         chuid=args.chuid,
+                         start_stop_daemon=args.start_stop_daemon)
 
     # run
     cmd = getattr(daemon, args.command)

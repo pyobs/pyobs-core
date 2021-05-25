@@ -6,6 +6,8 @@ import subprocess
 import sys
 import time
 
+import yaml
+
 log = logging.getLogger('pyobs')
 
 
@@ -186,15 +188,23 @@ class pyobsDaemon(object):
 
 
 def main():
+    # try to load config file
+    config_filename = os.path.expanduser('~/.pyobs/pyobsd.yaml')
+    config = {}
+    if os.path.exists(config_filename):
+        with open(config_filename, 'r') as f:
+            config = yaml.safe_load(f)
+
     # init parser
     parser = argparse.ArgumentParser(description="Daemon for pyobs")
-    parser.add_argument('-c', '--config-path', type=str, default='/opt/pyobs/config')
-    parser.add_argument('-r', '--run-path', type=str, default='/opt/pyobs/run')
-    parser.add_argument('-l', '--log-path', type=str, default='/opt/pyobs/log')
+    parser.add_argument('-c', '--config-path', type=str, default=config.get('config-path', '/opt/pyobs/config'))
+    parser.add_argument('-r', '--run-path', type=str, default=config.get('run-path', '/opt/pyobs/run'))
+    parser.add_argument('-l', '--log-path', type=str, default=config.get('log-path', '/opt/pyobs/log'))
     parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
-                        default='info')
-    parser.add_argument('--chuid', type=str, default='pyobs:pyobs')
-    parser.add_argument('--start-stop-daemon', type=str, default='/sbin/start-stop-daemon')
+                        default=config.get('log-level', 'info'))
+    parser.add_argument('--chuid', type=str, default=config.get('chuid', 'pyobs:pyobs'))
+    parser.add_argument('--start-stop-daemon', type=str,
+                        default=config.get('start-stop-daemon', '/sbin/start-stop-daemon'))
     parser.add_argument('command', type=str, choices=['start', 'stop', 'restart', 'status'])
     parser.add_argument('services', type=str, nargs='*')
     args = parser.parse_args()

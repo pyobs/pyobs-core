@@ -18,7 +18,8 @@ class Night:
                  archive: Union[dict, Archive], pipeline: Union[dict, Pipeline], worker_procs: int = 4,
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
-                 min_flats: int = 10, store_local: str = None, *args, **kwargs):
+                 min_flats: int = 10, store_local: str = None, create_calibs: bool = True, calib_science: bool = True,
+                 *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
@@ -30,6 +31,8 @@ class Night:
             filenames_calib: Filename pattern for master calibration files.
             min_flats: Minimum number of raw frames to create flat field.
             store_local: If True, files are stored in given local directory instead of uploaded to archive.
+            create_calibs: If False, no calibration files are created for night.
+            calib_science: If False, no science frames are calibrated.
         """
 
         # get archive and science pipeline
@@ -42,6 +45,8 @@ class Night:
         self._worker_processes = worker_procs
         self._min_flats = min_flats
         self._store_local = store_local
+        self._create_calibs = create_calibs
+        self._calib_science = calib_science
 
         # cache for master calibration frames
         self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
@@ -202,19 +207,20 @@ class Night:
 
             # loop binnings
             for binning in options['binnings']:
-                # create bias
-                self._create_master_calib(instrument, ImageType.BIAS, binning)
-
-                # create dark
-                self._create_master_calib(instrument, ImageType.DARK, binning)
+                # create bias and dark
+                if self._create_calibs:
+                    self._create_master_calib(instrument, ImageType.BIAS, binning)
+                    self._create_master_calib(instrument, ImageType.DARK, binning)
 
                 # loop filters
                 for filter_name in options['filters']:
                     # create flat
-                    self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
+                    if self._create_calibs:
+                        self._create_master_calib(instrument, ImageType.SKYFLAT, binning, filter_name)
 
                     # calibrate science data
-                    self._calib_data(instrument, binning, filter_name)
+                    if self._calib_science:
+                        self._calib_data(instrument, binning, filter_name)
 
 
 __all__ = ['Night']

@@ -1,4 +1,5 @@
 import logging
+import os
 import signal
 import threading
 from io import StringIO
@@ -15,14 +16,19 @@ log = None
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
-    def __init__(self, log_file: str = None, log_level: str = 'info', log_rotate: bool = False):
+    def __init__(self, config: str, log_file: str = None, log_level: str = 'info', log_rotate: bool = False):
         """Initializes a pyobs application.
 
         Args:
+            config: Name of config file.
             log_file: Name of log file, if any.
             log_level: Logging level.
             log_rotate: Whether to rotate the log files.
         """
+
+        # get config name without path and extension
+        self._config = config
+        config_name = os.path.basename(config)
 
         # formatter for logging, and list of logging handlers
         formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
@@ -64,7 +70,7 @@ class Application:
         self._comm = None
         self._module = None
 
-    def run(self, config: str):
+    def run(self):
         """Actually run the application.
 
         Args:
@@ -74,8 +80,8 @@ class Application:
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
             # load config
-            log.info('Loading configuration from {0:s}...'.format(config))
-            with StringIO(pre_process_yaml(config)) as f:
+            log.info('Loading configuration from {0:s}...'.format(self._config))
+            with StringIO(pre_process_yaml(self._config)) as f:
                 cfg = yaml.safe_load(f)
 
             # create module and open it

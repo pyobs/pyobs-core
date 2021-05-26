@@ -81,8 +81,8 @@ def run(app_class, config=None, log_file: str = None, log_level: str = 'info', l
     """
 
     # create app and run it
-    app = app_class(log_file, log_level, log_rotate)
-    app.run(config)
+    app = app_class(config, log_file, log_level, log_rotate)
+    app.run()
 
 
 def main():

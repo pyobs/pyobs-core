@@ -18,6 +18,7 @@ def init_cli():
                         default=os.environ.get('PYOBS_LOG_FILE'))
     parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
                         default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
+    parser.add_argument('--fluent-server', type=str, help='Fluent server and port.')
 
     # debug stuff
     parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
@@ -68,20 +69,15 @@ def start_daemon(app_class, pid_file=None, *args, **kwargs):
         run(*args, app_class=app_class, **kwargs)
 
 
-def run(app_class, config=None, log_file: str = None, log_level: str = 'info', log_rotate: bool = False,
-        *args, **kwargs):
+def run(app_class, **kwargs):
     """Run a pyobs application with the given options.
 
     Args:
         app_class: Class to create app from
-        config: Name of config file, if any.
-        log_file: Name of file to log to, if any.
-        log_level: Logging level.
-        log_rotate: Whether or not to rotate the logs.
     """
 
     # create app and run it
-    app = app_class(config, log_file, log_level, log_rotate)
+    app = app_class(**kwargs)
     app.run()
 
 
@@ -94,6 +90,7 @@ def main():
 
     # parse it
     args = parse_cli(parser)
+    print(args)
 
     # run app
     if args['pid_file']:

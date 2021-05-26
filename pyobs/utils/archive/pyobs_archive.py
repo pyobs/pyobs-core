@@ -1,5 +1,5 @@
 import io
-from typing import List
+from typing import List, Dict
 import requests
 import urllib.parse
 import logging
@@ -140,6 +140,24 @@ class PyobsArchive(Archive):
 
         # return all
         return images
+
+    def download_headers(self, infos: List[PyobsArchiveFrameInfo]) -> List[Dict]:
+        # loop infos
+        headers = []
+        for info in infos:
+            # download
+            url = urllib.parse.urljoin(self._url, info.url).replace('download', 'headers')
+            r = requests.get(url, headers=self._headers, proxies=self._proxies)
+
+            try:
+                results = r.json()['results']
+                headers.append(dict((d['key'], d['value']) for d in results))
+            except KeyError:
+                log.error('Could not fetch headers for %s.', info.filename)
+                headers.append({})
+
+        # return all
+        return headers
 
     def upload_frames(self, images: List[Image]):
         # build URL

@@ -170,6 +170,9 @@ class Night:
 
         # run all science frames
         for i, info in enumerate(infos, 1):
+            # temporary fix
+            if 'e01' in info.filename:
+                continue
             log.info('Calibrating file %d/%d: %s...', i, len(infos), info.filename)
 
             # download frame

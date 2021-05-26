@@ -76,7 +76,7 @@ class Calibration(ImageProcessor):
 
         # set raw filename
         if 'ORIGNAME' in image.header:
-            calibrated.header['L1RAW'] = image.header['ORIGNAME']
+            calibrated.header['L1RAW'] = image.header['ORIGNAME'].replace('.fits', '')
 
         # add calibration frames
         calibrated.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),

@@ -90,7 +90,6 @@ def main():
 
     # parse it
     args = parse_cli(parser)
-    print(args)
 
     # run app
     if args['pid_file']:

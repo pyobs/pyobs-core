@@ -95,7 +95,7 @@ class SepSourceDetection(SourceDetection):
         sources['y'] += 1
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'npix', 'kronrad']
+        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'tnpix', 'kronrad']
 
         # copy image, set catalog and return it
         img = image.copy()

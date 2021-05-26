@@ -78,6 +78,17 @@ class Calibration(ImageProcessor):
         if 'ORIGNAME' in image.header:
             calibrated.header['L1RAW'] = image.header['ORIGNAME']
 
+        # add calibration frames
+        calibrated.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                       'Name of BIAS frame')
+        calibrated.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                       'Name of DARK frame')
+        calibrated.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                       'Name of FLAT frame')
+
+        # set RLEVEL
+        calibrated.header['RLEVEL'] = (1, 'Reduction level')
+
         # finished
         return calibrated
 

@@ -136,7 +136,7 @@ class PyobsArchive(Archive):
                 image = Image.from_bytes(r.content)
                 images.append(image)
             except OSError:
-                log.error('Error downloading file %s.', info.filename)
+                log.exception('Error downloading file %s.', info.filename)
 
         # return all
         return images

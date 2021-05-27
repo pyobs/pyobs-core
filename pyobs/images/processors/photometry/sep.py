@@ -59,21 +59,6 @@ class SepPhotometry(Photometry):
         # match SEP conventions
         x, y = sources['x'] - 1, sources['y'] - 1
 
-        # radii at 0.25, 0.5, and 0.75 flux
-        flux_radii, flag = sep.flux_radius(data, x, y, 6.0 * sources['a'],
-                                           [0.25, 0.5, 0.75], normflux=sources['flux'], subpix=5)
-        sources['flag'] = flag
-        sources['fluxrad25'] = flux_radii[:, 0]
-        sources['fluxrad50'] = flux_radii[:, 1]
-        sources['fluxrad75'] = flux_radii[:, 2]
-
-        # xwin/ywin
-        sig = 2. / 2.35 * sources['fluxrad50']
-        xwin, ywin, flag = sep.winpos(data, x, y, sig)
-        sources['flag'] |= flag
-        sources['xwin'] = xwin
-        sources['ywin'] = ywin
-
         # get gain
         gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
 

@@ -87,6 +87,21 @@ class SepSourceDetection(SourceDetection):
         sources['flag'] |= flag
         sources['flux'] = flux
 
+        # radii at 0.25, 0.5, and 0.75 flux
+        flux_radii, flag = sep.flux_radius(data, x, y, 6.0 * sources['a'],
+                                           [0.25, 0.5, 0.75], normflux=sources['flux'], subpix=5)
+        sources['flag'] |= flag
+        sources['fluxrad25'] = flux_radii[:, 0]
+        sources['fluxrad50'] = flux_radii[:, 1]
+        sources['fluxrad75'] = flux_radii[:, 2]
+
+        # xwin/ywin
+        sig = 2. / 2.35 * sources['fluxrad50']
+        xwin, ywin, flag = sep.winpos(data, x, y, sig)
+        sources['flag'] |= flag
+        sources['xwin'] = xwin
+        sources['ywin'] = ywin
+
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
 
@@ -95,7 +110,8 @@ class SepSourceDetection(SourceDetection):
         sources['y'] += 1
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'tnpix', 'kronrad']
+        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'tnpix', 'kronrad',
+                      'fluxrad25', 'fluxrad50', 'fluxrad75', 'xwin', 'ywin']
 
         # copy image, set catalog and return it
         img = image.copy()

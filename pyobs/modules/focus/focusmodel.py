@@ -353,11 +353,11 @@ class FocusModel(Module, IFocusModel):
         import lmfit
 
         # no coefficients? no model...
-        if not self._coefficients or self._table_storage is None:
+        if not self._coefficients or self._publisher is None:
             return
 
         # only take clear filter images for now
-        data = self._table_storage.copy()
+        data = self._publisher.data()
 
         # enough measurements?
         if len(data) < self._min_measurements:

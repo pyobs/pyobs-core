@@ -13,7 +13,6 @@ class Offsets(ImageProcessor):
     __module__ = 'pyobs.images.processors.offsets'
 
     def __init__(self, *args, **kwargs):
-        ImageProcessor.__init__(self, *args, **kwargs)
         self.offset = (None, None)
 
     def reset(self):

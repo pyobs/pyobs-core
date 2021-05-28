@@ -27,14 +27,7 @@ class CsvPublisher(Publisher):
         """
 
         # load data
-        try:
-            # load it
-            csv = self.vfs.read_csv(self._filename, index_col=False)
-
-        except FileNotFoundError:
-            # file not found, so start new with row
-            log.warning('No previous CSV file found, creating new one...')
-            csv = pd.DataFrame()
+        csv = self.data()
 
         # create new row from kwargs and append it
         row = pd.DataFrame(kwargs, index=[0])
@@ -42,6 +35,19 @@ class CsvPublisher(Publisher):
 
         # write it
         self.vfs.write_csv(csv, self._filename, index=False)
+
+    def data(self) -> pd.DataFrame:
+        """Return data that has so far been published."""
+
+        # load data
+        try:
+            # load it
+            return self.vfs.read_csv(self._filename, index_col=False)
+
+        except FileNotFoundError:
+            # file not found, so start new with row
+            log.warning('No previous CSV file found, creating new one...')
+            return pd.DataFrame()
 
 
 __all__ = ['CsvPublisher']

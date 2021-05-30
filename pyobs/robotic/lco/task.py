@@ -150,7 +150,7 @@ class LcoTask(Task):
         """
 
         # get logger for task name and log
-        task_name_logger.info(f'Checking whether task {self.name} can run.,,')
+        task_name_logger.info(f'Checking whether task {self.name} can run...')
 
         # loop configurations
         req = self.config['request']

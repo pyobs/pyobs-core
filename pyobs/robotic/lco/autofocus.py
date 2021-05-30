@@ -5,8 +5,13 @@ from typing import Union, Tuple
 from pyobs.interfaces import ICamera, IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
+from pyobs.utils.logger import DuplicateFilter
 
 log = logging.getLogger(__name__)
+
+# logger for logging name of task
+cannot_run_logger = logging.getLogger(__name__ + ':cannot_run')
+cannot_run_logger.addFilter(DuplicateFilter())
 
 
 class LcoAutoFocusScript(Script):
@@ -69,18 +74,21 @@ class LcoAutoFocusScript(Script):
 
         # need everything
         if roof is None or telescope is None or autofocus is None:
+            cannot_run_logger.info('Cannot run task, no roof, telescope, or auto-focusser found.')
             return False
 
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                 self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
-            log.warning('No acquisition found for task.')
+            cannot_run_logger.info('Cannot run task, no acquisition found.')
             return False
 
         # we need an open roof and a working telescope
-        if roof is None or not roof.is_ready().wait():
+        if roof.is_ready().wait():
+            cannot_run_logger.info('Cannot run task, roof not ready.')
             return False
-        if telescope is None or not telescope.is_ready().wait():
+        if telescope.is_ready().wait():
+            cannot_run_logger.info('Cannot run task, telescope not ready.')
             return False
 
         # seems alright

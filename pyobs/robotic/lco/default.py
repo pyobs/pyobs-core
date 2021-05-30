@@ -8,10 +8,15 @@ from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITel
     IAcquisition, ICameraExposureTime, IImageType
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
+from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.threads import Future
 
 
 log = logging.getLogger(__name__)
+
+# logger for logging name of task
+cannot_run_logger = logging.getLogger(__name__ + ':cannot_run')
+cannot_run_logger.addFilter(DuplicateFilter())
 
 
 class LcoDefaultScript(Script):
@@ -77,31 +82,34 @@ class LcoDefaultScript(Script):
 
         # need camera
         if camera is None:
+            cannot_run_logger.info('Cannot run task, no camera found.')
             return False
 
         # for OBJECT exposure we need more
         if self.image_type == ImageType.OBJECT:
             # we need an open roof and a working telescope
             if roof is None or not roof.is_ready().wait():
+                cannot_run_logger.warning('Cannot run task, no roof found or roof not ready.')
                 return False
             if telescope is None or not telescope.is_ready().wait():
+                cannot_run_logger.warning('Cannot run task, no telescope found or telescope not ready.')
                 return False
 
             # we probably need filters and autoguider/acquisition
             if filters is None:
-                log.warning('No filter module found for task.')
+                cannot_run_logger.warning('Cannot run task, No filter module found.')
                 return False
 
             # acquisition?
             if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                     self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
-                log.warning('No acquisition found for task.')
+                cannot_run_logger.warning('Cannot run tasl, no acquisition found.')
                 return False
 
             # guiding?
             if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
                     self.configuration['guiding_config']['mode'] == 'ON' and autoguider is None:
-                log.warning('No auto guider found for task.')
+                cannot_run_logger.warning('Cannot run task, no auto guider found.')
                 return False
 
         # seems alright

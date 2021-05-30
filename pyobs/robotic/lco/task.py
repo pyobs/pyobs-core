@@ -5,9 +5,14 @@ from typing import Union, Dict, Tuple
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
+from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+# logger for logging name of task
+task_name_logger = logging.getLogger(__name__ + ':task_name')
+task_name_logger.addFilter(DuplicateFilter())
 
 
 class ConfigStatus:
@@ -143,6 +148,9 @@ class LcoTask(Task):
         Returns:
             True, if task can run now.
         """
+
+        # get logger for task name and log
+        task_name_logger.info(f'Checking whether task {self.name} can run.,,')
 
         # loop configurations
         req = self.config['request']

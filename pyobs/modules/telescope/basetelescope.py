@@ -103,6 +103,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             ValueError: If device could not track.
         """
 
+        # do nothing, if initializing, parking or parked
+        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+            return
+
         # check observer
         if self.observer is None:
             raise ValueError('No observer given.')
@@ -162,6 +166,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             Exception: On error.
             AcquireLockFailed: If current motion could not be aborted.
         """
+
+        # do nothing, if initializing, parking or parked
+        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+            return
 
         # check altitude
         if alt < self._min_altitude:

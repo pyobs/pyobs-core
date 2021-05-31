@@ -84,10 +84,10 @@ class LcoAutoFocusScript(Script):
             return False
 
         # we need an open roof and a working telescope
-        if roof.is_ready().wait():
+        if not roof.is_ready().wait():
             cannot_run_logger.info('Cannot run task, roof not ready.')
             return False
-        if telescope.is_ready().wait():
+        if not telescope.is_ready().wait():
             cannot_run_logger.info('Cannot run task, telescope not ready.')
             return False
 

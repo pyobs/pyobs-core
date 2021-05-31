@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import threading
+import time
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
 import yaml
@@ -11,6 +12,8 @@ from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
 
 # just init logger with something here, will be overwritten in __init__
+from pyobs.utils.logger import DuplicateFilter
+
 log = logging.getLogger(__name__)
 
 
@@ -122,6 +125,18 @@ class Application:
             if self._module is not None:
                 log.info('Closing module...')
                 self._module.close()
+
+            # still threads running?
+            if threading.active_count() > 1:
+                # get logger
+                wait_logger = logging.getLogger(__name__ + ':wait')
+                wait_logger.addFilter(DuplicateFilter())
+
+                # wait for them to end
+                while threading.active_count() > 1:
+                    names = [t.name for t in threading.enumerate() if t != threading.current_thread()]
+                    wait_logger.info('Waiting for threads to close: ' + ','.join(names))
+                    time.sleep(2)
 
             # finished
             log.info('Finished shutting down.')

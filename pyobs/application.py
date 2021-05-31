@@ -21,7 +21,7 @@ class Application:
     """Class for initializing and shutting down a pyobs process."""
 
     def __init__(self, config: str, log_file: str = None, log_level: str = 'info', log_rotate: bool = False,
-                 fluent_server: str = None, *args, **kwargs):
+                 *args, **kwargs):
         """Initializes a pyobs application.
 
         Args:
@@ -29,12 +29,10 @@ class Application:
             log_file: Name of log file, if any.
             log_level: Logging level.
             log_rotate: Whether to rotate the log files.
-            fluent_server: Hostname and port of fluent server.
         """
 
         # get config name without path and extension
         self._config = config
-        config_name = os.path.basename(config)
 
         # formatter for logging, and list of logging handlers
         formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
@@ -57,19 +55,6 @@ class Application:
             # add log file handler
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
-
-        # logging handler for fluentd
-        if fluent_server is not None:
-            from fluent import handler, asynchandler
-            host, port = fluent_server.split(':')
-            fluent_handler = asynchandler.FluentHandler('pyobs', host=host, port=int(port))
-            formatter = handler.FluentRecordFormatter({'host': '%(hostname)s',
-                                                       'config': config_name,
-                                                       'where': '%(filename)s:%(lineno)d',
-                                                       'type': '%(levelname)s',
-                                                       'stack_trace': '%(exc_text)s'})
-            fluent_handler.setFormatter(formatter)
-            handlers.append(fluent_handler)
 
         # basic setup
         logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))

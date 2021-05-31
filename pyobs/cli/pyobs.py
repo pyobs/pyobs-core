@@ -18,7 +18,6 @@ def init_cli():
                         default=os.environ.get('PYOBS_LOG_FILE'))
     parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
                         default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
-    parser.add_argument('--fluent-server', type=str, help='Fluent server and port.')
 
     # debug stuff
     parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',

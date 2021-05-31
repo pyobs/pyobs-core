@@ -1,5 +1,6 @@
 import io
 import logging
+import multiprocessing
 from enum import Enum
 from inspect import Parameter
 from pprint import pprint
@@ -42,10 +43,14 @@ class Telegram(Module):
         self._password = password
         self._allow_new_users = allow_new_users
         self._updater = None
+        self._message_queue = multiprocessing.Queue()
 
         # get log levels
         self._log_levels = {logging.getLevelName(x): x for x in range(1, 101)
                             if not logging.getLevelName(x).startswith('Level')}
+
+        # thread
+        self.add_thread_func(self._log_sender_thread)
 
     def open(self):
         """Open module."""
@@ -445,6 +450,9 @@ class Telegram(Module):
             sender: Name of sender.
         """
 
+        # get next entry
+        entry, sender = self._message_queue.get()
+
         # get numerical value for log level
         level = self._log_levels[entry.level]
 
@@ -461,8 +469,25 @@ class Telegram(Module):
 
             # is it larger than the log entry level?
             if level >= user_level:
+                # queue message
+                self._message_queue.put((user_id, message))
+
+    def _log_sender_thread(self):
+        """Thread for sending messages."""
+        
+        while not self.closing.is_set():
+            # send all messages in queue
+            while not self._message_queue.empty():
+                # get next entry
+                user_id, message = self._message_queue.get()
+
                 # send message
-                self._updater.bot.send_message(chat_id=user_id, text=message)
+                try:
+                    self._updater.bot.send_message(chat_id=user_id, text=message)
+                except Exception:
+                    # something went wrong, sleep a little and queue message again
+                    self.closing.wait(10)
+                    self._message_queue.put((user_id, message))
 
 
 __all__ = ['Telegram']

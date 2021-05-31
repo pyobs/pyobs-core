@@ -20,7 +20,7 @@ class CorrelationMaxCloseToBorderError(Exception):
 
 
 class NStarOffsets(Offsets):
-    """An auto-guiding system based on comparing 2D images of the surroundings of variable number of stars."""
+    """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
     def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
                  *args, **kwargs):
@@ -32,6 +32,7 @@ class NStarOffsets(Offsets):
                 around stars.
             min_pixels: minimum required number of pixels above threshold for source to be
                 used for offset calculation.
+            min_sources: Minimum required number of sources in image.
         """
         Offsets.__init__(self, *args, **kwargs)
 
@@ -63,7 +64,7 @@ class NStarOffsets(Offsets):
 
         # no reference image?
         if self.ref_boxes is None:
-            log.info("Initialising auto-guiding with new image...")
+            log.info("Initialising nstar auto-guiding with new image...")
             self.star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
             log.info(f"Choosing box size of {self.star_box_size} pixels.")
 
@@ -134,7 +135,7 @@ class NStarOffsets(Offsets):
 
     @staticmethod
     def remove_sources_close_to_border(sources: Table, image_shape: tuple, min_dist) -> Table:
-        """Remove table rows from sources when closer than given distance from border of image.
+        """Remove table rows from sources when source is closer than given distance from border of image.
         
         Args:
             sources: Input table.
@@ -149,7 +150,7 @@ class NStarOffsets(Offsets):
         width, height = image_shape
 
         def min_distance_from_border(source):
-            # minimum across x and y of distances to border
+            # calculate the minimum distance of source to any image border (across x and y)
             return np.min(
                 np.array(
                     (
@@ -206,7 +207,7 @@ class NStarOffsets(Offsets):
         """Select N brightest sources from table.
 
         Args:
-            num_stars: Number of stars to select.
+            num_stars: Maximum number of stars to select.
             sources: Source table.
 
         Returns:
@@ -232,7 +233,7 @@ class NStarOffsets(Offsets):
             None
 
         Raises:
-            ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in sources
+            ValueError if not at least self.min_sources in sources table
 
         """
         n_required_sources = self.min_sources
@@ -256,7 +257,7 @@ class NStarOffsets(Offsets):
             box_ymin, box_ymax = box.origin[1], box.origin[1] + box.data.shape[0]
             box_xmin, box_xmax = box.origin[0], box.origin[0] + box.data.shape[1]
 
-            # extract box
+            # extract box image
             current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax]
 
             # correlate
@@ -283,51 +284,59 @@ class NStarOffsets(Offsets):
     def _offsets_from_corr(self, corr) -> Tuple[float, float]:
         """Fit 2d correlation data with a 2d gaussian + constant offset.
         raise CorrelationMaxCloseToBorderError if the correlation maximum is not well separated from border."""
-        # calc positions corresponding to the values in the correlation
+
+        # check if maximum of correlation is too close to border
+        self._check_corr_border(corr)
+
+        # get x,y positions array corresponding to the independent variable values of the correlation
         x, y = NStarOffsets._corr_grid(corr)
 
-        # format data as needed by R^2 -> R curve_fit
+        # shape data as needed by R^2 -> R scipy curve_fit
         xdata = np.vstack((x.ravel(), y.ravel()))
         ydata = corr.ravel()
 
-        # initial parameter values
+        # estimate initial parameter values
+        # constant offset of 2d gaussian
         a = np.min(corr)
+        # height of 2d gaussian
         b = np.max(corr) - a
-        # use max pixel as initial value for x0, y0
+        # gaussian peak position (estimate from maximum pixel position in correlation)
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
         x0, y0 = x[tuple(max_index)], y[tuple(max_index)]
-        self._check_corr_border(corr)
-
-        # estimate width of correlation peak as radius of area with values above half maximum
+        # estimate width of 2d gaussian as radius of area with values above half maximum
         half_max = np.max(corr - a) / 2 + a
-        greater_than_half_max_area = np.sum(corr >= half_max)
+        greater_than_half_max_area = np.sum(corr >= half_max) # sum over binary array
         sigma_x = np.sqrt(greater_than_half_max_area / np.pi)
         sigma_y = sigma_x
 
+        # initial value list
         p0 = [a, b, x0, y0, sigma_x, sigma_y]
         bounds = (
             [-np.inf, -np.inf, x0 - sigma_x, y0 - sigma_y, 0, 0],
             [np.inf, np.inf, x0 + sigma_x, y0 + sigma_y, np.inf, np.inf],
         )
-        # only use data that clearly belong to peak to avoid border effects
-        mask_value_above_background = ydata > -1e5  # a + .1*b
+
+        # only use data points that clearly belong to peak to avoid border effects
+        # mask_value_above_background = ydata > -1e5  # a + .1*b
         mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (
                 sigma_x ** 2 + sigma_y ** 2
         ) / 2
-        mask = np.logical_and(mask_value_above_background, mask_circle_around_peak)
+        mask = mask_circle_around_peak # np.logical_and(mask_value_above_background, mask_circle_around_peak)
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]
 
+        # do fit
         try:
-            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted, p0,
-                                            bounds=bounds, maxfev=int(1e5), ftol=1e-12)
+            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted,
+                                            p0, bounds=bounds,
+                                            maxfev=int(1e5), ftol=1e-12)
         except Exception as e:
             # if fit fails return max pixel
             log.info(e)
             log.info("Returning pixel position with maximal value in correlation.")
             return tuple(np.unravel_index(np.argmax(corr), corr.shape))
 
-        #median_squared_relative_residue_threshold = 1e-2
+        # check quality of fit
         median_squared_relative_residue_threshold = 1e-1
         fit_ydata_restricted = self._gauss2d(xdata_restricted, *popt)
         square_rel_res = np.square(

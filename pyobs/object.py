@@ -287,7 +287,7 @@ class Object:
 
         elif object_class is not None:
             # no config or object given, do we have a class?
-            obj = object_class(**kwargs, timezone=self.timezone, location=self.location, **kwargs)
+            obj = object_class(**kwargs, timezone=self.timezone, location=self.location)
 
         else:
             # not successful

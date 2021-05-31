@@ -61,9 +61,6 @@ class NStarOffsets(Offsets):
             ValueError: If offset could not be found.
         """
 
-        # remove background
-        image = RemoveBackground()(image)
-
         # no reference image?
         if self.ref_boxes is None:
             log.info("Initialising auto-guiding with new image...")
@@ -263,7 +260,7 @@ class NStarOffsets(Offsets):
             current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax]
 
             # correlate
-            corr = signal.correlate2d(current_boxed_image, box.data)
+            corr = signal.correlate2d(current_boxed_image, box.data, mode='same', boundary='wrap')
 
             try:
                 offset = self._offsets_from_corr(corr)

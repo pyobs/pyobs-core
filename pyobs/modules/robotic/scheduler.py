@@ -328,6 +328,10 @@ class Scheduler(Module, IStoppable, IRunnable):
             sender: Who sent it.
         """
 
+        # store it
+        self._current_task_id = event.id
+        self._last_task_id = event.id
+
         # trigger?
         if self._trigger_on_task_started:
             # get ETA in minutes
@@ -337,8 +341,6 @@ class Scheduler(Module, IStoppable, IRunnable):
             # set it
             self._need_update = True
             self._schedule_start = event.eta
-            self._current_task_id = event.id
-            self._last_task_id = event.id
 
     def _on_task_finished(self, event: TaskFinishedEvent, sender: str, *args, **kwargs):
         """Reset current task, when it has finished.

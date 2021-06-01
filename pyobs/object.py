@@ -157,7 +157,7 @@ class Object:
         self._threads: Dict[threading.Thread, Tuple] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    def add_thread_func(self, func: Callable, restart: bool = True):
+    def add_thread_func(self, func: Callable, restart: bool = True) -> threading.Thread:
         """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -172,6 +172,7 @@ class Object:
 
         # add it
         self._threads[t] = (func, restart)
+        return t
 
     def open(self):
         """Open module."""
@@ -239,9 +240,8 @@ class Object:
                 if restart:
                     log.error('Thread for %s has died, restarting...', target.__name__)
                     del self._threads[thread]
-                    thread = threading.Thread(target=target, name=target.__name__)
+                    thread = self.add_thread_func(target, restart)
                     thread.start()
-                    self._threads[thread] = (target, restart)
                 else:
                     log.error('Thread for %s has died, quitting...', target.__name__)
                     self.quit()

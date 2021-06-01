@@ -103,7 +103,7 @@ class LcoDefaultScript(Script):
             # acquisition?
             if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                     self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
-                cannot_run_logger.warning('Cannot run tasl, no acquisition found.')
+                cannot_run_logger.warning('Cannot run task, no acquisition found.')
                 return False
 
             # guiding?

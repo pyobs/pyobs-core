@@ -450,9 +450,6 @@ class Telegram(Module):
             sender: Name of sender.
         """
 
-        # get next entry
-        entry, sender = self._message_queue.get()
-
         # get numerical value for log level
         level = self._log_levels[entry.level]
 

@@ -159,8 +159,12 @@ class LcoTask(Task):
             runner = self._get_config_script(config)
 
             # if any runner can run, we proceed
-            if runner.can_run():
-                return True
+            try:
+                if runner.can_run():
+                    return True
+            except Exception:
+                log.exception('Error on evaluating whether task can run.')
+                return False
 
         # no config found that could run
         return False

@@ -95,7 +95,7 @@ class FollowMixin:
         self.closing.wait(10)
 
         # run until closing
-        connected = None
+        connected = True
         while not self.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
@@ -119,8 +119,8 @@ class FollowMixin:
                 other_coords = build_skycoord((x, y), self.__follow_mode)
                 connected = True
             except (ValueError, RemoteException):
-                if not connected:
-                    log.error('Could not fetch coordinates.')
+                if connected:
+                    log.warning('Could not fetch coordinates.')
                 connected = False
                 self.closing.wait(self.__follow_interval * 10.)
                 continue

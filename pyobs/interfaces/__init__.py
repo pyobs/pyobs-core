@@ -36,6 +36,7 @@ from .IImageFormat import IImageFormat
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
+from .IPointingSeries import IPointingSeries
 from .IRaDec import IRaDec
 from .IRaDecOffsets import IRaDecOffsets
 from .IReady import IReady

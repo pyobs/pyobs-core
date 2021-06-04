@@ -207,7 +207,8 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = image.header
 
         # get offset
-        dx, dy = self._guiding_offset(image)
+        self._guiding_offset(image)
+        dx, dy = self._guiding_offset.offset
 
         if dx is None or dy is None:
             log.warning('Could not correlate image with reference.')

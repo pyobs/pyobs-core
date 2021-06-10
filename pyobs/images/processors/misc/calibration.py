@@ -1,3 +1,5 @@
+import multiprocessing
+import threading
 from typing import Union, Optional, List, Tuple
 import logging
 import astropy.units as u
@@ -19,6 +21,9 @@ class Calibration(ImageProcessor):
     """Calibrate an image."""
     __module__ = 'pyobs.images.processors.misc'
 
+    """Cache for calibration frames."""
+    calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
+
     def __init__(self, archive: Union[dict, Archive], max_cache_size: int = 20, *args, **kwargs):
         """Init a new image calibration pipeline step.
 
@@ -31,9 +36,6 @@ class Calibration(ImageProcessor):
 
         # get archive
         self._archive = get_object(archive, Archive)
-
-        # calibration cache
-        self._calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
 
     def __call__(self, image: Image) -> Image:
         """Calibrate an image.
@@ -121,9 +123,11 @@ class Calibration(ImageProcessor):
             raise ValueError('Could not fetch items from image header.')
 
         # is in cache?
-        for m, item in self._calib_cache:
+        for m, item in Calibration.calib_cache:
             if m == mode:
                 return item
+        print('CACHE MISS:', instrument, binning, filter_name, image_type)
+        print('CACHE: ', multiprocessing.current_process(), [c[0] for c in Calibration.calib_cache])
 
         # try to download one
         master = Pipeline.find_master(self._archive, image_type, time, instrument, binning, filter_name, max_days=30)
@@ -133,11 +137,11 @@ class Calibration(ImageProcessor):
             raise ValueError('No master frame found.')
 
         # store it in cache
-        self._calib_cache.append((mode, master))
+        Calibration.calib_cache.append((mode, master))
 
         # too many entries?
-        while len(self._calib_cache) > self._max_cache_size:
-            self._calib_cache.pop(0)
+        while len(Calibration.calib_cache) > self._max_cache_size:
+            Calibration.calib_cache.pop(0)
 
         # return it
         return master

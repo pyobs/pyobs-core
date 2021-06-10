@@ -126,8 +126,6 @@ class Calibration(ImageProcessor):
         for m, item in Calibration.calib_cache:
             if m == mode:
                 return item
-        print('CACHE MISS:', instrument, binning, filter_name, image_type)
-        print('CACHE: ', multiprocessing.current_process(), [c[0] for c in Calibration.calib_cache])
 
         # try to download one
         master = Pipeline.find_master(self._archive, image_type, time, instrument, binning, filter_name, max_days=30)

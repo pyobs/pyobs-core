@@ -1,5 +1,6 @@
 import logging
 import os.path
+from multiprocessing import Pool
 from typing import Union, Type, Dict, Tuple, Optional, List
 
 from pyobs.object import get_object
@@ -18,7 +19,7 @@ class Night:
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
                  min_flats: int = 10, store_local: str = None, create_calibs: bool = True, calib_science: bool = True,
-                 *args, **kwargs):
+                 num_procs: int = 1, *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
@@ -30,6 +31,7 @@ class Night:
             store_local: If True, files are stored in given local directory instead of uploaded to archive.
             create_calibs: If False, no calibration files are created for night.
             calib_science: If False, no science frames are calibrated.
+            num_procs: Number of processes to use for reduction.
         """
 
         # get archive and science pipeline
@@ -42,6 +44,7 @@ class Night:
         self._store_local = store_local
         self._create_calibs = create_calibs
         self._calib_science = calib_science
+        self._num_procs = num_procs
 
         # cache for master calibration frames
         self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
@@ -169,12 +172,27 @@ class Night:
         log.info('Calibrating %d OBJECT frames...', len(infos))
 
         # run all science frames
-        for i, info in enumerate(infos, 1):
-            # temporary fix
-            if 'e01' in info.filename:
-                continue
-            log.info('Calibrating file %d/%d: %s...', i, len(infos), info.filename)
+        with Pool(processes=self._num_procs) as pool:
+            for i, info in enumerate(infos, 1):
+                pool.apply_async(self._calib_data_frame, args=(info, i, len(infos)))
+            pool.close()
+            pool.join()
 
+    def _calib_data_frame(self, info, cur, total):
+        """Run pipeline for given frame.
+
+        Args:
+            info: Info for frame to calibrate.
+            cur: Number of image in set.
+            total: Total number of images.
+        """
+
+        # temporary fix
+        if 'e01' in info.filename:
+            return
+        log.info('(%d/%d) Calibrating file %s...', cur, total, info.filename)
+
+        try:
             # download frame
             image = self._archive.download_frames([info])[0]
 
@@ -184,11 +202,14 @@ class Night:
             # save/upload
             if self._store_local:
                 path = os.path.join(self._store_local, calibrated.header['FNAME'])
-                log.info('Storing calibrated images as %s...', path)
+                log.info('(%d/%d) Storing calibrated images as %s...', cur, total, path)
                 calibrated.writeto(path, overwrite=True)
             else:
-                log.info('Uploading calibrated images as %s...', calibrated.header['FNAME'])
+                log.info('(%d/%d) Uploading calibrated images as %s...', cur, total, calibrated.header['FNAME'])
                 self._archive.upload_frames([calibrated])
+
+        except Exception:
+            log.exception('(%d/%d) Error processing image %s.', cur, total, info.filename)
 
     def __call__(self, site: str, night: str):
         """Reduces all data im this night."""

@@ -118,9 +118,18 @@ class Application:
                 wait_logger.addFilter(DuplicateFilter())
 
                 # wait for them to end
+                start_shutdown = time.time()
                 while threading.active_count() > 1:
+                    # print threads
                     names = [t.name for t in threading.enumerate() if t != threading.current_thread()]
                     wait_logger.info('Waiting for threads to close: ' + ','.join(names))
+
+                    # after 30 seconds, kill everything
+                    if time.time() - start_shutdown > 30:
+                        wait_logger.error('Threads did not close gracefully, forcing exit...')
+                        os._exit(0)
+
+                    # wait a little
                     time.sleep(2)
 
             # finished

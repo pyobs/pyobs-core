@@ -170,8 +170,7 @@ class XmppComm(Comm):
 
             # wait for connected
             if not self._xmpp.wait_connect():
-                log.error('Could not connect to XMPP server.')
-                return False
+                raise ValueError('Could not connect to XMPP server.')
             self._connected = True
 
             # subscribe to events
@@ -182,8 +181,7 @@ class XmppComm(Comm):
 
         else:
             # TODO: catch exceptions in open() methods
-            log.error('Could not connect to server.')
-            return False
+            raise ValueError('Could not connect to XMPP server.')
 
     def close(self):
         """Close connection."""

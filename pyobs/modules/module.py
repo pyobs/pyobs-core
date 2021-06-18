@@ -103,8 +103,8 @@ class Module(Object, IModule, IConfig):
             raise ValueError('Invalid Comm object')
 
         # name and label
-        self._name: str = name if name is not None else self.comm.name
-        self._label: str = label if label is not None else self._name
+        self._device_name: str = name if name is not None else self.comm.name
+        self._label: str = label if label is not None else self._device_name
 
     def open(self):
         """Open module."""
@@ -155,7 +155,7 @@ class Module(Object, IModule, IConfig):
 
     def name(self, *args, **kwargs) -> str:
         """Returns name of module."""
-        return self._name
+        return self._device_name
 
     def label(self, *args, **kwargs) -> str:
         """Returns label of module."""

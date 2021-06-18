@@ -49,4 +49,5 @@ from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
 from .IWeather import IWeather
+from .IWebcam import IWebcam
 from .interface import *

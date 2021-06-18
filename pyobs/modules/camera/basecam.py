@@ -45,31 +45,10 @@ class BaseCam(Module):
         self._rotation = rotation
         self._flip = flip
         self._filenames = filenames
-        self._exposure_time: float = 0.
 
         # night exposure number
         self._cache = '/pyobs/modules/%s/cache.yaml' % self.name()
         self._frame_num = 0
-
-    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
-        """Set the exposure time in seconds.
-
-        Args:
-            exposure_time: Exposure time in seconds.
-
-        Raises:
-            ValueError: If exposure time could not be set.
-        """
-        log.info('Setting exposure time to %.5fs...', exposure_time)
-        self._exposure_time = exposure_time
-
-    def get_exposure_time(self, *args, **kwargs) -> float:
-        """Returns the exposure time in seconds.
-
-        Returns:
-            Exposure time in seconds.
-        """
-        return self._exposure_time
 
     def _add_fits_headers(self, hdr: fits.Header):
         """Add FITS header keywords to the given FITS header.

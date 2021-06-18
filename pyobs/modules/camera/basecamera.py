@@ -55,6 +55,7 @@ class BaseCamera(BaseCam, ICamera, ICameraExposureTime, IImageType, IAbortable):
         # store
         self._fits_namespaces = fits_namespaces
         self._image_type = ImageType.OBJECT
+        self._exposure_time: float = 0.
 
         # init camera
         self._exposure: Optional[ExposureInfo] = None
@@ -72,6 +73,26 @@ class BaseCamera(BaseCam, ICamera, ICameraExposureTime, IImageType, IAbortable):
         if self.comm:
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
+
+    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+        """Set the exposure time in seconds.
+
+        Args:
+            exposure_time: Exposure time in seconds.
+
+        Raises:
+            ValueError: If exposure time could not be set.
+        """
+        log.info('Setting exposure time to %.5fs...', exposure_time)
+        self._exposure_time = exposure_time
+
+    def get_exposure_time(self, *args, **kwargs) -> float:
+        """Returns the exposure time in seconds.
+
+        Returns:
+            Exposure time in seconds.
+        """
+        return self._exposure_time
 
     def set_image_type(self, image_type: ImageType, *args, **kwargs):
         """Set the image type.

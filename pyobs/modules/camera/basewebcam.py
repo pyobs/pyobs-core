@@ -134,7 +134,7 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
 
         # start listening
         log.info('Starting HTTP server on port %d...', self._port)
-        self.listen(self._port, max_buffer_size=self._max_file_size, max_body_size=self._max_file_size)
+        self.listen(self._port)
 
         # start the io loop
         self._is_listening = True

@@ -5,11 +5,11 @@ import time
 import asyncio
 import numpy as np
 import tornado
+import tornado.web
 import PIL.Image
 
 from pyobs.modules import Module
 from pyobs.interfaces import ICameraExposureTime, IWebcam
-from .basecam import BaseCam
 from ...images import Image
 
 log = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.write(image)
 
 
-class BaseWebcam(BaseCam, tornado.web.Application, IWebcam, ICameraExposureTime):
+class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -83,9 +83,10 @@ class BaseWebcam(BaseCam, tornado.web.Application, IWebcam, ICameraExposureTime)
 
         Args:
             http_port: HTTP port for webserver.
+            exposure_time: Initial exposure time.
             interval: Min interval for grabbing images.
         """
-        BaseCam.__init__(self, *args, **kwargs)
+        Module.__init__(self, *args, **kwargs)
 
         # store
         self._io_loop = None
@@ -183,7 +184,6 @@ class BaseWebcam(BaseCam, tornado.web.Application, IWebcam, ICameraExposureTime)
             Filename for last exposure.
         """
         raise NotImplementedError
-
 
 
 __all__ = ['BaseWebcam']

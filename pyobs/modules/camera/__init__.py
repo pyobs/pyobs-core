@@ -5,5 +5,5 @@ TODO: write doc
 __title__ = 'Cameras'
 
 from .basecamera import BaseCamera
-#from .adaptive import AdaptiveCamera
+from .basewebcam import BaseWebcam
 from .dummycamera import DummyCamera

@@ -78,13 +78,19 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, http_port: int = 37077, interval: float = 0.5, *args, **kwargs):
+    def __init__(self, http_port: int = 37077, interval: float = 0.5, image_path: str = '/webcam/image.fits',
+                 video_path: str = '/webcam/video', *args, **kwargs):
         """Creates a new BaseWebcam.
+
+        On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
+        i.e. "webcam" in the default settings.
 
         Args:
             http_port: HTTP port for webserver.
             exposure_time: Initial exposure time.
             interval: Min interval for grabbing images.
+            image_path: VFS path to image.
+            video_path: VFS path to video.
         """
         Module.__init__(self, *args, **kwargs)
 
@@ -94,6 +100,9 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         self._is_listening = False
         self._port = http_port
         self._interval = interval
+        self._new_image_event = threading.Event()
+        self._image_path = image_path
+        self._video_path = video_path
 
         # init tornado web server
         tornado.web.Application.__init__(self, [
@@ -160,11 +169,11 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         self._image_time = now
 
         # create FITS file
-        image_fits = Image.from_bytes(data)
+        image_fits = Image(data)
 
         # write to buffer and return it
         with io.BytesIO() as output:
-            PIL.Image.fromarray(data).save(output, format="JPG")
+            PIL.Image.fromarray(data).save(output, format="jpeg")
             image_jpeg = output.getvalue()
 
         # store both
@@ -173,9 +182,13 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
             self._image_fits = image_fits
             self._image_jpeg = image_jpeg
 
+        # signal it
+        self._new_image_event.set()
+        self._new_image_event = threading.Event()
+
     def wait_for_frame(self, *args, **kwargs):
         """Wait for next frame that starts after this method has been called."""
-        raise NotImplementedError
+        self._new_image_event.wait()
 
     def get_last_frame(self, *args, **kwargs) -> str:
         """Returns filename of last frame.
@@ -183,7 +196,15 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         Returns:
             Filename for last exposure.
         """
-        raise NotImplementedError
+        return self._image_path
+
+    def get_video(self, *args, **kwargs) -> str:
+        """Returns path to video.
+
+        Returns:
+            Path to video.
+        """
+        return self._video_path
 
 
 __all__ = ['BaseWebcam']

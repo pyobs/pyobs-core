@@ -56,9 +56,10 @@ class HttpFile(VFSFile, io.RawIOBase):
         if self.writable() and self.readable is None:
             raise ValueError('No upload URL given.')
 
-        # load file
-        if self.readable():
-            self._download()
+    @property
+    def url(self):
+        """Returns URL of file."""
+        return urljoin(self._download_path, self._filename)
 
     def _download(self):
         """For read access, download the file into a local buffer.
@@ -68,11 +69,8 @@ class HttpFile(VFSFile, io.RawIOBase):
         """
 
         try:
-            # define URL
-            url = urljoin(self._download_path, self._filename)
-
             # do request
-            r = requests_retry_session().get(url, stream=True, auth=self._auth, verify=self._verify_tls, timeout=5)
+            r = requests_retry_session().get(self.url, stream=True, auth=self._auth, verify=self._verify_tls, timeout=5)
 
         except requests.exceptions.ConnectionError:
             log.error('Could not connect to filecache.')
@@ -102,6 +100,10 @@ class HttpFile(VFSFile, io.RawIOBase):
         Returns:
             Read bytes.
         """
+
+        # load file
+        if len(self._buffer) == 0 and self.readable():
+            self._download()
 
         # check size
         if size == -1:

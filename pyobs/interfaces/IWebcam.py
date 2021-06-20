@@ -17,5 +17,13 @@ class IWebcam(Interface):
         """
         raise NotImplementedError
 
+    def get_video(self, *args, **kwargs) -> str:
+        """Returns path to video.
+
+        Returns:
+            Path to video.
+        """
+        raise NotImplementedError
+
 
 __all__ = ['IWebcam']

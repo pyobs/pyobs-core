@@ -12,7 +12,7 @@ import tornado.web
 import PIL.Image
 
 from pyobs.modules import Module, timeout
-from pyobs.interfaces import ICameraExposureTime, IWebcam
+from pyobs.interfaces import IWebcam
 from ...images import Image
 from ...mixins.imagegrabber import ImageGrabberMixin
 from ...utils.cache import DataCache
@@ -96,7 +96,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam, ICameraExposureTime):
+class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 

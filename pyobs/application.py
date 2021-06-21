@@ -3,6 +3,7 @@ import os
 import signal
 import threading
 import time
+import warnings
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
 import yaml
@@ -59,6 +60,7 @@ class Application:
         # basic setup
         logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))
         logging.captureWarnings(True)
+        warnings.simplefilter('always', DeprecationWarning)
 
         # disable tornado logger
         logging.getLogger('tornado.access').disabled = True

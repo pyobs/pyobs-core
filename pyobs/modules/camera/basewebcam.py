@@ -11,7 +11,7 @@ import tornado
 import tornado.web
 import PIL.Image
 
-from pyobs.modules import Module
+from pyobs.modules import Module, timeout
 from pyobs.interfaces import ICameraExposureTime, IWebcam
 from ...images import Image
 from ...mixins.imagegrabber import ImageGrabberMixin
@@ -32,6 +32,15 @@ INDEX_HTML = """
 </html>
 
 """
+
+
+def calc_expose_timeout(webcam, *args, **kwargs):
+    """Calculates timeout for grabe_image()."""
+    if hasattr(webcam, 'get_exposure_time'):
+        return 2 * webcam.get_exposure_time() + 30
+    else:
+        return 30
+
 
 class MainHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
@@ -204,6 +213,7 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam, IC
         self._new_image_event.set()
         self._new_image_event = threading.Event()
 
+    @timeout(calc_expose_timeout)
     def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
         """Grabs an image ans returns reference.
 

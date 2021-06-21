@@ -152,6 +152,12 @@ class Image:
         # write it
         hdu_list.writeto(f, *args, **kwargs)
 
+    def to_bytes(self) -> bytes:
+        """Write to a bytes array and return it."""
+        with io.BytesIO() as bio:
+            self.writeto(bio)
+            return bio.getvalue()
+
     def write_catalog(self, f, *args, **kwargs):
         if self.catalog is None:
             return

@@ -9,7 +9,7 @@ import tornado.web
 import PIL.Image
 
 from pyobs.modules import Module
-from pyobs.interfaces import ICameraExposureTime, IWebcam
+from pyobs.interfaces import IWebcam
 from ...images import Image
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.write(image)
 
 
-class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
+class BaseWebcam(Module, tornado.web.Application, IWebcam):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 

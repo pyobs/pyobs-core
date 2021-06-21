@@ -1,10 +1,9 @@
-import enum
-
 from .IAbortable import IAbortable
+from .IImageGrabber import IImageGrabber
 from pyobs.utils.enums import ExposureStatus
 
 
-class ICamera(IAbortable):
+class ICamera(IAbortable, IImageGrabber):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 

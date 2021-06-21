@@ -189,17 +189,16 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         self._new_image_event.set()
         self._new_image_event = threading.Event()
 
-    def wait_for_frame(self, *args, **kwargs):
-        """Wait for next frame that starts after this method has been called."""
-        self._new_image_event.wait()
+    def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
+        """Grabs an image ans returns reference.
 
-    def get_last_frame(self, *args, **kwargs) -> str:
-        """Returns filename of last frame.
+        Args:
+            broadcast: Broadcast existence of image.
 
         Returns:
-            Filename for last exposure.
+            Name of image that was taken.
         """
-        return self._image_path
+        pass
 
     def get_video(self, *args, **kwargs) -> str:
         """Returns path to video.

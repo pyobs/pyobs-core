@@ -470,7 +470,20 @@ class BaseCamera(Module, ICamera, ICameraExposureTime, IImageType, IAbortable):
         Returns:
             Name of image that was taken.
         """
+        warnings.warn('expose() has been replaced by grab_image() and will be removed in a future version.',
+                      DeprecationWarning)
+        return self.grab_image(broadcast, *args, **kwargs)
 
+    @timeout(calc_expose_timeout)
+    def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
+        """Grabs an image ans returns reference.
+
+        Args:
+            broadcast: Broadcast existence of image.
+
+        Returns:
+            Name of image that was taken.
+        """
         # acquire lock
         log.info('Acquiring exclusive lock on camera...')
         if not self._expose_lock.acquire(blocking=False):

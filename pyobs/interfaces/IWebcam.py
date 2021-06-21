@@ -1,21 +1,9 @@
-from .interface import Interface
+from .IImageGrabber import IImageGrabber
 
 
-class IWebcam(Interface):
+class IWebcam(IImageGrabber):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
-
-    def wait_for_frame(self, *args, **kwargs):
-        """Wait for next frame that starts after this method has been called."""
-        raise NotImplementedError
-
-    def get_last_frame(self, *args, **kwargs) -> str:
-        """Returns filename of last frame.
-
-        Returns:
-            Filename for last exposure.
-        """
-        raise NotImplementedError
 
     def get_video(self, *args, **kwargs) -> str:
         """Returns path to video.

@@ -33,6 +33,7 @@ from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IImageFormat import IImageFormat
+from .IImageGrabber import IImageGrabber
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion

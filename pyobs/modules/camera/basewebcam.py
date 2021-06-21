@@ -1,8 +1,11 @@
+from datetime import datetime
 import io
 import logging
 import threading
 import time
 import asyncio
+from typing import Dict, Any, Tuple
+
 import numpy as np
 import tornado
 import tornado.web
@@ -11,6 +14,8 @@ import PIL.Image
 from pyobs.modules import Module
 from pyobs.interfaces import ICameraExposureTime, IWebcam
 from ...images import Image
+from ...mixins.imagegrabber import ImageGrabberMixin
+from ...utils.cache import DataCache
 
 log = logging.getLogger(__name__)
 
@@ -66,21 +71,30 @@ class VideoHandler(tornado.web.RequestHandler):
 
 class ImageHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
-    def get(self):
+    def get(self, filename):
+        # fetch data
+        data = self.application.fetch(filename)
+        if data is None:
+            raise tornado.web.HTTPError(404)
+        log.info('Serving file %s...', filename)
+
+        # send image
         self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
         self.set_header('Pragma', 'no-cache')
         self.set_header('Content-Type', 'image/fits')
-        _, image = self.application.image_fits
-        self.set_header("Content-length", len(image))
-        self.write(image)
+        self.set_header("Content-length", len(data))
+        self.write(data)
+        self.finish()
 
 
-class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
+class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam, ICameraExposureTime):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, http_port: int = 37077, interval: float = 0.5, image_path: str = '/webcam/image.fits',
-                 video_path: str = '/webcam/video.mjpg', *args, **kwargs):
+    def __init__(self, http_port: int = 37077, interval: float = 0.5, video_path: str = '/webcam/video.mjpg',
+                 filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
+                 fits_namespaces: list = None, fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
+                 rotation: float = 0., cache_size: int = 5, *args, **kwargs):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -90,10 +104,17 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
             http_port: HTTP port for webserver.
             exposure_time: Initial exposure time.
             interval: Min interval for grabbing images.
-            image_path: VFS path to image.
             video_path: VFS path to video.
+            filename: Filename pattern for FITS images.
+            fits_namespaces: List of namespaces for FITS headers that this camera should request.
+            fits_headers: Additional FITS headers.
+            centre: (x, y) tuple of camera centre.
+            rotation: Rotation east of north.
+            cache_size: Size of cache for previous images.
         """
         Module.__init__(self, *args, **kwargs)
+        ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
+                                   rotation=rotation, filenames=filenames)
 
         # store
         self._io_loop = None
@@ -102,17 +123,19 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         self._port = http_port
         self._interval = interval
         self._new_image_event = threading.Event()
-        self._image_path = image_path
         self._video_path = video_path
         self._frame_num = 0
+
+        # image cache
+        self._cache = DataCache(cache_size)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [
             (r"/", MainHandler),
             (r"/video.mjpg", VideoHandler),
-            (r"/image.fits", ImageHandler),
+            (r"/(.*)", ImageHandler),
         ])
-        self._image_fits = None
+        self._last_data = None
         self._image_jpeg = None
         self._image_time = None
 
@@ -152,11 +175,6 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         self._io_loop.start()
 
     @property
-    def image_fits(self):
-        with self._lock:
-            return self._frame_num, self._image_fits
-
-    @property
     def image_jpeg(self):
         with self._lock:
             return self._frame_num, self._image_jpeg
@@ -170,9 +188,6 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
             return
         self._image_time = now
 
-        # create FITS file
-        image_fits = Image(data)
-
         # write to buffer and return it
         with io.BytesIO() as output:
             PIL.Image.fromarray(data).save(output, format="jpeg")
@@ -181,7 +196,7 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         # store both
         with self._lock:
             self._image_time = now
-            self._image_fits = image_fits
+            self._last_data = data
             self._image_jpeg = image_jpeg
             self._frame_num += 1
 
@@ -198,7 +213,32 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
         Returns:
             Name of image that was taken.
         """
-        pass
+
+        # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
+        log.info('Waiting for last image to finish...')
+        self._new_image_event.wait()
+
+        # remember time of start of exposure
+        date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+        # request fits headers
+        self.request_fits_headers()
+
+        # now we wait for the real image and grab it
+        log.info('Waiting for real image to finish...')
+        self._new_image_event.wait()
+        image = Image(self._last_data)
+        image.header['DATE-OBS'] = date_obs
+
+        # add fits headers and format filename
+        self.add_fits_headers(image)
+        filename = self.format_filename(image)
+
+        # store it and return filename
+        log.info('Writing image %s to cache...', filename)
+        with self._lock:
+            self._cache[image.header['FNAME']] = image.to_bytes()
+        return filename
 
     def get_video(self, *args, **kwargs) -> str:
         """Returns path to video.
@@ -207,6 +247,21 @@ class BaseWebcam(Module, tornado.web.Application, IWebcam, ICameraExposureTime):
             Path to video.
         """
         return self._video_path
+
+    def fetch(self, filename: str) -> bytearray:
+        """Send a file to the requesting client.
+
+        Args:
+            filename: Name of file to send.
+
+        Returns:
+            Data of file.
+        """
+
+        # acquire lock on cache
+        with self._lock:
+            # find file in cache and return it
+            return self._cache[filename] if filename in self._cache else None
 
 
 __all__ = ['BaseWebcam']

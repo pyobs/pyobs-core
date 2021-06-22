@@ -1,8 +1,8 @@
 from .IImageGrabber import IImageGrabber
 
 
-class IWebcam(IImageGrabber):
-    """The module controls a camera."""
+class IVideo(IImageGrabber):
+    """The module controls a video streaming device."""
     __module__ = 'pyobs.interfaces'
 
     def get_video(self, *args, **kwargs) -> str:
@@ -14,4 +14,4 @@ class IWebcam(IImageGrabber):
         raise NotImplementedError
 
 
-__all__ = ['IWebcam']
+__all__ = ['IVideo']

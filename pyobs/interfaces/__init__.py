@@ -49,6 +49,6 @@ from .IStoppable import IStoppable
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
+from .IVideo import IVideo
 from .IWeather import IWeather
-from .IWebcam import IWebcam
 from .interface import *

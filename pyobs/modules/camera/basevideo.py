@@ -12,7 +12,7 @@ import tornado.web
 import PIL.Image
 
 from pyobs.modules import Module, timeout
-from pyobs.interfaces import IWebcam
+from pyobs.interfaces import IVideo
 from ...images import Image
 from ...mixins.imagegrabber import ImageGrabberMixin
 from ...utils.cache import DataCache
@@ -96,7 +96,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
+class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -285,4 +285,4 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
             return self._cache[filename] if filename in self._cache else None
 
 
-__all__ = ['BaseWebcam']
+__all__ = ['BaseVideo']

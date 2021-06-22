@@ -256,6 +256,16 @@ class ImageGrabberMixin:
         hdr['FRAMENUM'] = self.__imagegrabber_frame_num
 
     def format_filename(self, image: Image):
+        """Format filename according to given pattern and store in header of image.
+
+        Args:
+            image: Image with header to add to.
+        """
+
+        # no pattern?
+        if self.__imagegrabber_filename_pattern is None:
+            return None
+
         # create a temporary filename
         filename = format_filename(image.header, self.__imagegrabber_filename_pattern)
         image.header['ORIGNAME'] = (os.path.basename(filename), 'The original file name')

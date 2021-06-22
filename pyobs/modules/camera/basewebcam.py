@@ -103,7 +103,7 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
     def __init__(self, http_port: int = 37077, interval: float = 0.5, video_path: str = '/webcam/video.mjpg',
                  filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
                  fits_namespaces: list = None, fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
-                 rotation: float = 0., cache_size: int = 5, *args, **kwargs):
+                 rotation: float = 0., cache_size: int = 5, live_view: bool = True, *args, **kwargs):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -120,6 +120,7 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
             cache_size: Size of cache for previous images.
+            live_view: If True, live view is served via web server.
         """
         Module.__init__(self, *args, **kwargs)
         ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
@@ -134,16 +135,19 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
         self._new_image_event = threading.Event()
         self._video_path = video_path
         self._frame_num = 0
+        self._live_view = live_view
 
         # image cache
         self._cache = DataCache(cache_size)
 
+        # handlers
+        handlers = [(r"/", MainHandler), (r"/video.mjpg", VideoHandler), (r"/(.*)", ImageHandler)]
+        if not live_view:
+            # remove video handler
+            handlers.pop(1)
+
         # init tornado web server
-        tornado.web.Application.__init__(self, [
-            (r"/", MainHandler),
-            (r"/video.mjpg", VideoHandler),
-            (r"/(.*)", ImageHandler),
-        ])
+        tornado.web.Application.__init__(self, handlers)
         self._last_data = None
         self._image_jpeg = None
         self._image_time = None
@@ -191,16 +195,23 @@ class BaseWebcam(Module, tornado.web.Application, ImageGrabberMixin, IWebcam):
     def _set_image(self, data: np.ndarray):
         """Create FITS and JPEG images from data."""
 
-        # check interval
+        # store now
         now = time.time()
-        if self._image_time is not None and now < self._image_time + self._interval:
-            return
-        self._image_time = now
 
-        # write to buffer and return it
-        with io.BytesIO() as output:
-            PIL.Image.fromarray(data).save(output, format="jpeg")
-            image_jpeg = output.getvalue()
+        # convert to jpeg only if we need live view
+        if self._live_view:
+            # check interval
+            if self._image_time is None or now - self._image_time > self._interval:
+                # write to buffer
+                with io.BytesIO() as output:
+                    PIL.Image.fromarray(data).save(output, format="jpeg")
+                    image_jpeg = output.getvalue()
+
+                # reset interval
+                self._image_time = now
+
+        else:
+            image_jpeg = None
 
         # store both
         with self._lock:

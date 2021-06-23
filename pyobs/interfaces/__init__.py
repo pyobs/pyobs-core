@@ -33,6 +33,7 @@ from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IImageFormat import IImageFormat
+from .IImageGrabber import IImageGrabber
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
@@ -48,6 +49,6 @@ from .IStoppable import IStoppable
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
+from .IVideo import IVideo
 from .IWeather import IWeather
-from .IWebcam import IWebcam
 from .interface import *

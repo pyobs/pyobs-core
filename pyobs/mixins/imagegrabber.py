@@ -46,6 +46,14 @@ class ImageGrabberMixin:
         self.__imagegrabber_cache = '/pyobs/modules/%s/cache.yaml' % self.name()
         self.__imagegrabber_frame_num = 0
 
+    @property
+    def rotation(self) -> float:
+        return self.__imagegrabber_rotation
+
+    @property
+    def centre(self) -> Tuple[float, float]:
+        return self.__imagegrabber_centre
+
     def request_fits_headers(self: Union[ImageGrabberMixin, Module]):
         """Request FITS headers from other modules.
 

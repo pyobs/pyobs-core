@@ -192,6 +192,19 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         with self._lock:
             return self._frame_num, self._image_jpeg
 
+    def create_jpeg(self, data: np.ndarray) -> bytes:
+        """Create a JPEG ge from a numpy array and return as bytes.
+
+        Args:
+            data: Numpy array to convert to JPEG.
+
+        Returns:
+            Bytes containing JPEG image.
+        """
+        with io.BytesIO() as output:
+            PIL.Image.fromarray(data).save(output, format="jpeg")
+            return output.getvalue()
+
     def _set_image(self, data: np.ndarray):
         """Create FITS and JPEG images from data."""
 
@@ -199,23 +212,16 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         now = time.time()
 
         # convert to jpeg only if we need live view
+        image_jpeg = None
         if self._live_view:
             # check interval
             if self._image_time is None or now - self._image_time > self._interval:
-                # write to buffer
-                with io.BytesIO() as output:
-                    PIL.Image.fromarray(data).save(output, format="jpeg")
-                    image_jpeg = output.getvalue()
-
-                # reset interval
+                # write to buffer and reset interval
+                image_jpeg = self.create_jpeg(data)
                 self._image_time = now
-
-        else:
-            image_jpeg = None
 
         # store both
         with self._lock:
-            self._image_time = now
             self._last_data = data
             self._image_jpeg = image_jpeg
             self._frame_num += 1

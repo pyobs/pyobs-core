@@ -230,6 +230,27 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         self._new_image_event.set()
         self._new_image_event = threading.Event()
 
+    def create_image(self, data: np.ndarray, date_obs: str) -> Image:
+        """Create an Image object from numpy array.
+
+        Args:
+            data: Numpy array to convert to Image.
+            date_obs: DATE-OBS for this image.
+
+        Returns:
+            The image.
+        """
+
+        # create image
+        image = Image(data)
+        image.header['DATE-OBS'] = date_obs
+
+        # add fits headers and format filename
+        self.add_fits_headers(image)
+
+        # finished
+        return image
+
     @timeout(calc_expose_timeout)
     def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
         """Grabs an image ans returns reference.
@@ -254,11 +275,9 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         # now we wait for the real image and grab it
         log.info('Waiting for real image to finish...')
         self._new_image_event.wait()
-        image = Image(self._last_data)
-        image.header['DATE-OBS'] = date_obs
+        image = self.create_image(self._last_data, date_obs)
 
-        # add fits headers and format filename
-        self.add_fits_headers(image)
+        # format filename
         filename = self.format_filename(image)
 
         # store it and return filename

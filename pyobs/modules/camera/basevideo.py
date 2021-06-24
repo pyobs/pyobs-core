@@ -61,17 +61,20 @@ class VideoHandler(tornado.web.RequestHandler):
         self.served_image_timestamp = time.time()
         my_boundary = "--jpgboundary\r\n"
         last_num = None
+        last_time = time.time()
         while True:
             try:
                 # Generating images for mjpeg stream and wraps them into http resp
                 num, image = self.application.image_jpeg
-                if num != last_num:
+                if image is None:
+                    continue
+                if num != last_num or time.time() > last_time + 1:
                     last_num = num
+                    last_time = time.time()
                     self.write(my_boundary)
                     self.write("Content-type: image/jpeg\r\n")
                     self.write("Content-length: %s\r\n\r\n" % len(image))
                     self.write(image)
-                    self.served_image_timestamp = time.time()
                     yield self.flush()
                 else:
                     yield tornado.gen.sleep(0.1)

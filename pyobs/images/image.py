@@ -13,11 +13,6 @@ class Image:
     """Image class."""
     __module__ = 'pyobs.images'
 
-    class CombineMethod(Enum):
-        MEAN = 'mean'
-        MEDIAN = 'median'
-        SIGMA = 'sigma'
-
     def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
                  uncertainty: np.ndarray = None, catalog: Table = None, *args, **kwargs):
         self.data = data

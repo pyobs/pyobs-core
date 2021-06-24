@@ -34,7 +34,6 @@ class NStarOffsets(Offsets):
                 used for offset calculation.
             min_sources: Minimum required number of sources in image.
         """
-        Offsets.__init__(self, *args, **kwargs)
 
         # store
         self.num_stars = num_stars
@@ -86,7 +85,7 @@ class NStarOffsets(Offsets):
 
         # process it
         log.info("Perform auto-guiding on new image...")
-        self.offset = self._calculate_offsets(image)
+        image.meta['offsets'] = self._calculate_offsets(image)
         return image
 
     @staticmethod
@@ -240,7 +239,7 @@ class NStarOffsets(Offsets):
         if len(sources) < n_required_sources:
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
-    def _calculate_offsets(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:
+    def _calculate_offsets(self, image: Image) -> Tuple[float, float]:
         """Calculate offsets of given image to ref image for every star.
         
         Args:

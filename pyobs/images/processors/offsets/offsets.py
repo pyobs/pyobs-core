@@ -12,9 +12,6 @@ class Offsets(ImageProcessor):
     """Base class for determining offsets."""
     __module__ = 'pyobs.images.processors.offsets'
 
-    def __init__(self, *args, **kwargs):
-        self.offset = (None, None)
-
     def reset(self):
         """Resets guiding."""
         raise NotImplementedError

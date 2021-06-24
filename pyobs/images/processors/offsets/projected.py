@@ -20,7 +20,6 @@ class ProjectedOffsets(Offsets):
 
     def __init__(self, *args, **kwargs):
         """Initializes a new auto guiding system."""
-        Offsets.__init__(self, *args, **kwargs)
         self._ref_image = None
         self._pid_ra = None
         self._pid_dec = None
@@ -58,7 +57,7 @@ class ProjectedOffsets(Offsets):
         # find peaks and return them
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
-        self.offset = (dx, dy)
+        image.meta['offsets'] = (dx, dy)
         return image
 
     def _process(self, image: Image) -> Tuple[np.array, np.array]:

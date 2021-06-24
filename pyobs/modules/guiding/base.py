@@ -208,7 +208,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         # get offset
         self._guiding_offset(image)
-        dx, dy = self._guiding_offset.offset
+        if 'offsets' not in image.meta:
+            log.warning('No offsets found in image meta information.')
+            return
+        dx, dy = image.meta['offsets']
 
         if dx is None or dy is None:
             log.warning('Could not correlate image with reference.')

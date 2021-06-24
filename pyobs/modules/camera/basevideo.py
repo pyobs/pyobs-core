@@ -281,7 +281,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         # now we wait for the real image and grab it
         log.info('Waiting for real image to finish...')
         self._new_image_event.wait()
-        image = self.create_image(self._last_data, date_obs)
+        image = self.create_image(np.flip(self._last_data, 0), date_obs, image_type)
 
         # format filename
         filename = self.format_filename(image)

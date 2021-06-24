@@ -1,7 +1,5 @@
 from __future__ import annotations
 import io
-from enum import Enum
-
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
@@ -15,6 +13,17 @@ class Image:
 
     def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
                  uncertainty: np.ndarray = None, catalog: Table = None, *args, **kwargs):
+        """Init a new image.
+
+        Args:
+            data: Numpy array containing data for image.
+            header: Header for the new image.
+            mask: Mask for the image.
+            uncertainty: Uncertainty image.
+            catalog: Catalog table.
+        """
+
+        # store
         self.data = data
         self.header = fits.Header() if header is None else header.copy()
         self.mask = None if mask is None else mask.copy()
@@ -27,7 +36,16 @@ class Image:
             self.header['NAXIS2'] = data.shape[0]
 
     @classmethod
-    def from_bytes(cls, data) -> Image:
+    def from_bytes(cls, data: bytes) -> Image:
+        """Create Image from a bytes array containing a FITS file.
+
+        Args:
+            data: Bytes array to create image from.
+
+        Returns:
+            The new image.
+        """
+
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
@@ -42,6 +60,15 @@ class Image:
 
     @classmethod
     def from_file(cls, filename: str) -> Image:
+        """Create image from FITS file.
+
+        Args:
+            filename: Name of file to load image from.
+
+        Returns:
+            New image.
+        """
+
         # open file
         data = fits.open(filename, memmap=False, lazy_load_hdus=False)
 
@@ -54,6 +81,15 @@ class Image:
 
     @classmethod
     def from_ccddata(cls, data: CCDData) -> Image:
+        """Create image from astropy.CCDData.
+
+        Args:
+            data: CCDData to create image from.
+
+        Returns:
+            New image.
+        """
+
         # create image and assign data
         image = Image(data=data.data.astype(np.float32),
                       header=data.header,
@@ -106,19 +142,32 @@ class Image:
         return image
 
     @property
-    def unit(self):
+    def unit(self) -> str:
+        """Returns units of pixels in image."""
         return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
 
-    def copy(self):
+    def __deepcopy__(self) -> Image:
+        """Returns a shallow copy of this image."""
+        return self.copy()
+
+    def copy(self) -> Image:
+        """Returns a copy of this image."""
         return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
                      catalog=self.catalog)
 
     def __truediv__(self, other):
+        """Divides this image by other."""
         img = self.copy()
         img.data /= other
         return img
 
     def writeto(self, f, *args, **kwargs):
+        """Write image as FITS to given file object.
+
+        Args:
+            f: File object to write to.
+        """
+
         # create HDU list
         hdu_list = fits.HDUList([])
 
@@ -154,6 +203,7 @@ class Image:
             return bio.getvalue()
 
     def write_catalog(self, f, *args, **kwargs):
+        """Write catalog to file object."""
         if self.catalog is None:
             return
 
@@ -168,108 +218,8 @@ class Image:
                        uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
                        unit='adu')
 
-    def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
-        """Trim an image to TRIMSEC or BIASSEC.
-
-        Args:
-            hdu: HDU to take data from.
-            keyword: Header keyword for section.
-
-        Returns:
-            Numpy array with image data.
-        """
-
-        # keyword not given?
-        if keyword not in self.header:
-            # return whole data
-            return self.data
-
-        # get value of section
-        sec = self.header[keyword]
-
-        # split values
-        s = sec[1:-1].split(',')
-        x = s[0].split(':')
-        y = s[1].split(':')
-        x0 = int(x[0]) - 1
-        x1 = int(x[1])
-        y0 = int(y[0]) - 1
-        y1 = int(y[1])
-
-        # return data
-        return self.data[y0:y1, x0:x1]
-
-    def _subtract_overscan(self):
-        # got a BIASSEC?
-        if 'BIASSEC' not in self.header:
-            return
-
-        # get mean of BIASSEC
-        biassec = np.mean(self._section('BIASSEC'))
-
-        # subtract mean
-        self.header['L1OVRSCN'] = (biassec, 'Subtracted mean BIASSEC counts')
-        self.data -= biassec
-
-    def trim(self):
-        # TRIMSEC exists?
-        if 'TRIMSEC' in self.header:
-            # create new image
-            img = self.copy()
-
-            # trim data
-            img.data = img._section('TRIMSEC')
-
-            # adjust size in fits headers
-            img.header['NAXIS2'], img.header['NAXIS1'] = img.data.shape
-
-            # delete keywords
-            for key in ['TRIMSEC', 'BIASSEC', 'DATASEC']:
-                if key in img.header:
-                    del img.header[key]
-
-            # finished
-            return img
-
-        else:
-            # don't do anything
-            return self
-
-    def calibrate(self, bias: 'BiasFrame' = None, dark: 'DarkFrame' = None, flat: 'FlatFrame' = None):
-        # copy image
-        img = self.copy()
-
-        # to float32
-        img.data = img.data.astype(np.float32)
-
-        # subtract overscan
-        img._subtract_overscan()
-
-        # subtract bias
-        if bias is not None:
-            img.data -= bias.data
-            img.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                    'Name of BIAS frame')
-
-        # subtract dark
-        if dark is not None:
-            img.data -= dark.data * img.header['EXPTIME']
-            img.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                    'Name of DARK frame')
-
-        # divide by flat
-        if flat is not None:
-            img.data /= flat.data
-            img.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                   'Name of FLAT frame')
-
-        # it's reduced now
-        img.header['RLEVEL'] = 1
-
-        # finished
-        return img
-
     def format_filename(self, formatter):
+        """Format filename with given formatter."""
         self.header['FNAME'] = formatter(self.header)
 
     @property

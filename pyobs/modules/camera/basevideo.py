@@ -12,10 +12,12 @@ import tornado.web
 import PIL.Image
 
 from pyobs.modules import Module, timeout
-from pyobs.interfaces import IVideo
+from pyobs.interfaces import IVideo, IImageType
+from ...events import NewImageEvent
 from ...images import Image
 from ...mixins.imagegrabber import ImageGrabberMixin
 from ...utils.cache import DataCache
+from ...utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -96,7 +98,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
+class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IImageType):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -136,6 +138,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         self._video_path = video_path
         self._frame_num = 0
         self._live_view = live_view
+        self._image_type = ImageType.OBJECT
 
         # image cache
         self._cache = DataCache(cache_size)
@@ -230,12 +233,13 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         self._new_image_event.set()
         self._new_image_event = threading.Event()
 
-    def create_image(self, data: np.ndarray, date_obs: str) -> Image:
+    def create_image(self, data: np.ndarray, date_obs: str, image_type: ImageType) -> Image:
         """Create an Image object from numpy array.
 
         Args:
             data: Numpy array to convert to Image.
             date_obs: DATE-OBS for this image.
+            image_type: Image type of image.
 
         Returns:
             The image.
@@ -244,6 +248,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
         # create image
         image = Image(data)
         image.header['DATE-OBS'] = date_obs
+        image.header['IMAGETYP'] = image_type.value
 
         # add fits headers and format filename
         self.add_fits_headers(image)
@@ -268,6 +273,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
 
         # remember time of start of exposure
         date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        image_type = self._image_type
 
         # request fits headers
         self.request_fits_headers()
@@ -309,5 +315,21 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo):
             # find file in cache and return it
             return self._cache[filename] if filename in self._cache else None
 
+    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+        """Set the image type.
+
+        Args:
+            image_type: New image type.
+        """
+        log.info('Setting image type to %s...', image_type)
+        self._image_type = image_type
+
+    def get_image_type(self, *args, **kwargs) -> ImageType:
+        """Returns the current image type.
+
+        Returns:
+            Current image type.
+        """
+        return self._image_type
 
 __all__ = ['BaseVideo']

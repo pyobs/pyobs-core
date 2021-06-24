@@ -11,7 +11,7 @@ from pyobs.utils.enums import ImageType, ExposureStatus
 from pyobs.images import Image
 from pyobs.modules import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
-from pyobs.interfaces import ICamera, IAbortable, ICameraExposureTime, IImageType
+from pyobs.interfaces import ICamera, ICameraExposureTime, IImageType
 from pyobs.modules import timeout
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def calc_expose_timeout(camera, *args, **kwargs):
     return camera.get_exposure_time() + 30
 
 
-class BaseCamera(Module, ImageGrabberMixin, ICamera, ICameraExposureTime, IImageType, IAbortable):
+class BaseCamera(Module, ImageGrabberMixin, ICamera, ICameraExposureTime, IImageType):
     """Base class for all camera modules."""
     __module__ = 'pyobs.modules.camera'
 

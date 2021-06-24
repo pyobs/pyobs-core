@@ -1,5 +1,18 @@
 ## Changelog
 
+### v0.14 (xxx)
+* Extracted IImageGrabber from ICamera and renamed expose() to grab_image().
+* Added new IVideo interface and a corresponding BaseVideo module.
+* Raising exception, if XmppComm cannot connect to server, allowing for graceful exit.
+* On shutdown, wait for hanging threads, and kill them after 30 seconds.
+* Multi-processing for the pipeline, using ccdproc now.
+* New interface IPointingSeries, giving access to methods at the telescope that support pointing series.
+* Send logs in thread.
+* Added concept of image processors that take an Image as parameter and return it after some processing.
+* Added new NStarOffsets image processor (T. Masur).
+* Improved scheduler.
+
+
 ### v0.13 (2021-04-30)
 * Added a Telegram bot module.
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.

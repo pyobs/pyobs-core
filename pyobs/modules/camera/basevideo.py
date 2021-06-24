@@ -58,7 +58,6 @@ class VideoHandler(tornado.web.RequestHandler):
         self.set_header('Content-Type', 'multipart/x-mixed-replace;boundary=--jpgboundary')
         self.set_header('Connection', 'close')
 
-        self.served_image_timestamp = time.time()
         my_boundary = "--jpgboundary\r\n"
         last_num = None
         last_time = time.time()

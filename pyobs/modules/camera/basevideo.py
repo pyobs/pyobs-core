@@ -290,6 +290,13 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         log.info('Writing image %s to cache...', filename)
         with self._lock:
             self._cache[image.header['FNAME']] = image.to_bytes()
+
+        # broadcast image path
+        if broadcast and self.comm:
+            log.info('Broadcasting image ID...')
+            self.comm.send_event(NewImageEvent(filename, ImageType.OBJECT))
+
+        # finished
         return filename
 
     def get_video(self, *args, **kwargs) -> str:

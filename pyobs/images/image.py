@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 import io
 import numpy as np
 from astropy.io import fits
@@ -12,7 +13,7 @@ class Image:
     __module__ = 'pyobs.images'
 
     def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
-                 uncertainty: np.ndarray = None, catalog: Table = None, *args, **kwargs):
+                 uncertainty: np.ndarray = None, catalog: Table = None, meta: dict = None, *args, **kwargs):
         """Init a new image.
 
         Args:
@@ -21,6 +22,7 @@ class Image:
             mask: Mask for the image.
             uncertainty: Uncertainty image.
             catalog: Catalog table.
+            meta: Dictionary with meta information (note: not preserved in I/O operations!).
         """
 
         # store
@@ -29,6 +31,7 @@ class Image:
         self.mask = None if mask is None else mask.copy()
         self.uncertainty = None if uncertainty is None else uncertainty.copy()
         self.catalog = None if catalog is None else catalog.copy()
+        self.meta = None if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
         if data is not None:
@@ -153,7 +156,7 @@ class Image:
     def copy(self) -> Image:
         """Returns a copy of this image."""
         return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
-                     catalog=self.catalog)
+                     catalog=self.catalog, meta=self.meta)
 
     def __truediv__(self, other):
         """Divides this image by other."""

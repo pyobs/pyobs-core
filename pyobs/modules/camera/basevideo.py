@@ -29,7 +29,7 @@ INDEX_HTML = """
     <title>Title</title>
   </head>
   <body>
-    <img src="/video.mjpg">
+    <img src="/video.mjpg" width="100%">
   </body>
 </html>
 

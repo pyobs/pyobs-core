@@ -1,6 +1,7 @@
 ## Changelog
 
 ### v0.14 (xxx)
+* Added meta attribute (temporary storage, not I/O persistent) to Image.
 * Extracted IImageGrabber from ICamera and renamed expose() to grab_image().
 * Added new IVideo interface and a corresponding BaseVideo module.
 * Raising exception, if XmppComm cannot connect to server, allowing for graceful exit.

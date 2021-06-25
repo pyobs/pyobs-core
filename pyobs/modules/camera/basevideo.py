@@ -60,14 +60,14 @@ class VideoHandler(tornado.web.RequestHandler):
 
         my_boundary = "--jpgboundary\r\n"
         last_num = None
-        last_time = time.time()
+        last_time = 0
         while True:
             try:
                 # Generating images for mjpeg stream and wraps them into http resp
                 num, image = self.application.image_jpeg
                 if image is None:
                     continue
-                if num != last_num or time.time() > last_time + 1:
+                if num != last_num or time.time() > last_time + 10:
                     last_num = num
                     last_time = time.time()
                     self.write(my_boundary)

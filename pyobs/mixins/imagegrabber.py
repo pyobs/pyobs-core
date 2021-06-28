@@ -10,6 +10,7 @@ from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderProvider
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
+from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -34,7 +35,6 @@ class ImageGrabberMixin:
 
         # store
         self.__imagegrabber_fits_namespaces = fits_namespaces
-        self.__imagegrabber_fits_header_futures = {}
         self.__imagegrabber_centre = centre
         self.__imagegrabber_rotation = rotation
         self.__imagegrabber_filename_pattern = filenames
@@ -54,7 +54,7 @@ class ImageGrabberMixin:
     def centre(self) -> Tuple[float, float]:
         return self.__imagegrabber_centre
 
-    def request_fits_headers(self: Union[ImageGrabberMixin, Module]):
+    def request_fits_headers(self: Union[ImageGrabberMixin, Module]) -> Dict[str, Future]:
         """Request FITS headers from other modules.
 
         Returns:
@@ -62,7 +62,7 @@ class ImageGrabberMixin:
         """
 
         # init
-        self.__imagegrabber_fits_header_futures = {}
+        futures = {}
 
         # we can only do this with a comm module
         if self.comm:
@@ -73,30 +73,12 @@ class ImageGrabberMixin:
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
                 future = self.comm.execute(client, 'get_fits_headers', self.__imagegrabber_fits_namespaces)
-                self.__imagegrabber_fits_header_futures[client] = future
+                futures[client] = future
 
-    def add_fits_headers(self, image: Image):
-        """Add requested FITS headers to header of given image.
+        # finished
+        return futures
 
-        Args:
-            image: Image with header to add to.
-        """
-
-        # first, add requested fits headers
-        self.__imagegrabber_add_requested_fits_headers(image)
-
-        # add HDU name
-        image.header['EXTNAME'] = 'SCI'
-
-        # add static fits headers
-        for key, value in self.__imagegrabber_fits_headers.items():
-            image.header[key] = tuple(value)
-
-        # add more fits headers
-        self.__imagegrabber_add_fits_headers(image)
-        self.__imagegrabber_add_framenum(image)
-
-    def __imagegrabber_add_requested_fits_headers(self, image: Image):
+    def add_requested_fits_headers(self, image: Image, futures: Dict[str, Future]):
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -104,7 +86,7 @@ class ImageGrabberMixin:
         """
 
         # get fits headers from other clients
-        for client, future in self.__imagegrabber_fits_header_futures.items():
+        for client, future in futures.items():
             # join thread
             log.info('Fetching FITS headers from %s...', client)
             try:
@@ -126,6 +108,24 @@ class ImageGrabberMixin:
                         image.header[key] = tuple(value)
                     else:
                         image.header[key] = value
+
+    def add_fits_headers(self, image: Image):
+        """Add requested FITS headers to header of given image.
+
+        Args:
+            image: Image with header to add to.
+        """
+
+        # add HDU name
+        image.header['EXTNAME'] = 'SCI'
+
+        # add static fits headers
+        for key, value in self.__imagegrabber_fits_headers.items():
+            image.header[key] = tuple(value)
+
+        # add more fits headers
+        self.__imagegrabber_add_fits_headers(image)
+        self.__imagegrabber_add_framenum(image)
 
     def __imagegrabber_add_fits_headers(self: Union[ImageGrabberMixin, Module], image: Image):
         """Add FITS header keywords to the given FITS header.

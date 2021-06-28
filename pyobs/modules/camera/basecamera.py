@@ -210,7 +210,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, ICameraExposureTime, IImage
         """
 
         # request fits headers
-        self.request_fits_headers()
+        header_futures = self.request_fits_headers()
 
         # open the shutter?
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
@@ -242,6 +242,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, ICameraExposureTime, IImage
         image.header['IMAGETYP'] = image_type.value
 
         # add fits headers and format filename
+        self.add_requested_fits_headers(image, header_futures)
         self.add_fits_headers(image)
         filename = self.format_filename(image)
 

@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 import asyncio
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, NamedTuple, Optional
 
 import numpy as np
 import tornado
@@ -18,6 +18,7 @@ from ...images import Image
 from ...mixins.imagegrabber import ImageGrabberMixin
 from ...utils.cache import DataCache
 from ...utils.enums import ImageType
+from ...utils.threads import Future
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +43,24 @@ def calc_expose_timeout(webcam, *args, **kwargs):
         return 2 * webcam.get_exposure_time() + 30
     else:
         return 30
+
+
+class ImageRequest(NamedTuple):
+    broadcast: bool = True
+
+
+class NextImage(NamedTuple):
+    date_obs: str
+    image_type: ImageType
+    header_futures: Dict[str, Future]
+    broadcast: bool
+
+
+class LastImage(NamedTuple):
+    data: np.ndarray
+    image: Optional[Image]
+    jpeg: bytes
+    filename: str
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -141,6 +160,11 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._frame_num = 0
         self._live_view = live_view
         self._image_type = ImageType.OBJECT
+        self._image_request_lock = threading.Lock()
+        self._image_request: Optional[ImageRequest] = None
+        self._next_image: Optional[NextImage] = None
+        self._last_image: Optional[LastImage] = None
+        self._last_time = 0
 
         # image cache
         self._cache = DataCache(cache_size)
@@ -153,9 +177,6 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
         # init tornado web server
         tornado.web.Application.__init__(self, handlers)
-        self._last_data = None
-        self._image_jpeg = None
-        self._image_time = None
 
         # add thread func
         self.add_thread_func(self._http, False)
@@ -195,7 +216,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
     @property
     def image_jpeg(self):
         with self._lock:
-            return self._frame_num, self._image_jpeg
+            return self._frame_num, None if self._last_image is None else self._last_image.jpeg
 
     def create_jpeg(self, data: np.ndarray) -> bytes:
         """Create a JPEG ge from a numpy array and return as bytes.
@@ -213,50 +234,79 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
     def _set_image(self, data: np.ndarray):
         """Create FITS and JPEG images from data."""
 
-        # store now
-        now = time.time()
+        # got a requested image in the queue?
+        image, filename = None, None
+        if self._next_image is not None:
+            # create image and reset
+            image, filename = self._create_image(data, self._next_image)
+            self._next_image = None
 
         # convert to jpeg only if we need live view
-        image_jpeg = None
+        now = time.time()
+        jpeg = None
         if self._live_view:
             # check interval
-            if self._image_time is None or now - self._image_time > self._interval:
+            if now - self._last_time > self._interval:
                 # write to buffer and reset interval
-                image_jpeg = self.create_jpeg(data)
-                self._image_time = now
+                jpeg = self.create_jpeg(data)
+                self._last_time = now
 
         # store both
         with self._lock:
-            self._last_data = data
-            self._image_jpeg = image_jpeg
+            self._last_image = LastImage(data=data, image=image, jpeg=jpeg, filename=filename)
             self._frame_num += 1
 
         # signal it
         self._new_image_event.set()
         self._new_image_event = threading.Event()
 
-    def create_image(self, data: np.ndarray, date_obs: str, image_type: ImageType) -> Image:
+        # prepare next image
+        with self._image_request_lock:
+            if self._image_request is not None:
+                # store everything
+                logging.info('Preparing to catch next image...')
+                self._next_image = NextImage(date_obs=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                                             image_type=self._image_type,
+                                             header_futures=self.request_fits_headers(),
+                                             broadcast=self._image_request.broadcast)
+
+                # reset
+                self._image_request = None
+
+    def _create_image(self, data: np.ndarray, next_image: NextImage) -> Tuple[Image, str]:
         """Create an Image object from numpy array.
 
         Args:
             data: Numpy array to convert to Image.
-            date_obs: DATE-OBS for this image.
-            image_type: Image type of image.
 
         Returns:
-            The image.
+            Tuple with image itself and the filename.
         """
 
         # create image
-        image = Image(data)
-        image.header['DATE-OBS'] = date_obs
-        image.header['IMAGETYP'] = image_type.value
+        image = Image(np.flip(data, axis=0))
+        image.header['DATE-OBS'] = next_image.date_obs
+        image.header['IMAGETYP'] = next_image.image_type.value
 
         # add fits headers and format filename
+        self.add_requested_fits_headers(image, next_image.header_futures)
         self.add_fits_headers(image)
 
+        # format filename
+        filename = self.format_filename(image)
+
+        # store it and return filename
+        log.info('Writing image %s to cache...', filename)
+        with self._lock:
+            self._cache[image.header['FNAME']] = image.to_bytes()
+
+        # broadcast image path
+        if next_image.broadcast and self.comm:
+            log.info('Broadcasting image ID...')
+            self.comm.send_event(NewImageEvent(filename, next_image.image_type))
+
         # finished
-        return image
+        return image, filename
 
     @timeout(calc_expose_timeout)
     def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
@@ -269,37 +319,24 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             Name of image that was taken.
         """
 
+        # acquire lock
+        with self._image_request_lock:
+            # get current broadcast status, if any
+            current_broadcast = False if self._image_request is None else self._image_request.broadcast
+
+            # request new image
+            self._image_request = ImageRequest(broadcast=broadcast or current_broadcast)
+
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info('Waiting for last image to finish...')
         self._new_image_event.wait()
 
-        # remember time of start of exposure
-        date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
-        image_type = self._image_type
-
-        # request fits headers
-        self.request_fits_headers()
-
         # now we wait for the real image and grab it
         log.info('Waiting for real image to finish...')
         self._new_image_event.wait()
-        image = self.create_image(np.flip(self._last_data, 0), date_obs, image_type)
-
-        # format filename
-        filename = self.format_filename(image)
-
-        # store it and return filename
-        log.info('Writing image %s to cache...', filename)
-        with self._lock:
-            self._cache[image.header['FNAME']] = image.to_bytes()
-
-        # broadcast image path
-        if broadcast and self.comm:
-            log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, ImageType.OBJECT))
 
         # finished
-        return filename
+        return self._last_image.filename
 
     def get_video(self, *args, **kwargs) -> str:
         """Returns path to video.
@@ -340,5 +377,6 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             Current image type.
         """
         return self._image_type
+
 
 __all__ = ['BaseVideo']

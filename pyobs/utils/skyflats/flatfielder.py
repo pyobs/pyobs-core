@@ -9,7 +9,7 @@ from astropy.time import TimeDelta
 import numpy as np
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, ICamera, IFilters, IBinning, ICameraWindow, IExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IBinning, IWindow, IExposureTime, \
     IImageType
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
@@ -260,7 +260,7 @@ class FlatFielder:
         log.info('Taking BIAS image to determine median level...')
 
         # set full frame
-        if isinstance(camera, ICameraWindow):
+        if isinstance(camera, IWindow):
             full_frame = camera.get_full_frame().wait()
             camera.set_window(*full_frame).wait()
 
@@ -389,7 +389,7 @@ class FlatFielder:
         Args:
             testing: Whether we're in testing mode or not.
         """
-        if isinstance(camera, ICameraWindow):
+        if isinstance(camera, IWindow):
             # get full frame
             left, top, width, height = camera.get_full_frame().wait()
 

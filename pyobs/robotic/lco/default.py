@@ -4,7 +4,7 @@ import time
 import numpy as np
 from typing import Union, Type
 
-from pyobs.interfaces import ICamera, IBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
+from pyobs.interfaces import ICamera, IBinning, IWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
     IAcquisition, IExposureTime, IImageType
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
@@ -206,7 +206,7 @@ class LcoDefaultScript(Script):
                     bin_y = readout_mode['validation_schema']['bin_y']['default']
                     log.info('Set binning to %dx%d...', bin_x, bin_y)
                     camera.set_binning(bin_x, bin_y).wait()
-                if isinstance(camera, ICameraWindow):
+                if isinstance(camera, IWindow):
                     full_frame = camera.get_full_frame().wait()
                     camera.set_window(*full_frame).wait()
 

@@ -9,7 +9,7 @@ import tornado.gen
 import numpy as np
 
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, IExposureTime, IStoppable, ICameraWindow
+from pyobs.interfaces import ICamera, IExposureTime, IStoppable, IWindow
 
 log = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
             if isinstance(camera, IExposureTime):
                 # set exposure time
                 camera.set_exposure_time(self._exp_time).wait()
-            if isinstance(camera, ICameraWindow):
+            if isinstance(camera, IWindow):
                 # set full frame
                 full_frame = camera.get_full_frame().wait()
                 camera.set_window(*full_frame).wait()

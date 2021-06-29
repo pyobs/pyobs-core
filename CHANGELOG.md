@@ -19,7 +19,7 @@
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
 * Moved more enums into utils.enums, like WeatherSensors and MotionStatus.
-* Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
+* Added list_binnings() to IBinning interface and (temporary) default implementation in BaseCamera.
 * Restructured image processors into pyobs.image.processors.
 * Split photometry into separate SourceDetection and Photometry interfaces, added DaophotSourceDetection, and 
   PhotUtilsPhotometry.

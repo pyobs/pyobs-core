@@ -18,9 +18,9 @@ from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
+from .IBinning import IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
-from .ICameraBinning import ICameraBinning
 from .ICameraExposureTime import ICameraExposureTime
 from .ICameraWindow import ICameraWindow
 from .IConfig import IConfig

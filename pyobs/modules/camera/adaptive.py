@@ -6,7 +6,7 @@
 # import numpy as np
 #
 # from pyobs.modules import Module
-# from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
+# from pyobs.interfaces import ICamera, ISettings, ICameraWindow, IBinning
 # from pyobs.modules import timeout
 # from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 # from pyobs.utils.enums import ImageType
@@ -23,7 +23,7 @@
 #     BRIGHTEST = 'brightest'
 #
 #
-# class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
+# class AdaptiveCamera(Module, ICamera, ICameraWindow, IBinning, ISettings):
 #     """A virtual camera for adaptive exposure times."""
 #     # TODO: adapt this to new ICamera interface or remove!
 #
@@ -397,7 +397,7 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraBinning):
+#         if isinstance(self._camera, IBinning):
 #             self._camera.set_binning(x, y).wait()
 #
 #     def get_binning(self, *args, **kwargs) -> (int, int):
@@ -408,7 +408,7 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraBinning):
+#         if isinstance(self._camera, IBinning):
 #             return self._camera.get_binning().wait()
 #         else:
 #             return 1, 1

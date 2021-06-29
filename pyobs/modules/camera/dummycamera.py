@@ -8,7 +8,7 @@ from typing import Tuple, NamedTuple, Dict
 
 from astropy.io import fits
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
+from pyobs.interfaces import ICamera, ICameraWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
@@ -23,7 +23,7 @@ class CoolingStatus(NamedTuple):
     temperatures: Dict[str, float] = {'CCD': 0., 'Back': 3.14}
 
 
-class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
+class DummyCamera(BaseCamera, ICameraWindow, IBinning, ICooling):
     """A dummy camera for testing."""
     __module__ = 'pyobs.modules.camera'
 

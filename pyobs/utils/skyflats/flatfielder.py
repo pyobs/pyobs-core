@@ -9,7 +9,7 @@ from astropy.time import TimeDelta
 import numpy as np
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, ICamera, IFilters, ICameraBinning, ICameraWindow, ICameraExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IBinning, ICameraWindow, ICameraExposureTime, \
     IImageType
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
@@ -229,7 +229,7 @@ class FlatFielder:
             return
 
         # set binning
-        if isinstance(camera, ICameraBinning):
+        if isinstance(camera, IBinning):
             log.info('Setting binning to %dx%d...', self._cur_binning, self._cur_binning)
             camera.set_binning(self._cur_binning, self._cur_binning)
 

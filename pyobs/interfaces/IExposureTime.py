@@ -1,7 +1,7 @@
 from .interface import *
 
 
-class ICameraExposureTime(Interface):
+class IExposureTime(Interface):
     """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
@@ -33,4 +33,4 @@ class ICameraExposureTime(Interface):
         raise NotImplementedError
 
 
-__all__ = ['ICameraExposureTime']
+__all__ = ['IExposureTime']

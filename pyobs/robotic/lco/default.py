@@ -5,7 +5,7 @@ import numpy as np
 from typing import Union, Type
 
 from pyobs.interfaces import ICamera, IBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
-    IAcquisition, ICameraExposureTime, IImageType
+    IAcquisition, IExposureTime, IImageType
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
@@ -215,7 +215,7 @@ class LcoDefaultScript(Script):
                     self._check_abort(abort_event)
 
                     # do exposures
-                    if isinstance(camera, ICameraExposureTime):
+                    if isinstance(camera, IExposureTime):
                         log.info('Exposing %s image %d/%d for %.2fs...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.set_exposure_time(ic['exposure_time']).wait()

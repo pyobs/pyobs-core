@@ -21,12 +21,12 @@ from .IAutonomous import IAutonomous
 from .IBinning import IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
-from .ICameraExposureTime import ICameraExposureTime
 from .ICameraWindow import ICameraWindow
 from .IConfig import IConfig
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
+from .IExposureTime import IExposureTime
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField

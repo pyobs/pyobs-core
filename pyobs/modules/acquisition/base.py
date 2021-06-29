@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, ICameraExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
     IImageType
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
@@ -101,7 +101,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
         # try given number of attempts
         for a in range(self._attempts):
             # set exposure time and image type and take image
-            if isinstance(camera, ICameraExposureTime):
+            if isinstance(camera, IExposureTime):
                 log.info('Exposing image for %.1f seconds...', exposure_time)
                 camera.set_exposure_time(exposure_time).wait()
             else:

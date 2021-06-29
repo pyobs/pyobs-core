@@ -4,7 +4,7 @@ import threading
 import numpy as np
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
+from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, IExposureTime, IImageType
 from pyobs.events import FocusFoundEvent
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
@@ -139,7 +139,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                if isinstance(camera, ICameraExposureTime):
+                if isinstance(camera, IExposureTime):
                     camera.set_exposure_time(exposure_time)
                 if isinstance(camera, IImageType):
                     camera.set_image_type(ImageType.FOCUS)

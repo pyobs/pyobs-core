@@ -9,7 +9,7 @@ import tornado.gen
 import numpy as np
 
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, ICameraExposureTime, IStoppable, ICameraWindow
+from pyobs.interfaces import ICamera, IExposureTime, IStoppable, ICameraWindow
 
 log = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
                 continue
 
             # do settings
-            if isinstance(camera, ICameraExposureTime):
+            if isinstance(camera, IExposureTime):
                 # set exposure time
                 camera.set_exposure_time(self._exp_time).wait()
             if isinstance(camera, ICameraWindow):
@@ -161,7 +161,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
                 self._image = image.to_jpeg()
 
             # adjust exposure time?
-            if isinstance(camera, ICameraExposureTime):
+            if isinstance(camera, IExposureTime):
                 # get max value in image
                 max_val = np.max(image.data)
 

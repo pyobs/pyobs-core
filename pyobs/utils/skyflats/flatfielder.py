@@ -9,7 +9,7 @@ from astropy.time import TimeDelta
 import numpy as np
 from py_expression_eval import Parser
 
-from pyobs.interfaces import ITelescope, ICamera, IFilters, IBinning, ICameraWindow, ICameraExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IBinning, ICameraWindow, IExposureTime, \
     IImageType
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
@@ -135,7 +135,7 @@ class FlatFielder:
         self._cur_filter: Optional[str] = None
         self._cur_binning: Optional[int] = None
 
-    def __call__(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters,
+    def __call__(self, telescope: ITelescope, camera: Union[ICamera, IExposureTime], filters: IFilters,
                  filter_name: str, count: int = 20, binning: int = 1) -> State:
         """Calls next step in state machine.
 
@@ -152,7 +152,7 @@ class FlatFielder:
         """
 
         # camera must support exposure times
-        if not isinstance(camera, ICameraExposureTime):
+        if not isinstance(camera, IExposureTime):
             raise ValueError('Camera must support exposure times.')
 
         # store
@@ -214,7 +214,7 @@ class FlatFielder:
             log.info('Flat-field time is still coming, keep going...')
             return True
 
-    def _init_system(self, telescope: ITelescope, camera: Union[ICamera, ICameraExposureTime], filters: IFilters):
+    def _init_system(self, telescope: ITelescope, camera: Union[ICamera, IExposureTime], filters: IFilters):
         """Initialize whole system."""
 
         # which twilight are we in?
@@ -251,7 +251,7 @@ class FlatFielder:
         log.info('Waiting for flat-field time...')
         self._state = FlatFielder.State.WAITING
 
-    def _get_bias(self, camera: Union[ICamera, ICameraExposureTime]) -> float:
+    def _get_bias(self, camera: Union[ICamera, IExposureTime]) -> float:
         """Take bias image to determine bias level.
 
         Returns:
@@ -355,7 +355,7 @@ class FlatFielder:
             # otherwise it seems that we're in the middle of flat-fielding time
             return 0
 
-    def _testing(self, camera: Union[ICamera, ICameraExposureTime]):
+    def _testing(self, camera: Union[ICamera, IExposureTime]):
         """Take flat-fields but don't store them."""
 
         # set window
@@ -383,7 +383,7 @@ class FlatFielder:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatFielder.State.FINISHED
 
-    def _set_window(self, camera: Union[ICamera, ICameraExposureTime], testing: bool):
+    def _set_window(self, camera: Union[ICamera, IExposureTime], testing: bool):
         """Set camera window.
 
         Args:

@@ -45,7 +45,7 @@
 * Added new IConfig interface which is implemented in every module and allows remote access to config parameters 
   (if getter/setters are implemented).
 * Removed count parameter from ICamera.expose().
-* Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
+* Removed exposure_time parameter from ICamera.expose() and introduced IExposureTime interface.
 * Removed image_type parameter from ICamera.expose() and introduced IImageType.
 * Moved ImageType enumerator from ICamera to utils.enums.
 

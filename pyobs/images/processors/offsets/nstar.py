@@ -326,12 +326,9 @@ class NStarOffsets(Offsets):
 
         # do fit
         try:
-            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted,
-                                            p0, bounds=bounds,
-                                            maxfev=int(1e5), ftol=1e-12)
+            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds)
         except Exception as e:
             # if fit fails return max pixel
-            log.info(e)
             log.info("Returning pixel position with maximal value in correlation.")
             return tuple(np.unravel_index(np.argmax(corr), corr.shape))
 

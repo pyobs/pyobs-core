@@ -31,7 +31,7 @@ class Image:
         self.mask = None if mask is None else mask.copy()
         self.uncertainty = None if uncertainty is None else uncertainty.copy()
         self.catalog = None if catalog is None else catalog.copy()
-        self.meta = None if meta is None else copy.deepcopy(meta)
+        self.meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
         if data is not None:

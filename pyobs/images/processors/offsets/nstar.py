@@ -7,10 +7,7 @@ from astropy.table import Table, Column
 import photutils
 
 from pyobs.images import Image
-from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.images.processors.photometry import SepPhotometry
 from . import Offsets
-from ..misc.removebackground import RemoveBackground
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +22,9 @@ class NStarOffsets(Offsets):
     def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
                  *args, **kwargs):
         """Initializes a new auto guiding system.
+
+        Requires pyobs.images.processors.detection.SepSourceDetection and
+        pyobs.images.processors.photometry.SepPhotometry to be run on the image beforehand.
 
         Args:
             num_stars: maximum number of stars to use to calculate offset from boxes around them
@@ -78,7 +78,6 @@ class NStarOffsets(Offsets):
 
             except ValueError as e:
                 # didn't work
-                log.exception('bla')
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
                 if 'offsets' in image.meta:
@@ -112,9 +111,7 @@ class NStarOffsets(Offsets):
         """
 
         # do photometry and get catalog
-        detection = SepSourceDetection()
-        photometry = SepPhotometry()
-        sources = self._fits2numpy(photometry(detection(image)).catalog)
+        sources = self._fits2numpy(image.catalog)
 
         # filter sources
         sources = self.remove_sources_close_to_border(

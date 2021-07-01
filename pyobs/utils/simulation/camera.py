@@ -9,17 +9,21 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from photutils.datasets import make_gaussian_prf_sources_image
 from photutils.datasets import make_noise_image
+import logging
 
 from pyobs.object import Object
 from pyobs.utils.enums import ImageFormat
 from pyobs.images import Image
 
 
+log = logging.getLogger(__name__)
+
+
 class SimCamera(Object):
     """A simulated camera."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, plate_scale: float = 1.,
+    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
                  images: str = None, max_mag: float = 20., *args, **kwargs):
         """Inits a new camera.
 
@@ -38,7 +42,7 @@ class SimCamera(Object):
         self.full_frame = tuple([0, 0] + list(image_size)) if image_size is not None else (0, 0, 512, 512)
         self.window = self.full_frame
         self.binning = (1, 1)
-        self.plate_scale = plate_scale
+        self.pixel_size = pixel_size
         self.image_format = ImageFormat.INT16
         self.images = [] if images is None else sorted(glob.glob(images)) \
             if '*' in images or '?' in images else [images]
@@ -148,25 +152,19 @@ class SimCamera(Object):
 
         # hardware
         hdr['TEL-FOCL'] = (self.telescope.focal_length, "Focal length [mm]")
-        #hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
-
-        # CDELT1/2
-        cdelt1, cdelt2 = self.cdelt()
-        hdr['CDELT1'] = cdelt1
-        hdr['CDELT2'] = cdelt2
+        hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
 
         # finished
         return hdr
 
-    def _get_catalog(self):
+    def _get_catalog(self, fov):
         """Returns GAIA catalog for current telescope coordinates."""
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
             from astroquery.utils.tap import TapPlus
 
-            # get coordinates and fov
+            # get coordinates
             coords = self.telescope.real_pos
-            fov = np.max(self.plate_scale / 3600. * np.array(self.full_frame[2:]))
 
             # query TAP
             tap = TapPlus(url="https://gea.esac.esa.int/tap-server/tap")
@@ -200,19 +198,20 @@ class SimCamera(Object):
                   phot_g_mean_mag ASC
                 """
 
-    def cdelt(self):
-        """calculate cdelt1/2"""
-        tmp = self.plate_scale / 3600.
-        return tmp * self.binning[0], tmp * self.binning[1]
-
     def _get_sources_table(self, exp_time: float):
         """Create sources table."""
 
-        # get catalog
-        cat = self._get_catalog()
-
         # calculate cdelt1/2
-        cdelt1, cdelt2 = self.cdelt()
+        tmp = 360. / (2. * np.pi) * self.pixel_size / self.telescope.focal_length
+        cdelt1, cdelt2 = tmp * self.binning[0], tmp * self.binning[1]
+        log.info('Plate scale is %.2f"/px, image size is %.2f\'x%.2f\'.',
+                 cdelt1*3600, cdelt1*60*self.window[2], cdelt2*60*self.window[3])
+
+        # FoV
+        fov = np.max(cdelt2 * np.array(self.full_frame[2:]))
+
+        # get catalog
+        cat = self._get_catalog(fov)
 
         # create WCS
         w = WCS(naxis=2)
@@ -221,17 +220,17 @@ class SimCamera(Object):
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-        # set fwhm to 2" in pixels
-        fwhm = 2. / 3600. / cdelt1
+        # set sigma to 4" FWHM in pixels
+        fwhm = 10. / 3600. / cdelt1 / 2.3548
 
         # convert world to pixel coordinates
         cat['x'], cat['y'] = w.wcs_world2pix(cat['ra'], cat['dec'], 0)
 
         # get columns
-        sources = cat['x', 'y', 'phot_g_mean_flux']
-        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'amplitude'])
+        sources = cat['x', 'y', 'phot_g_mean_flux', 'phot_g_mean_mag']
+        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'flux'])
         sources.add_column([fwhm] * len(sources), name='sigma')
-        sources['amplitude'] *= exp_time
+        sources['flux'] *= exp_time
 
         # finished
         return sources

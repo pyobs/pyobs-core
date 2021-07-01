@@ -6,24 +6,24 @@ from astropy.wcs import WCS
 import astropy.units as u
 
 from pyobs.images.processors.misc import SoftBin
+from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.images.processors.offsets import Offsets
-from pyobs.images import Image
-
+from pyobs.images import Image, ImageProcessor
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
+class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: Union[dict, Offsets], min_offset: float = 0.5, max_offset: float = 30,
+                 pipeline: List[Union[dict, ImageProcessor]], min_offset: float = 0.5, max_offset: float = 30,
                  max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
                  separation_reset: float = None, pid: bool = False, log_file: str = None, soft_bin: int = None,
                  *args, **kwargs):
@@ -31,7 +31,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         Args:
             telescope: Telescope to use.
-            offsets: Auto-guider to use
+            pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             min_offset: Min offset in arcsec to move.
             max_offset: Max offset in arcsec to move.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
@@ -43,6 +43,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
+        PipelineMixin.__init__(self, pipeline)
 
         # store
         self._camera = camera
@@ -60,9 +61,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         # headers of last and of reference image
         self._last_header = None
         self._ref_header = None
-
-        # create auto-guiding system
-        self._guiding_offset = get_object(offsets, Offsets)
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
@@ -134,10 +132,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = None if image is None else image.header
 
         # reset offset
-        self._guiding_offset.reset()
+        self.reset_pipeline()
         if image is not None:
             # if image is given, process it
-            self._guiding_offset(image)
+            self.run_pipeline(image)
 
     def _process_image(self, image: Image):
         """Processes a single image and offsets telescope.
@@ -207,7 +205,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = image.header
 
         # get offset
-        self._guiding_offset(image)
+        image = self.run_pipeline(image)
         if 'offsets' not in image.meta:
             log.warning('No offsets found in image meta information.')
             return

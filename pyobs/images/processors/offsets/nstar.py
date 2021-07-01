@@ -73,13 +73,16 @@ class NStarOffsets(Offsets):
                 self.ref_boxes = self._boxes_from_ref(image)
 
                 # reset and finish
-                self.offset = 0, 0
+                image.meta['offsets'] = (0, 0)
                 return image
 
             except ValueError as e:
                 # didn't work
+                log.exception('bla')
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
+                if 'offsets' in image.meta:
+                    del image.meta['offsets']
                 self.offset = None, None
                 return image
 

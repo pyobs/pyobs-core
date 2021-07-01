@@ -166,17 +166,22 @@ class NStarOffsets(Offsets):
         sources_result = sources[np.where(sources["min_dist"] > min_dist)]
         return sources_result
 
-    def remove_bad_sources(self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5) -> Table:
+    def remove_bad_sources(self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5,
+                           saturation: int = 50000) -> Table:
         """Remove bad sources from table.
 
         Args:
             sources: Input table.
             max_ellipticity: Maximum ellipticity.
             min_bkg_factor: Minimum factor above local background.
+            saturation: Saturation level.
 
         Returns:
             Filtered table.
         """
+
+        # remove saturated sources
+        sources = sources[sources['peak'] < saturation]
 
         # remove small sources
         sources = sources[np.where(sources['tnpix'] >= self.min_pixels)]

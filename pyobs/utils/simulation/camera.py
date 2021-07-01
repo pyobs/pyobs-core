@@ -160,15 +160,45 @@ class SimCamera(Object):
 
     def _get_catalog(self):
         """Returns GAIA catalog for current telescope coordinates."""
-        from astroquery.gaia import Gaia
-
-        # get FoV
-        fov = np.max(self.plate_scale / 3600. * np.array(self.full_frame[2:]))
-
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
-            self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=fov * 1.5 * u.deg)
+            from astroquery.utils.tap import TapPlus
+
+            # get coordinates and fov
+            coords = self.telescope.real_pos
+            fov = np.max(self.plate_scale / 3600. * np.array(self.full_frame[2:]))
+
+            # query TAP
+            tap = TapPlus(url="https://gea.esac.esa.int/tap-server/tap")
+            query = self._get_gaia_query(coords.ra.degree, coords.dec.degree, fov * 1.5)
+            job = tap.launch_job(query)
+
+            # get result table
+            self._catalog = job.get_results()
+
         return self._catalog
+
+    def _get_gaia_query(self, ra, dec, radius):
+        # define query
+        return f"""
+                SELECT
+                  TOP 1000
+                  DISTANCE(
+                    POINT('ICRS', ra, dec),
+                    POINT('ICRS', {ra}, {dec})
+                  ) as dist,
+                  ra, dec, phot_g_mean_flux, phot_g_mean_mag
+                FROM
+                  gaiadr2.gaia_source
+                WHERE
+                  1 = CONTAINS(
+                    POINT('ICRS', ra, dec),
+                    CIRCLE('ICRS', {ra}, {dec}, {radius})
+                  )
+                  AND phot_g_mean_mag < {self._max_mag}
+                ORDER BY
+                  phot_g_mean_mag ASC
+                """
 
     def cdelt(self):
         """calculate cdelt1/2"""
@@ -180,9 +210,6 @@ class SimCamera(Object):
 
         # get catalog
         cat = self._get_catalog()
-
-        # filter by mag
-        cat = cat[cat['phot_g_mean_mag'] < self._max_mag]
 
         # calculate cdelt1/2
         cdelt1, cdelt2 = self.cdelt()

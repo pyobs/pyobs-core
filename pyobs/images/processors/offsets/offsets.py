@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 from pyobs.images import Image
 from pyobs.images.processor import ImageProcessor
@@ -12,12 +11,8 @@ class Offsets(ImageProcessor):
     """Base class for determining offsets."""
     __module__ = 'pyobs.images.processors.offsets'
 
-    def reset(self):
-        """Resets guiding."""
-        raise NotImplementedError
-
     def __call__(self, image: Image) -> Image:
-        """Processes an image and sets x/y pixel offset to reference in offset attribute.
+        """Processes an image and sets x/y pixel offset to reference in meta data.
 
         Args:
             image: Image to process.

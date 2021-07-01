@@ -1,6 +1,5 @@
 import logging
 from typing import Union, List, Optional
-import ccdproc
 import numpy as np
 import astropy.units as u
 
@@ -34,6 +33,7 @@ class Pipeline(PipelineMixin):
             normalize: If True, images are normalized to median of 1 before and after combining them.
             method: Method for combining images.
         """
+        import ccdproc
 
         # get CCDData objects
         data = [image.to_ccddata() for image in images]

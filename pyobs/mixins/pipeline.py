@@ -21,6 +21,11 @@ class PipelineMixin:
         # store
         self.__pipeline_steps = [get_object(step, ImageProcessor) for step in pipeline]
 
+    def reset_pipeline(self):
+        """Resets all previous state of the involved image processors."""
+        for step in self.__pipeline_steps:
+            step.reset()
+
     def run_pipeline(self, image: Image) -> Image:
         """Run the pipeline on the given image.
 

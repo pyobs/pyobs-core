@@ -132,7 +132,7 @@ class SepSourceDetection(SourceDetection):
         import sep
 
         # get data and make it continuous
-        d = data.astype(np.float)
+        d = data.astype(float)
 
         # estimate background, probably we need to byte swap
         try:

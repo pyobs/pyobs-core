@@ -19,8 +19,8 @@ class SimCamera(Object):
     """A simulated camera."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
-                 images: str = None, *args, **kwargs):
+    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, plate_scale: float = 1.,
+                 images: str = None, max_mag: float = 20., *args, **kwargs):
         """Inits a new camera.
 
         Args:
@@ -28,6 +28,7 @@ class SimCamera(Object):
             image_size: Size of image.
             pixel_size: Square pixel size in mm.
             images: Filename pattern (e.g. /path/to/*.fits) for files to return instead of simulated images.
+            max_mag: Maximum magnitude for sim.
         """
         Object.__init__(self, *args, **kwargs)
 
@@ -37,10 +38,11 @@ class SimCamera(Object):
         self.full_frame = tuple([0, 0] + list(image_size)) if image_size is not None else (0, 0, 512, 512)
         self.window = self.full_frame
         self.binning = (1, 1)
-        self.pixel_size = pixel_size
+        self.plate_scale = plate_scale
         self.image_format = ImageFormat.INT16
         self.images = [] if images is None else sorted(glob.glob(images)) \
             if '*' in images or '?' in images else [images]
+        self._max_mag = max_mag
 
         # private stuff
         self._catalog = None
@@ -146,7 +148,12 @@ class SimCamera(Object):
 
         # hardware
         hdr['TEL-FOCL'] = (self.telescope.focal_length, "Focal length [mm]")
-        hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
+        #hdr['DET-PIXL'] = (self.pixel_size, "Size of detector pixels (square) [mm]")
+
+        # CDELT1/2
+        cdelt1, cdelt2 = self.cdelt()
+        hdr['CDELT1'] = cdelt1
+        hdr['CDELT2'] = cdelt2
 
         # finished
         return hdr
@@ -155,10 +162,18 @@ class SimCamera(Object):
         """Returns GAIA catalog for current telescope coordinates."""
         from astroquery.gaia import Gaia
 
+        # get FoV
+        fov = np.max(self.plate_scale / 3600. * np.array(self.full_frame[2:]))
+
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
-            self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=1. * u.deg)
+            self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=fov * 1.5 * u.deg)
         return self._catalog
+
+    def cdelt(self):
+        """calculate cdelt1/2"""
+        tmp = self.plate_scale / 3600.
+        return tmp * self.binning[0], tmp * self.binning[1]
 
     def _get_sources_table(self, exp_time: float):
         """Create sources table."""
@@ -166,9 +181,11 @@ class SimCamera(Object):
         # get catalog
         cat = self._get_catalog()
 
+        # filter by mag
+        cat = cat[cat['phot_g_mean_mag'] < self._max_mag]
+
         # calculate cdelt1/2
-        tmp = 360. / (2. * np.pi) * self.pixel_size / self.telescope.focal_length
-        cdelt1, cdelt2 = tmp * self.binning[0], tmp * self.binning[1]
+        cdelt1, cdelt2 = self.cdelt()
 
         # create WCS
         w = WCS(naxis=2)

@@ -52,7 +52,7 @@ class AstrometryOffsets(Offsets):
         x_tel, y_tel = wcs.all_world2pix(img.header['TEL-RA'], img.header['TEL-DEC'], 0)
 
         # calculate offsets as difference between both
-        img.meta['offsets'] = (x_center - x_tel, y_center, y_tel)
+        img.meta['offsets'] = x_center - x_tel, y_center - y_tel
         return img
 
 

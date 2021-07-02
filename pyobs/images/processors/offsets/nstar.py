@@ -124,7 +124,8 @@ class NStarOffsets(Offsets):
         selected_sources = self._select_brightest_sources(self.num_stars, sources)
 
         # extract boxes
-        return photutils.psf.extract_stars(NDData(image.data), selected_sources, size=self.star_box_size).all_stars
+        return photutils.psf.extract_stars(NDData(image.data.astype(float)), selected_sources,
+                                           size=self.star_box_size).all_stars
 
     @staticmethod
     def _fits2numpy(sources: Table) -> Table:
@@ -264,7 +265,7 @@ class NStarOffsets(Offsets):
             box_xmin, box_xmax = box.origin[0], box.origin[0] + box.data.shape[1]
 
             # extract box image
-            current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax]
+            current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax].astype(float)
 
             # correlate
             corr = signal.correlate2d(current_boxed_image, box.data, mode='same', boundary='wrap')

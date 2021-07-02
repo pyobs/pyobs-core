@@ -87,7 +87,9 @@ class NStarOffsets(Offsets):
 
         # process it
         log.info("Perform auto-guiding on new image...")
-        image.meta['offsets'] = self._calculate_offsets(image)
+        offsets = self._calculate_offsets(image)
+        if offsets[0] is not None:
+            image.meta['offsets'] = offsets
         return image
 
     @staticmethod

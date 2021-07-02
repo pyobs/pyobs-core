@@ -51,7 +51,7 @@ class SimTelescope(Object):
         self.focus = focus
         self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
         self.filter = filter
-        self.drift = (0.01, 0.0001) if drift is None else drift     # arcsec/sec in RA/Dec
+        self.drift = (0., 0.) if drift is None else drift     # arcsec/sec in RA/Dec
         self.focal_length = focal_length
 
         # private stuff

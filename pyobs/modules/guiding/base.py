@@ -1,29 +1,27 @@
 from typing import Union, List, Dict, Tuple, Any
 import logging
-import numpy as np
-from astropy.coordinates import SkyCoord, AltAz
-from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.images.processors.misc import SoftBin
+from pyobs.mixins.pipeline import PipelineMixin
+from pyobs.object import get_object
+from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, IRaDecOffsets, IAltAzOffsets, ICamera
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, ICamera
 from pyobs.modules import Module
-from pyobs.object import get_object
-from pyobs.images.processors.offsets import Offsets
-from pyobs.images import Image
-
+from pyobs.images import Image, ImageProcessor
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
+class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: Union[dict, Offsets], min_offset: float = 0.5, max_offset: float = 30,
+                 offsets: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
                  max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
                  separation_reset: float = None, pid: bool = False, log_file: str = None, soft_bin: int = None,
                  *args, **kwargs):
@@ -31,9 +29,8 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         Args:
             telescope: Telescope to use.
-            offsets: Auto-guider to use
-            min_offset: Min offset in arcsec to move.
-            max_offset: Max offset in arcsec to move.
+            offsets: Pipeline steps to run on new image. MUST include a step calculating offsets!
+            apply: Object that handles applying offsets to telescope.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
             min_interval: Minimum interval in sec between two images.
             max_interval: Maximum interval in sec between to consecutive images to guide.
@@ -43,13 +40,12 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
+        PipelineMixin.__init__(self, offsets)
 
         # store
         self._camera = camera
         self._telescope = telescope
         self._enabled = False
-        self._min_offset = min_offset
-        self._max_offset = max_offset
         self._max_exposure_time = max_exposure_time
         self._min_interval = min_interval
         self._max_interval = max_interval
@@ -61,14 +57,14 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = None
         self._ref_header = None
 
-        # create auto-guiding system
-        self._guiding_offset = get_object(offsets, Offsets)
-
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
 
         # binning
         self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
+
+        # apply offsets
+        self._apply = get_object(apply, ApplyOffsets)
 
     def open(self):
         """Open module."""
@@ -134,10 +130,10 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = None if image is None else image.header
 
         # reset offset
-        self._guiding_offset.reset()
+        self.reset_pipeline()
         if image is not None:
             # if image is given, process it
-            self._guiding_offset(image)
+            self.run_pipeline(image)
 
     def _process_image(self, image: Image):
         """Processes a single image and offsets telescope.
@@ -203,31 +199,16 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
                     self._reset_guiding(image=image)
                     return
 
+        # exposure time too large?
+        if self._max_exposure_time is not None and image.header['EXPTIME'] > self._max_exposure_time:
+            log.warning('Exposure time too large, skipping auto-guiding for now...')
+            return
+
         # remember header
         self._last_header = image.header
 
         # get offset
-        self._guiding_offset(image)
-        if 'offsets' not in image.meta:
-            log.warning('No offsets found in image meta information.')
-            return
-        dx, dy = image.meta['offsets']
-
-        if dx is None or dy is None:
-            log.warning('Could not correlate image with reference.')
-            return
-        else:
-            log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
-
-        # get reference pixel
-        cx, cy = image.header['CRPIX1'], image.header['CRPIX1']
-
-        # get WCS and RA/DEC for pixel and pixel + dx/dy
-        w = WCS(image.header)
-        lon, lat = w.all_pix2world(cx, cy, 0)
-        radec1 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=date_obs, location=self.location)
-        lon, lat = w.all_pix2world(cx + dx, cy + dy, 0)
-        radec2 = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=date_obs, location=self.location)
+        image = self.run_pipeline(image)
 
         # get telescope
         try:
@@ -236,29 +217,15 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             log.error('Given telescope does not exist or is not of correct type.')
             return
 
-        # get current position
-        cur_ra, cur_dec = telescope.get_radec().wait()
-        cur_alt, cur_az = telescope.get_altaz().wait()
+        # apply offsets
+        if self._apply(image, telescope, self.location):
+            log.info('Finished image.')
+        else:
+            log.warning('Could not apply offsets.')
 
-        # calculate offsets
-        dra = (radec2.ra.degree - radec1.ra.degree) * np.cos(np.radians(cur_dec))
-        ddec = radec2.dec.degree - radec1.dec.degree
-        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra * 3600., ddec * 3600.)
+        # TODO: revive logging!
 
-        # too large or too small?
-        diff = np.sqrt((dra * 3600.)**2. + (ddec * 3600.))
-        if diff < self._min_offset:
-            log.warning('Shift too small, skipping auto-guiding for now...')
-            return
-        if diff > self._max_offset:
-            log.warning('Shift too large, skipping auto-guiding for now...')
-            return
-
-        # exposure time too large
-        if self._max_exposure_time is not None and image.header['EXPTIME'] > self._max_exposure_time:
-            log.warning('Exposure time too large, skipping auto-guiding for now...')
-            return
-
+        """
         # prepare log entry
         log_entry = {
             'datetime': Time.now().isot,
@@ -267,12 +234,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
             'alt': cur_alt,
             'az': cur_az
         }
-
-        # push offset into PID
-        #if self._pid:
-        #    dra = self._pid_ra.update(dra)
-        #    ddec = self._pid_dec.update(ddec)
-        #    log.info('PID results in RA/Dec shift of dRA=%.2f", dDec=%.2f.', dra * 3600., ddec * 3600.)
 
         # is telescope on an equitorial mount?
         if isinstance(telescope, IRaDecOffsets):
@@ -316,6 +277,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider):
 
         else:
             log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')
+        """
 
 
 __all__ = ['BaseGuiding']

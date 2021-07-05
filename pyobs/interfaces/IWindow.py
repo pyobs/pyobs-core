@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class ICameraWindow(Interface):
+class IWindow(Interface):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
@@ -38,4 +38,4 @@ class ICameraWindow(Interface):
         raise NotImplementedError
 
 
-__all__ = ['ICameraWindow']
+__all__ = ['IWindow']

@@ -1,21 +1,18 @@
 import logging
-from typing import Union, Dict, List, Optional
-import ccdproc
+from typing import Union, List, Optional
 import numpy as np
 import astropy.units as u
-from astropy.io import fits
 
-from pyobs.object import get_object
+from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
-from pyobs.utils.fits import FilenameFormatter
 from pyobs.images import Image, ImageProcessor
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class Pipeline:
+class Pipeline(PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
     def __init__(self, steps: List[Union[dict, ImageProcessor]], *args, **kwargs):
@@ -24,9 +21,7 @@ class Pipeline:
         Args:
             steps: List of pipeline steps to perform.
         """
-
-        # get objects
-        self._steps = [get_object(s, ImageProcessor) for s in steps]
+        PipelineMixin.__init__(steps)
 
     def _combine_calib_images(self, images: List[Image], bias: Image = None, normalize: bool = False,
                               method: str = 'average'):
@@ -38,6 +33,7 @@ class Pipeline:
             normalize: If True, images are normalized to median of 1 before and after combining them.
             method: Method for combining images.
         """
+        import ccdproc
 
         # get CCDData objects
         data = [image.to_ccddata() for image in images]
@@ -121,16 +117,8 @@ class Pipeline:
         # copy image
         calibrated = image.copy()
 
-        # loop steps
-        for step in self._steps:
-            try:
-                log.info(f'Running step {step.__class__.__name__}...')
-                calibrated = step(calibrated)
-            except Exception as e:
-                log.exception(f'Could not run pipeline step {step.__class__.__name__}: {e}')
-
-        # return calibrated image
-        return calibrated
+        # run pipeline
+        return self.run_pipeline(calibrated)
 
     @staticmethod
     def find_master(archive: Archive, image_type: ImageType, time: Time, instrument: str,

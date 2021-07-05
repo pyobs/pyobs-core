@@ -1,6 +1,6 @@
 import logging
 
-from pyobs.interfaces import ICamera, IImageType, ICameraExposureTime
+from pyobs.interfaces import ICamera, IImageType, IExposureTime
 from .base import BaseGuiding
 from ...images.processors.exptime.star import StarExpTimeEstimator
 from ...images.processors.detection import SepSourceDetection
@@ -57,7 +57,7 @@ class AutoGuiding(BaseGuiding):
                 camera: ICamera = self.proxy(self._camera, ICamera)
 
                 # take image
-                if isinstance(camera, ICameraExposureTime):
+                if isinstance(camera, IExposureTime):
                     # set exposure time
                     exp_time = self._exposure_time if self._exposure_time is not None else self._initial_exposure_time
                     log.info('Taking image with an exposure time of %.2fs...', exp_time)

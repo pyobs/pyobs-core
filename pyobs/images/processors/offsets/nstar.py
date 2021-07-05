@@ -7,10 +7,7 @@ from astropy.table import Table, Column
 import photutils
 
 from pyobs.images import Image
-from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.images.processors.photometry import SepPhotometry
 from . import Offsets
-from ..misc.removebackground import RemoveBackground
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +22,9 @@ class NStarOffsets(Offsets):
     def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
                  *args, **kwargs):
         """Initializes a new auto guiding system.
+
+        Requires pyobs.images.processors.detection.SepSourceDetection and
+        pyobs.images.processors.photometry.SepPhotometry to be run on the image beforehand.
 
         Args:
             num_stars: maximum number of stars to use to calculate offset from boxes around them
@@ -73,19 +73,23 @@ class NStarOffsets(Offsets):
                 self.ref_boxes = self._boxes_from_ref(image)
 
                 # reset and finish
-                self.offset = 0, 0
+                image.meta['offsets'] = (0, 0)
                 return image
 
             except ValueError as e:
                 # didn't work
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
+                if 'offsets' in image.meta:
+                    del image.meta['offsets']
                 self.offset = None, None
                 return image
 
         # process it
         log.info("Perform auto-guiding on new image...")
-        image.meta['offsets'] = self._calculate_offsets(image)
+        offsets = self._calculate_offsets(image)
+        if offsets[0] is not None:
+            image.meta['offsets'] = offsets
         return image
 
     @staticmethod
@@ -109,9 +113,7 @@ class NStarOffsets(Offsets):
         """
 
         # do photometry and get catalog
-        detection = SepSourceDetection()
-        photometry = SepPhotometry()
-        sources = self._fits2numpy(photometry(detection(image)).catalog)
+        sources = self._fits2numpy(image.catalog)
 
         # filter sources
         sources = self.remove_sources_close_to_border(
@@ -122,7 +124,8 @@ class NStarOffsets(Offsets):
         selected_sources = self._select_brightest_sources(self.num_stars, sources)
 
         # extract boxes
-        return photutils.psf.extract_stars(NDData(image.data), selected_sources, size=self.star_box_size).all_stars
+        return photutils.psf.extract_stars(NDData(image.data.astype(float)), selected_sources,
+                                           size=self.star_box_size).all_stars
 
     @staticmethod
     def _fits2numpy(sources: Table) -> Table:
@@ -166,17 +169,22 @@ class NStarOffsets(Offsets):
         sources_result = sources[np.where(sources["min_dist"] > min_dist)]
         return sources_result
 
-    def remove_bad_sources(self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5) -> Table:
+    def remove_bad_sources(self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5,
+                           saturation: int = 50000) -> Table:
         """Remove bad sources from table.
 
         Args:
             sources: Input table.
             max_ellipticity: Maximum ellipticity.
             min_bkg_factor: Minimum factor above local background.
+            saturation: Saturation level.
 
         Returns:
             Filtered table.
         """
+
+        # remove saturated sources
+        sources = sources[sources['peak'] < saturation]
 
         # remove small sources
         sources = sources[np.where(sources['tnpix'] >= self.min_pixels)]
@@ -257,7 +265,7 @@ class NStarOffsets(Offsets):
             box_xmin, box_xmax = box.origin[0], box.origin[0] + box.data.shape[1]
 
             # extract box image
-            current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax]
+            current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax].astype(float)
 
             # correlate
             corr = signal.correlate2d(current_boxed_image, box.data, mode='same', boundary='wrap')
@@ -326,12 +334,9 @@ class NStarOffsets(Offsets):
 
         # do fit
         try:
-            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted,
-                                            p0, bounds=bounds,
-                                            maxfev=int(1e5), ftol=1e-12)
+            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds)
         except Exception as e:
             # if fit fails return max pixel
-            log.info(e)
             log.info("Returning pixel position with maximal value in correlation.")
             return tuple(np.unravel_index(np.argmax(corr), corr.shape))
 

@@ -3,7 +3,6 @@ import threading
 from typing import Union, Optional, List, Tuple
 import logging
 import astropy.units as u
-import ccdproc
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -46,6 +45,7 @@ class Calibration(ImageProcessor):
         Returns:
             Calibrated image.
         """
+        import ccdproc
 
         # get calibration masters
         try:

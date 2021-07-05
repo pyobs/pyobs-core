@@ -86,14 +86,10 @@ class SepPhotometry(Photometry):
         sources['background'] = bkgflux
         sources['background'][background_area > 0] /= background_area[background_area > 0]
 
-        # only keep sources with extraction flag < 8
-        sources = sources[sources['flag'] < 8]
-
         # pick columns for catalog
         new_columns = ['fluxaper1', 'fluxerr1', 'fluxaper2', 'fluxerr2', 'fluxaper3', 'fluxerr3',
                        'fluxaper4', 'fluxerr4', 'fluxaper5', 'fluxerr5', 'fluxaper6', 'fluxerr6',
-                       'fluxaper7', 'fluxerr7', 'fluxaper8', 'fluxerr8', 'background',
-                       'fluxrad25', 'fluxrad50', 'fluxrad75']
+                       'fluxaper7', 'fluxerr7', 'fluxaper8', 'fluxerr8', 'background']
         cat = sources[image.catalog.colnames + new_columns]
 
         # copy image, set catalog and return it

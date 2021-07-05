@@ -15,5 +15,9 @@ class ImageProcessor:
         """
         raise NotImplementedError
 
+    def reset(self):
+        """Resets state of image processor"""
+        pass
+
 
 __all__ = ['ImageProcessor']

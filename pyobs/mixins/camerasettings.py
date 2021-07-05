@@ -3,7 +3,7 @@ import logging
 from typing import Union
 
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, IFilters, ICameraWindow, ICameraBinning
+from pyobs.interfaces import ICamera, IFilters, IWindow, IBinning
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +45,10 @@ class CameraSettingsMixin:
             filters.set_filter(self.__camerasettings_filter).wait()
 
         # camera settings
-        if self.__camerasettings_binning is not None and isinstance(camera, ICameraBinning):
+        if self.__camerasettings_binning is not None and isinstance(camera, IBinning):
             log.info('Setting binning to %dx%d...', self.__camerasettings_binning, self.__camerasettings_binning)
             camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning).wait()
-        if isinstance(camera, ICameraWindow):
+        if isinstance(camera, IWindow):
             log.info('Set window to full frame...')
             full_frame = camera.get_full_frame().wait()
             camera.set_window(*full_frame).wait()

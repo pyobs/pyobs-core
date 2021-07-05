@@ -18,15 +18,14 @@ from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
+from .IBinning import IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
-from .ICameraBinning import ICameraBinning
-from .ICameraExposureTime import ICameraExposureTime
-from .ICameraWindow import ICameraWindow
 from .IConfig import IConfig
 from .ICooling import ICooling
 from .ICoordinatesQuery import ICoordinatesQuery
 from .IDome import IDome
+from .IExposureTime import IExposureTime
 from .IFilters import IFilters
 from .IFitsHeaderProvider import IFitsHeaderProvider
 from .IFlatField import IFlatField
@@ -51,4 +50,5 @@ from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
 from .IVideo import IVideo
 from .IWeather import IWeather
+from .IWindow import IWindow
 from .interface import *

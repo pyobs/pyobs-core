@@ -1,6 +1,8 @@
 ## Changelog
 
 ### v0.14 (xxx)
+* Guiding modules accept a pipeline now, so more image processors than just Offsets can run.
+* Renamed ICameraBinning, ICameraExposureTime and ICameraWindow and removed the "Camera" part.
 * Added meta attribute (temporary storage, not I/O persistent) to Image.
 * Extracted IImageGrabber from ICamera and renamed expose() to grab_image().
 * Added new IVideo interface and a corresponding BaseVideo module.
@@ -19,7 +21,7 @@
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
 * Moved more enums into utils.enums, like WeatherSensors and MotionStatus.
-* Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
+* Added list_binnings() to IBinning interface and (temporary) default implementation in BaseCamera.
 * Restructured image processors into pyobs.image.processors.
 * Split photometry into separate SourceDetection and Photometry interfaces, added DaophotSourceDetection, and 
   PhotUtilsPhotometry.
@@ -45,7 +47,7 @@
 * Added new IConfig interface which is implemented in every module and allows remote access to config parameters 
   (if getter/setters are implemented).
 * Removed count parameter from ICamera.expose().
-* Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
+* Removed exposure_time parameter from ICamera.expose() and introduced IExposureTime interface.
 * Removed image_type parameter from ICamera.expose() and introduced IImageType.
 * Moved ImageType enumerator from ICamera to utils.enums.
 

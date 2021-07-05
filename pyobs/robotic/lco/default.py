@@ -4,8 +4,8 @@ import time
 import numpy as np
 from typing import Union, Type
 
-from pyobs.interfaces import ICamera, ICameraBinning, ICameraWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
-    IAcquisition, ICameraExposureTime, IImageType
+from pyobs.interfaces import ICamera, IBinning, IWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
+    IAcquisition, IExposureTime, IImageType
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
@@ -201,12 +201,12 @@ class LcoDefaultScript(Script):
                 Future.wait_all([track, set_filter])
 
                 # set binning and window
-                if isinstance(camera, ICameraBinning):
+                if isinstance(camera, IBinning):
                     bin_x = readout_mode['validation_schema']['bin_x']['default']
                     bin_y = readout_mode['validation_schema']['bin_y']['default']
                     log.info('Set binning to %dx%d...', bin_x, bin_y)
                     camera.set_binning(bin_x, bin_y).wait()
-                if isinstance(camera, ICameraWindow):
+                if isinstance(camera, IWindow):
                     full_frame = camera.get_full_frame().wait()
                     camera.set_window(*full_frame).wait()
 
@@ -215,7 +215,7 @@ class LcoDefaultScript(Script):
                     self._check_abort(abort_event)
 
                     # do exposures
-                    if isinstance(camera, ICameraExposureTime):
+                    if isinstance(camera, IExposureTime):
                         log.info('Exposing %s image %d/%d for %.2fs...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.set_exposure_time(ic['exposure_time']).wait()

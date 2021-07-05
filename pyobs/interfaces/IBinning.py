@@ -3,7 +3,7 @@ from typing import Tuple, List
 from .interface import Interface
 
 
-class ICameraBinning(Interface):
+class IBinning(Interface):
     """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
@@ -36,4 +36,4 @@ class ICameraBinning(Interface):
         raise NotImplementedError
 
 
-__all__ = ['ICameraBinning']
+__all__ = ['IBinning']

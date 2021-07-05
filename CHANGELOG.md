@@ -1,6 +1,7 @@
 ## Changelog
 
 ### v0.14 (xxx)
+* Guiding modules accept a pipeline now, so more image processors than just Offsets can run.
 * Renamed ICameraBinning, ICameraExposureTime and ICameraWindow and removed the "Camera" part.
 * Added meta attribute (temporary storage, not I/O persistent) to Image.
 * Extracted IImageGrabber from ICamera and renamed expose() to grab_image().

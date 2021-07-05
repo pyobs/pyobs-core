@@ -227,6 +227,13 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         Returns:
             Bytes containing JPEG image.
         """
+
+        # uint16?
+        if data.dtype == np.uint16:
+            # TODO: find a better way to convert to uint8
+            data = (data / 256).astype(np.uint8)
+
+        # write to jpeg
         with io.BytesIO() as output:
             PIL.Image.fromarray(data).save(output, format="jpeg")
             return output.getvalue()

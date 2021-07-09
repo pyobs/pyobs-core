@@ -7,7 +7,7 @@ from astropy.time import Time
 from typing import Tuple
 from astropy.wcs import WCS
 from astropy.io import fits
-from photutils.datasets import make_gaussian_prf_sources_image
+from photutils.datasets import make_gaussian_sources_image
 from photutils.datasets import make_noise_image
 import logging
 
@@ -98,10 +98,11 @@ class SimCamera(Object):
         shape = (int(self.window[3]), int(self.window[2]))
 
         # create image with Gaussian noise for BIAS
-        data = make_noise_image(shape, distribution='gaussian', mean=1e3, stddev=100.)
+        data = make_noise_image(shape, distribution='gaussian', mean=10, stddev=1.)
 
-        # add DARK
+        # non-zero exposure time?
         if exp_time > 0:
+            # add DARK
             data += make_noise_image(shape, distribution='gaussian', mean=exp_time / 1e4, stddev=exp_time / 1e5)
 
             # add stars and stuff
@@ -118,8 +119,12 @@ class SimCamera(Object):
                 # get catalog with sources
                 sources = self._get_sources_table(exp_time)
 
+                # filter out all sources outside FoV
+                sources = sources[(sources['x_mean'] > 0) & (sources['x_mean'] < shape[1]) &
+                                  (sources['y_mean'] > 0) & (sources['y_mean'] < shape[0])]
+
                 # create image
-                data += make_gaussian_prf_sources_image(shape, sources)
+                data = make_gaussian_sources_image(shape, sources)
 
         # saturate
         data[data > 65535] = 65535
@@ -228,9 +233,19 @@ class SimCamera(Object):
 
         # get columns
         sources = cat['x', 'y', 'phot_g_mean_flux', 'phot_g_mean_mag']
-        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'flux'])
-        sources.add_column([fwhm] * len(sources), name='sigma')
+        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_mean', 'y_mean', 'flux'])
+        sources.add_column([fwhm] * len(sources), name='x_stddev')
+        sources.add_column([fwhm] * len(sources), name='y_stddev')
         sources['flux'] *= exp_time
+
+        '''
+        table['amplitude'] = [50, 70, 150, 210]
+        table['x_mean'] = [160, 25, 150, 90]
+        table['y_mean'] = [70, 40, 25, 60]
+        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+        table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
+        '''
 
         # finished
         return sources

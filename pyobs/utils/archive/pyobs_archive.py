@@ -82,18 +82,31 @@ class PyobsArchive(Archive):
         params = self._build_query(start, end, night, site, telescope, instrument, image_type, binning,
                                    filter_name, rlevel)
 
+        # init list
+        frames = []
+
         # set offset and limit
-        # TODO: instead of setting large limit, request multiple pages, if necessary
         params['offset'] = 0
-        params['limit'] = 10000
+        params['limit'] = 1000
 
-        # do request
-        r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
-        if r.status_code != 200:
-            raise ValueError('Could not query frames')
+        # loop until we got all
+        while True:
+            # do request
+            r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
+            if r.status_code != 200:
+                raise ValueError('Could not query frames')
 
-        # create frames and return them
-        return [PyobsArchiveFrameInfo(frame, archive=self) for frame in r.json()['results']]
+            # create frames
+            res = r.json()
+            new_frames = [PyobsArchiveFrameInfo(frame, archive=self) for frame in res['results']]
+            frames.extend(new_frames)
+
+            # got all?
+            if len(frames) >= res['count']:
+                return frames
+
+            # get next chunk
+            params['offset'] += len(new_frames)
 
     def _build_query(self, start: Time = None, end: Time = None, night: str = None,
                     site: str = None, telescope: str = None, instrument: str = None,

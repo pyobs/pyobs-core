@@ -19,7 +19,7 @@ class Night:
                  filenames_calib: str = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-'
                                         '{IMAGETYP}-{XBINNING}x{YBINNING}{FILTER|filter}.fits',
                  min_flats: int = 10, store_local: str = None, create_calibs: bool = True, calib_science: bool = True,
-                 num_procs: int = 1, *args, **kwargs):
+                 *args, **kwargs):
         """Creates a Night object for reducing a given night.
 
         Args:
@@ -31,7 +31,6 @@ class Night:
             store_local: If True, files are stored in given local directory instead of uploaded to archive.
             create_calibs: If False, no calibration files are created for night.
             calib_science: If False, no science frames are calibrated.
-            num_procs: Number of processes to use for reduction.
         """
 
         # get archive and science pipeline
@@ -44,7 +43,6 @@ class Night:
         self._store_local = store_local
         self._create_calibs = create_calibs
         self._calib_science = calib_science
-        self._num_procs = num_procs
 
         # cache for master calibration frames
         self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
@@ -167,49 +165,36 @@ class Night:
         infos = self._archive.list_frames(night=night, instrument=instrument,
                                           image_type=ImageType.OBJECT, binning=binning, filter_name=filter_name,
                                           rlevel=0)
-        if len(infos) == 0:
+        total = len(infos)
+        if total == 0:
             return
-        log.info('Calibrating %d OBJECT frames...', len(infos))
+        log.info('Calibrating %d OBJECT frames...', total)
 
         # run all science frames
-        with Pool(processes=self._num_procs) as pool:
-            for i, info in enumerate(infos, 1):
-                pool.apply_async(self._calib_data_frame, args=(info, i, len(infos)))
-            pool.close()
-            pool.join()
+        for i, info in enumerate(infos, 1):
+            # temporary fix
+            if 'e01' in info.filename:
+                return
+            log.info('(%d/%d) Calibrating file %s...', i, total, info.filename)
 
-    def _calib_data_frame(self, info, cur, total):
-        """Run pipeline for given frame.
+            try:
+                # download frame
+                image = self._archive.download_frames([info])[0]
 
-        Args:
-            info: Info for frame to calibrate.
-            cur: Number of image in set.
-            total: Total number of images.
-        """
+                # calibrate
+                calibrated = self._pipeline.calibrate(image)
 
-        # temporary fix
-        if 'e01' in info.filename:
-            return
-        log.info('(%d/%d) Calibrating file %s...', cur, total, info.filename)
+                # save/upload
+                if self._store_local:
+                    path = os.path.join(self._store_local, calibrated.header['FNAME'])
+                    log.info('(%d/%d) Storing calibrated images as %s...', i, total, path)
+                    calibrated.writeto(path, overwrite=True)
+                else:
+                    log.info('(%d/%d) Uploading calibrated images as %s...', i, total, calibrated.header['FNAME'])
+                    self._archive.upload_frames([calibrated])
 
-        try:
-            # download frame
-            image = self._archive.download_frames([info])[0]
-
-            # calibrate
-            calibrated = self._pipeline.calibrate(image)
-
-            # save/upload
-            if self._store_local:
-                path = os.path.join(self._store_local, calibrated.header['FNAME'])
-                log.info('(%d/%d) Storing calibrated images as %s...', cur, total, path)
-                calibrated.writeto(path, overwrite=True)
-            else:
-                log.info('(%d/%d) Uploading calibrated images as %s...', cur, total, calibrated.header['FNAME'])
-                self._archive.upload_frames([calibrated])
-
-        except Exception:
-            log.exception('(%d/%d) Error processing image %s.', cur, total, info.filename)
+            except Exception:
+                log.exception('(%d/%d) Error processing image %s.', i, total, info.filename)
 
     def __call__(self, site: str, night: str):
         """Reduces all data im this night."""

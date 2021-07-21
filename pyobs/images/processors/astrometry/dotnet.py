@@ -31,7 +31,7 @@ class AstrometryDotNet(Astrometry):
         """
 
         # get catalog
-        cat = image.catalog
+        cat = image.catalog[['x', 'y', 'flux']].to_pandas().dropna()
 
         # copy image
         img = image.copy()
@@ -43,7 +43,7 @@ class AstrometryDotNet(Astrometry):
             return img
 
         # sort it and take N brightest sources
-        cat.sort(['flux'], reverse=True)
+        cat.sort_values('flux', ascending=False)
         cat = cat[:self.source_count]
 
         # no CDELT1?

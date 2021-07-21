@@ -21,7 +21,7 @@ class Pipeline(PipelineMixin):
         Args:
             steps: List of pipeline steps to perform.
         """
-        PipelineMixin.__init__(steps)
+        PipelineMixin.__init__(self, steps)
 
     def _combine_calib_images(self, images: List[Image], bias: Image = None, normalize: bool = False,
                               method: str = 'average'):

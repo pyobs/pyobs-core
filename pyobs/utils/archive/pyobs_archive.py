@@ -65,7 +65,7 @@ class PyobsArchive(Archive):
         # do request
         r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
         if r.status_code != 200:
-            raise ValueError('Could not query frames')
+            raise ValueError('Could not query frames: %s' % str(r.content))
 
         # create frames and return them
         return r.json()

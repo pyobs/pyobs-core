@@ -3,6 +3,7 @@ from typing import Tuple
 from astropy.table import Table
 import logging
 import numpy as np
+import pandas as pd
 
 from .sourcedetection import SourceDetection
 from pyobs.images import Image
@@ -58,7 +59,7 @@ class SepSourceDetection(SourceDetection):
                               clean=self.clean, clean_param=self.clean_param, mask=image.mask)
 
         # convert to astropy table
-        sources = Table(sources)
+        sources = pd.DataFrame(sources)
 
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
@@ -71,8 +72,8 @@ class SepSourceDetection(SourceDetection):
         fwhm = 2.0 * (np.log(2) * (sources['a'] ** 2.0 + sources['b'] ** 2.0)) ** 0.5
         sources['fwhm'] = fwhm
 
-        # theta in degrees
-        sources['theta'] = np.degrees(sources['theta'])
+        # clip theta to [-pi/2,pi/2]
+        sources['theta'] = sources['theta'].clip(lower=np.pi/2, upper=np.pi/2)
 
         # Kron radius
         kronrad, krflag = sep.kron_radius(data, x, y, sources['a'], sources['b'], sources['theta'], 6.0)
@@ -82,7 +83,7 @@ class SepSourceDetection(SourceDetection):
         # equivalent of FLUX_AUTO
         gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
         flux, fluxerr, flag = sep.sum_ellipse(data, x, y, sources['a'], sources['b'],
-                                              np.radians(sources['theta']), 2.5 * kronrad,
+                                              sources['theta'], 2.5 * kronrad,
                                               subpix=1, mask=image.mask, gain=gain)
         sources['flag'] |= flag
         sources['flux'] = flux
@@ -102,6 +103,9 @@ class SepSourceDetection(SourceDetection):
         sources['xwin'] = xwin
         sources['ywin'] = ywin
 
+        # theta in degrees
+        sources['theta'] = np.degrees(sources['theta'])
+
         # only keep sources with detection flag < 8
         sources = sources[sources['flag'] < 8]
 
@@ -110,8 +114,8 @@ class SepSourceDetection(SourceDetection):
         sources['y'] += 1
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'tnpix', 'kronrad',
-                      'fluxrad25', 'fluxrad50', 'fluxrad75', 'xwin', 'ywin']
+        cat = sources[['x', 'y', 'peak', 'flux', 'fwhm', 'a', 'b', 'theta', 'ellipticity', 'tnpix', 'kronrad',
+                      'fluxrad25', 'fluxrad50', 'fluxrad75', 'xwin', 'ywin']]
 
         # copy image, set catalog and return it
         img = image.copy()

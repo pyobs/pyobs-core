@@ -19,6 +19,7 @@ class PipelineMixin:
         """
 
         # store
+        pipeline = [] if pipeline is None else pipeline
         self.__pipeline_steps = [get_object(step, ImageProcessor) for step in pipeline]
 
     def reset_pipeline(self):

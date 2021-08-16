@@ -1,12 +1,13 @@
 import logging
-from typing import Tuple, List
+from typing import Tuple, List, Union
 import numpy as np
 from scipy import signal, optimize
 from astropy.nddata import NDData
 from astropy.table import Table, Column
 import photutils
 
-from pyobs.images import Image
+from pyobs.images import Image, ImageProcessor
+from pyobs.mixins.pipeline import PipelineMixin
 from . import Offsets
 
 log = logging.getLogger(__name__)
@@ -16,11 +17,11 @@ class CorrelationMaxCloseToBorderError(Exception):
     pass
 
 
-class NStarOffsets(Offsets):
+class NStarOffsets(Offsets, PipelineMixin):
     """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
     def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
-                 *args, **kwargs):
+                 pipeline: List[Union[dict, ImageProcessor]] = None, *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Requires pyobs.images.processors.detection.SepSourceDetection and
@@ -33,7 +34,9 @@ class NStarOffsets(Offsets):
             min_pixels: minimum required number of pixels above threshold for source to be
                 used for offset calculation.
             min_sources: Minimum required number of sources in image.
+            pipeline: Pipeline to be used for first image in series.
         """
+        PipelineMixin.__init__(self, pipeline)
 
         # store
         self.num_stars = num_stars
@@ -112,19 +115,22 @@ class NStarOffsets(Offsets):
             ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in filtered list of sources
         """
 
+        # run pipeline on 1st image
+        img = self.run_pipeline(image)
+
         # do photometry and get catalog
-        sources = self._fits2numpy(image.catalog)
+        sources = self._fits2numpy(img.catalog)
 
         # filter sources
         sources = self.remove_sources_close_to_border(
-            sources, image.data.shape, self.star_box_size // 2 + 1
+            sources, img.data.shape, self.star_box_size // 2 + 1
         )
         sources = self.remove_bad_sources(sources)
         self._check_sources_count(sources)
         selected_sources = self._select_brightest_sources(self.num_stars, sources)
 
         # extract boxes
-        return photutils.psf.extract_stars(NDData(image.data.astype(float)), selected_sources,
+        return photutils.psf.extract_stars(NDData(img.data.astype(float)), selected_sources,
                                            size=self.star_box_size).all_stars
 
     @staticmethod

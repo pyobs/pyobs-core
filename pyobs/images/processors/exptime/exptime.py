@@ -12,7 +12,6 @@ class ExpTimeEstimator(ImageProcessor):
     __module__ = 'pyobs.images.processors.exptime'
 
     def __init__(self, *args, **kwargs):
-        ExpTimeEstimator.__init__(self, *args, **kwargs)
         self.exp_time = None
 
     def __call__(self, image: Image) -> Image:

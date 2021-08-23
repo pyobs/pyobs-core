@@ -119,7 +119,7 @@ class SepSourceDetection(SourceDetection):
 
         # copy image, set catalog and return it
         img = image.copy()
-        img.catalog = Table(cat)
+        img.catalog = Table.from_pandas(cat)
         return img
 
     @staticmethod

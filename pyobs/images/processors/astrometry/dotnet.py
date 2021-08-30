@@ -43,7 +43,7 @@ class AstrometryDotNet(Astrometry):
             return img
 
         # sort it and take N brightest sources
-        cat.sort_values('flux', ascending=False)
+        cat = cat.sort_values('flux', ascending=False)
         cat = cat[:self.source_count]
 
         # no CDELT1?

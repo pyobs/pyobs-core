@@ -42,6 +42,8 @@ class ApplyOffsets:
 
         # get offsets
         dx, dy = image.meta['offsets']
+        if dx is None or dy is None:
+            log.info('Either x or y offset (or both) is zero. Not applying them.')
         log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
 
         # get reference pixel and date obs

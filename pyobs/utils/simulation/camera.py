@@ -124,7 +124,7 @@ class SimCamera(Object):
                                   (sources['y_mean'] > 0) & (sources['y_mean'] < shape[0])]
 
                 # create image
-                data = make_gaussian_sources_image(shape, sources)
+                data += make_gaussian_sources_image(shape, sources)
 
         # saturate
         data[data > 65535] = 65535

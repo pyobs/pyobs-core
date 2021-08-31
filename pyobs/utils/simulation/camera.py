@@ -24,7 +24,7 @@ class SimCamera(Object):
     __module__ = 'pyobs.utils.simulation'
 
     def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
-                 images: str = None, max_mag: float = 20., *args, **kwargs):
+                 images: str = None, max_mag: float = 20., seeing: float = 3., *args, **kwargs):
         """Inits a new camera.
 
         Args:
@@ -33,6 +33,7 @@ class SimCamera(Object):
             pixel_size: Square pixel size in mm.
             images: Filename pattern (e.g. /path/to/*.fits) for files to return instead of simulated images.
             max_mag: Maximum magnitude for sim.
+            seeing: Seeing in arcsec.
         """
         Object.__init__(self, *args, **kwargs)
 
@@ -47,6 +48,7 @@ class SimCamera(Object):
         self.images = [] if images is None else sorted(glob.glob(images)) \
             if '*' in images or '?' in images else [images]
         self._max_mag = max_mag
+        self._seeing = seeing
 
         # private stuff
         self._catalog = None
@@ -225,8 +227,8 @@ class SimCamera(Object):
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-        # set sigma to 4" FWHM in pixels
-        fwhm = 10. / 3600. / cdelt1 / 2.3548
+        # set sigma to given seeing (in FWHM) in pixels
+        fwhm = self._seeing / 3600. / cdelt1 / 2.3548
 
         # convert world to pixel coordinates
         cat['x'], cat['y'] = w.wcs_world2pix(cat['ra'], cat['dec'], 0)

@@ -128,7 +128,9 @@ class Calibration(ImageProcessor):
                 return item
 
         # try to download one
-        master = Pipeline.find_master(self._archive, image_type, time, instrument, binning, filter_name, max_days=30)
+        master = Pipeline.find_master(self._archive, image_type, time, instrument, binning,
+                                      None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
+                                      max_days=30)
 
         # nothing?
         if master is None:

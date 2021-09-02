@@ -174,7 +174,7 @@ class Night:
         for i, info in enumerate(infos, 1):
             # temporary fix
             if 'e01' in info.filename:
-                return
+                continue
             log.info('(%d/%d) Calibrating file %s...', i, total, info.filename)
 
             try:

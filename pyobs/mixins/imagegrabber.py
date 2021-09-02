@@ -5,7 +5,7 @@ import os
 from typing import Union, Dict, Any, Tuple
 import astropy.units as u
 
-from pyobs.comm import TimeoutException, InvocationException
+from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderProvider
 from pyobs.modules import Module
@@ -95,6 +95,9 @@ class ImageGrabberMixin:
                 log.warning('Fetching FITS headers from %s timed out.', client)
                 continue
             except InvocationException as e:
+                log.warning('Could not fetch FITS headers from %s: %s.', client, e.get_message())
+                continue
+            except RemoteException as e:
                 log.warning('Could not fetch FITS headers from %s: %s.', client, e.get_message())
                 continue
 

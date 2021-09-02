@@ -222,9 +222,6 @@ class Night:
                     if self._create_calibs:
                         self._create_master_calib(night, instrument, ImageType.SKYFLAT, binning, filter_name)
 
-                    if filter_name != 'Green':
-                        continue
-
                     # calibrate science data
                     if self._calib_science:
                         self._calib_data(night, instrument, binning, filter_name)

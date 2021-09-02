@@ -174,7 +174,7 @@ class Night:
         for i, info in enumerate(infos, 1):
             # temporary fix
             if 'e01' in info.filename:
-                return
+                continue
             log.info('(%d/%d) Calibrating file %s...', i, total, info.filename)
 
             try:
@@ -221,6 +221,9 @@ class Night:
                     # create flat
                     if self._create_calibs:
                         self._create_master_calib(night, instrument, ImageType.SKYFLAT, binning, filter_name)
+
+                    if filter_name != 'Green':
+                        continue
 
                     # calibrate science data
                     if self._calib_science:

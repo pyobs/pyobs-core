@@ -1,3 +1,7 @@
+import logging
+import re
+from typing import Dict, Union, Optional
+
 from py_expression_eval import Parser
 from astropy.time import Time, TimeDelta
 import astropy.units as u
@@ -7,16 +11,28 @@ import operator
 from .priorities import SkyflatPriorities
 
 
+log = logging.getLogger(__name__)
+
+
 class ExpTimeEval:
     """Exposure time evaluator for skyflats."""
 
-    def __init__(self, observer: Observer, functions: dict, combine_binnings: bool = True):
+    def __init__(self, observer: Observer, functions: Union[str, Dict[str, Union[str, Dict[str, str]]]]):
         """Initializes a new evaluator.
 
         Args:
             observer: Observer to use.
-            functions: Dict of functions for the different filters.
-            combine_binnings: Whether different binnings use the same functions.
+            functions: Dict of functions for the different filters/binnings.
+                Three possible formats:
+                1. Just a string with a function, e.g. 'exp(-0.9*(h+3.9))', completely ignoring binning and filter.
+                2. Dictionary on filter or binning like
+                   {'1x1': 'exp(-0.9*(h+3.9))'}
+                   or
+                   {'clear': 'exp(-0.9*(h+3.9))'}
+                   If a binning is given, filters are ignored, and vice versa. Binnings need to be given as NxN.
+                3. Nested dictionary with binning and filter like
+                   {'1x1': {'clear': 'exp(-0.9*(h+3.9))'}}
+                   In this structure, binning must be the first layer, followed by filter.
         """
 
         # init
@@ -24,20 +40,47 @@ class ExpTimeEval:
         self._time = None
         self._m = None
         self._b = None
-        self._combine_binnings = combine_binnings
 
-        # parse function
-        if functions is None:
-            functions = {}
-        if combine_binnings:
-            # in the simple case, the key is just the filter
-            self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
+        # get parser and init functions dict
+        p = Parser()
+        self._functions: Dict[(Optional[str], Optional[str])] = {}
+
+        # so, what format is the functions dict?
+        if isinstance(functions, str):
+            # single function
+            self._functions[None, None] = p.parse(functions)
+            log.info('Found a single flatfield function for all binnings and filters.')
+
         else:
-            # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
-            self._functions = {}
-            for binning, func in functions.items():
-                for filter_name, func in func.items():
-                    self._functions[binning, filter_name] = Parser().parse(func)
+            # check, whether keys are binnings or filters
+            is_binning = [re.match('[0-9]+[0-9]+', k) is not None for k in functions.keys()]
+            if any(is_binning) and not all(is_binning):
+                raise ValueError('Inconsistent configuration: first layer is neither all binnings nor all filters. ')
+
+            # if all entries in is_binning are True, first layer is binnings
+            if all(is_binning):
+                # 1st level is binnings, is next level strings or another dict?
+                is_str = [isinstance(f, str) for f in functions.values()]
+                if any(is_str) and not all(is_str):
+                    raise ValueError('Inconsistent configuration: second layer is neither all str nor all dicts.')
+
+                # filters or not?
+                if all(is_str):
+                    # all strings, so we don't have filters
+                    self._functions = {(b, None): p.parse(func) for b, func in functions.items()}
+
+                else:
+                    # need to go a level deeper
+                    self._functions = {b: {f: p.parse(func) for f, func in tmp} for b, tmp in functions.items()}
+
+            else:
+                # 1st level is filters, second level must be strings!
+                is_str = [isinstance(f, str) for f in functions.values()]
+                if not all(is_str):
+                    raise ValueError('Inconsistent configuration: second level must be functions.')
+
+                # parse
+                self._functions = {(None, f): p.parse(func) for f, func in functions.items()}
 
     def __call__(self, filter_name: str, binning: int, solalt: float) -> float:
         """Estimate exposure time for given filter

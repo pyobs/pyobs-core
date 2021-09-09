@@ -1,7 +1,7 @@
 import logging
 import threading
 from enum import Enum
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IBinning
@@ -14,7 +14,31 @@ from pyobs.utils.skyflats import FlatFielder
 log = logging.getLogger(__name__)
 
 
-class FlatField(Module, IFlatField, IBinning, IFilters):
+class BinningMixin(IBinning):
+    def __init__(self, camera: IBinning):
+
+    def set_binning(self, x: int, y: int, *args, **kwargs):
+        """Set the camera binning.
+
+        Args:
+            x: X binning.
+            y: Y binning.
+
+        Raises:
+            ValueError: If binning could not be set.
+        """
+        raise NotImplementedError
+
+    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
+        """Returns the camera binning.
+
+        Returns:
+            Tuple with x and y.
+        """
+        raise NotImplementedError
+
+
+class FlatField(Module, IFlatField, BinningMixin, IFilters):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
@@ -86,13 +110,11 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                             filter=filter, binning=binning)
 
     @timeout(3600)
-    def flat_field(self, filter_name: str, count: int = 20, binning: int = 1, *args, **kwargs) -> Tuple[int, float]:
+    def flat_field(self, count: int = 20, *args, **kwargs) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
-            filter_name: Name of filter
             count: Number of images to take
-            binning: Binning to use
 
         Returns:
             Number of images actually taken and total exposure time in ms

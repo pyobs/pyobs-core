@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Union, Tuple
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope
+from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IBinning
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
@@ -14,7 +14,7 @@ from pyobs.utils.skyflats import FlatFielder
 log = logging.getLogger(__name__)
 
 
-class FlatField(Module, IFlatField):
+class FlatField(Module, IFlatField, IBinning, IFilters):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
@@ -141,16 +141,6 @@ class FlatField(Module, IFlatField):
     def abort(self, *args, **kwargs):
         """Abort current actions."""
         self._abort.set()
-
-    def flat_field_status(self, *args, **kwargs) -> dict:
-        """Returns current status of auto focus.
-
-        Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
-
-        Returns:
-            Dictionary with current status.
-        """
-        raise NotImplementedError
 
     def _abort_weather(self, event: Event, sender: str, *args, **kwargs):
         """Abort on bad weather."""

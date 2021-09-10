@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, Union, Tuple
 from astroplan import Observer
 import operator
 
@@ -13,14 +14,14 @@ log = logging.getLogger(__name__)
 class SchedulerItem:
     """A single item in the flat scheduler"""
 
-    def __init__(self, start: float, end: float, filter_name: str, binning: int, priority: float):
+    def __init__(self, start: float, end: float, filter_name: str, binning: Tuple[int, int], priority: float):
         """Initializes a new scheduler item
 
         Args:
             start: Start time in seconds
             end: End time in seconds
             filter_name: Name of filter
-            binning: Used binning in X and Y
+            binning: Used binning
         """
         self.start = start
         self.end = end
@@ -31,16 +32,17 @@ class SchedulerItem:
     def __repr__(self):
         """Nice string representation for item"""
         return '%d - %d (%s %dx%d): %.2f' % (self.start, self.end, self.filter_name,
-                                             self.binning, self.binning, self.priority)
+                                             self.binning[0], self.binning[1], self.priority)
 
 
 class Scheduler:
     """Scheduler for taking flat fields"""
     __module__ = 'pyobs.utils.skyflats'
 
-    def __init__(self, functions: dict, priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
+    def __init__(self, functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
+                 priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
                  max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
-                 combine_binnings: bool = True, readout: dict = None):
+                 readout: dict = None):
         """Initializes a new scheduler for taking flat fields
 
         Args:
@@ -52,10 +54,9 @@ class Scheduler:
             timespan: Timespan from now that should be scheduled [s]
             filter_change: Time required for filter change [s]
             count: Number of flats to schedule
-            combine_binnings: Whether different binnings use the same functions.
             readout: Dictionary with readout times (in sec) per binning (as BxB).
         """
-        self._eval = ExpTimeEval(observer, functions, combine_binnings=combine_binnings)
+        self._eval = ExpTimeEval(observer, functions)
         self._observer = observer
         self._priorities = priorities
         self._min_exptime = min_exptime
@@ -103,7 +104,7 @@ class Scheduler:
         else:
             raise StopIteration
 
-    def _find_slot(self, schedules: list, filter_name: str, binning: int, priority: float):
+    def _find_slot(self, schedules: list, filter_name: str, binning: Tuple[int, int], priority: float):
         """Find a possible slot for a given filter/binning in the given schedule
 
         Args:
@@ -113,25 +114,26 @@ class Scheduler:
         """
 
         # get readout time
-        sbin = '%dx%d' % (binning, binning)
+        sbin = '%dx%d' % binning
         readout = self._readout[sbin] if sbin in self._readout else 0.
 
         # find first possible start time
         time = 0
         while time < self._timespan:
             # get exposure time
-            exp_time_start = self._eval.exp_time(filter_name, binning, time)
+            exp_time_start = self._eval.exp_time(time, binning=binning, filter_name=filter_name)
 
             # are we in allowed limit?
             if self._min_exptime <= exp_time_start <= self._max_exptime:
                 # seems to fit, get duration
-                duration = self._eval.duration(filter_name, binning, self._count, start_time=time, readout=readout)
+                duration = self._eval.duration(self._count, start_time=time, readout=readout,
+                                               binning=binning, filter_name=filter_name)
 
                 # add time for filter change
                 duration += self._filter_change
 
                 # get exp time at end
-                exp_time_end = self._eval.exp_time(filter_name, binning, time + duration)
+                exp_time_end = self._eval.exp_time(time + duration, binning=binning, filter_name=filter_name)
 
                 # still in limits?
                 if self._min_exptime <= exp_time_end <= self._max_exptime:

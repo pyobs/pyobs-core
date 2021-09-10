@@ -17,6 +17,7 @@ from pyobs.utils.fits import fitssec
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
+from .exptimeeval import ExpTimeEval
 from .pointing import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class FlatFielder:
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, functions: Dict[str, Union[str, Dict[str, str]]] = None,
+    def __init__(self, functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
                  test_frame: tuple = None, counts_frame: tuple = None, allowed_offset_frac: float = 0.2,
                  min_counts: int = 100, pointing: Union[dict, SkyFlatsBasePointing] = None,
@@ -45,20 +46,9 @@ class FlatFielder:
                  callback: Callable = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
-        Depending on the value of combine_binnings, functions must be in a specific format:
-
-            1. combine_binnings=True:
-                functions must be a dictionary of filter->function pairs, like
-                {'clear': 'exp(-0.9*(h+3.9))'}
-                In this case it is assumed that the average flux per pixel is directly correlated to the binning,
-                i.e. a flat with 3x3 binning hast on average 9 times as much flux per pixel.
-            2. combine_binnings=False:
-                functions must be nested one level deeper within the binning, like
-                {'1x1': {'clear': 'exp(-0.9*(h+3.9))'}}
-
         Args:
             functions: Function f(h) for each filter to describe ideal exposure time as a function of solar
-                elevation h, i.e. something like exp(-0.9*(h+3.9))
+                elevation h, i.e. something like exp(-0.9*(h+3.9)). See ExpTimeEval for details.
             target_count: Count rate to aim for.
             min_exptime: Minimum exposure time.
             max_exptime: Maximum exposure time.
@@ -88,22 +78,7 @@ class FlatFielder:
         self._callback = callback
 
         # parse function
-        if functions is None:
-            functions = {}
-        self._functions: Dict[Union[str, Tuple[str, str]], Any]
-        if combine_binnings:
-            # in the simple case, the key is just the filter
-            self._functions = {filter_name: Parser().parse(func) for filter_name, func in functions.items()}
-        else:
-            # in case of separate binnings, the key to the functions dict is a tuple of binning and filter
-            self._functions = {}
-            for binning, func in functions.items():
-                # func must be a dict
-                if isinstance(func, dict):
-                    for filter_name, func in func.items():
-                        self._functions[binning, filter_name] = Parser().parse(func)
-                else:
-                    raise ValueError('functions must be a dict of binnings, of combine_binnings is False.')
+        self._eval = ExpTimeEval(observer, functions)
 
         # abort event
         self._abort = threading.Event()

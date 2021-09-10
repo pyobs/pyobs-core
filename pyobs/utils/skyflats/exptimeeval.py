@@ -1,9 +1,11 @@
+import itertools
 import re
-from types import Union
-from typing import Dict, Optional
+from typing import Dict, Optional, Union, List
 from astroplan import Observer
+from astropy.time import TimeDelta
 from py_expression_eval import Parser
 import logging
+import astropy.units as u
 
 from pyobs.utils.time import Time
 
@@ -50,7 +52,7 @@ class ExpTimeEval:
 
         else:
             # check, whether keys are binnings or filters
-            is_binning = [re.match('[0-9]+[0-9]+', k) is not None for k in functions.keys()]
+            is_binning = [re.match('[0-9]+x[0-9]+', k) is not None for k in functions.keys()]
             if any(is_binning) and not all(is_binning):
                 raise ValueError('Inconsistent configuration: first layer is neither all binnings nor all filters. ')
 
@@ -68,7 +70,9 @@ class ExpTimeEval:
 
                 else:
                     # need to go a level deeper
-                    self._functions = {b: {f: p.parse(func) for f, func in tmp} for b, tmp in functions.items()}
+                    for b, tmp in functions.items():
+                        for f, func in tmp.items():
+                            self._functions[b, f] = p.parse(func)
 
             else:
                 # 1st level is filters, second level must be strings!
@@ -78,6 +82,22 @@ class ExpTimeEval:
 
                 # parse
                 self._functions = {(None, f): p.parse(func) for f, func in functions.items()}
+
+    def _keys(self, i):
+        keys = list(set([k[i] for k in self._functions.keys()]))
+        if None in keys:
+            keys.remove(None)
+        return sorted(keys)
+
+    @property
+    def binnings(self) -> List[str]:
+        """Return list of binnings."""
+        return self._keys(0)
+
+    @property
+    def filters(self) -> List[str]:
+        """Return list of filters."""
+        return self._keys(1)
 
     def __call__(self, solalt: float, binning: int = None, filter_name: str = None) -> float:
         """Estimate exposure time for given filter
@@ -92,13 +112,18 @@ class ExpTimeEval:
         """
 
         # build binning string (if given)
-        sbin = None if binning is None else '%dx%d' % (binning, binning)
+        got_binnings = len(self.binnings) > 0
+        sbin = '%dx%d' % (binning, binning) if got_binnings and binning is not None else None
+
+        # if we got no filters, ignore filter_name, if given
+        if len(self.filters) == 0:
+            filter_name = None
 
         # get function and evaluate it
         exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
 
-        # if binning is given, we return exptime directly, otherwise we scale with binning
-        return exptime / binning**2 if binning is not None else exptime
+        # need to scale with exp time?
+        return exptime/binning**2 if not got_binnings and binning is not None else exptime
 
     def init(self, time: Time):
         """Initialize object with the given time.

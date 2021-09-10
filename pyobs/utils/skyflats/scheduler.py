@@ -82,33 +82,26 @@ class ExpTimeEval:
                 # parse
                 self._functions = {(None, f): p.parse(func) for f, func in functions.items()}
 
-    def __call__(self, filter_name: str, binning: int, solalt: float) -> float:
+    def __call__(self, solalt: float, binning: int = None, filter_name: str = None) -> float:
         """Estimate exposure time for given filter
 
         Args:
-            filter_name: Name of filter.
-            binning: Used binning in X and Y.
             solalt: Solar altitude.
+            binning: Used binning in X and Y.
+            filter_name: Name of filter.
 
         Returns:
             Estimated exposure time.
         """
 
-        # evaluate function depending on whether we combine binnings or not
-        if self._combine_binnings:
-            # evaluate filter function without binning
-            exptime = self._functions[filter_name].evaluate({'h': solalt})
+        # build binning string (if given)
+        sbin = None if binning is None else '%dx%d' % (binning, binning)
 
-            # scale with binning
-            exptime /= binning**2
+        # get function and evaluate it
+        exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
 
-        else:
-            # get binnind and evaluate correct function
-            sbin = '%dx%d' % (binning, binning)
-            exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
-
-        # return solar altitude and exposure time
-        return exptime / binning**2
+        # if binning is given, we return exptime directly, otherwise we scale with binning
+        return exptime / binning**2 if binning is not None else exptime
 
     def init(self, time: Time):
         """Initialize object with the given time.

@@ -1,6 +1,6 @@
 import itertools
 import re
-from typing import Dict, Optional, Union, List
+from typing import Dict, Optional, Union, List, Tuple
 from astroplan import Observer
 from astropy.time import TimeDelta
 from py_expression_eval import Parser
@@ -40,9 +40,9 @@ class ExpTimeEval:
         self._m = None
         self._b = None
 
-        # get parser and init functions dict
+        # get parser and init functions dict, which is a tuple holding x/y binning and filter
         p = Parser()
-        self._functions: Dict[(Optional[str], Optional[str])] = {}
+        self._functions: Dict[(Optional[Tuple[int, int]], Optional[str])] = {}
 
         # so, what format is the functions dict?
         if isinstance(functions, str):
@@ -66,13 +66,14 @@ class ExpTimeEval:
                 # filters or not?
                 if all(is_str):
                     # all strings, so we don't have filters
-                    self._functions = {(b, None): p.parse(func) for b, func in functions.items()}
+                    for b, func in functions.items():
+                        self._functions[tuple([int(x) for x in b.split('x')]), None] = p.parse(func)
 
                 else:
                     # need to go a level deeper
                     for b, tmp in functions.items():
                         for f, func in tmp.items():
-                            self._functions[b, f] = p.parse(func)
+                            self._functions[tuple([int(x) for x in b.split('x')]), f] = p.parse(func)
 
             else:
                 # 1st level is filters, second level must be strings!
@@ -90,7 +91,7 @@ class ExpTimeEval:
         return sorted(keys)
 
     @property
-    def binnings(self) -> List[str]:
+    def binnings(self) -> List[Tuple[int, int]]:
         """Return list of binnings."""
         return self._keys(0)
 
@@ -99,12 +100,12 @@ class ExpTimeEval:
         """Return list of filters."""
         return self._keys(1)
 
-    def __call__(self, solalt: float, binning: str = None, filter_name: str = None) -> float:
+    def __call__(self, solalt: float, binning: Tuple[int, int] = None, filter_name: str = None) -> float:
         """Estimate exposure time for given filter
 
         Args:
             solalt: Solar altitude.
-            binning: Used binning as XxY.
+            binning: Used binning.
             filter_name: Name of filter.
 
         Returns:
@@ -113,18 +114,16 @@ class ExpTimeEval:
 
         # got binning?
         got_binnings = len(self.binnings) > 0
-        sbin = binning if got_binnings and binning is not None else None
-        xbin, ybin = tuple([int(x) for x in binning.split('x')]) if binning is not None else (1, 1)
 
         # if we got no filters, ignore filter_name, if given
         if len(self.filters) == 0:
             filter_name = None
 
         # get function and evaluate it
-        exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
+        exptime = self._functions[binning if got_binnings else None, filter_name].evaluate({'h': solalt})
 
         # need to scale with exp time?
-        return exptime/(xbin*ybin) if not got_binnings and binning is not None else exptime
+        return exptime/(binning[0]*binning[1]) if not got_binnings and binning is not None else exptime
 
     def init(self, time: Time):
         """Initialize object with the given time.
@@ -144,12 +143,12 @@ class ExpTimeEval:
         self._b = sun_now.alt.degree
         self._m = (sun_10min.alt.degree - self._b) / (10. * 60.)
 
-    def exp_time(self, time_offset: float, binning: str = None, filter_name: str = None) -> float:
+    def exp_time(self, time_offset: float, binning: Tuple[int, int] = None, filter_name: str = None) -> float:
         """Estimates exposure time for a given filter and binning at a given time offset from the start time (see init).
 
         Args:
             time_offset: Offset in seconds from start time (see init)
-            binning: Used binning as XxY.
+            binning: Used binning.
             filter_name: Name of filter
 
         Returns:
@@ -157,7 +156,7 @@ class ExpTimeEval:
         """
         return self(self._m * time_offset + self._b, binning=binning, filter_name=filter_name)
 
-    def duration(self, count: int, start_time: float = 0, readout: float = 0, binning: int = None,
+    def duration(self, count: int, start_time: float = 0, readout: float = 0, binning: Tuple[int, int] = None,
                  filter_name: str = None) -> float:
         """Estimates the duration for a given amount of flats in the given filter and binning, starting at the given
         start time.
@@ -166,7 +165,7 @@ class ExpTimeEval:
             count: Number of flats to take.:
             start_time: Time in seconds to start after the time set in init()
             readout: Time in seconds for readout per flat
-            binning: Used binning in X & Y
+            binning: Used binning.
             filter_name: Name of filter
 
         Returns:

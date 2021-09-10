@@ -99,21 +99,22 @@ class ExpTimeEval:
         """Return list of filters."""
         return self._keys(1)
 
-    def __call__(self, solalt: float, binning: int = None, filter_name: str = None) -> float:
+    def __call__(self, solalt: float, binning: str = None, filter_name: str = None) -> float:
         """Estimate exposure time for given filter
 
         Args:
             solalt: Solar altitude.
-            binning: Used binning in X and Y.
+            binning: Used binning as XxY.
             filter_name: Name of filter.
 
         Returns:
             Estimated exposure time.
         """
 
-        # build binning string (if given)
+        # got binning?
         got_binnings = len(self.binnings) > 0
-        sbin = '%dx%d' % (binning, binning) if got_binnings and binning is not None else None
+        sbin = binning if got_binnings and binning is not None else None
+        xbin, ybin = tuple([int(x) for x in binning.split('x')]) if binning is not None else (1, 1)
 
         # if we got no filters, ignore filter_name, if given
         if len(self.filters) == 0:
@@ -123,7 +124,7 @@ class ExpTimeEval:
         exptime = self._functions[sbin, filter_name].evaluate({'h': solalt})
 
         # need to scale with exp time?
-        return exptime/binning**2 if not got_binnings and binning is not None else exptime
+        return exptime/(xbin*ybin) if not got_binnings and binning is not None else exptime
 
     def init(self, time: Time):
         """Initialize object with the given time.
@@ -143,29 +144,30 @@ class ExpTimeEval:
         self._b = sun_now.alt.degree
         self._m = (sun_10min.alt.degree - self._b) / (10. * 60.)
 
-    def exp_time(self, filter_name: str, binning: int, time_offset: float) -> float:
+    def exp_time(self, time_offset: float, binning: str = None, filter_name: str = None) -> float:
         """Estimates exposure time for a given filter and binning at a given time offset from the start time (see init).
 
         Args:
-            filter_name: Name of filter
-            binning: Used binning in X and Y
             time_offset: Offset in seconds from start time (see init)
+            binning: Used binning as XxY.
+            filter_name: Name of filter
 
         Returns:
             Estimated exposure time
         """
-        return self(filter_name, binning, self._m * time_offset + self._b)
+        return self(self._m * time_offset + self._b, binning=binning, filter_name=filter_name)
 
-    def duration(self, filter_name: str, binning: int, count: int, start_time: float = 0, readout: float = 0) -> float:
+    def duration(self, count: int, start_time: float = 0, readout: float = 0, binning: int = None,
+                 filter_name: str = None) -> float:
         """Estimates the duration for a given amount of flats in the given filter and binning, starting at the given
         start time.
 
-        Args:
-            filter_name: Name of filter
-            binning: Used binning in X & Y
-            count: Number of flats to take.
+        Args
+            count: Number of flats to take.:
             start_time: Time in seconds to start after the time set in init()
             readout: Time in seconds for readout per flat
+            binning: Used binning in X & Y
+            filter_name: Name of filter
 
         Returns:
             Estimated duration in seconds
@@ -174,7 +176,7 @@ class ExpTimeEval:
         # loop through images and add estimated exposure times at their respective start times
         elapsed = start_time
         for i in range(count):
-            elapsed += self.exp_time(filter_name, binning, elapsed) + readout
+            elapsed += self.exp_time(elapsed, binning=binning, filter_name=filter_name) + readout
 
         # we started at start_time, so subtract it again
         return elapsed - start_time

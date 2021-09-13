@@ -81,7 +81,7 @@ class Telegram(Module):
             dispatcher.bot_data['storage'] = {}
 
         # start polling
-        self._updater.start_polling()
+        self._updater.start_polling(poll_interval=0.1)
 
         # listen to log events
         self.comm.register_event(LogEvent, self._process_log_entry)

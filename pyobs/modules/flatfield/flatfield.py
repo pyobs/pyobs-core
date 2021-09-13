@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class BinningMixin(IBinning):
     def __init__(self, camera: IBinning):
+        pass
 
     def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.

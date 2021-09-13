@@ -104,6 +104,9 @@ class Scheduler:
         else:
             raise StopIteration
 
+    def __getitem__(self, item) -> SchedulerItem:
+        return self._schedules[item]
+
     def _find_slot(self, schedules: list, filter_name: str, binning: int, priority: float):
         """Find a possible slot for a given filter/binning in the given schedule
 

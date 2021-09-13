@@ -1,7 +1,7 @@
 import logging
 import threading
 from enum import Enum
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Optional
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IBinning
@@ -14,32 +14,7 @@ from pyobs.utils.skyflats import FlatFielder
 log = logging.getLogger(__name__)
 
 
-class BinningMixin(IBinning):
-    def __init__(self, camera: IBinning):
-        pass
-
-    def set_binning(self, x: int, y: int, *args, **kwargs):
-        """Set the camera binning.
-
-        Args:
-            x: X binning.
-            y: Y binning.
-
-        Raises:
-            ValueError: If binning could not be set.
-        """
-        raise NotImplementedError
-
-    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        raise NotImplementedError
-
-
-class FlatField(Module, IFlatField, BinningMixin, IFilters):
+class FlatField(Module, IFlatField, IBinning):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
@@ -55,15 +30,15 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         FINISHED = 'finished'
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 filters: Union[str, IFilters], flat_fielder: Union[dict, FlatFielder],
+                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFilters] = None,
                  log_file: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
         Args:
             telescope: Name of ITelescope.
             camera: Name of ICamera.
+            flat_fielder: Flat field object to use.
             filters: Name of IFilters, if any.
-            pointing: Pointing to use.
             log_file: Name of file to store flat field log in.
         """
         Module.__init__(self, *args, **kwargs)
@@ -71,7 +46,7 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         # store telescope, camera, and filters
         self._telescope = telescope
         self._camera = camera
-        self._filters = filters
+        self._filter_wheel = filters
         self._abort = threading.Event()
 
         # flat fielder
@@ -81,6 +56,19 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
 
+        # init binning and filter
+        self._binning = (1, 1)
+        self._filter: Optional[str] = None
+
+        # need to add IFilters interface?
+        if self._filter_wheel is not None:
+            # check filters
+            if not self._flat_fielder.has_filters:
+                raise ValueError('Filter wheel module given in config, but no filters in functions.')
+
+            # add it
+            self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
+
     def open(self):
         """Open module"""
         Module.open(self)
@@ -89,7 +77,7 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         try:
             self.proxy(self._telescope, ITelescope)
             self.proxy(self._camera, ICamera)
-            self.proxy(self._filters, IFilters)
+            self.proxy(self._filter_wheel, IFilters)
         except ValueError:
             log.warning('Either telescope, camera or filters do not exist or are not of correct type at the moment.')
 
@@ -109,6 +97,61 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         if self._publisher is not None:
             self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
                             filter=filter, binning=binning)
+
+    def list_binnings(self, *args, **kwargs) -> List[Tuple[int, int]]:
+        """List available binnings.
+
+        Returns:
+            List of available binnings as (x, y) tuples.
+        """
+        return self.proxy(self._camera, IBinning).list_binnings().wait()
+
+    def set_binning(self, x: int, y: int, *args, **kwargs):
+        """Set the camera binning.
+
+        Args:
+            x: X binning.
+            y: Y binning.
+
+        Raises:
+            ValueError: If binning could not be set.
+        """
+        self._binning = (x, y)
+
+    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
+        """Returns the camera binning.
+
+        Returns:
+            Tuple with x and y.
+        """
+        return self._binning
+
+    def list_filters(self, *args, **kwargs) -> List[str]:
+        """List available filters.
+
+        Returns:
+            List of available filters.
+        """
+        return self.proxy(self._filter_wheel, IFilters).list_filters().wait()
+
+    def set_filter(self, filter_name: str, *args, **kwargs):
+        """Set the current filter.
+
+        Args:
+            filter_name: Name of filter to set.
+
+        Raises:
+            ValueError: If binning could not be set.
+        """
+        self._filter = filter_name
+
+    def get_filter(self, *args, **kwargs) -> Optional[str]:
+        """Get currently set filter.
+
+        Returns:
+            Name of currently set filter.
+        """
+        return self._filter
 
     @timeout(3600)
     def flat_field(self, count: int = 20, *args, **kwargs) -> Tuple[int, float]:
@@ -132,8 +175,10 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
         camera: ICamera = self.proxy(self._camera, ICamera)
 
         # get filter wheel
-        log.info('Getting proxy for filter wheel...')
-        filters: IFilters = self.proxy(self._filters, IFilters)
+        filters: Optional[IFilters] = None
+        if self._filter_wheel is not None:
+            log.info('Getting proxy for filter wheel...')
+            filters: IFilters = self.proxy(self._filter_wheel, IFilters)
 
         # reset
         self._flat_fielder.reset()
@@ -150,7 +195,8 @@ class FlatField(Module, IFlatField, BinningMixin, IFilters):
                 return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
             # do step
-            state = self._flat_fielder(telescope, camera, filters, filter_name, count, binning)
+            state = self._flat_fielder(telescope, camera, count=count, binning=self._binning,
+                                       filters=filters, filter_name=self._filter)
 
         # stop telescope
         log.info('Stopping telescope...')

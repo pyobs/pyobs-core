@@ -1,9 +1,6 @@
 from astroplan import Observer
-from astropy.io import fits
 import pytest
 
-import astropy.units as u
-from pyobs.utils.fits import format_filename
 from pyobs.utils.skyflats import Scheduler
 from pyobs.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time

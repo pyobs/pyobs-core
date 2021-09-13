@@ -5,7 +5,7 @@ from astroplan import Observer
 
 from pyobs.object import get_object
 from pyobs.comm import Comm
-from pyobs.interfaces import IMotion, IFlatField, ITelescope, IRoof
+from pyobs.interfaces import IMotion, IFlatField, ITelescope, IRoof, IBinning, IFilters
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
@@ -111,7 +111,11 @@ class SkyFlats(Script):
 
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, item.binning, item.binning)
-            done, exp_time = flatfield.flat_field(item.filter_name, self._count, item.binning).wait()
+            if isinstance(flatfield, IBinning):
+                flatfield.set_binning(*item.binning).wait()
+            if isinstance(flatfield, IFilters):
+                flatfield.set_filter(item.filter_name).wait()
+            done, exp_time = flatfield.flat_field(self._count).wait()
             log.info('Finished flat-fields.')
 
             # increase exposure time

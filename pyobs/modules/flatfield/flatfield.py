@@ -14,7 +14,7 @@ from pyobs.utils.skyflats import FlatFielder
 log = logging.getLogger(__name__)
 
 
-class FlatField(Module, IFlatField, IBinning):
+class FlatField(Module, IFlatField, IBinning, IFilters):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
@@ -67,7 +67,7 @@ class FlatField(Module, IFlatField, IBinning):
                 raise ValueError('Filter wheel module given in config, but no filters in functions.')
 
             # add it
-            self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
+            #self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
 
     def open(self):
         """Open module"""

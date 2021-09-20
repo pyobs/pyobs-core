@@ -4,7 +4,7 @@ import logging
 from typing import Union, List, Dict
 import requests
 from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint, \
-    MoonIlluminationConstraint
+    MoonIlluminationConstraint, AtNightConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -401,6 +401,9 @@ class LcoTaskArchive(TaskArchive):
                         constraints.append(MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg))
                     if 'max_lunar_phase' in c and c['max_lunar_phase'] is not None:
                         constraints.append(MoonIlluminationConstraint(max=c['max_lunar_phase']))
+                        # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
+                        if c['max_lunar_phase'] <= 0.4:
+                            constraints.append(AtNightConstraint.twilight_astronomical())
 
                     # priority is base_priority times duration in minutes
                     #priority = base_priority * duration.value / 60.

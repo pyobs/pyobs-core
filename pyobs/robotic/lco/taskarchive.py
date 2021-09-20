@@ -3,7 +3,8 @@ from urllib.parse import urljoin
 import logging
 from typing import Union, List, Dict
 import requests
-from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint
+from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint, \
+    MoonIlluminationConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -393,10 +394,13 @@ class LcoTaskArchive(TaskArchive):
 
                     # constraints
                     c = cfg['constraints']
-                    constraints = [
-                        AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
-                        MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg)
-                    ]
+                    constraints = []
+                    if 'max_airmass' in c and c['max_airmass'] is not None:
+                        constraints.append(AirmassConstraint(max=c['max_airmass'], boolean_constraint=False))
+                    if 'min_lunar_distance' in c and c['min_lunar_distance'] is not None:
+                        constraints.append(MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg))
+                    if 'max_lunar_phase' in c and c['max_lunar_phase'] is not None:
+                        constraints.append(MoonIlluminationConstraint(max=c['max_lunar_phase']))
 
                     # priority is base_priority times duration in minutes
                     #priority = base_priority * duration.value / 60.

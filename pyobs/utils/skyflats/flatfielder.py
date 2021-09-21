@@ -81,7 +81,7 @@ class FlatFielder:
         self._abort = threading.Event()
 
         # pointing
-        self._pointing = get_object(pointing, SkyFlatsBasePointing, observer=self._observer)
+        self._pointing = get_object(pointing, SkyFlatsBasePointing, observer=self._observer, allow_none=True)
 
         # state machine
         self._state = FlatFielder.State.INIT
@@ -154,7 +154,8 @@ class FlatFielder:
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
         self._exptime_done = 0
-        self._pointing.reset()
+        if self._pointing is not None:
+            self._pointing.reset()
 
     @property
     def has_filters(self):
@@ -214,7 +215,7 @@ class FlatFielder:
         self._bias_level = self._get_bias(camera)
 
         # move telescope
-        future_track = self._pointing(telescope)
+        future_track = self._pointing(telescope) if self._pointing is not None else None
 
         # get filter from first step and set it
         if filters is not None:
@@ -451,7 +452,8 @@ class FlatFielder:
         self._set_window(camera, testing=False)
 
         # move telescope
-        self._pointing(telescope).wait()
+        if self._pointing is not None:
+            self._pointing(telescope).wait()
 
         # do exposures, do not broadcast while testing
         now = Time.now()

@@ -299,6 +299,21 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self.add_requested_fits_headers(image, next_image.header_futures)
         self.add_fits_headers(image)
 
+        # finish it up
+        return self._finish_image(image, next_image.broadcast, next_image.image_type)
+
+    def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> Tuple[Image, str]:
+        """Finish up an image at the end of _create_image.
+
+        Args:
+            image: Image to finish up.
+            broadcast: Whether to broadcast it.
+            image_type: Type of image.
+
+        Returns:
+            Tuple with image itself and the filename.
+        """
+
         # format filename
         filename = self.format_filename(image)
 
@@ -308,9 +323,9 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             self._cache[image.header['FNAME']] = image.to_bytes()
 
         # broadcast image path
-        if next_image.broadcast and self.comm:
+        if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, next_image.image_type))
+            self.comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
         return image, filename

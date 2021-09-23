@@ -126,7 +126,8 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
     def __init__(self, http_port: int = 37077, interval: float = 0.5, video_path: str = '/webcam/video.mjpg',
                  filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
                  fits_namespaces: list = None, fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
-                 rotation: float = 0., cache_size: int = 5, live_view: bool = True, *args, **kwargs):
+                 rotation: float = 0., cache_size: int = 5, live_view: bool = True, flip: bool = False,
+                 *args, **kwargs):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -144,6 +145,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             rotation: Rotation east of north.
             cache_size: Size of cache for previous images.
             live_view: If True, live view is served via web server.
+            flip: Whether to flip around Y axis.
         """
         Module.__init__(self, *args, **kwargs)
         ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
@@ -165,6 +167,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._next_image: Optional[NextImage] = None
         self._last_image: Optional[LastImage] = None
         self._last_time = 0
+        self._flip = flip
 
         # image cache
         self._cache = DataCache(cache_size)
@@ -240,6 +243,10 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
     def _set_image(self, data: np.ndarray):
         """Create FITS and JPEG images from data."""
+
+        # flip image?
+        if self._flip:
+            data = np.flip(data, axis=0)
 
         # got a requested image in the queue?
         image, filename = None, None

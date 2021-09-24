@@ -59,7 +59,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         self._max_offset = max_offset
 
         # init log file
-        self._publisher = CsvPublisher(log_file)
+        self._publisher = CsvPublisher(log_file) if log_file is not None else None
 
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
@@ -123,10 +123,12 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
             image = self.vfs.read_image(filename)
 
             # get offset
+            log.info('Analysing image...')
             image = self.run_pipeline(image)
 
             # calculate distance from offset
             dist = Offsets.on_sky_distance(image)
+            log.info('Found a distance to target of %.2f arcsec.', dist * 3600.)
 
             # get distance
             if dist * 3600. < self._tolerance:

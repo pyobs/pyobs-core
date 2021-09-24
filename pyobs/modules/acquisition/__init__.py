@@ -6,3 +6,4 @@ __title__ = 'Acquisition'
 
 from .base import BaseAcquisition
 from .astrometry import AstrometryAcquisition
+from .acquisition import Acquisition

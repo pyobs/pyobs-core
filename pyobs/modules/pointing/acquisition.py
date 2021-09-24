@@ -1,9 +1,5 @@
 import logging
 from typing import Union, Tuple, List
-import numpy as np
-from astropy.coordinates import SkyCoord, AltAz
-from astropy.wcs import WCS
-import astropy.units as u
 
 from pyobs.images.processors.offsets import Offsets
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
@@ -14,8 +10,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
-from pyobs.images import Image, ImageProcessor
-from pyobs.images.processors.misc import SoftBin
+from pyobs.images import ImageProcessor
 from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
@@ -78,7 +73,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    @timeout(300)
+    @timeout(120)
     def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 

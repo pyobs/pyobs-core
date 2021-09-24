@@ -49,7 +49,7 @@ class Offsets(ImageProcessor):
         offset_coord = wcs.pixel_to_world(*tuple(map(sum, zip(center, offsets))))
 
         # calculate distance and return it
-        return center_coord.separation(offset_coord)
+        return float(center_coord.separation(offset_coord).value)
 
 
 __all__ = ['Offsets']

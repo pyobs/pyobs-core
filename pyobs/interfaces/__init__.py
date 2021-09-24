@@ -36,6 +36,7 @@ from .IImageGrabber import IImageGrabber
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
+from .IMuPsi import IMuPsi
 from .IPointingSeries import IPointingSeries
 from .IRaDec import IRaDec
 from .IRaDecOffsets import IRaDecOffsets

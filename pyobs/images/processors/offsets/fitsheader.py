@@ -1,0 +1,43 @@
+import logging
+from typing import Tuple
+import numpy as np
+
+from pyobs.images import Image
+from . import Offsets
+
+log = logging.getLogger(__name__)
+
+
+class FitsHeaderOffsets(Offsets):
+    """An offset-calculation method based on fits headers."""
+
+    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('CRPIX1', 'CRPIX2'), *args, **kwargs):
+        """Initializes new fits header offsets."""
+        self.center = center
+        self.target = target
+
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and sets x/y pixel offset to reference in offset attribute.
+
+        Args:
+            image: Image to process.
+
+        Returns:
+            Original image.
+
+        Raises:
+            ValueError: If offset could not be found.
+        """
+
+        # get values from header
+        target = [image.header[x] for x in self.target]
+        center = [image.header[x] for x in self.center]
+        print(target, center)
+
+        # calculate offset
+        image.meta['offsets'] = np.subtract(target, center)
+        print(image.meta['offsets'])
+        return image
+
+
+__all__ = ["FitsHeaderOffsets"]

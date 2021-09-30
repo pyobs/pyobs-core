@@ -3,7 +3,7 @@ from typing import Union, Tuple, List
 
 from pyobs.images.processors.offsets import Offsets
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
-    IImageType
+    IImageType, IImageGrabber
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
@@ -96,7 +96,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera: ICamera = self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
         self._do_camera_settings(camera)
@@ -111,7 +111,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
                 log.info('Exposing image...')
             if isinstance(camera, IImageType):
                 camera.set_image_type(ImageType.ACQUISITION)
-            filename = camera.expose().wait()
+            filename = camera.grab_image().wait()
 
             # download image
             log.info('Downloading image...')

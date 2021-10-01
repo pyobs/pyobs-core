@@ -6,7 +6,7 @@ from astropy.coordinates import EarthLocation, AltAz
 from pyobs.images import Image
 from pyobs.interfaces import ITelescope, IAltAzOffsets
 from .applyoffsets import ApplyOffsets
-
+from ..time import Time
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +51,9 @@ class ApplyAltAzOffsets(ApplyOffsets):
 
         # get RA/Dec coordinates of center and center+offsets and convert to Alt/Az
         radec_center, radec_target = self._get_radec_center_target(image, location)
-        altaz_center = radec_center.transform_to(AltAz)
-        altaz_target = radec_target.transform_to(AltAz)
+        frame = AltAz(obstime=Time(image.header['DATE-OBS']), location=location)
+        altaz_center = radec_center.transform_to(frame)
+        altaz_target = radec_target.transform_to(frame)
 
         # get offset
         dalt, daz = altaz_center.spherical_offsets_to(altaz_target)

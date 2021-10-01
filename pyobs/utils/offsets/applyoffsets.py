@@ -47,15 +47,12 @@ class ApplyOffsets:
         log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
 
         # get reference pixel and date obs
-        cx, cy = image.header['CRPIX1'], image.header['CRPIX1']
-        date_obs = Time(image.header['DATE-OBS'])
+        cx, cy = image.header['DET-CPX1'], image.header['DET-CPX2']
 
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(image.header)
-        lon, lat = w.all_pix2world(cx, cy, 0)
-        center = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=date_obs, location=location)
-        lon, lat = w.all_pix2world(cx + dx, cy + dy, 0)
-        target = SkyCoord(ra=lon * u.deg, dec=lat * u.deg, frame='icrs', obstime=date_obs, location=location)
+        center = w.pixel_to_world(cx, cy)
+        target = w.pixel_to_world(cx + dx, cy + dy)
         return center, target
 
 

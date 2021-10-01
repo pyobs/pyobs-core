@@ -46,7 +46,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         priorities = {}
         for fn in self._filter_names:
             for b in self._binnings:
-                priorities[fn, b] = from_archive[fn, b] if (fn, b) in from_archive else 100.
+                priorities[fn, (b, b)] = from_archive[fn, b] if (fn, b) in from_archive else 100.
 
         # finished
         return priorities

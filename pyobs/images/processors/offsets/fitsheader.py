@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 class FitsHeaderOffsets(Offsets):
     """An offset-calculation method based on fits headers."""
 
-    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('CRPIX1', 'CRPIX2'), *args, **kwargs):
+    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('DET-CPX1', 'DET-CPX2'), *args, **kwargs):
         """Initializes new fits header offsets."""
         self.center = center
         self.target = target
@@ -32,11 +32,9 @@ class FitsHeaderOffsets(Offsets):
         # get values from header
         target = [image.header[x] for x in self.target]
         center = [image.header[x] for x in self.center]
-        print(target, center)
 
         # calculate offset
         image.meta['offsets'] = np.subtract(target, center)
-        print(image.meta['offsets'])
         return image
 
 

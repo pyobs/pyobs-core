@@ -218,6 +218,7 @@ class FlatFielder:
         future_track = self._pointing(telescope) if self._pointing is not None else None
 
         # get filter from first step and set it
+        future_filter = None
         if filters is not None:
             log.info('Setting filter to %s...', self._cur_filter)
             future_filter = filters.set_filter(self._cur_filter)

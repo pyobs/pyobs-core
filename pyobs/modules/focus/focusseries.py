@@ -19,14 +19,16 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
-                 series: FocusSeries, offset: bool = False, *args, **kwargs):
+    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], series: FocusSeries,
+                 offset: bool = False, filters: Union[str, IFilters] = None, filter_name: str = None,
+                 binning: int = None, *args, **kwargs):
         """Initialize a new auto focus system.
 
         Args:
             focuser: Name of IFocuser.
             camera: Name of ICamera.
             filters: Name of IFilters, if any.
+            filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
         """
         Module.__init__(self, *args, **kwargs)
@@ -42,7 +44,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._series: FocusSeries = get_object(series, FocusSeries)
 
         # init camera settings mixin
-        CameraSettingsMixin.__init__(self, *args, filters=filters, **kwargs)
+        CameraSettingsMixin.__init__(self, *args, filters=filters, filter_name=filter_name, binning=binning, **kwargs)
 
     def open(self):
         """Open module"""

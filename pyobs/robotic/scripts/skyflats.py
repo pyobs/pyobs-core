@@ -110,7 +110,7 @@ class SkyFlats(Script):
             self._check_abort(abort_event)
 
             # do flat fields
-            log.info('Performing flat-fields in %s %dx%d...', item.filter_name, item.binning, item.binning)
+            log.info('Performing flat-fields in %s %dx%d...', item.filter_name, *item.binning)
             if isinstance(flatfield, IBinning):
                 flatfield.set_binning(*item.binning).wait()
             if isinstance(flatfield, IFilters):

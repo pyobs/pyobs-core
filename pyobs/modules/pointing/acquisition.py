@@ -38,7 +38,6 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
-            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
         PipelineMixin.__init__(self, offsets)

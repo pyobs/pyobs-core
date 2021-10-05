@@ -3,7 +3,6 @@ import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.images.processors.misc import SoftBin
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import get_object
 from pyobs.utils.offsets import ApplyOffsets
@@ -23,7 +22,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  offsets: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
                  max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
-                 separation_reset: float = None, pid: bool = False, log_file: str = None, soft_bin: int = None,
+                 separation_reset: float = None, pid: bool = False, log_file: str = None,
                  *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
@@ -37,7 +36,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
-            soft_bin: Factor to the images with before processing.
         """
         Module.__init__(self, *args, **kwargs)
         PipelineMixin.__init__(self, offsets)
@@ -59,9 +57,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
-
-        # binning
-        self._soft_bin = None if soft_bin is None else SoftBin(binning=soft_bin)
 
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
@@ -149,10 +144,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
             return
-
-        # bin?
-        if self._soft_bin is not None:
-            self._soft_bin(image)
 
         # reference header?
         if self._ref_header is None:

@@ -1,11 +1,16 @@
 from __future__ import annotations
 import copy
 import io
+from typing import TypeVar, Optional, Type
+
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
 from astropy.nddata import CCDData, StdDevUncertainty
+
+
+MetaClass = TypeVar('MetaClass')
 
 
 class Image:
@@ -272,6 +277,37 @@ class Image:
         with io.BytesIO() as bio:
             image.save(bio, format='jpeg')
             return bio.getvalue()
+
+    def set_meta(self, meta):
+        """Sets meta information, storing it under it class.
+
+        Note that it is possible to store, e.g., strings, but they would be stored as img.meta[str] and be overwritten
+        with every new string, which is probably not what you want. Use the img.meta dict directly for this and
+        set_meta/get_meta only for class-based data.
+
+        Args:
+            meta: Meta information to store.
+        """
+
+        # store it
+        self.meta[meta.__class__] = meta
+
+    def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
+        """Returns meta information, assuming that it is stored under the class of the object.
+
+        Args:
+            meta_class: Class to return meta information for.
+
+        Returns:
+            Meta information of the given class.
+        """
+
+        # we don't need to check for existence, since the dict will raise an IndexError, so just check for class
+        if not isinstance(self.meta, meta_class):
+            raise ValueError('Stored meta information is of wrong type.')
+
+        # return it
+        return self.meta[meta_class]
 
 
 __all__ = ['Image']

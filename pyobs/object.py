@@ -76,6 +76,9 @@ def create_object(config: dict, *args, **kwargs):
     # create class
     klass = get_class_from_string(class_name)
 
+    # remove class from kwargs
+    del config['class']
+
     # create object
     return klass(*args, **config, **kwargs)
 

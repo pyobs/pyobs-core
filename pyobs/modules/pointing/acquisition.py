@@ -1,6 +1,7 @@
 import logging
 from typing import Union, Tuple, List
 
+from pyobs.images.meta import OnSkyDistance
 from pyobs.images.processors.offsets import Offsets
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
     IImageType, IImageGrabber
@@ -121,11 +122,11 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
             image = self.run_pipeline(image)
 
             # calculate distance from offset
-            dist = Offsets.on_sky_distance(image)
-            log.info('Found a distance to target of %.2f arcsec.', dist * 3600.)
+            dist = image.get_meta(OnSkyDistance).distance
+            log.info('Found a distance to target of %.2f arcsec.', dist.arcsec)
 
             # get distance
-            if dist * 3600. < self._tolerance:
+            if dist.degree < self._tolerance:
                 # we're finished!
                 log.info('Target successfully acquired.')
 

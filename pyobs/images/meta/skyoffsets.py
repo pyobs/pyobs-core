@@ -34,7 +34,7 @@ class SkyOffsets:
 
         # convert and return offset
         coord0, coord1 = self._to_frame(frame)
-        return coord0.spherical_offsets_to(coord1)
+        return coord0.spherical_offsets_to(coord1.frame)
 
     def _to_frame(self, frame: BaseCoordinateFrame = None) -> Tuple[SkyCoord, SkyCoord]:
         """

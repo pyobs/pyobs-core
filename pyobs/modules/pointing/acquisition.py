@@ -115,6 +115,9 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
 
             # download image
             log.info('Downloading image...')
+            if filename is None:
+                log.warning('Did not receive an image.')
+                continue
             image = self.vfs.read_image(filename)
 
             # get offset

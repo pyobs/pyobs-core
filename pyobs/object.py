@@ -6,6 +6,8 @@ and helper methods for creating other Objects.
 """
 
 from __future__ import annotations
+
+import copy
 import datetime
 import threading
 from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict
@@ -77,10 +79,11 @@ def create_object(config: dict, *args, **kwargs):
     klass = get_class_from_string(class_name)
 
     # remove class from kwargs
-    del config['class']
+    cfg = copy.deepcopy(config)
+    del cfg['class']
 
     # create object
-    return klass(*args, **config, **kwargs)
+    return klass(*args, **cfg, **kwargs)
 
 
 class Object:

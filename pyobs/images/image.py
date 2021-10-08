@@ -303,7 +303,7 @@ class Image:
         """
 
         # we don't need to check for existence, since the dict will raise an IndexError, so just check for class
-        if not isinstance(self.meta, meta_class):
+        if not isinstance(self.meta[meta_class], meta_class):
             raise ValueError('Stored meta information is of wrong type.')
 
         # return it

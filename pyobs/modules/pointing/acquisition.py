@@ -1,8 +1,8 @@
 import logging
 from typing import Union, Tuple, List
+import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
-from pyobs.images.processors.offsets import Offsets
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
     IImageType, IImageGrabber
 from pyobs.mixins.pipeline import PipelineMixin
@@ -50,8 +50,8 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         # store
         self._target_pixel = target_pixel
         self._attempts = attempts
-        self._tolerance = tolerance
-        self._max_offset = max_offset
+        self._tolerance = tolerance * u.arcsec
+        self._max_offset = max_offset * u.arcsec
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
@@ -126,7 +126,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
             log.info('Found a distance to target of %.2f arcsec.', dist.arcsec)
 
             # get distance
-            if dist.degree < self._tolerance:
+            if dist < self._tolerance:
                 # we're finished!
                 log.info('Target successfully acquired.')
 
@@ -157,7 +157,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
                 return log_entry
 
             # abort?
-            if dist * 3600. > self._max_offset:
+            if dist > self._max_offset:
                 # move a maximum of 120"=2'
                 raise ValueError('Calculated offsets too large.')
 

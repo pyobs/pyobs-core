@@ -1,6 +1,6 @@
 import logging
 
-from pyobs.interfaces import ICamera, IImageType, IExposureTime
+from pyobs.interfaces import ICamera, IImageType, IExposureTime, IImageGrabber
 from ._baseguiding import BaseGuiding
 from ...images.processors.exptime.star import StarExpTimeEstimator
 from ...images.processors.detection import SepSourceDetection
@@ -43,7 +43,8 @@ class AutoGuiding(BaseGuiding):
 
     def _auto_guiding(self):
         # exposure time estimator
-        exp_time_estimator = StarExpTimeEstimator(self._source_detection)
+        #exp_time_estimator = StarExpTimeEstimator(self._source_detection)
+        exp_time_estimator = None
 
         # run until closed
         while not self.closing.is_set():
@@ -54,7 +55,7 @@ class AutoGuiding(BaseGuiding):
 
             try:
                 # get camera
-                camera: ICamera = self.proxy(self._camera, ICamera)
+                camera: ICamera = self.proxy(self._camera, IImageGrabber)
 
                 # take image
                 if isinstance(camera, IExposureTime):
@@ -66,7 +67,7 @@ class AutoGuiding(BaseGuiding):
                     log.info('Taking image...')
                 if isinstance(camera, IImageType):
                     camera.set_image_type(ImageType.OBJECT)
-                filename = camera.expose(broadcast=False).wait()
+                filename = camera.grab_image(broadcast=False).wait()
 
                 # download image
                 image = self.vfs.read_image(filename)

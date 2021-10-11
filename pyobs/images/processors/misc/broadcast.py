@@ -3,7 +3,7 @@ import logging
 from pyobs.events import NewImageEvent
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
+from pyobs.utils.fits import FilenameFormatter
 
 log = logging.getLogger(__name__)
 
@@ -12,18 +12,16 @@ class Broadcast(ImageProcessor):
     """Broadcast image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, copy: bool = True, filename: str = '/cache/{FNAME}', *args, **kwargs):
+    def __init__(self, filename: str = '/cache/{ORIGNAME}', *args, **kwargs):
         """Init an image processor that broadcasts an image
 
         Args:
-            copy: If True, copy image to given filename before broadcasting.
-            filename: New filename, only used if copy=True.
+            filename: Filename to broadcast image.
         """
         ImageProcessor.__init__(self, *args, **kwargs)
 
         # store
-        self._copy = copy
-        self._filename = filename
+        self._formatter = FilenameFormatter(filename)
 
     def open(self):
         """Initialize processor."""
@@ -42,8 +40,18 @@ class Broadcast(ImageProcessor):
         Returns:
             Original image.
         """
-        pass
+
+        # format filename
+        filename = image.format_filename(self._formatter)
+
+        # upload
+        self.vfs.write_image(filename, image)
+
+        # broadcast
+        self.comm.send_event(NewImageEvent(filename))
+
+        # finished
+        return image
 
 
 __all__ = ['Broadcast']
-

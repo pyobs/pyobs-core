@@ -3,11 +3,8 @@ import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List
 from py_expression_eval import Parser
 
-from pyobs.comm.dummy import DummyComm
 from pyobs.object import Object
-from pyobs.comm import Comm
 from pyobs.interfaces import IModule, IConfig
-from pyobs.object import get_object
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
@@ -73,12 +70,11 @@ class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
     __module__ = 'pyobs.modules'
 
-    def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
+    def __init__(self, name: str = None, label: str = None, *args, **kwargs):
         """
         Args:
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
-            comm: Comm object to use
         """
         Object.__init__(self, *args, **kwargs)
 
@@ -89,18 +85,6 @@ class Module(Object, IModule, IConfig):
 
         # get configuration options, i.e. all parameters from c'tor
         self._config_options = self._get_config_options()
-
-        # comm object
-        self.comm: Comm
-        if comm is None:
-            self.comm = DummyComm()
-        elif isinstance(comm, Comm):
-            self.comm = comm
-        elif isinstance(comm, dict):
-            log.info('Creating comm object...')
-            self.comm = get_object(comm)
-        else:
-            raise ValueError('Invalid Comm object')
 
         # name and label
         self._device_name: str = name if name is not None else self.comm.name
@@ -124,29 +108,6 @@ class Module(Object, IModule, IConfig):
         if self.comm is not None:
             log.info('Closing connection to server...')
             self.comm.close()
-
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
-        """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
-
-        If name_or_object is an object:
-            - If it is of type (or derived), return object.
-            - Otherwise raise exception.
-        If name_name_or_object is string:
-            - Create proxy from name and raise exception, if it doesn't exist.
-            - Check type and raise exception if wrong.
-            - Return object.
-
-        Args:
-            name_or_object: Name of object or object itself.
-            obj_type: Expected class of object.
-
-        Returns:
-            Object or proxy to object.
-
-        Raises:
-            ValueError: If proxy does not exist or wrong type.
-        """
-        return self.comm.proxy(name_or_object, obj_type)
 
     def main(self):
         """Main loop for application."""

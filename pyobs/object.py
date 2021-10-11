@@ -16,7 +16,8 @@ import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 import pyobs
-
+from pyobs.comm import Comm
+from pyobs.comm.dummy import DummyComm
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ def create_object(config: dict, *args, **kwargs):
 class Object:
     """Base class for all objects in *pyobs*."""
 
-    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
+    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None, comm: Union[Comm, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
                  *args, **kwargs):
         """
@@ -110,6 +111,7 @@ class Object:
 
         Args:
             vfs: VFS to use (either object or config)
+            comm: Comm object to use
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
 
@@ -159,6 +161,18 @@ class Object:
             log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
                      self.location.lon, self.location.lat, self.location.height)
             self.observer = Observer(location=self.location, timezone=timezone)
+
+        # comm object
+        self.comm: Comm
+        if comm is None:
+            self.comm = DummyComm()
+        elif isinstance(comm, Comm):
+            self.comm = comm
+        elif isinstance(comm, dict):
+            log.info('Creating comm object...')
+            self.comm = get_object(comm)
+        else:
+            raise ValueError('Invalid Comm object')
 
         # opened?
         self._opened = False
@@ -271,8 +285,7 @@ class Object:
         return True
 
     def get_object(self, config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None,
-                   allow_none: bool = False,
-                   *args, **kwargs) -> ObjectClass:
+                   allow_none: bool = False, **kwargs) -> ObjectClass:
         """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
@@ -332,6 +345,29 @@ class Object:
 
         # return it
         return obj
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
+        """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
+
+        If name_or_object is an object:
+            - If it is of type (or derived), return object.
+            - Otherwise raise exception.
+        If name_name_or_object is string:
+            - Create proxy from name and raise exception, if it doesn't exist.
+            - Check type and raise exception if wrong.
+            - Return object.
+
+        Args:
+            name_or_object: Name of object or object itself.
+            obj_type: Expected class of object.
+
+        Returns:
+            Object or proxy to object.
+
+        Raises:
+            ValueError: If proxy does not exist or wrong type.
+        """
+        return self.comm.proxy(name_or_object, obj_type)
 
 
 __all__ = ['get_object', 'get_class_from_string', 'create_object', 'Object']

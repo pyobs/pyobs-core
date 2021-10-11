@@ -26,7 +26,7 @@ ObjectClass = TypeVar('ObjectClass')
 
 
 def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None, allow_none: bool = False,
-               *args, **kwargs) -> ObjectClass:
+               **kwargs) -> ObjectClass:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -51,7 +51,7 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
 
     elif isinstance(config_or_object, dict):
         # a dict is given, so create object
-        obj = create_object(config_or_object, *args, **kwargs)
+        obj = create_object(config_or_object, **kwargs)
 
     else:
         # just use given object
@@ -92,7 +92,7 @@ class Object:
 
     def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None, comm: Union[Comm, dict] = None,
                  timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
-                 *args, **kwargs):
+                 observer: Observer = None, *args, **kwargs):
         """
         .. note::
 
@@ -156,8 +156,8 @@ class Object:
             raise ValueError('Unknown format for location.')
 
         # create observer
-        self.observer: Optional[Observer] = None
-        if self.location is not None:
+        self.observer = observer
+        if self.observer is None and self.location is not None and self.timezone is not None:
             log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
                      self.location.lon, self.location.lat, self.location.height)
             self.observer = Observer(location=self.location, timezone=timezone)
@@ -304,24 +304,29 @@ class Object:
         # what did we get?
         if isinstance(config_or_object, dict):
             # create it fro
-            obj = get_object(config_or_object, object_class=object_class,
-                             timezone=self.timezone, location=self.location, **kwargs)
+            obj = get_object(config_or_object, allow_none=allow_none, object_class=object_class,
+                             timezone=self.timezone, location=self.location, observer=self.observer,
+                             comm=self.comm, vfs=self.vfs, **kwargs)
 
         elif config_or_object is not None:
-            # seems we got an object directly, try to set timezone and location
+            # seems we got an object directly, try to copy attributes
             obj = config_or_object
-            if hasattr(config_or_object, 'timezone'):
-                config_or_object.timezone = self.timezone
-            if hasattr(config_or_object, 'location'):
-                config_or_object.location = self.location
+            for attr in ['timezone', 'location', 'observer', 'comm', 'vfs']:
+                if hasattr(self, attr) and hasattr(obj, attr):
+                    setattr(obj, attr, getattr(self, attr))
 
         elif object_class is not None:
             # no config or object given, do we have a class?
-            obj = object_class(**kwargs, timezone=self.timezone, location=self.location)
+            obj = object_class(timezone=self.timezone, location=self.location, observer=self.observer,
+                               comm=self.comm, vfs=self.vfs, **kwargs)
 
         else:
             # not successful
             raise ValueError('No valid object description given.')
+
+        # create observer
+        if isinstance(obj, Object):
+            obj._create_observer()
 
         # finished
         return obj
@@ -338,7 +343,7 @@ class Object:
         """
 
         # get object
-        obj = self.get_object(config_or_object, object_class=object_class)
+        obj = self.get_object(config_or_object, object_class=object_class, **kwargs)
 
         # add to list
         self._child_objects.append(obj)

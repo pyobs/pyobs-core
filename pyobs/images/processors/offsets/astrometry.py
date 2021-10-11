@@ -1,7 +1,9 @@
 import logging
 from typing import Tuple, List
 import numpy as np
+from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+import astropy.units as u
 from scipy import signal, optimize
 from astropy.nddata import NDData
 from astropy.table import Table, Column
@@ -9,6 +11,7 @@ import photutils
 
 from pyobs.images import Image
 from . import Offsets
+from ...meta import PixelOffsets, OnSkyDistance
 
 log = logging.getLogger(__name__)
 
@@ -46,13 +49,16 @@ class AstrometryOffsets(Offsets):
         wcs = WCS(img.header)
 
         # get x/y coordinates from CRVAL1/2, i.e. from center with good WCS
-        x_center, y_center = wcs.all_world2pix(img.header['CRVAL1'], img.header['CRVAL2'], 0)
+        center = SkyCoord(img.header['CRVAL1'] * u.deg, img.header['CRVAL2'] * u.deg, frame='icrs')
+        x_center, y_center = wcs.world_to_pixel(center)
 
         # get x/y coordinates from TEL-RA/-DEC, i.e. from where the telescope thought it's pointing
-        x_tel, y_tel = wcs.all_world2pix(img.header['TEL-RA'], img.header['TEL-DEC'], 0)
+        tel = SkyCoord(img.header['TEL-RA'] * u.deg, img.header['TEL-DEC'] * u.deg, frame='icrs')
+        x_tel, y_tel = wcs.world_to_pixel(tel)
 
         # calculate offsets as difference between both
-        img.meta['offsets'] = x_tel - x_center, y_tel - y_center
+        img.set_meta(PixelOffsets(x_tel - x_center, y_tel - y_center))
+        img.set_meta(OnSkyDistance(center.separation(tel)))
         return img
 
 

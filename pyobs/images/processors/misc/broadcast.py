@@ -3,6 +3,7 @@ import logging
 from pyobs.events import NewImageEvent
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import FilenameFormatter
 
 log = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class Broadcast(ImageProcessor):
         self.vfs.write_image(filename, image)
 
         # broadcast
-        self.comm.send_event(NewImageEvent(filename))
+        self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header['IMAGETYP'])))
 
         # finished
         return image

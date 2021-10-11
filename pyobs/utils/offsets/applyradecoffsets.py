@@ -42,11 +42,6 @@ class ApplyRaDecOffsets(ApplyOffsets):
             log.error('Given telescope cannot handle RA/Dec offsets.')
             return False
 
-        # check offsets in meta
-        if 'offsets' not in image.meta:
-            log.warning('No offsets found in image meta information.')
-            return False
-
         # get RA/Dec coordinates of center and center+offsets
         radec_center, radec_target = self._get_radec_center_target(image, location)
 

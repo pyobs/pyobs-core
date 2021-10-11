@@ -324,10 +324,6 @@ class Object:
             # not successful
             raise ValueError('No valid object description given.')
 
-        # create observer
-        if isinstance(obj, Object):
-            obj._create_observer()
-
         # finished
         return obj
 

@@ -5,6 +5,7 @@ from astropy.wcs import WCS
 import logging
 
 from pyobs.images import Image
+from pyobs.images.meta import PixelOffsets
 from pyobs.interfaces import ITelescope
 from pyobs.utils.time import Time
 
@@ -41,10 +42,8 @@ class ApplyOffsets:
         """
 
         # get offsets
-        dx, dy = image.meta['offsets']
-        if dx is None or dy is None:
-            log.info('Either x or y offset (or both) is zero. Not applying them.')
-        log.info('Found pixel shift of dx=%.2f, dy=%.2f.', dx, dy)
+        offsets = image.get_meta(PixelOffsets)
+        log.info('Found pixel shift of dx=%.2f, dy=%.2f.', offsets.dx, offsets.dy)
 
         # get reference pixel and date obs
         cx, cy = image.header['DET-CPX1'], image.header['DET-CPX2']
@@ -52,7 +51,7 @@ class ApplyOffsets:
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(image.header)
         center = w.pixel_to_world(cx, cy)
-        target = w.pixel_to_world(cx + dx, cy + dy)
+        target = w.pixel_to_world(cx + offsets.dx, cy + offsets.dy)
         return center, target
 
 

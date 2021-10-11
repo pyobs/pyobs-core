@@ -1,5 +1,6 @@
 import logging
 
+from pyobs.events import NewImageEvent
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 
@@ -23,6 +24,14 @@ class Broadcast(ImageProcessor):
         # store
         self._copy = copy
         self._filename = filename
+
+    def open(self):
+        """Initialize processor."""
+        ImageProcessor.open(self)
+
+        # register event
+        if self.comm is not None:
+            self.comm.register_event(NewImageEvent)
 
     def __call__(self, image: Image) -> Image:
         """Broadcast image.

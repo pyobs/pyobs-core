@@ -21,7 +21,7 @@ class PipelineMixin:
         # store
         if isinstance(self, Object):
             pipeline = [] if pipeline is None else pipeline
-            self.__pipeline_steps = [self.get_object(step, ImageProcessor) for step in pipeline]
+            self.__pipeline_steps = [self.add_child_object(step, ImageProcessor) for step in pipeline]
 
         else:
             raise ValueError('This class is no Object.')

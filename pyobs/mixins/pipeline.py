@@ -2,7 +2,7 @@ import logging
 from typing import Union, List
 from pyobs.images import ImageProcessor, Image
 
-from pyobs.object import get_object
+from pyobs.object import get_object, Object
 
 log = logging.getLogger(__name__)
 
@@ -19,8 +19,12 @@ class PipelineMixin:
         """
 
         # store
-        pipeline = [] if pipeline is None else pipeline
-        self.__pipeline_steps = [get_object(step, ImageProcessor) for step in pipeline]
+        if isinstance(self, Object):
+            pipeline = [] if pipeline is None else pipeline
+            self.__pipeline_steps = [self.get_object(step, ImageProcessor) for step in pipeline]
+
+        else:
+            raise ValueError('This class is no Object.')
 
     def reset_pipeline(self):
         """Resets all previous state of the involved image processors."""

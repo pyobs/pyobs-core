@@ -30,6 +30,7 @@ class SepSourceDetection(SourceDetection):
             clean: Perform cleaning?
             clean_param: Cleaning parameter (see SExtractor manual).
         """
+        SourceDetection.__init__(self, *args, **kwargs)
 
         # store
         self.threshold = threshold

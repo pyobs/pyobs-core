@@ -25,7 +25,7 @@ class AstrometryOffsets(Offsets):
 
         MUST run after an astrometry processor.
         """
-        pass
+        Offsets.__init__(self, *args, **kwargs)
 
     def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.

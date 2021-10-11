@@ -36,6 +36,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             min_sources: Minimum required number of sources in image.
             pipeline: Pipeline to be used for first image in series.
         """
+        Offsets.__init__(self, *args, **kwargs)
         PipelineMixin.__init__(self, pipeline)
 
         # store

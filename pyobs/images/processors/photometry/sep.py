@@ -29,6 +29,7 @@ class SepPhotometry(Photometry):
             *args:
             **kwargs:
         """
+        Photometry.__init__(self, *args, **kwargs)
 
         # store
         self.threshold = threshold

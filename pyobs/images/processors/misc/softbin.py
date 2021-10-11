@@ -12,6 +12,9 @@ class SoftBin(ImageProcessor):
         Args:
             binning: Binning to apply to image.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
+
+        # store
         self.binning = binning
 
     def __call__(self, image: Image) -> Image:

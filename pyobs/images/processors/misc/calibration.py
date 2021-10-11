@@ -29,6 +29,7 @@ class Calibration(ImageProcessor):
         Args:
             archive: Archive to fetch calibration frames from.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
 
         # store
         self._max_cache_size = max_cache_size

@@ -16,6 +16,15 @@ class AstrometryDotNet(Astrometry):
     __module__ = 'pyobs.images.processors.astrometry'
 
     def __init__(self, url: str, source_count: int = 50, radius: float = 3., *args, **kwargs):
+        """Init new astronomy.net processor.
+
+        Args:
+            url: URL to service.
+            source_count: Number of sources to send.
+            radius: Radius to search in.
+        """
+        Astrometry.__init__(self, *args, **kwargs)
+
         # URL to web-service
         self.url = url
         self.source_count = source_count

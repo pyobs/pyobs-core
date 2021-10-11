@@ -20,6 +20,9 @@ class RemoveBackground(ImageProcessor):
             box_size: Box size for bkg estimation.
             filter_size: Size of filter.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
+
+        # store
         self.sigma = sigma
         self.box_size = box_size
         self.filter_size = filter_size

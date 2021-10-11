@@ -4,6 +4,7 @@ import numpy as np
 import astropy.units as u
 
 from pyobs.mixins.pipeline import PipelineMixin
+from pyobs.object import Object
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from pyobs.images import Image, ImageProcessor
@@ -12,7 +13,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class Pipeline(PipelineMixin):
+class Pipeline(Object, PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
     def __init__(self, steps: List[Union[dict, ImageProcessor]], *args, **kwargs):
@@ -21,6 +22,7 @@ class Pipeline(PipelineMixin):
         Args:
             steps: List of pipeline steps to perform.
         """
+        Object.__init__(self, *args, **kwargs)
         PipelineMixin.__init__(self, steps)
 
     def _combine_calib_images(self, images: List[Image], bias: Image = None, normalize: bool = False,

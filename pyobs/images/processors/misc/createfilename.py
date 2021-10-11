@@ -18,6 +18,7 @@ class CreateFilename(ImageProcessor):
         Args:
             pattern: Filename pattern.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
 
         # default filename patterns
         if pattern is None:

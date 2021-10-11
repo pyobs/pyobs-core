@@ -20,6 +20,7 @@ class AddMask(ImageProcessor):
         Args:
             masks: Dictionary containing instrument->binning->mask, with binning as string, e.g. '1x1'.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
 
         # masks
         self._masks = {}

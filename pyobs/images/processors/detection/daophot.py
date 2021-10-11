@@ -26,6 +26,7 @@ class DaophotSourceDetection(SourceDetection):
             bkg_box_size: Box size for background estimation.
             bkg_filter_size: Filter size for background estimation.
         """
+        SourceDetection.__init__(self, *args, **kwargs)
 
         # store
         self.fwhm = fwhm

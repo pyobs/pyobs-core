@@ -1,5 +1,3 @@
-from astropy.table import Table
-
 from pyobs.images import Image
 from pyobs.images.processor import ImageProcessor
 

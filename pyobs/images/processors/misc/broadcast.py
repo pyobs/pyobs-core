@@ -18,6 +18,7 @@ class Broadcast(ImageProcessor):
             copy: If True, copy image to given filename before broadcasting.
             filename: New filename, only used if copy=True.
         """
+        ImageProcessor.__init__(self, *args, **kwargs)
 
         # store
         self._copy = copy

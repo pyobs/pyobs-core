@@ -20,6 +20,9 @@ class ProjectedOffsets(Offsets):
 
     def __init__(self, *args, **kwargs):
         """Initializes a new auto guiding system."""
+        Offsets.__init__(self, *args, **kwargs)
+
+        # init
         self._ref_image = None
         self._pid_ra = None
         self._pid_dec = None

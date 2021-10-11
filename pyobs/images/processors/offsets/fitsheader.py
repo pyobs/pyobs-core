@@ -13,6 +13,9 @@ class FitsHeaderOffsets(Offsets):
 
     def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('DET-CPX1', 'DET-CPX2'), *args, **kwargs):
         """Initializes new fits header offsets."""
+        Offsets.__init__(self, *args, **kwargs)
+
+        # store
         self.center = center
         self.target = target
 

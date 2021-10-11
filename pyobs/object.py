@@ -270,15 +270,22 @@ class Object:
             raise InterruptedError
         return True
 
-    def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
-                         **kwargs) -> ObjectClass:
-        """Create a new sub-module, which will automatically be opened and closed.
+    def get_object(self, config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None,
+                   allow_none: bool = False,
+                   *args, **kwargs) -> ObjectClass:
+        """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
-            config: Module definition
+            config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
+                is given, a new object is created.
+            object_class: Class to check object against.
+            allow_none: if True, a None value does not trigger an exception
 
         Returns:
-            The created module.
+            (New) object (created from config) that optionally passed class check.
+
+        Raises:
+            TypeError: If the object does not match the given class.
         """
 
         # what did we get?
@@ -302,6 +309,23 @@ class Object:
         else:
             # not successful
             raise ValueError('No valid object description given.')
+
+        # finished
+        return obj
+
+    def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
+                         **kwargs) -> ObjectClass:
+        """Create a new sub-module, which will automatically be opened and closed.
+
+        Args:
+            config: Module definition
+
+        Returns:
+            The created module.
+        """
+
+        # get object
+        obj = self.get_object(config_or_object, object_class=object_class)
 
         # add to list
         self._child_objects.append(obj)

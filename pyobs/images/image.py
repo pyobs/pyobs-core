@@ -229,6 +229,7 @@ class Image:
     def format_filename(self, formatter):
         """Format filename with given formatter."""
         self.header['FNAME'] = formatter(self.header)
+        return self.header['FNAME']
 
     @property
     def pixel_scale(self):

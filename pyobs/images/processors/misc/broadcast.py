@@ -12,7 +12,7 @@ class Broadcast(ImageProcessor):
     """Broadcast image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, filename: str = '/cache/{ORIGNAME}', *args, **kwargs):
+    def __init__(self, filename: str = '/cache/processed_{ORIGNAME}', *args, **kwargs):
         """Init an image processor that broadcasts an image
 
         Args:

@@ -20,7 +20,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
     __module__ = 'pyobs.modules.guiding'
 
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 offsets: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
+                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
                  max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
                  separation_reset: float = None, pid: bool = False, log_file: str = None,
                  *args, **kwargs):
@@ -28,7 +28,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
 
         Args:
             telescope: Telescope to use.
-            offsets: Pipeline steps to run on new image. MUST include a step calculating offsets!
+            pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             apply: Object that handles applying offsets to telescope.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
             min_interval: Minimum interval in sec between two images.
@@ -38,7 +38,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             log_file: Name of file to write log to.
         """
         Module.__init__(self, *args, **kwargs)
-        PipelineMixin.__init__(self, offsets)
+        PipelineMixin.__init__(self, pipeline)
 
         # store
         self._camera = camera

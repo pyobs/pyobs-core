@@ -24,7 +24,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
     __module__ = 'pyobs.modules.acquisition'
 
     def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 offsets: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
+                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
                  max_offset: float = 120, log_file: str = None, *args, **kwargs):
         """Create a new acquisition.
@@ -32,7 +32,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         Args:
             telescope: Name of ITelescope.
             camera: Name of ICamera.
-            offsets: Pipeline steps to run on new image. MUST include a step calculating offsets!
+            pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             apply: Object that handles applying offsets to telescope.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
@@ -41,7 +41,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
             log_file: Name of file to write log to.
         """
         Module.__init__(self, *args, **kwargs)
-        PipelineMixin.__init__(self, offsets)
+        PipelineMixin.__init__(self, pipeline)
 
         # store telescope and camera
         self._telescope = telescope

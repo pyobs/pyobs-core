@@ -50,8 +50,13 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
             raise TypeError('No config or object given.')
 
     elif isinstance(config_or_object, dict):
+        # copy kwargs to config_or_object, so that we don't have any duplicates
+        for k, v in kwargs.items():
+            if k not in config_or_object:
+                config_or_object[k] = v
+
         # a dict is given, so create object
-        obj = create_object(config_or_object, **kwargs)
+        obj = create_object(config_or_object)
 
     else:
         # just use given object
@@ -80,7 +85,7 @@ def create_object(config: dict, *args, **kwargs):
     klass = get_class_from_string(class_name)
 
     # remove class from kwargs
-    cfg = copy.deepcopy(config)
+    cfg = copy.copy(config)
     del cfg['class']
 
     # create object
@@ -140,7 +145,6 @@ class Object:
             self.timezone = pytz.timezone(timezone)
         else:
             raise ValueError('Unknown format for timezone.')
-        log.info('Using timezone %s.', timezone)
 
         # location
         if location is None:
@@ -301,12 +305,15 @@ class Object:
             TypeError: If the object does not match the given class.
         """
 
+        # fill kwargs
+        for attr in ['timezone', 'location', 'observer', 'comm', 'vfs']:
+            if attr not in kwargs:
+                kwargs[attr] = getattr(self, attr)
+
         # what did we get?
         if isinstance(config_or_object, dict):
             # create it fro
-            obj = get_object(config_or_object, allow_none=allow_none, object_class=object_class,
-                             timezone=self.timezone, location=self.location, observer=self.observer,
-                             comm=self.comm, vfs=self.vfs, **kwargs)
+            obj = get_object(config_or_object, allow_none=allow_none, object_class=object_class, **kwargs)
 
         elif config_or_object is not None:
             # seems we got an object directly, try to copy attributes
@@ -317,8 +324,7 @@ class Object:
 
         elif object_class is not None:
             # no config or object given, do we have a class?
-            obj = object_class(timezone=self.timezone, location=self.location, observer=self.observer,
-                               comm=self.comm, vfs=self.vfs, **kwargs)
+            obj = object_class(**kwargs)
 
         else:
             # not successful

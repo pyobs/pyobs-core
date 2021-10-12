@@ -8,3 +8,4 @@ from ._baseguiding import BaseGuiding
 from .autoguiding import AutoGuiding
 from .scienceframeguiding import ScienceFrameAutoGuiding
 from .acquisition import Acquisition
+from .dummyacquisition import DummyAcquisition

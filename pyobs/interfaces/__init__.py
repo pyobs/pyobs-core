@@ -44,6 +44,7 @@ from .IReady import IReady
 from .IRoof import IRoof
 from .IRotation import IRotation
 from .IRunnable import IRunnable
+from .IRunning import IRunning
 from .IScriptRunner import IScriptRunner
 from .IStoppable import IStoppable
 from .ISyncTarget import ISyncTarget

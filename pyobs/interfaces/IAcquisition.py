@@ -1,7 +1,7 @@
-from .interface import *
+from .IRunning import IRunning
 
 
-class IAcquisition(Interface):
+class IAcquisition(IRunning):
     """The module can acquire a target, usually by accessing a telescope and a camera."""
     __module__ = 'pyobs.interfaces'
 

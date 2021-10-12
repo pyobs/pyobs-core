@@ -48,6 +48,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         self._camera = camera
 
         # store
+        self._is_running = False
         self._target_pixel = target_pixel
         self._attempts = attempts
         self._tolerance = tolerance * u.arcsec
@@ -73,6 +74,10 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
+    def is_running(self, *args, **kwargs) -> bool:
+        """Whether a service is running."""
+        return self._is_running
+
     @timeout(120)
     def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
@@ -89,6 +94,15 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         Raises:
             ValueError: If target could not be acquired.
         """
+
+        try:
+            self._is_running = True
+            return self._acquire(exposure_time)
+        finally:
+            self._is_running = False
+
+    def _acquire(self, exposure_time: float) -> dict:
+        """Actually acquire target."""
 
         # get telescope
         log.info('Getting proxy for telescope...')

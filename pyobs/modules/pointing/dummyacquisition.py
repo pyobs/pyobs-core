@@ -48,7 +48,9 @@ class DummyAcquisition(Module, IAcquisition):
 
     def _acquire(self, exposure_time: float) -> dict:
         """Actually acquire target."""
+        log.info('Acquiring target.')
         time.sleep(5)
+        log.info('Finished.')
         return {}
 
 

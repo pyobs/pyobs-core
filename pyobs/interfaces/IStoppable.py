@@ -1,7 +1,7 @@
-from .interface import *
+from .IRunning import IRunning
 
 
-class IStoppable(Interface):
+class IStoppable(IRunning):
     """The module can be started and stopped."""
     __module__ = 'pyobs.interfaces'
 
@@ -11,10 +11,6 @@ class IStoppable(Interface):
 
     def stop(self, *args, **kwargs):
         """Stops a service."""
-        raise NotImplementedError
-
-    def is_running(self, *args, **kwargs) -> bool:
-        """Whether a service is running."""
         raise NotImplementedError
 
 

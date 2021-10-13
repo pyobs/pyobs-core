@@ -1,7 +1,7 @@
-from .IStoppable import IStoppable
+from .IStartStop import IStartStop
 
 
-class IAutonomous(IStoppable):
+class IAutonomous(IStartStop):
     """The module does some autonomous actions, mainly used for warnings to users."""
     __module__ = 'pyobs.interfaces'
     pass

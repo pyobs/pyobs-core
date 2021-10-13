@@ -46,7 +46,7 @@ from .IRotation import IRotation
 from .IRunnable import IRunnable
 from .IRunning import IRunning
 from .IScriptRunner import IScriptRunner
-from .IStoppable import IStoppable
+from .IStartStop import IStartStop
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures

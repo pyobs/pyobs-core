@@ -1,7 +1,7 @@
 from .IRunning import IRunning
 
 
-class IStoppable(IRunning):
+class IStartStop(IRunning):
     """The module can be started and stopped."""
     __module__ = 'pyobs.interfaces'
 
@@ -14,4 +14,4 @@ class IStoppable(IRunning):
         raise NotImplementedError
 
 
-__all__ = ['IStoppable']
+__all__ = ['IStartStop']

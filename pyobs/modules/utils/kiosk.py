@@ -9,7 +9,7 @@ import tornado.gen
 import numpy as np
 
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, IExposureTime, IStoppable, IWindow
+from pyobs.interfaces import ICamera, IExposureTime, IStartStop, IWindow
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class Kiosk(Module, tornado.web.Application, IStoppable):
+class Kiosk(Module, tornado.web.Application, IStartStop):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
     __module__ = 'pyobs.modules.utils'
 

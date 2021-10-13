@@ -12,7 +12,7 @@ from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.events import GoodWeatherEvent
 from pyobs.utils.time import Time
-from pyobs.interfaces import IStoppable, IRunnable
+from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.robotic import TaskArchive
@@ -21,7 +21,7 @@ from pyobs.robotic import TaskArchive
 log = logging.getLogger(__name__)
 
 
-class Scheduler(Module, IStoppable, IRunnable):
+class Scheduler(Module, IStartStop, IRunnable):
     """Scheduler."""
     __module__ = 'pyobs.modules.robotic'
 

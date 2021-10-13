@@ -1,7 +1,7 @@
-from .IStoppable import IStoppable
+from .IStartStop import IStartStop
 
 
-class IAutoGuiding(IStoppable):
+class IAutoGuiding(IStartStop):
     """The module can perform auto-guiding."""
     __module__ = 'pyobs.interfaces'
 

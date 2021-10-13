@@ -83,8 +83,8 @@ class Module(Object, IModule, IConfig):
         self._methods: Dict[str, Tuple[Callable, inspect.Signature]] = {}
         self._get_interfaces_and_methods()
 
-        # get configuration options, i.e. all parameters from c'tor
-        self._config_options = self._get_config_options()
+        # get configuration caps, i.e. all parameters from c'tor
+        self._config_caps = self._get_config_caps()
 
         # name and label
         self._device_name: str = name if name is not None else self.comm.name
@@ -207,11 +207,11 @@ class Module(Object, IModule, IConfig):
         # finished
         return cast_response_to_simple(response)
 
-    def _get_config_options(self) -> dict:
-        """Returns a dictionary with config options."""
+    def _get_config_caps(self) -> dict:
+        """Returns a dictionary with config caps."""
 
-        # init dict of options and types
-        opts = {}
+        # init dict of caps and types
+        caps = {}
 
         # loop super classes
         for cls in inspect.getmro(self.__class__):
@@ -227,20 +227,21 @@ class Module(Object, IModule, IConfig):
                     continue
 
                 # check for getter and setter
-                getter = hasattr(self, '_get_config_' + name)
-                setter = hasattr(self, '_set_config_' + name)
-                opts[name] = (getter, setter)
+                caps[name] = (hasattr(self, '_get_config_' + name),
+                              hasattr(self, '_set_config_' + name),
+                              hasattr(self, '_get_config_options_' + name))
 
         # finished
-        return opts
+        return caps
 
-    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
-        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+    def get_config_caps(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
 
         Returns:
-            Dict with config options
+            Dict with config caps
         """
-        return self._config_options
+        return self._config_caps
 
     def get_config_value(self, name: str, *args, **kwargs) -> Any:
         """Returns current value of config item with given name.
@@ -256,14 +257,37 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
-        if name not in self._config_options:
+        if name not in self._config_caps:
             raise ValueError('Invalid parameter %s' % name)
-        if not self._config_options[name][0]:
+        if not self._config_caps[name][0]:
             raise ValueError('Parameter %s is not remotely accessible.')
 
         # get getter method and call it
         getter = getattr(self, '_get_config_' + name)
         return getter()
+
+    def get_config_value_options(self, name: str, *args, **kwargs) -> List:
+        """Returns possible values for config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Possible values.
+
+        Raises:
+            ValueError: If config item of given name does not exist.
+        """
+
+        # valid parameter?
+        if name not in self._config_caps:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_caps[name][2]:
+            raise ValueError('Parameter %s has no list of possible values.')
+
+        # get getter method and call it
+        options = getattr(self, '_get_config_options_' + name)
+        return options()
 
     def set_config_value(self, name: str, value: Any, *args, **kwargs):
         """Sets value of config item with given name.
@@ -277,9 +301,9 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
-        if name not in self._config_options:
+        if name not in self._config_caps:
             raise ValueError('Invalid parameter %s' % name)
-        if not self._config_options[name][1]:
+        if not self._config_caps[name][1]:
             raise ValueError('Parameter %s is not remotely settable.')
 
         # get setter and call it

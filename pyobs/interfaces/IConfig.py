@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 from .interface import Interface
 
@@ -7,11 +7,12 @@ class IConfig(Interface):
     """The module allows access to some of its configuration options."""
     __module__ = 'pyobs.interfaces'
 
-    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
-        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+    def get_config_caps(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
 
         Returns:
-            Dict with config options
+            Dict with config caps
         """
         raise NotImplementedError
 
@@ -23,6 +24,20 @@ class IConfig(Interface):
 
         Returns:
             Current value.
+
+        Raises:
+            ValueError: If config item of given name does not exist.
+        """
+        raise NotImplementedError
+
+    def get_config_value_options(self, name: str, *args, **kwargs) -> List:
+        """Returns possible values for config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Possible values.
 
         Raises:
             ValueError: If config item of given name does not exist.

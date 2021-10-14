@@ -52,8 +52,7 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     elif isinstance(config_or_object, dict):
         # copy kwargs to config_or_object, so that we don't have any duplicates
         for k, v in kwargs.items():
-            if k not in config_or_object:
-                config_or_object[k] = v
+            config_or_object[k] = v
 
         # a dict is given, so create object
         obj = create_object(config_or_object)

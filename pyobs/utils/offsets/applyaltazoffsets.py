@@ -69,11 +69,11 @@ class ApplyAltAzOffsets(ApplyOffsets):
             return False
 
         # get current offset
-        cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
+        cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
 
         # move offset
         log.info('Offsetting telescope...')
-        telescope.set_altaz_offsets(float(cur_dalt + dalt.degree), float(cur_daz + daz.degree)).wait()
+        telescope.set_offsets_altaz(float(cur_dalt + dalt.degree), float(cur_daz + daz.degree)).wait()
         return True
 
 

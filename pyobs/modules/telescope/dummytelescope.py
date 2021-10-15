@@ -216,7 +216,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         time.sleep(5.)
         self._change_motion_status(MotionStatus.PARKED)
 
-    def set_radec_offsets(self, dra: float, ddec: float, *args, **kwargs):
+    def set_offsets_radec(self, dra: float, ddec: float, *args, **kwargs):
         """Move an RA/Dec offset.
 
         Args:
@@ -229,7 +229,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         self._telescope.set_offsets(dra, ddec)
 
-    def get_radec_offsets(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_offsets_radec(self, *args, **kwargs) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:

@@ -162,9 +162,9 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
 
                 # Alt/Az or RA/Dec?
                 if isinstance(telescope, IOffsetsRaDec):
-                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_radec_offsets().wait()
+                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_offsets_radec().wait()
                 elif isinstance(telescope, IOffsetsAltAz):
-                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
+                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_offsets_altaz().wait()
 
                 # write log
                 if self._publisher is not None:

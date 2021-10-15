@@ -59,11 +59,11 @@ class ApplyRaDecOffsets(ApplyOffsets):
             return False
 
         # get current offset
-        cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
+        cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
 
         # move offset
         log.info('Offsetting telescope...')
-        telescope.set_radec_offsets(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree)).wait()
+        telescope.set_offsets_radec(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree)).wait()
         return True
 
 

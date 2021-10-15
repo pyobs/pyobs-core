@@ -182,9 +182,9 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
 
                 # Alt/Az or RA/Dec?
                 if isinstance(telescope, IOffsetsRaDec):
-                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_radec_offsets().wait()
+                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_offsets_radec().wait()
                 elif isinstance(telescope, IOffsetsAltAz):
-                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
+                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_offsets_altaz().wait()
 
                 # write log
                 if self._publisher is not None:
@@ -201,14 +201,14 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
             # is telescope on an equitorial mount?
             if isinstance(telescope, IOffsetsRaDec):
                 # get current offset
-                cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
+                cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
 
                 # calculate total offsets
                 total_dra, total_ddec = float(cur_dra + dra), float(cur_ddec + ddec)
 
                 # move offset
                 log.info('Offsetting telescope to dRA=%.2f", dDec=%.2f"...', total_dra * 3600., total_ddec * 3600.)
-                telescope.set_radec_offsets(total_dra, total_ddec).wait()
+                telescope.set_offsets_radec(total_dra, total_ddec).wait()
 
             elif isinstance(telescope, IOffsetsAltAz):
                 # transform both to Alt/AZ
@@ -221,12 +221,12 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 log.info('Transformed to Alt/Az shift of dalt=%.2f", daz=%.2f".', dalt * 3600., daz * 3600.)
 
                 # get current offset
-                cur_dalt, cur_daz = telescope.get_altaz_offsets().wait()
+                cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
                 log.info('Current offsets alt=%.2f, az=%.2f.', cur_dalt * 3600, cur_daz * 3600)
 
                 # move offset
                 log.info('Offsetting telescope...')
-                telescope.set_altaz_offsets(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
+                telescope.set_offsets_altaz(float(cur_dalt + dalt), float(cur_daz + daz)).wait()
 
             else:
                 log.warning('Telescope has neither altaz nor equitorial mount. No idea how to move it...')

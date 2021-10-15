@@ -8,7 +8,7 @@ class IOffsetsAltAz(Interface):
     :class:`~pyobs.interfaces.IAltAz`."""
     __module__ = 'pyobs.interfaces'
 
-    def set_altaz_offsets(self, dalt: float, daz: float, *args, **kwargs):
+    def set_offsets_altaz(self, dalt: float, daz: float, *args, **kwargs):
         """Move an Alt/Az offset.
 
         Args:
@@ -20,7 +20,7 @@ class IOffsetsAltAz(Interface):
         """
         raise NotImplementedError
 
-    def get_altaz_offsets(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_offsets_altaz(self, *args, **kwargs) -> Tuple[float, float]:
         """Get Alt/Az offset.
 
         Returns:

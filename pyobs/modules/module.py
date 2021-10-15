@@ -340,7 +340,7 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                self._modules[name] = self.add_child_object(mod, **self._shared)
+                self._modules[name] = self.add_child_object(mod, **self._shared, copy_comm=False)
 
     @property
     def modules(self):

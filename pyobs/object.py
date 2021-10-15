@@ -288,7 +288,7 @@ class Object:
         return True
 
     def get_object(self, config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None,
-                   allow_none: bool = False, **kwargs) -> ObjectClass:
+                   allow_none: bool = False, copy_comm: bool = True, **kwargs) -> ObjectClass:
         """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
@@ -296,6 +296,7 @@ class Object:
                 is given, a new object is created.
             object_class: Class to check object against.
             allow_none: if True, a None value does not trigger an exception
+            copy_comm: Copy comm from this object to the new one.
 
         Returns:
             (New) object (created from config) that optionally passed class check.
@@ -305,9 +306,11 @@ class Object:
         """
 
         # fill kwargs
-        for attr in ['timezone', 'location', 'observer', 'comm', 'vfs']:
+        for attr in ['timezone', 'location', 'observer', 'vfs']:
             if attr not in kwargs:
                 kwargs[attr] = getattr(self, attr)
+        if copy_comm:
+            kwargs['comm'] = self.comm
 
         # what did we get?
         if isinstance(config_or_object, dict):
@@ -333,18 +336,20 @@ class Object:
         return obj
 
     def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
-                         **kwargs) -> ObjectClass:
+                         copy_comm: bool = True, **kwargs) -> ObjectClass:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:
-            config: Module definition
+            config_or_object: Module definition
+            object_class: Class for new module
+            copy_comm: Copy comm from this object to the new one.
 
         Returns:
             The created module.
         """
 
         # get object
-        obj = self.get_object(config_or_object, object_class=object_class, **kwargs)
+        obj = self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
 
         # add to list
         self._child_objects.append(obj)

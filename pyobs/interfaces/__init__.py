@@ -12,9 +12,7 @@ __title__ = 'Interfaces'
 
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
-from .IAltAz import IAltAz
 from .ILatLon import ILatLon
-from .IAltAzOffsets import IAltAzOffsets
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
@@ -23,7 +21,6 @@ from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .IConfig import IConfig
 from .ICooling import ICooling
-from .ICoordsHGS import ICoordsHGS
 from .IDome import IDome
 from .IExposureTime import IExposureTime
 from .IFilters import IFilters
@@ -36,9 +33,10 @@ from .IImageGrabber import IImageGrabber
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion
+from .IPointingAltAz import IPointingAltAz
+from .IPointingHGS import IPointingHGS
+from .IPointingRaDec import IPointingRaDec
 from .IPointingSeries import IPointingSeries
-from .IRaDec import IRaDec
-from .IRaDecOffsets import IRaDecOffsets
 from .IReady import IReady
 from .IRoof import IRoof
 from .IRotation import IRotation
@@ -49,6 +47,8 @@ from .IStartStop import IStartStop
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
+from .IOffsetsAltAz import IOffsetsAltAz
+from .IOffsetsRaDec import IOffsetsRaDec
 from .IVideo import IVideo
 from .IWeather import IWeather
 from .IWindow import IWindow

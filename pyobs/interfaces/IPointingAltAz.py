@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class IAltAz(Interface):
+class IPointingAltAz(Interface):
     """The module can move to Alt/Az coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
@@ -28,4 +28,4 @@ class IAltAz(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IAltAz']
+__all__ = ['IPointingAltAz']

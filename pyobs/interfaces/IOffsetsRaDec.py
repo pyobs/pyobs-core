@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class IRaDecOffsets(Interface):
+class IOffsetsRaDec(Interface):
     """The module supports RA/Dec offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IRaDec`."""
     __module__ = 'pyobs.interfaces'
@@ -29,4 +29,4 @@ class IRaDecOffsets(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IRaDecOffsets']
+__all__ = ['IOffsetsRaDec']

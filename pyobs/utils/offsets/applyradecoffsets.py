@@ -3,7 +3,7 @@ import numpy as np
 from astropy.coordinates import EarthLocation
 
 from pyobs.images import Image
-from pyobs.interfaces import ITelescope, IRaDecOffsets
+from pyobs.interfaces import ITelescope, IOffsetsRaDec
 from .applyoffsets import ApplyOffsets
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         """
 
         # telescope must be of type IRaDecOffsets
-        if not isinstance(telescope, IRaDecOffsets):
+        if not isinstance(telescope, IOffsetsRaDec):
             log.error('Given telescope cannot handle RA/Dec offsets.')
             return False
 

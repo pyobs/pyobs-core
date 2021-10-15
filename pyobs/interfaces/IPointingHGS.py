@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class ICoordsHGS(Interface):
+class IPointingHGS(Interface):
     """The module can move to Mu/Psi coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
@@ -28,4 +28,4 @@ class ICoordsHGS(Interface):
         raise NotImplementedError
 
 
-__all__ = ['ICoordsHGS']
+__all__ = ['IPointingHGS']

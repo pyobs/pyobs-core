@@ -6,12 +6,12 @@ import astropy.units as u
 from pyobs.comm import RemoteException
 
 from pyobs.modules import Module
-from pyobs.interfaces import IAltAz, IRaDec, IReady
+from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 
 log = logging.getLogger(__name__)
 
 
-def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> Tuple[float, float]:
+def get_coord(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Tuple[float, float]:
     """Gets coordinates from object
 
     Args:
@@ -22,15 +22,15 @@ def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> 
         Return from method call.
     """
 
-    if mode == IAltAz and isinstance(obj, IAltAz):
+    if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
         return obj.get_altaz()
-    elif mode == IRaDec and isinstance(obj, IRaDec):
+    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
         return obj.get_radec()
     else:
         raise ValueError('Unknown mode.')
 
 
-def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]) -> SkyCoord:
+def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> SkyCoord:
     """Build SkyCoord from x/y tuple in given mode.
 
     Args:
@@ -41,7 +41,7 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]
         SkyCoord with coordinates.
     """
 
-    if mode == IAltAz:
+    if mode == IPointingAltAz:
         return SkyCoord(alt=coord[0] * u.deg, az=coord[1] * u.deg, frame='altaz')
     else:
         return SkyCoord(ra=coord[0] * u.deg, dec=coord[1] * u.deg, frame='icrs')
@@ -51,7 +51,7 @@ class FollowMixin:
     """Mixin for a device that should follow the motion of another."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IAltAz, IRaDec]],
+    def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IPointingAltAz, IPointingRaDec]],
                  only_follow_when_ready: bool = True, *args, **kwargs):
         """Initializes the mixin.
 
@@ -128,11 +128,11 @@ class FollowMixin:
             # is separation larger than tolerance?
             if my_coords.separation(other_coords).degree > self.__follow_tolerance:
                 # move to other
-                if self.__follow_mode == IAltAz:
-                    self: IAltAz
+                if self.__follow_mode == IPointingAltAz:
+                    self: IPointingAltAz
                     threading.Thread(target=self.move_altaz, args=(x, y)).start()
                 else:
-                    self: IRaDec
+                    self: IPointingRaDec
                     threading.Thread(target=self.move_radec, args=(x, y)).start()
 
             # sleep a little

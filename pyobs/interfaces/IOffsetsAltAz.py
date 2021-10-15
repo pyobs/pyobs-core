@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class IAltAzOffsets(Interface):
+class IOffsetsAltAz(Interface):
     """The module supports Alt/Az offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IAltAz`."""
     __module__ = 'pyobs.interfaces'
@@ -29,4 +29,4 @@ class IAltAzOffsets(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IAltAzOffsets']
+__all__ = ['IOffsetsAltAz']

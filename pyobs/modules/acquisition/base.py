@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, AltAz
 from astropy.wcs import WCS
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IOffsetsRaDec, IOffsetsAltAz, IExposureTime, \
     IImageType
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
@@ -181,9 +181,9 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 }
 
                 # Alt/Az or RA/Dec?
-                if isinstance(telescope, IRaDecOffsets):
+                if isinstance(telescope, IOffsetsRaDec):
                     log_entry['off_ra'], log_entry['off_dec'] = telescope.get_radec_offsets().wait()
-                elif isinstance(telescope, IAltAzOffsets):
+                elif isinstance(telescope, IOffsetsAltAz):
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
 
                 # write log
@@ -199,7 +199,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 raise ValueError('Calculated offsets too large.')
 
             # is telescope on an equitorial mount?
-            if isinstance(telescope, IRaDecOffsets):
+            if isinstance(telescope, IOffsetsRaDec):
                 # get current offset
                 cur_dra, cur_ddec = telescope.get_radec_offsets().wait()
 
@@ -210,7 +210,7 @@ class BaseAcquisition(Module, CameraSettingsMixin, IAcquisition):
                 log.info('Offsetting telescope to dRA=%.2f", dDec=%.2f"...', total_dra * 3600., total_ddec * 3600.)
                 telescope.set_radec_offsets(total_dra, total_ddec).wait()
 
-            elif isinstance(telescope, IAltAzOffsets):
+            elif isinstance(telescope, IOffsetsAltAz):
                 # transform both to Alt/AZ
                 altaz1 = radec_center.transform_to(AltAz)
                 altaz2 = radec_target.transform_to(AltAz)

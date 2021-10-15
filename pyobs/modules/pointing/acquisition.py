@@ -3,7 +3,7 @@ from typing import Union, Tuple, List
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IRaDecOffsets, IAltAzOffsets, IExposureTime, \
+from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IOffsetsRaDec, IOffsetsAltAz, IExposureTime, \
     IImageType, IImageGrabber
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
@@ -161,9 +161,9 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
                 }
 
                 # Alt/Az or RA/Dec?
-                if isinstance(telescope, IRaDecOffsets):
+                if isinstance(telescope, IOffsetsRaDec):
                     log_entry['off_ra'], log_entry['off_dec'] = telescope.get_radec_offsets().wait()
-                elif isinstance(telescope, IAltAzOffsets):
+                elif isinstance(telescope, IOffsetsAltAz):
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_altaz_offsets().wait()
 
                 # write log

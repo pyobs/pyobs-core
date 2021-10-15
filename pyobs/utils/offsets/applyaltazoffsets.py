@@ -4,7 +4,7 @@ import numpy as np
 from astropy.coordinates import EarthLocation, AltAz
 
 from pyobs.images import Image
-from pyobs.interfaces import ITelescope, IAltAzOffsets
+from pyobs.interfaces import ITelescope, IOffsetsAltAz
 from .applyoffsets import ApplyOffsets
 from ..time import Time
 
@@ -40,7 +40,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         """
 
         # telescope must be of type IAltAzOffsets
-        if not isinstance(telescope, IAltAzOffsets):
+        if not isinstance(telescope, IOffsetsAltAz):
             log.error('Given telescope cannot handle Alt/Az offsets.')
             return False
 

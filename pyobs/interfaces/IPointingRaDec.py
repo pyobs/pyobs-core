@@ -3,7 +3,7 @@ from typing import Tuple
 from .interface import Interface
 
 
-class IRaDec(Interface):
+class IPointingRaDec(Interface):
     """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
@@ -29,4 +29,4 @@ class IRaDec(Interface):
         raise NotImplementedError
 
 
-__all__ = ['IRaDec']
+__all__ = ['IPointingRaDec']

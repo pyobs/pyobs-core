@@ -23,7 +23,7 @@ from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .IConfig import IConfig
 from .ICooling import ICooling
-from .ICoordinatesQuery import ICoordinatesQuery
+from .ICoordsHGS import ICoordsHGS
 from .IDome import IDome
 from .IExposureTime import IExposureTime
 from .IFilters import IFilters

@@ -139,7 +139,7 @@ class PointingSeries(Module, IAutonomous):
                 telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree)).wait()
 
                 # acquire target
-                acq = acquisition.acquire_target(self._exp_time).wait()
+                acq = acquisition.acquire_target().wait()
 
                 #  process result
                 if acq is not None:

@@ -141,13 +141,9 @@ class LcoDefaultScript(Script):
             # wait for track
             track.wait()
 
-            # get exposure time
-            acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
-
             # do acquisition
             log.info('Performing acquisition...')
-            acquisition.acquire_target(exp_time).wait()
+            acquisition.acquire_target().wait()
 
         # guiding?
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \

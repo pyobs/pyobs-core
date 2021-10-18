@@ -64,7 +64,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         """Close module."""
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> Tuple[float, float]:
+    def auto_focus(self, count: int, step: float, exposure_time: float, *args, **kwargs) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given

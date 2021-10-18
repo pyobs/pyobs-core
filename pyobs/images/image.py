@@ -293,7 +293,11 @@ class Image:
         # store it
         self.meta[meta.__class__] = meta
 
-    def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
+    def has_meta(self, meta_class: Type[MetaClass]) -> bool:
+        """Whether meta exists."""
+        return meta_class in self.meta
+
+    def get_meta(self, meta_class: Type[MetaClass], default=None) -> MetaClass:
         """Returns meta information, assuming that it is stored under the class of the object.
 
         Args:
@@ -308,6 +312,8 @@ class Image:
             raise ValueError('Stored meta information is of wrong type.')
 
         # return it
+        if meta_class not in self.meta:
+            return default
         return self.meta[meta_class]
 
 

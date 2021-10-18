@@ -3,6 +3,7 @@ from typing import Union, Tuple, List
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
+from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IOffsetsRaDec, IOffsetsAltAz, IExposureTime, \
     IImageType, IImageGrabber
 from pyobs.mixins.pipeline import PipelineMixin
@@ -23,7 +24,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
     """Class for telescope acquisition."""
     __module__ = 'pyobs.modules.acquisition'
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
+    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera], exposure_time: float,
                  pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
                  target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
                  max_offset: float = 120, log_file: str = None, *args, **kwargs):
@@ -32,6 +33,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         Args:
             telescope: Name of ITelescope.
             camera: Name of ICamera.
+            exposure_time: Default exposure time.
             pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             apply: Object that handles applying offsets to telescope.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
@@ -48,6 +50,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         self._camera = camera
 
         # store
+        self._default_exposure_time = exposure_time
         self._is_running = False
         self._target_pixel = target_pixel
         self._attempts = attempts
@@ -79,14 +82,11 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
+    def acquire_target(self, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
-
-        Args:
-            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -97,7 +97,7 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
 
         try:
             self._is_running = True
-            return self._acquire(exposure_time)
+            return self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
 
@@ -190,6 +190,10 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
                 log.info('Finished image.')
             else:
                 log.warning('Could not apply offsets.')
+
+            # new exposure time?
+            if image.has_meta(ExpTime):
+                exposure_time = image.get_meta(ExpTime).exptime
 
         # could not acquire target
         raise ValueError('Could not acquire target within given tolerance.')

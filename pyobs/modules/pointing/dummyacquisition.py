@@ -24,14 +24,11 @@ class DummyAcquisition(Module, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, exposure_time: float, *args, **kwargs) -> dict:
+    def acquire_target(self, *args, **kwargs) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
         coordinates.
-
-        Args:
-            exposure_time: Exposure time for acquisition in secs.
 
         Returns:
             A dictionary with entries for datetime, ra, dec, alt, az, and either off_ra, off_dec or off_alt, off_az.
@@ -42,11 +39,11 @@ class DummyAcquisition(Module, IAcquisition):
 
         try:
             self._is_running = True
-            return self._acquire(exposure_time)
+            return self._acquire()
         finally:
             self._is_running = False
 
-    def _acquire(self, exposure_time: float) -> dict:
+    def _acquire(self) -> dict:
         """Actually acquire target."""
         log.info('Acquiring target.')
         time.sleep(5)

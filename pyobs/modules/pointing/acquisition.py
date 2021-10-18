@@ -6,14 +6,10 @@ from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IOffsetsRaDec, IOffsetsAltAz, IExposureTime, \
     IImageType, IImageGrabber
-from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
-from pyobs.object import get_object
 from pyobs.utils.enums import ImageType
-from pyobs.images import ImageProcessor
-from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from ._base import BasePointing

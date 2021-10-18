@@ -3,7 +3,6 @@ import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope
 from pyobs.images import Image
@@ -17,8 +16,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
     __module__ = 'pyobs.modules.pointing'
 
     def __init__(self, max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
-                 separation_reset: float = None, pid: bool = False, log_file: str = None,
-                 *args, **kwargs):
+                 separation_reset: float = None, pid: bool = False, *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
@@ -27,7 +25,6 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
             max_interval: Maximum interval in sec between to consecutive images to guide.
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
-            log_file: Name of file to write log to.
         """
         BasePointing.__init__(self, *args, **kwargs)
 
@@ -43,9 +40,6 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
         # headers of last and of reference image
         self._last_header = None
         self._ref_header = None
-
-        # init log file
-        self._publisher = None if log_file is None else CsvPublisher(log_file)
 
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""

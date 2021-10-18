@@ -59,6 +59,12 @@ class ApplyAltAzOffsets(ApplyOffsets):
         dalt, daz = altaz_center.spherical_offsets_to(altaz_target)
         log.info('Transformed to Alt/Az shift of dAlt=%.2f", dAz=%.2f".', dalt.arcsec, daz.arcsec)
 
+        # get current offset
+        cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
+
+        # log it
+        self._log_offset(telescope, 'dalt', cur_dalt, dalt.degree, 'daz', cur_daz, daz.degree)
+
         # too large or too small?
         diff = np.sqrt(dalt.arcsec**2. + daz.arcsec**2)
         if diff < self._min_offset:
@@ -67,9 +73,6 @@ class ApplyAltAzOffsets(ApplyOffsets):
         if diff > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return False
-
-        # get current offset
-        cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
 
         # move offset
         log.info('Offsetting telescope...')

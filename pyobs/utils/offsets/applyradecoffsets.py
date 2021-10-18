@@ -49,6 +49,12 @@ class ApplyRaDecOffsets(ApplyOffsets):
         dra, ddec = radec_center.spherical_offsets_to(radec_target)
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra.arcsec, ddec.arcsec)
 
+        # get current offset
+        cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
+
+        # log it
+        self._log_offset(telescope, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
+
         # too large or too small?
         diff = np.sqrt(dra.arcsec**2. + ddec.arcsec**2)
         if diff < self._min_offset:
@@ -57,9 +63,6 @@ class ApplyRaDecOffsets(ApplyOffsets):
         if diff > self._max_offset:
             log.warning('Shift too large, skipping auto-guiding for now...')
             return False
-
-        # get current offset
-        cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
 
         # move offset
         log.info('Offsetting telescope...')

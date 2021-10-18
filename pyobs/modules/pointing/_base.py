@@ -16,14 +16,15 @@ class BasePointing(Module, PipelineMixin):
     __module__ = 'pyobs.modules.pointing'
 
     def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
-                 *args, **kwargs):
+                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets], *args, **kwargs):
         """Initializes a new base pointing.
 
         Args:
             telescope: Telescope to use.
             pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
             apply: Object that handles applying offsets to telescope.
+            log_file: Name of file to write log to.
+            log_absolute: Log absolute offsets instead of relative ones to last one.
         """
         Module.__init__(self, *args, **kwargs)
         PipelineMixin.__init__(self, pipeline)

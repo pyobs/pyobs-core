@@ -3,14 +3,10 @@ import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.mixins.pipeline import PipelineMixin
-from pyobs.object import get_object
-from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, ICamera
-from pyobs.modules import Module
-from pyobs.images import Image, ImageProcessor
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope
+from pyobs.images import Image
 from ._base import BasePointing
 
 log = logging.getLogger(__name__)

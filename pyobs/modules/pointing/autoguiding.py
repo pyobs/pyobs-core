@@ -13,19 +13,17 @@ class AutoGuiding(BaseGuiding):
     """An auto-guiding system."""
     __module__ = 'pyobs.modules.guiding'
 
-    def __init__(self, exposure_time: float = 1., interval: float = 5., *args, **kwargs):
+    def __init__(self, exposure_time: float = 1., *args, **kwargs):
         """Initializes a new auto guiding system.
 
         Args:
             exposure_time: Initial exposure time in seconds.
-            interval: Interval between images in seconds.
         """
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # store
         self._default_exposure_time = exposure_time
         self._exposure_time = None
-        self._interval = interval
         self._source_detection = SepSourceDetection()
 
         # add thread func
@@ -82,7 +80,7 @@ class AutoGuiding(BaseGuiding):
                     self._exposure_time = processed_image.get_meta(ExpTime).exptime
 
                 # sleep a little
-                self.closing.wait(self._interval)
+                self.closing.wait(self._min_interval)
 
             except Exception as e:
                 log.error('An error occurred: ', e)

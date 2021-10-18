@@ -16,38 +16,28 @@ from pyobs.images import ImageProcessor
 from pyobs.utils.offsets import ApplyOffsets
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
+from ._base import BasePointing
 
 log = logging.getLogger(__name__)
 
 
-class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
+class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     """Class for telescope acquisition."""
-    __module__ = 'pyobs.modules.acquisition'
+    __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera], exposure_time: float,
-                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
-                 target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
+    def __init__(self, exposure_time: float, target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
                  max_offset: float = 120, log_file: str = None, *args, **kwargs):
         """Create a new acquisition.
 
         Args:
-            telescope: Name of ITelescope.
-            camera: Name of ICamera.
             exposure_time: Default exposure time.
-            pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
-            apply: Object that handles applying offsets to telescope.
             target_pixel: (x, y) tuple of pixel that the star should be positioned on. If None, center of image is used.
             attempts: Number of attempts before giving up.
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
         """
-        Module.__init__(self, *args, **kwargs)
-        PipelineMixin.__init__(self, pipeline)
-
-        # store telescope and camera
-        self._telescope = telescope
-        self._camera = camera
+        BasePointing.__init__(self, *args, **kwargs)
 
         # store
         self._default_exposure_time = exposure_time
@@ -59,9 +49,6 @@ class Acquisition(Module, CameraSettingsMixin, IAcquisition, PipelineMixin):
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
-
-        # apply offsets
-        self._apply = get_object(apply, ApplyOffsets)
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, *args, **kwargs)

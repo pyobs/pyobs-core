@@ -1,4 +1,4 @@
-from typing import Union, List, Dict, Tuple, Any
+from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -11,25 +11,21 @@ from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope, ICamera
 from pyobs.modules import Module
 from pyobs.images import Image, ImageProcessor
+from ._base import BasePointing
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
+class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
     """Base class for guiding modules."""
-    __module__ = 'pyobs.modules.guiding'
+    __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets],
-                 max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
+    def __init__(self, max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
                  separation_reset: float = None, pid: bool = False, log_file: str = None,
                  *args, **kwargs):
         """Initializes a new science frame auto guiding system.
 
         Args:
-            telescope: Telescope to use.
-            pipeline: Pipeline steps to run on new image. MUST include a step calculating offsets!
-            apply: Object that handles applying offsets to telescope.
             max_exposure_time: Maximum exposure time in sec for images to analyse.
             min_interval: Minimum interval in sec between two images.
             max_interval: Maximum interval in sec between to consecutive images to guide.
@@ -37,12 +33,9 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             pid: Whether to use a PID for guiding.
             log_file: Name of file to write log to.
         """
-        Module.__init__(self, *args, **kwargs)
-        PipelineMixin.__init__(self, pipeline)
+        BasePointing.__init__(self, *args, **kwargs)
 
         # store
-        self._camera = camera
-        self._telescope = telescope
         self._enabled = False
         self._max_exposure_time = max_exposure_time
         self._min_interval = min_interval
@@ -57,25 +50,6 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
-
-        # apply offsets
-        self._apply = get_object(apply, ApplyOffsets)
-
-    def open(self):
-        """Open module."""
-        Module.open(self)
-
-        # check telescope
-        try:
-            self.proxy(self._telescope, ITelescope)
-        except ValueError:
-            log.warning('Given telescope does not exist or is not of correct type at the moment.')
-
-        # check camera
-        try:
-            self.proxy(self._camera, ICamera)
-        except ValueError:
-            log.warning('Given camera does not exist or is not of correct type at the moment.')
 
     def start(self, *args, **kwargs):
         """Starts/resets auto-guiding."""
@@ -130,7 +104,7 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             # if image is given, process it
             self.run_pipeline(image)
 
-    def _process_image(self, image: Image):
+    def _process_image(self, image: Image) -> Optional[Image]:
         """Processes a single image and offsets telescope.
 
         Args:
@@ -139,17 +113,17 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
 
         # not enabled?
         if not self._enabled:
-            return
+            return None
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
-            return
+            return None
 
         # reference header?
         if self._ref_header is None:
             log.info('Setting new reference image...')
             self._reset_guiding(image=image)
-            return
+            return None
 
         # check RA/Dec in header and separation
         c1 = SkyCoord(ra=image.header['TEL-RA'] * u.deg, dec=image.header['TEL-DEC'] * u.deg, frame='icrs')
@@ -159,14 +133,14 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
                             separation * 3600.)
             self._reset_guiding(image=image)
-            return
+            return None
 
         # check filter
         if 'FILTER' in image.header and 'FILTER' in self._ref_header and \
                 image.header['FILTER'] != self._ref_header['FILTER']:
             log.warning('The filter has been changed since the last exposure, resetting reference...')
             self._reset_guiding(image=image)
-            return
+            return None
 
         # get time
         date_obs = Time(image.header['DATE-OBS'])
@@ -178,22 +152,22 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             if (date_obs - t0).sec > self._max_interval:
                 log.warning('Time between current and last image is too large, resetting reference...')
                 self._reset_guiding(image=image)
-                return
+                return None
             if (date_obs - t0).sec < self._min_interval:
                 log.warning('Time between current and last image is too small, ignoring image...')
-                return
+                return None
 
             # check focus
             if 'TEL-FOCU' in image.header:
                 if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
                     log.warning('Focus difference between current and last image is too large, resetting reference...')
                     self._reset_guiding(image=image)
-                    return
+                    return None
 
         # exposure time too large?
         if self._max_exposure_time is not None and image.header['EXPTIME'] > self._max_exposure_time:
             log.warning('Exposure time too large, skipping auto-guiding for now...')
-            return
+            return None
 
         # remember header
         self._last_header = image.header
@@ -206,13 +180,16 @@ class BaseGuiding(Module, IAutoGuiding, IFitsHeaderProvider, PipelineMixin):
             telescope: ITelescope = self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.error('Given telescope does not exist or is not of correct type.')
-            return
+            return image
 
         # apply offsets
         if self._apply(image, telescope, self.location):
             log.info('Finished image.')
         else:
             log.warning('Could not apply offsets.')
+
+        # return image, in case we added important data
+        return image
 
         # TODO: revive logging!
 

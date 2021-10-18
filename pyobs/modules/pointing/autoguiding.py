@@ -2,6 +2,7 @@ import logging
 
 from pyobs.interfaces import ICamera, IImageType, IExposureTime, IImageGrabber
 from ._baseguiding import BaseGuiding
+from ...images.meta.exptime import ExpTime
 from ...images.processors.detection import SepSourceDetection
 from ...utils.enums import ImageType
 
@@ -22,7 +23,7 @@ class AutoGuiding(BaseGuiding):
         BaseGuiding.__init__(self, *args, **kwargs)
 
         # store
-        self._initial_exposure_time = exposure_time
+        self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._interval = interval
         self._source_detection = SepSourceDetection()
@@ -37,15 +38,14 @@ class AutoGuiding(BaseGuiding):
             exposure_time: Exposure time in secs.
         """
         log.info('Setting exposure time to %ds...', exposure_time)
-        self._initial_exposure_time = exposure_time
+        self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
         self._guiding_offset.reset()
 
     def _auto_guiding(self):
-        # exposure time estimator
-        #exp_time_estimator = StarExpTimeEstimator(self._source_detection)
-        exp_time_estimator = None
+        # exposure time
+        self._exposure_time = self._default_exposure_time
 
         # run until closed
         while not self.closing.is_set():
@@ -61,9 +61,8 @@ class AutoGuiding(BaseGuiding):
                 # take image
                 if isinstance(camera, IExposureTime):
                     # set exposure time
-                    exp_time = self._exposure_time if self._exposure_time is not None else self._initial_exposure_time
-                    log.info('Taking image with an exposure time of %.2fs...', exp_time)
-                    camera.set_exposure_time(exp_time)
+                    log.info('Taking image with an exposure time of %.2fs...', self._exposure_time)
+                    camera.set_exposure_time(self._exposure_time)
                 else:
                     log.info('Taking image...')
                 if isinstance(camera, IImageType):
@@ -73,16 +72,14 @@ class AutoGuiding(BaseGuiding):
                 # download image
                 image = self.vfs.read_image(filename)
 
-                # need to estimate exposure time?
-                if self._exposure_time is None and exp_time_estimator is not None:
-                    exp_time_estimator(image)
-                    new_exp_time = exp_time_estimator.exp_time
-                    self._exposure_time = max(min(new_exp_time, 5), 0.1)
-
                 # process it
                 log.info('Processing image...')
-                self._process_image(image)
+                processed_image = self._process_image(image)
                 log.info('Done.')
+
+                # new exposure time?
+                if processed_image is not None and processed_image.has_meta(ExpTime):
+                    self._exposure_time = processed_image.get_meta(ExpTime).exptime
 
                 # sleep a little
                 self.closing.wait(self._interval)

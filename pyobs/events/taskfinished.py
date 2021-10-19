@@ -1,6 +1,10 @@
 from typing import Optional, Any
+from typing_extensions import TypedDict
 
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'name': Optional[str], 'id': Optional[Any]})
 
 
 class TaskFinishedEvent(Event):
@@ -15,18 +19,18 @@ class TaskFinishedEvent(Event):
             id: Unique identifier for task
         """
         Event.__init__(self)
-        self.data = {
+        self.data: DataType = {
             'name': name,
             'id': id
         }
 
     @property
     def name(self) -> Optional[str]:
-        return self.data['name'] if 'name' in self.data else None
+        return self.data['name']
 
     @property
     def id(self) -> Optional[Any]:
-        return self.data['id'] if 'id' in self.data else None
+        return self.data['id']
 
 
 __all__ = ['TaskFinishedEvent']

@@ -1,4 +1,5 @@
 from typing import Optional, List
+from typing_extensions import TypedDict
 
 from .event import Event
 

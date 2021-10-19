@@ -1,6 +1,10 @@
 from typing import Optional, Any
+from typing_extensions import TypedDict
 
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'name': Optional[str], 'value': Optional[Any]})
 
 
 class VariableChangedEvent(Event):
@@ -9,7 +13,7 @@ class VariableChangedEvent(Event):
 
     def __init__(self, name: Optional[str] = None, value: Optional[Any] = None):
         Event.__init__(self)
-        self.data = {'name': name, 'value': value}
+        self.data: DataType = {'name': name, 'value': value}
 
     @property
     def name(self) -> Optional[str]:

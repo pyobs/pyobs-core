@@ -1,7 +1,11 @@
 from typing import Optional, Any
+from typing_extensions import TypedDict
 
 from pyobs.utils.time import Time
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'name': Optional[str], 'id': Optional[Any], 'eta': Optional[str]})
 
 
 class TaskStartedEvent(Event):
@@ -17,7 +21,7 @@ class TaskStartedEvent(Event):
             eta: Predicted ETA for when the task will finish
         """
         Event.__init__(self)
-        self.data = {
+        self.data: DataType = {
             'name': name,
             'id': id,
             'eta':  None if eta is None else eta.isot
@@ -25,7 +29,7 @@ class TaskStartedEvent(Event):
 
     @property
     def name(self) -> Optional[str]:
-        return str(self.data['name']) if self.data['name'] is not None else None
+        return self.data['name']
 
     @property
     def id(self) -> Optional[Any]:

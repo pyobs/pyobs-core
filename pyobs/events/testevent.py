@@ -1,4 +1,10 @@
+from typing import Optional
+from typing_extensions import TypedDict
+
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'message': Optional[str]})
 
 
 class TestEvent(Event):

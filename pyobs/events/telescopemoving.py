@@ -1,6 +1,11 @@
 from typing import Optional
+from typing_extensions import TypedDict
 
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'ra': Optional[float], 'dec': Optional[float],
+                                  'alt': Optional[float], 'az': Optional[float]})
 
 
 class TelescopeMovingEvent(Event):
@@ -21,7 +26,7 @@ class TelescopeMovingEvent(Event):
             az: Azimuth of fixed position to move to.
         """
         Event.__init__(self)
-        self.data = {
+        self.data: DataType = {
             'ra': ra,
             'dec': dec,
             'alt': alt,

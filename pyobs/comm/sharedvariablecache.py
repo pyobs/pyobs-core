@@ -1,6 +1,10 @@
 import threading
 import time
 import logging
+from typing import TYPE_CHECKING, Dict, Any, Iterable, Callable, List, Optional
+
+if TYPE_CHECKING:
+    from pyobs.comm import Comm
 
 from pyobs.events import VariableChangedEvent, VariablesUpdateEvent
 
@@ -18,17 +22,17 @@ class SharedVariable:
             name: Name of variable.
         """
         self.name = name
-        self._value = None
-        self.source = None
-        self.updated = None
-        self.on_change = []
+        self._value: Optional[Any] = None
+        self.source: Optional[str] = None
+        self.updated: Optional[float] = None
+        self.on_change: List[Callable[[str, Any], bool]] = []
 
     @property
-    def value(self):
+    def value(self) -> Any:
         """Value of the variable"""
         return self._value
 
-    def set(self, v):
+    def set(self, v: Any) -> bool:
         """Set variable.
 
         Args:
@@ -63,16 +67,16 @@ class SharedVariableCache:
         self._comm = comm
 
         # list of variables and values
-        self._variables = {}
+        self._variables: Dict[str, Any] = {}
 
         # callback methods on value changes.
-        self._on_change = {}
+        self._on_change: Dict[str, Callable[[str, Any], None]] = {}
 
         # update thread
         self._closing = threading.Event()
         self._update_thread = threading.Thread(target=self._var_update)
 
-    def open(self):
+    def open(self) -> None:
         """Open cache."""
 
         # register events
@@ -82,14 +86,14 @@ class SharedVariableCache:
         # start update thread
         self._update_thread.start()
 
-    def close(self):
+    def close(self) -> None:
         """Close cache."""
 
         # request quit and join thread
         self._closing.set()
         self._update_thread.join()
 
-    def __getitem__(self, item: str):
+    def __getitem__(self, item: str) -> Any:
         """Returns the value of a variable.
 
         Args:
@@ -100,7 +104,7 @@ class SharedVariableCache:
         """
         return self._variables[item].value
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         """Sets the value of a variable.
 
         Args:
@@ -119,21 +123,21 @@ class SharedVariableCache:
         # set variable and broadcast it
         self._variables[key].source = None
         if self._variables[key].set(value):
-            self.comm.send_event(VariableChangedEvent(key, value))
+            self._comm.send_event(VariableChangedEvent(key, value))
 
     def __contains__(self, item: str) -> bool:
         """Whether this cache contains the given variable."""
         return item in self._variables
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Number of variables in cache."""
         return len(self._variables)
 
-    def keys(self):
+    def keys(self) -> Iterable[str]:
         """Names of variables in cache."""
         return self._variables.keys()
 
-    def on_change(self, key, callback):
+    def on_change(self, key: str, callback: Callable[[str, Any], None]) -> None:
         """Register a callback for a given variable.
 
         Args:
@@ -148,7 +152,7 @@ class SharedVariableCache:
         # add callback
         self._variables[key].on_change.append(callback)
 
-    def _set_external(self, key, value, sender):
+    def _set_external(self, key: str, value: Any, sender: str) -> None:
         """Set value of variable without sending it again over the network.
 
         Args:
@@ -165,7 +169,7 @@ class SharedVariableCache:
         self._variables[key].set(value)
         self._variables[key].source = sender
 
-    def _handle_variable_change(self, event: VariableChangedEvent, sender: str, *args, **kwargs) -> bool:
+    def _handle_variable_change(self, event: VariableChangedEvent, sender: str) -> bool:
         """Changes variables on incoming change event.
 
         Args:
@@ -179,7 +183,7 @@ class SharedVariableCache:
         self._set_external(event.name, event.value, sender)
         return True
 
-    def _handle_variables_update(self, event: VariablesUpdateEvent, sender: str, *args, **kwargs) -> bool:
+    def _handle_variables_update(self, event: VariablesUpdateEvent, sender: str) -> bool:
         """Changes variables on incoming update event.
 
         Args:
@@ -191,11 +195,12 @@ class SharedVariableCache:
         """
 
         # loop all variables
-        for key, value in event.data.items():
-            self._set_external(key, value, sender)
+        if event.data is not None:
+            for key, value in event.data.items():
+                self._set_external(key, value, sender)
         return True
 
-    def _var_update(self):
+    def _var_update(self) -> None:
         """Periodically send variable values."""
 
         while not self._closing.is_set():

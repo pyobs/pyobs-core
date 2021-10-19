@@ -1,7 +1,7 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type, Dict
+from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable
 import threading
 
 import pyobs.interfaces
@@ -9,7 +9,8 @@ from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
-
+if TYPE_CHECKING:
+    from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ class Comm:
         """Creates a comm module."""
 
         self._proxies: Dict[str, Proxy] = {}
-        self._module = None
-        self._log_queue = queue.Queue()
+        self._module: Optional[Module] = None
+        self._log_queue: queue.Queue[LogEvent] = queue.Queue()
         self._cache_proxies = cache_proxies
 
         # cache for shared variables
@@ -39,21 +40,23 @@ class Comm:
         self._logging_thread = threading.Thread(target=self._logging)
 
     @property
-    def module(self):
+    def module(self) -> Optional['Module']:
         """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
-    def module(self, module):
+    def module(self, module: 'Module') -> None:
         """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
-        if hasattr(self, '_set_module'):
-            self._set_module(module)
+        self._set_module(module)
 
         # store module
         self._module = module
 
-    def open(self):
+    def _set_module(self, module: 'Module') -> None:
+        ...
+
+    def open(self) -> None:
         """Open module."""
 
         # start logging thread
@@ -65,7 +68,7 @@ class Comm:
         # some events
         self.register_event(ModuleClosedEvent, self._client_disconnected)
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
 
         # close thread
@@ -243,6 +246,7 @@ class Comm:
         Returns:
             List of interface classes.
         """
+        from pyobs.interfaces import Interface
 
         # get interface classes
         inspection = inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass)
@@ -254,7 +258,7 @@ class Comm:
             found = False
             for cls_name, cls in inspection:
                 # class needs to face same name and implement Interface
-                if interface_name == cls_name and issubclass(cls, pyobs.interfaces.Interface):
+                if interface_name == cls_name and issubclass(cls, Interface):
                     # found it!
                     found = True
 
@@ -269,7 +273,7 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def execute(self, client: str, method: str, *args) -> Any:
+    def execute(self, client: str, method: str, *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
@@ -282,7 +286,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _logging(self):
+    def _logging(self) -> None:
         """Background thread for handling the logging."""
 
         # run until closing
@@ -296,7 +300,7 @@ class Comm:
             # sleep a little
             self._closing.wait(1)
 
-    def log_message(self, entry: LogEvent):
+    def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.
 
         Args:
@@ -304,7 +308,7 @@ class Comm:
         """
         self._log_queue.put_nowait(entry)
 
-    def send_event(self, event: Event):
+    def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -312,7 +316,7 @@ class Comm:
         """
         pass
 
-    def register_event(self, event_class, handler=None):
+    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

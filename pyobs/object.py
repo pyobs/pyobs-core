@@ -10,23 +10,43 @@ from __future__ import annotations
 import copy
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload
 import logging
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-import pyobs
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
 
+
 log = logging.getLogger(__name__)
+
 
 """Class of an Object."""
 ObjectClass = TypeVar('ObjectClass')
 
 
-def get_object(config_or_object: Union[Dict[str, Any], object], object_class: Optional[Type[ObjectClass]] = None,
-               allow_none: bool = False, **kwargs) -> Optional[ObjectClass]:
+@overload
+def get_object(config_or_object: Dict[str, Any], object_class: Type[ObjectClass], allow_none: bool = False,
+               **kwargs: Any) -> ObjectClass: ...
+
+
+@overload
+def get_object(config_or_object: ObjectClass, object_class: Type[ObjectClass], allow_none: bool = False,
+               **kwargs: Any) -> ObjectClass: ...
+
+
+@overload
+def get_object(config_or_object: ObjectClass, object_class: None, allow_none: bool = False,
+               **kwargs: Any) -> Any: ...
+
+
+@overload
+def get_object(config_or_object: Any, object_class: None, allow_none: bool, **kwargs: Any) -> Any: ...
+
+
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
+               allow_none: bool = False, **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -67,16 +87,16 @@ def get_object(config_or_object: Union[Dict[str, Any], object], object_class: Op
     return obj
 
 
-def get_class_from_string(class_name: str):
+def get_class_from_string(class_name: str) -> Type[Any]:
     parts = class_name.split('.')
     module_name = ".".join(parts[:-1])
-    cls = __import__(module_name)
+    cls: Type[Any] = __import__(module_name)
     for comp in parts[1:]:
         cls = getattr(cls, comp)
     return cls
 
 
-def create_object(config: Dict[str, Any], *args, **kwargs):
+def create_object(config: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
     # get class name
     class_name = config['class']
 
@@ -94,9 +114,10 @@ def create_object(config: Dict[str, Any], *args, **kwargs):
 class Object:
     """Base class for all objects in *pyobs*."""
 
-    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None, comm: Union[Comm, dict] = None,
-                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
-                 observer: Observer = None, *args, **kwargs):
+    def __init__(self, vfs: Optional[Union['pyobs.vfs.VirtualFileSystem', Dict[str, Any]]] = None,
+                 comm: Optional[Union[Comm, Dict[str, Any]]] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
+                 location: Optional[Union[str, Dict[str, Any], EarthLocation]] = None,
+                 observer: Optional[Observer] = None, *args: Any, **kwargs: Any):
         """
         .. note::
 
@@ -173,7 +194,7 @@ class Object:
             self.comm = comm
         elif isinstance(comm, dict):
             log.info('Creating comm object...')
-            self.comm = get_object(comm)
+            self.comm = get_object(comm, Comm)
         else:
             raise ValueError('Invalid Comm object')
 
@@ -181,10 +202,10 @@ class Object:
         self._opened = False
 
         # thread function(s)
-        self._threads: Dict[threading.Thread, Tuple] = {}
+        self._threads: Dict[threading.Thread, Tuple[Callable[[], None], bool]] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    def add_thread_func(self, func: Callable, restart: bool = True) -> threading.Thread:
+    def add_thread_func(self, func: Callable[[], None], restart: bool = True) -> threading.Thread:
         """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -201,7 +222,7 @@ class Object:
         self._threads[t] = (func, restart)
         return t
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
 
         # start threads and watchdog
@@ -220,11 +241,11 @@ class Object:
         self._opened = True
 
     @property
-    def opened(self):
+    def opened(self) -> bool:
         """Whether object has been opened."""
         return self._opened
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
 
         # request closing of object (used for long-running methods)
@@ -241,7 +262,7 @@ class Object:
         [t.join() for t in self._threads.keys() if t.is_alive()]
 
     @staticmethod
-    def _thread_func(target):
+    def _thread_func(target: Callable[[], None]) -> None:
         """Run given function.
 
         Args:
@@ -252,7 +273,7 @@ class Object:
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
-    def _watchdog_func(self):
+    def _watchdog_func(self) -> None:
         """Watchdog thread that tries to restart threads if they quit."""
 
         while not self.closing.is_set():
@@ -277,7 +298,7 @@ class Object:
             # sleep a little
             self.closing.wait(1)
 
-    def check_running(self):
+    def check_running(self) -> bool:
         """Check, whether an object should be closing. Can be polled by long-running methods.
 
         Raises:

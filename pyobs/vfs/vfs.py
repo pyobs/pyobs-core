@@ -1,12 +1,10 @@
 import io
 import logging
 import os
-
 import yaml
 from astropy.io import fits
 import pandas as pd
 
-from pyobs.object import get_object, get_class_from_string
 from pyobs.images import Image
 
 log = logging.getLogger(__name__)
@@ -89,6 +87,7 @@ class VirtualFileSystem:
             raise ValueError('Could not find root {0} for file.'.format(root))
 
         # create file object
+        from pyobs.object import get_object
         fd = get_object(self._roots[root], name=filename, mode=mode)
 
         # compression?
@@ -229,6 +228,7 @@ class VirtualFileSystem:
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
+        from pyobs.object import get_class_from_string
         klass = get_class_from_string(self._roots[root]['class'])
 
         # get find method
@@ -253,6 +253,7 @@ class VirtualFileSystem:
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
+        from pyobs.object import get_class_from_string
         klass = get_class_from_string(self._roots[root]['class'])
 
         # get exists method

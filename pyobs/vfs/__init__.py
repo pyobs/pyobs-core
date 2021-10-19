@@ -64,3 +64,7 @@ from .tarfile import TarFile
 from .tempfile import TempFile
 from .gzippipe import GzipReader, GzipWriter
 from .archivefile import ArchiveFile
+
+
+__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TarFile', 'TempFile',
+           'GzipReader', 'GzipWriter', 'ArchiveFile']

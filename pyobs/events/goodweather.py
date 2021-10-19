@@ -15,11 +15,12 @@ class GoodWeatherEvent(Event):
             eta: Predicted ETA for when the telescope will be fully operational
         """
         Event.__init__(self)
-        self.data = None if eta is None else eta.isot
+        if eta is not None:
+            self.data = {'eta': eta.isot}
 
     @property
     def eta(self) -> Optional[Time]:
-        return None if self.data is None else Time(self.data)
+        return Time(self.data['eta']) if 'eta' in self.data else None
 
 
 __all__ = ['GoodWeatherEvent']

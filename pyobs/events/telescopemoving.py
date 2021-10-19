@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .event import Event
 
 
@@ -5,7 +7,8 @@ class TelescopeMovingEvent(Event):
     """Event to be sent when the telescope has started moving."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, ra: float = None, dec: float = None, alt: float = None, az: float = None):
+    def __init__(self, ra: Optional[float] = None, dec: Optional[float] = None,
+                 alt: Optional[float] = None, az: Optional[float] = None):
         """Initializes a new telescope moving event.
 
         Either the pair ra/dec, or alt/az should be set, never both. The former implies tracking on the given
@@ -26,19 +29,19 @@ class TelescopeMovingEvent(Event):
         }
 
     @property
-    def ra(self):
+    def ra(self) -> Optional[float]:
         return self.data['ra']
 
     @property
-    def dec(self):
+    def dec(self) -> Optional[float]:
         return self.data['dec']
 
     @property
-    def alt(self):
+    def alt(self) -> Optional[float]:
         return self.data['alt']
 
     @property
-    def az(self):
+    def az(self) -> Optional[float]:
         return self.data['az']
 
 

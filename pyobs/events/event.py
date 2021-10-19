@@ -1,7 +1,7 @@
 import json
 import time
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, NamedTuple
 
 
 class Event:
@@ -12,7 +12,7 @@ class Event:
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
         self.timestamp = time.time()
-        self.data: Optional[Dict[str, Any]] = None
+        self.data = Event.Data()
 
     def to_json(self) -> Dict[str, Any]:
         """JSON representation of event."""
@@ -20,7 +20,7 @@ class Event:
             'type': self.__class__.__name__,
             'timestamp': self.timestamp,
             'uuid': self.uuid,
-            'data': self.data
+            'data': self.data.asdict()
         }
 
     def __str__(self) -> str:

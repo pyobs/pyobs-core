@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .event import Event
 from ..utils.enums import ImageType
 
@@ -6,7 +8,8 @@ class NewImageEvent(Event):
     """Event to be sent on a new image."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, filename: str = None, image_type: ImageType = None, raw: str = None):
+    def __init__(self, filename: Optional[str] = None, image_type: Optional[ImageType] = None,
+                 raw: Optional[str] = None):
         """Initializes new NewImageEvent.
 
         Args:
@@ -22,19 +25,19 @@ class NewImageEvent(Event):
         }
 
     @property
-    def filename(self):
-        return self.data['filename']
+    def filename(self) -> Optional[str]:
+        return str(self.data['filename']) if 'filename' in self.data else None
 
     @property
-    def image_type(self):
-        return ImageType(self.data['image_type'])
+    def image_type(self) -> Optional[ImageType]:
+        return ImageType(self.data['image_type']) if 'image_type' in self.data else None
 
     @property
-    def raw(self):
-        return self.data['raw']
+    def raw(self) -> Optional[str]:
+        return str(self.data['raw']) if 'raw' in self.data else None
 
     @property
-    def is_reduced(self):
+    def is_reduced(self) -> bool:
         return self.raw is not None
 
 

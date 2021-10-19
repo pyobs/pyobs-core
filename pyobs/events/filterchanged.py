@@ -13,7 +13,7 @@ class FilterChangedEvent(Event):
 
     @property
     def filter(self) -> Optional[str]:
-        return self.data['filter'] if 'filter' in self.data else None
+        return self.data['filter']
 
 
 __all__ = ['FilterChangedEvent']

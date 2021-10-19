@@ -378,17 +378,19 @@ class XmppComm(Comm):
                 self._event_handlers[event_class] = []
             self._event_handlers[event_class].append(handler)
 
-        # register event at XMPP
-        self._xmpp['xep_0030'].add_feature('pyobs:event:%s' % event_class.__name__)
+        # if event is not a local one, we also need to do some XMPP stuff
+        if not event_class.local:
+            # register event at XMPP
+            self._xmpp['xep_0030'].add_feature('pyobs:event:%s' % event_class.__name__)
 
-        # if we have a handler, we're also interested in receiving such events
-        if handler:
-            # add interest
-            self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % event_class.__name__)
+            # if we have a handler, we're also interested in receiving such events
+            if handler:
+                # add interest
+                self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % event_class.__name__)
 
-        # update caps and send presence
-        self._xmpp['xep_0115'].update_caps()
-        self._xmpp.send_presence()
+            # update caps and send presence
+            self._xmpp['xep_0115'].update_caps()
+            self._xmpp.send_presence()
 
     def _handle_event(self, msg):
         """Handles an event.

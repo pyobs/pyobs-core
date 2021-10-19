@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, NamedTuple
 class Event:
     """Base class for all events."""
     __module__ = 'pyobs.events'
+    local = False
 
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())

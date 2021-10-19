@@ -1,7 +1,11 @@
 from typing import Optional
+from typing_extensions import TypedDict
 
 from .event import Event
 from pyobs.utils.enums import ExposureStatus
+
+
+DataType = TypedDict('DataType', {'last': Optional[str], 'current': Optional[str]})
 
 
 class ExposureStatusChangedEvent(Event):
@@ -10,8 +14,8 @@ class ExposureStatusChangedEvent(Event):
 
     def __init__(self, last: Optional[ExposureStatus] = None, current: Optional[ExposureStatus] = None):
         Event.__init__(self)
-        if last is not None and current is not None:
-            self.data = {'last': last.value, 'current': current.value}
+        self.data: DataType = {'last': last.value if last is not None else None,
+                               'current': current.value if current is not None else None}
 
     @property
     def last(self) -> Optional[ExposureStatus]:

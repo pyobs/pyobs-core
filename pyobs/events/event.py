@@ -11,7 +11,7 @@ class Event:
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
         self.timestamp = time.time()
-        self.data = Event.Data()
+        self.data: Any = {}
 
     def to_json(self) -> Dict[str, Any]:
         """JSON representation of event."""
@@ -19,7 +19,7 @@ class Event:
             'type': self.__class__.__name__,
             'timestamp': self.timestamp,
             'uuid': self.uuid,
-            'data': self.data.asdict()
+            'data': self.data
         }
 
     def __str__(self) -> str:

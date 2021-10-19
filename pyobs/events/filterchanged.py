@@ -1,6 +1,10 @@
 from typing import Optional
+from typing_extensions import TypedDict
 
 from .event import Event
+
+
+DataType = TypedDict('DataType', {'filter': Optional[str]})
 
 
 class FilterChangedEvent(Event):
@@ -9,7 +13,7 @@ class FilterChangedEvent(Event):
 
     def __init__(self, current: Optional[str] = None):
         Event.__init__(self)
-        self.data = {'filter': current}
+        self.data: DataType = {'filter': current}
 
     @property
     def filter(self) -> Optional[str]:

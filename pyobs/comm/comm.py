@@ -18,7 +18,7 @@ class Comm:
     """Base class for all Comm modules in pyobs."""
     __module__ = 'pyobs.comm'
 
-    def __init__(self, cache_proxies: bool = True, *args, **kwargs):
+    def __init__(self, cache_proxies: bool = True):
         """Creates a comm module."""
 
         self._proxies: Dict[str, Proxy] = {}

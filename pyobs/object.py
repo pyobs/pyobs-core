@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any
 import logging
 import pytz
 from astroplan import Observer
@@ -25,8 +25,8 @@ log = logging.getLogger(__name__)
 ObjectClass = TypeVar('ObjectClass')
 
 
-def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None, allow_none: bool = False,
-               **kwargs) -> ObjectClass:
+def get_object(config_or_object: Union[Dict[str, Any], object], object_class: Optional[Type[ObjectClass]] = None,
+               allow_none: bool = False, **kwargs) -> Optional[ObjectClass]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -67,7 +67,7 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     return obj
 
 
-def get_class_from_string(class_name):
+def get_class_from_string(class_name: str):
     parts = class_name.split('.')
     module_name = ".".join(parts[:-1])
     cls = __import__(module_name)
@@ -76,7 +76,7 @@ def get_class_from_string(class_name):
     return cls
 
 
-def create_object(config: dict, *args, **kwargs):
+def create_object(config: Dict[str, Any], *args, **kwargs):
     # get class name
     class_name = config['class']
 

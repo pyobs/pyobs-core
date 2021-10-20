@@ -21,11 +21,9 @@ from .taskstarted import TaskStartedEvent
 from .taskfinished import TaskFinishedEvent
 from .telescopemoving import TelescopeMovingEvent
 from .testevent import TestEvent
-from .variablechanged import VariableChangedEvent
-from .variablesupdate import VariablesUpdateEvent
 
 
 __all__ = ['Event', 'BadWeatherEvent', 'ExposureStatusChangedEvent', 'FilterChangedEvent', 'FocusFoundEvent',
            'GoodWeatherEvent', 'InitializedEvent', 'LogEvent', 'ModuleClosedEvent', 'ModuleOpenedEvent',
            'MotionStatusChangedEvent', 'NewImageEvent', 'RoofClosingEvent', 'RoofOpenedEvent', 'TaskStartedEvent',
-           'TaskFinishedEvent', 'TelescopeMovingEvent', 'TestEvent', 'VariableChangedEvent', 'VariablesUpdateEvent']
+           'TaskFinishedEvent', 'TelescopeMovingEvent', 'TestEvent']

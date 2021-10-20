@@ -7,7 +7,6 @@ import threading
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
-from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -26,9 +25,6 @@ class Comm:
         self._module: Optional[Module] = None
         self._log_queue: queue.Queue[LogEvent] = queue.Queue()
         self._cache_proxies = cache_proxies
-
-        # cache for shared variables
-        self.variables = SharedVariableCache(comm=self)
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
@@ -62,9 +58,6 @@ class Comm:
         # start logging thread
         self._logging_thread.start()
 
-        # open variables cache
-        self.variables.open()
-
         # some events
         self.register_event(ModuleClosedEvent, self._client_disconnected)
 
@@ -74,9 +67,6 @@ class Comm:
         # close thread
         self._closing.set()
         self._logging_thread.join()
-
-        # close variables cache
-        self.variables.close()
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.

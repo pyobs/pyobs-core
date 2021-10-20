@@ -172,7 +172,7 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def _client_disconnected(self, event: ModuleClosedEvent, sender: str, *args, **kwargs):
+    def _client_disconnected(self, event: ModuleClosedEvent, sender: str) -> bool:
         """Called when a client disconnects.
 
         Args:
@@ -184,6 +184,7 @@ class Comm:
         # if a client disconnects, we remove its proxy
         if sender in self._proxies:
             del self._proxies[sender]
+        return True
 
     @property
     def name(self) -> str:

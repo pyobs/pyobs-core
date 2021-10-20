@@ -103,8 +103,7 @@ class Proxy:
         cast_bound_arguments_to_simple(ba)
 
         # do request and return future
-        future = self._comm.execute(self._client, method, *ba.args[1:])
-        future.set_signature(signature)
+        future = self._comm.execute(self._client, method, signature, *ba.args[1:])
         return future
 
     def _create_methods(self):

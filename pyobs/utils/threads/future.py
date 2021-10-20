@@ -1,22 +1,32 @@
+import inspect
 import threading
+from typing import TypeVar, Generic, Optional, List, Any
 
 from pyobs.comm import TimeoutException
 from pyobs.utils.types import cast_response_to_real
 
 
-class Future(object):
+T = TypeVar('T')
+
+
+class BaseFuture:
+    def wait(self) -> Any:
+        ...
+
+
+class Future(BaseFuture, Generic[T]):
     """
     Represents the result of an asynchronous computation.
     """
 
-    def __init__(self, value=None, empty=False):
+    def __init__(self, value: Optional[T] = None, empty: bool = False, signature: Optional[inspect.Signature] = None):
         """
         Initializes a new Future.
         """
         self._value = value
-        self._exception = None
-        self._timeout = None
-        self._signature = None
+        self._exception: Optional[Exception] = None
+        self._timeout: Optional[float] = None
+        self._signature: Optional[inspect.Signature] = signature
         self._event = threading.Event()
 
         # already set?
@@ -24,7 +34,7 @@ class Future(object):
             # fire event
             self._event.set()
 
-    def set_value(self, value):
+    def set_value(self, value: T) -> None:
         """
         Sets the value of this Future. Once the value is set, a caller
         blocked on get_value will be able to continue.
@@ -32,11 +42,7 @@ class Future(object):
         self._value = value
         self._event.set()
 
-    def set_signature(self, sig):
-        """Set the method signature."""
-        self._signature = sig
-
-    def wait(self):
+    def wait(self) -> Optional[T]:
         """
         Gets the value of this Future. This call will block until
         the result is available, or until the timeout expires.
@@ -68,13 +74,13 @@ class Future(object):
         else:
             return self._value
 
-    def is_done(self):
+    def is_done(self) -> bool:
         """
         Returns true if a value has been returned.
         """
         return self._event.is_set()
 
-    def cancel_with_error(self, exception):
+    def cancel_with_error(self, exception: Exception) -> None:
         """
         Cancels the Future because of an error. Once cancelled, a
         caller blocked on get_value will be able to continue.
@@ -82,18 +88,18 @@ class Future(object):
         self._exception = exception
         self._event.set()
 
-    def set_timeout(self, timeout):
+    def set_timeout(self, timeout: float) -> None:
         """
         Sets a new timeout for the method call.
         """
         self._timeout = timeout
 
-    def get_timeout(self):
+    def get_timeout(self) -> Optional[float]:
         """
         Returns async timeout.
         """
         return self._timeout
 
     @staticmethod
-    def wait_all(futures: list):
+    def wait_all(futures: List[BaseFuture]) -> List[Any]:
         return [fut.wait() for fut in futures if fut is not None]

@@ -1,3 +1,4 @@
+import inspect
 import logging
 from threading import RLock
 from typing import Dict, Optional
@@ -55,12 +56,13 @@ class RPC(object):
         # update methods
         self._methods = dict(handler.methods) if handler else {}
 
-    def call(self, target_jid, method, *args) -> Future:
+    def call(self, target_jid, method, signature: inspect.Signature, *args) -> Future:
         """Call a method on a remote host.
 
         Args:
             target_jid: Target JID to call method on.
             method: Name of method to call.
+            signature: Method signature.
             *args: Parameters for method.
 
         Returns:
@@ -72,7 +74,7 @@ class RPC(object):
 
         # create a future for this
         pid = iq['id']
-        future = Future()
+        future = Future[signature.return_annotation](signature=signature)
         self._futures[pid] = future
 
         # send request

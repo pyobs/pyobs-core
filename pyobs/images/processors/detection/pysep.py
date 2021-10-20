@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 from astropy.table import Table
 import logging
 import numpy as np
@@ -7,6 +7,8 @@ import pandas as pd
 
 from .sourcedetection import SourceDetection
 from pyobs.images import Image
+if TYPE_CHECKING:
+    from sep import Background
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,11 @@ class SepSourceDetection(SourceDetection):
             Image with attached catalog.
         """
         import sep
+
+        # got data?
+        if image.data is None:
+            log.warning('No data found in image.')
+            return image
 
         # remove background
         data, bkg = SepSourceDetection.remove_background(image.data, image.mask)
@@ -124,7 +131,7 @@ class SepSourceDetection(SourceDetection):
         return img
 
     @staticmethod
-    def remove_background(data: np.ndarray, mask: np.ndarray = None) -> Tuple[np.ndarray, 'sep.Background']:
+    def remove_background(data: np.ndarray, mask: np.ndarray = None) -> Tuple[np.ndarray, 'Background']:
         """Remove background from image in data.
 
         Args:

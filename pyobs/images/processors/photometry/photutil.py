@@ -50,9 +50,13 @@ class PhotUtilsPhotometry(Photometry):
 
         # no pixel scale given?
         if image.pixel_scale is None:
-            raise ValueError('No pixel scale provided by image.')
+            log.warning('No pixel scale provided by image.')
+            return image
 
         # fetch catalog
+        if image.catalog is None:
+            log.warning('No catalog in image.')
+            return image
         sources = image.catalog.copy()
 
         # get positions
@@ -82,12 +86,12 @@ class PhotUtilsPhotometry(Photometry):
             phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
 
             # calc flux
-            bkg_median = np.array(bkg_median)
-            aper_bkg = bkg_median * aperture.area
+            bkg_median_np = np.array(bkg_median)
+            aper_bkg = bkg_median_np * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
             if 'aperture_sum_err' in phot.columns:
                 sources['fluxerr%d' % diameter] = phot['aperture_sum_err']
-            sources['bkgaper%d' % diameter] = bkg_median
+            sources['bkgaper%d' % diameter] = bkg_median_np
 
         # copy image, set catalog and return it
         img = image.copy()

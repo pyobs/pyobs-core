@@ -1,5 +1,5 @@
 import logging
-from typing import Union, List
+from typing import Union, List, Dict, Any, Optional
 from pyobs.images import ImageProcessor, Image
 
 from pyobs.object import get_object, Object
@@ -11,17 +11,17 @@ class PipelineMixin:
     """Mixin for a module that needs to implement an image pipeline."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, pipeline: List[Union[dict, ImageProcessor]]):
+    def __init__(self, steps: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None):
         """Initializes the mixin.
 
         Args:
-            pipeline: Pipeline steps to run on images.
+            steps: Pipeline steps to run on images.
         """
 
         # store
         if isinstance(self, Object):
-            pipeline = [] if pipeline is None else pipeline
-            self.__pipeline_steps = [self.add_child_object(step, ImageProcessor) for step in pipeline]
+            steps = [] if steps is None else steps
+            self.__pipeline_steps = [self.add_child_object(step, ImageProcessor) for step in steps]
 
         else:
             raise ValueError('This class is no Object.')

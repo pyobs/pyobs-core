@@ -1,8 +1,5 @@
 from typing import Tuple
-
-from astropy.table import Table
 import logging
-import numpy as np
 
 from .sourcedetection import SourceDetection
 from pyobs.images import Image

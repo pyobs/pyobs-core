@@ -46,6 +46,9 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
         # do photometry and get copy of catalog
         catalog = source_detection(image).catalog
+        if catalog is None:
+            log.info('No catalog found in image.')
+            return image
 
         # sort catalog by peak flux
         catalog.sort('peak')

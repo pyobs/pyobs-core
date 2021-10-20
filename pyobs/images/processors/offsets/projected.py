@@ -63,7 +63,7 @@ class ProjectedOffsets(Offsets):
         image.meta['offsets'] = (dx, dy)
         return image
 
-    def _process(self, image: Image) -> Tuple[np.array, np.array]:
+    def _process(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:
         """Project image along x and y axes and return results.
 
         Args:

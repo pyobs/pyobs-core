@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any, Optional
 
 from .IReady import IReady
 from ..utils.enums import MotionStatus
@@ -8,7 +9,7 @@ class IMotion(IReady):
     """The module controls a device that can move."""
     __module__ = 'pyobs.interfaces'
 
-    def init(self, *args, **kwargs):
+    def init(self, **kwargs: Any) -> None:
         """Initialize device.
 
         Raises:
@@ -16,7 +17,7 @@ class IMotion(IReady):
         """
         raise NotImplementedError
 
-    def park(self, *args, **kwargs):
+    def park(self, **kwargs: Any) -> None:
         """Park device.
 
         Raises:
@@ -24,7 +25,7 @@ class IMotion(IReady):
         """
         raise NotImplementedError
 
-    def get_motion_status(self, device: str = None, *args, **kwargs) -> MotionStatus:
+    def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
         Args:
@@ -35,7 +36,7 @@ class IMotion(IReady):
         """
         raise NotImplementedError
 
-    def stop_motion(self, device: str = None, *args, **kwargs):
+    def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:

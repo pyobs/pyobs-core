@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 
 from .IMotion import IMotion
 
@@ -7,7 +7,7 @@ class IFilters(IMotion):
     """The module can change filters in a device."""
     __module__ = 'pyobs.interfaces'
 
-    def list_filters(self, *args, **kwargs) -> List[str]:
+    def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
@@ -15,7 +15,7 @@ class IFilters(IMotion):
         """
         raise NotImplementedError
 
-    def set_filter(self, filter_name: str, *args, **kwargs):
+    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -26,7 +26,7 @@ class IFilters(IMotion):
         """
         raise NotImplementedError
 
-    def get_filter(self, *args, **kwargs) -> str:
+    def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:

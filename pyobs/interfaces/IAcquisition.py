@@ -1,3 +1,5 @@
+from typing import Any
+
 from .IRunning import IRunning
 
 
@@ -5,7 +7,7 @@ class IAcquisition(IRunning):
     """The module can acquire a target, usually by accessing a telescope and a camera."""
     __module__ = 'pyobs.interfaces'
 
-    def acquire_target(self, *args, **kwargs) -> dict:
+    def acquire_target(self, **kwargs: Any) -> dict:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require

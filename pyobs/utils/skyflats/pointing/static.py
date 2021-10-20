@@ -38,7 +38,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         """
 
         if self._initialized:
-            return Future(empty=True)
+            return Future[None](empty=True)
         self._initialized = True
 
         # calculate Alt/Az position of sun

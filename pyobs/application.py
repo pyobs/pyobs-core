@@ -46,6 +46,7 @@ class Application:
 
         # create file logging handler, if log file is given
         if log_file is not None:
+            file_handler: logging.FileHandler
             if log_rotate:
                 # create automatically rotated log
                 file_handler = TimedRotatingFileHandler(log_file, when='W0')

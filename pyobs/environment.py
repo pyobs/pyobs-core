@@ -1,7 +1,7 @@
 import datetime
 import functools
 import logging
-from typing import Union
+from typing import Union, Optional
 import pytz
 from astropy.coordinates import EarthLocation, Longitude, SkyCoord, ICRS, get_sun, AltAz
 from pyobs.utils.time import Time
@@ -30,7 +30,7 @@ class Environment:
         log.info('Using timezone %s.', timezone)
 
         # get location
-        self._location = None
+        self._location: Optional[EarthLocation] = None
         if location is not None:
             if isinstance(location, EarthLocation):
                 # store directly
@@ -56,7 +56,7 @@ class Environment:
         return self._timezone
 
     @property
-    def location(self):
+    def location(self) -> Optional[EarthLocation]:
         """Returns the location of the observatory."""
         return self._location
 
@@ -92,12 +92,17 @@ class Environment:
         # None given?
         if time is None:
             time = Time.now()
+
         # convert to Time
         if isinstance(time, Time):
             time = time.datetime
+
         # get local datetime
+        if not isinstance(time, datetime.datetime):
+            raise ValueError('Invalid time')
         utc_dt = pytz.utc.localize(time)
         loc_dt = utc_dt.astimezone(self._timezone)
+
         # get night
         if loc_dt.hour < 15:
             loc_dt += datetime.timedelta(days=-1)
@@ -113,6 +118,10 @@ class Environment:
         Returns:
             Local sidereal time.
         """
+
+        # no location
+        if not isinstance(self._location, EarthLocation):
+            raise ValueError('No location given.')
 
         # convert to Time
         if not isinstance(time, Time):
@@ -130,6 +139,8 @@ class Environment:
         Returns:
             SkyCoord with current zenith position.
         """
+        if not isinstance(self._location, EarthLocation):
+            raise ValueError('No location given.')
         return SkyCoord(lst, self._location.lat, frame=ICRS)
 
     def now(self) -> Time:

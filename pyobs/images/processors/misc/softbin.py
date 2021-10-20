@@ -1,5 +1,10 @@
+import logging
+
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+
+
+log = logging.getLogger(__name__)
 
 
 class SoftBin(ImageProcessor):
@@ -29,6 +34,9 @@ class SoftBin(ImageProcessor):
 
         # copy image
         img = image.copy()
+        if img.data is None:
+            log.warning('No data found in image.')
+            return image
 
         # calculate new shape, in which all binned pixels are in a higher dimension
         shape = (img.data.shape[0] // self.binning, self.binning,
@@ -36,6 +44,9 @@ class SoftBin(ImageProcessor):
 
         # reshape and average
         img.data = img.data.reshape(shape).mean(-1).mean(1)
+        if img.data is None:
+            log.warning('No data found in image after reshaping.')
+            return image
 
         # set NAXIS1/2
         img.header['NAXIS2'], img.header['NAXIS1'] = img.data.shape

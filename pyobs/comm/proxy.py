@@ -1,8 +1,11 @@
 from __future__ import annotations
 import inspect
 import types
+from typing import TYPE_CHECKING
 
 from pyobs.utils.types import cast_bound_arguments_to_simple
+if TYPE_CHECKING:
+    from pyobs.comm import Comm
 
 
 class Proxy:
@@ -17,7 +20,6 @@ class Proxy:
             client: Name of client to connect to.
             interfaces: List of interfaces supported by client.
         """
-        from .comm import Comm
 
         # set client and interfaces
         self._comm: Comm = comm
@@ -35,7 +37,7 @@ class Proxy:
 
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})
+        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})  # type: ignore
 
         # create methods
         self._methods = self._create_methods()

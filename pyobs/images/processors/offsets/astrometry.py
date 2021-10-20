@@ -1,13 +1,7 @@
 import logging
-from typing import Tuple, List
-import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
-from scipy import signal, optimize
-from astropy.nddata import NDData
-from astropy.table import Table, Column
-import photutils
 
 from pyobs.images import Image
 from . import Offsets

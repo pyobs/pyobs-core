@@ -77,7 +77,7 @@ class XmppComm(Comm):
     __module__ = 'pyobs.comm.xmpp'
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
-                 resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,
+                 resource: str = 'pyobs', password: str = '', server: Optional[str] = None,
                  use_tls: bool = False, *args, **kwargs):
         """Create a new XMPP Comm module.
 
@@ -148,7 +148,7 @@ class XmppComm(Comm):
         # update RPC
         self._rpc.set_handler(module)
 
-    def open(self) -> bool:
+    def open(self) -> None:
         """Open the connection to the XMPP server.
 
         Returns:
@@ -176,9 +176,6 @@ class XmppComm(Comm):
             # subscribe to events
             self.register_event(LogEvent)
 
-            # success
-            return True
-
         else:
             # TODO: catch exceptions in open() methods
             raise ValueError('Could not connect to XMPP server.')
@@ -193,7 +190,7 @@ class XmppComm(Comm):
         self._xmpp.disconnect()
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         """Name of this client."""
         return self._user
 

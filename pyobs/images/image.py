@@ -60,11 +60,7 @@ class Image:
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # load image
-            image = cls._from_hdu_list(data)
-
-            # close file
-            data.close()
-            return image
+            return cls._from_hdu_list(data)
 
     @classmethod
     def from_file(cls, filename: str) -> Image:
@@ -241,7 +237,7 @@ class Image:
         else:
             return None
 
-    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytes:
+    def to_jpeg(self, vmin: Optional[float] = None, vmax: Optional[float] = None) -> bytes:
         """Returns a JPEG image created from this image.
 
         Returns:
@@ -253,12 +249,16 @@ class Image:
 
         # copy data
         data = np.copy(self.data)
+        if data is None:
+            raise ValueError('No data in image.')
 
         # no vmin/vmax?
         if vmin is None or vmax is None:
             flattened = sorted(data.flatten())
             vmin = flattened[int(0.05 * len(flattened))]
             vmax = flattened[int(0.95 * len(flattened))]
+            if vmin is None or vmax is None:
+                raise ValueError('Could not determine vmin/vmax.')
 
         # Clip data to brightness limits
         data[data > vmax] = vmax

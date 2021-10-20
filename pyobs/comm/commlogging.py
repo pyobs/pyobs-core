@@ -1,7 +1,10 @@
 import logging
 import os
+from typing import TYPE_CHECKING
 
 from pyobs.events import LogEvent
+if TYPE_CHECKING:
+    from pyobs.comm import Comm
 
 
 class CommLoggingHandler(logging.Handler):

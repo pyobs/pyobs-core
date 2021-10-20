@@ -84,7 +84,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    def __getitem__(self, client: str) -> Proxy:
+    def __getitem__(self, client: str) -> Optional[Union['Module', Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -162,7 +162,7 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def _client_disconnected(self, event: ModuleClosedEvent, sender: str) -> bool:
+    def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.
 
         Args:
@@ -177,7 +177,7 @@ class Comm:
         return True
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         """Name of this client."""
         raise NotImplementedError
 

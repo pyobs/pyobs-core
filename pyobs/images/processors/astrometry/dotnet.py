@@ -39,11 +39,14 @@ class AstrometryDotNet(Astrometry):
             image: Image to analyse.
         """
 
-        # get catalog
-        cat = image.catalog[['x', 'y', 'flux']].to_pandas().dropna()
-
         # copy image
         img = image.copy()
+
+        # get catalog
+        if img.catalog is None:
+            log.warning('No catalog found in image.')
+            return image
+        cat = img.catalog[['x', 'y', 'flux']].to_pandas().dropna()
 
         # nothing?
         if cat is None or len(cat) < 3:

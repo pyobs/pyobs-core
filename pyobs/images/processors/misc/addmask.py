@@ -23,14 +23,14 @@ class AddMask(ImageProcessor):
         ImageProcessor.__init__(self, *args, **kwargs)
 
         # masks
-        self._masks = {}
+        self._masks: Dict[str, Dict[str, np.ndarray]] = {}
         for instrument, group in masks.items():
             self._masks[instrument] = {}
             for binning, mask in group.items():
                 if isinstance(mask, np.ndarray):
-                    self._masks[binning] = mask
+                    self._masks[instrument][binning] = mask
                 elif isinstance(mask, str):
-                    self._masks[binning] = fits.getdata(mask)
+                    self._masks[instrument][binning] = fits.getdata(mask)
                 else:
                     raise ValueError('Unknown mask format.')
 
@@ -48,9 +48,10 @@ class AddMask(ImageProcessor):
         img = image.copy()
 
         # add mask
+        instrument = image.header['INSTRUME']
         binning = '%dx%s' % (image.header['XBINNING'], image.header['YBINNING'])
         if binning in self._masks:
-            img.mask = self._masks[binning].copy()
+            img.mask = self._masks[instrument][binning].copy()
         else:
             log.warning('No mask found for binning of frame.')
 

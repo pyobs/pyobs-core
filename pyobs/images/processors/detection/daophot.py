@@ -48,7 +48,10 @@ class DaophotSourceDetection(SourceDetection):
         from photutils import Background2D, MedianBackground, DAOStarFinder
 
         # get data
-        data = image.data.astype(np.float).copy()
+        if image.data is None:
+            log.warning('No data found in image.')
+            return image
+        data = image.data.astype(float).copy()
 
         # estimate background
         sigma_clip = SigmaClip(sigma=self.bkg_sigma)

@@ -8,7 +8,7 @@ import photutils
 
 from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
-from . import Offsets
+from .offsets import Offsets
 
 log = logging.getLogger(__name__)
 
@@ -44,13 +44,12 @@ class NStarOffsets(Offsets, PipelineMixin):
         self.max_offset = max_offset
         self.min_pixels = min_pixels
         self.min_sources = min_sources
-        self.star_box_size = None
-        self.ref_boxes = None
+        self.ref_boxes: List[Any] = []
 
     def reset(self):
         """Resets guiding."""
         log.info("Reset auto-guiding.")
-        self.ref_boxes = None
+        self.ref_boxes = []
 
     def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -68,13 +67,13 @@ class NStarOffsets(Offsets, PipelineMixin):
         # no reference image?
         if self.ref_boxes is None:
             log.info("Initialising nstar auto-guiding with new image...")
-            self.star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
-            log.info(f"Choosing box size of {self.star_box_size} pixels.")
+            star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
+            log.info(f"Choosing box size of {star_box_size} pixels.")
 
             # initialize reference image information
             try:
                 # get boxes
-                self.ref_boxes = self._boxes_from_ref(image)
+                self.ref_boxes = self._boxes_from_ref(image, star_box_size)
 
                 # reset and finish
                 image.meta['offsets'] = (0, 0)
@@ -101,7 +100,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
-    def _boxes_from_ref(self, image: Image) -> List:
+    def _boxes_from_ref(self, image: Image, star_box_size: int) -> List:
         """Calculate the boxes around self.N_stars best sources in the image.
 
         Args:
@@ -119,12 +118,18 @@ class NStarOffsets(Offsets, PipelineMixin):
         # run pipeline on 1st image
         img = self.run_pipeline(image)
 
+        # check data and catalog
+        if img.data is None:
+            raise ValueError('No data found in image.')
+        if img.catalog is None:
+            raise ValueError('No catalog found in image.')
+
         # do photometry and get catalog
         sources = self._fits2numpy(img.catalog)
 
         # filter sources
         sources = self.remove_sources_close_to_border(
-            sources, img.data.shape, self.star_box_size // 2 + 1
+            sources, img.data.shape, star_box_size // 2 + 1
         )
         sources = self.remove_bad_sources(sources)
         self._check_sources_count(sources)
@@ -132,7 +137,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # extract boxes
         return photutils.psf.extract_stars(NDData(img.data.astype(float)), selected_sources,
-                                           size=self.star_box_size).all_stars
+                                           size=star_box_size).all_stars
 
     @staticmethod
     def _fits2numpy(sources: Table) -> Table:
@@ -254,7 +259,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         if len(sources) < n_required_sources:
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
 
-    def _calculate_offsets(self, image: Image) -> Tuple[float, float]:
+    def _calculate_offsets(self, image: Image) -> Tuple[Optional[float], Optional[float]]:
         """Calculate offsets of given image to ref image for every star.
         
         Args:
@@ -263,6 +268,10 @@ class NStarOffsets(Offsets, PipelineMixin):
         Returns:
             Offset tuple.
         """
+
+        # data?
+        if image.data is None:
+            return None, None
 
         # calculate offset for each star
         offsets = []
@@ -287,8 +296,8 @@ class NStarOffsets(Offsets, PipelineMixin):
         if len(offsets) == 0:
             log.info(f"All {self.num_stars} fits on boxed star correlations failed.")
             return None, None
-        offsets = np.array(offsets)
-        return np.mean(offsets[:, 0]), np.mean(offsets[:, 1])
+        offsets_np = np.array(offsets)
+        return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
 
     @staticmethod
     def _gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):
@@ -345,7 +354,8 @@ class NStarOffsets(Offsets, PipelineMixin):
         except Exception as e:
             # if fit fails return max pixel
             log.info("Returning pixel position with maximal value in correlation.")
-            return tuple(np.unravel_index(np.argmax(corr), corr.shape))
+            idx = np.unravel_index(np.argmax(corr), corr.shape)
+            return float(idx[0]), float(idx[1])
 
         # check quality of fit
         median_squared_relative_residue_threshold = 1e-1

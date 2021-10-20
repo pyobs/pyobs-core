@@ -1,6 +1,5 @@
-import io
 import os
-from urllib.parse import urljoin
+from typing import Optional
 import logging
 import requests
 
@@ -14,7 +13,7 @@ class ArchiveFile(HttpFile):
     """Wraps a file in an archive. To be used in combination with pyobs-archive."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'w', url: str = None, token: str = None, *args, **kwargs):
+    def __init__(self, name: str, url: str, mode: str = 'w', token: Optional[str] = None):
         """Creates a new archive file.
 
         Args:
@@ -33,9 +32,7 @@ class ArchiveFile(HttpFile):
 
         # store
         self._url = url + ('/' if not url.endswith('/') else '')
-        self._headers = {
-            'Authorization': 'Token ' + token
-        }
+        self._headers = {'Authorization': 'Token ' + token} if token is not None else {}
 
     def _upload(self):
         """If in write mode, actually send the file to the archive."""

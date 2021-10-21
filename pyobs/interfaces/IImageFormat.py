@@ -1,7 +1,7 @@
 from typing import List, Any
 
 from .interface import Interface
-from ..utils.enums import ImageFormat
+from pyobs.utils.enums import ImageFormat
 
 
 class IImageFormat(Interface):

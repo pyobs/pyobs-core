@@ -1,7 +1,7 @@
 from typing import Tuple, Any
 
 from .interface import Interface
-from ..utils.enums import WeatherSensors
+from pyobs.utils.enums import WeatherSensors
 
 
 class IWeather(Interface):

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from .IReady import IReady
-from ..utils.enums import MotionStatus
+from pyobs.utils.enums import MotionStatus
 
 
 class IMotion(IReady):

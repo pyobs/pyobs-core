@@ -1,7 +1,7 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable
+from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload
 import threading
 
 import pyobs.interfaces
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
+
+
+ProxyType = TypeVar('ProxyType')
 
 
 class Comm:
@@ -117,7 +120,16 @@ class Comm:
         # return proxy
         return self._proxies[client]
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None, allow_none: bool = False):
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> Optional[ProxyType]:
+        ...
+
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Optional[Any]:
+        ...
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None,
+              allow_none: bool = False) -> Optional[Union[Any, ProxyType]]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

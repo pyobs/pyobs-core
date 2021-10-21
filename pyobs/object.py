@@ -17,13 +17,14 @@ from astroplan import Observer
 from astropy.coordinates import EarthLocation
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
-
+from pyobs.interfaces.proxies import InterfaceProxy
 
 log = logging.getLogger(__name__)
 
 
 """Class of an Object."""
 ObjectClass = TypeVar('ObjectClass')
+ProxyType = TypeVar('ProxyType')
 
 
 @overload
@@ -378,7 +379,16 @@ class Object:
         # return it
         return obj
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+        ...
+
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+        ...
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

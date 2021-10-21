@@ -141,8 +141,8 @@ class Proxy:
             Wrapper.
         """
 
-        def inner(self, *args, **kwargs):
-            return self.execute(method, *args, **kwargs)
+        def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
+            return this.execute(method, *args, **kwargs)
 
         return inner
 

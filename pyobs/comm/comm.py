@@ -1,13 +1,14 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload
+from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
 import threading
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .commlogging import CommLoggingHandler
+from ..interfaces import Interface
 from ..utils.threads.future import BaseFuture
 
 if TYPE_CHECKING:
@@ -196,7 +197,7 @@ class Comm:
         raise NotImplementedError
 
     @property
-    def clients(self) -> list:
+    def clients(self) -> List[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -215,7 +216,7 @@ class Comm:
         """
         return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
 
-    def get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -229,7 +230,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _supports_interface(self, client: str, interface: str) -> bool:
+    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -242,7 +243,7 @@ class Comm:
         raise NotImplementedError
 
     @staticmethod
-    def _interface_names_to_classes(interfaces: list) -> list:
+    def _interface_names_to_classes(interfaces: List[str]) -> List[Type[Interface]]:
         """Converts a list of interface names to interface classes.
 
         Args:
@@ -251,7 +252,6 @@ class Comm:
         Returns:
             List of interface classes.
         """
-        from pyobs.interfaces import Interface
 
         # get interface classes
         inspection = inspect.getmembers(pyobs.interfaces, predicate=inspect.isclass)

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class EventStanza(ElementBase):
+class EventStanza(ElementBase):  # type: ignore
     name = 'event'
     namespace = 'pyobs:event'
 

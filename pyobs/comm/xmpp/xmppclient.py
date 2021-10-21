@@ -2,7 +2,7 @@ import logging
 import threading
 import sleekxmpp
 import sleekxmpp.xmlstream
-from typing import List
+from typing import List, Any
 
 from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
 from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
@@ -11,7 +11,7 @@ from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
 log = logging.getLogger(__name__)
 
 
-class XmppClient(sleekxmpp.ClientXMPP):
+class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
     """XMPP client for pyobs."""
 
     def __init__(self, jid: str, password: str):
@@ -100,7 +100,7 @@ class XmppClient(sleekxmpp.ClientXMPP):
         # connected
         return True
 
-    def session_start(self, event):
+    def session_start(self, event: Any) -> None:
         """Session start event.
 
         Args:
@@ -115,7 +115,7 @@ class XmppClient(sleekxmpp.ClientXMPP):
         # send connected event
         self._connect_event.set()
 
-    def _auth(self, success: bool):
+    def _auth(self, success: bool) -> None:
         """Called after authentification.
 
         Args:

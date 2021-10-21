@@ -2,7 +2,7 @@ import inspect
 import threading
 from typing import TypeVar, Generic, Optional, List, Any
 
-from pyobs.comm import TimeoutException
+from pyobs.comm.exceptions import TimeoutException
 from pyobs.utils.types import cast_response_to_real
 
 

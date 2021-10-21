@@ -205,7 +205,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def clients_with_interface(self, interface) -> list:
+    def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:

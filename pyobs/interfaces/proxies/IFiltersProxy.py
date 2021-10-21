@@ -4,7 +4,7 @@ from pyobs.utils.threads import Future
 from pyobs.utils.enums import MotionStatus
 from .IMotionProxy import IMotionProxy
 from .IReadyProxy import IReadyProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IFiltersProxy(IMotionProxy, IReadyProxy, InterfaceProxy):

@@ -4,7 +4,7 @@ from pyobs.utils.threads import Future
 from pyobs.utils.enums import ExposureStatus
 from .IAbortableProxy import IAbortableProxy
 from .IImageGrabberProxy import IImageGrabberProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class ICameraProxy(IAbortableProxy, IImageGrabberProxy, InterfaceProxy):

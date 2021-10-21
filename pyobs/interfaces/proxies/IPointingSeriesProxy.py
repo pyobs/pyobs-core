@@ -1,7 +1,7 @@
 import typing
 
 from pyobs.utils.threads import Future
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IPointingSeriesProxy(InterfaceProxy):

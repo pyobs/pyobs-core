@@ -6,7 +6,7 @@ from .IMotionProxy import IMotionProxy
 from .IReadyProxy import IReadyProxy
 from .IPointingAltAzProxy import IPointingAltAzProxy
 from .IPointingRaDecProxy import IPointingRaDecProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class ITelescopeProxy(IMotionProxy, IReadyProxy, IPointingAltAzProxy, IPointingRaDecProxy, InterfaceProxy):

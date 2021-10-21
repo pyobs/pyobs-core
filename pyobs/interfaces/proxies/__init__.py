@@ -40,4 +40,4 @@ from .ITemperaturesProxy import ITemperaturesProxy
 from .IVideoProxy import IVideoProxy
 from .IWeatherProxy import IWeatherProxy
 from .IWindowProxy import IWindowProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy

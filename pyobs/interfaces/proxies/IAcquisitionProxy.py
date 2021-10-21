@@ -2,7 +2,7 @@ import typing
 
 from pyobs.utils.threads import Future
 from .IRunningProxy import IRunningProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IAcquisitionProxy(IRunningProxy, InterfaceProxy):

@@ -51,7 +51,10 @@ def main():
         # get all interfaces and loop them
         for interface_name, interface in inspect.getmembers(pyobs.interfaces, inspect.isclass):
             print(f'Working on {interface.__name__}...')
-            init.write(f'from .{interface.__name__}Proxy import {interface.__name__}Proxy\n')
+            if interface.__name__ == 'Interface':
+                init.write(f'from .interfaceproxy import InterfaceProxy\n')
+            else:
+                init.write(f'from .{interface.__name__}Proxy import {interface.__name__}Proxy\n')
 
             # get parent classes
             parents = get_parents(interface)
@@ -59,6 +62,8 @@ def main():
 
             # proxy name
             proxy_name = interface_name + 'Proxy'
+            if interface_name == 'Interface':
+                proxy_name = proxy_name.lower()
 
             # build filename
             filename = os.path.join(proxies_path, proxy_name + '.py')
@@ -80,7 +85,10 @@ def main():
 
                 # and parents
                 for p in parents:
-                    py.write(f'from .{p.__name__}Proxy import {p.__name__}Proxy\n')
+                    if p.__name__ == 'Interface':
+                        py.write(f'from .interfaceproxy import InterfaceProxy\n')
+                    else:
+                        py.write(f'from .{p.__name__}Proxy import {p.__name__}Proxy\n')
                 py.write('\n\n')
 
                 # class header
@@ -102,7 +110,6 @@ def main():
                         for param in params:
                             ann = annotation_to_str(sig.parameters[param].annotation)
                             tmp = f'{param}: {ann}'
-                            print(sig.parameters[param].default)
                             if '_empty' not in str(sig.parameters[param].default):
                                 tmp += f' = {sig.parameters[param].default}'
                             param_strings.append(tmp)

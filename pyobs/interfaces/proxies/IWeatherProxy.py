@@ -2,7 +2,7 @@ import typing
 
 from pyobs.utils.threads import Future
 from pyobs.utils.enums import WeatherSensors
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IWeatherProxy(InterfaceProxy):

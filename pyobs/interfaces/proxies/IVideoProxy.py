@@ -2,7 +2,7 @@ import typing
 
 from pyobs.utils.threads import Future
 from .IImageGrabberProxy import IImageGrabberProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IVideoProxy(IImageGrabberProxy, InterfaceProxy):

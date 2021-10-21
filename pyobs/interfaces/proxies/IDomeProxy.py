@@ -6,7 +6,7 @@ from .IRoofProxy import IRoofProxy
 from .IMotionProxy import IMotionProxy
 from .IReadyProxy import IReadyProxy
 from .IPointingAltAzProxy import IPointingAltAzProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IDomeProxy(IRoofProxy, IMotionProxy, IReadyProxy, IPointingAltAzProxy, InterfaceProxy):

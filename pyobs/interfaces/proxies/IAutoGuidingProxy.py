@@ -3,7 +3,7 @@ import typing
 from pyobs.utils.threads import Future
 from .IStartStopProxy import IStartStopProxy
 from .IRunningProxy import IRunningProxy
-from .InterfaceProxy import InterfaceProxy
+from .interfaceproxy import InterfaceProxy
 
 
 class IAutoGuidingProxy(IStartStopProxy, IRunningProxy, InterfaceProxy):

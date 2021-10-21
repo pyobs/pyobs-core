@@ -1,5 +1,5 @@
 import logging
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict, Tuple, Any
 import threading
 import numpy as np
 from scipy import optimize, ndimage
@@ -197,7 +197,7 @@ class AutoFocusProjection(Module, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, *args, **kwargs) -> dict:
+    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

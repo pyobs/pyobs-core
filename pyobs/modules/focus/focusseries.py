@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Tuple
+from typing import Union, Tuple, Dict, Any
 import threading
 import numpy as np
 
@@ -203,7 +203,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, *args, **kwargs) -> dict:
+    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

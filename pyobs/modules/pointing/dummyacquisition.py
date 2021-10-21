@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any, Dict
 
 from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
@@ -24,7 +25,7 @@ class DummyAcquisition(Module, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, *args, **kwargs) -> dict:
+    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require

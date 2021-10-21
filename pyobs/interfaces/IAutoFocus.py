@@ -1,4 +1,4 @@
-from typing import Tuple, Any
+from typing import Tuple, Any, Dict
 
 from .IAbortable import IAbortable
 
@@ -28,7 +28,7 @@ class IAutoFocus(IAbortable):
         """
         raise NotImplementedError
 
-    def auto_focus_status(self, **kwargs: Any) -> dict:
+    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

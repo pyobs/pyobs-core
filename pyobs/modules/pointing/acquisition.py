@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Dict, Any
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
@@ -66,7 +66,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, *args, **kwargs) -> dict:
+    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require

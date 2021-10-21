@@ -1,0 +1,17 @@
+import typing
+
+from pyobs.utils.threads import Future
+from pyobs.utils.enums import ImageFormat
+from .InterfaceProxy import InterfaceProxy
+
+
+class IImageFormatProxy(InterfaceProxy):
+    def get_image_format(self) -> Future[ImageFormat]:
+        ...
+
+    def list_image_formats(self) -> Future[typing.List[str]]:
+        ...
+
+    def set_image_format(self, format: ImageFormat) -> Future[None]:
+        ...
+

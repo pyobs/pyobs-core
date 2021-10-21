@@ -3,9 +3,10 @@ from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
 
+from pyobs.interfaces.proxies import IFocuserProxy, IFiltersProxy, IWeatherProxy, ITemperaturesProxy
 from pyobs.modules import Module
 from pyobs.modules import timeout
-from pyobs.interfaces import IFocuser, IWeather, ITemperatures, IFocusModel, IFilters
+from pyobs.interfaces import IFocusModel
 from pyobs.events import FocusFoundEvent, FilterChangedEvent
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
@@ -142,7 +143,7 @@ class FocusModel(Module, IFocusModel):
 
             # get focuser
             try:
-                focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+                focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
             except ValueError:
                 log.warning('Could not connect to focuser.')
                 self.closing.wait(60)
@@ -204,7 +205,7 @@ class FocusModel(Module, IFocusModel):
                 # need a filter name?
                 if filter_name is None:
                     # get proxy
-                    wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
+                    wheel: IFiltersProxy = self.proxy(self._filter_wheel, IFiltersProxy)
 
                     # get filter
                     filter_name = wheel.get_filter().wait()
@@ -248,7 +249,7 @@ class FocusModel(Module, IFocusModel):
 
             # get weather proxy
             try:
-                weather: IWeather = self.proxy(self._weather, IWeather)
+                weather: IWeatherProxy = self.proxy(self._weather, IWeatherProxy)
             except ValueError:
                 raise ValueError('Could not connect to weather module.')
 
@@ -269,7 +270,7 @@ class FocusModel(Module, IFocusModel):
                 log.info('Fetching temperatures from module %s...', cfg['module'])
 
                 # get proxy
-                proxy: ITemperatures = self.proxy(cfg['module'], ITemperatures)
+                proxy: ITemperaturesProxy = self.proxy(cfg['module'], ITemperaturesProxy)
 
                 # get temperatures
                 module_temps[cfg['module']] = proxy.get_temperatures().wait()
@@ -300,7 +301,7 @@ class FocusModel(Module, IFocusModel):
         """
 
         # get focuser
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
 
         # get focus
         focus = self._get_optimal_focus(filter_name=filter_name)

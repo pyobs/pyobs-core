@@ -4,8 +4,9 @@ import threading
 import numpy as np
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, IExposureTime, IImageType
+from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
+from pyobs.interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IFocuserProxy, ICameraProxy, IFiltersProxy
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
@@ -19,8 +20,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], series: FocusSeries,
-                 offset: bool = False, filters: Union[str, IFilters] = None, filter_name: str = None,
+    def __init__(self, focuser: Union[str, IFocuserProxy], camera: Union[str, ICameraProxy], series: FocusSeries,
+                 offset: bool = False, filters: Union[str, IFiltersProxy] = None, filter_name: str = None,
                  binning: int = None, *args, **kwargs):
         """Initialize a new auto focus system.
 
@@ -55,8 +56,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # check focuser and camera
         try:
-            self.proxy(self._focuser, IFocuser)
-            self.proxy(self._camera, ICamera)
+            self.proxy(self._focuser, IFocuserProxy)
+            self.proxy(self._camera, ICameraProxy)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
@@ -86,11 +87,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
 
         # do camera settings
         self._do_camera_settings(camera)
@@ -98,7 +99,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # get filter wheel and current filter
         filter_name = 'unknown'
         try:
-            filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+            filter_wheel: IFiltersProxy = self.proxy(self._filters, IFiltersProxy)
             filter_name = filter_wheel.get_filter().wait()
         except ValueError:
             log.warning('Filter module is not of type IFilters. Could not get filter.')
@@ -141,9 +142,9 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                if isinstance(camera, IExposureTime):
+                if isinstance(camera, IExposureTimeProxy):
                     camera.set_exposure_time(exposure_time)
-                if isinstance(camera, IImageType):
+                if isinstance(camera, IImageTypeProxy):
                     camera.set_image_type(ImageType.FOCUS)
                 filename = camera.expose().wait()
             except RemoteException:

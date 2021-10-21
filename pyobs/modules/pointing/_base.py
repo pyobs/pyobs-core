@@ -1,10 +1,10 @@
 from typing import Union, List
 import logging
 
+from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import get_object
 from pyobs.utils.offsets import ApplyOffsets
-from pyobs.interfaces import ITelescope, ICamera
 from pyobs.modules import Module
 from pyobs.images import ImageProcessor
 
@@ -15,7 +15,7 @@ class BasePointing(Module, PipelineMixin):
     """Base class for guiding and acquisition modules."""
     __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
+    def __init__(self, camera: Union[str, ICameraProxy], telescope: Union[str, ITelescopeProxy],
                  pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets], *args, **kwargs):
         """Initializes a new base pointing.
 
@@ -42,13 +42,13 @@ class BasePointing(Module, PipelineMixin):
 
         # check telescope
         try:
-            self.proxy(self._telescope, ITelescope)
+            self.proxy(self._telescope, ITelescopeProxy)
         except ValueError:
             log.warning('Given telescope does not exist or is not of correct type at the moment.')
 
         # check camera
         try:
-            self.proxy(self._camera, ICamera)
+            self.proxy(self._camera, ICameraProxy)
         except ValueError:
             log.warning('Given camera does not exist or is not of correct type at the moment.')
 

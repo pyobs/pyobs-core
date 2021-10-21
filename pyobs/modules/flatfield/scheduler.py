@@ -2,7 +2,8 @@ import logging
 import threading
 import typing
 
-from pyobs.interfaces import IRunnable, IFlatField
+from pyobs.interfaces import IRunnable
+from pyobs.interfaces.proxies import IFlatFieldProxy
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.object import get_object
@@ -18,7 +19,7 @@ class FlatFieldScheduler(Module, IRunnable):
     """Run the flat-field scheduler."""
     __module__ = 'pyobs.modules.flatfield'
 
-    def __init__(self, flatfield: typing.Union[str, IFlatField], functions: typing.Dict[str, str],
+    def __init__(self, flatfield: typing.Union[str, IFlatFieldProxy], functions: typing.Dict[str, str],
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
                  timespan: float = 7200, filter_change: float = 30, count: int = 20, *args, **kwargs):
         """Initialize a new flat field scheduler.
@@ -56,7 +57,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # check flat field
         try:
-            self.proxy(self._flatfield, IFlatField)
+            self.proxy(self._flatfield, IFlatFieldProxy)
         except ValueError:
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
@@ -68,7 +69,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # get flat fielder
         log.info('Getting proxy for flat fielder...')
-        flatfield: IFlatField = self.proxy(self._flatfield, IFlatField)
+        flatfield: IFlatFieldProxy = self.proxy(self._flatfield, IFlatFieldProxy)
 
         # do schedule
         log.info('Scheduling flats...')

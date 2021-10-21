@@ -7,9 +7,10 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from pyobs.interfaces.proxies import IAcquisitionProxy, ITelescopeProxy
 from pyobs.modules import Module
 from pyobs.comm import InvocationException
-from pyobs.interfaces import IAcquisition, IAutonomous, ITelescope
+from pyobs.interfaces import IAutonomous
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -86,8 +87,8 @@ class PointingSeries(Module, IAutonomous):
         grid = pd.DataFrame(grid).set_index(['alt', 'az'])
 
         # get acquisition and telescope units
-        acquisition: IAcquisition = self.proxy(self._acquisition, IAcquisition)
-        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+        acquisition: IAcquisitionProxy = self.proxy(self._acquisition, IAcquisitionProxy)
+        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
 
         # loop until finished
         while not self.closing.is_set():

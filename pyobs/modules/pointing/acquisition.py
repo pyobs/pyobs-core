@@ -1,11 +1,10 @@
 import logging
-from typing import Union, Tuple, List
+from typing import Tuple
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
-from pyobs.interfaces import ITelescope, ICamera, IAcquisition, IOffsetsRaDec, IOffsetsAltAz, IExposureTime, \
-    IImageType, IImageGrabber
+from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
@@ -13,6 +12,8 @@ from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from ._base import BasePointing
+from ...interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, ITelescopeProxy, IImageGrabberProxy, \
+    IOffsetsRaDecProxy, IOffsetsAltAzProxy, ICameraProxy
 
 log = logging.getLogger(__name__)
 
@@ -55,8 +56,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # check telescope and camera
         try:
-            self.proxy(self._telescope, ITelescope)
-            self.proxy(self._camera, ICamera)
+            self.proxy(self._telescope, ITelescopeProxy)
+            self.proxy(self._camera, ICameraProxy)
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
@@ -89,11 +90,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, IImageGrabber)
+        camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
 
         # do camera settings
         self._do_camera_settings(camera)
@@ -101,12 +102,12 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # try given number of attempts
         for a in range(self._attempts):
             # set exposure time and image type and take image
-            if isinstance(camera, IExposureTime):
+            if isinstance(camera, IExposureTimeProxy):
                 log.info('Exposing image for %.1f seconds...', exposure_time)
                 camera.set_exposure_time(exposure_time).wait()
             else:
                 log.info('Exposing image...')
-            if isinstance(camera, IImageType):
+            if isinstance(camera, IImageTypeProxy):
                 camera.set_image_type(ImageType.ACQUISITION)
             filename = camera.grab_image().wait()
 
@@ -144,9 +145,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 }
 
                 # Alt/Az or RA/Dec?
-                if isinstance(telescope, IOffsetsRaDec):
+                if isinstance(telescope, IOffsetsRaDecProxy):
                     log_entry['off_ra'], log_entry['off_dec'] = telescope.get_offsets_radec().wait()
-                elif isinstance(telescope, IOffsetsAltAz):
+                elif isinstance(telescope, IOffsetsAltAzProxy):
                     log_entry['off_alt'], log_entry['off_az'] = telescope.get_offsets_altaz().wait()
 
                 # write log
@@ -160,13 +161,6 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if dist > self._max_offset:
                 # move a maximum of 120"=2'
                 raise ValueError('Calculated offsets too large.')
-
-            # get telescope
-            try:
-                telescope: ITelescope = self.proxy(self._telescope, ITelescope)
-            except ValueError:
-                log.error('Given telescope does not exist or is not of correct type.')
-                continue
 
             # apply offsets
             if self._apply(image, telescope, self.location):

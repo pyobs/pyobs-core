@@ -6,7 +6,7 @@ import logging
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
-from pyobs.interfaces import ITelescope, IPointingRaDec, IPointingAltAz
+from pyobs.interfaces.proxies import ITelescopeProxy, IPointingRaDecProxy, IPointingAltAzProxy
 from pyobs.object import Object
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
@@ -26,7 +26,7 @@ class ApplyOffsets(Object):
         self._publisher = None if log_file is None else CsvPublisher(log_file)
         self._log_absolute = log_absolute
 
-    def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
+    def __call__(self, image: Image, telescope: ITelescopeProxy, location: EarthLocation) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -63,7 +63,7 @@ class ApplyOffsets(Object):
         target = w.pixel_to_world(cx + offsets.dx, cy + offsets.dy)
         return center, target
 
-    def _log_offset(self, telescope: ITelescope, x_header: str, x_cur: float, x_delta: float,
+    def _log_offset(self, telescope: ITelescopeProxy, x_header: str, x_cur: float, x_delta: float,
                     y_header: str, y_cur: float, y_delta: float):
         """Logs offset.
 
@@ -79,11 +79,11 @@ class ApplyOffsets(Object):
         log_entry = {'datetime': Time.now().isot}
 
         # RA/Dec?
-        if isinstance(telescope, IPointingRaDec):
+        if isinstance(telescope, IPointingRaDecProxy):
             log_entry['ra'], log_entry['dec'] = telescope.get_radec().wait()
 
         # Alt/Az?
-        if isinstance(telescope, IPointingAltAz):
+        if isinstance(telescope, IPointingAltAzProxy):
             log_entry['alt'], log_entry['az'] = telescope.get_altaz().wait()
 
         # add entry

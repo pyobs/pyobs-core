@@ -4,9 +4,10 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider
 from pyobs.images import Image
 from ._base import BasePointing
+from ...interfaces.proxies import ITelescopeProxy
 
 log = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
 
         # get telescope
         try:
-            telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+            telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
         except ValueError:
             log.error('Given telescope does not exist or is not of correct type.')
             return image

@@ -4,8 +4,8 @@ import time
 import numpy as np
 from typing import Union, Type
 
-from pyobs.interfaces import ICamera, IBinning, IWindow, IRoof, ITelescope, IFilters, IAutoGuiding, \
-    IAcquisition, IExposureTime, IImageType
+from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
+    ITelescopeProxy, IAcquisitionProxy, ICameraProxy, IFiltersProxy, IImageTypeProxy
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
@@ -22,9 +22,9 @@ cannot_run_logger.addFilter(DuplicateFilter())
 class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
-    def __init__(self, camera: Union[str, ICamera], roof: Union[str, IRoof] = None,
-                 telescope: Union[str, ITelescope] = None, filters: Union[str, IFilters] = None,
-                 autoguider: Union[str, IAutoGuiding] = None, acquisition: Union[str, IAcquisition] = None,
+    def __init__(self, camera: Union[str, ICameraProxy], roof: Union[str, IRoofProxy] = None,
+                 telescope: Union[str, ITelescopeProxy] = None, filters: Union[str, IFiltersProxy] = None,
+                 autoguider: Union[str, IAutoGuidingProxy] = None, acquisition: Union[str, IAcquisitionProxy] = None,
                  *args, ** kwargs):
         """Initialize a new LCO default script.
 
@@ -53,7 +53,8 @@ class LcoDefaultScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> (IRoof, ITelescope, ICamera, IFilters, IAutoGuiding, IAcquisition):
+    def _get_proxies(self) -> (IRoofProxy, ITelescopeProxy, ICameraProxy, IFiltersProxy,
+                               IAutoGuidingProxy, IAcquisitionProxy):
         """Get proxies for running the task
 
         Returns:
@@ -62,12 +63,12 @@ class LcoDefaultScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof: IRoof = self._get_proxy(self.roof, IRoof)
-        telescope: ITelescope = self._get_proxy(self.telescope, ITelescope)
-        camera: ICamera = self._get_proxy(self.camera, ICamera)
-        filters: IFilters = self._get_proxy(self.filters, IFilters)
-        autoguider: IAutoGuiding = self._get_proxy(self.autoguider, IAutoGuiding)
-        acquisition: IAcquisition = self._get_proxy(self.acquisition, IAcquisition)
+        roof: IRoofProxy = self._get_proxy(self.roof, IRoofProxy)
+        telescope: ITelescopeProxy = self._get_proxy(self.telescope, ITelescopeProxy)
+        camera: ICameraProxy = self._get_proxy(self.camera, ICameraProxy)
+        filters: IFiltersProxy = self._get_proxy(self.filters, IFiltersProxy)
+        autoguider: IAutoGuidingProxy = self._get_proxy(self.autoguider, IAutoGuidingProxy)
+        acquisition: IAcquisitionProxy = self._get_proxy(self.acquisition, IAcquisitionProxy)
         return roof, telescope, camera, filters, autoguider, acquisition
 
     def can_run(self) -> bool:
@@ -197,12 +198,12 @@ class LcoDefaultScript(Script):
                 Future.wait_all([track, set_filter])
 
                 # set binning and window
-                if isinstance(camera, IBinning):
+                if isinstance(camera, IBinningProxy):
                     bin_x = readout_mode['validation_schema']['bin_x']['default']
                     bin_y = readout_mode['validation_schema']['bin_y']['default']
                     log.info('Set binning to %dx%d...', bin_x, bin_y)
                     camera.set_binning(bin_x, bin_y).wait()
-                if isinstance(camera, IWindow):
+                if isinstance(camera, IWindowProxy):
                     full_frame = camera.get_full_frame().wait()
                     camera.set_window(*full_frame).wait()
 
@@ -211,15 +212,15 @@ class LcoDefaultScript(Script):
                     self._check_abort(abort_event)
 
                     # do exposures
-                    if isinstance(camera, IExposureTime):
+                    if isinstance(camera, IExposureTimeProxy):
                         log.info('Exposing %s image %d/%d for %.2fs...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
                         camera.set_exposure_time(ic['exposure_time']).wait()
                     else:
                         log.info('Exposing %s image %d/%d...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'])
-                    if isinstance(camera, IImageType):
-                        camera.set_image_type(self.image_type)
+                    if isinstance(camera, IImageTypeProxy):
+                        camera.set_image_type(self.image_type).wait()
                     camera.expose().wait()
                     self.exptime_done += ic['exposure_time']
 

@@ -4,7 +4,8 @@ from enum import Enum
 from typing import Union, Tuple, List, Optional
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IBinning
+from pyobs.interfaces import IFlatField, IFilters, IBinning
+from pyobs.interfaces.proxies import IFiltersProxy, ICameraProxy, ITelescopeProxy, IBinningProxy
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
@@ -12,6 +13,10 @@ from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats import FlatFielder
 
 log = logging.getLogger(__name__)
+
+
+class FlatFielderProxy:
+    pass
 
 
 class FlatField(Module, IFlatField, IBinning, IFilters):
@@ -29,8 +34,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFilters] = None,
+    def __init__(self, telescope: Union[str, ITelescopeProxy], camera: Union[str, ICameraProxy],
+                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFiltersProxy] = None,
                  log_file: str = None, *args, **kwargs):
         """Initialize a new flat fielder.
 
@@ -75,9 +80,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # check telescope, camera, and filters
         try:
-            self.proxy(self._telescope, ITelescope)
-            self.proxy(self._camera, ICamera)
-            self.proxy(self._filter_wheel, IFilters)
+            self.proxy(self._telescope, ITelescopeProxy)
+            self.proxy(self._camera, ICameraProxy)
+            self.proxy(self._filter_wheel, IFiltersProxy)
         except ValueError:
             log.warning('Either telescope, camera or filters do not exist or are not of correct type at the moment.')
 
@@ -104,7 +109,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             List of available binnings as (x, y) tuples.
         """
-        return self.proxy(self._camera, IBinning).list_binnings().wait()
+        return self.proxy(self._camera, IBinningProxy).list_binnings().wait()
 
     def set_binning(self, x: int, y: int, *args, **kwargs):
         """Set the camera binning.
@@ -132,7 +137,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             List of available filters.
         """
-        return self.proxy(self._filter_wheel, IFilters).list_filters().wait()
+        return self.proxy(self._filter_wheel, IFiltersProxy).list_filters().wait()
 
     def set_filter(self, filter_name: str, *args, **kwargs):
         """Set the current filter.
@@ -168,17 +173,17 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
 
         # get filter wheel
-        filters: Optional[IFilters] = None
+        filters: Optional[IFiltersProxy] = None
         if self._filter_wheel is not None:
             log.info('Getting proxy for filter wheel...')
-            filters: IFilters = self.proxy(self._filter_wheel, IFilters)
+            filters = self.proxy(self._filter_wheel, IFiltersProxy)
 
         # reset
         self._flat_fielder.reset()

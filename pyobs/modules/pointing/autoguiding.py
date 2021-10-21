@@ -1,9 +1,9 @@
 import logging
 
-from pyobs.interfaces import ICamera, IImageType, IExposureTime, IImageGrabber
 from ._baseguiding import BaseGuiding
 from ...images.meta.exptime import ExpTime
 from ...images.processors.detection import SepSourceDetection
+from ...interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
 from ...utils.enums import ImageType
 
 log = logging.getLogger(__name__)
@@ -54,17 +54,17 @@ class AutoGuiding(BaseGuiding):
 
             try:
                 # get camera
-                camera: ICamera = self.proxy(self._camera, IImageGrabber)
+                camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
 
                 # take image
-                if isinstance(camera, IExposureTime):
+                if isinstance(camera, IExposureTimeProxy):
                     # set exposure time
                     log.info('Taking image with an exposure time of %.2fs...', self._exposure_time)
-                    camera.set_exposure_time(self._exposure_time)
+                    camera.set_exposure_time(self._exposure_time).wait()
                 else:
                     log.info('Taking image...')
-                if isinstance(camera, IImageType):
-                    camera.set_image_type(ImageType.OBJECT)
+                if isinstance(camera, IImageTypeProxy):
+                    camera.set_image_type(ImageType.OBJECT).wait()
                 filename = camera.grab_image(broadcast=False).wait()
 
                 # download image

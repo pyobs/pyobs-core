@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Union, Dict, Any, Tuple
+from typing import Union, Dict, Any, Tuple, Optional, List
 import astropy.units as u
 
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
@@ -21,9 +21,9 @@ class ImageGrabberMixin:
     """Helper methods for all modules that implement IImageGrabber."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self: Union[ImageGrabberMixin, Module], fits_namespaces: list = None,
-                 fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
-                 rotation: float = 0., filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits'):
+    def __init__(self, fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
+                 centre: Optional[Tuple[float, float]] = None, rotation: float = 0.,
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits'):
         """Initialise the mixin.
 
         Args:

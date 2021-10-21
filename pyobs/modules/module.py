@@ -73,7 +73,7 @@ class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
     __module__ = 'pyobs.modules'
 
-    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, *args: Any, **kwargs: Any):
+    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, **kwargs: Any):
         """
         Args:
             name: Name of module. If None, ID from comm object is used.

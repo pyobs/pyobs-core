@@ -2,7 +2,7 @@ import datetime
 import logging
 import threading
 import warnings
-from typing import Tuple, Optional, Dict, Any, NamedTuple
+from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
 from astropy.io import fits
 
@@ -27,7 +27,7 @@ class ExposureInfo(NamedTuple):
     exposure_time: float
 
 
-def calc_expose_timeout(camera, *args, **kwargs):
+def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for expose()."""
     return camera.get_exposure_time() + 30
 
@@ -39,7 +39,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
     def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
                  rotation: float = 0., flip: bool = False,
                  filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 fits_namespaces: list = None, *args, **kwargs):
+                 fits_namespaces: Optional[List[str]] = None, **kwargs: Any):
         """Creates a new BaseCamera.
 
         Args:
@@ -50,7 +50,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
         ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
                                    rotation=rotation, filenames=filenames)
 
@@ -71,7 +71,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
@@ -80,7 +80,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             self.comm.register_event(NewImageEvent)
             self.comm.register_event(ExposureStatusChangedEvent)
 
-    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+    def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -92,7 +92,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         log.info('Setting exposure time to %.5fs...', exposure_time)
         self._exposure_time = exposure_time
 
-    def get_exposure_time(self, *args, **kwargs) -> float:
+    def get_exposure_time(self, **kwargs: Any) -> float:
         """Returns the exposure time in seconds.
 
         Returns:
@@ -100,7 +100,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
         return self._exposure_time
 
-    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -109,7 +109,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         log.info('Setting image type to %s...', image_type)
         self._image_type = image_type
 
-    def get_image_type(self, *args, **kwargs) -> ImageType:
+    def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:
@@ -117,7 +117,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
         return self._image_type
 
-    def _change_exposure_status(self, status: ExposureStatus):
+    def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
 
         Args:
@@ -131,7 +131,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         # set it
         self._camera_status = status
 
-    def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
+    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -139,7 +139,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
         return self._camera_status
 
-    def get_exposure_time_left(self, *args, **kwargs) -> float:
+    def get_exposure_time_left(self, **kwargs: Any) -> float:
         """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:
@@ -155,7 +155,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         diff = self._exposure.start + duration - datetime.datetime.utcnow()
         return diff.total_seconds()
 
-    def get_exposure_progress(self, *args, **kwargs) -> float:
+    def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:
@@ -268,7 +268,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def expose(self, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -280,10 +280,10 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
         warnings.warn('expose() has been replaced by grab_image() and will be removed in a future version.',
                       DeprecationWarning)
-        return self.grab_image(broadcast, *args, **kwargs)
+        return self.grab_image(broadcast, **kwargs)
 
     @timeout(calc_expose_timeout)
-    def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
+    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -319,7 +319,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             log.info('Releasing exclusive lock on camera...')
             self._expose_lock.release()
 
-    def _abort_exposure(self):
+    def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Raises:
@@ -327,7 +327,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
         pass
 
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence.
 
         Returns:
@@ -351,7 +351,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             raise ValueError('Could not abort exposure.')
 
     @staticmethod
-    def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int):
+    def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int) -> None:
         """Calculates and sets the BIASSEC and TRIMSEC areas.
 
         Args:
@@ -377,7 +377,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         # for simplicity we allow prescan/overscan only in one dimension
         if (left < is_left or left+width > is_right) and (top < is_top or top+height > is_bottom):
             log.warning('BIASSEC/TRIMSEC can only be calculated with a prescan/overscan on one axis only.')
-            return False
+            return
 
         # comments
         c1 = 'Bias overscan area [x1:x2,y1:y2] (binned)'
@@ -414,7 +414,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
-    def list_binnings(self, *args, **kwargs) -> list:
+    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:

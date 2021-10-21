@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from .interface import Interface
 

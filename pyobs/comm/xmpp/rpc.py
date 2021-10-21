@@ -1,7 +1,8 @@
+import copy
 import inspect
 import logging
 from threading import RLock
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Callable, Tuple
 
 import sleekxmpp
 import sleekxmpp.exceptions
@@ -17,7 +18,7 @@ log = logging.getLogger(__name__)
 class RPC(object):
     """RPC wrapper around XEP0009."""
 
-    def __init__(self, client: sleekxmpp.ClientXMPP, handler):
+    def __init__(self, client: sleekxmpp.ClientXMPP, handler: Optional[Module] = None):
         """Create a new RPC wrapper.
 
         Args:
@@ -29,8 +30,8 @@ class RPC(object):
         self._client = client
         self._lock = RLock()
         self._futures: Dict[str, BaseFuture] = {}
-        self._handler: Optional[Module] = None
-        self._methods = {}
+        self._handler = handler
+        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
 
         # set up callbacks
         client.add_event_handler('jabber_rpc_method_call', self._on_jabber_rpc_method_call, threaded=True)
@@ -40,9 +41,9 @@ class RPC(object):
         client.add_event_handler('jabber_rpc_error', self._on_jabber_rpc_error)
 
         # register handler
-        self._methods = dict(handler.methods) if handler else {}
+        self.set_handler(handler)
 
-    def set_handler(self, handler: Module = None):
+    def set_handler(self, handler: Optional[Module] = None) -> None:
         """Set the handler for remote procedure calls to this client.
 
         Args:
@@ -53,7 +54,7 @@ class RPC(object):
         self._handler = handler
 
         # update methods
-        self._methods = dict(handler.methods) if handler else {}
+        self._methods = copy.copy(handler.methods) if handler else {}
 
     def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Call a method on a remote host.
@@ -86,7 +87,7 @@ class RPC(object):
         # don't wait for response, just return future
         return future
 
-    def _on_jabber_rpc_method_call(self, iq):
+    def _on_jabber_rpc_method_call(self, iq: Any) -> None:
         """React on remote method call.
 
         Args:
@@ -99,6 +100,10 @@ class RPC(object):
         pmethod = iq['rpc_query']['method_call']['method_name']
 
         try:
+            # no handler?
+            if self._handler is None:
+                raise ValueError('No handler specified.')
+
             # get method
             with self._lock:
                 try:
@@ -114,7 +119,7 @@ class RPC(object):
 
             # do we have a timeout?
             if hasattr(method, 'timeout'):
-                timeout = method.timeout(self._handler, **ba.arguments)
+                timeout = getattr(method, 'timeout')(self._handler, **ba.arguments)
                 if timeout:
                     # yes, send it!
                     response = self._client.plugin['xep_0009_timeout'].\
@@ -130,9 +135,7 @@ class RPC(object):
 
         except InvocationException as ie:
             # could not invoke method
-            fault = dict()
-            fault['code'] = 500
-            fault['string'] = ie.get_message()
+            fault = {'code': 500, 'string': ie.get_message()}
             self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
         except Exception as e:
@@ -145,7 +148,7 @@ class RPC(object):
             fault['string'] = str(e)
             self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
-    def _on_jabber_rpc_method_response(self, iq):
+    def _on_jabber_rpc_method_response(self, iq: Any) -> None:
         """Received a response for a method call.
 
         Args:
@@ -174,7 +177,7 @@ class RPC(object):
         else:
             future.set_value(None)
 
-    def _on_jabber_rpc_method_timeout(self, iq):
+    def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
         """Method call timed out.
 
         Args:
@@ -185,7 +188,7 @@ class RPC(object):
         pid = iq['id']
         self._futures[pid].set_timeout(timeout)
 
-    def _on_jabber_rpc_method_fault(self, iq):
+    def _on_jabber_rpc_method_fault(self, iq: Any) -> None:
         """Communication to host failed.
 
         Args:
@@ -205,7 +208,7 @@ class RPC(object):
         # set error
         future.cancel_with_error(InvocationException(fault['string']))
 
-    def _on_jabber_rpc_error(self, iq):
+    def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.
 
         Args:

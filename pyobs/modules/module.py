@@ -80,7 +80,7 @@ class Module(Object, IModule, IConfig):
 
         # get list of client interfaces
         self._interfaces: List[Type] = []
-        self._methods: Dict[str, Tuple[Callable, inspect.Signature]] = {}
+        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor

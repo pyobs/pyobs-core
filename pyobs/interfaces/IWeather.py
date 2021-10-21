@@ -1,4 +1,4 @@
-from typing import Tuple, Any
+from typing import Tuple, Any, Dict
 
 from .interface import Interface
 from pyobs.utils.enums import WeatherSensors
@@ -8,7 +8,7 @@ class IWeather(Interface):
     """The module acts as a weather station."""
     __module__ = 'pyobs.interfaces'
 
-    def get_weather_status(self, **kwargs: Any) -> dict:
+    def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
@@ -16,7 +16,7 @@ class IWeather(Interface):
         """Whether the weather is good to observe."""
         raise NotImplementedError
 
-    def get_current_weather(self, **kwargs: Any) -> dict:
+    def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
 
         Returns:

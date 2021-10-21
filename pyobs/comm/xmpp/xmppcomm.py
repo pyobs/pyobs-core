@@ -1,4 +1,5 @@
 import functools
+import inspect
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
+from ...utils.threads.future import BaseFuture
 
 log = logging.getLogger(__name__)
 
@@ -262,19 +264,21 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    def execute(self, client: str, method: str, *args) -> Any:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
+            signature: Method signature.
             *args: List of parameters for given method.
 
         Returns:
             Passes through return from method call.
         """
-        if self._rpc is not None:
-            return self._rpc.call(self._get_full_client_name(client), method, *args)
+        if self._rpc is None:
+            raise ValueError('No RPC.')
+        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
     def _got_online(self, msg):
         """If a new client connects, add it to list.

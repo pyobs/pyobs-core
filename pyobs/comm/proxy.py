@@ -1,8 +1,9 @@
 from __future__ import annotations
 import inspect
 import types
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from pyobs.utils.threads.future import BaseFuture
 from pyobs.utils.types import cast_bound_arguments_to_simple
 import pyobs.interfaces.proxies
 if TYPE_CHECKING:
@@ -85,7 +86,7 @@ class Proxy:
         """
         return self._methods[method][0]
 
-    def execute(self, method, *args, **kwargs):
+    def execute(self, method: str, *args: Any, **kwargs: Any) -> BaseFuture:
         """Execute a method on the remote client.
 
         Args:
@@ -109,8 +110,7 @@ class Proxy:
         cast_bound_arguments_to_simple(ba)
 
         # do request and return future
-        future = self._comm.execute(self._client, method, signature, *ba.args[1:])
-        return future
+        return self._comm.execute(self._client, method, signature, *ba.args[1:])
 
     def _create_methods(self):
         """Create local methods for the remote client."""

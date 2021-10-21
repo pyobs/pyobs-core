@@ -8,6 +8,8 @@ import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .commlogging import CommLoggingHandler
+from ..utils.threads.future import BaseFuture
+
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
@@ -264,12 +266,13 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def execute(self, client: str, method: str, *args: Any) -> Any:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Execute a given method on a remote client.
 
         Args:
-            client: ID of client.
-            method: Method to call.
+            client (str): ID of client.
+            method (str): Method to call.
+            signature: Method signature.
             *args: List of parameters for given method.
 
         Returns:

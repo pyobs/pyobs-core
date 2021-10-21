@@ -12,6 +12,6 @@ class IAutoFocusProxy(IAbortableProxy, InterfaceProxy):
     def auto_focus(self, count: int, step: float, exposure_time: float) -> Future[typing.Tuple[float, float]]:
         ...
 
-    def auto_focus_status(self) -> Future[dict]:
+    def auto_focus_status(self) -> Future[typing.Dict[str, typing.Any]]:
         ...
 

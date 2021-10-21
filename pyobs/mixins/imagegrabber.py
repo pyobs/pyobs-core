@@ -8,6 +8,7 @@ import astropy.units as u
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderProvider
+from pyobs.interfaces.proxies import IFitsHeaderProviderProxy
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 from pyobs.utils.threads import Future
@@ -72,8 +73,8 @@ class ImageGrabberMixin:
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                future = self.comm.execute(client, 'get_fits_headers', self.__imagegrabber_fits_namespaces)
-                futures[client] = future
+                proxy: IFitsHeaderProviderProxy = self.proxy(client, IFitsHeaderProviderProxy)
+                futures[client] = proxy.get_fits_headers(self.__imagegrabber_fits_namespaces)
 
         # finished
         return futures

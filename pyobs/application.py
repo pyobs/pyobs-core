@@ -6,23 +6,24 @@ import time
 import warnings
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
+from typing import Optional, Any, Dict
+
 import yaml
 
 from pyobs.object import get_object
 from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
-
-# just init logger with something here, will be overwritten in __init__
 from pyobs.utils.logger import DuplicateFilter
 
+# just init logger with something here, will be overwritten in __init__
 log = logging.getLogger(__name__)
 
 
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
-    def __init__(self, config: str, log_file: str = None, log_level: str = 'info', log_rotate: bool = False,
-                 *args, **kwargs):
+    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = 'info', log_rotate: bool = False,
+                 **kwargs: Any):
         """Initializes a pyobs application.
 
         Args:
@@ -73,11 +74,10 @@ class Application:
         # hack threading to set thread names on OS level
         self._hack_threading()
 
-        # for later
-        self._comm = None
-        self._module = None
+        # init module with empty one
+        self._module: Module = Module()
 
-    def run(self):
+    def run(self) -> None:
         """Actually run the application.
 
         Args:
@@ -89,11 +89,11 @@ class Application:
             # load config
             log.info('Loading configuration from {0:s}...'.format(self._config))
             with StringIO(pre_process_yaml(self._config)) as f:
-                cfg = yaml.safe_load(f)
+                cfg: Dict[str, Any] = yaml.safe_load(f)
 
             # create module and open it
             log.info('Creating module...')
-            self._module: Module = get_object(cfg)
+            self._module = get_object(cfg, Module)
             log.info('Opening module...')
             self._module.open()
             log.info('Started successfully.')
@@ -138,7 +138,7 @@ class Application:
             # finished
             log.info('Finished shutting down.')
 
-    def _run(self):
+    def _run(self) -> None:
         """Method that finally runs the module, can be overridden by derived classes."""
 
         # add signal handlers
@@ -148,19 +148,19 @@ class Application:
         # run module
         self._module.main()
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum: Any, frame: Any) -> None:
         """React to signals and quit module."""
         self._module.quit()
 
-    def _hack_threading(self):
+    def _hack_threading(self) -> None:
         """Bad hack to set thread name on OS level."""
         try:
             import prctl
 
-            def set_thread_name(name):
+            def set_thread_name(name: str) -> None:
                 prctl.set_name(name)
 
-            def _thread_name_hack(self):
+            def _thread_name_hack(self) -> None:
                 set_thread_name(self.name)
                 threading.Thread.__bootstrap_original__(self)
 
@@ -171,16 +171,16 @@ class Application:
             log = logging.getLogger('pyobs')
             log.warning('prctl module is not installed. You will not be able to see thread names')
 
-            def set_thread_name(name):
+            def set_thread_name(name: str) -> None:
                 pass
 
 
 class GuiApplication(Application):
     """Derived Application class that uses a Qt GUI. Allows for graceful shutdown in Windows."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Create a new GUI application."""
-        Application.__init__(self, *args, **kwargs)
+        Application.__init__(self, **kwargs)
 
         # import Qt stuff
         from PyQt5.QtWidgets import QApplication
@@ -189,12 +189,12 @@ class GuiApplication(Application):
 
         # create Qt app and window
         self._qapp = QApplication(sys.argv)
-        self._window = ModuleGui()
+        self._window = ModuleGui()  # type: ignore
 
         # show window
         self._window.show()
 
-    def _run(self):
+    def _run(self) -> None:
         """Run qt application."""
         self._qapp.exec()
 

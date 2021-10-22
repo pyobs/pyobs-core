@@ -79,7 +79,7 @@ class Future(BaseFuture, Generic[T]):
         self._value = value
         self._event.set()
 
-    def wait(self) -> Optional[T]:
+    def wait(self) -> T:
         """
         Gets the value of this Future. This call will block until
         the result is available, or until the timeout expires.
@@ -109,7 +109,7 @@ class Future(BaseFuture, Generic[T]):
             # cast response to real types
             return cast(T, cast_response_to_real(self._value, self._signature))
         else:
-            return self._value
+            return cast(T, self._value)
 
 
 __all__ = ['BaseFuture', 'Future']

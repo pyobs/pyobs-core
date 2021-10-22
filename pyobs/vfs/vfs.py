@@ -117,7 +117,7 @@ class VirtualFileSystem:
             tmp.close()
             return hdu
 
-    def read_image(self, filename) -> Image:
+    def read_image(self, filename: str) -> Image:
         """Convenience function that wraps around open_file() to read an Image.
 
         Args:

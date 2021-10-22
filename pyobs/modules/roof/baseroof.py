@@ -21,7 +21,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         WeatherAwareMixin.__init__(self, **kwargs)
         MotionStatusMixin.__init__(self, **kwargs)
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 

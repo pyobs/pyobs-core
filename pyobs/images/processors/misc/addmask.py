@@ -1,4 +1,4 @@
-from typing import Union, Dict
+from typing import Union, Dict, Any
 import logging
 import numpy as np
 from astropy.io import fits

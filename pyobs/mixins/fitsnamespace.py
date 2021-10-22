@@ -1,7 +1,6 @@
 import logging
-from typing import List, Union, Dict, Optional
+from typing import List, Dict, Optional, Any, Tuple
 
-from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
@@ -10,10 +9,11 @@ class FitsNamespaceMixin:
     """Mixin for IFitsHeaderProvider modules that filters FITS headers by namespace."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, *args, **kwargs):
+    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
-    def _filter_fits_namespace(self, hdr: dict, sender: str, namespaces: List[str] = None, *args, **kwargs):
+    def _filter_fits_namespace(self, hdr: Dict[str, Tuple[Any, str]], sender: str,
+                               namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
         """Filter FITS header keywords by given namespaces. If no namespaces are given, let all through. Always
         let keywords with this module's name as namespace pass.
 
@@ -52,7 +52,7 @@ class FitsNamespaceMixin:
         # return filtered header
         return {k: v for k, v in hdr.items() if k in keywords}
 
-    def __add_namespace(self, name: str, keywords: list, hdr: dict):
+    def __add_namespace(self, name: str, keywords: List[str], hdr: Dict[str, Any]) -> None:
         """Add FITS header keywords from namespace to list of valid keywords
 
         Args:

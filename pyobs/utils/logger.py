@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 
 class DuplicateFilter(logging.Filter):
@@ -10,11 +11,11 @@ class DuplicateFilter(logging.Filter):
         log.info('Test')
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         logging.Filter.__init__(self, *args, **kwargs)
         self.last_log = ''
 
-    def filter(self, record):
+    def filter(self, record: Any) -> bool:
         if record.getMessage() != getattr(self, "last_log", None):
             self.last_log = record.getMessage()
             return True

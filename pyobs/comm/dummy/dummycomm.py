@@ -1,8 +1,10 @@
+import inspect
 import logging
-from typing import Any
+from typing import Any, List, Type
 
 from pyobs.comm import Comm
-
+from pyobs.interfaces import Interface
+from pyobs.utils.threads.future import BaseFuture, Future
 
 log = logging.getLogger(__name__)
 
@@ -10,38 +12,26 @@ log = logging.getLogger(__name__)
 class DummyComm(Comm):
     """A dummy implementation of the Comm interface."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         """Creates a new dummy comm."""
         Comm.__init__(self, *args, **kwargs)
 
     @property
-    def clients(self):
+    def clients(self) -> List[str]:
         """Always return zero clients."""
         return []
 
-    def get_interfaces(self, item):
+    def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """No interfaces implemented."""
         return []
 
-    def _supports_interface(self, client, interface):
+    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Interfaces are never supported."""
         return False
 
-    def add_command_handler(self, command, handler):
-        """Always accept adding new command handlers."""
-        return True
-
-    def del_command_handler(self, command, handler):
-        """Always accept deleting command handlers."""
-        return True
-
-    def send_text_message(self, client, msg):
-        """Always allow sending text message."""
-        return True
-
-    def execute(self, client: str, method: str, *args) -> Any:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Always fake a successful execution of a method."""
-        return True
+        return Future[None](empty=True)
 
     @property
     def name(self) -> str:

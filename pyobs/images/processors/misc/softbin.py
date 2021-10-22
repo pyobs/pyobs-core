@@ -1,18 +1,24 @@
+import logging
+from typing import Any
+
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+
+
+log = logging.getLogger(__name__)
 
 
 class SoftBin(ImageProcessor):
     """Bin an image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, binning: int = 2, *args, **kwargs):
+    def __init__(self, binning: int = 2, **kwargs: Any):
         """Init a new software binning pipeline step.
 
         Args:
             binning: Binning to apply to image.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self.binning = binning
@@ -29,6 +35,9 @@ class SoftBin(ImageProcessor):
 
         # copy image
         img = image.copy()
+        if img.data is None:
+            log.warning('No data found in image.')
+            return image
 
         # calculate new shape, in which all binned pixels are in a higher dimension
         shape = (img.data.shape[0] // self.binning, self.binning,
@@ -36,6 +45,9 @@ class SoftBin(ImageProcessor):
 
         # reshape and average
         img.data = img.data.reshape(shape).mean(-1).mean(1)
+        if img.data is None:
+            log.warning('No data found in image after reshaping.')
+            return image
 
         # set NAXIS1/2
         img.header['NAXIS2'], img.header['NAXIS1'] = img.data.shape

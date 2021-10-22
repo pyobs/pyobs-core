@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any, Dict
 
 from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
@@ -12,19 +13,19 @@ class DummyAcquisition(Module, IAcquisition):
     """Dummy class for telescope acquisition."""
     __module__ = 'pyobs.modules.acquisition'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Create a new dummy acquisition."""
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._is_running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, *args, **kwargs) -> dict:
+    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require

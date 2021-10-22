@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 from .interface import Interface
 
@@ -8,7 +8,7 @@ class ILatLon(Interface):
     Usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
-    def move_latlon(self, lat: float, lon: float, *args, **kwargs):
+    def move_latlon(self, lat: float, lon: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
         Args:
@@ -20,7 +20,7 @@ class ILatLon(Interface):
         """
         raise NotImplementedError
 
-    def get_latlon(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_latlon(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current Latitude and Longitude.
 
         Returns:

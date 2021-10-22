@@ -72,8 +72,8 @@ class Job:
 
 
 class PeriodicJob(Job):
-    def __init__(self, seconds: int = None, minutes: int = None, hours: int = None, days: int = None, *args, **kwargs):
-        Job.__init__(self, *args, **kwargs)
+    def __init__(self, seconds: int = None, minutes: int = None, hours: int = None, days: int = None, **kwargs: Any):
+        Job.__init__(self, **kwargs)
 
         # calculate interval
         self.interval = 0
@@ -95,9 +95,9 @@ class JobScheduler(Module):
     """Job scheduler."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initialize a new job scheduler."""
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # last job ID
         self.last_id = 0

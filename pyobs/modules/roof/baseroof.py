@@ -13,13 +13,13 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
     """Base class for roofs."""
     __module__ = 'pyobs.modules.roof'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initialize a new base roof."""
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # init mixins
-        WeatherAwareMixin.__init__(self, *args, **kwargs)
-        MotionStatusMixin.__init__(self, *args, **kwargs)
+        WeatherAwareMixin.__init__(self, **kwargs)
+        MotionStatusMixin.__init__(self, **kwargs)
 
     def open(self):
         """Open module."""
@@ -29,7 +29,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -43,7 +43,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderProvider,
                          'True for open, false for closed roof')
         }
 
-    def is_ready(self, *args, **kwargs) -> bool:
+    def is_ready(self, **kwargs: Any) -> bool:
         """Returns the device is "ready", whatever that means for the specific device.
 
         Returns:

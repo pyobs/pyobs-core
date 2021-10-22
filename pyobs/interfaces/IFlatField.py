@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 from .IAbortable import IAbortable
 
@@ -7,7 +7,7 @@ class IFlatField(IAbortable):
     """The module performs flat-fielding."""
     __module__ = 'pyobs.interfaces'
 
-    def flat_field(self, count: int = 20, *args, **kwargs) -> Tuple[int, float]:
+    def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
         """Do a series of flat fields.
 
         Args:

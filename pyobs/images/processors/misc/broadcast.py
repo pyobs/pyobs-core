@@ -13,13 +13,13 @@ class Broadcast(ImageProcessor):
     """Broadcast image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, filename: str = '/cache/processed_{ORIGNAME}', *args, **kwargs):
+    def __init__(self, filename: str = '/cache/processed_{ORIGNAME}', **kwargs: Any):
         """Init an image processor that broadcasts an image
 
         Args:
             filename: Filename to broadcast image.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self._formatter = FilenameFormatter(filename)

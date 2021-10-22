@@ -1,7 +1,7 @@
 from __future__ import annotations
 import copy
 import io
-from typing import TypeVar, Optional, Type
+from typing import TypeVar, Optional, Type, Dict, Any, cast
 
 import numpy as np
 from astropy.io import fits
@@ -9,6 +9,7 @@ from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
 from astropy.nddata import CCDData, StdDevUncertainty
 
+from pyobs.utils.fits import FilenameFormatter
 
 MetaClass = TypeVar('MetaClass')
 
@@ -17,8 +18,10 @@ class Image:
     """Image class."""
     __module__ = 'pyobs.images'
 
-    def __init__(self, data: np.ndarray = None, header: fits.Header = None, mask: np.ndarray = None,
-                 uncertainty: np.ndarray = None, catalog: Table = None, meta: dict = None, *args, **kwargs):
+    def __init__(self, data: Optional[np.ndarray] = None, header: Optional[fits.Header] = None,
+                 mask: Optional[np.ndarray] = None, uncertainty: Optional[np.ndarray] = None,
+                 catalog: Optional[Table] = None, meta: Optional[Dict[Any, Any]] = None,
+                 *args: Any, **kwargs: Any):
         """Init a new image.
 
         Args:
@@ -60,11 +63,7 @@ class Image:
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # load image
-            image = cls._from_hdu_list(data)
-
-            # close file
-            data.close()
-            return image
+            return cls._from_hdu_list(data)
 
     @classmethod
     def from_file(cls, filename: str) -> Image:
@@ -106,7 +105,7 @@ class Image:
         return image
 
     @classmethod
-    def _from_hdu_list(cls, data):
+    def _from_hdu_list(cls, data: fits.HDUList) -> 'Image':
         """Load Image from HDU list.
 
         Args:
@@ -152,7 +151,7 @@ class Image:
     @property
     def unit(self) -> str:
         """Returns units of pixels in image."""
-        return self.header['BUNIT'].lower() if 'BUNIT' in self.header else 'adu'
+        return str(self.header['BUNIT']).lower() if 'BUNIT' in self.header else 'adu'
 
     def __deepcopy__(self) -> Image:
         """Returns a shallow copy of this image."""
@@ -163,13 +162,15 @@ class Image:
         return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
                      catalog=self.catalog, meta=self.meta)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: 'Image') -> 'Image':
         """Divides this image by other."""
         img = self.copy()
-        img.data /= other
+        if img.data is None or other.data is None:
+            raise ValueError('One image in division is None.')
+        img.data /= other.data
         return img
 
-    def writeto(self, f, *args, **kwargs):
+    def writeto(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write image as FITS to given file object.
 
         Args:
@@ -210,7 +211,7 @@ class Image:
             self.writeto(bio)
             return bio.getvalue()
 
-    def write_catalog(self, f, *args, **kwargs):
+    def write_catalog(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write catalog to file object."""
         if self.catalog is None:
             return
@@ -226,22 +227,22 @@ class Image:
                        uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
                        unit='adu')
 
-    def format_filename(self, formatter):
+    def format_filename(self, formatter: FilenameFormatter) -> str:
         """Format filename with given formatter."""
         self.header['FNAME'] = formatter(self.header)
-        return self.header['FNAME']
+        return str(self.header['FNAME'])
 
     @property
-    def pixel_scale(self):
+    def pixel_scale(self) -> Optional[float]:
         """Returns pixel scale in arcsec/pixel."""
         if 'CD1_1' in self.header:
-            return abs(self.header['CD1_1']) * 3600.
+            return abs(float(self.header['CD1_1'])) * 3600.
         elif 'CDELT1' in self.header:
-            return abs(self.header['CDELT1']) * 3600.
+            return abs(float(self.header['CDELT1'])) * 3600.
         else:
             return None
 
-    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytes:
+    def to_jpeg(self, vmin: Optional[float] = None, vmax: Optional[float] = None) -> bytes:
         """Returns a JPEG image created from this image.
 
         Returns:
@@ -253,12 +254,16 @@ class Image:
 
         # copy data
         data = np.copy(self.data)
+        if data is None:
+            raise ValueError('No data in image.')
 
         # no vmin/vmax?
         if vmin is None or vmax is None:
             flattened = sorted(data.flatten())
             vmin = flattened[int(0.05 * len(flattened))]
             vmax = flattened[int(0.95 * len(flattened))]
+            if vmin is None or vmax is None:
+                raise ValueError('Could not determine vmin/vmax.')
 
         # Clip data to brightness limits
         data[data > vmax] = vmax
@@ -279,7 +284,7 @@ class Image:
             image.save(bio, format='jpeg')
             return bio.getvalue()
 
-    def set_meta(self, meta):
+    def set_meta(self, meta: Any) -> None:
         """Sets meta information, storing it under it class.
 
         Note that it is possible to store, e.g., strings, but they would be stored as img.meta[str] and be overwritten
@@ -297,7 +302,7 @@ class Image:
         """Whether meta exists."""
         return meta_class in self.meta
 
-    def get_meta(self, meta_class: Type[MetaClass], default=None) -> MetaClass:
+    def get_meta(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
         """Returns meta information, assuming that it is stored under the class of the object.
 
         Args:
@@ -307,14 +312,16 @@ class Image:
             Meta information of the given class.
         """
 
-        # we don't need to check for existence, since the dict will raise an IndexError, so just check for class
+        # return default?
+        if meta_class not in self.meta:
+            return default
+
+        # correct type?
         if not isinstance(self.meta[meta_class], meta_class):
             raise ValueError('Stored meta information is of wrong type.')
 
         # return it
-        if meta_class not in self.meta:
-            return default
-        return self.meta[meta_class]
+        return cast(MetaClass, self.meta[meta_class])
 
 
 __all__ = ['Image']

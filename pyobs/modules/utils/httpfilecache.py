@@ -83,7 +83,7 @@ class MainHandler(tornado.web.RequestHandler):
 class HttpFileCache(Module, tornado.web.Application):
     """A file cache based on a HTTP server."""
 
-    def __init__(self, port: int = 37075, cache_size: int = 25, max_file_size: int = 100, *args, **kwargs):
+    def __init__(self, port: int = 37075, cache_size: int = 25, max_file_size: int = 100, **kwargs: Any):
         """Initializes file cache.
 
         Args:
@@ -91,7 +91,7 @@ class HttpFileCache(Module, tornado.web.Application):
             cache_size: Size of file cache, i.e. number of files to cache.
             max_file_size: Maximum file size in MB.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._http, False)

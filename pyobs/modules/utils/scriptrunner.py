@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.interfaces import IScriptRunner
 from pyobs.modules import Module
@@ -12,12 +13,12 @@ class ScriptRunner(Module, IScriptRunner):
     """Config provider."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initialize a new script runner."""
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
     @timeout(600)
-    def run_script(self, script: str, *args, **kwargs):
+    def run_script(self, script: str, **kwargs: Any):
         """Run the given script.
 
         Args:

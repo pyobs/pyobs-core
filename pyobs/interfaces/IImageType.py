@@ -1,4 +1,6 @@
-from .interface import *
+from typing import Any
+
+from .interface import Interface
 from pyobs.utils.enums import ImageType
 
 
@@ -6,7 +8,7 @@ class IImageType(Interface):
     """The module supports different image types (e.g. object, bias, dark, etc), mainly used by cameras."""
     __module__ = 'pyobs.interfaces'
 
-    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -14,7 +16,7 @@ class IImageType(Interface):
         """
         raise NotImplementedError
 
-    def get_image_type(self, *args, **kwargs) -> ImageType:
+    def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:

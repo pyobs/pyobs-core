@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 from .interface import Interface
 
@@ -8,7 +8,7 @@ class IOffsetsRaDec(Interface):
     :class:`~pyobs.interfaces.IRaDec`."""
     __module__ = 'pyobs.interfaces'
 
-    def set_offsets_radec(self, dra: float, ddec: float, *args, **kwargs):
+    def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
         """Move an RA/Dec offset.
 
         Args:
@@ -20,7 +20,7 @@ class IOffsetsRaDec(Interface):
         """
         raise NotImplementedError
 
-    def get_offsets_radec(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:

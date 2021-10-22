@@ -1,3 +1,5 @@
+from typing import Any
+
 from .interface import Interface
 
 
@@ -5,7 +7,7 @@ class IImageGrabber(Interface):
     """The module can grab and return an image from whatever device."""
     __module__ = 'pyobs.interfaces'
 
-    def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
+    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:

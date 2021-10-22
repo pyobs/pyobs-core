@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.events import Event
 from pyobs.modules import Module
@@ -12,7 +13,7 @@ class Trigger(Module, IAutonomous):
     """A module that can call another module's methods when a specific event occurs."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, triggers: list, *args, **kwargs):
+    def __init__(self, triggers: list, **kwargs: Any):
         """Initialize a new trigger module.
 
         Args:
@@ -20,7 +21,7 @@ class Trigger(Module, IAutonomous):
                       may contain a sender.
 
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._running = False
@@ -46,15 +47,15 @@ class Trigger(Module, IAutonomous):
         for event in events:
             self.comm.register_event(event, self._handle_event)
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any):
         """Starts a service."""
         self._running = True
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any):
         """Stops a service."""
         self._running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._running
 

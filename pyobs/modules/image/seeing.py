@@ -17,7 +17,7 @@ class Seeing(Module):
     __module__ = 'pyobs.modules.image'
 
     def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
-                 max_ellipticity: float = 0.2, correct_for_airmass: bool = True, *args, **kwargs):
+                 max_ellipticity: float = 0.2, correct_for_airmass: bool = True, **kwargs: Any):
         """Creates a new seeing estimator.
 
         Args:
@@ -26,7 +26,7 @@ class Seeing(Module):
             max_ellipticity: Maximum ellipticity for sources to consider.
             correct_for_zenith: Whether to correct seeing for airmass.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
@@ -42,7 +42,7 @@ class Seeing(Module):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def process_new_image_event(self, event: NewImageEvent, sender: str):
         """Puts a new images in the DB with the given ID.
 
         Args:

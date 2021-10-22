@@ -1,6 +1,6 @@
 import multiprocessing
 import threading
-from typing import Union, Optional, List, Tuple
+from typing import Union, Optional, List, Tuple, Any, Dict
 import logging
 import astropy.units as u
 
@@ -23,13 +23,13 @@ class Calibration(ImageProcessor):
     """Cache for calibration frames."""
     calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
 
-    def __init__(self, archive: Union[dict, Archive], max_cache_size: int = 20, *args, **kwargs):
+    def __init__(self, archive: Union[Dict[str, Any], Archive], max_cache_size: int = 20, **kwargs: Any):
         """Init a new image calibration pipeline step.
 
         Args:
             archive: Archive to fetch calibration frames from.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self._max_cache_size = max_cache_size
@@ -62,13 +62,13 @@ class Calibration(ImageProcessor):
                                          oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
                                          trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
                                          error=True,
-                                         master_bias=bias.to_ccddata(),
-                                         dark_frame=dark.to_ccddata(),
-                                         master_flat=flat.to_ccddata(),
+                                         master_bias=bias.to_ccddata() if bias is not None else None,
+                                         dark_frame=dark.to_ccddata() if dark is not None else None,
+                                         master_flat=flat.to_ccddata() if flat is not None else None,
                                          bad_pixel_mask=None,
                                          gain=image.header['DET-GAIN'] * u.electron / u.adu,
                                          readnoise=image.header['DET-RON'] * u.electron,
-                                         dark_exposure=dark.header['EXPTIME'] * u.second,
+                                         dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
                                          data_exposure=image.header['EXPTIME'] * u.second,
                                          dark_scale=True,
                                          gain_corrected=False)
@@ -82,12 +82,15 @@ class Calibration(ImageProcessor):
             calibrated.header['L1RAW'] = image.header['ORIGNAME'].replace('.fits', '')
 
         # add calibration frames
-        calibrated.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                       'Name of BIAS frame')
-        calibrated.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                       'Name of DARK frame')
-        calibrated.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                       'Name of FLAT frame')
+        if bias is not None:
+            calibrated.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                           'Name of BIAS frame')
+        if dark is not None:
+            calibrated.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                           'Name of DARK frame')
+        if flat is not None:
+            calibrated.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
+                                           'Name of FLAT frame')
 
         # set RLEVEL
         calibrated.header['RLEVEL'] = (1, 'Reduction level')

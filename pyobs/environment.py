@@ -1,7 +1,7 @@
 import datetime
 import functools
 import logging
-from typing import Union
+from typing import Union, Optional, Any, Dict
 import pytz
 from astropy.coordinates import EarthLocation, Longitude, SkyCoord, ICRS, get_sun, AltAz
 from pyobs.utils.time import Time
@@ -24,13 +24,14 @@ class Environment:
             elevation: 1798.
     """
 
-    def __init__(self, timezone: str = 'utc', location: Union[dict, EarthLocation] = None, *args, **kwargs):
+    def __init__(self, timezone: str = 'utc', location: Union[Dict[str, Any], EarthLocation] = None,
+                 *args: Any, **kwargs: Any):
         # get timezone
         self._timezone = pytz.timezone(timezone)
         log.info('Using timezone %s.', timezone)
 
         # get location
-        self._location = None
+        self._location: Optional[EarthLocation] = None
         if location is not None:
             if isinstance(location, EarthLocation):
                 # store directly
@@ -56,12 +57,12 @@ class Environment:
         return self._timezone
 
     @property
-    def location(self):
+    def location(self) -> Optional[EarthLocation]:
         """Returns the location of the observatory."""
         return self._location
 
     @functools.lru_cache()
-    def localtime(self, utc: datetime.datetime = None):
+    def localtime(self, utc: Optional[datetime.datetime] = None) -> datetime.datetime:
         """Returns the local time at the observatory, either for a given UTC time or for now, if none is given.
 
         Args:
@@ -79,7 +80,7 @@ class Environment:
         return utc_dt.astimezone(self._timezone)
 
     @functools.lru_cache()
-    def night_obs(self, time: Union[datetime.datetime, Time] = None) -> datetime.date:
+    def night_obs(self, time: Optional[Union[datetime.datetime, Time]] = None) -> datetime.date:
         """Returns the date of the night for the given night, i.e. the date of the start of the night.
 
         Args:
@@ -92,12 +93,17 @@ class Environment:
         # None given?
         if time is None:
             time = Time.now()
+
         # convert to Time
         if isinstance(time, Time):
             time = time.datetime
+
         # get local datetime
+        if not isinstance(time, datetime.datetime):
+            raise ValueError('Invalid time')
         utc_dt = pytz.utc.localize(time)
         loc_dt = utc_dt.astimezone(self._timezone)
+
         # get night
         if loc_dt.hour < 15:
             loc_dt += datetime.timedelta(days=-1)
@@ -113,6 +119,10 @@ class Environment:
         Returns:
             Local sidereal time.
         """
+
+        # no location
+        if not isinstance(self._location, EarthLocation):
+            raise ValueError('No location given.')
 
         # convert to Time
         if not isinstance(time, Time):
@@ -130,13 +140,15 @@ class Environment:
         Returns:
             SkyCoord with current zenith position.
         """
+        if not isinstance(self._location, EarthLocation):
+            raise ValueError('No location given.')
         return SkyCoord(lst, self._location.lat, frame=ICRS)
 
     def now(self) -> Time:
         """Returns current time."""
         return Time.now()
 
-    def to_altaz(self, radec: SkyCoord, time: Time = None):
+    def to_altaz(self, radec: SkyCoord, time: Optional[Time] = None) -> SkyCoord:
         """Converts a given set of RA/Dec to Alt/Az for the current location at a given time.
 
         Args:
@@ -150,7 +162,7 @@ class Environment:
             time = Time.now()
         return radec.transform_to(AltAz(obstime=time, location=self.location))
 
-    def to_radec(self, altaz: SkyCoord, time: Time = None):
+    def to_radec(self, altaz: SkyCoord, time: Optional[Time] = None) -> SkyCoord:
         """Converts a given set of Alt/Az to RA/Dec for the current location at a given time.
 
         Args:
@@ -167,7 +179,7 @@ class Environment:
         return altaz.icrs
 
     @functools.lru_cache()
-    def sun(self, time: Time, altaz=True):
+    def sun(self, time: Time, altaz: bool = True) -> SkyCoord:
         """Returns the position of the sun, either as RA/Dec or Alt/Az for the given time.
 
         Args:

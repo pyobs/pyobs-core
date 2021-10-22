@@ -2,12 +2,13 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Union, Dict, Any, Tuple
+from typing import Union, Dict, Any, Tuple, Optional, List
 import astropy.units as u
 
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderProvider
+from pyobs.interfaces.proxies import IFitsHeaderProviderProxy
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 from pyobs.utils.threads import Future
@@ -20,9 +21,9 @@ class ImageGrabberMixin:
     """Helper methods for all modules that implement IImageGrabber."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self: Union[ImageGrabberMixin, Module], fits_namespaces: list = None,
-                 fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
-                 rotation: float = 0., filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits'):
+    def __init__(self, fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
+                 centre: Optional[Tuple[float, float]] = None, rotation: float = 0.,
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits'):
         """Initialise the mixin.
 
         Args:
@@ -72,8 +73,8 @@ class ImageGrabberMixin:
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.info('Requesting FITS headers from %s...', client)
-                future = self.comm.execute(client, 'get_fits_headers', self.__imagegrabber_fits_namespaces)
-                futures[client] = future
+                proxy: IFitsHeaderProviderProxy = self.proxy(client, IFitsHeaderProviderProxy)
+                futures[client] = proxy.get_fits_headers(self.__imagegrabber_fits_namespaces)
 
         # finished
         return futures

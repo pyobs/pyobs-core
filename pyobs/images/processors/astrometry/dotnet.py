@@ -1,4 +1,6 @@
 import logging
+from typing import Any
+
 import requests
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
@@ -15,7 +17,7 @@ class AstrometryDotNet(Astrometry):
     """Perform astrometry using astrometry.net"""
     __module__ = 'pyobs.images.processors.astrometry'
 
-    def __init__(self, url: str, source_count: int = 50, radius: float = 3., *args, **kwargs):
+    def __init__(self, url: str, source_count: int = 50, radius: float = 3., **kwargs: Any):
         """Init new astronomy.net processor.
 
         Args:
@@ -23,7 +25,7 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
         """
-        Astrometry.__init__(self, *args, **kwargs)
+        Astrometry.__init__(self, **kwargs)
 
         # URL to web-service
         self.url = url
@@ -39,11 +41,14 @@ class AstrometryDotNet(Astrometry):
             image: Image to analyse.
         """
 
-        # get catalog
-        cat = image.catalog[['x', 'y', 'flux']].to_pandas().dropna()
-
         # copy image
         img = image.copy()
+
+        # get catalog
+        if img.catalog is None:
+            log.warning('No catalog found in image.')
+            return image
+        cat = img.catalog[['x', 'y', 'flux']].to_pandas().dropna()
 
         # nothing?
         if cat is None or len(cat) < 3:

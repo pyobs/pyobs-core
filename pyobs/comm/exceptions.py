@@ -1,10 +1,13 @@
+from typing import Optional, Any
+
+
 class RemoteException(Exception):
     """
     Base exception for RPC. This exception is raised when a problem
     occurs in the network layer.
     """
 
-    def __init__(self, message: str = "", cause=None):
+    def __init__(self, message: str = "", cause: Optional[Any] = None):
         """
         Initializes a new RemoteException.
 
@@ -16,13 +19,13 @@ class RemoteException(Exception):
         self._cause = cause
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._message
 
-    def get_message(self):
+    def get_message(self) -> str:
         return self._message
 
-    def get_cause(self):
+    def get_cause(self) -> Any:
         return self._cause
 
 

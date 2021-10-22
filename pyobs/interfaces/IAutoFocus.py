@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any, Dict
 
 from .IAbortable import IAbortable
 
@@ -7,7 +7,8 @@ class IAutoFocus(IAbortable):
     """The module can perform an auto-focus."""
     __module__ = 'pyobs.interfaces'
 
-    def auto_focus(self, count: int, step: float, exposure_time: float, *args, **kwargs) -> Tuple[float, float]:
+    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) \
+            -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -27,7 +28,7 @@ class IAutoFocus(IAbortable):
         """
         raise NotImplementedError
 
-    def auto_focus_status(self, *args, **kwargs) -> dict:
+    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

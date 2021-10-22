@@ -83,7 +83,7 @@ class SphericalGrid:
                  radius * np.sin(lat / r2d)) for lon, lat in grid]
 
     @staticmethod
-    def plot_cartesian(grid: List[Tuple[float, float, float]]):
+    def plot_cartesian(grid: List[Tuple[float, float, float]]) -> None:
         """Plot cartesian grid.
 
         Params:

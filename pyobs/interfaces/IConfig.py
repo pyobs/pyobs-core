@@ -7,7 +7,7 @@ class IConfig(Interface):
     """The module allows access to some of its configuration options."""
     __module__ = 'pyobs.interfaces'
 
-    def get_config_caps(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool, bool]]:
+    def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
         third is for a list of possible options..
 
@@ -16,7 +16,7 @@ class IConfig(Interface):
         """
         raise NotImplementedError
 
-    def get_config_value(self, name: str, *args, **kwargs) -> Any:
+    def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
         Args:
@@ -30,7 +30,7 @@ class IConfig(Interface):
         """
         raise NotImplementedError
 
-    def get_config_value_options(self, name: str, *args, **kwargs) -> List:
+    def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
         """Returns possible values for config item with given name.
 
         Args:
@@ -44,7 +44,7 @@ class IConfig(Interface):
         """
         raise NotImplementedError
 
-    def set_config_value(self, name: str, value: Any, *args, **kwargs):
+    def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:

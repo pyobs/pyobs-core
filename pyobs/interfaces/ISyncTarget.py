@@ -1,4 +1,6 @@
-from .interface import *
+from typing import Any
+
+from .interface import Interface
 
 
 class ISyncTarget(Interface):
@@ -6,7 +8,7 @@ class ISyncTarget(Interface):
     :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
-    def sync_target(self, *args, **kwargs):
+    def sync_target(self, **kwargs: Any) -> None:
         """Synchronize device on current target."""
         raise NotImplementedError
 

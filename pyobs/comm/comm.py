@@ -1,33 +1,36 @@
 import inspect
 import logging
 import queue
-from typing import Any, Union, Type, Dict
+from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
 import threading
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
-from .sharedvariablecache import SharedVariableCache
 from .commlogging import CommLoggingHandler
+from ..interfaces import Interface
+from ..utils.threads.future import BaseFuture
 
+if TYPE_CHECKING:
+    from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
+
+
+ProxyType = TypeVar('ProxyType')
 
 
 class Comm:
     """Base class for all Comm modules in pyobs."""
     __module__ = 'pyobs.comm'
 
-    def __init__(self, cache_proxies: bool = True, *args, **kwargs):
+    def __init__(self, cache_proxies: bool = True):
         """Creates a comm module."""
 
         self._proxies: Dict[str, Proxy] = {}
-        self._module = None
-        self._log_queue = queue.Queue()
+        self._module: Optional[Module] = None
+        self._log_queue: queue.Queue[LogEvent] = queue.Queue()
         self._cache_proxies = cache_proxies
-
-        # cache for shared variables
-        self.variables = SharedVariableCache(comm=self)
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
@@ -39,41 +42,37 @@ class Comm:
         self._logging_thread = threading.Thread(target=self._logging)
 
     @property
-    def module(self):
+    def module(self) -> Optional['Module']:
         """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
-    def module(self, module):
+    def module(self, module: 'Module') -> None:
         """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
-        if hasattr(self, '_set_module'):
-            self._set_module(module)
+        self._set_module(module)
 
         # store module
         self._module = module
 
-    def open(self):
+    def _set_module(self, module: 'Module') -> None:
+        ...
+
+    def open(self) -> None:
         """Open module."""
 
         # start logging thread
         self._logging_thread.start()
 
-        # open variables cache
-        self.variables.open()
-
         # some events
         self.register_event(ModuleClosedEvent, self._client_disconnected)
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
 
         # close thread
         self._closing.set()
         self._logging_thread.join()
-
-        # close variables cache
-        self.variables.close()
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.
@@ -91,7 +90,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    def __getitem__(self, client: str) -> Proxy:
+    def __getitem__(self, client: str) -> Optional[Union['Module', Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -122,7 +121,16 @@ class Comm:
         # return proxy
         return self._proxies[client]
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None, allow_none: bool = False):
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+        ...
+
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+        ...
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -136,7 +144,6 @@ class Comm:
         Args:
             name_or_object: Name of object or object itself.
             obj_type: Expected class of object.
-            allow_none: Allow result to be None.
 
         Returns:
             Object or proxy to object.
@@ -155,10 +162,7 @@ class Comm:
 
             # check it
             if proxy is None:
-                if allow_none:
-                    return None
-                else:
-                    raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
+                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
             elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
@@ -169,7 +173,16 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def _client_disconnected(self, event: ModuleClosedEvent, sender: str, *args, **kwargs):
+    def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Optional[Union[Any, ProxyType]]:
+        """Calls proxy() in a safe way and returns None instead of raising an exception."""
+
+        try:
+            return self.proxy(name_or_object, obj_type)
+        except ValueError:
+            return None
+
+    def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.
 
         Args:
@@ -181,14 +194,15 @@ class Comm:
         # if a client disconnects, we remove its proxy
         if sender in self._proxies:
             del self._proxies[sender]
+        return True
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         """Name of this client."""
         raise NotImplementedError
 
     @property
-    def clients(self) -> list:
+    def clients(self) -> List[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -196,7 +210,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def clients_with_interface(self, interface) -> list:
+    def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:
@@ -207,7 +221,7 @@ class Comm:
         """
         return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
 
-    def get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -221,7 +235,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _supports_interface(self, client: str, interface: str) -> bool:
+    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -234,7 +248,7 @@ class Comm:
         raise NotImplementedError
 
     @staticmethod
-    def _interface_names_to_classes(interfaces: list) -> list:
+    def _interface_names_to_classes(interfaces: List[str]) -> List[Type[Interface]]:
         """Converts a list of interface names to interface classes.
 
         Args:
@@ -254,7 +268,7 @@ class Comm:
             found = False
             for cls_name, cls in inspection:
                 # class needs to face same name and implement Interface
-                if interface_name == cls_name and issubclass(cls, pyobs.interfaces.Interface):
+                if interface_name == cls_name and issubclass(cls, Interface):
                     # found it!
                     found = True
 
@@ -269,12 +283,13 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def execute(self, client: str, method: str, *args) -> Any:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Execute a given method on a remote client.
 
         Args:
-            client: ID of client.
-            method: Method to call.
+            client (str): ID of client.
+            method (str): Method to call.
+            signature: Method signature.
             *args: List of parameters for given method.
 
         Returns:
@@ -282,7 +297,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _logging(self):
+    def _logging(self) -> None:
         """Background thread for handling the logging."""
 
         # run until closing
@@ -296,7 +311,7 @@ class Comm:
             # sleep a little
             self._closing.wait(1)
 
-    def log_message(self, entry: LogEvent):
+    def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.
 
         Args:
@@ -304,7 +319,7 @@ class Comm:
         """
         self._log_queue.put_nowait(entry)
 
-    def send_event(self, event: Event):
+    def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -312,7 +327,7 @@ class Comm:
         """
         pass
 
-    def register_event(self, event_class, handler=None):
+    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

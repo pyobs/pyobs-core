@@ -14,14 +14,14 @@ class ImageWriter(Module):
     __module__ = 'pyobs.modules.image'
 
     def __init__(self, filename: str = '/archive/{FNAME}', sources: Union[str, List[str]] = None,
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Creates a new image writer.
 
         Args:
             filename: Pattern for filename to store images at.
             sources: List of sources (e.g. cameras) to process images from or None for all.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._worker, True)
@@ -40,7 +40,7 @@ class ImageWriter(Module):
             log.info('Subscribing to new image events...')
             self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def process_new_image_event(self, event: NewImageEvent, sender: str):
         """Puts a new images in the DB with the given ID.
 
         Args:

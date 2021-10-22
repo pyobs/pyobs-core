@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING, Any, Optional
 from astropy.table import Table
 import logging
 import numpy as np
@@ -7,6 +7,8 @@ import pandas as pd
 
 from .sourcedetection import SourceDetection
 from pyobs.images import Image
+if TYPE_CHECKING:
+    from sep import Background
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class SepSourceDetection(SourceDetection):
     __module__ = 'pyobs.images.processors.detection'
 
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
         """Initializes a wrapper for SEP. See its documentation for details.
 
         Highly inspired by LCO's wrapper for SEP, see:
@@ -30,7 +32,7 @@ class SepSourceDetection(SourceDetection):
             clean: Perform cleaning?
             clean_param: Cleaning parameter (see SExtractor manual).
         """
-        SourceDetection.__init__(self, *args, **kwargs)
+        SourceDetection.__init__(self, **kwargs)
 
         # store
         self.threshold = threshold
@@ -51,8 +53,16 @@ class SepSourceDetection(SourceDetection):
         """
         import sep
 
+        # got data?
+        if image.data is None:
+            log.warning('No data found in image.')
+            return image
+
+        # no mask?
+        mask = image.mask if image.mask is not None else np.ones(image.data.shape, dtype=bool)
+
         # remove background
-        data, bkg = SepSourceDetection.remove_background(image.data, image.mask)
+        data, bkg = SepSourceDetection.remove_background(image.data, mask)
 
         # extract sources
         sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
@@ -124,7 +134,7 @@ class SepSourceDetection(SourceDetection):
         return img
 
     @staticmethod
-    def remove_background(data: np.ndarray, mask: np.ndarray = None) -> Tuple[np.ndarray, 'sep.Background']:
+    def remove_background(data: np.ndarray, mask: Optional[np.ndarray] = None) -> Tuple[np.ndarray, 'Background']:
         """Remove background from image in data.
 
         Args:

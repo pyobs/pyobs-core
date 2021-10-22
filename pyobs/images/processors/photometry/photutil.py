@@ -1,3 +1,5 @@
+from typing import Any
+
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 import logging
@@ -15,7 +17,7 @@ class PhotUtilsPhotometry(Photometry):
     __module__ = 'pyobs.images.processors.photometry'
 
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
         """Initializes an aperture photometry based on PhotUtils.
 
         Args:
@@ -28,7 +30,7 @@ class PhotUtilsPhotometry(Photometry):
             *args:
             **kwargs:
         """
-        Photometry.__init__(self, *args, **kwargs)
+        Photometry.__init__(self, **kwargs)
 
         # store
         self.threshold = threshold
@@ -50,9 +52,13 @@ class PhotUtilsPhotometry(Photometry):
 
         # no pixel scale given?
         if image.pixel_scale is None:
-            raise ValueError('No pixel scale provided by image.')
+            log.warning('No pixel scale provided by image.')
+            return image
 
         # fetch catalog
+        if image.catalog is None:
+            log.warning('No catalog in image.')
+            return image
         sources = image.catalog.copy()
 
         # get positions
@@ -82,12 +88,12 @@ class PhotUtilsPhotometry(Photometry):
             phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
 
             # calc flux
-            bkg_median = np.array(bkg_median)
-            aper_bkg = bkg_median * aperture.area
+            bkg_median_np = np.array(bkg_median)
+            aper_bkg = bkg_median_np * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
             if 'aperture_sum_err' in phot.columns:
                 sources['fluxerr%d' % diameter] = phot['aperture_sum_err']
-            sources['bkgaper%d' % diameter] = bkg_median
+            sources['bkgaper%d' % diameter] = bkg_median_np
 
         # copy image, set catalog and return it
         img = image.copy()

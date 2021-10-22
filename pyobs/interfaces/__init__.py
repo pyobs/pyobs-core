@@ -52,4 +52,4 @@ from .IOffsetsRaDec import IOffsetsRaDec
 from .IVideo import IVideo
 from .IWeather import IWeather
 from .IWindow import IWindow
-from .interface import *
+from .interface import Interface

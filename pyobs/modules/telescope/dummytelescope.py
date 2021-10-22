@@ -23,10 +23,10 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
     """A dummy telescope for testing."""
     __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, world: 'SimWorld' = None, *args, **kwargs):
+    def __init__(self, world: 'SimWorld' = None, **kwargs: Any):
         """Creates a new dummy telescope."""
-        BaseTelescope.__init__(self, *args, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
-        FitsNamespaceMixin.__init__(self, *args, **kwargs)
+        BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
+        FitsNamespaceMixin.__init__(self, **kwargs)
 
         # init world and get telescope
         self._world = world if world is not None else \
@@ -113,7 +113,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
             self.closing.wait(1)
 
-    def get_focus(self, *args, **kwargs) -> float:
+    def get_focus(self, **kwargs: Any) -> float:
         """Return current focus.
 
         Returns:
@@ -122,7 +122,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         return self._telescope.focus
 
     @timeout(60)
-    def set_focus(self, focus: float, *args, **kwargs):
+    def set_focus(self, focus: float, **kwargs: Any):
         """Sets new focus.
 
         Args:
@@ -150,7 +150,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
             self._telescope.focus = focus
 
-    def list_filters(self, *args, **kwargs) -> List[str]:
+    def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
@@ -158,7 +158,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.filters
 
-    def get_filter(self, *args, **kwargs) -> str:
+    def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:
@@ -166,7 +166,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.filter
 
-    def set_filter(self, filter_name: str, *args, **kwargs):
+    def set_filter(self, filter_name: str, **kwargs: Any):
         """Set the current filter.
 
         Args:
@@ -190,7 +190,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             logging.info('New filter set.')
 
     @timeout(60)
-    def init(self, *args, **kwargs):
+    def init(self, **kwargs: Any):
         """Initialize telescope.
 
         Raises:
@@ -204,7 +204,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self.comm.send_event(InitializedEvent())
 
     @timeout(60)
-    def park(self, *args, **kwargs):
+    def park(self, **kwargs: Any):
         """Park telescope.
 
         Raises:
@@ -216,7 +216,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         time.sleep(5.)
         self._change_motion_status(MotionStatus.PARKED)
 
-    def set_offsets_radec(self, dra: float, ddec: float, *args, **kwargs):
+    def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any):
         """Move an RA/Dec offset.
 
         Args:
@@ -229,7 +229,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         self._telescope.set_offsets(dra, ddec)
 
-    def get_offsets_radec(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:
@@ -237,7 +237,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.offsets
 
-    def get_radec(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:
@@ -245,7 +245,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
 
-    def get_altaz(self, *args, **kwargs) -> Tuple[float, float]:
+    def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
@@ -257,7 +257,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -276,7 +276,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # finished
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
-    def stop_motion(self, device: str = None, *args, **kwargs):
+    def stop_motion(self, device: str = None, **kwargs: Any):
         """Stop the motion.
 
         Args:
@@ -284,7 +284,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         pass
 
-    def get_focus_offset(self, *args, **kwargs) -> float:
+    def get_focus_offset(self, **kwargs: Any) -> float:
         """Return current focus offset.
 
         Returns:
@@ -292,7 +292,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return 0
 
-    def get_temperatures(self, *args, **kwargs) -> dict:
+    def get_temperatures(self, **kwargs: Any) -> dict:
         """Returns all temperatures measured by this module.
 
         Returns:

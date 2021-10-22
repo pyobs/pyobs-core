@@ -3,7 +3,6 @@ import logging
 import os
 import tarfile
 
-from pyobs.object import get_object
 from .vfs import VFSFile, VirtualFileSystem
 from .filelists import FileList
 
@@ -32,6 +31,7 @@ class TarFile(VFSFile):
             raise ValueError('Modes other than rb are not supported.')
 
         # get list of files to zip
+        from pyobs.object import get_object
         source = get_object(source)
         self._files = source(name)
 

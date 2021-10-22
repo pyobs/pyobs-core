@@ -1,22 +1,20 @@
+import inspect
 import threading
+from typing import TypeVar, Generic, Optional, List, Any, cast
 
-from pyobs.comm import TimeoutException
+from pyobs.comm.exceptions import TimeoutException
 from pyobs.utils.types import cast_response_to_real
 
 
-class Future(object):
-    """
-    Represents the result of an asynchronous computation.
-    """
+T = TypeVar('T')
 
-    def __init__(self, value=None, empty=False):
-        """
-        Initializes a new Future.
-        """
-        self._value = value
-        self._exception = None
-        self._timeout = None
-        self._signature = None
+
+class BaseFuture:
+    def __init__(self, empty: bool = False, signature: Optional[inspect.Signature] = None):
+        """Init new base future."""
+        self._exception: Optional[Exception] = None
+        self._timeout: Optional[float] = None
+        self._signature: Optional[inspect.Signature] = signature
         self._event = threading.Event()
 
         # already set?
@@ -24,7 +22,56 @@ class Future(object):
             # fire event
             self._event.set()
 
-    def set_value(self, value):
+    def set_value(self, value: Any) -> None:
+        ...
+
+    def wait(self) -> Any:
+        ...
+
+    def is_done(self) -> bool:
+        """
+        Returns true if a value has been returned.
+        """
+        return self._event.is_set()
+
+    def cancel_with_error(self, exception: Exception) -> None:
+        """
+        Cancels the Future because of an error. Once cancelled, a
+        caller blocked on get_value will be able to continue.
+        """
+        self._exception = exception
+        self._event.set()
+
+    def set_timeout(self, timeout: float) -> None:
+        """
+        Sets a new timeout for the method call.
+        """
+        self._timeout = timeout
+
+    def get_timeout(self) -> Optional[float]:
+        """
+        Returns async timeout.
+        """
+        return self._timeout
+
+    @staticmethod
+    def wait_all(futures: List['BaseFuture']) -> List[Any]:
+        return [fut.wait() for fut in futures if fut is not None]
+
+
+class Future(BaseFuture, Generic[T]):
+    """
+    Represents the result of an asynchronous computation.
+    """
+
+    def __init__(self, value: Optional[T] = None, *args: Any, **kwargs: Any):
+        """
+        Initializes a new Future.
+        """
+        BaseFuture.__init__(self, *args, **kwargs)
+        self._value = value
+
+    def set_value(self, value: T) -> None:
         """
         Sets the value of this Future. Once the value is set, a caller
         blocked on get_value will be able to continue.
@@ -32,11 +79,7 @@ class Future(object):
         self._value = value
         self._event.set()
 
-    def set_signature(self, sig):
-        """Set the method signature."""
-        self._signature = sig
-
-    def wait(self):
+    def wait(self) -> Optional[T]:
         """
         Gets the value of this Future. This call will block until
         the result is available, or until the timeout expires.
@@ -64,36 +107,9 @@ class Future(object):
         # all ok, return value
         if self._signature is not None:
             # cast response to real types
-            return cast_response_to_real(self._value, self._signature)
+            return cast(T, cast_response_to_real(self._value, self._signature))
         else:
             return self._value
 
-    def is_done(self):
-        """
-        Returns true if a value has been returned.
-        """
-        return self._event.is_set()
 
-    def cancel_with_error(self, exception):
-        """
-        Cancels the Future because of an error. Once cancelled, a
-        caller blocked on get_value will be able to continue.
-        """
-        self._exception = exception
-        self._event.set()
-
-    def set_timeout(self, timeout):
-        """
-        Sets a new timeout for the method call.
-        """
-        self._timeout = timeout
-
-    def get_timeout(self):
-        """
-        Returns async timeout.
-        """
-        return self._timeout
-
-    @staticmethod
-    def wait_all(futures: list):
-        return [fut.wait() for fut in futures if fut is not None]
+__all__ = ['BaseFuture', 'Future']

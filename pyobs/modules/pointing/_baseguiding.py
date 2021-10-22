@@ -4,9 +4,10 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider, ITelescope
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider
 from pyobs.images import Image
 from ._base import BasePointing
+from ...interfaces.proxies import ITelescopeProxy
 
 log = logging.getLogger(__name__)
 
@@ -15,8 +16,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, max_exposure_time: float = None, min_interval: float = 0, max_interval: float = 600,
-                 separation_reset: float = None, pid: bool = False, *args, **kwargs):
+    def __init__(self, max_exposure_time: Optional[float] = None, min_interval: float = 0, max_interval: float = 600,
+                 separation_reset: Optional[float] = None, pid: bool = False, **kwargs: Any):
         """Initializes a new science frame auto guiding system.
 
         Args:
@@ -26,7 +27,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
         """
-        BasePointing.__init__(self, *args, **kwargs)
+        BasePointing.__init__(self, **kwargs)
 
         # store
         self._enabled = False
@@ -41,17 +42,17 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
         self._last_header = None
         self._ref_header = None
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
         log.info('Start auto-guiding...')
         self._reset_guiding(enabled=True)
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
         log.info('Stopping autp-guiding...')
         self._reset_guiding(enabled=False)
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether auto-guiding is running.
 
         Returns:
@@ -59,7 +60,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
         """
         return self._enabled
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -77,7 +78,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
             'AGSTATE': (state, 'Autoguider state')
         }
 
-    def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] = None):
+    def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
         """Reset guiding.
 
         Args:
@@ -167,7 +168,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
 
         # get telescope
         try:
-            telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+            telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
         except ValueError:
             log.error('Given telescope does not exist or is not of correct type.')
             return image

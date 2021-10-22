@@ -1,13 +1,9 @@
 import logging
-from typing import Tuple, List
-import numpy as np
+from typing import Any
+
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
-from scipy import signal, optimize
-from astropy.nddata import NDData
-from astropy.table import Table, Column
-import photutils
 
 from pyobs.images import Image
 from . import Offsets
@@ -23,12 +19,12 @@ class CorrelationMaxCloseToBorderError(Exception):
 class AstrometryOffsets(Offsets):
     """An offset-calculation method based on astrometry. Returns offset to real coordinates."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initializes new astrometry offsets.
 
         MUST run after an astrometry processor.
         """
-        Offsets.__init__(self, *args, **kwargs)
+        Offsets.__init__(self, **kwargs)
 
     def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 from .interface import Interface
 
@@ -7,7 +7,7 @@ class IWindow(Interface):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
-    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -15,7 +15,7 @@ class IWindow(Interface):
         """
         raise NotImplementedError
 
-    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -29,7 +29,7 @@ class IWindow(Interface):
         """
         raise NotImplementedError
 
-    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:

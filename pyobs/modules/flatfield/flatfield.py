@@ -4,7 +4,8 @@ from enum import Enum
 from typing import Union, Tuple, List, Optional
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
-from pyobs.interfaces import ICamera, IFlatField, IFilters, ITelescope, IBinning
+from pyobs.interfaces import IFlatField, IFilters, IBinning
+from pyobs.interfaces.proxies import IFiltersProxy, ICameraProxy, ITelescopeProxy, IBinningProxy
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
@@ -12,6 +13,10 @@ from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats import FlatFielder
 
 log = logging.getLogger(__name__)
+
+
+class FlatFielderProxy:
+    pass
 
 
 class FlatField(Module, IFlatField, IBinning, IFilters):
@@ -29,9 +34,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         RUNNING = 'running'
         FINISHED = 'finished'
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFilters] = None,
-                 log_file: str = None, *args, **kwargs):
+    def __init__(self, telescope: Union[str, ITelescopeProxy], camera: Union[str, ICameraProxy],
+                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFiltersProxy] = None,
+                 log_file: str = None, **kwargs: Any):
         """Initialize a new flat fielder.
 
         Args:
@@ -41,7 +46,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             filters: Name of IFilters, if any.
             log_file: Name of file to store flat field log in.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store telescope, camera, and filters
         self._telescope = telescope
@@ -75,9 +80,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # check telescope, camera, and filters
         try:
-            self.proxy(self._telescope, ITelescope)
-            self.proxy(self._camera, ICamera)
-            self.proxy(self._filter_wheel, IFilters)
+            self.proxy(self._telescope, ITelescopeProxy)
+            self.proxy(self._camera, ICameraProxy)
+            self.proxy(self._filter_wheel, IFiltersProxy)
         except ValueError:
             log.warning('Either telescope, camera or filters do not exist or are not of correct type at the moment.')
 
@@ -98,15 +103,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
                             filter=filter, binning=binning[0])
 
-    def list_binnings(self, *args, **kwargs) -> List[Tuple[int, int]]:
+    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:
             List of available binnings as (x, y) tuples.
         """
-        return self.proxy(self._camera, IBinning).list_binnings().wait()
+        return self.proxy(self._camera, IBinningProxy).list_binnings().wait()
 
-    def set_binning(self, x: int, y: int, *args, **kwargs):
+    def set_binning(self, x: int, y: int, **kwargs: Any):
         """Set the camera binning.
 
         Args:
@@ -118,7 +123,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._binning = (x, y)
 
-    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
+    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -126,15 +131,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         return self._binning
 
-    def list_filters(self, *args, **kwargs) -> List[str]:
+    def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
             List of available filters.
         """
-        return self.proxy(self._filter_wheel, IFilters).list_filters().wait()
+        return self.proxy(self._filter_wheel, IFiltersProxy).list_filters().wait()
 
-    def set_filter(self, filter_name: str, *args, **kwargs):
+    def set_filter(self, filter_name: str, **kwargs: Any):
         """Set the current filter.
 
         Args:
@@ -145,7 +150,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._filter = filter_name
 
-    def get_filter(self, *args, **kwargs) -> Optional[str]:
+    def get_filter(self, **kwargs: Any) -> Optional[str]:
         """Get currently set filter.
 
         Returns:
@@ -154,7 +159,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return self._filter
 
     @timeout(3600)
-    def flat_field(self, count: int = 20, *args, **kwargs) -> Tuple[int, float]:
+    def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -168,17 +173,17 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
 
         # get filter wheel
-        filters: Optional[IFilters] = None
+        filters: Optional[IFiltersProxy] = None
         if self._filter_wheel is not None:
             log.info('Getting proxy for filter wheel...')
-            filters: IFilters = self.proxy(self._filter_wheel, IFilters)
+            filters = self.proxy(self._filter_wheel, IFiltersProxy)
 
         # reset
         self._flat_fielder.reset()
@@ -207,11 +212,11 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
     @timeout(20)
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any):
         """Abort current actions."""
         self._abort.set()
 
-    def _abort_weather(self, event: Event, sender: str, *args, **kwargs):
+    def _abort_weather(self, event: Event, sender: str, **kwargs: Any):
         """Abort on bad weather."""
         self.abort()
 

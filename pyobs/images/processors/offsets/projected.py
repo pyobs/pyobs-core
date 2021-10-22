@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 from scipy.interpolate import UnivariateSpline
@@ -18,9 +18,9 @@ class ProjectedOffsets(Offsets):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
     __module__ = 'pyobs.images.processors.offsets'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initializes a new auto guiding system."""
-        Offsets.__init__(self, *args, **kwargs)
+        Offsets.__init__(self, **kwargs)
 
         # init
         self._ref_image = None
@@ -63,7 +63,7 @@ class ProjectedOffsets(Offsets):
         image.meta['offsets'] = (dx, dy)
         return image
 
-    def _process(self, image: Image) -> Tuple[np.array, np.array]:
+    def _process(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:
         """Project image along x and y axes and return results.
 
         Args:

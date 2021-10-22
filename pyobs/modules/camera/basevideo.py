@@ -4,21 +4,23 @@ import logging
 import threading
 import time
 import asyncio
-from typing import Dict, Any, Tuple, NamedTuple, Optional
-
+from typing import Dict, Any, Tuple, NamedTuple, Optional, List
 import numpy as np
 import tornado
 import tornado.web
+import tornado.gen
+import tornado.iostream
+import tornado.ioloop
 import PIL.Image
 
 from pyobs.modules import Module, timeout
-from pyobs.interfaces import IVideo, IImageType
-from ...events import NewImageEvent
-from ...images import Image
-from ...mixins.imagegrabber import ImageGrabberMixin
-from ...utils.cache import DataCache
-from ...utils.enums import ImageType
-from ...utils.threads import Future
+from pyobs.interfaces import IVideo, IImageType, IExposureTime
+from pyobs.events import NewImageEvent
+from pyobs.images import Image
+from pyobs.mixins.imagegrabber import ImageGrabberMixin
+from pyobs.utils.cache import DataCache
+from pyobs.utils.enums import ImageType
+from pyobs.utils.threads import Future
 
 log = logging.getLogger(__name__)
 
@@ -37,12 +39,12 @@ INDEX_HTML = """
 """
 
 
-def calc_expose_timeout(webcam, *args, **kwargs):
+def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for grabe_image()."""
     if hasattr(webcam, 'get_exposure_time'):
-        return 2 * webcam.get_exposure_time() + 30
+        return 2. * webcam.get_exposure_time() + 30.
     else:
-        return 30
+        return 30.
 
 
 class ImageRequest(NamedTuple):
@@ -52,26 +54,27 @@ class ImageRequest(NamedTuple):
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
-    header_futures: Dict[str, Future]
+    header_futures: Dict[str, Future[Dict[str, Tuple[Any, str]]]]
     broadcast: bool
 
 
 class LastImage(NamedTuple):
     data: np.ndarray
     image: Optional[Image]
-    jpeg: bytes
-    filename: str
+    jpeg: Optional[bytes]
+    filename: Optional[str]
 
 
 class MainHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> None:
         self.write(INDEX_HTML)
 
 
 class VideoHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> Any:
+        self.application: BaseVideo
         self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
         self.set_header('Pragma', 'no-cache')
         self.set_header('Content-Type', 'multipart/x-mixed-replace;boundary=--jpgboundary')
@@ -79,7 +82,7 @@ class VideoHandler(tornado.web.RequestHandler):
 
         my_boundary = "--jpgboundary\r\n"
         last_num = None
-        last_time = 0
+        last_time = 0.
         while True:
             try:
                 # Generating images for mjpeg stream and wraps them into http resp
@@ -103,7 +106,8 @@ class VideoHandler(tornado.web.RequestHandler):
 
 class ImageHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
-    def get(self, filename):
+    def get(self, filename: str) -> Any:
+        self.application: BaseVideo
         # fetch data
         data = self.application.fetch(filename)
         if data is None:
@@ -125,9 +129,9 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
     def __init__(self, http_port: int = 37077, interval: float = 0.5, video_path: str = '/webcam/video.mjpg',
                  filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
-                 fits_namespaces: list = None, fits_headers: Dict[str, Any] = None, centre: Tuple[float, float] = None,
-                 rotation: float = 0., cache_size: int = 5, live_view: bool = True, flip: bool = False,
-                 *args, **kwargs):
+                 fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
+                 centre: Optional[Tuple[float, float]] = None, rotation: float = 0., cache_size: int = 5,
+                 live_view: bool = True, flip: bool = False, **kwargs: Any):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -147,12 +151,12 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             live_view: If True, live view is served via web server.
             flip: Whether to flip around Y axis.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
         ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
                                    rotation=rotation, filenames=filenames)
 
         # store
-        self._io_loop = None
+        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._lock = threading.RLock()
         self._is_listening = False
         self._port = http_port
@@ -166,14 +170,14 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._image_request: Optional[ImageRequest] = None
         self._next_image: Optional[NextImage] = None
         self._last_image: Optional[LastImage] = None
-        self._last_time = 0
+        self._last_time = 0.
         self._flip = flip
 
         # image cache
         self._cache = DataCache(cache_size)
 
         # handlers
-        handlers = [(r"/", MainHandler), (r"/video.mjpg", VideoHandler), (r"/(.*)", ImageHandler)]
+        handlers: List[Any] = [(r"/", MainHandler), (r"/video.mjpg", VideoHandler), (r"/(.*)", ImageHandler)]
         if not live_view:
             # remove video handler
             handlers.pop(1)
@@ -184,15 +188,16 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         # add thread func
         self.add_thread_func(self._http, False)
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
-    def close(self):
+    def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
-        self._io_loop.add_callback(self._io_loop.stop)
+        if self._io_loop is not None:
+            self._io_loop.add_callback(self._io_loop.stop)
         Module.close(self)
 
     @property
@@ -200,7 +205,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         """Whether the server is started."""
         return self._is_listening
 
-    def _http(self):
+    def _http(self) -> None:
         """Thread function for the web server."""
 
         # create io loop
@@ -217,7 +222,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._io_loop.start()
 
     @property
-    def image_jpeg(self):
+    def image_jpeg(self) -> Tuple[Optional[int], Optional[bytes]]:
         with self._lock:
             return self._frame_num, None if self._last_image is None else self._last_image.jpeg
 
@@ -241,7 +246,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             PIL.Image.fromarray(data).save(output, format="jpeg")
             return output.getvalue()
 
-    def _set_image(self, data: np.ndarray):
+    def _set_image(self, data: np.ndarray) -> None:
         """Create FITS and JPEG images from data."""
 
         # flip image?
@@ -338,7 +343,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def grab_image(self, broadcast: bool = True, *args, **kwargs) -> str:
+    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -364,10 +369,14 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         log.info('Waiting for real image to finish...')
         self._new_image_event.wait()
 
+        # no image?
+        if self._last_image is None or self._last_image.filename is None:
+            raise ValueError('Could not take image.')
+
         # finished
         return self._last_image.filename
 
-    def get_video(self, *args, **kwargs) -> str:
+    def get_video(self, **kwargs: Any) -> str:
         """Returns path to video.
 
         Returns:
@@ -375,7 +384,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         """
         return self._video_path
 
-    def fetch(self, filename: str) -> bytearray:
+    def fetch(self, filename: str) -> Optional[bytearray]:
         """Send a file to the requesting client.
 
         Args:
@@ -390,7 +399,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             # find file in cache and return it
             return self._cache[filename] if filename in self._cache else None
 
-    def set_image_type(self, image_type: ImageType, *args, **kwargs):
+    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -399,7 +408,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         log.info('Setting image type to %s...', image_type)
         self._image_type = image_type
 
-    def get_image_type(self, *args, **kwargs) -> ImageType:
+    def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:

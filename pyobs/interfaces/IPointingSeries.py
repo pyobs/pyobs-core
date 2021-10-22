@@ -1,4 +1,6 @@
-from .interface import *
+from typing import Any
+
+from .interface import Interface
 
 
 class IPointingSeries(Interface):
@@ -6,7 +8,7 @@ class IPointingSeries(Interface):
     to it."""
     __module__ = 'pyobs.interfaces'
 
-    def start_pointing_series(self, *args, **kwargs) -> str:
+    def start_pointing_series(self, **kwargs: Any) -> str:
         """Start a new pointing series.
 
         Returns:
@@ -14,11 +16,11 @@ class IPointingSeries(Interface):
         """
         raise NotImplementedError
 
-    def stop_pointing_series(self, *args, **kwargs):
+    def stop_pointing_series(self, **kwargs: Any) -> None:
         """Stop a pointing series."""
         raise NotImplementedError
 
-    def add_pointing_measure(self, *args, **kwargs):
+    def add_pointing_measure(self, **kwargs: Any) -> None:
         """Add a new measurement to the pointing series."""
         raise NotImplementedError
 

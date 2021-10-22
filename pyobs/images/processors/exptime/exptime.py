@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Optional
 
 from pyobs.images import Image
 from pyobs.images.meta.exptime import ExpTime
@@ -12,9 +13,9 @@ class ExpTimeEstimator(ImageProcessor):
     """Estimate exposure time."""
     __module__ = 'pyobs.images.processors.exptime'
 
-    def __init__(self, min_exp_time: float = 0., max_exp_time: float = None, *args, **kwargs):
+    def __init__(self, min_exp_time: float = 0., max_exp_time: Optional[float] = None, **kwargs: Any):
         """Init new exposure time estimator."""
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
         self._min_exp_time = min_exp_time
         self._max_exp_time = max_exp_time
 
@@ -29,7 +30,7 @@ class ExpTimeEstimator(ImageProcessor):
         """
         raise NotImplementedError
 
-    def _set_exp_time(self, image: Image, exp_time: float):
+    def _set_exp_time(self, image: Image, exp_time: float) -> None:
         """Internal setter for exposure time."""
 
         # min exp time

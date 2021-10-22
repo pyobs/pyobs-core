@@ -8,7 +8,7 @@ from astroplan import Observer
 from astropy.time import TimeDelta
 import numpy as np
 
-from pyobs.object import get_object
+from pyobs.object import get_object, get_safe_object
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
 from pyobs.utils.threads import Future
@@ -81,7 +81,7 @@ class FlatFielder:
         self._abort = threading.Event()
 
         # pointing
-        self._pointing = get_object(pointing, SkyFlatsBasePointing, observer=self._observer, allow_none=True)
+        self._pointing = get_safe_object(pointing, SkyFlatsBasePointing, observer=self._observer)
 
         # state machine
         self._state = FlatFielder.State.INIT

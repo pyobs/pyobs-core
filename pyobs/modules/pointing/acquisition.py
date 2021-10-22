@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
@@ -22,8 +22,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     """Class for telescope acquisition."""
     __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, exposure_time: float, target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
-                 max_offset: float = 120, log_file: str = None, **kwargs: Any):
+    def __init__(self, exposure_time: float, target_pixel: Optional[Tuple[float, float]] = None, attempts: int = 5,
+                 tolerance: float = 1, max_offset: float = 120, log_file: Optional[str] = None, **kwargs: Any):
         """Create a new acquisition.
 
         Args:
@@ -50,7 +50,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, **kwargs)
 
-    def open(self):
+    def open(self) -> None:
         """Open module"""
         Module.open(self)
 
@@ -85,7 +85,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         finally:
             self._is_running = False
 
-    def _acquire(self, exposure_time: float) -> dict:
+    def _acquire(self, exposure_time: float) -> Dict[str, Any]:
         """Actually acquire target."""
 
         # get telescope
@@ -123,6 +123,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             image = self.run_pipeline(image)
 
             # calculate distance from offset
+            osd = image.get_meta(OnSkyDistance)
+            if osd is None:
+                log.warning('No on sky distance found in meta.')
+                continue
             dist = image.get_meta(OnSkyDistance).distance
             log.info('Found a distance to target of %.2f arcsec.', dist.arcsec)
 

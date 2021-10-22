@@ -122,15 +122,15 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> Optional[ProxyType]:
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
         ...
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Optional[Any]:
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None,
-              allow_none: bool = False) -> Optional[Union[Any, ProxyType]]:
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -144,7 +144,6 @@ class Comm:
         Args:
             name_or_object: Name of object or object itself.
             obj_type: Expected class of object.
-            allow_none: Allow result to be None.
 
         Returns:
             Object or proxy to object.
@@ -163,10 +162,7 @@ class Comm:
 
             # check it
             if proxy is None:
-                if allow_none:
-                    return None
-                else:
-                    raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
+                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
             elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
@@ -176,6 +172,15 @@ class Comm:
         else:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
+
+    def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Optional[Union[Any, ProxyType]]:
+        """Calls proxy() in a safe way and returns None instead of raising an exception."""
+
+        try:
+            return self.proxy(name_or_object, obj_type)
+        except ValueError:
+            return None
 
     def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.

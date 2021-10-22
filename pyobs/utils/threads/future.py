@@ -1,6 +1,6 @@
 import inspect
 import threading
-from typing import TypeVar, Generic, Optional, List, Any
+from typing import TypeVar, Generic, Optional, List, Any, cast
 
 from pyobs.comm.exceptions import TimeoutException
 from pyobs.utils.types import cast_response_to_real
@@ -107,7 +107,7 @@ class Future(BaseFuture, Generic[T]):
         # all ok, return value
         if self._signature is not None:
             # cast response to real types
-            return cast_response_to_real(self._value, self._signature)
+            return cast(T, cast_response_to_real(self._value, self._signature))
         else:
             return self._value
 

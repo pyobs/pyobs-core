@@ -22,7 +22,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
     def __init__(self, focuser: Union[str, IFocuserProxy], camera: Union[str, ICameraProxy], series: FocusSeries,
                  offset: bool = False, filters: Union[str, IFiltersProxy] = None, filter_name: str = None,
-                 binning: int = None, *args, **kwargs):
+                 binning: int = None, **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -32,7 +32,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store focuser and camera
         self._focuser = focuser
@@ -65,7 +65,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         """Close module."""
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: float, *args, **kwargs) -> Tuple[float, float]:
+    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -214,7 +214,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         return {}
 
     @timeout(20)
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any):
         """Abort current actions."""
         self._abort.set()
 

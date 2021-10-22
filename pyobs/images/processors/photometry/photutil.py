@@ -1,3 +1,5 @@
+from typing import Any
+
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 import logging
@@ -15,7 +17,7 @@ class PhotUtilsPhotometry(Photometry):
     __module__ = 'pyobs.images.processors.photometry'
 
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
         """Initializes an aperture photometry based on PhotUtils.
 
         Args:
@@ -28,7 +30,7 @@ class PhotUtilsPhotometry(Photometry):
             *args:
             **kwargs:
         """
-        Photometry.__init__(self, *args, **kwargs)
+        Photometry.__init__(self, **kwargs)
 
         # store
         self.threshold = threshold

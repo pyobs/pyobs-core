@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 import logging
 
 from .sourcedetection import SourceDetection
@@ -13,7 +13,7 @@ class DaophotSourceDetection(SourceDetection):
 
     def __init__(self, fwhm: float = 3., threshold: float = 4., bkg_sigma: float = 3.,
                  bkg_box_size: Tuple[int, int] = (50, 50), bkg_filter_size: Tuple[int, int] = (3, 3),
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Initializes a wrapper for photutils. See its documentation for details.
 
         Args:
@@ -23,7 +23,7 @@ class DaophotSourceDetection(SourceDetection):
             bkg_box_size: Box size for background estimation.
             bkg_filter_size: Filter size for background estimation.
         """
-        SourceDetection.__init__(self, *args, **kwargs)
+        SourceDetection.__init__(self, **kwargs)
 
         # store
         self.fwhm = fwhm

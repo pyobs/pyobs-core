@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Dict, Any
 import logging
 
 from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy
@@ -16,7 +16,8 @@ class BasePointing(Module, PipelineMixin):
     __module__ = 'pyobs.modules.pointing'
 
     def __init__(self, camera: Union[str, ICameraProxy], telescope: Union[str, ITelescopeProxy],
-                 pipeline: List[Union[dict, ImageProcessor]], apply: Union[dict, ApplyOffsets], *args, **kwargs):
+                 pipeline: List[Union[Dict[str, Any], ImageProcessor]], apply: Union[Dict[str, Any], ApplyOffsets],
+                 **kwargs: Any):
         """Initializes a new base pointing.
 
         Args:
@@ -26,7 +27,7 @@ class BasePointing(Module, PipelineMixin):
             log_file: Name of file to write log to.
             log_absolute: Log absolute offsets instead of relative ones to last one.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
         PipelineMixin.__init__(self, pipeline)
 
         # store
@@ -36,7 +37,7 @@ class BasePointing(Module, PipelineMixin):
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 

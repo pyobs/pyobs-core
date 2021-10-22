@@ -1,6 +1,7 @@
 import fnmatch
 from io import FileIO
 import os
+from typing import Any, Optional, Iterator
 
 from .vfs import VFSFile
 
@@ -43,7 +44,7 @@ class LocalFile(VFSFile, FileIO):
         FileIO.__init__(self, full_path, mode)
 
     @staticmethod
-    def find(path: str, pattern: str, root: str = None, *args, **kwargs) -> list:
+    def find(path: str, pattern: str, root: str = '', *args: Any, **kwargs: Any) -> Iterator[str]:
         """Find files by pattern matching.
 
         Args:
@@ -64,7 +65,7 @@ class LocalFile(VFSFile, FileIO):
                 yield os.path.relpath(os.path.join(cur, filename), root)
 
     @staticmethod
-    def exists(path: str, root: str = None, *args, **kwargs) -> bool:
+    def exists(path: str, root: str = '', *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:

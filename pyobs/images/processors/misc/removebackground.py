@@ -12,7 +12,7 @@ class RemoveBackground(ImageProcessor):
     __module__ = 'pyobs.images.processors.misc'
 
     def __init__(self, sigma: float = 3., box_size: tuple = (50, 50), filter_size: tuple = (3, 3),
-                 *args, **kwargs):
+                 **kwargs:: Any):
         """Init an image processor that removes background from image.
 
         Args:
@@ -20,7 +20,7 @@ class RemoveBackground(ImageProcessor):
             box_size: Box size for bkg estimation.
             filter_size: Size of filter.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self.sigma = sigma

@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Any, Dict
 
 from pyobs.object import get_object
 from pyobs.images import Image
@@ -13,8 +13,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
     """Estimate exposure time from a star."""
     __module__ = 'pyobs.images.processors.exptime'
 
-    def __init__(self, source_detection: Union[dict, SourceDetection], edge: float = 0.1, bias: float = 0., saturated: float = 0.7,
-                 *args, **kwargs):
+    def __init__(self, source_detection: Union[Dict[str, Any], SourceDetection], edge: float = 0.1, bias: float = 0.,
+                 saturated: float = 0.7, **kwargs: Any):
         """Create new exp time estimator from single star.
 
         Args:
@@ -23,7 +23,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
         """
-        ExpTimeEstimator.__init__(self, *args, **kwargs)
+        ExpTimeEstimator.__init__(self, **kwargs)
 
         self._source_detection = source_detection
         self._edge = edge

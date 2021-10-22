@@ -79,7 +79,7 @@ class Module(Object, IModule, IConfig):
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # get list of client interfaces
         self._interfaces: List[Type[Interface]] = []

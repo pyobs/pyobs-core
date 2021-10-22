@@ -13,14 +13,14 @@ class DummyAcquisition(Module, IAcquisition):
     """Dummy class for telescope acquisition."""
     __module__ = 'pyobs.modules.acquisition'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Create a new dummy acquisition."""
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._is_running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 

@@ -21,7 +21,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
     def __init__(self, flatfield: typing.Union[str, IFlatFieldProxy], functions: typing.Dict[str, str],
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
-                 timespan: float = 7200, filter_change: float = 30, count: int = 20, *args, **kwargs):
+                 timespan: float = 7200, filter_change: float = 30, count: int = 20, **kwargs: Any):
         """Initialize a new flat field scheduler.
 
         Args:
@@ -34,7 +34,7 @@ class FlatFieldScheduler(Module, IRunnable):
             filter_change: Time required for filter change [s]
             count: Number of flats to take per filter/binning
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._flatfield = flatfield
@@ -62,7 +62,7 @@ class FlatFieldScheduler(Module, IRunnable):
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
     @timeout(7200)
-    def run(self, *args, **kwargs):
+    def run(self, **kwargs: Any):
         """Perform flat-fielding"""
         log.info('Performing flat fielding...')
         self._abort = threading.Event()
@@ -101,7 +101,7 @@ class FlatFieldScheduler(Module, IRunnable):
         log.info('Finished.')
 
     @timeout(20)
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any):
         """Abort current actions."""
         self._abort.set()
 

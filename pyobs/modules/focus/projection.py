@@ -20,7 +20,7 @@ class AutoFocusProjection(Module, IAutoFocus):
     __module__ = 'pyobs.modules.focus'
 
     def __init__(self, focuser: Union[str, IFocuserProxy], camera: Union[str, ICameraProxy],
-                 filters: Union[str, IFiltersProxy] = None, offset: bool = False, *args, **kwargs):
+                 filters: Union[str, IFiltersProxy] = None, offset: bool = False, **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -29,7 +29,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             filters: Name of IFilters, if any.
             offset: If True, offsets are used instead of absolute focus values.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # test import
         import lmfit
@@ -60,7 +60,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: float, *args, **kwargs) -> Tuple[float, float]:
+    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -211,7 +211,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             }
 
     @timeout(20)
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any):
         """Abort current actions."""
         self._abort.set()
 

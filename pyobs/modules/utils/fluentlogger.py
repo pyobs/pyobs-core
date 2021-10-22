@@ -1,7 +1,8 @@
 import logging
+from typing import Any, Optional
 
 from pyobs.modules import Module
-from pyobs.events import LogEvent
+from pyobs.events import LogEvent, Event
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ class FluentLogger(Module):
     """Log to fluentd server."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, hostname: str, port: int, *args, **kwargs):
+    def __init__(self, hostname: str, port: int, *args: Any, **kwargs: Any):
         """Initialize a new logger.
 
         Args:
@@ -19,14 +20,15 @@ class FluentLogger(Module):
             port: Port of server.
 
         """
-        Module.__init__(self, *args, **kwargs)
+        from fluent import sender
+        Module.__init__(self, **kwargs)
 
         # store
         self._hostname = hostname
         self._port = port
-        self._fluent = None
+        self._fluent: Optional[sender.FluentSender] = None
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         from fluent import sender
         Module.open(self)
@@ -37,19 +39,26 @@ class FluentLogger(Module):
         # listen to log events
         self.comm.register_event(LogEvent, self._process_log_entry)
 
-    def _process_log_entry(self, entry: LogEvent, sender: str):
+    def _process_log_entry(self, event: Event, sender: str) -> bool:
         """Process a new log entry.
 
         Args:
-            entry: The log event.
+            event: The log event.
             sender: Name of sender.
         """
 
+        # check
+        if self._fluent is None:
+            raise ValueError('Module not opened.')
+        if not isinstance(event, LogEvent):
+            raise ValueError('Wrong event type.')
+
         # get time
-        time = Time(entry.time).unix
+        time = Time(event.time).unix
 
         # send it
-        self._fluent.emit_with_time(sender, time, entry.data)
+        self._fluent.emit_with_time(sender, time, event.data)
+        return True
 
 
 __all__ = ['FluentLogger']

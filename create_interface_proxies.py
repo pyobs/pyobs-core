@@ -1,11 +1,12 @@
 import inspect
 import os
-import typing
+from typing import Type, List, Any
 
 import pyobs.interfaces
+from pyobs.interfaces import Interface
 
 
-def get_parents(interface):
+def get_parents(interface: Type[Interface]) -> List[type]:
     # get parent classes
     parents = inspect.getmro(interface)
 
@@ -13,16 +14,16 @@ def get_parents(interface):
     return list(filter(lambda i: i.__name__ not in [interface.__name__, 'object'], parents))
 
 
-def annotation_to_str(annotation):
+def annotation_to_str(annotation: Any) -> str:
     if 'typing' in str(annotation):
         return str(annotation)
     elif 'None' in str(annotation):
         return 'None'
     else:
-        return annotation.__name__
+        return str(annotation.__name__)
 
 
-def get_used_types(methods):
+def get_used_types(methods: List[Any]) -> List[Any]:
     # get all used types
     used_types = []
     for _, method in methods:
@@ -39,7 +40,8 @@ def get_used_types(methods):
 
     return pyobs_types
 
-def main():
+
+def main() -> None:
     # path for proxies
     ifaces_path = os.path.dirname(pyobs.interfaces.__file__)
     proxies_path = os.path.join(ifaces_path, 'proxies')

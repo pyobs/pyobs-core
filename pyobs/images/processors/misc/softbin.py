@@ -11,13 +11,13 @@ class SoftBin(ImageProcessor):
     """Bin an image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, binning: int = 2, *args, **kwargs):
+    def __init__(self, binning: int = 2, **kwargs:: Any):
         """Init a new software binning pipeline step.
 
         Args:
             binning: Binning to apply to image.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self.binning = binning

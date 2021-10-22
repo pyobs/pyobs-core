@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import multiprocessing as mp
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Any
 from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
     PriorityScheduler
 from astropy.time import TimeDelta
@@ -27,7 +27,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
                  twilight: str = 'astronomical', trigger_on_task_started: bool = False,
-                 trigger_on_task_finished: bool = False, *args, **kwargs):
+                 trigger_on_task_finished: bool = False, **kwargs: Any):
         """Initialize a new scheduler.
 
         Args:
@@ -40,7 +40,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             trigger_on_task_started: Whether to trigger a re-calculation of schedule, when task has started.
             trigger_on_task_finishes: Whether to trigger a re-calculation of schedule, when task has finished.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # get scheduler
         self._task_archive = get_object(tasks, TaskArchive)
@@ -79,15 +79,15 @@ class Scheduler(Module, IStartStop, IRunnable):
             self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any):
         """Start scheduler."""
         self._running = True
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any):
         """Stop scheduler."""
         self._running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""
         return self._running
 
@@ -316,11 +316,11 @@ class Scheduler(Module, IStartStop, IRunnable):
         else:
             log.info('Finished calculating schedule for 0 blocks.')
 
-    def run(self, *args, **kwargs):
+    def run(self, **kwargs: Any):
         """Trigger a re-schedule."""
         self._need_update = True
 
-    def _on_task_started(self, event: TaskStartedEvent, sender: str, *args, **kwargs):
+    def _on_task_started(self, event: TaskStartedEvent, sender: str):
         """Re-schedule when task has started and we can predict its end.
 
         Args:
@@ -342,7 +342,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = event.eta
 
-    def _on_task_finished(self, event: TaskFinishedEvent, sender: str, *args, **kwargs):
+    def _on_task_finished(self, event: TaskFinishedEvent, sender: str):
         """Reset current task, when it has finished.
 
         Args:
@@ -362,7 +362,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = Time.now()
 
-    def _on_good_weather(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
+    def _on_good_weather(self, event: GoodWeatherEvent, sender: str):
         """Re-schedule on incoming good weather event.
 
         Args:

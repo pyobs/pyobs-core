@@ -23,7 +23,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     __module__ = 'pyobs.modules.pointing'
 
     def __init__(self, exposure_time: float, target_pixel: Tuple = None, attempts: int = 5, tolerance: float = 1,
-                 max_offset: float = 120, log_file: str = None, *args, **kwargs):
+                 max_offset: float = 120, log_file: str = None, **kwargs: Any):
         """Create a new acquisition.
 
         Args:
@@ -34,7 +34,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
         """
-        BasePointing.__init__(self, *args, **kwargs)
+        BasePointing.__init__(self, **kwargs)
 
         # store
         self._default_exposure_time = exposure_time
@@ -48,7 +48,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
 
         # init camera settings mixin
-        CameraSettingsMixin.__init__(self, *args, **kwargs)
+        CameraSettingsMixin.__init__(self, **kwargs)
 
     def open(self):
         """Open module"""
@@ -61,7 +61,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 

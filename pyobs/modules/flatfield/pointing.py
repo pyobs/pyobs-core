@@ -23,14 +23,14 @@ class FlatFieldPointing(Module, IRunnable):
             telescope: Telescope to point
             pointing: Pointing for calculating coordinates.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store telescope and pointing
         self._telescope = telescope
         self._pointing = pointing
 
     @timeout(60)
-    def run(self, *args, **kwargs):
+    def run(self, **kwargs: Any):
         """Move telescope to pointing."""
 
         # get telescope
@@ -44,7 +44,7 @@ class FlatFieldPointing(Module, IRunnable):
         pointing(telescope).wait()
         log.info('Finished pointing telescope.')
 
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any):
         """Abort current actions."""
         pass
 

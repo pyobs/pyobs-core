@@ -1,4 +1,6 @@
 import logging
+from typing import Any
+
 import requests
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
@@ -15,7 +17,7 @@ class AstrometryDotNet(Astrometry):
     """Perform astrometry using astrometry.net"""
     __module__ = 'pyobs.images.processors.astrometry'
 
-    def __init__(self, url: str, source_count: int = 50, radius: float = 3., *args, **kwargs):
+    def __init__(self, url: str, source_count: int = 50, radius: float = 3., **kwargs: Any):
         """Init new astronomy.net processor.
 
         Args:
@@ -23,7 +25,7 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
         """
-        Astrometry.__init__(self, *args, **kwargs)
+        Astrometry.__init__(self, **kwargs)
 
         # URL to web-service
         self.url = url

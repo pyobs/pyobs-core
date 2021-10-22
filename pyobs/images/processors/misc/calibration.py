@@ -23,13 +23,13 @@ class Calibration(ImageProcessor):
     """Cache for calibration frames."""
     calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
 
-    def __init__(self, archive: Union[dict, Archive], max_cache_size: int = 20, *args, **kwargs):
+    def __init__(self, archive: Union[dict, Archive], max_cache_size: int = 20, **kwargs:: Any):
         """Init a new image calibration pipeline step.
 
         Args:
             archive: Archive to fetch calibration frames from.
         """
-        ImageProcessor.__init__(self, *args, **kwargs)
+        ImageProcessor.__init__(self, **kwargs)
 
         # store
         self._max_cache_size = max_cache_size

@@ -21,7 +21,7 @@ class OnlineReduction(Module):
     __module__ = 'pyobs.modules.image'
 
     def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive],
-                 sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):
+                 sources: Union[str, List[str]] = None, cache_size: int = 20, **kwargs: Any):
         """Creates a new image writer.
 
         Args:
@@ -30,7 +30,7 @@ class OnlineReduction(Module):
             sources: List of sources (e.g. cameras) to process images from or None for all.
             cache_size: Size of cache for calibration files.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
@@ -50,7 +50,7 @@ class OnlineReduction(Module):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def process_new_image_event(self, event: NewImageEvent, sender: str):
         """Puts a new images in the DB with the given ID.
 
         Args:

@@ -16,7 +16,7 @@ class AutonomousWarning(Module):
 
     def __init__(self, warn_sound: str, warn_interval: float = 1,
                  start_sound: str = None, started_sound: str = None, stop_sound: str = None, stopped_sound: str = None,
-                 player: str = 'mpg123', trigger_file: str = None, *args, **kwargs):
+                 player: str = 'mpg123', trigger_file: str = None, **kwargs: Any):
         """Initialize a new warning.
 
         Args:
@@ -29,7 +29,7 @@ class AutonomousWarning(Module):
             trigger_file: File, which triggers to switch on-off and vice versa, when created.
                 Will be deleted afterwards.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._warn_sound = warn_sound

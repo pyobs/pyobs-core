@@ -1,7 +1,7 @@
 import datetime
 import functools
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, Any, Dict
 import pytz
 from astropy.coordinates import EarthLocation, Longitude, SkyCoord, ICRS, get_sun, AltAz
 from pyobs.utils.time import Time
@@ -24,7 +24,8 @@ class Environment:
             elevation: 1798.
     """
 
-    def __init__(self, timezone: str = 'utc', location: Union[dict, EarthLocation] = None, *args, **kwargs):
+    def __init__(self, timezone: str = 'utc', location: Union[Dict[str, Any], EarthLocation] = None,
+                 *args: Any, **kwargs: Any):
         # get timezone
         self._timezone = pytz.timezone(timezone)
         log.info('Using timezone %s.', timezone)
@@ -61,7 +62,7 @@ class Environment:
         return self._location
 
     @functools.lru_cache()
-    def localtime(self, utc: datetime.datetime = None):
+    def localtime(self, utc: Optional[datetime.datetime] = None) -> datetime.datetime:
         """Returns the local time at the observatory, either for a given UTC time or for now, if none is given.
 
         Args:
@@ -79,7 +80,7 @@ class Environment:
         return utc_dt.astimezone(self._timezone)
 
     @functools.lru_cache()
-    def night_obs(self, time: Union[datetime.datetime, Time] = None) -> datetime.date:
+    def night_obs(self, time: Optional[Union[datetime.datetime, Time]] = None) -> datetime.date:
         """Returns the date of the night for the given night, i.e. the date of the start of the night.
 
         Args:
@@ -147,7 +148,7 @@ class Environment:
         """Returns current time."""
         return Time.now()
 
-    def to_altaz(self, radec: SkyCoord, time: Time = None):
+    def to_altaz(self, radec: SkyCoord, time: Optional[Time] = None) -> SkyCoord:
         """Converts a given set of RA/Dec to Alt/Az for the current location at a given time.
 
         Args:
@@ -161,7 +162,7 @@ class Environment:
             time = Time.now()
         return radec.transform_to(AltAz(obstime=time, location=self.location))
 
-    def to_radec(self, altaz: SkyCoord, time: Time = None):
+    def to_radec(self, altaz: SkyCoord, time: Optional[Time] = None) -> SkyCoord:
         """Converts a given set of Alt/Az to RA/Dec for the current location at a given time.
 
         Args:
@@ -178,7 +179,7 @@ class Environment:
         return altaz.icrs
 
     @functools.lru_cache()
-    def sun(self, time: Time, altaz=True):
+    def sun(self, time: Time, altaz: bool = True) -> SkyCoord:
         """Returns the position of the sun, either as RA/Dec or Alt/Az for the given time.
 
         Args:

@@ -2,6 +2,8 @@ import glob
 import logging
 import os
 from queue import Queue
+from typing import Any
+
 from astropy.io import fits
 
 from pyobs.modules import Module
@@ -18,14 +20,14 @@ class ImageWatcher(Module):
     """
     __module__ = 'pyobs.modules.image'
 
-    def __init__(self, watchpath: str = None, destinations: list = None, *args, **kwargs):
+    def __init__(self, watchpath: str = None, destinations: list = None, **kwargs: Any):
         """Create a new image watcher.
 
         Args:
             watchpath: Path to watch.
             destinations: Filename patterns for destinations.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # test import
         import pyinotify
@@ -51,7 +53,7 @@ class ImageWatcher(Module):
         class EventHandler(pyinotify.ProcessEvent):
             """Event handler for file watcher."""
 
-            def __init__(self, main, *args, **kwargs):
+            def __init__(self, main, *args: Any, **kwargs: Any):
                 """Create event handler."""
                 pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
                 self.main = main

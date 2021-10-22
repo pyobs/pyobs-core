@@ -55,7 +55,7 @@ class FocusModel(Module, IFocusModel):
                  model: str = None, coefficients: dict = None, update: bool = False,
                  log_file: str = None, min_measurements: int = 10, enabled: bool = True,
                  temp_sensor: str = 'average.temp', default_filter: str = None, filter_offsets: dict = None,
-                 filter_wheel: str = None, *args, **kwargs):
+                 filter_wheel: str = None, **kwargs: Any):
         """Initialize a focus model.
 
         Args:
@@ -73,7 +73,7 @@ class FocusModel(Module, IFocusModel):
             filter_offsets: Offsets for different filters. If None, they are not modeled.
             filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # check import
         import lmfit
@@ -179,7 +179,7 @@ class FocusModel(Module, IFocusModel):
             log.info('Going to sleep for %d seconds...', self._interval)
             self.closing.wait(self._interval)
 
-    def _get_optimal_focus(self, filter_name: str = None, *args, **kwargs) -> float:
+    def _get_optimal_focus(self, filter_name: str = None, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Args:
@@ -222,7 +222,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found optimal focus of %.4f.', focus)
         return float(focus)
 
-    def get_optimal_focus(self, *args, **kwargs) -> float:
+    def get_optimal_focus(self, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Returns:
@@ -290,7 +290,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found values for model: %s', vars)
         return variables
 
-    def _set_optimal_focus(self, filter_name: str = None, *args, **kwargs):
+    def _set_optimal_focus(self, filter_name: str = None, **kwargs: Any):
         """Sets optimal focus.
 
         Args:
@@ -312,7 +312,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Done.')
 
     @timeout(60)
-    def set_optimal_focus(self, *args, **kwargs):
+    def set_optimal_focus(self, **kwargs: Any):
         """Sets optimal focus.
 
         Raises:

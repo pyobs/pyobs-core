@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,7 @@ class PointingSeries(Module, IAutonomous):
                  az_range: Tuple[float, float] = (0., 360.), num_az: int = 24,
                  dec_range: Tuple[float, float] = (-80., 80.), min_moon_dist: float = 15., finish: int = 90,
                  exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -39,7 +39,7 @@ class PointingSeries(Module, IAutonomous):
             acquisition: IAcquisition unit to use.
             telescope: ITelescope unit to use.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._alt_range = tuple(alt_range)
@@ -60,15 +60,15 @@ class PointingSeries(Module, IAutonomous):
         # add thread func
         self.add_thread_func(self._run_thread, False)
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any):
         """Starts a service."""
         pass
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any):
         """Stops a service."""
         pass
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return True
 

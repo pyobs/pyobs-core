@@ -1,4 +1,4 @@
-from astropy.table import Table
+from typing import Any
 import logging
 import numpy as np
 
@@ -13,7 +13,7 @@ class SepPhotometry(Photometry):
     __module__ = 'pyobs.images.processors.photometry'
 
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
         """Initializes a wrapper for SEP. See its documentation for details.
 
         Highly inspired by LCO's wrapper for SEP, see:
@@ -29,7 +29,7 @@ class SepPhotometry(Photometry):
             *args:
             **kwargs:
         """
-        Photometry.__init__(self, *args, **kwargs)
+        Photometry.__init__(self, **kwargs)
 
         # store
         self.threshold = threshold
@@ -59,8 +59,11 @@ class SepPhotometry(Photometry):
             log.warning('No catalog found in image.')
             return image
 
+        # no mask?
+        mask = image.mask if image.mask is not None else np.ones(image.data.shape, dtype=bool)
+
         # remove background
-        data, bkg = SepSourceDetection.remove_background(image.data, image.mask)
+        data, bkg = SepSourceDetection.remove_background(image.data, mask)
 
         # fetch catalog
         sources = image.catalog.copy()

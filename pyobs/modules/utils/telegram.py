@@ -27,7 +27,7 @@ class Telegram(Module):
     """A telegram bot."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, token: str, password: str, allow_new_users: bool = True, *args, **kwargs):
+    def __init__(self, token: str, password: str, allow_new_users: bool = True, **kwargs: Any):
         """Initialize a new bot.
 
         Args:
@@ -36,7 +36,7 @@ class Telegram(Module):
             allow_new_users: Whether new users are allowed to connect.
 
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._token = token

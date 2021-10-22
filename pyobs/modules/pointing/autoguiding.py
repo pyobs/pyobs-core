@@ -13,13 +13,13 @@ class AutoGuiding(BaseGuiding):
     """An auto-guiding system."""
     __module__ = 'pyobs.modules.guiding'
 
-    def __init__(self, exposure_time: float = 1., *args, **kwargs):
+    def __init__(self, exposure_time: float = 1., **kwargs: Any):
         """Initializes a new auto guiding system.
 
         Args:
             exposure_time: Initial exposure time in seconds.
         """
-        BaseGuiding.__init__(self, *args, **kwargs)
+        BaseGuiding.__init__(self, **kwargs)
 
         # store
         self._default_exposure_time = exposure_time
@@ -29,7 +29,7 @@ class AutoGuiding(BaseGuiding):
         # add thread func
         self.add_thread_func(self._auto_guiding, True)
 
-    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+    def set_exposure_time(self, exposure_time: float, **kwargs: Any):
         """Set the exposure time for the auto-guider.
 
         Args:

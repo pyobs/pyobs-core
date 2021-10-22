@@ -13,9 +13,9 @@ class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
     __module__ = 'pyobs.modules.guiding'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initializes a new science frame auto guiding system."""
-        BaseGuiding.__init__(self, *args, **kwargs)
+        BaseGuiding.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._auto_guiding, True)
@@ -32,7 +32,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.add_image)
 
-    def set_exposure_time(self, exposure_time: float, *args, **kwargs):
+    def set_exposure_time(self, exposure_time: float, **kwargs: Any):
         """Set the exposure time for the auto-guider.
 
         Args:
@@ -40,7 +40,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
         raise NotImplementedError
 
-    def add_image(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def add_image(self, event: NewImageEvent, sender: str, **kwargs: Any):
         """Processes an image asynchronously, returns immediately.
 
         Args:

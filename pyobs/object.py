@@ -28,26 +28,16 @@ ProxyType = TypeVar('ProxyType')
 
 
 @overload
-def get_object(config_or_object: Dict[str, Any], object_class: Type[ObjectClass], allow_none: bool = False,
-               **kwargs: Any) -> ObjectClass: ...
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass], **kwargs: Any) \
+        -> ObjectClass: ...
 
 
 @overload
-def get_object(config_or_object: ObjectClass, object_class: Type[ObjectClass], allow_none: bool = False,
-               **kwargs: Any) -> ObjectClass: ...
-
-
-@overload
-def get_object(config_or_object: ObjectClass, object_class: None, allow_none: bool = False,
-               **kwargs: Any) -> Any: ...
-
-
-@overload
-def get_object(config_or_object: Any, object_class: None, allow_none: bool, **kwargs: Any) -> Any: ...
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: None, **kwargs: Any) -> Any: ...
 
 
 def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
-               allow_none: bool = False, **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
+               **kwargs: Any) -> Union[ObjectClass, Any]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -64,11 +54,7 @@ def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optio
     """
 
     if config_or_object is None:
-        # nothing to do?
-        if allow_none:
-            return None
-        else:
-            raise TypeError('No config or object given.')
+        raise TypeError('No config or object given.')
 
     elif isinstance(config_or_object, dict):
         # copy kwargs to config_or_object, so that we don't have any duplicates
@@ -86,6 +72,24 @@ def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optio
     if object_class is not None and not isinstance(obj, object_class):
         raise TypeError('Provided object is not of requested type %s.' % object_class.__name__)
     return obj
+
+
+@overload
+def get_safe_object(config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
+                    **kwargs: Any) -> Optional[ObjectClass]: ...
+
+
+@overload
+def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]: ...
+
+
+def get_safe_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
+                    **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
+    """Calls get_object in a safe way and returns None, if an exceptions thrown."""
+    try:
+        return get_object(config_or_object, object_class)
+    except Exception:
+        return None
 
 
 def get_class_from_string(class_name: str) -> Type[Any]:

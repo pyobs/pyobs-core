@@ -1,4 +1,5 @@
 import io
+from typing import Optional, Any
 from urllib.parse import urljoin
 import logging
 import requests
@@ -14,8 +15,9 @@ class HttpFile(VFSFile, io.RawIOBase):
     Especially useful in combination with :class:`~pyobs.modules.utils.HttpFileCache`."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None,
-                 username: str = None, password: str = None, verify_tls: bool = False, *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', download: Optional[str] = None, upload: Optional[str] = None,
+                 username: Optional[str] = None, password: Optional[str] = None, verify_tls: bool = False,
+                 **kwargs: Any):
         """Creates a new HTTP file.
 
         Args:

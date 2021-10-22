@@ -127,11 +127,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if osd is None:
                 log.warning('No on sky distance found in meta.')
                 continue
-            dist = image.get_meta(OnSkyDistance).distance
-            log.info('Found a distance to target of %.2f arcsec.', dist.arcsec)
+            log.info('Found a distance to target of %.2f arcsec.', osd.distance.arcsec)
 
             # get distance
-            if dist < self._tolerance:
+            if osd.distance < self._tolerance:
                 # we're finished!
                 log.info('Target successfully acquired.')
 
@@ -162,7 +161,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 return log_entry
 
             # abort?
-            if dist > self._max_offset:
+            if osd.distance > self._max_offset:
                 # move a maximum of 120"=2'
                 raise ValueError('Calculated offsets too large.')
 

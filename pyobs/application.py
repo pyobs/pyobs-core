@@ -160,12 +160,12 @@ class Application:
             def set_thread_name(name: str) -> None:
                 prctl.set_name(name)
 
-            def _thread_name_hack(self) -> None:
-                set_thread_name(self.name)
-                threading.Thread.__bootstrap_original__(self)
+            def _thread_name_hack(this: Any) -> None:
+                set_thread_name(this.name)
+                threading.Thread.__bootstrap_original__(this)  # type: ignore
 
-            threading.Thread.__bootstrap_original__ = threading.Thread._bootstrap
-            threading.Thread._bootstrap = _thread_name_hack
+            threading.Thread.__bootstrap_original__ = threading.Thread._bootstrap  # type: ignore
+            threading.Thread._bootstrap = _thread_name_hack  # type: ignore
 
         except ImportError:
             log = logging.getLogger('pyobs')

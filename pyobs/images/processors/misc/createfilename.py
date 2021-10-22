@@ -12,7 +12,7 @@ class CreateFilename(ImageProcessor):
     """Formats the filename for an image and stores it in FNAME."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, pattern: str, **kwargs:: Any):
+    def __init__(self, pattern: str, **kwargs: Any):
         """Init an image processor that adds a filename to an image.
 
         Args:

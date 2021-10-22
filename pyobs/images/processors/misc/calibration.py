@@ -1,6 +1,6 @@
 import multiprocessing
 import threading
-from typing import Union, Optional, List, Tuple
+from typing import Union, Optional, List, Tuple, Any, Dict
 import logging
 import astropy.units as u
 
@@ -23,7 +23,7 @@ class Calibration(ImageProcessor):
     """Cache for calibration frames."""
     calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
 
-    def __init__(self, archive: Union[dict, Archive], max_cache_size: int = 20, **kwargs:: Any):
+    def __init__(self, archive: Union[Dict[str, Any], Archive], max_cache_size: int = 20, **kwargs: Any):
         """Init a new image calibration pipeline step.
 
         Args:

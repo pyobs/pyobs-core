@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -11,7 +12,7 @@ class SoftBin(ImageProcessor):
     """Bin an image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, binning: int = 2, **kwargs:: Any):
+    def __init__(self, binning: int = 2, **kwargs: Any):
         """Init a new software binning pipeline step.
 
         Args:

@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Any
 import numpy as np
 
 from pyobs.images import Image
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 class FitsHeaderOffsets(Offsets):
     """An offset-calculation method based on fits headers."""
 
-    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('DET-CPX1', 'DET-CPX2'), **kwargs:: Any):
+    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ('DET-CPX1', 'DET-CPX2'), **kwargs: Any):
         """Initializes new fits header offsets."""
         Offsets.__init__(self, **kwargs)
 

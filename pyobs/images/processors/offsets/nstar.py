@@ -21,7 +21,7 @@ class NStarOffsets(Offsets, PipelineMixin):
     """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
     def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
-                 pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None, **kwargs:: Any):
+                 pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None, **kwargs: Any):
         """Initializes a new auto guiding system.
 
         Requires pyobs.images.processors.detection.SepSourceDetection and

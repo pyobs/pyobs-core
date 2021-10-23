@@ -78,11 +78,7 @@ class Application:
         self._module: Module = Module()
 
     def run(self) -> None:
-        """Actually run the application.
-
-        Args:
-            config: Name of config file, if any.
-        """
+        """Actually run the application."""
 
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
@@ -189,7 +185,7 @@ class GuiApplication(Application):
 
         # create Qt app and window
         self._qapp = QApplication(sys.argv)
-        self._window = ModuleGui()  # type: ignore
+        self._window = ModuleGui()
 
         # show window
         self._window.show()

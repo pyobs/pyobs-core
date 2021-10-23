@@ -302,7 +302,7 @@ class Image:
         """Whether meta exists."""
         return meta_class in self.meta
 
-    def get_meta(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
+    def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
         """Returns meta information, assuming that it is stored under the class of the object.
 
         Args:
@@ -311,10 +311,9 @@ class Image:
         Returns:
             Meta information of the given class.
         """
-
         # return default?
         if meta_class not in self.meta:
-            return default
+            raise ValueError('Meta value not found.')
 
         # correct type?
         if not isinstance(self.meta[meta_class], meta_class):
@@ -322,6 +321,14 @@ class Image:
 
         # return it
         return cast(MetaClass, self.meta[meta_class])
+
+    def get_meta_safe(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
+        """Calls get_meta in a safe way and returns default value in case of an exception."""
+
+        try:
+            return self.get_meta(meta_class)
+        except:
+            return default
 
 
 __all__ = ['Image']

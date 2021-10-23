@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional, Any
 import numpy as np
 from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.wcs import WCS
@@ -19,8 +19,8 @@ class ApplyOffsets(Object):
     """Apply offsets from a given image to a given telescope."""
     __module__ = 'pyobs.utils.offsets'
 
-    def __init__(self, log_file: str = None, log_absolute: bool = False, *args, **kwargs):
-        Object.__init__(self, *args, **kwargs)
+    def __init__(self, log_file: Optional[str] = None, log_absolute: bool = False, **kwargs: Any):
+        Object.__init__(self, **kwargs)
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
@@ -64,11 +64,17 @@ class ApplyOffsets(Object):
         return center, target
 
     def _log_offset(self, telescope: ITelescopeProxy, x_header: str, x_cur: float, x_delta: float,
-                    y_header: str, y_cur: float, y_delta: float):
+                    y_header: str, y_cur: float, y_delta: float) -> None:
         """Logs offset.
 
         Args:
-            entry: Entry to log.
+            telescope: Telescope to use
+            x_header: Header name for x value
+            x_cur: Current x value
+            x_delta: Delta for x
+            y_header: Header name for y value
+            y_cur: Current y value
+            y_delta: Delta for y
         """
 
         # nothing?

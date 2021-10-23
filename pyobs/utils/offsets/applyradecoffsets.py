@@ -1,4 +1,6 @@
 import logging
+from typing import Any
+
 import numpy as np
 from astropy.coordinates import EarthLocation
 
@@ -13,13 +15,14 @@ class ApplyRaDecOffsets(ApplyOffsets):
     """Apply offsets from a given image to a given telescope."""
     __module__ = 'pyobs.utils.offsets'
 
-    def __init__(self, min_offset: float = 0.5, max_offset: float = 30, *args, **kwargs):
+    def __init__(self, min_offset: float = 0.5, max_offset: float = 30, **kwargs: Any):
         """Initializes a new ApplyRaDecOffsets.
 
         Args:
             min_offset: Min offset in arcsec to move.
             max_offset: Max offset in arcsec to move.
         """
+        ApplyOffsets.__init__(self, **kwargs)
 
         # store
         self._min_offset = min_offset
@@ -38,6 +41,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         """
 
         # telescope must be of type IRaDecOffsets
+        tel = telescope
         if not isinstance(telescope, IOffsetsRaDecProxy):
             log.error('Given telescope cannot handle RA/Dec offsets.')
             return False
@@ -53,7 +57,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
 
         # log it
-        self._log_offset(telescope, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
+        self._log_offset(tel, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
 
         # too large or too small?
         diff = np.sqrt(dra.arcsec**2. + ddec.arcsec**2)

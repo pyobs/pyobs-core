@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import numpy as np
 from astropy.coordinates import EarthLocation, AltAz
@@ -15,13 +16,14 @@ class ApplyAltAzOffsets(ApplyOffsets):
     """Apply offsets from a given image to a given telescope."""
     __module__ = 'pyobs.utils.offsets'
 
-    def __init__(self, min_offset: float = 0.5, max_offset: float = 30, *args, **kwargs):
+    def __init__(self, min_offset: float = 0.5, max_offset: float = 30, **kwargs: Any):
         """Initializes a new ApplyAltAzOffsets.
 
         Args:
             min_offset: Min offset in arcsec to move.
             max_offset: Max offset in arcsec to move.
         """
+        ApplyOffsets.__init__(self, **kwargs)
 
         # store
         self._min_offset = min_offset
@@ -40,6 +42,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         """
 
         # telescope must be of type IAltAzOffsets
+        tel = telescope
         if not isinstance(telescope, IOffsetsAltAzProxy):
             log.error('Given telescope cannot handle Alt/Az offsets.')
             return False
@@ -63,7 +66,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
 
         # log it
-        self._log_offset(telescope, 'dalt', cur_dalt, dalt.degree, 'daz', cur_daz, daz.degree)
+        self._log_offset(tel, 'dalt', cur_dalt, dalt.degree, 'daz', cur_daz, daz.degree)
 
         # too large or too small?
         diff = np.sqrt(dalt.arcsec**2. + daz.arcsec**2)

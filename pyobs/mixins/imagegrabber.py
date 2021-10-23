@@ -23,7 +23,7 @@ class ImageGrabberMixin:
 
     def __init__(self, fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
                  centre: Optional[Tuple[float, float]] = None, rotation: float = 0.,
-                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits'):
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits', **kwargs: Any):
         """Initialise the mixin.
 
         Args:

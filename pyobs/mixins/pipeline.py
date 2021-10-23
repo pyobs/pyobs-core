@@ -2,7 +2,7 @@ import logging
 from typing import Union, List, Dict, Any, Optional
 from pyobs.images import ImageProcessor, Image
 
-from pyobs.object import get_object, Object
+from pyobs.object import Object
 
 log = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ class PipelineMixin:
     """Mixin for a module that needs to implement an image pipeline."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, steps: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None):
+    def __init__(self, steps: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None, **kwargs: Any):
         """Initializes the mixin.
 
         Args:

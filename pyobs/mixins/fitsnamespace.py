@@ -9,7 +9,7 @@ class FitsNamespaceMixin:
     """Mixin for IFitsHeaderProvider modules that filters FITS headers by namespace."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, **kwargs: Any):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
     def _filter_fits_namespace(self, hdr: Dict[str, Tuple[Any, str]], sender: str,

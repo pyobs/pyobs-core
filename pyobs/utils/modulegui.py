@@ -2,8 +2,8 @@ from PyQt5 import QtWidgets, QtGui
 import logging
 
 
-class ModuleGui(QtWidgets.QMainWindow, logging.Handler):
-    def __init__(self, *args, **kwargs):
+class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
+    def __init__(self, *args: Any, **kwargs: Any):
         QtWidgets.QMainWindow.__init__(self, *args, **kwargs)
         logging.Handler.__init__(self, *args, **kwargs)
 

@@ -376,9 +376,17 @@ class Object:
         except Exception:
             return None
 
-    def add_child_object(self, config_or_object: Optional[Union[Dict[str, Any], Any]] = None,
+    @overload
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
+                         copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
+                         **kwargs: Any) -> Any: ...
+
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any],
                          object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
-                         **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
+                         **kwargs: Any) -> Union[ObjectClass, Any]:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:

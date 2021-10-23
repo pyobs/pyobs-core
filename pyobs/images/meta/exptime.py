@@ -1,5 +1,5 @@
 class ExpTime:
-    def __init__(self, exptime: float = 0):
+    def __init__(self, exptime: float):
         self.exptime = exptime
 
 

@@ -1,8 +1,8 @@
 import logging
 import threading
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional, Any
 
-from pyobs.interfaces import ICamera, IRoof, ITelescope, IAcquisition, IAutoFocus
+from pyobs.interfaces.proxies import IRoofProxy, ITelescopeProxy, IAcquisitionProxy, IAutoFocusProxy
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
@@ -17,10 +17,11 @@ cannot_run_logger.addFilter(DuplicateFilter())
 class LcoAutoFocusScript(Script):
     """Auto focus script for LCO configs."""
 
-    def __init__(self, roof: Union[str, IRoof] = None, telescope: Union[str, ITelescope] = None,
-                 acquisition: Union[str, IAcquisition] = None, autofocus: Union[str, IAutoFocus] = None,
-                 count: int = 5, step: float = 0.1, exptime: float = 2.,
-                 *args, ** kwargs):
+    def __init__(self, roof: Optional[Union[str, IRoofProxy]] = None,
+                 telescope: Optional[Union[str, ITelescopeProxy]] = None,
+                 acquisition: Optional[Union[str, IAcquisitionProxy]] = None,
+                 autofocus: Optional[Union[str, IAutoFocusProxy]] = None,
+                 count: int = 5, step: float = 0.1, exptime: float = 2., **kwargs: Any):
         """Initialize a new LCO auto focus script.
 
         Args:
@@ -29,7 +30,7 @@ class LcoAutoFocusScript(Script):
             acquisition: Acquisition to use
             autofocus: Autofocus to use
         """
-        Script.__init__(self, *args, **kwargs)
+        Script.__init__(self, **kwargs)
 
         # store
         self.roof = roof
@@ -47,7 +48,8 @@ class LcoAutoFocusScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> Tuple[IRoof, ITelescope, IAcquisition, IAutoFocus]:
+    def _get_proxies(self) -> Tuple[Optional[IRoofProxy], Optional[ITelescopeProxy],
+                                    Optional[IAcquisitionProxy], Optional[IAutoFocusProxy]]:
         """Get proxies for running the task
 
         Returns:
@@ -56,10 +58,10 @@ class LcoAutoFocusScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof: IRoof = self._get_proxy(self.roof, IRoof)
-        telescope: ITelescope = self._get_proxy(self.telescope, ITelescope)
-        acquisition: IAcquisition = self._get_proxy(self.acquisition, IAcquisition)
-        autofocus: IAutoFocus = self._get_proxy(self.autofocus, IAutoFocus)
+        roof = self.comm.safe_proxy(self.roof, IRoofProxy)
+        telescope = self.comm.safe_proxy(self.telescope, ITelescopeProxy)
+        acquisition = self.comm.safe_proxy(self.acquisition, IAcquisitionProxy)
+        autofocus = self.comm.safe_proxy(self.autofocus, IAutoFocusProxy)
         return roof, telescope, acquisition, autofocus
 
     def can_run(self) -> bool:
@@ -94,7 +96,7 @@ class LcoAutoFocusScript(Script):
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event):
+    def run(self, abort_event: threading.Event) -> None:
         """Run script.
 
         Args:
@@ -106,6 +108,8 @@ class LcoAutoFocusScript(Script):
 
         # get proxies
         roof, telescope, acquisition, autofocus = self._get_proxies()
+        if telescope is None:
+            raise ValueError('No telescope given.')
 
         # got a target?
         target = self.configuration['target']
@@ -122,15 +126,15 @@ class LcoAutoFocusScript(Script):
             #     spectrographs won't necessarily have that mode. Force OFF here.
             #     data['acquisition_config']['mode'] = AcquisitionConfig.OFF
 
-            # get exposure time
-            acq = self.configuration['acquisition_config']
-            exp_time = acq['exposure_time'] if 'exposure_time' in acq else 2.
-
             # do acquisition
+            if acquisition is None:
+                raise ValueError('No acquisition given.')
             log.info('Performing acquisition...')
             acquisition.acquire_target().wait()
 
         # do auto focus
+        if autofocus is None:
+            raise ValueError('No autofocus given.')
         autofocus.auto_focus(self._count, self._step, self._exptime).wait()
 
 

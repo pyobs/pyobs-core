@@ -1,17 +1,17 @@
 from threading import Thread
 import logging
-
+from typing import Optional, Any, cast
 
 log = logging.getLogger(__name__)
 
 
 class ThreadWithReturnValue(Thread):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         Thread.__init__(self, *args, **kwargs)
-        self._return = None
-        self._exception = None
+        self._return: Optional[Any] = None
+        self._exception: Optional[Exception] = None
 
-    def run(self):
+    def run(self) -> None:
         if self._target is not None:
             try:
                 # save return valie
@@ -20,8 +20,8 @@ class ThreadWithReturnValue(Thread):
                 # save exception, if one was caught
                 self._exception = e
 
-    def join(self, timeout=None):
-        if timeout == 0.:
+    def join(self, timeout: Optional[float] = None) -> Any:
+        if timeout is None:
             log.warning('Joining thread with timeout of 0s. Is this correct?')
         # join thread
         Thread.join(self, timeout=timeout)

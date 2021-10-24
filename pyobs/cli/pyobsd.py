@@ -5,15 +5,16 @@ import os
 import subprocess
 import sys
 import time
+from typing import Optional, List
 
 import yaml
 
 log = logging.getLogger('pyobs')
 
 
-class pyobsDaemon(object):
-    def __init__(self, config_path, run_path, log_path, log_level='info',
-                 chuid=None, start_stop_daemon='start-stop-daemon'):
+class PyobsDaemon(object):
+    def __init__(self, config_path: str, run_path: str, log_path: str, log_level: str = 'info',
+                 chuid: Optional[str] = None, start_stop_daemon: str = 'start-stop-daemon'):
         self._config_path = config_path
         self._run_path = run_path
         self._log_path = log_path
@@ -35,12 +36,12 @@ class pyobsDaemon(object):
         self._configs = self._get_configs()
         self._running = self._get_running()
 
-    def _get_configs(self):
+    def _get_configs(self) -> List[str]:
         # get configuration files, ignore those ending on .shared.yaml
         tmp = sorted(glob.glob(os.path.join(self._config_path, '*.yaml')))
-        return filter(lambda t: not t.endswith('.shared.yaml'), tmp)
+        return list(filter(lambda t: not t.endswith('.shared.yaml'), tmp))
 
-    def _get_running(self):
+    def _get_running(self) -> List[str]:
         # get PID files
         pid_files = sorted(glob.glob(os.path.join(self._run_path, '*.pid')))
 
@@ -48,7 +49,10 @@ class pyobsDaemon(object):
         running = []
         for pid_file in pid_files:
             # get pid
-            pid = int(self._pid(self._service(pid_file)))
+            pid = self._pid(self._service(pid_file))
+            if pid is None:
+                print('No PID file found.')
+                continue
 
             # check for running
             try:
@@ -62,7 +66,7 @@ class pyobsDaemon(object):
         # return running processes
         return running
 
-    def start(self, services=None):
+    def start(self, services: Optional[List[str]] = None) -> None:
         # get list of running processes
         running = [self._service(r) for r in self._running]
         configs = [self._service(r) for r in self._configs]
@@ -86,7 +90,7 @@ class pyobsDaemon(object):
                 print('Starting %s...' % service)
                 self._start_service(service)
 
-    def stop(self, services=None):
+    def stop(self, services: Optional[List[str]] = None) -> None:
         # if no services are given, stop all
         if services is None:
             services = [self._service(r) for r in self._running]
@@ -96,7 +100,7 @@ class pyobsDaemon(object):
             print('Stopping %s...' % service)
             self._stop_service(service)
 
-    def restart(self, services=None):
+    def restart(self, services: Optional[List[str]] = None) -> None:
         # stop all services
         self.stop(services=services)
 
@@ -107,7 +111,7 @@ class pyobsDaemon(object):
         # start all services
         self.start(services=services)
 
-    def status(self, services=None):
+    def status(self, services: Optional[List[str]] = None) -> None:
         # get all configs and running
         configs = [self._service(r) for r in self._configs]
         running = [self._service(r) for r in self._running]
@@ -121,7 +125,7 @@ class pyobsDaemon(object):
         for p in services:
             print(('[X]' if p in configs else '[ ]') + ' ' + ('[X]' if p in running else '[ ]') + ' ' + p)
 
-    def _start_service(self, service):
+    def _start_service(self, service: str) -> None:
         # get PID file
         pid_file = self._pid_file(service)
 
@@ -147,7 +151,7 @@ class pyobsDaemon(object):
         # execute
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def _stop_service(self, service):
+    def _stop_service(self, service: str) -> None:
         # get service name and PID
         pid_file = self._pid_file(service)
 
@@ -160,23 +164,23 @@ class pyobsDaemon(object):
         subprocess.call(cmd)
 
     @staticmethod
-    def _service(config_file):
+    def _service(config_file: str) -> str:
         # get basename without extension
         return os.path.splitext(os.path.basename(config_file))[0]
 
-    def _config_file(self, service):
+    def _config_file(self, service: str) -> str:
         # get pid file
         return os.path.join(self._config_path, service + '.yaml')
 
-    def _pid_file(self, service):
+    def _pid_file(self, service: str) -> str:
         # get pid file
         return os.path.join(self._run_path, service + '.pid')
 
-    def _log_file(self, service):
+    def _log_file(self, service: str) -> str:
         # get pid file
         return os.path.join(self._log_path, service + '.log')
 
-    def _pid(self, service):
+    def _pid(self, service: str) -> Optional[int]:
         # get pid file
         pid_file = self._pid_file(service)
         if not os.path.exists(pid_file):
@@ -184,10 +188,10 @@ class pyobsDaemon(object):
 
         # get pid
         with open(pid_file, 'r') as f:
-            return f.read()
+            return int(f.read())
 
 
-def main():
+def main() -> None:
     # try to load config file
     config_filename = os.path.expanduser('~/.pyobs/pyobsd.yaml')
     config = {}
@@ -211,7 +215,7 @@ def main():
     args = parser.parse_args()
 
     # init daemon
-    daemon = pyobsDaemon(os.path.join(args.path, args.config_path),
+    daemon = PyobsDaemon(os.path.join(args.path, args.config_path),
                          os.path.join(args.path, args.run_path),
                          os.path.join(args.path, args.log_path),
                          log_level=args.log_level,

@@ -1,6 +1,6 @@
 from threading import Event
 import logging
-from typing import Union, Dict, Tuple
+from typing import Union, Dict, Tuple, Optional, List, Any
 
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
@@ -18,15 +18,16 @@ task_name_logger.addFilter(DuplicateFilter())
 class ConfigStatus:
     """Status of a single configuration."""
 
-    def __init__(self, state='ATTEMPTED', reason=''):
+    def __init__(self, state: str = 'ATTEMPTED', reason: str = ''):
         """Initializes a new Status with an ATTEMPTED."""
         self.start = Time.now()
-        self.end = None
+        self.end: Optional[Time] = None
         self.state = state
         self.reason = reason
         self.time_completed = 0
 
-    def finish(self, state=None, reason=None, time_completed: int = 0) -> 'ConfigStatus':
+    def finish(self, state: Optional[str] = None, reason: Optional[str] = None, time_completed: int = 0) \
+            -> 'ConfigStatus':
         """Finish this status with the given values and the current time.
 
         Args:
@@ -42,7 +43,7 @@ class ConfigStatus:
         self.end = Time.now()
         return self
 
-    def to_json(self):
+    def to_json(self) -> Dict[str, Any]:
         """Convert status to JSON for sending to portal."""
         return {
             'state': self.state,
@@ -50,7 +51,7 @@ class ConfigStatus:
                 'state': self.state,
                 'reason': self.reason,
                 'start': self.start.isot,
-                'end': self.end.isot,
+                'end': '' if self.end is None else self.end.isot,
                 'time_completed': self.time_completed
             }
         }
@@ -59,14 +60,14 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, config: dict, scripts: Dict[str, Script], *args, **kwargs):
+    def __init__(self, config: Dict[str, Any], scripts: Dict[str, Script], **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
             config: Configuration for task
             scripts: External scripts to run
         """
-        Task.__init__(self, *args, **kwargs)
+        Task.__init__(self, **kwargs)
 
         # store stuff
         self.config = config
@@ -255,7 +256,7 @@ class LcoTask(Task):
         """Whether task is finished."""
         return self.config['state'] != 'PENDING'
 
-    def get_fits_headers(self, namespaces: list = None) -> dict:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

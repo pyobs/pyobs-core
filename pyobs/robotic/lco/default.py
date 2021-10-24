@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 import numpy as np
-from typing import Union, Type
+from typing import Union, Optional, Any, Tuple
 
 from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
     ITelescopeProxy, IAcquisitionProxy, ICameraProxy, IFiltersProxy, IImageTypeProxy
@@ -22,10 +22,11 @@ cannot_run_logger.addFilter(DuplicateFilter())
 class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
-    def __init__(self, camera: Union[str, ICameraProxy], roof: Union[str, IRoofProxy] = None,
-                 telescope: Union[str, ITelescopeProxy] = None, filters: Union[str, IFiltersProxy] = None,
-                 autoguider: Union[str, IAutoGuidingProxy] = None, acquisition: Union[str, IAcquisitionProxy] = None,
-                 *args, ** kwargs):
+    def __init__(self, camera: Union[str, ICameraProxy], roof: Optional[Union[str, IRoofProxy]] = None,
+                 telescope: Optional[Union[str, ITelescopeProxy]] = None,
+                 filters: Optional[Union[str, IFiltersProxy]] = None,
+                 autoguider: Optional[Union[str, IAutoGuidingProxy]] = None,
+                 acquisition: Optional[Union[str, IAcquisitionProxy]] = None, **kwargs: Any):
         """Initialize a new LCO default script.
 
         Args:
@@ -36,7 +37,7 @@ class LcoDefaultScript(Script):
             autoguider: Autoguider to use
             acquisition: Acquisition to use
         """
-        Script.__init__(self, *args, **kwargs)
+        Script.__init__(self, **kwargs)
 
         # store
         self.roof = roof
@@ -53,8 +54,8 @@ class LcoDefaultScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> (IRoofProxy, ITelescopeProxy, ICameraProxy, IFiltersProxy,
-                               IAutoGuidingProxy, IAcquisitionProxy):
+    def _get_proxies(self) -> Tuple[Optional[IRoofProxy], Optional[ITelescopeProxy], Optional[ICameraProxy],
+                                    Optional[IFiltersProxy], Optional[IAutoGuidingProxy], Optional[IAcquisitionProxy]]:
         """Get proxies for running the task
 
         Returns:
@@ -63,12 +64,12 @@ class LcoDefaultScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof: IRoofProxy = self._get_proxy(self.roof, IRoofProxy)
-        telescope: ITelescopeProxy = self._get_proxy(self.telescope, ITelescopeProxy)
-        camera: ICameraProxy = self._get_proxy(self.camera, ICameraProxy)
-        filters: IFiltersProxy = self._get_proxy(self.filters, IFiltersProxy)
-        autoguider: IAutoGuidingProxy = self._get_proxy(self.autoguider, IAutoGuidingProxy)
-        acquisition: IAcquisitionProxy = self._get_proxy(self.acquisition, IAcquisitionProxy)
+        roof = self.comm.safe_proxy(self.roof, IRoofProxy)
+        telescope = self.comm.safe_proxy(self.telescope, ITelescopeProxy)
+        camera = self.comm.safe_proxy(self.camera, ICameraProxy)
+        filters = self.comm.safe_proxy(self.filters, IFiltersProxy)
+        autoguider = self.comm.safe_proxy(self.autoguider, IAutoGuidingProxy)
+        acquisition = self.comm.safe_proxy(self.acquisition, IAcquisitionProxy)
         return roof, telescope, camera, filters, autoguider, acquisition
 
     def can_run(self) -> bool:
@@ -116,7 +117,7 @@ class LcoDefaultScript(Script):
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event):
+    def run(self, abort_event: threading.Event) -> None:
         """Run script.
 
         Args:
@@ -131,8 +132,10 @@ class LcoDefaultScript(Script):
 
         # got a target?
         target = self.configuration['target']
-        track = None
+        track = Future[None](empty=True)
         if self.image_type == ImageType.OBJECT:
+            if telescope is None:
+                raise ValueError('No telescope given.')
             log.info('Moving to target %s...', target['name'])
             track = telescope.move_radec(target['ra'], target['dec'])
 
@@ -143,17 +146,26 @@ class LcoDefaultScript(Script):
             track.wait()
 
             # do acquisition
+            if acquisition is None:
+                raise ValueError('No acquisition given.')
             log.info('Performing acquisition...')
             acquisition.acquire_target().wait()
 
         # guiding?
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
                 self.configuration['guiding_config']['mode'] == 'ON':
+            if autoguider is None:
+                raise ValueError('No autoguider given.')
             log.info('Starting auto-guiding...')
             autoguider.start().wait()
 
         # total (exposure) time done in this config
-        self.exptime_done = 0
+        self.exptime_done = 0.
+
+        # task archive must be LCO
+        from pyobs.robotic.lco import LcoTaskArchive
+        if not isinstance(self.task_archive, LcoTaskArchive):
+            raise ValueError('Task archive is not for LCO observation portal.')
 
         # get instrument info
         instrument_type = self.configuration['instrument_type'].lower()

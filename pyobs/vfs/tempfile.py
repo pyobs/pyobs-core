@@ -2,6 +2,7 @@ import os
 from io import FileIO
 from tempfile import NamedTemporaryFile
 import logging
+from typing import Optional, Any
 
 from .vfs import VFSFile
 
@@ -13,8 +14,8 @@ class TempFile(VFSFile, FileIO):
     """A temporary file."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str = None, mode: str = 'r', prefix: str = None, suffix: str = None,
-                 root: str = '/tmp/pyobs/', mkdir: bool = True, *args, **kwargs):
+    def __init__(self, name: Optional[str] = None, mode: str = 'r', prefix: Optional[str] = None,
+                 suffix: Optional[str] = None, root: str = '/tmp/pyobs/', mkdir: bool = True, **kwargs: Any):
         """Open/create a temp file.
 
         Args:
@@ -62,7 +63,7 @@ class TempFile(VFSFile, FileIO):
         # init FileIO
         FileIO.__init__(self, full_name, mode)
 
-    def close(self):
+    def close(self) -> None:
         """Close file."""
 
         # close file
@@ -70,4 +71,7 @@ class TempFile(VFSFile, FileIO):
 
         # remove file
         if 'w' in self.mode:
-            os.remove(self.name)
+            os.remove(self.filename)
+
+
+__all__ = ['TempFile']

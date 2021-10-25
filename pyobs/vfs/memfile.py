@@ -1,5 +1,6 @@
 import io
 import logging
+from typing import Dict, Any
 
 from .vfs import VFSFile
 
@@ -12,9 +13,9 @@ class MemoryFile(VFSFile, io.RawIOBase):
     __module__ = 'pyobs.vfs'
 
     """Global buffer."""
-    _buffer = {}
+    _buffer: Dict[str, bytes] = {}
 
-    def __init__(self, name: str, mode: str = 'r', *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', **kwargs: Any):
         """Open/create a file in memory.
 
         Args:
@@ -35,11 +36,11 @@ class MemoryFile(VFSFile, io.RawIOBase):
         if 'w' in mode:
             MemoryFile._buffer[name] = b''
 
-    def readable(self):
+    def readable(self) -> bool:
         """Stream is readable if it was opened in 'r' mode."""
         return 'r' in self._mode
 
-    def read(self, size=-1):
+    def read(self, size: int = -1) -> bytes:
         """Read number of bytes from stream.
 
         Args:
@@ -61,11 +62,11 @@ class MemoryFile(VFSFile, io.RawIOBase):
         # return data
         return data
 
-    def seekable(self):
+    def seekable(self) -> bool:
         """Stream is seekable."""
         return True
 
-    def seek(self, offset: int, whence=io.SEEK_SET):
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
         """Seek in stream.
 
         Args:
@@ -83,20 +84,21 @@ class MemoryFile(VFSFile, io.RawIOBase):
 
         # limit
         self._pos = max(0, min(len(self) - 1, self._pos))
+        return self._pos
 
-    def tell(self):
+    def tell(self) -> int:
         """Give current position on stream."""
         return self._pos
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Length of buffer."""
         return len(MemoryFile._buffer[self._filename])
 
-    def writable(self):
+    def writable(self) -> bool:
         """Stream is readable if it was opened in 'w' mode."""
         return 'w' in self._mode
 
-    def write(self, b):
+    def write(self, b: bytes) -> None:  # type: ignore
         """Write data into the stream.
 
         Args:
@@ -104,7 +106,7 @@ class MemoryFile(VFSFile, io.RawIOBase):
         """
         MemoryFile._buffer[self._filename] += b
 
-    def close(self):
+    def close(self) -> None:
         """Close stream."""
 
         # set flag
@@ -114,7 +116,7 @@ class MemoryFile(VFSFile, io.RawIOBase):
         io.RawIOBase.close(self)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """Whether stream is closed."""
         return not self._open
 

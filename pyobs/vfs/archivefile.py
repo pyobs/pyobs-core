@@ -34,7 +34,7 @@ class ArchiveFile(HttpFile):
         self._url = url + ('/' if not url.endswith('/') else '')
         self._headers = {'Authorization': 'Token ' + token} if token is not None else {}
 
-    def _upload(self):
+    def _upload(self) -> None:
         """If in write mode, actually send the file to the archive."""
 
         # create session

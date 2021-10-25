@@ -6,11 +6,11 @@ from typing import Any, Optional, Iterator
 from .vfs import VFSFile
 
 
-class LocalFile(VFSFile, FileIO):
+class LocalFile(VFSFile, FileIO):  # type: ignore
     """Wraps a local file with the virtual file system."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'r', root: str = None, mkdir: bool = True, *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
         """Open a local file.
 
         Args:

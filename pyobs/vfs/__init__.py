@@ -60,10 +60,9 @@ from .localfile import LocalFile
 from .httpfile import HttpFile
 from .memfile import MemoryFile
 from .sshfile import SSHFile
-from .tarfile import TarFile
 from .tempfile import TempFile
 from .archivefile import ArchiveFile
 
 
-__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TarFile', 'TempFile',
+__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TempFile',
            'ArchiveFile']

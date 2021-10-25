@@ -195,10 +195,14 @@ class Module(Object, IModule, IConfig):
         cast_bound_arguments_to_real(ba, signature)
 
         # get additional args and kwargs and delete from ba
-        func_args = ba.arguments['args']
-        func_kwargs = ba.arguments['kwargs']
-        del ba.arguments['args']
-        del ba.arguments['kwargs']
+        func_args = []
+        func_kwargs = {}
+        if 'args' in ba.arguments:
+            func_args = ba.arguments['args']
+            del ba.arguments['args']
+        if 'kwargs' in ba.arguments:
+            func_kwargs = ba.arguments['kwargs']
+            del ba.arguments['kwargs']
 
         # call method
         response = func(*func_args, **ba.arguments, **func_kwargs)

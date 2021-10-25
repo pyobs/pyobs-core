@@ -1,6 +1,6 @@
 import multiprocessing
 import threading
-from typing import Union, Optional, List, Tuple, Any, Dict
+from typing import Union, Optional, List, Tuple, Any, Dict, cast
 import logging
 import astropy.units as u
 
@@ -58,23 +58,23 @@ class Calibration(ImageProcessor):
             return image
 
         # calibrate image
-        calibrated = ccdproc.ccd_process(image.to_ccddata(),
-                                         oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
-                                         trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
-                                         error=True,
-                                         master_bias=bias.to_ccddata() if bias is not None else None,
-                                         dark_frame=dark.to_ccddata() if dark is not None else None,
-                                         master_flat=flat.to_ccddata() if flat is not None else None,
-                                         bad_pixel_mask=None,
-                                         gain=image.header['DET-GAIN'] * u.electron / u.adu,
-                                         readnoise=image.header['DET-RON'] * u.electron,
-                                         dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
-                                         data_exposure=image.header['EXPTIME'] * u.second,
-                                         dark_scale=True,
-                                         gain_corrected=False)
+        c = ccdproc.ccd_process(image.to_ccddata(),
+                                oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
+                                trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
+                                error=True,
+                                master_bias=bias.to_ccddata() if bias is not None else None,
+                                dark_frame=dark.to_ccddata() if dark is not None else None,
+                                master_flat=flat.to_ccddata() if flat is not None else None,
+                                bad_pixel_mask=None,
+                                gain=image.header['DET-GAIN'] * u.electron / u.adu,
+                                readnoise=image.header['DET-RON'] * u.electron,
+                                dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
+                                data_exposure=image.header['EXPTIME'] * u.second,
+                                dark_scale=True,
+                                gain_corrected=False)
 
         # to image
-        calibrated = Image.from_ccddata(calibrated)
+        calibrated = Image.from_ccddata(c)
         calibrated.header['BUNIT'] = ('electron', 'Unit of pixel values')
 
         # set raw filename
@@ -103,10 +103,6 @@ class Calibration(ImageProcessor):
 
         Args:
             image_type: image type.
-            instrument: Instrument name.
-            binning: Binning.
-            filter_name: Name of filter.
-            max_days: Maximum number of days from DATE-OBS to find frames.
 
         Returns:
             Image or None
@@ -119,7 +115,7 @@ class Calibration(ImageProcessor):
         try:
             instrument = image.header['INSTRUME']
             binning = '{0}x{0}'.format(image.header['XBINNING'])
-            filter_name = image.header['FILTER'] if 'FILTER' in image.header else None
+            filter_name = cast(str, image.header['FILTER']) if 'FILTER' in image.header else None
             time = Time(image.header['DATE-OBS'])
             mode = image_type, instrument, binning, filter_name
         except KeyError:

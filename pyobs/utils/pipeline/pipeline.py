@@ -124,7 +124,7 @@ class Pipeline(Object, PipelineMixin):
 
     @staticmethod
     def find_master(archive: Archive, image_type: ImageType, time: Time, instrument: str,
-                    binning: str, filter_name: str = None, max_days: float = 30.) -> Optional[Image]:
+                    binning: str, filter_name: Optional[str] = None, max_days: float = 30.) -> Optional[Image]:
         """Find and download master calibration frame.
 
         Args:

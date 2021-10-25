@@ -124,7 +124,7 @@ class Object:
     def __init__(self, vfs: Optional[Union['VirtualFileSystem', Dict[str, Any]]] = None,
                  comm: Optional[Union[Comm, Dict[str, Any]]] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
                  location: Optional[Union[str, Dict[str, Any], EarthLocation]] = None,
-                 observer: Optional[Observer] = None, *args: Any, **kwargs: Any):
+                 observer: Optional[Observer] = None, **kwargs: Any):
         """
         .. note::
 

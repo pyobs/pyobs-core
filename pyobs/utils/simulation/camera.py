@@ -3,8 +3,9 @@ from __future__ import annotations
 import glob
 import numpy as np
 import astropy.units as u
+from astropy.table import Table
 from astropy.time import Time
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING, Optional, Any
 from astropy.wcs import WCS
 from astropy.io import fits
 from photutils.datasets import make_gaussian_sources_image
@@ -14,6 +15,8 @@ import logging
 from pyobs.object import Object
 from pyobs.utils.enums import ImageFormat
 from pyobs.images import Image
+if TYPE_CHECKING:
+    from pyobs.utils.simulation import SimWorld
 
 
 log = logging.getLogger(__name__)
@@ -23,8 +26,8 @@ class SimCamera(Object):
     """A simulated camera."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
-                 images: str = None, max_mag: float = 20., seeing: float = 3., *args, **kwargs):
+    def __init__(self, world: 'SimWorld', image_size: Optional[Tuple[int, int]] = None, pixel_size: float = 0.015,
+                 images: Optional[str] = None, max_mag: float = 20., seeing: float = 3., **kwargs: Any):
         """Inits a new camera.
 
         Args:
@@ -35,7 +38,7 @@ class SimCamera(Object):
             max_mag: Maximum magnitude for sim.
             seeing: Seeing in arcsec.
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # store
         self.world = world
@@ -85,7 +88,7 @@ class SimCamera(Object):
         # return it
         return Image(data, header=hdr)
 
-    def _simulate_image(self, exp_time: float, open_shutter: bool) -> Image:
+    def _simulate_image(self, exp_time: float, open_shutter: bool) -> np.ndarray:
         """Simulate an image.
 
         Args:
@@ -134,7 +137,7 @@ class SimCamera(Object):
         # finished
         return data.astype(np.uint16)
 
-    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray):
+    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray) -> fits.Header:
         # create header
         hdr = fits.Header()
         hdr['NAXIS1'] = data.shape[1]
@@ -164,7 +167,7 @@ class SimCamera(Object):
         # finished
         return hdr
 
-    def _get_catalog(self, fov):
+    def _get_catalog(self, fov) -> Table:
         """Returns GAIA catalog for current telescope coordinates."""
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
@@ -183,7 +186,7 @@ class SimCamera(Object):
 
         return self._catalog
 
-    def _get_gaia_query(self, ra, dec, radius):
+    def _get_gaia_query(self, ra: float, dec: float, radius: float) -> str:
         # define query
         return f"""
                 SELECT
@@ -205,7 +208,7 @@ class SimCamera(Object):
                   phot_g_mean_mag ASC
                 """
 
-    def _get_sources_table(self, exp_time: float):
+    def _get_sources_table(self, exp_time: float) -> Table:
         """Create sources table."""
 
         # calculate cdelt1/2

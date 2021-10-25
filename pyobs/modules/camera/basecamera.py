@@ -219,7 +219,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
             image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if image is None:
+            if image is None or image.data is None:
                 self._exposure = None
                 return None, None
         except:

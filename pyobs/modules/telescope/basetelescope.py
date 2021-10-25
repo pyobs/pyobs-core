@@ -20,7 +20,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
     """Base class for telescopes."""
     __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, **kwargs: Any):
+    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, min_altitude: float = 10,
+                 wait_for_dome: Optional[str] = None, **kwargs: Any):
         """Initialize a new base telescope.
 
         Args:
@@ -61,7 +62,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-    def init(self, **kwargs: Any):
+    def init(self, **kwargs: Any) -> None:
         """Initialize telescope.
 
         Raises:
@@ -69,7 +70,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    def park(self, **kwargs: Any):
+    def park(self, **kwargs: Any) -> None:
         """Park telescope.
 
         Raises:
@@ -91,7 +92,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         raise NotImplementedError
 
     @timeout(1200)
-    def move_radec(self, ra: float, dec: float, **kwargs: Any):
+    def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
         """Starts tracking on given coordinates.
 
         Args:
@@ -154,7 +155,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         raise NotImplementedError
 
     @timeout(1200)
-    def move_altaz(self, alt: float, az: float, **kwargs: Any):
+    def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
         Args:
@@ -252,7 +253,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # finish
         return hdr
 
-    def _celestial(self):
+    def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
  
         # wait a little
@@ -266,10 +267,16 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             # sleep a little
             self.closing.wait(30)
 
-    def _update_celestial_headers(self):
+    def _update_celestial_headers(self) -> None:
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
+        alt: Optional[float]
+        az: Optional[float]
+
+        # no observer?
+        if self.observer is None:
+            return
 
         # get telescope alt/az
         try:

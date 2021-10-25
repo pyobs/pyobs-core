@@ -27,17 +27,12 @@ class VirtualFileSystem(object):
     """Base for a virtual file system."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, roots: Optional[Dict[str, Any]] = None, compression: Optional[Dict[str, str]] = None,
-                 **kwargs: Any):
+    def __init__(self, roots: Optional[Dict[str, Any]] = None, **kwargs: Any):
         """Create a new VFS.
 
         Args:
             roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
-            compression: Dictionary containing files that should be compressed.
         """
-
-        # store
-        self._compression: Optional[Dict[str, str]] = {'.gz': '/bin/gzip'} if compression is None else compression
 
         # if no root for 'pyobs' is given, add one
         self._roots: Dict[str, Any] = {
@@ -74,19 +69,16 @@ class VirtualFileSystem(object):
         # return it
         return root, filename
 
-    def open_file(self, filename: str, mode: str, compression: Optional[bool] = None) -> VFSFile:
+    def open_file(self, filename: str, mode: str) -> VFSFile:
         """Open a file. The handling class is chosen depending on the rootse in the filename.
 
         Args:
             filename (str): Name of file to open.
             mode (str): Opening mode.
-            compression (bool): Automatically (de)compress data if True. Automatically determine from filename if None.
 
         Returns:
             (IOBase) File like object for given file.
         """
-        from .gzippipe import GzipReader, GzipWriter
-
         # split root
         root, filename = VirtualFileSystem.split_root(filename)
 
@@ -97,14 +89,6 @@ class VirtualFileSystem(object):
         # create file object
         from pyobs.object import get_object
         fd = get_object(self._roots[root], object_class=VFSFile, name=filename, mode=mode)
-
-        # compression?
-        if compression or (compression is None and os.path.splitext(filename)[1] in self._compression):
-            # create pipe
-            if 'w' in mode:
-                fd = GzipWriter(fd, close_fd=True)
-            else:
-                fd = GzipReader(fd, close_fd=True)
 
         # return it
         return fd

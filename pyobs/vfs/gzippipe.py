@@ -3,6 +3,7 @@ import subprocess
 import logging
 import os
 import gzip
+from typing import IO, AnyStr
 
 from .vfs import VFSFile
 
@@ -15,7 +16,7 @@ class GzipReader(VFSFile, io.RawIOBase):
     decompressing data on the fly."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, fd, close_fd=True):
+    def __init__(self, fd: IO[AnyStr], close_fd=True):
         """Create a new GZIP reader pipe.
 
         Args:

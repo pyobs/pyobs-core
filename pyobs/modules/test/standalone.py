@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.modules import Module
 

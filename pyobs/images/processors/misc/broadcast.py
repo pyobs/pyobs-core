@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.events import NewImageEvent
 from pyobs.images.processor import ImageProcessor
@@ -24,7 +25,7 @@ class Broadcast(ImageProcessor):
         # store
         self._formatter = FilenameFormatter(filename)
 
-    def open(self):
+    def open(self) -> None:
         """Initialize processor."""
         ImageProcessor.open(self)
 

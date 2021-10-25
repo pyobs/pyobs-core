@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image

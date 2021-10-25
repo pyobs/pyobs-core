@@ -21,7 +21,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
     def __init__(self, flatfield: typing.Union[str, IFlatFieldProxy], functions: typing.Dict[str, str],
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
-                 timespan: float = 7200, filter_change: float = 30, count: int = 20, **kwargs: Any):
+                 timespan: float = 7200, filter_change: float = 30, count: int = 20, **kwargs: typing.Any):
         """Initialize a new flat field scheduler.
 
         Args:

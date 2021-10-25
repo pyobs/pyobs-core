@@ -27,7 +27,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
     """A dummy camera for testing."""
     __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, **kwargs:Any):
+    def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, **kwargs: Any):
         """Creates a new dummy cammera.
 
         Args:

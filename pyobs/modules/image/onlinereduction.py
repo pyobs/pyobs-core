@@ -1,7 +1,7 @@
 import logging
 import os
 from queue import Queue
-from typing import List, Union, Type
+from typing import List, Union, Type, Any
 from astropy.time import Time
 
 from pyobs.images import Image

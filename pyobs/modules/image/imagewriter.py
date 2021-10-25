@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from typing import Union, List
+from typing import Union, List, Any
 
 from pyobs.modules import Module
 from pyobs.events import NewImageEvent

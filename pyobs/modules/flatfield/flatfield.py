@@ -1,7 +1,7 @@
 import logging
 import threading
 from enum import Enum
-from typing import Union, Tuple, List, Optional
+from typing import Union, Tuple, List, Optional, Any
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning

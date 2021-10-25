@@ -1,5 +1,6 @@
 import logging
 import threading
+from typing import Any, Optional
 
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
 from pyobs.interfaces import IRoof
@@ -31,7 +32,7 @@ class DummyRoof(BaseRoof, IRoof):
         self.comm.register_event(RoofClosingEvent)
 
     @timeout(15)
-    def open_roof(self, **kwargs: Any):
+    def open_roof(self, **kwargs: Any) -> None:
         """Open the roof.
 
         Raises:
@@ -68,7 +69,7 @@ class DummyRoof(BaseRoof, IRoof):
                 self.comm.send_event(RoofOpenedEvent())
 
     @timeout(15)
-    def close_roof(self, **kwargs: Any):
+    def close_roof(self, **kwargs: Any) -> None:
         """Close the roof.
 
         Raises:
@@ -105,7 +106,7 @@ class DummyRoof(BaseRoof, IRoof):
         """Get the percentage the roof is open."""
         return self.open_percentage
 
-    def stop_motion(self, device: str = None, **kwargs: Any):
+    def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:

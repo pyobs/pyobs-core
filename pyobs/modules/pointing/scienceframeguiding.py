@@ -1,5 +1,6 @@
 import logging
 import threading
+from typing import Any
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image

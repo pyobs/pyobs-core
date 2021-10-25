@@ -1,10 +1,11 @@
 import logging
+from typing import Any, Optional
 
-from ._baseguiding import BaseGuiding
-from ...images.meta.exptime import ExpTime
-from ...images.processors.detection import SepSourceDetection
-from ...interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
-from ...utils.enums import ImageType
+from pyobs.modules.pointing._baseguiding import BaseGuiding
+from pyobs.images.meta.exptime import ExpTime
+from pyobs.images.processors.detection import SepSourceDetection
+from pyobs.interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
+from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
 
@@ -23,13 +24,13 @@ class AutoGuiding(BaseGuiding):
 
         # store
         self._default_exposure_time = exposure_time
-        self._exposure_time = None
+        self._exposure_time: Optional[float] = None
         self._source_detection = SepSourceDetection()
 
         # add thread func
         self.add_thread_func(self._auto_guiding, True)
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any):
+    def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time for the auto-guider.
 
         Args:
@@ -39,9 +40,9 @@ class AutoGuiding(BaseGuiding):
         self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
-        self._guiding_offset.reset()
+        self._reset_guiding(enabled=self._enabled)
 
-    def _auto_guiding(self):
+    def _auto_guiding(self) -> None:
         # exposure time
         self._exposure_time = self._default_exposure_time
 

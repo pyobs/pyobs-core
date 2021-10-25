@@ -2,7 +2,7 @@ import asyncio
 import io
 import logging
 import threading
-from typing import Union, Any
+from typing import Union, Any, cast, Optional
 import tornado.ioloop
 import tornado.web
 import tornado.gen
@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class MainHandler(tornado.web.RequestHandler):
     """The request handler for the HTTP filecache."""
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initializes the handler (instead of in the constructor)"""
 
         # create empty image
@@ -33,11 +33,12 @@ class MainHandler(tornado.web.RequestHandler):
             self._empty = bio.getvalue()
 
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> Any:
         """Handle download request."""
 
         # get image
-        image = self.application.image()
+        app = cast(Kiosk, self.application)
+        image = app.image()
 
         # none?
         if image is None:
@@ -72,20 +73,21 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         ])
 
         # store stuff
-        self._io_loop = None
+        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._lock = threading.RLock()
         self._is_listening = False
         self._camera = camera
         self._port = port
         self._exp_time = 2
         self._running = False
-        self._image = None
+        self._image: Optional[bytes] = None
 
-    def close(self):
+    def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
-        self._io_loop.add_callback(self._io_loop.stop)
+        if self._io_loop is not None:
+            self._io_loop.add_callback(self._io_loop.stop)
         Module.close(self)
 
     @property
@@ -93,11 +95,11 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         """Whether the server is started."""
         return self._is_listening
 
-    def start(self, **kwargs: Any):
+    def start(self, **kwargs: Any) -> None:
         """Start kiosk mode."""
         self._running = True
 
-    def stop(self, **kwargs: Any):
+    def stop(self, **kwargs: Any) -> None:
         """Stop kiosk mode."""
         self._running = False
 
@@ -105,7 +107,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         """Whether kiosk mode is running."""
         return self._running
 
-    def _http_thread(self):
+    def _http_thread(self) -> None:
         """Thread function for the web server."""
 
         # create io loop
@@ -121,7 +123,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         self._is_listening = True
         self._io_loop.start()
 
-    def _camera_thread(self):
+    def _camera_thread(self) -> None:
         """Thread for taking images."""
 
         # loop until closing
@@ -172,7 +174,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
                 # cut
                 self._exp_time = max(self._exp_time, 30)
 
-    def image(self):
+    def image(self) -> Optional[bytes]:
         """Return image data."""
         with self._lock:
             return self._image

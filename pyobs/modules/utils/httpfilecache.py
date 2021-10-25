@@ -4,7 +4,7 @@ import re
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union
+from typing import Union, Any, Optional, cast
 import tornado.ioloop
 import tornado.web
 import tornado.gen
@@ -19,19 +19,22 @@ class MainHandler(tornado.web.RequestHandler):
     """The request handler for the HTTP filecache."""
     __module__ = 'pyobs.modules.utils'
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initializes the handler (instead of in the constructor)"""
 
         # create a thread pool executor
         self.executor = ThreadPoolExecutor(max_workers=30)
 
     @tornado.gen.coroutine
-    def post(self, dummy: str):
+    def post(self, dummy: str) -> Any:
         """Handle incoming file.
 
         Args:
             dummy: Name of incoming file.
         """
+
+        # get app
+        app = cast(HttpFileCache, self.application)
 
         # try to find a filename
         filename = None
@@ -54,21 +57,25 @@ class MainHandler(tornado.web.RequestHandler):
 
         else:
             # store file and return filename
-            if isinstance(self.application, HttpFileCache):
-                filename = yield self.executor.submit(self.application.store, self.request.body, filename)
-                log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
-                self.finish(bytes(filename, 'utf-8'))
+            filename = yield self.executor.submit(app.store, self.request.body, filename)
+            if filename is None:
+                raise tornado.web.HTTPError(404)
+            log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
+            self.finish(bytes(filename, 'utf-8'))
 
     @tornado.gen.coroutine
-    def get(self, filename: str):
+    def get(self, filename: str) -> Any:
         """Handle download request.
 
         Args:
             filename: Name of file to download.
         """
 
+        # get app
+        app = cast(HttpFileCache, self.application)
+
         # fetch data
-        data = yield self.executor.submit(self.application.fetch, filename)
+        data = yield self.executor.submit(app.fetch, filename)
         if data is None:
             raise tornado.web.HTTPError(404)
         log.info('Serving file %s...', filename)
@@ -102,7 +109,7 @@ class HttpFileCache(Module, tornado.web.Application):
         ])
 
         # store stuff
-        self._io_loop = None
+        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._cache = DataCache(cache_size)
         self._lock = threading.RLock()
         self._is_listening = False
@@ -110,11 +117,12 @@ class HttpFileCache(Module, tornado.web.Application):
         self._cache_size = cache_size
         self._max_file_size = max_file_size * 1024 * 1024
 
-    def close(self):
+    def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
-        self._io_loop.add_callback(self._io_loop.stop)
+        if self._io_loop is not None:
+            self._io_loop.add_callback(self._io_loop.stop)
         Module.close(self)
 
     @property
@@ -122,7 +130,7 @@ class HttpFileCache(Module, tornado.web.Application):
         """Whether the server is started."""
         return self._is_listening
 
-    def _http(self):
+    def _http(self) -> None:
         """Thread function for the web server."""
 
         # create io loop
@@ -138,7 +146,7 @@ class HttpFileCache(Module, tornado.web.Application):
         self._is_listening = True
         self._io_loop.start()
 
-    def store(self, data: bytearray, filename: str = None) -> str:
+    def store(self, data: bytearray, filename: Optional[str] = None) -> str:
         """Store an incoming file.
 
         Args:

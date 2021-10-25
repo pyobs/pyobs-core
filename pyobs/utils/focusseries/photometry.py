@@ -1,11 +1,10 @@
-from typing import Tuple, Dict, List
-
+from typing import Tuple, Dict, List, Any
 import numpy as np
 import logging
 from pyobs.object import get_object
 
 from pyobs.images.processors.detection import SourceDetection
-from .base import FocusSeries
+from pyobs.utils.focusseries.base import FocusSeries
 from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.images import Image
 
@@ -17,7 +16,7 @@ class PhotometryFocusSeries(FocusSeries):
     """Focus series based on source detection."""
     __module__ = 'pyobs.utils.focusseries'
 
-    def __init__(self, source_detection: SourceDetection, radius_column: str = 'radius', *args, **kwargs):
+    def __init__(self, source_detection: SourceDetection, radius_column: str = 'radius', **kwargs: Any):
         """Initialize a new projection focus series.
 
         Args:
@@ -29,11 +28,11 @@ class PhotometryFocusSeries(FocusSeries):
         self._radius_col = radius_column
         self._data: List[Dict[str, float]] = []
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset focus series."""
         self._data = []
 
-    def analyse_image(self, image: Image):
+    def analyse_image(self, image: Image) -> None:
         """Analyse given image.
 
         Args:
@@ -41,7 +40,12 @@ class PhotometryFocusSeries(FocusSeries):
         """
 
         # do photometry
-        sources = self._source_detection(image)
+        self._source_detection(image)
+
+        # filter
+        sources = image.catalog
+        if sources is None:
+            return
         sources = sources[sources['ellipticity'] < 0.1]
         sources = sources[sources['peak'] > 1000]
         sources = sources[sources['radius'] > 0]

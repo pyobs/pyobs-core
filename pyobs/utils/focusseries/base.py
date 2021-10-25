@@ -7,11 +7,11 @@ class FocusSeries:
     """Base class for focus series helper classes."""
     __module__ = 'pyobs.utils.focusseries'
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset focus series."""
         raise NotImplementedError
 
-    def analyse_image(self, image: Image):
+    def analyse_image(self, image: Image) -> None:
         """Analyse given image.
 
         Args:

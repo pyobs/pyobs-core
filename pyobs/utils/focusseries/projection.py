@@ -1,10 +1,10 @@
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional, Any
 
 import numpy as np
 import logging
 from scipy import ndimage
 
-from .base import FocusSeries
+from pyobs.utils.focusseries.base import FocusSeries
 from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.images import Image
 
@@ -16,7 +16,7 @@ class ProjectionFocusSeries(FocusSeries):
     """Focus series from projected x/y."""
     __module__ = 'pyobs.utils.focusseries'
 
-    def __init__(self, backsub: bool = True, xbad: list = None, ybad: list = None):
+    def __init__(self, backsub: bool = True, xbad: Optional[List[int]] = None, ybad: Optional[List[int]] = None):
         """Initialize a new projection focus series.
 
         Args:
@@ -33,11 +33,11 @@ class ProjectionFocusSeries(FocusSeries):
         self._ybad = ybad
         self._data: List[Dict[str, float]] = []
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset focus series."""
         self._data = []
 
-    def analyse_image(self, image: Image):
+    def analyse_image(self, image: Image) -> None:
         """Analyse given image.
 
         Args:
@@ -45,6 +45,8 @@ class ProjectionFocusSeries(FocusSeries):
         """
 
         # clean data
+        if image.data is None:
+            return
         data = self._clean(image.data)
 
         # get projections
@@ -126,7 +128,7 @@ class ProjectionFocusSeries(FocusSeries):
         return float(foc), float(err)
 
     @staticmethod
-    def _window_function(arr, border=0):
+    def _window_function(arr: np.ndarray, border: int = 0) -> np.ndarray:
         """
         Creates a sine window function of the same size as some 1-D array "arr".
         Optionally, a zero border at the edges is added by "scrunching" the window.
@@ -139,7 +141,8 @@ class ProjectionFocusSeries(FocusSeries):
         return w
 
     @staticmethod
-    def _clean(data, backsub=True, xbad=None, ybad=None):
+    def _clean(data: np.ndarray, backsub: bool = True, xbad: Optional[np.ndarray] = None,
+               ybad: Optional[np.ndarray] = None) -> np.ndarray:
         """
         Removes global slopes and fills up bad rows (ybad) or columns (xbad).
         """
@@ -180,7 +183,7 @@ class ProjectionFocusSeries(FocusSeries):
             return data
 
     @staticmethod
-    def _fit_correlation(correl):
+    def _fit_correlation(correl: np.ndarray) -> Any:
         from lmfit.models import GaussianModel
 
         # create Gaussian model

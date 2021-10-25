@@ -5,6 +5,8 @@ from enum import Enum
 from inspect import Parameter
 from pprint import pprint
 from threading import Thread
+from typing import Any, Optional, List
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
@@ -37,13 +39,14 @@ class Telegram(Module):
 
         """
         Module.__init__(self, **kwargs)
+        from telegram.ext import Updater
 
         # store
         self._token = token
         self._password = password
         self._allow_new_users = allow_new_users
-        self._updater = None
-        self._message_queue = multiprocessing.Queue()
+        self._updater: Optional[Updater] = None
+        self._message_queue = multiprocessing.Queue()  # type: ignore
 
         # get log levels
         self._log_levels = {logging.getLevelName(x): x for x in range(1, 101)
@@ -52,14 +55,14 @@ class Telegram(Module):
         # thread
         self.add_thread_func(self._log_sender_thread)
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
         Module.open(self)
 
         # get dispatcher
         self._updater = Updater(token=self._token)
-        dispatcher = self._updater.dispatcher
+        dispatcher = self._updater.dispatcher  # type: ignore
 
         # add command handler
         dispatcher.add_handler(CommandHandler('start', self._command_start))
@@ -86,14 +89,15 @@ class Telegram(Module):
         # listen to log events
         self.comm.register_event(LogEvent, self._process_log_entry)
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
         Module.close(self)
 
         # stop telegram
-        self._updater.stop()
+        if self._updater is not None:
+            self._updater.stop()
 
-    def _save_storage(self, context: CallbackContext):
+    def _save_storage(self, context: CallbackContext) -> None:
         """Save storage file.
 
         Args:
@@ -115,7 +119,7 @@ class Telegram(Module):
         s = context.bot_data['storage']
         return 'users' in s and user_id in s['users']
 
-    def _store_user(self, context: CallbackContext, user_id: int, name: str):
+    def _store_user(self, context: CallbackContext, user_id: int, name: str) -> None:
         """Store new user in auth database.
 
         Args:
@@ -134,13 +138,16 @@ class Telegram(Module):
         }
         self._save_storage(context)
 
-    def _command_start(self, update: Update, context: CallbackContext):
+    def _command_start(self, update: Update, context: CallbackContext) -> None:
         """Handle /start command.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # is user already known?
         if self._is_user_authorized(context, update.message.from_user.id):
@@ -161,13 +168,16 @@ class Telegram(Module):
                 context.bot.send_message(chat_id=update.effective_chat.id,
                                          text="No new users allowed in the system.")
 
-    def _command_exec(self, update: Update, context: CallbackContext):
+    def _command_exec(self, update: Update, context: CallbackContext) -> None:
         """Handle /exec command.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
@@ -184,20 +194,25 @@ class Telegram(Module):
         context.user_data['state'] = TelegramUserState.EXEC_MODULE
 
     @staticmethod
-    def _reset_state(context):
+    def _reset_state(context: CallbackContext) -> None:
         """Reset state."""
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
         context.user_data['state'] = TelegramUserState.IDLE
         context.user_data['method'] = None
         context.user_data['params'] = []
         context.user_data['exec_query'] = None
 
-    def _handle_buttons(self, update: Update, context: CallbackContext):
+    def _handle_buttons(self, update: Update, context: CallbackContext) -> None:
         """Handle click on buttons.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # get query
         query = update.callback_query
@@ -264,13 +279,16 @@ class Telegram(Module):
             query.edit_message_text(text='Changed log level to %s.' % query.data)
             context.user_data['state'] = TelegramUserState.IDLE
 
-    def _handle_params(self, update: Update, context: CallbackContext):
+    def _handle_params(self, update: Update, context: CallbackContext) -> None:
         """Handle input of params when in EXEC_PARAMS state.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # wrong state?
         if context.user_data['state'] != TelegramUserState.EXEC_PARAMS:
@@ -342,7 +360,7 @@ class Telegram(Module):
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     def _call_method(self, context: CallbackContext, chat_id: int, call_id: int, method: str,
-                     params: list):
+                     params: List[Any]) -> None:
         """
 
         Args:
@@ -374,13 +392,16 @@ class Telegram(Module):
         # send reply
         context.bot.send_message(chat_id=chat_id, text=message)
 
-    def _process_message(self, update: Update, context: CallbackContext):
+    def _process_message(self, update: Update, context: CallbackContext) -> None:
         """Handle normal text messages, e.g. for login or method parameters.
 
         Args:
             update: Telegram message.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # what state is user in?
         if context.user_data['state'] == TelegramUserState.AUTH:
@@ -398,7 +419,7 @@ class Telegram(Module):
             # we're expecting params, so handle them
             self._handle_params(update, context)
 
-    def _command_modules(self, update: Update, context: CallbackContext):
+    def _command_modules(self, update: Update, context: CallbackContext) -> None:
         """Handle /modules command that shows list of modules.
 
         Args:
@@ -415,13 +436,16 @@ class Telegram(Module):
         message = 'Available modules:\n' + '\n'.join(['- ' + c for c in self.comm.clients])
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
-    def _command_loglevel(self, update: Update, context: CallbackContext):
+    def _command_loglevel(self, update: Update, context: CallbackContext) -> None:
         """Handle /loglevel command that sets the log level
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+
+        if context.user_data is None:
+            raise ValueError('No user data in context.')
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
@@ -442,7 +466,7 @@ class Telegram(Module):
         update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
                                   reply_markup=reply_markup)
 
-    def _process_log_entry(self, entry: LogEvent, sender: str):
+    def _process_log_entry(self, entry: LogEvent, sender: str) -> bool:
         """Process a new log entry.
 
         Args:
@@ -457,7 +481,9 @@ class Telegram(Module):
         message = '(%s) %s: %s' % (entry.level, sender, entry.message)
 
         # get storage
-        s = self._updater.dispatcher.bot_data['storage']
+        if self._updater is None:
+            raise ValueError('No update initialised.')
+        s = self._updater.dispatcher.bot_data['storage']  # type: ignore
 
         # loop users
         for user_id, user in s['users'].items():
@@ -469,7 +495,9 @@ class Telegram(Module):
                 # queue message
                 self._message_queue.put((user_id, message))
 
-    def _log_sender_thread(self):
+        return True
+
+    def _log_sender_thread(self) -> None:
         """Thread for sending messages."""
         
         while not self.closing.is_set():
@@ -480,6 +508,8 @@ class Telegram(Module):
 
                 # send message
                 try:
+                    if self._updater is None:
+                        raise ValueError('No update initialised.')
                     self._updater.bot.send_message(chat_id=user_id, text=message)
                 except Exception:
                     # something went wrong, sleep a little and queue message again

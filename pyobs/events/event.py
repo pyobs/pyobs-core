@@ -74,6 +74,7 @@ class EventFactory(object):
         try:
             kwargs = obj_dict['data'] if 'data' in obj_dict and obj_dict['data'] is not None else {}
             if not isinstance(kwargs, dict):
+                print(kwargs)
                 raise ValueError('Invalid event structure.')
             obj: Event = cls.from_dict(kwargs)
             obj.uuid = obj_dict['uuid']
@@ -81,7 +82,7 @@ class EventFactory(object):
             return obj
 
         except ValueError:
-            log.error('Could not create event.')
+            log.exception('Could not create event %s.' % obj_dict['type'])
             return None
 
 

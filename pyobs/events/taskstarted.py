@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 from typing_extensions import TypedDict
 
 from pyobs.utils.time import Time
@@ -26,6 +26,26 @@ class TaskStartedEvent(Event):
             'id': id,
             'eta':  None if eta is None else eta.isot
         }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> Event:
+        # get name
+        if 'name' not in d or not isinstance(d['name'], str):
+            raise ValueError('Invalid type for name.')
+        name: str = d['name']
+
+        # get id
+        if 'id' not in d or not isinstance(d['id'], str):
+            raise ValueError('Invalid type for id.')
+        id: str = d['id']
+
+        # get eta
+        eta: Optional[Time] = None
+        if 'eta' in d and isinstance(d['eta'], str):
+            eta = Time(d['eta'])
+
+        # return object
+        return TaskStartedEvent(name=name, id=id, eta=eta)
 
     @property
     def name(self) -> str:

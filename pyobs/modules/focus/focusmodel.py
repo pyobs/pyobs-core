@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Any, Dict, TYPE_CHECKING
+from typing import Optional, Any, Dict, TYPE_CHECKING, cast
 
 from py_expression_eval import Parser
 import pandas as pd
@@ -11,7 +11,7 @@ from pyobs.interfaces.proxies import IFocuserProxy, IFiltersProxy, IWeatherProxy
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocusModel
-from pyobs.events import FocusFoundEvent, FilterChangedEvent
+from pyobs.events import FocusFoundEvent, FilterChangedEvent, Event
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
@@ -326,13 +326,15 @@ class FocusModel(Module, IFocusModel):
         """
         self._set_optimal_focus()
 
-    def _on_focus_found(self, event: FocusFoundEvent, sender: str) -> bool:
+    def _on_focus_found(self, event: Event, sender: str) -> bool:
         """Receive FocusFoundEvent.
 
         Args:
             event: The event itself
             sender: The name of the sender.
         """
+        if not isinstance(event, FocusFoundEvent):
+            raise ValueError('Not a focus event.')
         log.info('Received new focus of %.4f +- %.4f.', event.focus, event.error)
 
         # collect values for model
@@ -387,30 +389,33 @@ class FocusModel(Module, IFocusModel):
         # fit
         log.info('Fitting coefficients...')
         out = lmfit.minimize(self._residuals, params, args=(data,))
+        if not hasattr(out, 'params'):
+            raise ValueError('No params returned from fit.')
+        out_params = getattr(out, 'params')
 
         # print results
         log.info('Found best coefficients:')
-        for p in out.params:
+        for p in out_params:
             if not p.startswith('off_'):
-                if out.params[p].stderr is not None:
-                    log.info('  %-5s = %10.5f +- %8.5f', p, out.params[p].value, out.params[p].stderr)
+                if out_params[p].stderr is not None:
+                    log.info('  %-5s = %10.5f +- %8.5f', p, out_params[p].value, out_params[p].stderr)
                 else:
-                    log.info('  %-5s = %10.5f', p, out.params[p].value)
+                    log.info('  %-5s = %10.5f', p, out_params[p].value)
         if self._filter_offsets is not None:
             log.info('Found filter offsets:')
-            for p in out.params:
+            for p in out_params:
                 if p.startswith('off_'):
-                    if out.params[p].stderr is not None:
-                        log.info('  %-10s = %10.5f +- %8.5f', p[4:], out.params[p].value, out.params[p].stderr)
+                    if out_params[p].stderr is not None:
+                        log.info('  %-10s = %10.5f +- %8.5f', p[4:], out_params[p].value, out_params[p].stderr)
                     else:
-                        log.info('  %-10s = %10.5f', p[4:], out.params[p].value)
+                        log.info('  %-10s = %10.5f', p[4:], out_params[p].value)
 
         log.info('Reduced chi squared: %.3f', out.redchi)
 
         # store new coefficients and filter offsets
         if self._update_model:
             # just copy all?
-            d = dict(out.params.valuesdict())
+            d = dict(out_params.valuesdict())
             if self._filter_offsets is None:
                 self._coefficients = d
             else:
@@ -418,7 +423,7 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
 
-    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> None:
+    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> np.ndarray:
         """Fit method for model
 
         Args:
@@ -458,9 +463,9 @@ class FocusModel(Module, IFocusModel):
             error.append(row['error'])
 
         # return residuals
-        return (np.array(focus) - np.array(model)) / np.array(error)
+        return cast(np.ndarray, (np.array(focus) - np.array(model)) / np.array(error))
 
-    def _on_filter_changed(self, event: FilterChangedEvent, sender: str):
+    def _on_filter_changed(self, event: FilterChangedEvent, sender: str) -> bool:
         """Receive FilterChangedEvent and set focus.
 
         Args:
@@ -470,14 +475,16 @@ class FocusModel(Module, IFocusModel):
 
         # wrong sender?
         if sender != self._filter_wheel:
-            return
+            return False
 
         # log and change
         try:
             log.info('Detected filter change to %s, adjusting focus...', event.filter)
             self._set_optimal_focus(event.filter)
+            return True
         except ValueError:
             log.error('Could not set focus.')
+            return False
 
 
 __all__ = ['FocusModel']

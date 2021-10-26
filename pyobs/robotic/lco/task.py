@@ -77,8 +77,7 @@ class LcoTask(Task):
     @property
     def id(self) -> str:
         """ID of task."""
-        if 'request' in self.config and 'id' in self.config['request'] and \
-                isinstance(self.config['request']['id'], str):
+        if 'request' in self.config and 'id' in self.config['request']:
             return self.config['request']['id']
         else:
             raise ValueError('No id found in request.')
@@ -86,7 +85,7 @@ class LcoTask(Task):
     @property
     def name(self) -> str:
         """Returns name of task."""
-        if 'name' in self.config and isinstance(self.config['name'], str):
+        if 'name' in self.config:
             return self.config['name']
         else:
             raise ValueError('No name found in request group.')
@@ -129,7 +128,7 @@ class LcoTask(Task):
         Returns:
             observation_type of this task.
         """
-        if 'observation_type' in self.config and isinstance(self.config['observation_type'], str):
+        if 'observation_type' in self.config:
             return self.config['observation_type']
         else:
             raise ValueError('No observation_type found in request group.')

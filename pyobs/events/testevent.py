@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from typing_extensions import TypedDict
 
 from .event import Event
@@ -11,7 +11,7 @@ class TestEvent(Event):
     """Just a test event."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: Optional[str] = None, **kwargs: Any):
         Event.__init__(self)
         self.data['message'] = message
 

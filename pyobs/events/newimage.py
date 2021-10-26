@@ -1,19 +1,19 @@
-from typing import Optional
+from __future__ import annotations
+from typing import Optional, Dict, Any
 from typing_extensions import TypedDict
 
-from .event import Event
-from ..utils.enums import ImageType
+from pyobs.events.event import Event
+from pyobs.utils.enums import ImageType
 
 
-DataType = TypedDict('DataType', {'filename': Optional[str], 'image_type': Optional[str], 'raw': Optional[str]})
+DataType = TypedDict('DataType', {'filename': str, 'image_type': Optional[str], 'raw': Optional[str]})
 
 
 class NewImageEvent(Event):
     """Event to be sent on a new image."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, filename: Optional[str] = None, image_type: Optional[ImageType] = None,
-                 raw: Optional[str] = None):
+    def __init__(self, filename: str, image_type: Optional[ImageType] = None, raw: Optional[str] = None, **kwargs: Any):
         """Initializes new NewImageEvent.
 
         Args:
@@ -28,8 +28,28 @@ class NewImageEvent(Event):
             'raw': raw
         }
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> Event:
+        # get filename
+        if 'filename' not in d or not isinstance(d['filename'], str):
+            raise ValueError('Invalid type for filename.')
+        filename: str = d['filename']
+
+        # get image type
+        image_type: Optional[ImageType] = None
+        if 'image_type' in d and isinstance(d['image_type'], str):
+            image_type = ImageType(d['image_type'])
+
+        # get raw
+        raw: Optional[str] = None
+        if 'raw' in d and isinstance(d['raw'], str):
+            raw = d['raw']
+
+        # return object
+        return NewImageEvent(filename, image_type, raw)
+
     @property
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str:
         return self.data['filename']
 
     @property

@@ -1,19 +1,19 @@
-from typing import Optional
+from typing import Optional, Any
 from typing_extensions import TypedDict
 
-from .event import Event
+from pyobs.events.event import Event
 
 
-DataType = TypedDict('DataType', {'time': Optional[str], 'level': Optional[str], 'filename': Optional[str],
-                                  'function': Optional[str], 'line': Optional[int], 'message': Optional[str]})
+DataType = TypedDict('DataType', {'time': str, 'level': str, 'filename': str,
+                                  'function': str, 'line': int, 'message': str})
 
 
 class LogEvent(Event):
     """Event for log entries."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, time: Optional[str] = None, level: Optional[str] = None, filename: Optional[str] = None,
-                 function: Optional[str] = None, line: Optional[int] = None, message: Optional[str] = None):
+    def __init__(self, time: str, level: str, filename: str, function: str, line: int, message: str,
+                 **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {
             'time': time,
@@ -25,28 +25,28 @@ class LogEvent(Event):
         }
 
     @property
-    def time(self) -> Optional[str]:
-        return str(self.data['time']) if self.data['time'] is not None else None
+    def time(self) -> str:
+        return str(self.data['time'])
 
     @property
-    def level(self) -> Optional[str]:
-        return str(self.data['level']) if self.data['level'] is not None else None
+    def level(self) -> str:
+        return str(self.data['level'])
 
     @property
-    def filename(self) -> Optional[str]:
-        return str(self.data['filename']) if self.data['filename'] is not None else None
+    def filename(self) -> str:
+        return str(self.data['filename'])
 
     @property
-    def function(self) -> Optional[str]:
-        return str(self.data['function']) if self.data['function'] is not None else None
+    def function(self) -> str:
+        return str(self.data['function'])
 
     @property
     def line(self) -> Optional[int]:
-        return int(self.data['line']) if self.data['line'] is not None else None
+        return int(self.data['line'])
 
     @property
-    def message(self) -> Optional[str]:
-        return str(self.data['message']) if self.data['message'] is not None else None
+    def message(self) -> str:
+        return str(self.data['message'])
 
 
 __all__ = ['LogEvent']

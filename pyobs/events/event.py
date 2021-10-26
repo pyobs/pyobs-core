@@ -1,7 +1,12 @@
+from __future__ import annotations
 import json
 import time
 import uuid
-from typing import Dict, Any, Optional, NamedTuple
+import logging
+from typing import Dict, Any, Optional
+
+
+log = logging.getLogger(__name__)
 
 
 class Event:
@@ -9,7 +14,7 @@ class Event:
     __module__ = 'pyobs.events'
     local = False
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: Any):
         self.uuid = str(uuid.uuid4())
         self.timestamp = time.time()
         self.data: Any = {}
@@ -27,6 +32,11 @@ class Event:
         """String representation of event."""
         return json.dumps(self.to_json())
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> Event:
+        """Generic from_dict method for derived classes that don't need their own."""
+        return cls(**d)
+
 
 class EventFactory(object):
     packages = [__package__]
@@ -43,7 +53,7 @@ class EventFactory(object):
         """
 
         # create class
-        cls = None
+        cls: Optional[Event] = None
         for p in EventFactory.packages:
             # import package
             parts = p.split('.')
@@ -61,11 +71,18 @@ class EventFactory(object):
             return None
 
         # instantiate object and set data
-        obj: Event = cls()
-        obj.data = obj_dict['data']
-        obj.uuid = obj_dict['uuid']
-        obj.timestamp = obj_dict['timestamp'] if 'timestamp' in obj_dict else 0
-        return obj
+        try:
+            kwargs = obj_dict['data'] if 'data' in obj_dict and obj_dict['data'] is not None else {}
+            if not isinstance(kwargs, dict):
+                raise ValueError('Invalid event structure.')
+            obj: Event = cls.from_dict(kwargs)
+            obj.uuid = obj_dict['uuid']
+            obj.timestamp = obj_dict['timestamp'] if 'timestamp' in obj_dict else 0
+            return obj
+
+        except ValueError:
+            log.error('Could not create event.')
+            return None
 
 
 __all__ = ['Event', 'EventFactory']

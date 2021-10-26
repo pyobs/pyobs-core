@@ -12,7 +12,7 @@ class TaskStartedEvent(Event):
     """Event to be sent when a task has started."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, name: Optional[str] = None, id: Optional[Any] = None, eta: Optional[Time] = None):
+    def __init__(self, name: Optional[str] = None, id: Optional[Any] = None, eta: Optional[Time] = None, **kwargs: Any):
         """Initializes a new task started event.
 
         Args:

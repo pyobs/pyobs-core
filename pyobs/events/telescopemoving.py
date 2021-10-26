@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from typing_extensions import TypedDict
 
 from .event import Event
@@ -13,7 +13,7 @@ class TelescopeMovingEvent(Event):
     __module__ = 'pyobs.events'
 
     def __init__(self, ra: Optional[float] = None, dec: Optional[float] = None,
-                 alt: Optional[float] = None, az: Optional[float] = None):
+                 alt: Optional[float] = None, az: Optional[float] = None, **kwargs: Any):
         """Initializes a new telescope moving event.
 
         Either the pair ra/dec, or alt/az should be set, never both. The former implies tracking on the given

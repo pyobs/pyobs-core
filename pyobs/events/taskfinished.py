@@ -11,7 +11,7 @@ class TaskFinishedEvent(Event):
     """Event to be sent when a task has finished."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, name: Optional[str] = None, id: Optional[Any] = None):
+    def __init__(self, name: Optional[str] = None, id: Optional[Any] = None, **kwargs: Any):
         """Initializes a new task finished event.
 
         Args:

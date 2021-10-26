@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 from queue import Queue
-from typing import Any
+from typing import Any, Optional, List
 
 from astropy.io import fits
 
@@ -20,7 +20,7 @@ class ImageWatcher(Module):
     """
     __module__ = 'pyobs.modules.image'
 
-    def __init__(self, watchpath: str = None, destinations: list = None, **kwargs: Any):
+    def __init__(self, watchpath: Optional[str] = None, destinations: Optional[List[str]] = None, **kwargs: Any):
         """Create a new image watcher.
 
         Args:
@@ -45,7 +45,7 @@ class ImageWatcher(Module):
             raise ValueError('No filename patterns given for the destinations.')
         self._destinations = destinations
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
         import pyinotify
@@ -53,12 +53,12 @@ class ImageWatcher(Module):
         class EventHandler(pyinotify.ProcessEvent):
             """Event handler for file watcher."""
 
-            def __init__(self, main, *args: Any, **kwargs: Any):
+            def __init__(self, main, *args: Any, **kwargs: Any) -> None:
                 """Create event handler."""
                 pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
                 self.main = main
 
-            def process_IN_CLOSE_WRITE(self, event):
+            def process_IN_CLOSE_WRITE(self, event: Any) -> None:
                 """React to IN_CLOSE_WRITE events."""
                 self.main.add_image(event.pathname)
 
@@ -70,7 +70,7 @@ class ImageWatcher(Module):
             self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
             self._notifier.start()
 
-    def close(self):
+    def close(self) -> None:
         """Close image watcher."""
         Module.close(self)
 
@@ -79,7 +79,7 @@ class ImageWatcher(Module):
             log.info('Stop watching directory...')
             self._notifier.stop()
 
-    def add_image(self, filename: str):
+    def add_image(self, filename: str) -> None:
         """Add an image to the image database.
 
         Args:
@@ -90,14 +90,14 @@ class ImageWatcher(Module):
         log.info('Adding new image %s...', filename)
         self._queue.put(filename)
 
-    def _clear_queue(self):
+    def _clear_queue(self) -> None:
         """Clear the queue with new files."""
 
         # clear queue
         with self._queue.mutex:
             self._queue.queue.clear()
 
-    def _worker(self):
+    def _worker(self) -> None:
         """Worker thread."""
 
         # first, add all files from directory to queue
@@ -145,7 +145,6 @@ class ImageWatcher(Module):
 
             except:
                 log.exception('Something went wrong.')
-
 
 
 __all__ = ['ImageWatcher']

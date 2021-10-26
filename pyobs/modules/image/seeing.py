@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from typing import List, Union
+from typing import List, Union, Any, Optional, Dict
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
@@ -16,7 +16,8 @@ class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
     __module__ = 'pyobs.modules.image'
 
-    def __init__(self, sources: Union[str, List[str]] = None, publisher: Union[Publisher, dict] = None,
+    def __init__(self, sources: Optional[Union[str, List[str]]] = None,
+                 publisher: Optional[Union[Publisher, Dict[str, Any]]] = None,
                  max_ellipticity: float = 0.2, correct_for_airmass: bool = True, **kwargs: Any):
         """Creates a new seeing estimator.
 
@@ -34,7 +35,7 @@ class Seeing(Module):
         self._max_ellipticity = max_ellipticity
         self._correct_for_airmass = correct_for_airmass
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
@@ -42,7 +43,7 @@ class Seeing(Module):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str):
+    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -55,25 +56,25 @@ class Seeing(Module):
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
-            return
+            return false
 
         # put into queue
         log.info('Received new image event from %s.', sender)
 
         # download image
         try:
-
             log.info('Downloading file %s...', event.filename)
             image = self.vfs.read_image(event.filename)
+
         except FileNotFoundError:
             log.error('Could not download image.')
-            return
+            return False
 
         # get catalog
         cat = image.catalog
         if cat is None:
             # no catalog found in file
-            return
+            return False
 
         # filter by ellipticity
         cat = cat[cat['ellipticity'] < self._max_ellipticity]
@@ -95,11 +96,12 @@ class Seeing(Module):
                 seeing /= image.header['AIRMASS']**0.6
             else:
                 # could not correct
-                return
+                return False
 
         # log it
         if self._publisher is not None:
             self._publisher(time=Time.now().isot, seeing=seeing)
+        return True
 
 
 __all__ = ['Seeing']

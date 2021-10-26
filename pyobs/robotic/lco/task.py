@@ -110,16 +110,16 @@ class LcoTask(Task):
     @property
     def start(self) -> Time:
         """Start time for task"""
-        if 'start' in self.config and isinstance(self.config['start'], str):
-            return Time(self.config['start'])
+        if 'start' in self.config and isinstance(self.config['start'], Time):
+            return self.config['start']
         else:
             raise ValueError('No start time found in request group.')
 
     @property
     def end(self) -> Time:
         """End time for task"""
-        if 'end' in self.config and isinstance(self.config['end'], str):
-            return Time(self.config['end'])
+        if 'end' in self.config and isinstance(self.config['end'], Time):
+            return self.config['end']
         else:
             raise ValueError('No end time found in request group.')
 

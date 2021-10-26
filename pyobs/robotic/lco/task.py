@@ -75,7 +75,7 @@ class LcoTask(Task):
         self.cur_script: Optional[Script] = None
 
     @property
-    def id(self) -> str:
+    def id(self) -> Any:
         """ID of task."""
         if 'request' in self.config and 'id' in self.config['request']:
             return self.config['request']['id']
@@ -85,7 +85,7 @@ class LcoTask(Task):
     @property
     def name(self) -> str:
         """Returns name of task."""
-        if 'name' in self.config:
+        if 'name' in self.config and isinstance(self.config['name'], str):
             return self.config['name']
         else:
             raise ValueError('No name found in request group.')
@@ -93,7 +93,8 @@ class LcoTask(Task):
     @property
     def duration(self) -> float:
         """Returns estimated duration of task in seconds."""
-        if 'request' in self.config and 'duration' in self.config['request']:
+        if 'request' in self.config and 'duration' in self.config['request'] \
+                and isinstance(self.config['request']['duration'], int):
             return float(self.config['request']['duration'])
         else:
             raise ValueError('No duration found in request.')

@@ -17,7 +17,7 @@ class Task:
         self.observer = observer
 
     @property
-    def id(self) -> str:
+    def id(self) -> Any:
         """ID of task."""
         raise NotImplementedError
 

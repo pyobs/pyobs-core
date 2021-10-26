@@ -35,7 +35,7 @@ class TaskStartedEvent(Event):
         name: str = d['name']
 
         # get id
-        if 'id' not in d or not isinstance(d['id'], str):
+        if 'id' not in d:
             raise ValueError('Invalid type for id.')
         id: str = d['id']
 

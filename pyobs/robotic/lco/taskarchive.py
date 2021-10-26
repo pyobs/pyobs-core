@@ -1,7 +1,7 @@
 import threading
 from urllib.parse import urljoin
 import logging
-from typing import Union, List, Dict, Optional, Any
+from typing import Union, List, Dict, Optional, Any, cast
 import requests
 from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint, \
     MoonIlluminationConstraint, AtNightConstraint
@@ -171,7 +171,7 @@ class LcoTaskArchive(TaskArchive):
 
             # update
             with self._update_lock:
-                self._tasks = tasks
+                self._tasks = cast(Dict[str, LcoTask], tasks)
 
             # finished
             self._last_schedule_time = now

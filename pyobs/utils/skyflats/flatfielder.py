@@ -2,13 +2,13 @@ from __future__ import annotations
 import threading
 from enum import Enum
 import logging
-from typing import Dict, Union, Callable, Optional, Tuple
+from typing import Dict, Union, Callable, Optional, Tuple, Any, cast
 import astropy.units as u
 from astroplan import Observer
 from astropy.time import TimeDelta
 import numpy as np
 
-from pyobs.object import get_object, get_safe_object
+from pyobs.object import get_safe_object, Object
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
 from pyobs.utils.threads import Future
@@ -16,13 +16,14 @@ from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
 from .exptimeeval import ExpTimeEval
 from .pointing import SkyFlatsBasePointing
-from ...interfaces.proxies import ITelescopeProxy, ICameraProxy, IFiltersProxy, IExposureTimeProxy, IBinningProxy, \
+from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy, IFiltersProxy, IExposureTimeProxy, IBinningProxy, \
     IWindowProxy, IImageTypeProxy
+from ...images import Image
 
 log = logging.getLogger(__name__)
 
 
-class FlatFielder:
+class FlatFielder(Object):
     """Automatized flat-fielding."""
     __module__ = 'pyobs.utils.skyflats'
 
@@ -39,10 +40,10 @@ class FlatFielder:
 
     def __init__(self, functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
                  target_count: float = 30000, min_exptime: float = 0.5, max_exptime: float = 5,
-                 test_frame: tuple = None, counts_frame: tuple = None, allowed_offset_frac: float = 0.2,
-                 min_counts: int = 100, pointing: Union[dict, SkyFlatsBasePointing] = None,
-                 observer: Observer = None, vfs: VirtualFileSystem = None,
-                 callback: Callable = None, *args, **kwargs):
+                 test_frame: Optional[Tuple[float, float, float, float]] = None,
+                 counts_frame: Optional[Tuple[float, float, float, float]] = None, allowed_offset_frac: float = 0.2,
+                 min_counts: int = 100, pointing: Optional[Union[Dict[str, Any], SkyFlatsBasePointing]] = None,
+                 callback: Optional[Callable[..., Any]] = None, **kwargs: Any):
         """Initialize a new flat fielder.
 
         Args:
@@ -61,6 +62,7 @@ class FlatFielder:
             vfs: VFS to use.
             callback: Callback function for statistics.
         """
+        Object.__init__(self, **kwargs)
 
         # store stuff
         self._target_count = target_count
@@ -70,45 +72,43 @@ class FlatFielder:
         self._counts_frame = (25, 25, 75, 75) if counts_frame is None else counts_frame
         self._allowed_offset_frac = allowed_offset_frac
         self._min_counts = min_counts
-        self._observer = observer
-        self._vfs = vfs
         self._callback = callback
 
         # parse function
-        self._eval = ExpTimeEval(observer, functions)
+        self._eval = ExpTimeEval(self.observer, functions)
 
         # abort event
         self._abort = threading.Event()
 
         # pointing
-        self._pointing = get_safe_object(pointing, SkyFlatsBasePointing, observer=self._observer)
+        self._pointing: Optional[SkyFlatsBasePointing] = self.get_safe_object(pointing, SkyFlatsBasePointing)
 
         # state machine
         self._state = FlatFielder.State.INIT
 
         # current exposure time
-        self._exptime = None
+        self._exptime = 0.
 
         # median of last image
-        self._median = None
+        self._median = 0.
 
         # exposures to do
         self._exposures_total = 0
         self._exposures_done = 0
-        self._exptime_done = 0
+        self._exptime_done = 0.
 
         # bias level
-        self._bias_level = None
+        self._bias_level = 0.
 
-        # which twilight are we in?
-        self._twilight = None
+        # which twilight are we in? just init something
+        self._twilight = FlatFielder.Twilight.DAWN
 
         # current request
         self._cur_filter: Optional[str] = None
-        self._cur_binning: Optional[int] = None
+        self._cur_binning: Tuple[int, int] = (1, 1)
 
-    def __call__(self, telescope: ITelescopeProxy, camera: ICameraProxy, filters: IFiltersProxy = None,
-                 filter_name: str = None, count: int = 20, binning: Tuple[int, int] = (1, 1)) -> State:
+    def __call__(self, telescope: ITelescopeProxy, camera: ICameraProxy, filters: Optional[IFiltersProxy] = None,
+                 filter_name: Optional[str] = None, count: int = 20, binning: Tuple[int, int] = (1, 1)) -> State:
         """Calls next step in state machine.
 
         Args:
@@ -141,15 +141,15 @@ class FlatFielder:
             self._wait()
         elif self._state == FlatFielder.State.TESTING:
             # do actual tests on sky for exposure time
-            self._testing(camera)
+            self._testing(cast(ICameraProxy, camera))
         elif self._state == FlatFielder.State.RUNNING:
             # take flat fields
-            self._flat_field(telescope, camera)
+            self._flat_field(telescope, cast(ICameraProxy, camera))
 
         # return current state
         return self._state
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset flat fielder"""
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
@@ -158,16 +158,16 @@ class FlatFielder:
             self._pointing.reset()
 
     @property
-    def has_filters(self):
+    def has_filters(self) -> bool:
         """Returns True, if functions are based on filters."""
         return len(self._eval.filters) > 0
 
     @property
-    def image_count(self):
+    def image_count(self) -> int:
         return self._exposures_done
 
     @property
-    def total_exptime(self):
+    def total_exptime(self) -> float:
         return self._exptime_done
 
     def _initial_check(self) -> bool:
@@ -193,12 +193,14 @@ class FlatFielder:
             return True
 
     def _init_system(self, telescope: ITelescopeProxy, camera: Union[ICameraProxy, IExposureTimeProxy],
-                     filters: IFiltersProxy):
+                     filters: Optional[IFiltersProxy] = None) -> None:
         """Initialize whole system."""
 
         # which twilight are we in?
-        sun = self._observer.sun_altaz(Time.now())
-        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
+        if self.observer is None:
+            raise ValueError('No observer given.')
+        sun = self.observer.sun_altaz(Time.now())
+        sun_10min = self.observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
         self._twilight = FlatFielder.Twilight.DUSK \
             if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
         log.info('We are currently in %s twilight.', self._twilight.value)
@@ -219,8 +221,8 @@ class FlatFielder:
         future_track = self._pointing(telescope) if self._pointing is not None else None
 
         # get filter from first step and set it
-        future_filter = None
-        if filters is not None:
+        future_filter = Future[None](empty=True)
+        if filters is not None and self._cur_filter is not None:
             log.info('Setting filter to %s...', self._cur_filter)
             future_filter = filters.set_filter(self._cur_filter)
 
@@ -232,7 +234,7 @@ class FlatFielder:
         log.info('Waiting for flat-field time...')
         self._state = FlatFielder.State.WAITING
 
-    def _get_bias(self, camera: Union[ICameraProxy, IExposureTimeProxy]) -> float:
+    def _get_bias(self, camera: ICameraProxy) -> float:
         """Take bias image to determine bias level.
 
         Returns:
@@ -241,25 +243,27 @@ class FlatFielder:
         log.info('Taking BIAS image to determine median level...')
 
         # set full frame
+        cam = camera
         if isinstance(camera, IWindowProxy):
             full_frame = camera.get_full_frame().wait()
             camera.set_window(*full_frame).wait()
 
         # take image
-        camera.set_exposure_time(0.)
+        if isinstance(camera, IExposureTimeProxy):
+            camera.set_exposure_time(0.)
         if isinstance(camera, IImageTypeProxy):
             camera.set_image_type(ImageType.BIAS)
-        filename = camera.expose(broadcast=False).wait()
+        filename = cam.grab_image(broadcast=False).wait()
 
         # download image
-        bias = self._vfs.read_image(filename)
+        bias = self.vfs.read_image(filename)
         avg = float(np.median(bias.data))
 
         # return it
         log.info('Found median BIAS level of %.2f...', avg)
         return avg
 
-    def _wait(self):
+    def _wait(self) -> None:
         """Wait for flat-field time."""
 
         # get solar elevation and evaluate function
@@ -279,7 +283,7 @@ class FlatFielder:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatFielder.State.FINISHED
 
-    def _eval_function(self, time: Time) -> (float, float):
+    def _eval_function(self, time: Time) -> Tuple[float, float]:
         """Evaluate function for given filter at given time.
 
         Args:
@@ -290,13 +294,15 @@ class FlatFielder:
         """
 
         # get solar elevation and evaluate exptime
-        sun = self._observer.sun_altaz(time)
+        if self.observer is None:
+            raise ValueError('No observer given.')
+        sun = self.observer.sun_altaz(time)
         exptime = self._eval(sun.alt.degree, binning=self._cur_binning, filter_name=self._cur_filter)
 
         # return solar altitude and exposure time
         return float(sun.alt.degree), exptime
 
-    def _eval_exptime(self, min_exptime: float = None, max_exptime: float = None) -> int:
+    def _eval_exptime(self, min_exptime: Optional[float] = None, max_exptime: Optional[float] = None) -> int:
         """Evaluates current exposure time. Sets new state or waits of necessary.
 
         Returns:
@@ -324,7 +330,7 @@ class FlatFielder:
             # otherwise it seems that we're in the middle of flat-fielding time
             return 0
 
-    def _testing(self, camera: Union[ICameraProxy, IExposureTimeProxy]):
+    def _testing(self, camera: ICameraProxy) -> None:
         """Take flat-fields but don't store them."""
 
         # set window
@@ -332,10 +338,12 @@ class FlatFielder:
 
         # do exposures, do not broadcast while testing
         log.info('Exposing test flat field for %.2fs...', self._exptime)
-        camera.set_exposure_time(float(self._exptime)).wait()
+        cam = camera
+        if isinstance(camera, IExposureTimeProxy):
+            camera.set_exposure_time(float(self._exptime)).wait()
         if isinstance(camera, IImageTypeProxy):
             camera.set_image_type(ImageType.SKYFLAT)
-        filename = camera.expose(broadcast=False).wait()
+        filename = cam.expose(broadcast=False).wait()
 
         # analyse image
         self._analyse_image(filename)
@@ -352,7 +360,7 @@ class FlatFielder:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatFielder.State.FINISHED
 
-    def _set_window(self, camera: Union[ICameraProxy, IExposureTimeProxy], testing: bool):
+    def _set_window(self, camera: Union[ICameraProxy, IExposureTimeProxy], testing: bool) -> None:
         """Set camera window.
 
         Args:
@@ -384,7 +392,7 @@ class FlatFielder:
         """
 
         # download image
-        flat_field = self._vfs.read_image(filename)
+        flat_field = self.vfs.read_image(filename)
         if flat_field is None:
             return False
 
@@ -413,7 +421,7 @@ class FlatFielder:
                 return True
 
     @staticmethod
-    def _get_image_median(image, frame=None) -> float:
+    def _get_image_median(image: Image, frame: Optional[Tuple[float, float, float, float]] = None) -> float:
         """Returns median of image after trimming it to TRIMSEC and to given frame.
 
         Args:
@@ -434,9 +442,9 @@ class FlatFielder:
                         int(frame[1] / 100 * height):int((frame[1] + frame[3]) / 100 * height)]
 
         # return median
-        return np.median(data)
+        return float(np.median(data))
 
-    def _calc_new_exptime(self):
+    def _calc_new_exptime(self) -> None:
         """Calculate new exposure time."""
         # calculate factor for new exposure time
         factor = (self._target_count - self._bias_level) / (self._median - self._bias_level)
@@ -447,7 +455,7 @@ class FlatFielder:
         # calculate next exposure time
         self._exptime *= factor
 
-    def _flat_field(self, telescope: ITelescopeProxy, camera: ICameraProxy):
+    def _flat_field(self, telescope: ITelescopeProxy, camera: ICameraProxy) -> None:
         """Take flat-fields."""
 
         # set window
@@ -479,7 +487,9 @@ class FlatFielder:
 
             # call callback
             if self._callback is not None:
-                sun = self._observer.sun_altaz(now)
+                if self.observer is None:
+                    raise ValueError('No observer given.')
+                sun = self.observer.sun_altaz(now)
                 self._callback(datetime=now, solalt=sun.alt.degree, exptime=self._exptime, counts=self._target_count,
                                filter=self._cur_filter, binning=self._cur_binning)
 
@@ -494,7 +504,7 @@ class FlatFielder:
             log.info('Missed flat-fielding time, finish task...')
             self._state = FlatFielder.State.FINISHED
 
-    def abort(self):
+    def abort(self) -> None:
         """Abort current actions."""
         self._abort.set()
 

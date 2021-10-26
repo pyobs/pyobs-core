@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 from astropy.table import Table
 from astropy.time import Time
-from typing import Tuple, TYPE_CHECKING, Optional, Any
+from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
 from photutils.datasets import make_gaussian_sources_image
@@ -43,7 +43,8 @@ class SimCamera(Object):
         # store
         self.world = world
         self.telescope = world.telescope
-        self.full_frame = tuple([0, 0] + list(image_size)) if image_size is not None else (0, 0, 512, 512)
+        self.full_frame: Tuple[int, int, int, int] = (0, 0, image_size[0], image_size[1]) \
+            if image_size is not None else (0, 0, 512, 512)
         self.window = self.full_frame
         self.binning = (1, 1)
         self.pixel_size = pixel_size
@@ -135,7 +136,7 @@ class SimCamera(Object):
         data[data > 65535] = 65535
 
         # finished
-        return data.astype(np.uint16)
+        return cast(np.ndarray, data).astype(np.uint16)
 
     def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray) -> fits.Header:
         # create header
@@ -167,7 +168,7 @@ class SimCamera(Object):
         # finished
         return hdr
 
-    def _get_catalog(self, fov) -> Table:
+    def _get_catalog(self, fov: float) -> Table:
         """Returns GAIA catalog for current telescope coordinates."""
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:

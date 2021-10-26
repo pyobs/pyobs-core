@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from astropy.time import Time
-from typing import Union
+from typing import Union, Optional, TYPE_CHECKING, Dict, Any
 
 from pyobs.object import create_object, Object
+if TYPE_CHECKING:
+    from pyobs.utils.simulation.telescope import SimTelescope
+    from pyobs.utils.simulation.camera import SimCamera
 
 
 class SimWorld(Object):
     """A simulated world."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, time: Union[Time, str] = None,
-                 telescope: Union['SimTelescope', dict] = None, camera: Union['SimCamera', dict] = None,
-                 *args, **kwargs):
+    def __init__(self, time: Optional[Union[Time, str]] = None,
+                 telescope: Optional[Union['SimTelescope', Dict[str, Any]]] = None,
+                 camera: Optional[Union['SimCamera', Dict[str, Any]]] = None,
+                 **kwargs: Any):
         """Initializes a new simulated world.
 
         Args:
@@ -25,7 +29,7 @@ class SimWorld(Object):
         """
         from .camera import SimCamera
         from .telescope import SimTelescope
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # get start time
         if time is None:
@@ -56,7 +60,7 @@ class SimWorld(Object):
         else:
             raise ValueError('Invalid camera.')
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Object.open(self)
 
@@ -68,7 +72,7 @@ class SimWorld(Object):
         if hasattr(self.telescope, 'open'):
             self.camera.open()
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
         Object.close(self)
 
@@ -88,6 +92,8 @@ class SimWorld(Object):
     @property
     def sun_alt(self) -> float:
         """Returns current solar altitude."""
+        if self.observer is None:
+            raise ValueError('No observer given.')
         return float(self.observer.sun_altaz(self.time).alt.degree)
 
 

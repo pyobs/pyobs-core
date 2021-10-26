@@ -1,7 +1,7 @@
 import logging
 import threading
 from enum import Enum
-from typing import Union, Tuple, List, Optional, Any
+from typing import Union, Tuple, List, Optional, Any, Dict
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning
@@ -35,8 +35,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         FINISHED = 'finished'
 
     def __init__(self, telescope: Union[str, ITelescopeProxy], camera: Union[str, ICameraProxy],
-                 flat_fielder: Union[dict, FlatFielder], filters: Union[str, IFiltersProxy] = None,
-                 log_file: str = None, **kwargs: Any):
+                 flat_fielder: Optional[Union[Dict[str, Any], FlatFielder]],
+                 filters: Optional[Union[str, IFiltersProxy]] = None, log_file: Optional[str] = None, **kwargs: Any):
         """Initialize a new flat fielder.
 
         Args:
@@ -55,8 +55,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         self._abort = threading.Event()
 
         # flat fielder
-        self._flat_fielder = get_object(flat_fielder, FlatFielder, vfs=self.vfs,
-                                        observer=self.observer, callback=self.callback)
+        self._flat_fielder = self.get_object(flat_fielder, FlatFielder, callback=self.callback)
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
@@ -74,7 +73,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             # add it
             #self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
 
-    def open(self):
+    def open(self) -> None:
         """Open module"""
         Module.open(self)
 
@@ -91,12 +90,13 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                 self.comm.register_event(BadWeatherEvent, self._abort_weather)
                 self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
         Module.close(self)
         self._abort.set()
 
-    def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str, binning: Tuple[int, int]):
+    def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str,
+                 binning: Tuple[int, int]) -> None:
         """Callback for flat-field class to call with statistics."""
         # write log
         if self._publisher is not None:
@@ -111,7 +111,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         return self.proxy(self._camera, IBinningProxy).list_binnings().wait()
 
-    def set_binning(self, x: int, y: int, **kwargs: Any):
+    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -139,7 +139,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         return self.proxy(self._filter_wheel, IFiltersProxy).list_filters().wait()
 
-    def set_filter(self, filter_name: str, **kwargs: Any):
+    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -150,13 +150,13 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._filter = filter_name
 
-    def get_filter(self, **kwargs: Any) -> Optional[str]:
+    def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:
             Name of currently set filter.
         """
-        return self._filter
+        return '' if self._filter is None else self._filter
 
     @timeout(3600)
     def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
@@ -212,13 +212,14 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
     @timeout(20)
-    def abort(self, **kwargs: Any):
+    def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 
-    def _abort_weather(self, event: Event, sender: str, **kwargs: Any):
+    def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Abort on bad weather."""
         self.abort()
+        return True
 
 
 __all__ = ['FlatField']

@@ -44,7 +44,7 @@ class DummyAcquisition(Module, IAcquisition):
         finally:
             self._is_running = False
 
-    def _acquire(self) -> dict:
+    def _acquire(self) -> Dict[str, Any]:
         """Actually acquire target."""
         log.info('Acquiring target.')
         time.sleep(5)

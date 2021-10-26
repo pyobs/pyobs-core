@@ -1,7 +1,11 @@
 import logging
+from typing import Optional, Any, Dict, TYPE_CHECKING
+
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
+if TYPE_CHECKING:
+    import lmfit
 
 from pyobs.interfaces.proxies import IFocuserProxy, IFiltersProxy, IWeatherProxy, ITemperaturesProxy
 from pyobs.modules import Module
@@ -51,11 +55,13 @@ class FocusModel(Module, IFocusModel):
     """
     __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: str = None, weather: str = None, interval: int = 300, temperatures: dict = None,
-                 model: str = None, coefficients: dict = None, update: bool = False,
-                 log_file: str = None, min_measurements: int = 10, enabled: bool = True,
-                 temp_sensor: str = 'average.temp', default_filter: str = None, filter_offsets: dict = None,
-                 filter_wheel: str = None, **kwargs: Any):
+    def __init__(self, focuser: Optional[str] = None, weather: Optional[str] = None, interval: int = 300,
+                 temperatures: Optional[Dict[str, Dict[str, float]]] = None, model: Optional[str] = None,
+                 coefficients: Optional[Dict[str, float]] = None, update: bool = False,
+                 log_file: Optional[str] = None, min_measurements: int = 10, enabled: bool = True,
+                 temp_sensor: str = 'average.temp', default_filter: Optional[str] = None,
+                 filter_offsets: Optional[Dict[str, float]] = None,
+                 filter_wheel: Optional[str] = None, **kwargs: Any):
         """Initialize a focus model.
 
         Args:
@@ -86,7 +92,7 @@ class FocusModel(Module, IFocusModel):
         self._focuser = focuser
         self._weather = weather
         self._interval = interval
-        self._temperatures = temperatures = {} if temperatures is None else temperatures
+        self._temperatures: Dict[str, Dict[str, float]] = {} if temperatures is None else temperatures
         self._focuser_ready = True
         self._coefficients = {} if coefficients is None else coefficients
         self._update_model = update
@@ -121,7 +127,7 @@ class FocusModel(Module, IFocusModel):
         if update:
             self._calc_focus_model()
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
@@ -130,7 +136,7 @@ class FocusModel(Module, IFocusModel):
         if self._filter_offsets is not None and self._filter_wheel is not None:
             self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
 
-    def _run_thread(self):
+    def _run_thread(self) -> None:
         # wait a little
         self.closing.wait(1)
 
@@ -179,7 +185,7 @@ class FocusModel(Module, IFocusModel):
             log.info('Going to sleep for %d seconds...', self._interval)
             self.closing.wait(self._interval)
 
-    def _get_optimal_focus(self, filter_name: str = None, **kwargs: Any) -> float:
+    def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Args:
@@ -233,7 +239,7 @@ class FocusModel(Module, IFocusModel):
         """
         return self._get_optimal_focus()
 
-    def _get_values(self) -> dict:
+    def _get_values(self) -> Dict[str, float]:
         """Retrieve all required values for the model.
 
         Returns:
@@ -290,7 +296,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found values for model: %s', vars)
         return variables
 
-    def _set_optimal_focus(self, filter_name: str = None, **kwargs: Any):
+    def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:
         """Sets optimal focus.
 
         Args:
@@ -312,7 +318,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Done.')
 
     @timeout(60)
-    def set_optimal_focus(self, **kwargs: Any):
+    def set_optimal_focus(self, **kwargs: Any) -> None:
         """Sets optimal focus.
 
         Raises:
@@ -320,7 +326,7 @@ class FocusModel(Module, IFocusModel):
         """
         self._set_optimal_focus()
 
-    def _on_focus_found(self, event: FocusFoundEvent, sender: str):
+    def _on_focus_found(self, event: FocusFoundEvent, sender: str) -> bool:
         """Receive FocusFoundEvent.
 
         Args:
@@ -348,8 +354,9 @@ class FocusModel(Module, IFocusModel):
 
         # finished
         log.info('Done.')
+        return True
 
-    def _calc_focus_model(self):
+    def _calc_focus_model(self) -> None:
         """Calculate new focus model from saved entries."""
         import lmfit
 
@@ -411,7 +418,7 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
 
-    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame):
+    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> None:
         """Fit method for model
 
         Args:

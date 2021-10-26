@@ -1,8 +1,8 @@
 import logging
 from typing import Any
 
-from .. import Module
-from ...interfaces import IAutoGuiding
+from pyobs.modules import Module
+from pyobs.interfaces import IAutoGuiding
 
 log = logging.getLogger(__name__)
 
@@ -15,14 +15,14 @@ class DummyAutoGuiding(Module, IAutoGuiding):
         Module.__init__(self, **kwargs)
         self._running = False
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any):
+    def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         pass
 
-    def start(self, **kwargs: Any):
+    def start(self, **kwargs: Any) -> None:
         log.info('Start guiding.')
         self._running = True
 
-    def stop(self, **kwargs: Any):
+    def stop(self, **kwargs: Any) -> None:
         log.info('Stop guiding.')
         self._running = False
 

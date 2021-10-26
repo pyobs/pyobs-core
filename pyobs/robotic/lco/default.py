@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 import numpy as np
-from typing import Union, Optional, Any, Tuple
+from typing import Union, Optional, Any, Tuple, cast, Dict, List
 
 from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
     ITelescopeProxy, IAcquisitionProxy, ICameraProxy, IFiltersProxy, IImageTypeProxy
@@ -201,8 +201,8 @@ class LcoDefaultScript(Script):
                 log.info('Using readout mode "%s"...' % readout_mode['name'])
 
                 # set filter
-                set_filter = None
-                if 'optical_elements' in ic and 'filter' in ic['optical_elements']:
+                set_filter = Future[None](empty=True)
+                if 'optical_elements' in ic and 'filter' in ic['optical_elements'] and filters is not None:
                     log.info('Setting filter to %s...', ic['optical_elements']['filter'])
                     set_filter = filters.set_filter(ic['optical_elements']['filter'])
 
@@ -233,7 +233,7 @@ class LcoDefaultScript(Script):
                                  self.configuration['type'], exp + 1, ic['exposure_count'])
                     if isinstance(camera, IImageTypeProxy):
                         camera.set_image_type(self.image_type).wait()
-                    camera.expose().wait()
+                    cast(ICameraProxy, camera).expose().wait()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs
@@ -255,7 +255,7 @@ class LcoDefaultScript(Script):
 
         # stop auto guiding
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
-                self.configuration['guiding_config']['mode'] == 'ON':
+                self.configuration['guiding_config']['mode'] == 'ON' and autoguider is not None:
             log.info('Stopping auto-guiding...')
             autoguider.stop().wait()
 
@@ -263,9 +263,9 @@ class LcoDefaultScript(Script):
         if not abort_event.is_set():
             if self.image_type == ImageType.OBJECT:
                 log.info('Stopping telescope...')
-                telescope.stop_motion().wait()
+                cast(ITelescopeProxy, telescope).stop_motion().wait()
 
-    def get_fits_headers(self, namespaces: list = None) -> dict:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Any]:
         """Returns FITS header for the current status of this module.
 
         Args:

@@ -20,7 +20,7 @@ class Script:
             comm: Comm object to use
             observer: Observer to use
         """
-        self.exptime_done = 0.
+        self.exptime_done: float = 0.
         self.configuration = configuration
         self.task_archive = task_archive
         self.comm = comm

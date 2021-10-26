@@ -4,21 +4,24 @@ import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from typing import Tuple, List
+from typing import Tuple, List, Optional, Any, TYPE_CHECKING
 import random
 
 from pyobs.object import Object
 from pyobs.utils.enums import MotionStatus
+if TYPE_CHECKING:
+    from pyobs.utils.simulation import SimWorld
 
 
 class SimTelescope(Object):
     """A simulated telescope on an equitorial mount."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', position: Tuple[float, float] = None, offsets: Tuple[float, float] = None,
-                 pointing_offset: Tuple[float, float] = None, move_accuracy: float = 2.,
-                 speed: float = 20., focus: float = 50, filters: List[str] = None, filter: str = 'clear',
-                 drift: Tuple[float, float] = None, focal_length: float = 5000., *args, **kwargs):
+    def __init__(self, world: 'SimWorld', position: Optional[Tuple[float, float]] = None,
+                 offsets: Optional[Tuple[float, float]] = None, pointing_offset: Optional[Tuple[float, float]] = None,
+                 move_accuracy: float = 2., speed: float = 20., focus: float = 50, filters: Optional[List[str]] = None,
+                 filter: str = 'clear', drift: Optional[Tuple[float, float]] = None, focal_length: float = 5000.,
+                 **kwargs: Any):
         """Initializes new telescope.
 
         Args:
@@ -34,7 +37,7 @@ class SimTelescope(Object):
             drift: RA/Dec drift of telescope in arcsec/sec.
             focal_length: Focal length of telescope in mm.
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # store
         self.world = world
@@ -65,14 +68,14 @@ class SimTelescope(Object):
         self.add_thread_func(self._move_thread)
 
     @property
-    def position(self):
+    def position(self) -> SkyCoord:
         return self._position
 
     @property
-    def offsets(self):
+    def offsets(self) -> Tuple[float, float]:
         return self._offsets
 
-    def _change_motion_status(self, status: MotionStatus):
+    def _change_motion_status(self, status: MotionStatus) -> None:
         """Change the current motion status.
 
         Args:
@@ -87,7 +90,7 @@ class SimTelescope(Object):
         self.status = status
 
     @property
-    def real_pos(self):
+    def real_pos(self) -> SkyCoord:
         # calculate offsets
         dra = (self._offsets[0] * u.deg + self._drift[0] * u.arcsec) / np.cos(np.radians(self._position.dec.degree))
         ddec = self._offsets[1] * u.deg + self._drift[1] * u.arcsec
@@ -98,7 +101,7 @@ class SimTelescope(Object):
                             dec=self._position.dec + ddec,
                             frame='icrs')
 
-    def move_ra_dec(self, coords):
+    def move_ra_dec(self, coords: SkyCoord) -> None:
         """Move telescope to given RA/Dec position.
 
         Args:
@@ -116,7 +119,7 @@ class SimTelescope(Object):
         # set coordinates
         self._dest_coords = SkyCoord(ra=ra, dec=dec, frame='icrs')
 
-    def set_offsets(self, dra, ddec):
+    def set_offsets(self, dra: float, ddec: float) -> None:
         """Move RA/Dec offsets.
 
         Args:
@@ -131,7 +134,7 @@ class SimTelescope(Object):
         # set offsets
         self._offsets = (ra, dec)
 
-    def _move_thread(self):
+    def _move_thread(self) -> None:
         """Move the telescope over time."""
 
         # run until closed

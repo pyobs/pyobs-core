@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -14,6 +14,9 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+if TYPE_CHECKING:
+    from pyobs.utils.simulation import SimWorld
+
 
 log = logging.getLogger(__name__)
 
@@ -23,14 +26,15 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
     """A dummy telescope for testing."""
     __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, world: 'SimWorld' = None, **kwargs: Any):
+    def __init__(self, world: Optional['SimWorld'] = None, **kwargs: Any):
         """Creates a new dummy telescope."""
         BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=['ITelescope', 'IFocuser', 'IFilters'])
         FitsNamespaceMixin.__init__(self, **kwargs)
 
         # init world and get telescope
+        from pyobs.utils.simulation import SimWorld
         self._world = world if world is not None else \
-            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'}, SimWorld)
         self._telescope = self._world.telescope
 
         # automatically send status updates
@@ -40,7 +44,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._lock_focus = threading.Lock()
         self._abort_focus = threading.Event()
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         BaseTelescope.open(self)
 
@@ -53,7 +57,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # init status
         self._change_motion_status(MotionStatus.IDLE)
 
-    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
+    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -71,7 +75,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # start slewing
         self.__move(ra, dec, abort_event)
 
-    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -94,7 +98,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
-    def __move(self, ra: float, dec: float, abort_event: threading.Event):
+    def __move(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Simulate move.
 
        Args:
@@ -122,7 +126,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         return self._telescope.focus
 
     @timeout(60)
-    def set_focus(self, focus: float, **kwargs: Any):
+    def set_focus(self, focus: float, **kwargs: Any) -> None:
         """Sets new focus.
 
         Args:
@@ -166,7 +170,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.filter
 
-    def set_filter(self, filter_name: str, **kwargs: Any):
+    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -190,7 +194,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             logging.info('New filter set.')
 
     @timeout(60)
-    def init(self, **kwargs: Any):
+    def init(self, **kwargs: Any) -> None:
         """Initialize telescope.
 
         Raises:
@@ -204,7 +208,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self.comm.send_event(InitializedEvent())
 
     @timeout(60)
-    def park(self, **kwargs: Any):
+    def park(self, **kwargs: Any) -> None:
         """Park telescope.
 
         Raises:
@@ -216,7 +220,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         time.sleep(5.)
         self._change_motion_status(MotionStatus.PARKED)
 
-    def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any):
+    def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
         """Move an RA/Dec offset.
 
         Args:
@@ -257,7 +261,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_headers(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -276,7 +280,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # finished
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
-    def stop_motion(self, device: str = None, **kwargs: Any):
+    def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:
@@ -292,7 +296,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return 0
 
-    def get_temperatures(self, **kwargs: Any) -> dict:
+    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:
@@ -300,8 +304,8 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         return {
-            'M1': 10,
-            'M2': 12
+            'M1': 10.,
+            'M2': 12.
         }
 
 

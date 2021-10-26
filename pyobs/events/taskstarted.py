@@ -37,7 +37,7 @@ class TaskStartedEvent(Event):
         # get id
         if 'id' not in d:
             raise ValueError('Invalid type for id.')
-        id: str = d['id']
+        id: Any = d['id']
 
         # get eta
         eta: Optional[Time] = None

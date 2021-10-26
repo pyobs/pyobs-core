@@ -126,7 +126,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
 
         # send event, if it changed
         if self._camera_status != status:
-            self.comm.send_event(ExposureStatusChangedEvent(self._camera_status, status))
+            self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
 
         # set it
         self._camera_status = status

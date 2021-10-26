@@ -86,7 +86,7 @@ class Trigger(Module, IAutonomous):
                     proxy.execute(trigger['method'])
 
                 except ValueError:
-                    log.error('Could not get proxy for %s.', trigger['module'])
+                    log.exception('Could not execute command on proxy %s.', trigger['module'])
                     continue
 
                 except Exception as e:

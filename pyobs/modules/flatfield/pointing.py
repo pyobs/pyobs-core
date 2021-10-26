@@ -1,5 +1,5 @@
 import logging
-import typing
+from typing import Union, Dict, Any
 
 from pyobs.interfaces import IRunnable
 from pyobs.interfaces.proxies import ITelescopeProxy
@@ -15,8 +15,8 @@ class FlatFieldPointing(Module, IRunnable):
     """Module for pointing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
-    def __init__(self, telescope: typing.Union[str, ITelescopeProxy],
-                 pointing: typing.Union[dict, SkyFlatsBasePointing], *args, **kwargs):
+    def __init__(self, telescope: Union[str, ITelescopeProxy],
+                 pointing: Union[Dict[str, Any], SkyFlatsBasePointing], **kwargs: Any):
         """Initialize a new flat field pointing.
 
         Args:

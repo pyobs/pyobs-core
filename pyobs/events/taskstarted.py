@@ -2,17 +2,17 @@ from typing import Optional, Any
 from typing_extensions import TypedDict
 
 from pyobs.utils.time import Time
-from .event import Event
+from pyobs.events.event import Event
 
 
-DataType = TypedDict('DataType', {'name': Optional[str], 'id': Optional[Any], 'eta': Optional[str]})
+DataType = TypedDict('DataType', {'name': str, 'id': Any, 'eta': Optional[str]})
 
 
 class TaskStartedEvent(Event):
     """Event to be sent when a task has started."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, name: Optional[str] = None, id: Optional[Any] = None, eta: Optional[Time] = None, **kwargs: Any):
+    def __init__(self, name: str, id: Any, eta: Optional[Time] = None, **kwargs: Any):
         """Initializes a new task started event.
 
         Args:
@@ -28,11 +28,11 @@ class TaskStartedEvent(Event):
         }
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str:
         return self.data['name']
 
     @property
-    def id(self) -> Optional[Any]:
+    def id(self) -> Any:
         return self.data['id']
 
     @property

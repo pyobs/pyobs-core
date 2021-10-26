@@ -347,7 +347,7 @@ class Object:
         """
 
         # get it
-        obj = get_object(config_or_object, object_class)
+        obj = get_object(config_or_object, object_class, **kwargs)
 
         # copy
         for attr in ['timezone', 'location', 'observer', 'vfs']:

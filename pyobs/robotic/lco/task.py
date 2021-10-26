@@ -94,9 +94,8 @@ class LcoTask(Task):
     @property
     def duration(self) -> float:
         """Returns estimated duration of task in seconds."""
-        if 'request' in self.config and 'duration' in self.config['request'] and \
-                isinstance(self.config['request']['duration'], float):
-            return self.config['request']['duration']
+        if 'request' in self.config and 'duration' in self.config['request']:
+            return float(self.config['request']['duration'])
         else:
             raise ValueError('No duration found in request.')
 

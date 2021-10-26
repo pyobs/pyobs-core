@@ -80,7 +80,7 @@ class Trigger(Module, IAutonomous):
 
                 # get proxy
                 try:
-                    proxy = self.comm.proxy([trigger['module']])
+                    proxy = self.comm.proxy(trigger['module'])
 
                     # call it
                     proxy.execute(trigger['method'])

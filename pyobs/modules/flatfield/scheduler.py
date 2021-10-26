@@ -1,7 +1,6 @@
 import logging
 import threading
-from types import Union
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from pyobs.interfaces import IRunnable
 from pyobs.interfaces.proxies import IFlatFieldProxy

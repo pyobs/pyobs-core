@@ -5,6 +5,7 @@ import warnings
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
 from astropy.io import fits
+from numpy.typing import NDArray
 
 from pyobs.mixins.imagegrabber import ImageGrabberMixin
 from pyobs.utils.enums import ImageType, ExposureStatus
@@ -233,7 +234,8 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             is_3d = len(image.data.shape) == 3
 
             # flip image and make contiguous again
-            image.data = np.ascontiguousarray(np.flip(image.data, axis=1 if is_3d else 0))
+            flipped: NDArray[Any] = np.flip(image.data, axis=1 if is_3d else 0)  # type: ignore
+            image.data = np.ascontiguousarray(flipped)
 
         # add HDU name
         image.header['EXTNAME'] = 'SCI'

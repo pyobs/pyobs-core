@@ -2,6 +2,7 @@ from typing import Union, Dict, Any
 import logging
 import numpy as np
 from astropy.io import fits
+from numpy.typing import NDArray
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -14,7 +15,7 @@ class AddMask(ImageProcessor):
     """Add mask to image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, masks: Dict[str, Dict[str, Union[np.ndarray, str]]], **kwargs: Any):
+    def __init__(self, masks: Dict[str, Dict[str, Union[NDArray[Any], str]]], **kwargs: Any):
         """Init an image processor that adds a mask to an image.
 
         Args:
@@ -23,7 +24,7 @@ class AddMask(ImageProcessor):
         ImageProcessor.__init__(self, **kwargs)
 
         # masks
-        self._masks: Dict[str, Dict[str, np.ndarray]] = {}
+        self._masks: Dict[str, Dict[str, NDArray[Any]]] = {}
         for instrument, group in masks.items():
             self._masks[instrument] = {}
             for binning, mask in group.items():

@@ -53,7 +53,11 @@ class ApplyAltAzOffsets(ApplyOffsets):
             return False
 
         # get RA/Dec coordinates of center and center+offsets and convert to Alt/Az
-        radec_center, radec_target = self._get_radec_center_target(image, location)
+        try:
+            radec_center, radec_target = self._get_radec_center_target(image, location)
+        except ValueError:
+            log.error('Could not get offsets from image meta.')
+            return False
         frame = AltAz(obstime=Time(image.header['DATE-OBS']), location=location)
         altaz_center = radec_center.transform_to(frame)
         altaz_target = radec_target.transform_to(frame)

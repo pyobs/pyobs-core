@@ -346,18 +346,18 @@ class Object:
             TypeError: If the object does not match the given class.
         """
 
+        # set parameters
+        params = copy.copy(kwargs)
+        params.update({
+            'timezone': self.timezone,
+            'location': self.location,
+            'vfs': self.vfs
+        })
+        if copy_comm:
+            params['comm'] = self.comm
+
         # get it
-        obj = get_object(config_or_object, object_class, **kwargs)
-
-        # copy
-        for attr in ['timezone', 'location', 'observer', 'vfs']:
-            if hasattr(self, attr) and hasattr(obj, attr):
-                setattr(obj, attr, getattr(self, attr))
-        if copy_comm and hasattr(self, 'comm') and hasattr(obj, 'comm'):
-            setattr(obj, 'comm', getattr(self, 'comm'))
-
-        # finished
-        return obj
+        return get_object(config_or_object, object_class, **params)
 
     @overload
     def get_safe_object(self, config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
@@ -374,6 +374,7 @@ class Object:
         try:
             return self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
         except Exception:
+            log.exception('test')
             return None
 
     @overload

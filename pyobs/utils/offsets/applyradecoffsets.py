@@ -47,7 +47,11 @@ class ApplyRaDecOffsets(ApplyOffsets):
             return False
 
         # get RA/Dec coordinates of center and center+offsets
-        radec_center, radec_target = self._get_radec_center_target(image, location)
+        try:
+            radec_center, radec_target = self._get_radec_center_target(image, location)
+        except ValueError:
+            log.error('Could not get offsets from image meta.')
+            return False
 
         # get offset
         dra, ddec = radec_center.spherical_offsets_to(radec_target)

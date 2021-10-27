@@ -12,6 +12,7 @@ import tornado.gen
 import tornado.iostream
 import tornado.ioloop
 import PIL.Image
+from numpy.typing import NDArray
 
 from pyobs.modules import Module, timeout
 from pyobs.interfaces import IVideo, IImageType, IExposureTime
@@ -59,7 +60,7 @@ class NextImage(NamedTuple):
 
 
 class LastImage(NamedTuple):
-    data: np.ndarray
+    data: NDArray[Any]
     image: Optional[Image]
     jpeg: Optional[bytes]
     filename: Optional[str]
@@ -226,7 +227,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         with self._lock:
             return self._frame_num, None if self._last_image is None else self._last_image.jpeg
 
-    def create_jpeg(self, data: np.ndarray) -> bytes:
+    def create_jpeg(self, data: NDArray[Any]) -> bytes:
         """Create a JPEG ge from a numpy array and return as bytes.
 
         Args:
@@ -246,12 +247,12 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             PIL.Image.fromarray(data).save(output, format="jpeg")
             return output.getvalue()
 
-    def _set_image(self, data: np.ndarray) -> None:
+    def _set_image(self, data: NDArray[Any]) -> None:
         """Create FITS and JPEG images from data."""
 
         # flip image?
         if self._flip:
-            data = np.flip(data, axis=0)
+            data: NDArray[Any] = np.flip(data, axis=0)  # type: ignore
 
         # got a requested image in the queue?
         image, filename = None, None
@@ -292,7 +293,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
                 # reset
                 self._image_request = None
 
-    def _create_image(self, data: np.ndarray, next_image: NextImage) -> Tuple[Image, str]:
+    def _create_image(self, data: NDArray[Any], next_image: NextImage) -> Tuple[Image, str]:
         """Create an Image object from numpy array.
 
         Args:
@@ -303,7 +304,8 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         """
 
         # create image
-        image = Image(np.flip(data, axis=0))
+        flipped: NDArray[Any] = np.flip(data, axis=0)  # type: ignore
+        image = Image(flipped)
         image.header['DATE-OBS'] = next_image.date_obs
         image.header['IMAGETYP'] = next_image.image_type.value
 

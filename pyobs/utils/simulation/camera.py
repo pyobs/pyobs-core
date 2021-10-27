@@ -8,6 +8,7 @@ from astropy.time import Time
 from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
+from numpy.typing import NDArray
 from photutils.datasets import make_gaussian_sources_image
 from photutils.datasets import make_noise_image
 import logging
@@ -89,7 +90,7 @@ class SimCamera(Object):
         # return it
         return Image(data, header=hdr)
 
-    def _simulate_image(self, exp_time: float, open_shutter: bool) -> np.ndarray:
+    def _simulate_image(self, exp_time: float, open_shutter: bool) -> NDArray[Any]:
         """Simulate an image.
 
         Args:
@@ -136,9 +137,9 @@ class SimCamera(Object):
         data[data > 65535] = 65535
 
         # finished
-        return cast(np.ndarray, data).astype(np.uint16)
+        return cast(NDArray[Any], data).astype(np.uint16)
 
-    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray) -> fits.Header:
+    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: NDArray[Any]) -> fits.Header:
         # create header
         hdr = fits.Header()
         hdr['NAXIS1'] = data.shape[1]

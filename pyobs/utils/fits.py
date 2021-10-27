@@ -8,6 +8,7 @@ import re
 from typing import Union, Any, cast, Optional, List, Callable, Dict
 import numpy as np
 from astropy.io import fits
+from numpy.typing import NDArray
 
 from pyobs.utils.time import Time
 
@@ -15,7 +16,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> np.ndarray:
+def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> NDArray[Any]:
     """Trim an image to TRIMSEC or BIASSEC.
 
     Args:
@@ -29,7 +30,7 @@ def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> np.ndarray:
     # keyword not given?
     if keyword not in hdu.header:
         # return whole data
-        return cast(np.ndarray, hdu.data)
+        return cast(NDArray[Any], hdu.data)
 
     # get value of section
     sec = hdu.header[keyword]
@@ -44,7 +45,7 @@ def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> np.ndarray:
     y1 = int(y[1])
 
     # return data
-    return cast(np.ndarray, hdu.data[y0:y1, x0:x1])
+    return cast(NDArray[Any], hdu.data[y0:y1, x0:x1])
 
 
 class FilenameFormatter:

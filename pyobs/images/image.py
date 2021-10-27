@@ -8,6 +8,7 @@ from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
 from astropy.nddata import CCDData, StdDevUncertainty
+from numpy.typing import NDArray
 
 from pyobs.utils.fits import FilenameFormatter
 
@@ -18,8 +19,8 @@ class Image:
     """Image class."""
     __module__ = 'pyobs.images'
 
-    def __init__(self, data: Optional[np.ndarray] = None, header: Optional[fits.Header] = None,
-                 mask: Optional[np.ndarray] = None, uncertainty: Optional[np.ndarray] = None,
+    def __init__(self, data: Optional[NDArray[Any]] = None, header: Optional[fits.Header] = None,
+                 mask: Optional[NDArray[Any]] = None, uncertainty: Optional[NDArray[Any]] = None,
                  catalog: Optional[Table] = None, meta: Optional[Dict[Any, Any]] = None,
                  *args: Any, **kwargs: Any):
         """Init a new image.

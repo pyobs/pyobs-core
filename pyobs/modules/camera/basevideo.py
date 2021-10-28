@@ -48,15 +48,18 @@ def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> flo
         return 30.
 
 
-class ImageRequest(NamedTuple):
-    broadcast: bool = True
-
-
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
     header_futures: Dict[str, Future[Dict[str, Tuple[Any, str]]]]
     broadcast: bool
+
+
+class ImageRequest:
+    def __init__(self, broadcast: bool = True):
+        self.broadcast: bool = broadcast
+        self.image: Optional[Image] = None
+        self.filename: Optional[str] = None
 
 
 class LastImage(NamedTuple):
@@ -169,7 +172,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._live_view = live_view
         self._image_type = ImageType.OBJECT
         self._image_request_lock = threading.Lock()
-        self._image_request: Optional[ImageRequest] = None
+        self._image_requests: List[ImageRequest] = []
         self._next_image: Optional[NextImage] = None
         self._last_image: Optional[LastImage] = None
         self._last_time = 0.
@@ -261,6 +264,10 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             # create image and reset
             image, filename = self._create_image(data, self._next_image)
             self._next_image = None
+            with self._image_request_lock:
+                for req in self._image_requests:
+                    req.image = image
+                    req.filename = filename
 
         # convert to jpeg only if we need live view
         now = time.time()
@@ -284,13 +291,16 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
         # prepare next image
         with self._image_request_lock:
-            if self._image_request is not None:
+            if len(self._image_requests) > 0:
+                # broadcast?
+                broadcast = any([req.broadcast for req in self._image_requests])
+
                 # store everything
                 logging.info('Preparing to catch next image...')
                 self._next_image = NextImage(date_obs=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f"),
                                              image_type=self._image_type,
                                              header_futures=self.request_fits_headers(),
-                                             broadcast=self._image_request.broadcast)
+                                             broadcast=broadcast)
 
                 # reset
                 self._image_request = None
@@ -359,28 +369,24 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
         # acquire lock
         with self._image_request_lock:
-            # get current broadcast status, if any
-            current_broadcast = False if self._image_request is None else self._image_request.broadcast
-
             # request new image
-            self._image_request = ImageRequest(broadcast=broadcast or current_broadcast)
+            image_request = ImageRequest(broadcast)
+            self._image_requests.append(image_request)
 
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
-        log.info('Waiting for last image to finish...')
-        with self._new_image_event_lock:
-            self._new_image_event.wait()
+        log.info('Waiting for image to finish...')
+        while image_request.image is None:
+            time.sleep(0.1)
 
-        # now we wait for the real image and grab it
-        log.info('Waiting for real image to finish...')
-        with self._new_image_event_lock:
-            self._new_image_event.wait()
+        # remove from list
+        self._image_requests.remove(image_request)
 
         # no image?
-        if self._last_image is None or self._last_image.filename is None:
+        if image_request.image is None or image_request.filename is None:
             raise ValueError('Could not take image.')
 
         # finished
-        return self._last_image.filename
+        return image_request.filename
 
     def get_video(self, **kwargs: Any) -> str:
         """Returns path to video.

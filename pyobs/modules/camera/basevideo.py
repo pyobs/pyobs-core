@@ -163,6 +163,7 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
         self._port = http_port
         self._interval = interval
         self._new_image_event = threading.Event()
+        self._new_image_event_lock = threading.Lock()
         self._video_path = video_path
         self._frame_num = 0
         self._live_view = live_view
@@ -277,8 +278,9 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             self._frame_num += 1
 
         # signal it
-        self._new_image_event.set()
-        self._new_image_event = threading.Event()
+        with self._new_image_event_lock:
+            self._new_image_event.set()
+            self._new_image_event = threading.Event()
 
         # prepare next image
         with self._image_request_lock:
@@ -365,11 +367,13 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
 
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info('Waiting for last image to finish...')
-        self._new_image_event.wait()
+        with self._new_image_event_lock:
+            self._new_image_event.wait()
 
         # now we wait for the real image and grab it
         log.info('Waiting for real image to finish...')
-        self._new_image_event.wait()
+        with self._new_image_event_lock:
+            self._new_image_event.wait()
 
         # no image?
         if self._last_image is None or self._last_image.filename is None:

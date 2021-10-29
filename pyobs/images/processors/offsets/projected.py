@@ -9,7 +9,7 @@ import re
 from pyobs.images import Image
 from pyobs.utils.pid import PID
 from .offsets import Offsets
-
+from ...meta import PixelOffsets
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class ProjectedOffsets(Offsets):
         # find peaks and return them
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
-        image.meta['offsets'] = (dx, dy)
+        image.set_meta(PixelOffsets(dx, dy))
         return image
 
     def _process(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:

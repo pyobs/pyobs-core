@@ -1,6 +1,7 @@
 import logging
 from typing import Tuple, List, Union, Dict, Any, Optional
 import numpy as np
+from numpy.typing import NDArray
 from scipy import signal, optimize
 from astropy.nddata import NDData
 from astropy.table import Table, Column
@@ -46,7 +47,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         self.min_sources = min_sources
         self.ref_boxes: List[Any] = []
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets guiding."""
         log.info("Reset auto-guiding.")
         self.ref_boxes = []
@@ -96,7 +97,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         return image
 
     @staticmethod
-    def _get_box_size(max_expected_offset_in_arcsec, pixel_scale):
+    def _get_box_size(max_expected_offset_in_arcsec, pixel_scale) -> int:
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
@@ -163,7 +164,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         # get shape
         width, height = image_shape
 
-        def min_distance_from_border(source):
+        def min_distance_from_border(source) -> None:
             # calculate the minimum distance of source to any image border (across x and y)
             return np.min(
                 np.array(
@@ -222,7 +223,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         return sources
 
     @staticmethod
-    def _select_brightest_sources(num_stars: int, sources: Table):
+    def _select_brightest_sources(num_stars: int, sources: Table) -> Table:
         """Select N brightest sources from table.
 
         Args:
@@ -242,7 +243,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             sources = sources[:num_stars]
         return sources
 
-    def _check_sources_count(self, sources: Table):
+    def _check_sources_count(self, sources: Table) -> None:
         """Check if enough sources in table.
 
         Args:
@@ -300,11 +301,12 @@ class NStarOffsets(Offsets, PipelineMixin):
         return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
 
     @staticmethod
-    def _gauss2d(x, a, b, x0, y0, sigma_x, sigma_y):
+    def _gauss2d(x: NDArray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float) \
+            -> NDArray[float]:
         """2D Gaussian function."""
         return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
 
-    def _offsets_from_corr(self, corr) -> Tuple[float, float]:
+    def _offsets_from_corr(self, corr: NDArray[float]) -> Tuple[float, float]:
         """Fit 2d correlation data with a 2d gaussian + constant offset.
         raise CorrelationMaxCloseToBorderError if the correlation maximum is not well separated from border."""
 
@@ -374,14 +376,14 @@ class NStarOffsets(Offsets, PipelineMixin):
         return popt[2], popt[3]
 
     @staticmethod
-    def _corr_grid(corr):
+    def _corr_grid(corr: NDArray[float]) -> NDArray[float]:
         """Create x/y grid for given 2D correlation."""
         xs = np.arange(-corr.shape[0] / 2, corr.shape[0] / 2) + 0.5
         ys = np.arange(-corr.shape[1] / 2, corr.shape[1] / 2) + 0.5
         return np.meshgrid(xs, ys)
 
     @staticmethod
-    def _check_corr_border(corr):
+    def _check_corr_border(corr: NDArray[float]) -> None:
         """Check whether maximum of correlation is too close to border."""
 
         corr_size = corr.shape[0]

@@ -490,7 +490,7 @@ class FlatFielder(Object):
                 if self.observer is None:
                     raise ValueError('No observer given.')
                 sun = self.observer.sun_altaz(now)
-                self._callback(datetime=now, solalt=sun.alt.degree, exptime=self._exptime, counts=self._target_count,
+                self._callback(datetime=now.isot, solalt=sun.alt.degree, exptime=self._exptime, counts=self._target_count,
                                filter=self._cur_filter, binning=self._cur_binning)
 
         # then evaluate exposure time

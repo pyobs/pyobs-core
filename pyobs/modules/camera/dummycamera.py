@@ -6,12 +6,9 @@ from datetime import datetime
 from threading import RLock
 from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
 
-from astropy.io import fits
-
 from pyobs.interfaces import IWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
-from pyobs.object import Object
 from pyobs.utils.enums import ExposureStatus
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld

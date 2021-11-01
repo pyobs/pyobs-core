@@ -30,7 +30,7 @@ class FlatFieldPointing(Module, IRunnable):
         self._pointing = pointing
 
     @timeout(60)
-    def run(self, **kwargs: Any):
+    def run(self, **kwargs: Any) -> None:
         """Move telescope to pointing."""
 
         # get telescope
@@ -44,7 +44,7 @@ class FlatFieldPointing(Module, IRunnable):
         pointing(telescope).wait()
         log.info('Finished pointing telescope.')
 
-    def abort(self, **kwargs: Any):
+    def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         pass
 

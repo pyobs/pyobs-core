@@ -3,13 +3,12 @@ import threading
 from typing import Dict, Any, Union
 
 from pyobs.interfaces import IRunnable
-from pyobs.interfaces.proxies import IFlatFieldProxy
+from pyobs.interfaces.proxies import IFlatFieldProxy, IFiltersProxy, IBinningProxy
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.object import get_object
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
-from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -20,7 +19,7 @@ class FlatFieldScheduler(Module, IRunnable):
     __module__ = 'pyobs.modules.flatfield'
 
     def __init__(self, flatfield: Union[str, IFlatFieldProxy], functions: Dict[str, str],
-                 priorities: Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
+                 priorities: Union[Dict[str, Any], SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
                  timespan: float = 7200, filter_change: float = 30, count: int = 20, **kwargs: Any):
         """Initialize a new flat field scheduler.
 
@@ -51,7 +50,7 @@ class FlatFieldScheduler(Module, IRunnable):
                                     max_exptime=max_exptime, timespan=timespan, filter_change=filter_change,
                                     count=count)
 
-    def open(self):
+    def open(self) -> None:
         """Open module"""
         Module.open(self)
 
@@ -62,7 +61,7 @@ class FlatFieldScheduler(Module, IRunnable):
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
     @timeout(7200)
-    def run(self, **kwargs: Any):
+    def run(self, **kwargs: Any) -> None:
         """Perform flat-fielding"""
         log.info('Performing flat fielding...')
         self._abort = threading.Event()
@@ -85,7 +84,11 @@ class FlatFieldScheduler(Module, IRunnable):
 
             # start
             log.info('Taking %d flats in %s %dx%d...', self._count, item.filter_name, item.binning, item.binning)
-            future: Future = flatfield.flat_field(item.filter_name, self._count, item.binning)
+            if isinstance(flatfield, IFiltersProxy):
+                flatfield.set_filter(item.filter_name)
+            if isinstance(flatfield, IBinningProxy):
+                flatfield.set_binning(*item.binning)
+            future = flatfield.flat_field(self._count)
 
             # wait for it
             while not future.is_done():
@@ -101,7 +104,7 @@ class FlatFieldScheduler(Module, IRunnable):
         log.info('Finished.')
 
     @timeout(20)
-    def abort(self, **kwargs: Any):
+    def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 

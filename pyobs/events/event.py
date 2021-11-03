@@ -74,7 +74,7 @@ class EventFactory(object):
         try:
             kwargs = obj_dict['data'] if 'data' in obj_dict and obj_dict['data'] is not None else {}
             if not isinstance(kwargs, dict):
-                raise ValueError('Invalid event structure.')
+                raise ValueError('Invalid event structure for event %s: "%s".' % (str(cls), str(kwargs)))
             obj: Event = cls.from_dict(kwargs)
             obj.uuid = obj_dict['uuid']
             obj.timestamp = obj_dict['timestamp'] if 'timestamp' in obj_dict else 0

@@ -14,6 +14,19 @@
 * Added concept of image processors that take an Image as parameter and return it after some processing.
 * Added new NStarOffsets image processor (T. Masur).
 * Improved scheduler.
+* Added pipelines that take a list of image processors (see Pipeline mixin).
+* Re-organized all get_object methods.
+* Improved type hints throughout the code.
+* Renamed all coordinated interfaces (IRaDec, etc) to IPointing*, i.e. IPointingRaDec.
+* Renamed all offset interfaces to IOffsets*, i.e. IOffsetsRaDec.
+* Renamed IFitsHeaderProvider to IFitsHeaderBefore and also renamed its only method.
+* Added IFitsHeaderAfter to fetch FITS headers after an exposure as well.
+* Moved functionality from Module to Object.
+* New meta data system for images.
+* Renamed IStoppable to IStartStop.
+* Added new proxy interfaces in interfaces.proxies. All proxies now derive from these interfaces instead of the 
+  original ones.
+* And a lot more cleanup and re-organization.
 
 
 ### v0.13 (2021-04-30)

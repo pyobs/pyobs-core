@@ -211,7 +211,7 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         """
 
         # request fits headers
-        header_futures = self.request_fits_headers()
+        header_futures_before = self.request_fits_headers(before=True)
 
         # open the shutter?
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
@@ -227,6 +227,9 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             # exposure was not successful (aborted?), so reset everything
             self._exposure = None
             raise
+
+        # request fits headers again
+        header_futures_after = self.request_fits_headers(before=False)
 
         # flip it?
         if self._flip:
@@ -244,7 +247,8 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         image.header['IMAGETYP'] = image_type.value
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(image, header_futures)
+        self.add_requested_fits_headers(image, header_futures_before)
+        self.add_requested_fits_headers(image, header_futures_after)
         self.add_fits_headers(image)
         filename = self.format_filename(image)
 

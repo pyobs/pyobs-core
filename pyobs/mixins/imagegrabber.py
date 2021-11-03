@@ -7,8 +7,8 @@ import astropy.units as u
 
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
-from pyobs.interfaces import IFitsHeaderBefore
-from pyobs.interfaces.proxies import IFitsHeaderBeforeProxy
+from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
+from pyobs.interfaces.proxies import IFitsHeaderBeforeProxy, IFitsHeaderAfterProxy
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 from pyobs.utils.threads import Future
@@ -55,7 +55,7 @@ class ImageGrabberMixin:
     def centre(self) -> Tuple[float, float]:
         return self.__imagegrabber_centre
 
-    def request_fits_headers(self: Union[ImageGrabberMixin, Module]) -> Dict[str, Future]:
+    def request_fits_headers(self: Union[ImageGrabberMixin, Module], before: bool = True) -> Dict[str, Future]:
         """Request FITS headers from other modules.
 
         Returns:
@@ -68,13 +68,17 @@ class ImageGrabberMixin:
         # we can only do this with a comm module
         if self.comm:
             # get clients that provide fits headers
-            clients = self.comm.clients_with_interface(IFitsHeaderBefore)
+            clients = self.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
             for client in clients:
-                log.info('Requesting FITS headers from %s...', client)
-                proxy: IFitsHeaderBeforeProxy = self.proxy(client, IFitsHeaderBeforeProxy)
-                futures[client] = proxy.get_fits_header_before(self.__imagegrabber_fits_namespaces)
+                log.debug('Requesting FITS headers from %s...', client)
+                if before:
+                    proxy = self.proxy(client, IFitsHeaderBeforeProxy)
+                    futures[client] = proxy.get_fits_header_before(self.__imagegrabber_fits_namespaces)
+                else:
+                    proxy = self.proxy(client, IFitsHeaderAfterProxy)
+                    futures[client] = proxy.get_fits_header_after(self.__imagegrabber_fits_namespaces)
 
         # finished
         return futures
@@ -104,7 +108,7 @@ class ImageGrabberMixin:
 
             # add them to fits file
             if headers:
-                log.info('Adding additional FITS headers from %s...' % client)
+                log.debug('Adding additional FITS headers from %s...' % client)
                 for key, value in headers.items():
                     # if value is not a string, it may be a list of value and comment
                     if type(value) is list:

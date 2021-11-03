@@ -16,7 +16,7 @@ class BaseDome(IDome, BaseRoof):
         """Initialize a new base dome."""
         BaseRoof.__init__(self, **kwargs)
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -27,7 +27,7 @@ class BaseDome(IDome, BaseRoof):
         """
 
         # get from parent
-        hdr = BaseRoof.get_fits_headers(self, namespaces, **kwargs)
+        hdr = BaseRoof.get_fits_header_before(self, namespaces, **kwargs)
 
         # add azimuth and return it
         _, az = self.get_altaz()

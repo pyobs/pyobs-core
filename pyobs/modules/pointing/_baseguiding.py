@@ -4,7 +4,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderProvider
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore
 from pyobs.images import Image
 from ._base import BasePointing
 from ...interfaces.proxies import ITelescopeProxy
@@ -12,7 +12,7 @@ from ...interfaces.proxies import ITelescopeProxy
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
+class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.pointing'
 
@@ -60,7 +60,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderProvider):
         """
         return self._enabled
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IFitsHeaderProvider
+from pyobs.interfaces import ITelescope, IFitsHeaderBefore
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
@@ -16,7 +16,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderProvider, Module):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module):
     """Base class for telescopes."""
     __module__ = 'pyobs.modules.telescope'
 
@@ -195,7 +195,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

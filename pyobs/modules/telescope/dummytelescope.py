@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderProvider, IFilters, ITemperatures, IOffsetsRaDec
+from pyobs.interfaces import IFocuser, IFitsHeaderBefore, IFilters, ITemperatures, IOffsetsRaDec
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHeaderProvider, ITemperatures,
+class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHeaderBefore, ITemperatures,
                      FitsNamespaceMixin):
     """A dummy telescope for testing."""
     __module__ = 'pyobs.modules.telescope'
@@ -261,7 +261,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -272,7 +272,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # fetch from BaseTelescope
-        hdr = BaseTelescope.get_fits_headers(self)
+        hdr = BaseTelescope.get_fits_header_before(self)
 
         # focus
         hdr['TEL-FOCU'] = (self._telescope.focus, 'Focus position [mm]')

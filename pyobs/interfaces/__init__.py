@@ -24,7 +24,7 @@ from .ICooling import ICooling
 from .IDome import IDome
 from .IExposureTime import IExposureTime
 from .IFilters import IFilters
-from .IFitsHeaderProvider import IFitsHeaderProvider
+from .IFitsHeaderBefore import IFitsHeaderBefore
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser

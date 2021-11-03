@@ -9,7 +9,7 @@ import astropy.units as u
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather, IFitsHeaderProvider
+from pyobs.interfaces import IWeather, IFitsHeaderBefore
 from pyobs.modules import Module
 
 
@@ -29,7 +29,7 @@ FITS_HEADERS = {
 }
 
 
-class Weather(Module, IWeather, IFitsHeaderProvider):
+class Weather(Module, IWeather, IFitsHeaderBefore):
     """Connection to pyobs-weather."""
     __module__ = 'pyobs.modules.weather'
 
@@ -154,7 +154,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_headers(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

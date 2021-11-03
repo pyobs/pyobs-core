@@ -7,7 +7,7 @@ from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.interfaces import IFitsHeaderProvider, IAutonomous
+from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
 from pyobs.robotic.taskarchive import TaskArchive
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -16,7 +16,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
+class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     """Mastermind for a full robotic mode."""
     __module__ = 'pyobs.modules.robotic'
 
@@ -165,7 +165,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
             log.info('Finished task %s.', self._task.name)
             self._task = None
 
-    def get_fits_headers(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -177,7 +177,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
 
         # inside an observation?
         if self._task is not None:
-            hdr = self._task.get_fits_headers()
+            hdr = self._task.get_fits_header_before()
             hdr['TASK'] = self._task.name, 'Name of task'
             hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
             return hdr

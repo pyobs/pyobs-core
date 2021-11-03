@@ -293,7 +293,7 @@ class LcoTask(Task):
         """
 
         # get header from script
-        hdr = self.cur_script.get_fits_headers(namespaces) if self.cur_script is not None else {}
+        hdr = self.cur_script.get_fits_header_before(namespaces) if self.cur_script is not None else {}
 
         # return it
         return hdr

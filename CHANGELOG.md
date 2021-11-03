@@ -1,6 +1,6 @@
 ## Changelog
 
-### v0.14 (xxx)
+### v0.14 (2021-11-03)
 * Guiding modules accept a pipeline now, so more image processors than just Offsets can run.
 * Renamed ICameraBinning, ICameraExposureTime and ICameraWindow and removed the "Camera" part.
 * Added meta attribute (temporary storage, not I/O persistent) to Image.

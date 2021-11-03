@@ -11,6 +11,7 @@ from .ICoolingProxy import ICoolingProxy
 from .IDomeProxy import IDomeProxy
 from .IExposureTimeProxy import IExposureTimeProxy
 from .IFiltersProxy import IFiltersProxy
+from .IFitsHeaderAfterProxy import IFitsHeaderAfterProxy
 from .IFitsHeaderBeforeProxy import IFitsHeaderBeforeProxy
 from .IFlatFieldProxy import IFlatFieldProxy
 from .IFocusModelProxy import IFocusModelProxy

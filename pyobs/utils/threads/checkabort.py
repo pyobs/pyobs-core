@@ -1,8 +1,10 @@
 import threading
+from typing import Optional
+
 from astropy.time import Time
 
 
-def check_abort(abort_event: threading.Event, end: Time = None):
+def check_abort(abort_event: threading.Event, end: Optional[Time] = None) -> None:
     """Throws an exception, if abort_event is set or window has passed
 
     Args:

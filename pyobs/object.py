@@ -6,30 +6,47 @@ and helper methods for creating other Objects.
 """
 
 from __future__ import annotations
+
+import copy
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-import pyobs
 
+from pyobs.comm import Comm
+from pyobs.comm.dummy import DummyComm
+if TYPE_CHECKING:
+    from pyobs.vfs import VirtualFileSystem
 
 log = logging.getLogger(__name__)
 
+
 """Class of an Object."""
 ObjectClass = TypeVar('ObjectClass')
+ProxyType = TypeVar('ProxyType')
 
 
-def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectClass] = None, *args, **kwargs) \
-        -> ObjectClass:
+@overload
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass], **kwargs: Any) \
+        -> ObjectClass: ...
+
+
+@overload
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: None, **kwargs: Any) -> Any: ...
+
+
+def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
+               **kwargs: Any) -> Union[ObjectClass, Any]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
         config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
             is given, a new object is created.
         object_class: Class to check object against.
+        allow_none: if True, a None value does not trigger an exception
 
     Returns:
         (New) object (created from config) that optionally passed class check.
@@ -39,12 +56,15 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     """
 
     if config_or_object is None:
-        # nothing to do?
         raise TypeError('No config or object given.')
 
     elif isinstance(config_or_object, dict):
+        # copy kwargs to config_or_object, so that we don't have any duplicates
+        for k, v in kwargs.items():
+            config_or_object[k] = v
+
         # a dict is given, so create object
-        obj = create_object(config_or_object, *args, **kwargs)
+        obj = create_object(config_or_object)
 
     else:
         # just use given object
@@ -56,32 +76,55 @@ def get_object(config_or_object: Union[dict, object], object_class: Type[ObjectC
     return obj
 
 
-def get_class_from_string(class_name):
+@overload
+def get_safe_object(config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
+                    **kwargs: Any) -> Optional[ObjectClass]: ...
+
+
+@overload
+def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]: ...
+
+
+def get_safe_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
+                    **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
+    """Calls get_object in a safe way and returns None, if an exceptions thrown."""
+    try:
+        return get_object(config_or_object, object_class, **kwargs)
+    except Exception:
+        return None
+
+
+def get_class_from_string(class_name: str) -> Type[Any]:
     parts = class_name.split('.')
     module_name = ".".join(parts[:-1])
-    cls = __import__(module_name)
+    cls: Type[Any] = __import__(module_name)
     for comp in parts[1:]:
         cls = getattr(cls, comp)
     return cls
 
 
-def create_object(config: dict, *args, **kwargs):
+def create_object(config: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
     # get class name
     class_name = config['class']
 
     # create class
     klass = get_class_from_string(class_name)
 
+    # remove class from kwargs
+    cfg = copy.copy(config)
+    del cfg['class']
+
     # create object
-    return klass(*args, **config, **kwargs)
+    return klass(*args, **cfg, **kwargs)
 
 
 class Object:
     """Base class for all objects in *pyobs*."""
 
-    def __init__(self, vfs: Union[pyobs.vfs.VirtualFileSystem, dict] = None,
-                 timezone: Union[str, datetime.tzinfo] = 'utc', location: Union[str, dict, EarthLocation] = None,
-                 *args, **kwargs):
+    def __init__(self, vfs: Optional[Union['VirtualFileSystem', Dict[str, Any]]] = None,
+                 comm: Optional[Union[Comm, Dict[str, Any]]] = None, timezone: Union[str, datetime.tzinfo] = 'utc',
+                 location: Optional[Union[str, Dict[str, Any], EarthLocation]] = None,
+                 observer: Optional[Observer] = None, **kwargs: Any):
         """
         .. note::
 
@@ -100,6 +143,7 @@ class Object:
 
         Args:
             vfs: VFS to use (either object or config)
+            comm: Comm object to use
             timezone: Timezone at observatory.
             location: Location of observatory, either a name or a dict containing latitude, longitude, and elevation.
 
@@ -113,7 +157,7 @@ class Object:
         self.closing = threading.Event()
 
         # child objects
-        self._child_objects: List[Object] = []
+        self._child_objects: List[Any] = []
 
         # create vfs
         if vfs:
@@ -128,7 +172,6 @@ class Object:
             self.timezone = pytz.timezone(timezone)
         else:
             raise ValueError('Unknown format for timezone.')
-        log.info('Using timezone %s.', timezone)
 
         # location
         if location is None:
@@ -144,20 +187,32 @@ class Object:
             raise ValueError('Unknown format for location.')
 
         # create observer
-        self.observer: Optional[Observer] = None
-        if self.location is not None:
+        self.observer = observer
+        if self.observer is None and self.location is not None and self.timezone is not None:
             log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
                      self.location.lon, self.location.lat, self.location.height)
             self.observer = Observer(location=self.location, timezone=timezone)
+
+        # comm object
+        self.comm: Comm
+        if comm is None:
+            self.comm = DummyComm()
+        elif isinstance(comm, Comm):
+            self.comm = comm
+        elif isinstance(comm, dict):
+            log.info('Creating comm object...')
+            self.comm = get_object(comm, Comm)
+        else:
+            raise ValueError('Invalid Comm object')
 
         # opened?
         self._opened = False
 
         # thread function(s)
-        self._threads: Dict[threading.Thread, Tuple] = {}
+        self._threads: Dict[threading.Thread, Tuple[Callable[[], None], bool]] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
 
-    def add_thread_func(self, func: Callable, restart: bool = True):
+    def add_thread_func(self, func: Callable[[], None], restart: bool = True) -> threading.Thread:
         """Add a new function that should be run in a thread.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -172,8 +227,9 @@ class Object:
 
         # add it
         self._threads[t] = (func, restart)
+        return t
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
 
         # start threads and watchdog
@@ -192,11 +248,11 @@ class Object:
         self._opened = True
 
     @property
-    def opened(self):
+    def opened(self) -> bool:
         """Whether object has been opened."""
         return self._opened
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
 
         # request closing of object (used for long-running methods)
@@ -210,10 +266,12 @@ class Object:
         # join watchdog and then all threads
         if self._watchdog and self._watchdog.is_alive():
             self._watchdog.join()
-        [t.join() for t in self._threads.keys() if t.is_alive()]
+        for t in self._threads.keys():
+            if t.is_alive():
+                t.join()
 
     @staticmethod
-    def _thread_func(target):
+    def _thread_func(target: Callable[[], None]) -> None:
         """Run given function.
 
         Args:
@@ -224,7 +282,11 @@ class Object:
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
-    def _watchdog_func(self):
+    def quit(self) -> None:
+        """Can be overloaded to quit program."""
+        ...
+
+    def _watchdog_func(self) -> None:
         """Watchdog thread that tries to restart threads if they quit."""
 
         while not self.closing.is_set():
@@ -239,9 +301,8 @@ class Object:
                 if restart:
                     log.error('Thread for %s has died, restarting...', target.__name__)
                     del self._threads[thread]
-                    thread = threading.Thread(target=target, name=target.__name__)
+                    thread = self.add_thread_func(target, restart)
                     thread.start()
-                    self._threads[thread] = (target, restart)
                 else:
                     log.error('Thread for %s has died, quitting...', target.__name__)
                     self.quit()
@@ -250,7 +311,7 @@ class Object:
             # sleep a little
             self.closing.wait(1)
 
-    def check_running(self):
+    def check_running(self) -> bool:
         """Check, whether an object should be closing. Can be polled by long-running methods.
 
         Raises:
@@ -260,44 +321,124 @@ class Object:
             raise InterruptedError
         return True
 
-    def add_child_object(self, config_or_object: Union[dict, object] = None, object_class: ObjectClass = None,
-                         **kwargs) -> ObjectClass:
+    @overload
+    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
+                   copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
+                   **kwargs: Any) -> Any: ...
+
+    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
+                   copy_comm: bool = True, **kwargs: Any) -> Union[ObjectClass, Any]:
+        """Creates object from config or returns object directly, both optionally after check of type.
+
+        Args:
+            config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
+                is given, a new object is created.
+            object_class: Class to check object against.
+            copy_comm: Copy comm from this object to the new one.
+
+        Returns:
+            (New) object (created from config) that optionally passed class check.
+
+        Raises:
+            TypeError: If the object does not match the given class.
+        """
+
+        # set parameters
+        params = copy.copy(kwargs)
+        params.update({
+            'timezone': self.timezone,
+            'location': self.location,
+            'vfs': self.vfs
+        })
+        if copy_comm:
+            params['comm'] = self.comm
+
+        # get it
+        return get_object(config_or_object, object_class, **params)
+
+    @overload
+    def get_safe_object(self, config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
+                        copy_comm: bool = True, **kwargs: Any) -> Optional[ObjectClass]: ...
+
+    @overload
+    def get_safe_object(self, config_or_object: Union[ObjectClass, Any], object_class: None,
+                        copy_comm: bool = True, **kwargs: Any) -> Optional[Any]: ...
+
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], Any],
+                        object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
+                        **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
+        """Calls get_object in a safe way and returns None, if an exceptions thrown."""
+        try:
+            return self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
+        except Exception:
+            log.exception('test')
+            return None
+
+    @overload
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
+                         copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
+                         **kwargs: Any) -> Any: ...
+
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any],
+                         object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
+                         **kwargs: Any) -> Union[ObjectClass, Any]:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:
-            config: Module definition
+            config_or_object: Module definition
+            object_class: Class for new module
+            copy_comm: Copy comm from this object to the new one.
 
         Returns:
             The created module.
         """
 
-        # what did we get?
-        if isinstance(config_or_object, dict):
-            # create it fro
-            obj = get_object(config_or_object, object_class=object_class,
-                             timezone=self.timezone, location=self.location, **kwargs)
-
-        elif config_or_object is not None:
-            # seems we got an object directly, try to set timezone and location
-            obj = config_or_object
-            if hasattr(config_or_object, 'timezone'):
-                config_or_object.timezone = self.timezone
-            if hasattr(config_or_object, 'location'):
-                config_or_object.location = self.location
-
-        elif object_class is not None:
-            # no config or object given, do we have a class?
-            obj = object_class(**kwargs, timezone=self.timezone, location=self.location)
-
-        else:
-            # not successful
-            raise ValueError('No valid object description given.')
+        # get object
+        obj = self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
 
         # add to list
         self._child_objects.append(obj)
 
         # return it
         return obj
+
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+        ...
+
+    @overload
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+        ...
+
+    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+            -> Union[Any, ProxyType]:
+        """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
+
+        If name_or_object is an object:
+            - If it is of type (or derived), return object.
+            - Otherwise raise exception.
+        If name_name_or_object is string:
+            - Create proxy from name and raise exception, if it doesn't exist.
+            - Check type and raise exception if wrong.
+            - Return object.
+
+        Args:
+            name_or_object: Name of object or object itself.
+            obj_type: Expected class of object.
+
+        Returns:
+            Object or proxy to object.
+
+        Raises:
+            ValueError: If proxy does not exist or wrong type.
+        """
+        return self.comm.proxy(name_or_object, obj_type)
 
 
 __all__ = ['get_object', 'get_class_from_string', 'create_object', 'Object']

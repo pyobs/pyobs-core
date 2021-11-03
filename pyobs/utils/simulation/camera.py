@@ -3,24 +3,32 @@ from __future__ import annotations
 import glob
 import numpy as np
 import astropy.units as u
+from astropy.table import Table
 from astropy.time import Time
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
-from photutils.datasets import make_gaussian_prf_sources_image
+from numpy.typing import NDArray
+from photutils.datasets import make_gaussian_sources_image
 from photutils.datasets import make_noise_image
+import logging
 
 from pyobs.object import Object
 from pyobs.utils.enums import ImageFormat
 from pyobs.images import Image
+if TYPE_CHECKING:
+    from pyobs.utils.simulation import SimWorld
+
+
+log = logging.getLogger(__name__)
 
 
 class SimCamera(Object):
     """A simulated camera."""
     __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', image_size: Tuple[int, int] = None, pixel_size: float = 0.015,
-                 images: str = None, *args, **kwargs):
+    def __init__(self, world: 'SimWorld', image_size: Optional[Tuple[int, int]] = None, pixel_size: float = 0.015,
+                 images: Optional[str] = None, max_mag: float = 20., seeing: float = 3., **kwargs: Any):
         """Inits a new camera.
 
         Args:
@@ -28,19 +36,24 @@ class SimCamera(Object):
             image_size: Size of image.
             pixel_size: Square pixel size in mm.
             images: Filename pattern (e.g. /path/to/*.fits) for files to return instead of simulated images.
+            max_mag: Maximum magnitude for sim.
+            seeing: Seeing in arcsec.
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # store
         self.world = world
         self.telescope = world.telescope
-        self.full_frame = tuple([0, 0] + list(image_size)) if image_size is not None else (0, 0, 512, 512)
+        self.full_frame: Tuple[int, int, int, int] = (0, 0, image_size[0], image_size[1]) \
+            if image_size is not None else (0, 0, 512, 512)
         self.window = self.full_frame
         self.binning = (1, 1)
         self.pixel_size = pixel_size
         self.image_format = ImageFormat.INT16
         self.images = [] if images is None else sorted(glob.glob(images)) \
             if '*' in images or '?' in images else [images]
+        self._max_mag = max_mag
+        self._seeing = seeing
 
         # private stuff
         self._catalog = None
@@ -77,7 +90,7 @@ class SimCamera(Object):
         # return it
         return Image(data, header=hdr)
 
-    def _simulate_image(self, exp_time: float, open_shutter: bool) -> Image:
+    def _simulate_image(self, exp_time: float, open_shutter: bool) -> NDArray[Any]:
         """Simulate an image.
 
         Args:
@@ -92,10 +105,11 @@ class SimCamera(Object):
         shape = (int(self.window[3]), int(self.window[2]))
 
         # create image with Gaussian noise for BIAS
-        data = make_noise_image(shape, distribution='gaussian', mean=1e3, stddev=100.)
+        data = make_noise_image(shape, distribution='gaussian', mean=10, stddev=1.)
 
-        # add DARK
+        # non-zero exposure time?
         if exp_time > 0:
+            # add DARK
             data += make_noise_image(shape, distribution='gaussian', mean=exp_time / 1e4, stddev=exp_time / 1e5)
 
             # add stars and stuff
@@ -112,16 +126,20 @@ class SimCamera(Object):
                 # get catalog with sources
                 sources = self._get_sources_table(exp_time)
 
+                # filter out all sources outside FoV
+                sources = sources[(sources['x_mean'] > 0) & (sources['x_mean'] < shape[1]) &
+                                  (sources['y_mean'] > 0) & (sources['y_mean'] < shape[0])]
+
                 # create image
-                data += make_gaussian_prf_sources_image(shape, sources)
+                data += make_gaussian_sources_image(shape, sources)
 
         # saturate
         data[data > 65535] = 65535
 
         # finished
-        return data.astype(np.uint16)
+        return cast(NDArray[Any], data).astype(np.uint16)
 
-    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: np.ndarray):
+    def _create_header(self, exp_time: float, open_shutter: float, time: Time, data: NDArray[Any]) -> fits.Header:
         # create header
         hdr = fits.Header()
         hdr['NAXIS1'] = data.shape[1]
@@ -151,24 +169,61 @@ class SimCamera(Object):
         # finished
         return hdr
 
-    def _get_catalog(self):
+    def _get_catalog(self, fov: float) -> Table:
         """Returns GAIA catalog for current telescope coordinates."""
-        from astroquery.gaia import Gaia
-
         # get catalog
         if self._catalog_coords is None or self._catalog_coords.separation(self.telescope.real_pos) > 10. * u.arcmin:
-            self._catalog = Gaia.query_object_async(coordinate=self.telescope.real_pos, radius=1. * u.deg)
+            from astroquery.utils.tap import TapPlus
+
+            # get coordinates
+            coords = self.telescope.real_pos
+
+            # query TAP
+            tap = TapPlus(url="https://gea.esac.esa.int/tap-server/tap")
+            query = self._get_gaia_query(coords.ra.degree, coords.dec.degree, fov * 1.5)
+            job = tap.launch_job(query)
+
+            # get result table
+            self._catalog = job.get_results()
+
         return self._catalog
 
-    def _get_sources_table(self, exp_time: float):
-        """Create sources table."""
+    def _get_gaia_query(self, ra: float, dec: float, radius: float) -> str:
+        # define query
+        return f"""
+                SELECT
+                  TOP 1000
+                  DISTANCE(
+                    POINT('ICRS', ra, dec),
+                    POINT('ICRS', {ra}, {dec})
+                  ) as dist,
+                  ra, dec, phot_g_mean_flux, phot_g_mean_mag
+                FROM
+                  gaiadr2.gaia_source
+                WHERE
+                  1 = CONTAINS(
+                    POINT('ICRS', ra, dec),
+                    CIRCLE('ICRS', {ra}, {dec}, {radius})
+                  )
+                  AND phot_g_mean_mag < {self._max_mag}
+                ORDER BY
+                  phot_g_mean_mag ASC
+                """
 
-        # get catalog
-        cat = self._get_catalog()
+    def _get_sources_table(self, exp_time: float) -> Table:
+        """Create sources table."""
 
         # calculate cdelt1/2
         tmp = 360. / (2. * np.pi) * self.pixel_size / self.telescope.focal_length
         cdelt1, cdelt2 = tmp * self.binning[0], tmp * self.binning[1]
+        log.info('Plate scale is %.2f"/px, image size is %.2f\'x%.2f\'.',
+                 cdelt1*3600, cdelt1*60*self.window[2], cdelt2*60*self.window[3])
+
+        # FoV
+        fov = np.max(cdelt2 * np.array(self.full_frame[2:]))
+
+        # get catalog
+        cat = self._get_catalog(fov)
 
         # create WCS
         w = WCS(naxis=2)
@@ -177,17 +232,27 @@ class SimCamera(Object):
         w.wcs.crval = [self.telescope.real_pos.ra.degree, self.telescope.real_pos.dec.degree]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
-        # set fwhm to 2" in pixels
-        fwhm = 2. / 3600. / cdelt1
+        # set sigma to given seeing (in FWHM) in pixels
+        fwhm = self._seeing / 3600. / cdelt1 / 2.3548
 
         # convert world to pixel coordinates
         cat['x'], cat['y'] = w.wcs_world2pix(cat['ra'], cat['dec'], 0)
 
         # get columns
-        sources = cat['x', 'y', 'phot_g_mean_flux']
-        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_0', 'y_0', 'amplitude'])
-        sources.add_column([fwhm] * len(sources), name='sigma')
-        sources['amplitude'] *= exp_time
+        sources = cat['x', 'y', 'phot_g_mean_flux', 'phot_g_mean_mag']
+        sources.rename_columns(['x', 'y', 'phot_g_mean_flux'], ['x_mean', 'y_mean', 'flux'])
+        sources.add_column([fwhm] * len(sources), name='x_stddev')
+        sources.add_column([fwhm] * len(sources), name='y_stddev')
+        sources['flux'] *= exp_time
+
+        '''
+        table['amplitude'] = [50, 70, 150, 210]
+        table['x_mean'] = [160, 25, 150, 90]
+        table['y_mean'] = [70, 40, 25, 60]
+        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+        table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
+        '''
 
         # finished
         return sources

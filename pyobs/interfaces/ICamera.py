@@ -1,14 +1,15 @@
-import enum
+from typing import Any
 
 from .IAbortable import IAbortable
+from .IImageGrabber import IImageGrabber
 from pyobs.utils.enums import ExposureStatus
 
 
-class ICamera(IAbortable):
+class ICamera(IAbortable, IImageGrabber):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 
-    def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
+    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -16,7 +17,7 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def expose(self, broadcast: bool = True, *args, **kwargs) -> str:
+    def expose(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Starts exposure and returns reference to image.
 
         Args:
@@ -27,7 +28,7 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence.
 
         Raises:
@@ -35,7 +36,7 @@ class ICamera(IAbortable):
         """
         raise NotImplementedError
 
-    def get_exposure_progress(self, *args, **kwargs) -> float:
+    def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:

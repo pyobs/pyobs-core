@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 
 from pyobs.interfaces import IDome
 from .baseroof import BaseRoof
@@ -12,11 +12,11 @@ class BaseDome(IDome, BaseRoof):
     """Base class for domes."""
     __module__ = 'pyobs.modules.roof'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initialize a new base dome."""
-        BaseRoof.__init__(self, *args, **kwargs)
+        BaseRoof.__init__(self, **kwargs)
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -27,7 +27,7 @@ class BaseDome(IDome, BaseRoof):
         """
 
         # get from parent
-        hdr = BaseRoof.get_fits_headers(self, namespaces, *args, **kwargs)
+        hdr = BaseRoof.get_fits_header_before(self, namespaces, **kwargs)
 
         # add azimuth and return it
         _, az = self.get_altaz()

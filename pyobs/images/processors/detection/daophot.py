@@ -1,8 +1,5 @@
-from typing import Tuple
-
-from astropy.table import Table
+from typing import Tuple, Any
 import logging
-import numpy as np
 
 from .sourcedetection import SourceDetection
 from pyobs.images import Image
@@ -16,7 +13,7 @@ class DaophotSourceDetection(SourceDetection):
 
     def __init__(self, fwhm: float = 3., threshold: float = 4., bkg_sigma: float = 3.,
                  bkg_box_size: Tuple[int, int] = (50, 50), bkg_filter_size: Tuple[int, int] = (3, 3),
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Initializes a wrapper for photutils. See its documentation for details.
 
         Args:
@@ -26,6 +23,7 @@ class DaophotSourceDetection(SourceDetection):
             bkg_box_size: Box size for background estimation.
             bkg_filter_size: Filter size for background estimation.
         """
+        SourceDetection.__init__(self, **kwargs)
 
         # store
         self.fwhm = fwhm
@@ -34,29 +32,29 @@ class DaophotSourceDetection(SourceDetection):
         self.bkg_box_size = bkg_box_size
         self.bkg_filter_size = bkg_filter_size
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
             image: Image to find stars in.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
         from astropy.stats import SigmaClip, sigma_clipped_stats
         from photutils import Background2D, MedianBackground, DAOStarFinder
 
         # get data
-        data = image.data.astype(np.float).copy()
-
-        # mask?
-        mask = image.mask.data if image.mask is not None else None
+        if image.data is None:
+            log.warning('No data found in image.')
+            return image
+        data = image.data.astype(float).copy()
 
         # estimate background
         sigma_clip = SigmaClip(sigma=self.bkg_sigma)
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, self.bkg_box_size, filter_size=self.bkg_filter_size,
-                           sigma_clip=sigma_clip, bkg_estimator=bkg_estimator, mask=mask)
+                           sigma_clip=sigma_clip, bkg_estimator=bkg_estimator, mask=image.mask)
         data -= bkg.background
 
         # do statistics
@@ -77,11 +75,10 @@ class DaophotSourceDetection(SourceDetection):
         # pick columns for catalog
         cat = sources['x', 'y', 'flux', 'peak']
 
-        # set it
-        image.catalog = cat
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = cat
+        return img
 
 
 __all__ = ['DaophotSourceDetection']

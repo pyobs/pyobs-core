@@ -1,32 +1,32 @@
 import inspect
 import logging
-from typing import Union, Type, Any, Callable, Dict, Tuple, List
+from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
 
-from pyobs.comm.dummy import DummyComm
 from pyobs.object import Object
-from pyobs.comm import Comm
-from pyobs.interfaces import IModule, IConfig
-from pyobs.object import get_object
+from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 
 log = logging.getLogger(__name__)
 
 
-def timeout(func_timeout: Union[str, int, Callable, None] = None):
+F = TypeVar('F', bound=Callable[..., Any])
+
+
+def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> Callable[[F], F]:
     """Decorates a method with information about timeout for an async HTTP call.
 
     :param func_timeout:  Integer or string that specifies the timeout.
                           If string, it is parsed using the variables in kwargs.
     """
 
-    def timeout_decorator(func):
-        def _timeout(obj, *args, **kwargs):
+    def timeout_decorator(func: F) -> F:
+        def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
             # define variables as non-local
             nonlocal func_timeout, func
 
             # init to 0 second
-            to = 0
+            to = 0.
 
             # do we have a timeout?
             if func_timeout is not None:
@@ -36,7 +36,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
                     try:
                         if hasattr(func_timeout, 'timeout'):
                             # call timeout method, only works if this has the same parameters
-                            to = func_timeout.timeout(obj, *args, **kwargs)
+                            to = getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
                         else:
                             # call method directly
                             to = func_timeout(obj, *args, **kwargs)
@@ -57,7 +57,7 @@ def timeout(func_timeout: Union[str, int, Callable, None] = None):
                         to = float(func_timeout)
                     except ValueError:
                         log.exception('Could not convert timeout to float.')
-                        to = 0
+                        to = 0.
 
             # return it
             return to
@@ -73,40 +73,27 @@ class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
     __module__ = 'pyobs.modules'
 
-    def __init__(self, name: str = None, label: str = None, comm: Union[Comm, dict] = None, *args, **kwargs):
+    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, **kwargs: Any):
         """
         Args:
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
-            comm: Comm object to use
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
 
         # get list of client interfaces
-        self._interfaces: List[Type] = []
-        self._methods: Dict[str, Tuple[Callable, inspect.Signature]] = {}
+        self._interfaces: List[Type[Interface]] = []
+        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature]] = {}
         self._get_interfaces_and_methods()
 
-        # get configuration options, i.e. all parameters from c'tor
-        self._config_options = self._get_config_options()
-
-        # comm object
-        self.comm: Comm
-        if comm is None:
-            self.comm = DummyComm()
-        elif isinstance(comm, Comm):
-            self.comm = comm
-        elif isinstance(comm, dict):
-            log.info('Creating comm object...')
-            self.comm = get_object(comm)
-        else:
-            raise ValueError('Invalid Comm object')
+        # get configuration caps, i.e. all parameters from c'tor
+        self._config_caps = self._get_config_caps()
 
         # name and label
-        self._name: str = name if name is not None else self.comm.name
-        self._label: str = label if label is not None else self._name
+        self._device_name = name if name is not None else self.comm.name
+        self._label = label if label is not None else self._device_name
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Object.open(self)
 
@@ -116,7 +103,7 @@ class Module(Object, IModule, IConfig):
             self.comm.open()
             self.comm.module = self
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
         Object.close(self)
 
@@ -125,57 +112,30 @@ class Module(Object, IModule, IConfig):
             log.info('Closing connection to server...')
             self.comm.close()
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type = None):
-        """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
-
-        If name_or_object is an object:
-            - If it is of type (or derived), return object.
-            - Otherwise raise exception.
-        If name_name_or_object is string:
-            - Create proxy from name and raise exception, if it doesn't exist.
-            - Check type and raise exception if wrong.
-            - Return object.
-
-        Args:
-            name_or_object: Name of object or object itself.
-            obj_type: Expected class of object.
-
-        Returns:
-            Object or proxy to object.
-
-        Raises:
-            ValueError: If proxy does not exist or wrong type.
-        """
-        return self.comm.proxy(name_or_object, obj_type)
-
-    def main(self):
+    def main(self) -> None:
         """Main loop for application."""
         while not self.closing.is_set():
             self.closing.wait(1)
 
-    def name(self, *args, **kwargs) -> str:
+    def name(self, **kwargs: Any) -> str:
         """Returns name of module."""
-        return self._name
+        return '' if self._device_name is None else self._device_name
 
-    def label(self, *args, **kwargs) -> str:
+    def label(self, **kwargs: Any) -> str:
         """Returns label of module."""
-        return self._label
-
-    def implements(self, interface):
-        """checks, whether this object implements a given interface"""
-        return interface.implemented_by(self)
+        return '' if self._label is None else self._label
 
     @property
-    def interfaces(self):
+    def interfaces(self) -> List[Type[Interface]]:
         """List of implemented interfaces."""
         return self._interfaces
 
     @property
-    def methods(self):
+    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature]]:
         """List of methods."""
         return self._methods
 
-    def _get_interfaces_and_methods(self):
+    def _get_interfaces_and_methods(self) -> None:
         """List interfaces and methods of this module."""
         import pyobs.interfaces
 
@@ -201,11 +161,11 @@ class Module(Object, IModule, IConfig):
                     # fill dict of name->(method, signature)
                     self._methods[method_name] = (func, signature)
 
-    def quit(self):
+    def quit(self) -> None:
         """Quit module."""
         self.closing.set()
 
-    def execute(self, method, *args, **kwargs) -> Any:
+    def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
 
         All incoming variables in args and kwargs must be of simple type (i.e. int, float, str, bool, tuple) and will
@@ -235,10 +195,14 @@ class Module(Object, IModule, IConfig):
         cast_bound_arguments_to_real(ba, signature)
 
         # get additional args and kwargs and delete from ba
-        func_args = ba.arguments['args']
-        func_kwargs = ba.arguments['kwargs']
-        del ba.arguments['args']
-        del ba.arguments['kwargs']
+        func_args = []
+        func_kwargs = {}
+        if 'args' in ba.arguments:
+            func_args = ba.arguments['args']
+            del ba.arguments['args']
+        if 'kwargs' in ba.arguments:
+            func_kwargs = ba.arguments['kwargs']
+            del ba.arguments['kwargs']
 
         # call method
         response = func(*func_args, **ba.arguments, **func_kwargs)
@@ -246,11 +210,11 @@ class Module(Object, IModule, IConfig):
         # finished
         return cast_response_to_simple(response)
 
-    def _get_config_options(self) -> dict:
-        """Returns a dictionary with config options."""
+    def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
+        """Returns a dictionary with config caps."""
 
-        # init dict of options and types
-        opts = {}
+        # init dict of caps and types
+        caps = {}
 
         # loop super classes
         for cls in inspect.getmro(self.__class__):
@@ -259,29 +223,30 @@ class Module(Object, IModule, IConfig):
                 continue
 
             # get signature
-            sig = inspect.signature(cls.__init__)
+            sig = inspect.signature(getattr(cls, '__init__'))
             for name in sig.parameters:
                 # ignore self, args, kwargs
                 if name in ['self', 'args', 'kwargs']:
                     continue
 
                 # check for getter and setter
-                getter = hasattr(self, '_get_config_' + name)
-                setter = hasattr(self, '_set_config_' + name)
-                opts[name] = (getter, setter)
+                caps[name] = (hasattr(self, '_get_config_' + name),
+                              hasattr(self, '_set_config_' + name),
+                              hasattr(self, '_get_config_options_' + name))
 
         # finished
-        return opts
+        return caps
 
-    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
-        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+    def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
 
         Returns:
-            Dict with config options
+            Dict with config caps
         """
-        return self._config_options
+        return self._config_caps
 
-    def get_config_value(self, name: str, *args, **kwargs) -> Any:
+    def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
         Args:
@@ -295,16 +260,39 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
-        if name not in self._config_options:
+        if name not in self._config_caps:
             raise ValueError('Invalid parameter %s' % name)
-        if not self._config_options[name][0]:
+        if not self._config_caps[name][0]:
             raise ValueError('Parameter %s is not remotely accessible.')
 
         # get getter method and call it
         getter = getattr(self, '_get_config_' + name)
         return getter()
 
-    def set_config_value(self, name: str, value: Any, *args, **kwargs):
+    def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
+        """Returns possible values for config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Possible values.
+
+        Raises:
+            ValueError: If config item of given name does not exist.
+        """
+
+        # valid parameter?
+        if name not in self._config_caps:
+            raise ValueError('Invalid parameter %s' % name)
+        if not self._config_caps[name][2]:
+            raise ValueError('Parameter %s has no list of possible values.')
+
+        # get getter method and call it
+        options = getattr(self, '_get_config_options_' + name)
+        return cast(List[str], options())
+
+    def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:
@@ -316,9 +304,9 @@ class Module(Object, IModule, IConfig):
         """
 
         # valid parameter?
-        if name not in self._config_options:
+        if name not in self._config_caps:
             raise ValueError('Invalid parameter %s' % name)
-        if not self._config_options[name][1]:
+        if not self._config_caps[name][1]:
             raise ValueError('Parameter %s is not remotely settable.')
 
         # get setter and call it
@@ -330,14 +318,15 @@ class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""
     __module__ = 'pyobs.modules'
 
-    def __init__(self, modules: Dict[str, Union[Module, dict]], shared: Dict[str, Union[object, dict]] = None,
-                 *args, **kwargs):
+    def __init__(self, modules: Dict[str, Union[Module, Dict[str, Any]]],
+                 shared: Optional[Dict[str, Union[object, Dict[str, Any]]]] = None,
+                 **kwargs: Any):
         """
         Args:
             modules: Dictionary with modules.
             shared: Shared objects between modules.
         """
-        Module.__init__(self, name='multi', *args, **kwargs)
+        Module.__init__(self, name='multi', **kwargs)
 
         # create shared objects
         self._shared: Dict[str, Module] = {}
@@ -355,10 +344,10 @@ class MultiModule(Module):
                 self._modules[name] = mod
             elif isinstance(mod, dict):
                 # dictionary, create it
-                self._modules[name] = self.add_child_object(mod, **self._shared)
+                self._modules[name] = self.add_child_object(mod, **self._shared, copy_comm=False)
 
     @property
-    def modules(self):
+    def modules(self) -> Dict[str, Module]:
         return self._modules
 
     def __contains__(self, name: str) -> bool:

@@ -1,9 +1,8 @@
-import typing
+from typing import Union, Dict, Tuple, List, Any
 from astropy.time import TimeDelta
 import astropy.units as u
 
 from pyobs.object import get_object
-from pyobs.interfaces import ICamera
 from pyobs.utils.archive import Archive
 from pyobs.utils.time import Time
 from .base import SkyflatPriorities
@@ -14,8 +13,8 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
     """Calculate flat priorities from an archive."""
     __module__ = 'pyobs.utils.skyflats.priorities'
 
-    def __init__(self, archive: typing.Union[dict, Archive], site: str, instrument: str, filter_names: list,
-                 binnings: list, *args, **kwargs):
+    def __init__(self, archive: Union[Dict[str, Any], Archive], site: str, instrument: str, filter_names: List[str],
+                 binnings: List[int], *args, **kwargs):
         SkyflatPriorities.__init__(self)
         self._archive = get_object(archive, Archive)
         self._filter_names = filter_names
@@ -23,14 +22,14 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         self._site = site
         self._instrument = instrument
 
-    def __call__(self):
+    def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
         frames = self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now, site=self._site,
                                            instrument=self._instrument, image_type=ImageType.SKYFLAT, rlevel=1)
 
         # get priorities
-        from_archive = {}
+        from_archive: Dict[Tuple[str, int], float] = {}
         for f in frames:
             # get number of days since flat was taken, which is our priority
             prio = (now - f.dateobs).sec / 86400.
@@ -43,10 +42,10 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
                 from_archive[key] = prio
 
         # create priorities
-        priorities = {}
+        priorities: Dict[Tuple[str, Tuple[int, int]], float] = {}
         for fn in self._filter_names:
             for b in self._binnings:
-                priorities[fn, b] = from_archive[fn, b] if (fn, b) in from_archive else 100.
+                priorities[fn, (b, b)] = from_archive[fn, b] if (fn, b) in from_archive else 100.
 
         # finished
         return priorities

@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 from scipy.interpolate import UnivariateSpline
@@ -9,7 +9,7 @@ import re
 from pyobs.images import Image
 from pyobs.utils.pid import PID
 from .offsets import Offsets
-
+from ...meta import PixelOffsets
 
 log = logging.getLogger(__name__)
 
@@ -18,8 +18,11 @@ class ProjectedOffsets(Offsets):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
     __module__ = 'pyobs.images.processors.offsets'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Initializes a new auto guiding system."""
+        Offsets.__init__(self, **kwargs)
+
+        # init
         self._ref_image = None
         self._pid_ra = None
         self._pid_dec = None
@@ -29,14 +32,14 @@ class ProjectedOffsets(Offsets):
         log.info('Reset auto-guiding.')
         self._ref_image = None
 
-    def __call__(self, image: Image) -> Tuple[float, float]:
-        """Processes an image and return x/y pixel offset to reference.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            x/y pixel offset to reference.
+            Original image.
 
         Raises:
             ValueError: If offset could not be found.
@@ -47,18 +50,25 @@ class ProjectedOffsets(Offsets):
             log.info('Initialising auto-guiding with new image...')
             self._ref_image = self._process(image)
             self._init_pid()
-            return 0, 0
+            self.offset = (0, 0)
+            return image
 
         # process it
         log.info('Perform auto-guiding on new image...')
         sum_x, sum_y = self._process(image)
 
-        # find peaks and return them
+        # find peaks
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
-        return dx, dy
+        if dx is None or dy is None:
+            log.error('Could not correlate peaks.')
+            return image
 
-    def _process(self, image: Image) -> Tuple[np.array, np.array]:
+        # set it
+        image.set_meta(PixelOffsets(dx, dy))
+        return image
+
+    def _process(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:
         """Project image along x and y axes and return results.
 
         Args:

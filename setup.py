@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyobs-core',
-    version='0.13',
+    version='0.14',
     description='robotic telescope software',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',
@@ -18,28 +18,5 @@ setup(
         ]
     },
     python_requires='>=3.7',
-    install_requires=[
-        'scipy',
-        'paramiko',
-        'pandas',
-        'pytz',
-        'astropy',
-        'astroplan',
-        'PyYAML',
-        'numpy',
-        'sleekxmpp',
-        'py_expression_eval',
-        'requests'
-    ],
-    extras_require={
-        'full':  [
-            'photutils',
-            'lmfit',
-            'tornado',
-            'python-telegram-bot',
-            'sep;platform_system=="Linux"',
-            'pyinotify;platform_system=="Linux"',
-            'python-daemon;platform_system=="Linux"'
-        ]
-    }
+    install_requires=[line.strip() for line in open("requirements.txt").readlines()]
 )

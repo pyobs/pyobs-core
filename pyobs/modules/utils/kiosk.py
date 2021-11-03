@@ -2,14 +2,15 @@ import asyncio
 import io
 import logging
 import threading
-from typing import Union
+from typing import Union, Any, cast, Optional
 import tornado.ioloop
 import tornado.web
 import tornado.gen
 import numpy as np
 
+from pyobs.interfaces.proxies import ICameraProxy, IExposureTimeProxy, IWindowProxy
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, ICameraExposureTime, IStoppable, ICameraWindow
+from pyobs.interfaces import IStartStop
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ log = logging.getLogger(__name__)
 class MainHandler(tornado.web.RequestHandler):
     """The request handler for the HTTP filecache."""
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initializes the handler (instead of in the constructor)"""
 
         # create empty image
@@ -32,11 +33,12 @@ class MainHandler(tornado.web.RequestHandler):
             self._empty = bio.getvalue()
 
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> Any:
         """Handle download request."""
 
         # get image
-        image = self.application.image()
+        app = cast(Kiosk, self.application)
+        image = app.image()
 
         # none?
         if image is None:
@@ -48,18 +50,18 @@ class MainHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class Kiosk(Module, tornado.web.Application, IStoppable):
+class Kiosk(Module, tornado.web.Application, IStartStop):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, camera: Union[ICamera, str], port: int = 37077, *args, **kwargs):
+    def __init__(self, camera: Union[ICameraProxy, str], port: int = 37077, **kwargs: Any):
         """Initializes file cache.
 
         Args:
             camera: Camera to use for kiosk mode.
             port: Port for HTTP server.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # add thread funcs
         self.add_thread_func(self._http_thread)
@@ -71,20 +73,21 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
         ])
 
         # store stuff
-        self._io_loop = None
+        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._lock = threading.RLock()
         self._is_listening = False
         self._camera = camera
         self._port = port
         self._exp_time = 2
         self._running = False
-        self._image = None
+        self._image: Optional[bytes] = None
 
-    def close(self):
+    def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
-        self._io_loop.add_callback(self._io_loop.stop)
+        if self._io_loop is not None:
+            self._io_loop.add_callback(self._io_loop.stop)
         Module.close(self)
 
     @property
@@ -92,19 +95,19 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
         """Whether the server is started."""
         return self._is_listening
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any) -> None:
         """Start kiosk mode."""
         self._running = True
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any) -> None:
         """Stop kiosk mode."""
         self._running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether kiosk mode is running."""
         return self._running
 
-    def _http_thread(self):
+    def _http_thread(self) -> None:
         """Thread function for the web server."""
 
         # create io loop
@@ -120,7 +123,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
         self._is_listening = True
         self._io_loop.start()
 
-    def _camera_thread(self):
+    def _camera_thread(self) -> None:
         """Thread for taking images."""
 
         # loop until closing
@@ -133,16 +136,16 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
 
             # get camera
             try:
-                camera: ICamera = self.proxy(self._camera, ICamera)
+                camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
             except ValueError:
                 self.closing.wait(10)
                 continue
 
             # do settings
-            if isinstance(camera, ICameraExposureTime):
+            if isinstance(camera, IExposureTimeProxy):
                 # set exposure time
                 camera.set_exposure_time(self._exp_time).wait()
-            if isinstance(camera, ICameraWindow):
+            if isinstance(camera, IWindowProxy):
                 # set full frame
                 full_frame = camera.get_full_frame().wait()
                 camera.set_window(*full_frame).wait()
@@ -161,7 +164,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
                 self._image = image.to_jpeg()
 
             # adjust exposure time?
-            if isinstance(camera, ICameraExposureTime):
+            if isinstance(camera, IExposureTimeProxy):
                 # get max value in image
                 max_val = np.max(image.data)
 
@@ -171,7 +174,7 @@ class Kiosk(Module, tornado.web.Application, IStoppable):
                 # cut
                 self._exp_time = max(self._exp_time, 30)
 
-    def image(self):
+    def image(self) -> Optional[bytes]:
         """Return image data."""
         with self._lock:
             return self._image

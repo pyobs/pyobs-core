@@ -1,15 +1,16 @@
 import logging
 import random
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from pyobs.interfaces.proxies import IAcquisitionProxy, ITelescopeProxy
 from pyobs.modules import Module
 from pyobs.comm import InvocationException
-from pyobs.interfaces import IAcquisition, IAutonomous, ITelescope
+from pyobs.interfaces import IAutonomous
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class PointingSeries(Module, IAutonomous):
                  az_range: Tuple[float, float] = (0., 360.), num_az: int = 24,
                  dec_range: Tuple[float, float] = (-80., 80.), min_moon_dist: float = 15., finish: int = 90,
                  exp_time: float = 1., acquisition: str = 'acquisition', telescope: str = 'telescope',
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -38,7 +39,7 @@ class PointingSeries(Module, IAutonomous):
             acquisition: IAcquisition unit to use.
             telescope: ITelescope unit to use.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._alt_range = tuple(alt_range)
@@ -59,15 +60,15 @@ class PointingSeries(Module, IAutonomous):
         # add thread func
         self.add_thread_func(self._run_thread, False)
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any):
         """Starts a service."""
         pass
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any):
         """Stops a service."""
         pass
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return True
 
@@ -86,8 +87,8 @@ class PointingSeries(Module, IAutonomous):
         grid = pd.DataFrame(grid).set_index(['alt', 'az'])
 
         # get acquisition and telescope units
-        acquisition: IAcquisition = self.proxy(self._acquisition, IAcquisition)
-        telescope: ITelescope = self.proxy(self._telescope, ITelescope)
+        acquisition: IAcquisitionProxy = self.proxy(self._acquisition, IAcquisitionProxy)
+        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
 
         # loop until finished
         while not self.closing.is_set():
@@ -139,7 +140,7 @@ class PointingSeries(Module, IAutonomous):
                 telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree)).wait()
 
                 # acquire target
-                acq = acquisition.acquire_target(self._exp_time).wait()
+                acq = acquisition.acquire_target().wait()
 
                 #  process result
                 if acq is not None:

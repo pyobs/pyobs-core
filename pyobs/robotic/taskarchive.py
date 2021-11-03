@@ -1,7 +1,7 @@
 import threading
-from typing import Dict
+from typing import Dict, Optional, Any, Type, List
 
-from astroplan import Observer
+from astroplan import Observer, ObservingBlock
 
 from pyobs.comm import Comm
 from pyobs.utils.time import Time
@@ -9,30 +9,31 @@ from pyobs.vfs import VirtualFileSystem
 from .task import Task
 
 
-class TaskArchive:
-    def __init__(self, comm: Comm = None, vfs: VirtualFileSystem = None, observer: Observer = None, *args, **kwargs):
+class TaskArchive(object):
+    def __init__(self, comm: Optional[Comm] = None, vfs: Optional[VirtualFileSystem] = None,
+                 observer: Optional[Observer] = None, **kwargs: Any):
         self.comm = comm
         self.vfs = vfs
         self.observer = observer
 
-    def open(self):
+    def open(self) -> None:
         pass
 
-    def close(self):
+    def close(self) -> None:
         pass
 
-    def _create_task(self, klass, *args, **kwargs):
-        return klass(*args, **kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
+    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
+        return klass(**kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
-    def last_changed(self) -> Time:
+    def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
         raise NotImplementedError
 
-    def last_scheduled(self) -> Time:
+    def last_scheduled(self) -> Optional[Time]:
         """Returns time of last scheduler run."""
         raise NotImplementedError
 
-    def get_schedulable_blocks(self) -> list:
+    def get_schedulable_blocks(self) -> List[ObservingBlock]:
         """Returns list of schedulable blocks.
 
         Returns:
@@ -40,7 +41,7 @@ class TaskArchive:
         """
         raise NotImplementedError
 
-    def update_schedule(self, blocks: list, start_time: Time):
+    def update_schedule(self, blocks: List[Task], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -66,7 +67,7 @@ class TaskArchive:
         """
         raise NotImplementedError
 
-    def get_task(self, time: Time) -> Task:
+    def get_task(self, time: Time) -> Optional[Task]:
         """Returns the active task at the given time.
 
         Args:
@@ -77,7 +78,7 @@ class TaskArchive:
         """
         raise NotImplementedError
 
-    def run_task(self, task: Task, abort_event: threading.Event):
+    def run_task(self, task: Task, abort_event: threading.Event) -> bool:
         """Run a task.
 
         Args:

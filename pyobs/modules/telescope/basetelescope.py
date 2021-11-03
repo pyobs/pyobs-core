@@ -1,11 +1,11 @@
 import threading
-from typing import Dict, Any, Tuple, Union, List
+from typing import Dict, Any, Tuple, Union, List, Optional
 
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
-from pyobs.interfaces import ITelescope, IFitsHeaderProvider
+from pyobs.interfaces import ITelescope, IFitsHeaderBefore
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
@@ -16,11 +16,12 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderProvider, Module):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module):
     """Base class for telescopes."""
     __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, fits_headers: dict = None, min_altitude: float = 10, wait_for_dome: str = None, *args, **kwargs):
+    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, min_altitude: float = 10,
+                 wait_for_dome: Optional[str] = None, **kwargs: Any):
         """Initialize a new base telescope.
 
         Args:
@@ -28,7 +29,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             min_altitude: Minimal altitude for telescope.
             wait_for_dome: Name of dome module to wait for.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._fits_headers = fits_headers if fits_headers is not None else {}
@@ -46,14 +47,14 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         self.add_thread_func(self._celestial, True)
 
         # init mixins
-        WeatherAwareMixin.__init__(self, *args, **kwargs)
-        MotionStatusMixin.__init__(self, *args, **kwargs)
+        WeatherAwareMixin.__init__(self, **kwargs)
+        MotionStatusMixin.__init__(self, **kwargs)
         WaitForMotionMixin.__init__(self,
                                     wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
                                     wait_for_timeout=60000,
                                     wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING])
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
@@ -61,7 +62,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         WeatherAwareMixin.open(self)
         MotionStatusMixin.open(self)
 
-    def init(self, *args, **kwargs):
+    def init(self, **kwargs: Any) -> None:
         """Initialize telescope.
 
         Raises:
@@ -69,7 +70,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    def park(self, *args, **kwargs):
+    def park(self, **kwargs: Any) -> None:
         """Park telescope.
 
         Raises:
@@ -77,7 +78,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event):
+    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -91,17 +92,20 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         raise NotImplementedError
 
     @timeout(1200)
-    def move_radec(self, ra: float, dec: float, track: bool = True, *args, **kwargs):
+    def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
         """Starts tracking on given coordinates.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
-            track: Whether the device should start tracking on the given coordinates.
 
         Raises:
             ValueError: If device could not track.
         """
+
+        # do nothing, if initializing, parking or parked
+        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+            return
 
         # check observer
         if self.observer is None:
@@ -137,7 +141,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
-    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event):
+    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -151,7 +155,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         raise NotImplementedError
 
     @timeout(1200)
-    def move_altaz(self, alt: float, az: float, *args, **kwargs):
+    def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
         Args:
@@ -162,6 +166,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             Exception: On error.
             AcquireLockFailed: If current motion could not be aborted.
         """
+
+        # do nothing, if initializing, parking or parked
+        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+            return
 
         # check altitude
         if alt < self._min_altitude:
@@ -187,7 +195,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             threading.Thread(target=self._update_celestial_headers).start()
             log.info('Finished moving telescope.')
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -245,7 +253,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # finish
         return hdr
 
-    def _celestial(self):
+    def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
  
         # wait a little
@@ -259,10 +267,16 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             # sleep a little
             self.closing.wait(30)
 
-    def _update_celestial_headers(self):
+    def _update_celestial_headers(self) -> None:
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
+        alt: Optional[float]
+        az: Optional[float]
+
+        # no observer?
+        if self.observer is None:
+            return
 
         # get telescope alt/az
         try:

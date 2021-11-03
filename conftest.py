@@ -1,16 +1,17 @@
+from typing import Any
+
 import pytest
-import astroplan
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Any) -> None:
     parser.addoption("--use-ssh", action="store_true", help="do SSH tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config: Any) -> None:
     config.addinivalue_line("markers", "ssh: mark test as using SSH")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Any, items: Any) -> None:
     if config.getoption("--use-ssh"):
         # do not skip slow tests
         return
@@ -21,7 +22,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def download_IERS():
+def download_IERS() -> None:
     # IERS workaround...
     from astropy.utils import iers
     from astropy.utils.data import clear_download_cache

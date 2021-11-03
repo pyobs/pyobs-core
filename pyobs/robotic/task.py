@@ -1,21 +1,23 @@
 import threading
 from threading import Event
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from astroplan import Observer
 
 from pyobs.comm import Comm
 from pyobs.utils.time import Time
+if TYPE_CHECKING:
+    from pyobs.robotic.taskarchive import TaskArchive
 
 
 class Task:
-    def __init__(self, tasks: 'TaskArchive', comm: Comm, observer: Observer, *args, **kwargs):
+    def __init__(self, tasks: 'TaskArchive', comm: Comm, observer: Observer, **kwargs: Any):
         self.task_archive = tasks
         self.comm = comm
         self.observer = observer
 
     @property
-    def id(self) -> str:
+    def id(self) -> Any:
         """ID of task."""
         raise NotImplementedError
 
@@ -56,7 +58,7 @@ class Task:
         """
         raise NotImplementedError
 
-    def run(self, abort_event: Event):
+    def run(self, abort_event: Event) -> None:
         """Run a task
 
         Args:
@@ -68,7 +70,7 @@ class Task:
         """Whether task is finished."""
         raise NotImplementedError
 
-    def get_fits_headers(self, namespaces: list = None) -> dict:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

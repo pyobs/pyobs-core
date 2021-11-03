@@ -9,7 +9,7 @@ import astropy.units as u
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather, IFitsHeaderProvider
+from pyobs.interfaces import IWeather, IFitsHeaderBefore
 from pyobs.modules import Module
 
 
@@ -29,18 +29,18 @@ FITS_HEADERS = {
 }
 
 
-class Weather(Module, IWeather, IFitsHeaderProvider):
+class Weather(Module, IWeather, IFitsHeaderBefore):
     """Connection to pyobs-weather."""
     __module__ = 'pyobs.modules.weather'
 
-    def __init__(self, url: str, system_init_time: int = 300, *args, **kwargs):
+    def __init__(self, url: str, system_init_time: int = 300, **kwargs: Any):
         """Initialize a new pyobs-weather connector.
 
         Args:
             url: URL to weather station
             system_init_time: Time in seconds the full system needs to initialize
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store and create session
         self._system_init_time = system_init_time
@@ -111,15 +111,15 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
             # sleep a little
             self.closing.wait(60 if error else 5)
 
-    def get_weather_status(self, *args, **kwargs) -> dict:
+    def get_weather_status(self, **kwargs: Any) -> dict:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
-    def is_weather_good(self, *args, **kwargs) -> bool:
+    def is_weather_good(self, **kwargs: Any) -> bool:
         """Whether the weather is good to observe."""
         return False if self._is_good is None else self._is_good
 
-    def get_current_weather(self, *args, **kwargs) -> dict:
+    def get_current_weather(self, **kwargs: Any) -> dict:
         """Returns current weather.
 
         Returns:
@@ -129,7 +129,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         with self._status_lock:
             return self._status
 
-    def get_sensor_value(self, station: str, sensor: WeatherSensors, *args, **kwargs) -> Tuple[str, float]:
+    def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:
@@ -154,7 +154,7 @@ class Weather(Module, IWeather, IFitsHeaderProvider):
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

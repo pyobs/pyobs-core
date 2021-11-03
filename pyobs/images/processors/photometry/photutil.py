@@ -1,3 +1,5 @@
+from typing import Any
+
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 import logging
@@ -15,7 +17,7 @@ class PhotUtilsPhotometry(Photometry):
     __module__ = 'pyobs.images.processors.photometry'
 
     def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, *args, **kwargs):
+                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
         """Initializes an aperture photometry based on PhotUtils.
 
         Args:
@@ -28,6 +30,7 @@ class PhotUtilsPhotometry(Photometry):
             *args:
             **kwargs:
         """
+        Photometry.__init__(self, **kwargs)
 
         # store
         self.threshold = threshold
@@ -37,25 +40,25 @@ class PhotUtilsPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Table:
+    def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
             image: Image to do aperture photometry on.
 
         Returns:
-            Full table with results.
+            Image with attached catalog.
         """
 
         # no pixel scale given?
         if image.pixel_scale is None:
-            raise ValueError('No pixel scale provided by image.')
-
-        # get data and mask
-        data = image.data.astype(np.float).copy()
-        mask = image.mask.data if image.mask is not None else None
+            log.warning('No pixel scale provided by image.')
+            return image
 
         # fetch catalog
+        if image.catalog is None:
+            log.warning('No catalog in image.')
+            return image
         sources = image.catalog.copy()
 
         # get positions
@@ -76,25 +79,26 @@ class PhotUtilsPhotometry(Photometry):
             # loop annuli
             bkg_median = []
             for m in annulus_masks:
-                annulus_data = m.multiply(data)
+                annulus_data = m.multiply(image.data)
                 annulus_data_1d = annulus_data[m.data > 0]
                 _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = aperture_photometry(data, aperture, mask=mask)
+            phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
 
             # calc flux
-            bkg_median = np.array(bkg_median)
-            aper_bkg = bkg_median * aperture.area
+            bkg_median_np = np.array(bkg_median)
+            aper_bkg = bkg_median_np * aperture.area
             sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
-            sources['bkgaper%d' % diameter] = bkg_median
+            if 'aperture_sum_err' in phot.columns:
+                sources['fluxerr%d' % diameter] = phot['aperture_sum_err']
+            sources['bkgaper%d' % diameter] = bkg_median_np
 
-        # set catalog
-        image.catalog = sources
-
-        # return full catalog
-        return sources
+        # copy image, set catalog and return it
+        img = image.copy()
+        img.catalog = sources
+        return img
 
 
 __all__ = ['PhotUtilsPhotometry']

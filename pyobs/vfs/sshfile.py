@@ -1,4 +1,6 @@
 import os
+from typing import Optional, Any
+
 import paramiko
 import paramiko.sftp
 
@@ -9,9 +11,9 @@ class SSHFile(VFSFile, paramiko.SFTPFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: str = None, port: int = 22,
-                 username: str = None, password: str = None, keyfile: str = None, root: str = None, mkdir: bool = True,
-                 *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: Optional[str] = None, port: int = 22,
+                 username: Optional[str] = None, password: Optional[str] = None, keyfile: Optional[str] = None,
+                 root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
         """Open/create a file over a SSH connection.
 
         Args:
@@ -38,6 +40,10 @@ class SSHFile(VFSFile, paramiko.SFTPFile):
         # build filename
         self.filename = name
         full_path = os.path.join(root, name)
+
+        # check
+        if hostname is None:
+            raise ValueError('No hostname given.')
 
         # connect
         self._ssh = paramiko.SSHClient()
@@ -68,7 +74,7 @@ class SSHFile(VFSFile, paramiko.SFTPFile):
         if 'x' in mode:
             imode |= paramiko.sftp.SFTP_FLAG_CREATE | paramiko.sftp.SFTP_FLAG_EXCL
         attrblock = paramiko.SFTPAttributes()
-        t, msg = self._sftp._request(paramiko.sftp.CMD_OPEN, full_path, imode, attrblock)
+        t, msg = self._sftp._request(paramiko.sftp.CMD_OPEN, full_path, imode, attrblock)  # type: ignore
         if t != paramiko.sftp.CMD_HANDLE:
             raise paramiko.SFTPError('Expected handle')
         handle = msg.get_binary()

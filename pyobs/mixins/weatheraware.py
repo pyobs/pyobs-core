@@ -1,10 +1,11 @@
 import logging
 import time
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
+from pyobs.interfaces.proxies import IWeatherProxy
 from pyobs.modules import Module
-from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather, IMotion
+from pyobs.events import BadWeatherEvent, GoodWeatherEvent, Event
+from pyobs.interfaces import IMotion
 from pyobs.mixins import MotionStatusMixin
 from pyobs.utils.enums import MotionStatus
 
@@ -15,28 +16,34 @@ class WeatherAwareMixin:
     """Mixin for IMotion devices that should park(), when weather gets bad."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, weather: Union[str, IWeather] = None, *args, **kwargs):
+    def __init__(self, weather: Optional[Union[str, IWeatherProxy]] = None, **kwargs: Any):
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
+        this = self
         if isinstance(self, Module):
-            self.add_thread_func(self.__weather_check, True)
+            self.add_thread_func(this.__weather_check, True)
         else:
             raise ValueError('This is not a module.')
 
-    def open(self):
+    def open(self) -> None:
         """Open mixin."""
         # subscribe to events
-        if self.comm:
-            self.comm.register_event(BadWeatherEvent, self.__on_bad_weather)
-            self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
+        this = self
+        if isinstance(self, Module) and self.comm is not None:
+            self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
+            self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
 
-    def __on_bad_weather(self, event: BadWeatherEvent, sender: str, *args, **kwargs):
+    def __on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort exposure if a bad weather event occurs.
 
         Args:
             event: The bad weather event.
             sender: Who sent it.
         """
+
+        # check
+        if not isinstance(event, BadWeatherEvent):
+            raise ValueError('Wrong event type.')
 
         # weather is bad
         self.__is_weather_good = False
@@ -46,10 +53,12 @@ class WeatherAwareMixin:
             if self.get_motion_status() != MotionStatus.PARKED:
                 log.warning('Received bad weather event, shutting down.')
                 self.park()
+            return True
         else:
-            raise ValueError('This is not a MotionStatusMixin/IMotion.')
+            log.error('This is not a MotionStatusMixin/IMotion.')
+            return False
 
-    def _on_good_weather(self, event: GoodWeatherEvent, sender: str, *args, **kwargs):
+    def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Change status of weather.
 
         Args:
@@ -57,14 +66,22 @@ class WeatherAwareMixin:
             sender: Who sent it.
         """
 
+        # check
+        if not isinstance(event, GoodWeatherEvent):
+            raise ValueError('Wrong event type.')
+
         # weather is good
         self.__is_weather_good = True
+        return True
 
-    def __weather_check(self):
+    def __weather_check(self) -> None:
         """Thread for continuously checking for good weather"""
 
         # module?
+        this = self
         if isinstance(self, Module):
+            module = self
+
             # wait a little
             self.closing.wait(10)
 
@@ -72,27 +89,27 @@ class WeatherAwareMixin:
             last_park_attempt = None
 
             # run until closing
-            while not self.closing.is_set():
+            while not module.closing.is_set():
                 # got a weather module?
-                if self.__weather is None:
+                if this.__weather is None:
                     # weather is always good
-                    self.__is_weather_good = True
+                    this.__is_weather_good = True
 
                 else:
                     try:
                         # get proxy
-                        weather: IWeather = self.proxy(self.__weather, IWeather)
+                        weather: IWeatherProxy = module.proxy(this.__weather, IWeatherProxy)
 
                         # get good status
-                        self.__is_weather_good = weather.is_weather_good().wait()
+                        this.__is_weather_good = weather.is_weather_good().wait()
 
                     except:
                         # could either not connect or weather is not good
-                        self.__is_weather_good = False
+                        this.__is_weather_good = False
 
                 # if not good, park now
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-                    if self.__is_weather_good is False and \
+                    if this.__is_weather_good is False and \
                             self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
                         try:
                             self.park()
@@ -111,14 +128,14 @@ class WeatherAwareMixin:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 
                 # sleep a little
-                self.closing.wait(10)
+                module.closing.wait(10)
 
         else:
             # not a module
             raise ValueError('This is not a module.')
 
-    def is_weather_good(self):
-        return self.__is_weather_good
+    def is_weather_good(self) -> bool:
+        return self.__is_weather_good is True
 
 
 __all__ = ['WeatherAwareMixin']

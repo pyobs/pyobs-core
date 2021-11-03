@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 from .interface import Interface
 
@@ -7,15 +7,16 @@ class IConfig(Interface):
     """The module allows access to some of its configuration options."""
     __module__ = 'pyobs.interfaces'
 
-    def get_config_options(self, *args, **kwargs) -> Dict[str, Tuple[bool, bool]]:
-        """Returns dict of all config options. First value is whether it has a getter, second is for the setter.
+    def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
 
         Returns:
-            Dict with config options
+            Dict with config caps
         """
         raise NotImplementedError
 
-    def get_config_value(self, name: str, *args, **kwargs) -> Any:
+    def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
         Args:
@@ -29,7 +30,21 @@ class IConfig(Interface):
         """
         raise NotImplementedError
 
-    def set_config_value(self, name: str, value: Any, *args, **kwargs):
+    def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
+        """Returns possible values for config item with given name.
+
+        Args:
+            name: Name of config item.
+
+        Returns:
+            Possible values.
+
+        Raises:
+            ValueError: If config item of given name does not exist.
+        """
+        raise NotImplementedError
+
+    def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:

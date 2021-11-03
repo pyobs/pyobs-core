@@ -1,9 +1,10 @@
 import threading
 from urllib.parse import urljoin
 import logging
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional, Any, cast
 import requests
-from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint
+from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint, \
+    MoonIlluminationConstraint, AtNightConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -20,11 +21,12 @@ log = logging.getLogger(__name__)
 class LcoTaskArchive(TaskArchive):
     """Scheduler for using the LCO portal"""
 
-    def __init__(self, url: str, site: str, token: str, telescope: str = None, camera: str = None, filters: str = None,
-                 roof: str = None, autoguider: str = None, update: bool = True, scripts: dict = None,
-                 portal_enclosure: str = None, portal_telescope: str = None, portal_instrument: str = None,
-                 portal_instrument_type: str = None, period: int = 24, proxies: List[str] = None,
-                 *args, **kwargs):
+    def __init__(self, url: str, site: str, token: str, telescope: Optional[str] = None, camera: Optional[str] = None,
+                 filters: Optional[str] = None, roof: Optional[str] = None, autoguider: Optional[str] = None,
+                 update: bool = True, scripts: Optional[Dict[str, Any]] = None, portal_enclosure: Optional[str] = None,
+                 portal_telescope: Optional[str] = None, portal_instrument: Optional[str] = None,
+                 portal_instrument_type: Optional[str] = None, period: int = 24, proxies: Optional[List[str]] = None,
+                 **kwargs: Any):
         """Creates a new LCO scheduler.
 
         Args:
@@ -45,7 +47,7 @@ class LcoTaskArchive(TaskArchive):
             period: Period to schedule in hours
             proxies: Proxies for requests.
         """
-        TaskArchive.__init__(self, *args, **kwargs)
+        TaskArchive.__init__(self, **kwargs)
 
         # store stuff
         self._url = url
@@ -60,16 +62,16 @@ class LcoTaskArchive(TaskArchive):
         self.filters = filters
         self.roof = roof
         self.autoguider = autoguider
-        self.instruments = None
+        self.instruments: Dict[str, Any] = {}
         self._update = update
-        self._last_schedule_time = None
+        self._last_schedule_time: Optional[Time] = None
         self._last_schedule_lock = threading.RLock()
         self.scripts = scripts
         self._proxies = {} if proxies is None else proxies
 
         # buffers in case of errors
-        self._last_scheduled = None
-        self._last_changed = None
+        self._last_scheduled: Optional[Time] = None
+        self._last_changed: Optional[Time] = None
 
         # header
         self._token = token
@@ -79,13 +81,13 @@ class LcoTaskArchive(TaskArchive):
 
         # update thread
         self._update_lock = threading.RLock()
-        self._update_thread = None
+        self._update_thread: Optional[threading.Thread] = None
         self._closing = threading.Event()
 
         # task list
-        self._tasks = {}
+        self._tasks: Dict[str, LcoTask] = {}
 
-    def open(self):
+    def open(self) -> None:
         """Open scheduler."""
 
         # get stuff from portal
@@ -96,13 +98,13 @@ class LcoTaskArchive(TaskArchive):
             self._update_thread = threading.Thread(target=self._update_schedule)
             self._update_thread.start()
 
-    def close(self):
+    def close(self) -> None:
         """Close scheduler."""
         if self._update_thread is not None and self._update_thread.is_alive():
             self._closing.set()
             self._update_thread.join()
 
-    def _init_from_portal(self):
+    def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
 
         # get instruments
@@ -114,7 +116,7 @@ class LcoTaskArchive(TaskArchive):
         # store instruments
         self.instruments = {k.lower(): v for k, v in res.json().items()}
 
-    def _update_schedule(self):
+    def _update_schedule(self) -> None:
         """Update thread."""
         while not self._closing.is_set():
             # do actual update
@@ -126,7 +128,7 @@ class LcoTaskArchive(TaskArchive):
             # sleep a little
             self._closing.wait(10)
 
-    def _update_now(self, force: bool = False):
+    def _update_now(self, force: bool = False) -> None:
         """Update list of requests.
 
         Args:
@@ -169,7 +171,7 @@ class LcoTaskArchive(TaskArchive):
 
             # update
             with self._update_lock:
-                self._tasks = tasks
+                self._tasks = cast(Dict[str, LcoTask], tasks)
 
             # finished
             self._last_schedule_time = now
@@ -224,14 +226,14 @@ class LcoTaskArchive(TaskArchive):
             sched['end'] = Time(sched['end'])
 
             # create task
-            task = self._create_task(LcoTask, sched, scripts=self.scripts)
+            task = self._create_task(LcoTask, config=sched, scripts=self.scripts)
             tasks[sched['request']['id']] = task
 
         # finished
         r.close()
         return tasks
 
-    def get_task(self, time: Time) -> Union[Task, None]:
+    def get_task(self, time: Time) -> Optional[LcoTask]:
         """Returns the active task at the given time.
 
         Args:
@@ -251,7 +253,7 @@ class LcoTaskArchive(TaskArchive):
         # nothing found
         return None
 
-    def run_task(self, task: Task, abort_event: threading.Event):
+    def run_task(self, task: Task, abort_event: threading.Event) -> bool:
         """Run a task.
 
         Args:
@@ -271,7 +273,7 @@ class LcoTaskArchive(TaskArchive):
         # finish
         return True
 
-    def send_update(self, status_id: int, status: dict):
+    def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         """Send report to LCO portal
 
         Args:
@@ -294,7 +296,7 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def last_changed(self) -> Time:
+    def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
 
         # try to update time
@@ -315,7 +317,7 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def last_scheduled(self) -> Time:
+    def last_scheduled(self) -> Optional[Time]:
         """Returns time of last scheduler run."""
 
         # try to update time
@@ -336,12 +338,16 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def get_schedulable_blocks(self) -> list:
+    def get_schedulable_blocks(self) -> List[ObservingBlock]:
         """Returns list of schedulable blocks.
 
         Returns:
             List of schedulable blocks
         """
+
+        # check
+        if self._portal_instrument_type is None:
+            raise ValueError('No instrument type for portal set.')
 
         # get requests
         res = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header,
@@ -393,13 +399,20 @@ class LcoTaskArchive(TaskArchive):
 
                     # constraints
                     c = cfg['constraints']
-                    constraints = [
-                        AirmassConstraint(max=c['max_airmass'], boolean_constraint=False),
-                        MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg)
-                    ]
+                    constraints = []
+                    if 'max_airmass' in c and c['max_airmass'] is not None:
+                        constraints.append(AirmassConstraint(max=c['max_airmass'], boolean_constraint=False))
+                    if 'min_lunar_distance' in c and c['min_lunar_distance'] is not None:
+                        constraints.append(MoonSeparationConstraint(min=c['min_lunar_distance'] * u.deg))
+                    if 'max_lunar_phase' in c and c['max_lunar_phase'] is not None:
+                        constraints.append(MoonIlluminationConstraint(max=c['max_lunar_phase']))
+                        # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
+                        if c['max_lunar_phase'] <= 0.4:
+                            constraints.append(AtNightConstraint.twilight_astronomical())
 
                     # priority is base_priority times duration in minutes
-                    priority = base_priority * duration.value / 60.
+                    #priority = base_priority * duration.value / 60.
+                    priority = base_priority
 
                     # create block
                     block = ObservingBlock(FixedTarget(target, name=req["id"]), duration, priority,
@@ -410,7 +423,7 @@ class LcoTaskArchive(TaskArchive):
         # return blocks
         return blocks
 
-    def update_schedule(self, blocks: list, start_time: Time):
+    def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -427,7 +440,7 @@ class LcoTaskArchive(TaskArchive):
         # send new schedule
         self._submit_observations(observations)
 
-    def _cancel_schedule(self, now: Time):
+    def _cancel_schedule(self, now: Time) -> None:
         """Cancel future schedule."""
 
         # define parameters
@@ -449,7 +462,7 @@ class LcoTaskArchive(TaskArchive):
         if res.status_code != 200:
             raise ValueError('Could not cancel schedule.')
 
-    def _create_observations(self, blocks: list) -> list:
+    def _create_observations(self, blocks: List[ObservingBlock]) -> List[Dict[str, Any]]:
         """Create observations from schedule.
 
         Args:
@@ -483,7 +496,7 @@ class LcoTaskArchive(TaskArchive):
         # return list
         return observations
 
-    def _submit_observations(self, observations: list):
+    def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
         """Submit observations.
 
         Args:
@@ -496,9 +509,9 @@ class LcoTaskArchive(TaskArchive):
 
         # submit obervations
         res = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
-                          headers={'Authorization': 'Token ' + self._token,
-                                   'Content-Type': 'application/json; charset=utf8'},
-                          proxies=self._proxies)
+                            headers={'Authorization': 'Token ' + self._token,
+                                     'Content-Type': 'application/json; charset=utf8'},
+                            proxies=self._proxies)
         res.close()
         if res.status_code != 201:
             raise ValueError('Could not submit observations.')

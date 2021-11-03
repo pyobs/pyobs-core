@@ -1,9 +1,9 @@
 from __future__ import annotations
 import logging
-from typing import Union
+from typing import Union, cast, Optional, Any
 
+from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IFiltersProxy, IImageGrabberProxy
 from pyobs.modules import Module
-from pyobs.interfaces import ICamera, IFilters, ICameraWindow, ICameraBinning
 
 log = logging.getLogger(__name__)
 
@@ -12,8 +12,8 @@ class CameraSettingsMixin:
     """Mixin for a device that should be able to set camera settings."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, filters: Union[str, IFilters] = None, filter_name: str = None, binning: int = None,
-                 *args, **kwargs):
+    def __init__(self, filters: Optional[Union[str, IFiltersProxy]] = None, filter_name: Optional[str] = None,
+                 binning: Optional[int] = None, **kwargs: Any):
         """Initializes the mixin.
 
         Args:
@@ -27,7 +27,8 @@ class CameraSettingsMixin:
         self.__camerasettings_filter = filter_name
         self.__camerasettings_binning = binning
 
-    def _do_camera_settings(self, camera: ICamera):
+    def _do_camera_settings(self, camera: Union[Module, IImageGrabberProxy, IFiltersProxy,
+                                                IBinningProxy, IWindowProxy]) -> None:
         """Do camera settings for given camera."""
 
         # check type
@@ -38,20 +39,23 @@ class CameraSettingsMixin:
         if self.__camerasettings_filters is not None and self.__camerasettings_filter is not None:
             # get proxy
             log.info('Getting proxy for filter wheel...')
-            filters: IFilters = self.proxy(self.__camerasettings_filters, IFilters)
+            filters: IFiltersProxy = cast(Module, self).proxy(self.__camerasettings_filters, IFiltersProxy)
 
             # set it
             log.info('Setting filter to %s...', self.__camerasettings_filter)
             filters.set_filter(self.__camerasettings_filter).wait()
 
         # camera settings
-        if self.__camerasettings_binning is not None and isinstance(camera, ICameraBinning):
+        if self.__camerasettings_binning is not None and isinstance(camera, IBinningProxy):
             log.info('Setting binning to %dx%d...', self.__camerasettings_binning, self.__camerasettings_binning)
             camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning).wait()
-        if isinstance(camera, ICameraWindow):
+        if isinstance(camera, IWindowProxy):
             log.info('Set window to full frame...')
             full_frame = camera.get_full_frame().wait()
-            camera.set_window(*full_frame).wait()
+            if full_frame is not None:
+                camera.set_window(*full_frame).wait()
+            else:
+                raise ValueError('Could not get full frame size.')
 
 
 __all__ = ['CameraSettingsMixin']

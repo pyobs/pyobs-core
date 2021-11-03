@@ -18,7 +18,7 @@ class DataCacheEntry:
         self._data = data
         self.time = time.time()
 
-    def update(self):
+    def update(self) -> None:
         """Update time for this item."""
         self.time = time.time()
 
@@ -78,7 +78,7 @@ class DataCache(object):
         with self._lock:
             return self._cache[name].data
 
-    def __setitem__(self, name: str, data: Any):
+    def __setitem__(self, name: str, data: Any) -> None:
         """Set new entry in the cache.
 
         Args:
@@ -105,7 +105,7 @@ class DataCache(object):
                 for c in cache[self._size:]:
                     del self._cache[c.name]
 
-    def __delitem__(self, name: str):
+    def __delitem__(self, name: str) -> None:
         """Delete entry in cache.
 
         Args:

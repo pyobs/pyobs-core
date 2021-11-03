@@ -1,10 +1,13 @@
+from __future__ import annotations
 import functools
+import inspect
 import json
 import logging
 import re
+import ssl
 import threading
 import time
-from typing import Any, Callable, Dict, Type, List, Optional
+from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
 import xml.sax.saxutils
@@ -14,11 +17,15 @@ from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
+from ...interfaces import Interface
+from ...utils.threads.future import BaseFuture
+if TYPE_CHECKING:
+    from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
 
-class EventStanza(ElementBase):
+class EventStanza(ElementBase):  # type: ignore
     name = 'event'
     namespace = 'pyobs:event'
 
@@ -76,8 +83,8 @@ class XmppComm(Comm):
     __module__ = 'pyobs.comm.xmpp'
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
-                 resource: str = 'pyobs', password: Optional[str] = None, server: Optional[str] = None,
-                 use_tls: bool = False, *args, **kwargs):
+                 resource: str = 'pyobs', password: str = '', server: Optional[str] = None,
+                 use_tls: bool = False, *args: Any, **kwargs: Any):
         """Create a new XMPP Comm module.
 
         Either a fill JID needs to be provided, or a set of user/domian/resource, from which a JID is built.
@@ -96,9 +103,9 @@ class XmppComm(Comm):
         # variables
         self._rpc: Optional[RPC] = None
         self._connected = False
-        self._event_handlers: Dict[Type, List[Callable]] = {}
+        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], bool]]] = {}
         self._online_clients: List[str] = []
-        self._interface_cache: Dict[str, List[Type]] = {}
+        self._interface_cache: Dict[str, List[Type[Interface]]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -132,7 +139,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
-    def _set_module(self, module):
+    def _set_module(self, module: 'Module') -> None:
         """Called, when the module connected to this Comm changes.
 
         Args:
@@ -140,14 +147,16 @@ class XmppComm(Comm):
         """
 
         # add features
-        if module:
+        if module is not None:
             for i in module.interfaces:
                 self._xmpp['xep_0030'].add_feature('pyobs:interface:%s' % i.__name__)
 
         # update RPC
+        if self._rpc is None:
+            raise ValueError('No RPC.')
         self._rpc.set_handler(module)
 
-    def open(self) -> bool:
+    def open(self) -> None:
         """Open the connection to the XMPP server.
 
         Returns:
@@ -162,28 +171,24 @@ class XmppComm(Comm):
         server = () if self._server is None else tuple(self._server.split(':'))
 
         # connect
+        self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
         if self._xmpp.connect(server, use_tls=self._use_tls, reattempt=False):
             # start processing
             self._xmpp.process(block=False)
 
             # wait for connected
             if not self._xmpp.wait_connect():
-                log.error('Could not connect to XMPP server.')
-                return False
+                raise ValueError('Could not connect to XMPP server.')
             self._connected = True
 
             # subscribe to events
             self.register_event(LogEvent)
 
-            # success
-            return True
-
         else:
             # TODO: catch exceptions in open() methods
-            log.error('Could not connect to server.')
-            return False
+            raise ValueError('Could not connect to XMPP server.')
 
-    def close(self):
+    def close(self) -> None:
         """Close connection."""
 
         # close parent class
@@ -193,11 +198,11 @@ class XmppComm(Comm):
         self._xmpp.disconnect()
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         """Name of this client."""
         return self._user
 
-    def _failed_auth(self, event):
+    def _failed_auth(self, event: Any) -> None:
         """Authentification failed.
 
         Args:
@@ -216,7 +221,7 @@ class XmppComm(Comm):
         """
         return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
 
-    def get_interfaces(self, client: str) -> list:
+    def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -244,7 +249,7 @@ class XmppComm(Comm):
         # convert to classes
         return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface) -> bool:
+    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -265,21 +270,23 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    def execute(self, client: str, method: str, *args) -> Any:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
+            signature: Method signature.
             *args: List of parameters for given method.
 
         Returns:
             Passes through return from method call.
         """
-        if self._rpc is not None:
-            return self._rpc.call(self._get_full_client_name(client), method, *args)
+        if self._rpc is None:
+            raise ValueError('No RPC.')
+        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
-    def _got_online(self, msg):
+    def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
 
         Args:
@@ -298,7 +305,7 @@ class XmppComm(Comm):
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
 
-    def _got_offline(self, msg):
+    def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
 
         Args:
@@ -317,7 +324,7 @@ class XmppComm(Comm):
         self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
 
     @property
-    def clients(self):
+    def clients(self) -> List[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -334,7 +341,7 @@ class XmppComm(Comm):
         """
         return self._xmpp
 
-    def send_event(self, event: Event):
+    def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -353,7 +360,7 @@ class XmppComm(Comm):
                                        callback=functools.partial(self._send_event_callback, event=event))
 
     @staticmethod
-    def _send_event_callback(iq, event: Event = None):
+    def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
         """Called when an event has been successfully sent.
 
         Args:
@@ -362,7 +369,7 @@ class XmppComm(Comm):
         """
         log.debug('%s successfully sent.', event.__class__.__name__)
 
-    def register_event(self, event_class, handler=None):
+    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -392,7 +399,7 @@ class XmppComm(Comm):
             self._xmpp['xep_0115'].update_caps()
             self._xmpp.send_presence()
 
-    def _handle_event(self, msg):
+    def _handle_event(self, msg: Any) -> None:
         """Handles an event.
 
         Args:
@@ -425,7 +432,7 @@ class XmppComm(Comm):
         # send it to module
         self._send_event_to_module(event, msg['from'].username)
 
-    def _send_event_to_module(self, event: Event, from_client: str):
+    def _send_event_to_module(self, event: Event, from_client: str) -> None:
         """Send an event to all connected modules.
 
         Args:

@@ -2,7 +2,7 @@ import os
 import re
 
 
-def pre_process_yaml(config):
+def pre_process_yaml(config: str) -> str:
     # read config
     with open(config, 'r') as f:
         content = f.read()
@@ -17,3 +17,6 @@ def pre_process_yaml(config):
 
     # return new yaml
     return content
+
+
+__all__ = ['pre_process_yaml']

@@ -1,17 +1,21 @@
 import logging
 import threading
-from typing import Union, Tuple, Type
+from typing import Union, Tuple, Type, Optional, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from pyobs.comm import RemoteException
 
+from pyobs.comm.exceptions import RemoteException
+from pyobs.interfaces.proxies import IPointingAltAzProxy, IPointingRaDecProxy
 from pyobs.modules import Module
-from pyobs.interfaces import IAltAz, IRaDec, IReady
+from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
+import pyobs.interfaces.proxies
+
 
 log = logging.getLogger(__name__)
 
 
-def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> Tuple[float, float]:
+def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
+        -> Tuple[float, float]:
     """Gets coordinates from object
 
     Args:
@@ -22,15 +26,35 @@ def get_coord(obj: Union[IAltAz, IRaDec], mode: Type[Union[IAltAz, IRaDec]]) -> 
         Return from method call.
     """
 
-    if mode == IAltAz and isinstance(obj, IAltAz):
+    if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
         return obj.get_altaz()
-    elif mode == IRaDec and isinstance(obj, IRaDec):
+    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
         return obj.get_radec()
     else:
         raise ValueError('Unknown mode.')
 
 
-def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]) -> SkyCoord:
+def get_coord_remote(obj: Union[IPointingAltAzProxy, IPointingRaDecProxy],
+                     mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Optional[Tuple[float, float]]:
+    """Gets coordinates from object
+
+    Args:
+        obj: Object to fetch coordinates from.
+        mode: IAltAz or IRaDec.
+
+    Returns:
+        Return from method call.
+    """
+
+    if mode == IPointingAltAz and isinstance(obj, IPointingAltAzProxy):
+        return obj.get_altaz().wait()
+    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDecProxy):
+        return obj.get_radec().wait()
+    else:
+        raise ValueError('Unknown mode.')
+
+
+def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> SkyCoord:
     """Build SkyCoord from x/y tuple in given mode.
 
     Args:
@@ -41,7 +65,7 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IAltAz, IRaDec]]
         SkyCoord with coordinates.
     """
 
-    if mode == IAltAz:
+    if mode == IPointingAltAz:
         return SkyCoord(alt=coord[0] * u.deg, az=coord[1] * u.deg, frame='altaz')
     else:
         return SkyCoord(ra=coord[0] * u.deg, dec=coord[1] * u.deg, frame='icrs')
@@ -51,8 +75,9 @@ class FollowMixin:
     """Mixin for a device that should follow the motion of another."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, device: str, interval: float, tolerance: float, mode: Type[Union[IAltAz, IRaDec]],
-                 only_follow_when_ready: bool = True, *args, **kwargs):
+    def __init__(self, device: Optional[str], mode: Type[Union[IPointingAltAz, IPointingRaDec]],
+                 interval: float = 10, tolerance: float = 1, only_follow_when_ready: bool = True,
+                 *args: Any, **kwargs: Any):
         """Initializes the mixin.
 
         Args:
@@ -70,73 +95,84 @@ class FollowMixin:
         self.__follow_mode = mode
         self.__follow_only_when_ready = only_follow_when_ready
 
-        # check
-        if not isinstance(self, self.__follow_mode):
-            raise ValueError('This module is not of given mode %s.' % mode)
+        # store self for later
+        this = self
+
+        # get proxy interface for follow mode
+        self.__follow_mode_proxy = getattr(pyobs.interfaces.proxies, mode.__name__ + 'Proxy')
 
         # add thread function only, if device is given
         if self.__follow_device is not None:
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self.add_thread_func(self.__update_follow)
+            self.add_thread_func(this.__update_follow)
+
+        # check
+        if not isinstance(self, self.__follow_mode):
+            raise ValueError('This module is not of given mode %s.' % mode)
 
     @property
     def is_following(self) -> bool:
         """Returns True, if we're following another device."""
         return self.__follow_device is not None
 
-    def __update_follow(self):
+    def __update_follow(self) -> None:
         """Update function."""
 
-        # I'm a module!
-        self: Union[Module, FollowMixin]
+        # store self for later
+        this = self
+        if not isinstance(self, Module):
+            raise ValueError('Not a module.')
+        module = self
 
         # wait a little
-        self.closing.wait(10)
+        module.closing.wait(10)
 
         # run until closing
-        connected = None
-        while not self.closing.is_set():
+        connected = True
+        while not module.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
-                if not self.is_ready() and self.__follow_only_when_ready:
-                    self.closing.wait(self.__follow_interval)
+                if not self.is_ready() and this.__follow_only_when_ready:
+                    module.closing.wait(this.__follow_interval)
                     continue
 
             # get other device
             try:
-                device = self.proxy(self.__follow_device, self.__follow_mode)
+                device = module.proxy(this.__follow_device, this.__follow_mode_proxy)
             except ValueError:
                 # cannot follow, wait a little longer
                 log.warning('Cannot follow module, since it is of wrong type.')
-                self.closing.wait(self.__follow_interval * 10)
+                module.closing.wait(this.__follow_interval * 10)
                 continue
 
             # get coordinates from other and from myself
             try:
-                my_coords = build_skycoord(get_coord(self, self.__follow_mode), self.__follow_mode)
-                x, y = get_coord(device, self.__follow_mode).wait()
-                other_coords = build_skycoord((x, y), self.__follow_mode)
+                my_coords = build_skycoord(get_coord_local(module, this.__follow_mode), this.__follow_mode)
+                xy_coords = get_coord_remote(device, this.__follow_mode)
+                if xy_coords is None:
+                    continue
+                other_coords = build_skycoord(xy_coords, this.__follow_mode)
                 connected = True
             except (ValueError, RemoteException):
-                if not connected:
-                    log.error('Could not fetch coordinates.')
+                if connected:
+                    log.warning('Could not fetch coordinates.')
                 connected = False
-                self.closing.wait(self.__follow_interval * 10.)
+                module.closing.wait(this.__follow_interval * 10.)
                 continue
 
             # is separation larger than tolerance?
-            if my_coords.separation(other_coords).degree > self.__follow_tolerance:
+            if my_coords.separation(other_coords).degree > this.__follow_tolerance:
                 # move to other
-                if self.__follow_mode == IAltAz:
-                    self: IAltAz
-                    threading.Thread(target=self.move_altaz, args=(x, y)).start()
+                if this.__follow_mode == IPointingAltAz and isinstance(self, IPointingAltAz):
+                    threading.Thread(target=self.move_altaz, args=xy_coords).start()
+                elif this.__follow_mode == IPointingRaDec and isinstance(self, IPointingRaDec):
+                    threading.Thread(target=self.move_radec, args=xy_coords).start()
                 else:
-                    self: IRaDec
-                    threading.Thread(target=self.move_radec, args=(x, y)).start()
+                    raise ValueError('invalid follow mode.')
 
             # sleep a little
-            self.closing.wait(self.__follow_interval)
+            module.closing.wait(this.__follow_interval)
 
 
 __all__ = ['FollowMixin']

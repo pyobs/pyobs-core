@@ -1,4 +1,5 @@
 import io
+from typing import Optional, Any
 from urllib.parse import urljoin
 import logging
 import requests
@@ -14,8 +15,9 @@ class HttpFile(VFSFile, io.RawIOBase):
     Especially useful in combination with :class:`~pyobs.modules.utils.HttpFileCache`."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'r', download: str = None, upload: str = None,
-                 username: str = None, password: str = None, verify_tls: bool = False, *args, **kwargs):
+    def __init__(self, name: str, mode: str = 'r', download: Optional[str] = None, upload: Optional[str] = None,
+                 username: Optional[str] = None, password: Optional[str] = None, verify_tls: bool = False,
+                 **kwargs: Any):
         """Creates a new HTTP file.
 
         Args:
@@ -56,11 +58,14 @@ class HttpFile(VFSFile, io.RawIOBase):
         if self.writable() and self.readable is None:
             raise ValueError('No upload URL given.')
 
-        # load file
-        if self.readable():
-            self._download()
+    @property
+    def url(self) -> str:
+        """Returns URL of file."""
+        if self._download_path is None:
+            raise ValueError('No download URL given.')
+        return urljoin(self._download_path, self._filename)
 
-    def _download(self):
+    def _download(self) -> None:
         """For read access, download the file into a local buffer.
 
         Raises:
@@ -68,11 +73,8 @@ class HttpFile(VFSFile, io.RawIOBase):
         """
 
         try:
-            # define URL
-            url = urljoin(self._download_path, self._filename)
-
             # do request
-            r = requests_retry_session().get(url, stream=True, auth=self._auth, verify=self._verify_tls, timeout=5)
+            r = requests_retry_session().get(self.url, stream=True, auth=self._auth, verify=self._verify_tls, timeout=5)
 
         except requests.exceptions.ConnectionError:
             log.error('Could not connect to filecache.')
@@ -89,11 +91,11 @@ class HttpFile(VFSFile, io.RawIOBase):
             log.error('Could not download file from filecache.')
             raise FileNotFoundError
 
-    def readable(self):
+    def readable(self) -> bool:
         """File is readable if it was opened in 'r' mode."""
         return 'r' in self._mode
 
-    def read(self, size: int = -1):
+    def read(self, size: int = -1) -> bytes:
         """Read number of bytes from stream.
 
         Args:
@@ -102,6 +104,10 @@ class HttpFile(VFSFile, io.RawIOBase):
         Returns:
             Read bytes.
         """
+
+        # load file
+        if len(self._buffer) == 0 and self.readable():
+            self._download()
 
         # check size
         if size == -1:
@@ -115,11 +121,11 @@ class HttpFile(VFSFile, io.RawIOBase):
         # return data
         return data
 
-    def seekable(self):
+    def seekable(self) -> bool:
         """Stream is seekable."""
         return True
 
-    def seek(self, offset: int, whence=io.SEEK_SET):
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
         """Seek in stream.
 
         Args:
@@ -137,20 +143,21 @@ class HttpFile(VFSFile, io.RawIOBase):
 
         # limit
         self._pos = max(0, min(len(self) - 1, self._pos))
+        return self._pos
 
-    def tell(self):
+    def tell(self) -> int:
         """Give current position on stream."""
         return self._pos
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Length of stream buffer."""
         return len(self._buffer)
 
-    def writable(self):
+    def writable(self) -> bool:
         """File is writable if it was opened in 'w' mode."""
         return 'w' in self._mode
 
-    def write(self, b: bytearray):
+    def write(self, b: bytes) -> None:  # type: ignore
         """Write data into the stream.
 
         Args:
@@ -158,7 +165,7 @@ class HttpFile(VFSFile, io.RawIOBase):
         """
         self._buffer += b
 
-    def close(self):
+    def close(self) -> None:
         """Close stream."""
 
         # write it?
@@ -171,13 +178,17 @@ class HttpFile(VFSFile, io.RawIOBase):
         # close RawIOBase
         io.RawIOBase.close(self)
 
-    def _upload(self):
+    def _upload(self) -> None:
         """If in write mode, actually send the file to the HTTP server."""
 
         # filename given?
         headers = {}
         if self._filename is not None:
             headers['content-disposition'] = 'attachment; filename="%s"' % self._filename
+
+        # check
+        if self._upload_path is None:
+            raise ValueError('No upload URL given.')
 
         # send data and return image ID
         try:
@@ -199,7 +210,7 @@ class HttpFile(VFSFile, io.RawIOBase):
             raise FileNotFoundError
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """Whether the stream is closed."""
         return not self._open
 

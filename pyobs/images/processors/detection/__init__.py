@@ -3,4 +3,7 @@ Source Detection
 ----------------
 """
 from .sourcedetection import SourceDetection
-from .sep import SepSourceDetection
+from .pysep import SepSourceDetection
+from .daophot import DaophotSourceDetection
+
+__all__ = ['SourceDetection', 'SepSourceDetection', 'DaophotSourceDetection']

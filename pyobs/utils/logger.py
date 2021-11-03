@@ -1,33 +1,25 @@
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from typing import Any
 
 
-def setup_logger(log_file, level=logging.INFO, stdout=False):
-    # format
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
+class DuplicateFilter(logging.Filter):
+    """Logging filter that removes duplicate entries.
 
-    # handlers
-    handlers = []
+    Should be used with new logger, e.g.:
+        log = logging.getLogger('filtered_logger')
+        log.addFilter(DuplicateFilter())
+        log.info('Test')
+    """
 
-    # file
-    if log_file is not None:
-        file_handler = TimedRotatingFileHandler(log_file, when='W0')
-        #file_handler = logging.FileHandler(log_file, mode='a')
-        file_handler.setFormatter(formatter)
-        handlers.append(file_handler)
+    def __init__(self, *args: Any, **kwargs: Any):
+        logging.Filter.__init__(self, *args, **kwargs)
+        self.last_log = ''
 
-    # stdout
-    if stdout:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        handlers.append(stream_handler)
-
-    # basic setup
-    logging.basicConfig(handlers=handlers, level=level)
-    logging.captureWarnings(True)
-
-    # disable tornado logger
-    logging.getLogger('tornado.access').disabled = True
+    def filter(self, record: Any) -> bool:
+        if record.getMessage() != getattr(self, "last_log", None):
+            self.last_log = record.getMessage()
+            return True
+        return False
 
 
-__all__ = ['setup_logger']
+__all__ = ['DuplicateFilter']

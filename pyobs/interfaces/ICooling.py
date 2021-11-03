@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 from .ITemperatures import ITemperatures
 
@@ -7,7 +7,7 @@ class ICooling(ITemperatures):
     """The module can control the cooling of a device."""
     __module__ = 'pyobs.interfaces'
 
-    def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
+    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -18,7 +18,7 @@ class ICooling(ITemperatures):
         """
         raise NotImplementedError
 
-    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
+    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:

@@ -1,13 +1,21 @@
-from .event import Event
+from typing import Optional, Any
+from typing_extensions import TypedDict
+
+from pyobs.events.event import Event
+
+
+DataType = TypedDict('DataType', {'time': str, 'level': str, 'filename': str,
+                                  'function': str, 'line': int, 'message': str})
 
 
 class LogEvent(Event):
     """Event for log entries."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, time=None, level=None, filename=None, function=None, line=None, message=None):
+    def __init__(self, time: str, level: str, filename: str, function: str, line: int, message: str,
+                 **kwargs: Any):
         Event.__init__(self)
-        self.data = {
+        self.data: DataType = {
             'time': time,
             'level': level,
             'filename': filename,
@@ -17,28 +25,28 @@ class LogEvent(Event):
         }
 
     @property
-    def time(self):
-        return self.data['time']
+    def time(self) -> str:
+        return str(self.data['time'])
 
     @property
-    def level(self):
-        return self.data['level']
+    def level(self) -> str:
+        return str(self.data['level'])
 
     @property
-    def filename(self):
-        return self.data['filename']
+    def filename(self) -> str:
+        return str(self.data['filename'])
 
     @property
-    def function(self):
-        return self.data['function']
+    def function(self) -> str:
+        return str(self.data['function'])
 
     @property
-    def line(self):
-        return self.data['line']
+    def line(self) -> Optional[int]:
+        return int(self.data['line'])
 
     @property
-    def message(self):
-        return self.data['message']
+    def message(self) -> str:
+        return str(self.data['message'])
 
 
 __all__ = ['LogEvent']

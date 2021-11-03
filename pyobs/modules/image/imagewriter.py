@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from typing import Union, List
+from typing import Union, List, Any, Optional
 
 from pyobs.modules import Module
 from pyobs.events import NewImageEvent
@@ -13,15 +13,15 @@ class ImageWriter(Module):
     """Writes new images to disk."""
     __module__ = 'pyobs.modules.image'
 
-    def __init__(self, filename: str = '/archive/{FNAME}', sources: Union[str, List[str]] = None,
-                 *args, **kwargs):
+    def __init__(self, filename: str = '/archive/{FNAME}', sources: Optional[Union[str, List[str]]] = None,
+                 **kwargs: Any):
         """Creates a new image writer.
 
         Args:
             filename: Pattern for filename to store images at.
             sources: List of sources (e.g. cameras) to process images from or None for all.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._worker, True)
@@ -31,7 +31,7 @@ class ImageWriter(Module):
         self._sources = [sources] if isinstance(sources, str) else sources
         self._queue = Queue()
 
-    def open(self):
+    def open(self) -> None:
         """Open image writer."""
         Module.open(self)
 
@@ -40,7 +40,7 @@ class ImageWriter(Module):
             log.info('Subscribing to new image events...')
             self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -53,13 +53,14 @@ class ImageWriter(Module):
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
-            return
+            return False
 
         # queue file
         log.info('Received new image event from %s.', sender)
         self._queue.put(event.filename)
+        return True
 
-    def _worker(self):
+    def _worker(self) -> None:
         """Worker thread."""
 
         # run forever

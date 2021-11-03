@@ -1,11 +1,11 @@
 import logging
 import os
 import subprocess
+from typing import Optional, Any
 
-from pyobs.events import Event
+from pyobs.interfaces.proxies import IAutonomousProxy
 from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
-from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)
 
@@ -14,9 +14,10 @@ class AutonomousWarning(Module):
     """A module that can plays a warning sound while an IAutonomous module is running."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, warn_sound: str, warn_interval: float = 1,
-                 start_sound: str = None, started_sound: str = None, stop_sound: str = None, stopped_sound: str = None,
-                 player: str = 'mpg123', trigger_file: str = None, *args, **kwargs):
+    def __init__(self, warn_sound: str, warn_interval: float = 1, start_sound: Optional[str] = None,
+                 started_sound: Optional[str] = None, stop_sound: Optional[str] = None,
+                 stopped_sound: Optional[str] = None, player: str = 'mpg123', trigger_file: Optional[str] = None,
+                 **kwargs: Any):
         """Initialize a new warning.
 
         Args:
@@ -29,7 +30,7 @@ class AutonomousWarning(Module):
             trigger_file: File, which triggers to switch on-off and vice versa, when created.
                 Will be deleted afterwards.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._warn_sound = warn_sound
@@ -47,7 +48,7 @@ class AutonomousWarning(Module):
         self.add_thread_func(self._check_autonomous)
         self.add_thread_func(self._check_trigger)
 
-    def _play_sound(self, sound: str):
+    def _play_sound(self, sound: str) -> None:
         """Play a sound.
 
         Args:
@@ -61,7 +62,7 @@ class AutonomousWarning(Module):
         # play sound and set stderr to devnull to avoid warning
         subprocess.Popen([self._player, '-q', sound], stderr=subprocess.DEVNULL,).wait()
 
-    def _heartbeat(self):
+    def _heartbeat(self) -> None:
         """Play sound in given interval, if an autonomous module is running."""
 
         while not self.closing.is_set():
@@ -72,18 +73,21 @@ class AutonomousWarning(Module):
             # sleep
             self.closing.wait(self._warn_interval)
 
-    def _check_autonomous(self):
+    def _check_autonomous(self) -> None:
         """Checks for autonomous modules."""
 
         while not self.closing.is_set():
             # check for autonomous modules
             autonomous = list(self.comm.clients_with_interface(IAutonomous))
-            is_auto = any([self.comm[a].is_running().wait() for a in autonomous])
+            is_auto = any([self.comm.proxy(a, IAutonomousProxy).is_running().wait() for a in autonomous])
 
             # did it change?
             if is_auto != self._autonomous:
                 log.info('Robotic systems %s.', 'started' if is_auto else 'stopped')
-                self._play_sound(self._started_sound if is_auto else self._stopped_sound)
+                if self._stop_sound is not None and is_auto:
+                    self._play_sound(self._stop_sound)
+                elif self._start_sound is not None and not is_auto:
+                    self._play_sound(self._start_sound)
 
             # store it
             self._autonomous = is_auto
@@ -91,7 +95,7 @@ class AutonomousWarning(Module):
             # sleep a little
             self.closing.wait(1)
 
-    def _check_trigger(self):
+    def _check_trigger(self) -> None:
         """Checks for trigger to start/stop autonomous modules."""
 
         while not self.closing.is_set():
@@ -99,17 +103,20 @@ class AutonomousWarning(Module):
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
                 autonomous = list(self.comm.clients_with_interface(IAutonomous))
-                is_auto = any([self.comm[a].is_running().wait() for a in autonomous])
+                is_auto = any([self.proxy(a, IAutonomousProxy).is_running().wait() for a in autonomous])
 
                 # play sound
-                self._play_sound(self._stop_sound if is_auto else self._start_sound)
+                if self._stop_sound is not None and is_auto:
+                    self._play_sound(self._stop_sound)
+                elif self._start_sound is not None and not is_auto:
+                    self._play_sound(self._start_sound)
 
                 # loop all modules
                 log.info('%s robotic systems:', 'Stopping' if is_auto else 'Starting')
                 for auto in autonomous:
                     # get proxy
                     log.info('  - %s', auto)
-                    proxy: IAutonomous = self.comm[auto]
+                    proxy: IAutonomousProxy = self.comm.proxy(auto)
 
                     # start/stop
                     if is_auto:

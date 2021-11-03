@@ -1,29 +1,46 @@
 from __future__ import annotations
+import copy
 import io
-from enum import Enum
+from typing import TypeVar, Optional, Type, Dict, Any, cast
 
 import numpy as np
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
+from numpy.typing import NDArray
+
+from pyobs.utils.fits import FilenameFormatter
+
+MetaClass = TypeVar('MetaClass')
 
 
 class Image:
     """Image class."""
     __module__ = 'pyobs.images'
 
-    class CombineMethod(Enum):
-        MEAN = 'mean'
-        MEDIAN = 'median'
-        SIGMA = 'sigma'
+    def __init__(self, data: Optional[NDArray[Any]] = None, header: Optional[fits.Header] = None,
+                 mask: Optional[NDArray[Any]] = None, uncertainty: Optional[NDArray[Any]] = None,
+                 catalog: Optional[Table] = None, meta: Optional[Dict[Any, Any]] = None,
+                 *args: Any, **kwargs: Any):
+        """Init a new image.
 
-    def __init__(self, data: np.ndarray = None, header: fits.Header = None, *args, **kwargs):
+        Args:
+            data: Numpy array containing data for image.
+            header: Header for the new image.
+            mask: Mask for the image.
+            uncertainty: Uncertainty image.
+            catalog: Catalog table.
+            meta: Dictionary with meta information (note: not preserved in I/O operations!).
+        """
+
+        # store
         self.data = data
-        self.header = fits.Header() if header is None else header
-        self.mask = None
-        self.uncertainty = None
-        self.catalog = None
+        self.header = fits.Header() if header is None else header.copy()
+        self.mask = None if mask is None else mask.copy()
+        self.uncertainty = None if uncertainty is None else uncertainty.copy()
+        self.catalog = None if catalog is None else catalog.copy()
+        self.meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
         if data is not None:
@@ -31,21 +48,35 @@ class Image:
             self.header['NAXIS2'] = data.shape[0]
 
     @classmethod
-    def from_bytes(cls, data) -> Image:
+    def from_bytes(cls, data: bytes) -> Image:
+        """Create Image from a bytes array containing a FITS file.
+
+        Args:
+            data: Bytes array to create image from.
+
+        Returns:
+            The new image.
+        """
+
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
             data = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # load image
-            image = cls._from_hdu_list(data)
-
-            # close file
-            data.close()
-            return image
+            return cls._from_hdu_list(data)
 
     @classmethod
     def from_file(cls, filename: str) -> Image:
+        """Create image from FITS file.
+
+        Args:
+            filename: Name of file to load image from.
+
+        Returns:
+            New image.
+        """
+
         # open file
         data = fits.open(filename, memmap=False, lazy_load_hdus=False)
 
@@ -57,15 +88,25 @@ class Image:
         return image
 
     @classmethod
-    def from_ccddata(cls, image: CCDData) -> Image:
+    def from_ccddata(cls, data: CCDData) -> Image:
+        """Create image from astropy.CCDData.
+
+        Args:
+            data: CCDData to create image from.
+
+        Returns:
+            New image.
+        """
+
         # create image and assign data
-        image = Image(data=image.data, header=image.header)
-        image.mask = image.mask
-        image.uncertainty = image.uncertainty
+        image = Image(data=data.data.astype(np.float32),
+                      header=data.header,
+                      mask=None if data.mask is None else data.mask,
+                      uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32))
         return image
 
     @classmethod
-    def _from_hdu_list(cls, data):
+    def _from_hdu_list(cls, data: fits.HDUList) -> 'Image':
         """Load Image from HDU list.
 
         Args:
@@ -108,18 +149,35 @@ class Image:
         # finished
         return image
 
-    def copy(self):
-        img = Image()
-        img.data = self.data.copy()
-        img.header = self.header
-        return img
+    @property
+    def unit(self) -> str:
+        """Returns units of pixels in image."""
+        return str(self.header['BUNIT']).lower() if 'BUNIT' in self.header else 'adu'
 
-    def __truediv__(self, other):
+    def __deepcopy__(self) -> Image:
+        """Returns a shallow copy of this image."""
+        return self.copy()
+
+    def copy(self) -> Image:
+        """Returns a copy of this image."""
+        return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
+                     catalog=self.catalog, meta=self.meta)
+
+    def __truediv__(self, other: 'Image') -> 'Image':
+        """Divides this image by other."""
         img = self.copy()
-        img.data /= other
+        if img.data is None or other.data is None:
+            raise ValueError('One image in division is None.')
+        img.data /= other.data
         return img
 
-    def writeto(self, f, *args, **kwargs):
+    def writeto(self, f: Any, *args: Any, **kwargs: Any) -> None:
+        """Write image as FITS to given file object.
+
+        Args:
+            f: File object to write to.
+        """
+
         # create HDU list
         hdu_list = fits.HDUList([])
 
@@ -135,7 +193,7 @@ class Image:
 
         # mask?
         if self.mask is not None:
-            hdu = ImageHDU(self.mask.data.astype(np.uint8))
+            hdu = ImageHDU(self.mask.astype(np.uint8))
             hdu.name = 'MASK'
             hdu_list.append(hdu)
 
@@ -148,7 +206,14 @@ class Image:
         # write it
         hdu_list.writeto(f, *args, **kwargs)
 
-    def write_catalog(self, f, *args, **kwargs):
+    def to_bytes(self) -> bytes:
+        """Write to a bytes array and return it."""
+        with io.BytesIO() as bio:
+            self.writeto(bio)
+            return bio.getvalue()
+
+    def write_catalog(self, f: Any, *args: Any, **kwargs: Any) -> None:
+        """Write catalog to file object."""
         if self.catalog is None:
             return
 
@@ -157,123 +222,28 @@ class Image:
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
-        return CCDData(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty)
+        return CCDData(data=self.data,
+                       meta=self.header,
+                       mask=None if self.mask is None else self.mask,
+                       uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
+                       unit='adu')
 
-    def _section(self, keyword: str = 'TRIMSEC') -> np.ndarray:
-        """Trim an image to TRIMSEC or BIASSEC.
-
-        Args:
-            hdu: HDU to take data from.
-            keyword: Header keyword for section.
-
-        Returns:
-            Numpy array with image data.
-        """
-
-        # keyword not given?
-        if keyword not in self.header:
-            # return whole data
-            return self.data
-
-        # get value of section
-        sec = self.header[keyword]
-
-        # split values
-        s = sec[1:-1].split(',')
-        x = s[0].split(':')
-        y = s[1].split(':')
-        x0 = int(x[0]) - 1
-        x1 = int(x[1])
-        y0 = int(y[0]) - 1
-        y1 = int(y[1])
-
-        # return data
-        return self.data[y0:y1, x0:x1]
-
-    def _subtract_overscan(self):
-        # got a BIASSEC?
-        if 'BIASSEC' not in self.header:
-            return
-
-        # get mean of BIASSEC
-        biassec = np.mean(self._section('BIASSEC'))
-
-        # subtract mean
-        self.header['L1OVRSCN'] = (biassec, 'Subtracted mean BIASSEC counts')
-        self.data -= biassec
-
-    def trim(self):
-        # TRIMSEC exists?
-        if 'TRIMSEC' in self.header:
-            # create new image
-            img = self.copy()
-
-            # trim data
-            img.data = img._section('TRIMSEC')
-
-            # adjust size in fits headers
-            img.header['NAXIS2'], img.header['NAXIS1'] = img.data.shape
-
-            # delete keywords
-            for key in ['TRIMSEC', 'BIASSEC', 'DATASEC']:
-                if key in img.header:
-                    del img.header[key]
-
-            # finished
-            return img
-
-        else:
-            # don't do anything
-            return self
-
-    def calibrate(self, bias: 'BiasFrame' = None, dark: 'DarkFrame' = None, flat: 'FlatFrame' = None):
-        # copy image
-        img = self.copy()
-
-        # to float32
-        img.data = img.data.astype(np.float32)
-
-        # subtract overscan
-        img._subtract_overscan()
-
-        # subtract bias
-        if bias is not None:
-            img.data -= bias.data
-            img.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                    'Name of BIAS frame')
-
-        # subtract dark
-        if dark is not None:
-            img.data -= dark.data * img.header['EXPTIME']
-            img.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                    'Name of DARK frame')
-
-        # divide by flat
-        if flat is not None:
-            img.data /= flat.data
-            img.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                   'Name of FLAT frame')
-
-        # it's reduced now
-        img.header['RLEVEL'] = 1
-
-        # finished
-        return img
-
-    def format_filename(self, formatter):
+    def format_filename(self, formatter: FilenameFormatter) -> str:
+        """Format filename with given formatter."""
         self.header['FNAME'] = formatter(self.header)
+        return str(self.header['FNAME'])
 
     @property
-    def pixel_scale(self):
+    def pixel_scale(self) -> Optional[float]:
         """Returns pixel scale in arcsec/pixel."""
         if 'CD1_1' in self.header:
-            return abs(self.header['CD1_1']) * 3600.
+            return abs(float(self.header['CD1_1'])) * 3600.
         elif 'CDELT1' in self.header:
-            return abs(self.header['CDELT1']) * 3600.
+            return abs(float(self.header['CDELT1'])) * 3600.
         else:
             return None
 
-    def to_jpeg(self, vmin: float = None, vmax: float = None) -> bytes:
+    def to_jpeg(self, vmin: Optional[float] = None, vmax: Optional[float] = None) -> bytes:
         """Returns a JPEG image created from this image.
 
         Returns:
@@ -284,13 +254,17 @@ class Image:
         import PIL.Image
 
         # copy data
-        data = np.copy(self.data)
+        data: NDArray[Any] = np.copy(self.data)  # type: ignore
+        if data is None:
+            raise ValueError('No data in image.')
 
         # no vmin/vmax?
         if vmin is None or vmax is None:
             flattened = sorted(data.flatten())
             vmin = flattened[int(0.05 * len(flattened))]
             vmax = flattened[int(0.95 * len(flattened))]
+            if vmin is None or vmax is None:
+                raise ValueError('Could not determine vmin/vmax.')
 
         # Clip data to brightness limits
         data[data > vmax] = vmax
@@ -310,6 +284,52 @@ class Image:
         with io.BytesIO() as bio:
             image.save(bio, format='jpeg')
             return bio.getvalue()
+
+    def set_meta(self, meta: Any) -> None:
+        """Sets meta information, storing it under it class.
+
+        Note that it is possible to store, e.g., strings, but they would be stored as img.meta[str] and be overwritten
+        with every new string, which is probably not what you want. Use the img.meta dict directly for this and
+        set_meta/get_meta only for class-based data.
+
+        Args:
+            meta: Meta information to store.
+        """
+
+        # store it
+        self.meta[meta.__class__] = meta
+
+    def has_meta(self, meta_class: Type[MetaClass]) -> bool:
+        """Whether meta exists."""
+        return meta_class in self.meta
+
+    def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
+        """Returns meta information, assuming that it is stored under the class of the object.
+
+        Args:
+            meta_class: Class to return meta information for.
+
+        Returns:
+            Meta information of the given class.
+        """
+        # return default?
+        if meta_class not in self.meta:
+            raise ValueError('Meta value not found.')
+
+        # correct type?
+        if not isinstance(self.meta[meta_class], meta_class):
+            raise ValueError('Stored meta information is of wrong type.')
+
+        # return it
+        return cast(MetaClass, self.meta[meta_class])
+
+    def get_meta_safe(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
+        """Calls get_meta in a safe way and returns default value in case of an exception."""
+
+        try:
+            return self.get_meta(meta_class)
+        except:
+            return default
 
 
 __all__ = ['Image']

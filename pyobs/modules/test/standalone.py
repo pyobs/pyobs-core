@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyobs.modules import Module
 
@@ -10,14 +11,14 @@ class StandAlone(Module):
     """Example module that only logs the given message forever in the given interval."""
     __module__ = 'pyobs.modules.test'
 
-    def __init__(self, message: str = 'Hello world', interval: int = 10, *args, **kwargs):
+    def __init__(self, message: str = 'Hello world', interval: int = 10, **kwargs: Any):
         """Creates a new StandAlone object.
 
         Args:
             message: Message to log in the given interval.
             interval: Interval between messages.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._message_func, True)

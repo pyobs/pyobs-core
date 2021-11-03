@@ -1,17 +1,16 @@
+from typing import Any
 from astroplan import Observer
 
-from pyobs.interfaces import ITelescope
+from pyobs.interfaces.proxies import ITelescopeProxy
+from pyobs.object import Object
 from pyobs.utils.threads import Future
 
 
-class SkyFlatsBasePointing:
+class SkyFlatsBasePointing(Object):
     """Base class for flat poinings."""
     __module__ = 'pyobs.utils.skyflats.pointing'
 
-    def __init__(self, observer: Observer, *args, **kwargs):
-        self.observer = observer
-
-    def __call__(self, telescope: ITelescope) -> Future:
+    def __call__(self, telescope: ITelescopeProxy) -> Future[None]:
         """Move telescope.
 
         Args:
@@ -22,7 +21,7 @@ class SkyFlatsBasePointing:
         """
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset pointing."""
         pass
 

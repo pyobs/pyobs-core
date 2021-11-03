@@ -1,11 +1,40 @@
 ## Changelog
 
+### v0.14 (xxx)
+* Guiding modules accept a pipeline now, so more image processors than just Offsets can run.
+* Renamed ICameraBinning, ICameraExposureTime and ICameraWindow and removed the "Camera" part.
+* Added meta attribute (temporary storage, not I/O persistent) to Image.
+* Extracted IImageGrabber from ICamera and renamed expose() to grab_image().
+* Added new IVideo interface and a corresponding BaseVideo module.
+* Raising exception, if XmppComm cannot connect to server, allowing for graceful exit.
+* On shutdown, wait for hanging threads, and kill them after 30 seconds.
+* Multi-processing for the pipeline, using ccdproc now.
+* New interface IPointingSeries, giving access to methods at the telescope that support pointing series.
+* Send logs in thread.
+* Added concept of image processors that take an Image as parameter and return it after some processing.
+* Added new NStarOffsets image processor (T. Masur).
+* Improved scheduler.
+* Added pipelines that take a list of image processors (see Pipeline mixin).
+* Re-organized all get_object methods.
+* Improved type hints throughout the code.
+* Renamed all coordinated interfaces (IRaDec, etc) to IPointing*, i.e. IPointingRaDec.
+* Renamed all offset interfaces to IOffsets*, i.e. IOffsetsRaDec.
+* Renamed IFitsHeaderProvider to IFitsHeaderBefore and also renamed its only method.
+* Added IFitsHeaderAfter to fetch FITS headers after an exposure as well.
+* Moved functionality from Module to Object.
+* New meta data system for images.
+* Renamed IStoppable to IStartStop.
+* Added new proxy interfaces in interfaces.proxies. All proxies now derive from these interfaces instead of the 
+  original ones.
+* And a lot more cleanup and re-organization.
+
+
 ### v0.13 (2021-04-30)
 * Added a Telegram bot module.
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
 * Moved more enums into utils.enums, like WeatherSensors and MotionStatus.
-* Added list_binnings() to ICameraBinning interface and (temporary) default implementation in BaseCamera.
+* Added list_binnings() to IBinning interface and (temporary) default implementation in BaseCamera.
 * Restructured image processors into pyobs.image.processors.
 * Split photometry into separate SourceDetection and Photometry interfaces, added DaophotSourceDetection, and 
   PhotUtilsPhotometry.
@@ -31,7 +60,7 @@
 * Added new IConfig interface which is implemented in every module and allows remote access to config parameters 
   (if getter/setters are implemented).
 * Removed count parameter from ICamera.expose().
-* Removed exposure_time parameter from ICamera.expose() and introduced ICameraExposureTime interface.
+* Removed exposure_time parameter from ICamera.expose() and introduced IExposureTime interface.
 * Removed image_type parameter from ICamera.expose() and introduced IImageType.
 * Moved ImageType enumerator from ICamera to utils.enums.
 

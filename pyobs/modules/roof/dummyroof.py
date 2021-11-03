@@ -1,5 +1,6 @@
 import logging
 import threading
+from typing import Any, Optional
 
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
 from pyobs.interfaces import IRoof
@@ -15,9 +16,9 @@ class DummyRoof(BaseRoof, IRoof):
     """A dummy camera for testing."""
     __module__ = 'pyobs.modules.roof'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Creates a new dummy root."""
-        BaseRoof.__init__(self, *args, **kwargs)
+        BaseRoof.__init__(self, **kwargs)
 
         # dummy state
         self.open_percentage = 0
@@ -31,7 +32,7 @@ class DummyRoof(BaseRoof, IRoof):
         self.comm.register_event(RoofClosingEvent)
 
     @timeout(15)
-    def open_roof(self, *args, **kwargs):
+    def open_roof(self, **kwargs: Any) -> None:
         """Open the roof.
 
         Raises:
@@ -68,7 +69,7 @@ class DummyRoof(BaseRoof, IRoof):
                 self.comm.send_event(RoofOpenedEvent())
 
     @timeout(15)
-    def close_roof(self, *args, **kwargs):
+    def close_roof(self, **kwargs: Any) -> None:
         """Close the roof.
 
         Raises:
@@ -105,7 +106,7 @@ class DummyRoof(BaseRoof, IRoof):
         """Get the percentage the roof is open."""
         return self.open_percentage
 
-    def stop_motion(self, device: str = None, *args, **kwargs):
+    def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:

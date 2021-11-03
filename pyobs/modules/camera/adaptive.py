@@ -6,7 +6,7 @@
 # import numpy as np
 #
 # from pyobs.modules import Module
-# from pyobs.interfaces import ICamera, ISettings, ICameraWindow, ICameraBinning
+# from pyobs.interfaces import ICamera, ISettings, IWindow, IBinning
 # from pyobs.modules import timeout
 # from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 # from pyobs.utils.enums import ImageType
@@ -23,13 +23,13 @@
 #     BRIGHTEST = 'brightest'
 #
 #
-# class AdaptiveCamera(Module, ICamera, ICameraWindow, ICameraBinning, ISettings):
+# class AdaptiveCamera(Module, ICamera, IWindow, IBinning, ISettings):
 #     """A virtual camera for adaptive exposure times."""
 #     # TODO: adapt this to new ICamera interface or remove!
 #
 #     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
 #                  target_counts: int = 30000, min_exptime: float = 0.5, max_exptime: float = 60, history: int = 10,
-#                  *args, **kwargs):
+#                  **kwargs: Any):
 #         """Creates a new adaptive exposure time camera.
 #
 #         Args:
@@ -41,7 +41,7 @@
 #             max_exptime: Maximum exposure time.
 #             history: Length of history.
 #         """
-#         Module.__init__(self, *args, **kwargs)
+#         Module.__init__(self, **kwargs)
 #
 #         # store
 #         self._camera_name = camera
@@ -85,7 +85,7 @@
 #         self._camera = self.proxy(self._camera_name, ICamera)
 #
 #     @timeout('(exposure_time+10)*count')
-#     def expose(self, exposure_time: int, image_type: ImageType, broadcast: bool = True, *args, **kwargs) -> str:
+#     def expose(self, exposure_time: int, image_type: ImageType, broadcast: bool = True, **kwargs: Any) -> str:
 #         """Starts exposure and returns reference to image.
 #
 #         Args:
@@ -133,7 +133,7 @@
 #         # return filenames
 #         return return_filenames
 #
-#     def abort(self, *args, **kwargs):
+#     def abort(self, **kwargs: Any):
 #         """Aborts the current exposure and sequence.
 #
 #         Returns:
@@ -142,7 +142,7 @@
 #         self._abort.set()
 #         self._camera.abort().wait()
 #
-#     def get_exposure_status(self, *args, **kwargs) -> ExposureStatus:
+#     def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
 #         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 #
 #         Returns:
@@ -150,7 +150,7 @@
 #         """
 #         return self._camera.get_exposure_status().wait()
 #
-#     def abort_sequence(self, *args, **kwargs):
+#     def abort_sequence(self, **kwargs: Any):
 #         """Aborts the current sequence after current exposure.
 #
 #         Raises:
@@ -160,7 +160,7 @@
 #         self._exposures_done = None
 #         return self._camera.abort_sequence().wait()
 #
-#     def get_exposures_left(self, *args, **kwargs) -> int:
+#     def get_exposures_left(self, **kwargs: Any) -> int:
 #         """Returns the remaining exposures.
 #
 #         Returns:
@@ -171,7 +171,7 @@
 #         else:
 #             return self._exposure_count - self._exposures_done
 #
-#     def get_exposure_time_left(self, *args, **kwargs) -> float:
+#     def get_exposure_time_left(self, **kwargs: Any) -> float:
 #         """Returns the remaining exposure time on the current exposure in ms.
 #
 #         Returns:
@@ -179,7 +179,7 @@
 #         """
 #         return self._camera.get_exposures_left().wait()
 #
-#     def get_exposure_progress(self, *args, **kwargs) -> float:
+#     def get_exposure_progress(self, **kwargs: Any) -> float:
 #         """Returns the progress of the current exposure in percent.
 #
 #         Returns:
@@ -187,7 +187,7 @@
 #         """
 #         return self._camera.get_exposure_progress().wait()
 #
-#     def _status_changed(self, event: ExposureStatusChangedEvent, sender: str, *args, **kwargs):
+#     def _status_changed(self, event: ExposureStatusChangedEvent, sender: str, **kwargs: Any):
 #         """Processing status change of camera.
 #
 #         Args:
@@ -294,7 +294,7 @@
 #         else:
 #             raise ValueError('Unknown target mode.')
 #
-#     def get_settings(self, *args, **kwargs) -> dict:
+#     def get_settings(self, **kwargs: Any) -> dict:
 #         """Returns a dict of name->type pairs for settings."""
 #         return {
 #             'target_counts': 'int',
@@ -302,7 +302,7 @@
 #             'max_exp_time': 'int'
 #         }
 #
-#     def get_setting_value(self, setting: str, *args, **kwargs):
+#     def get_setting_value(self, setting: str, **kwargs: Any):
 #         """Returns the value of the given setting.
 #
 #         Args:
@@ -323,7 +323,7 @@
 #         else:
 #             raise KeyError
 #
-#     def set_setting_value(self, setting: str, value, *args, **kwargs):
+#     def set_setting_value(self, setting: str, value, **kwargs: Any):
 #         """Sets the value of the given setting.
 #
 #         Args:
@@ -342,7 +342,7 @@
 #         else:
 #             raise KeyError
 #
-#     def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+#     def get_full_frame(self, **kwargs: Any) -> (int, int, int, int):
 #         """Returns full size of CCD.
 #
 #         Returns:
@@ -350,12 +350,12 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraWindow):
+#         if isinstance(self._camera, IWindow):
 #             return self._camera.get_full_frame().wait()
 #         else:
 #             return 0, 0, 100, 100
 #
-#     def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+#     def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any):
 #         """Set the camera window.
 #
 #         Args:
@@ -369,10 +369,10 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraWindow):
+#         if isinstance(self._camera, IWindow):
 #             self._camera.set_window(left, top, width, height).wait()
 #
-#     def get_window(self, *args, **kwargs) -> (int, int, int, int):
+#     def get_window(self, **kwargs: Any) -> (int, int, int, int):
 #         """Returns the camera window.
 #
 #         Returns:
@@ -380,12 +380,12 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraWindow):
+#         if isinstance(self._camera, IWindow):
 #             return self._camera.get_window().wait()
 #         else:
 #             return 0, 0, 100, 100
 #
-#     def set_binning(self, x: int, y: int, *args, **kwargs):
+#     def set_binning(self, x: int, y: int, **kwargs: Any):
 #         """Set the camera binning.
 #
 #         Args:
@@ -397,10 +397,10 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraBinning):
+#         if isinstance(self._camera, IBinning):
 #             self._camera.set_binning(x, y).wait()
 #
-#     def get_binning(self, *args, **kwargs) -> (int, int):
+#     def get_binning(self, **kwargs: Any) -> (int, int):
 #         """Returns the camera binning.
 #
 #         Returns:
@@ -408,7 +408,7 @@
 #         """
 #
 #         # only do this, if wrapped camera doesn't support this
-#         if isinstance(self._camera, ICameraBinning):
+#         if isinstance(self._camera, IBinning):
 #             return self._camera.get_binning().wait()
 #         else:
 #             return 1, 1

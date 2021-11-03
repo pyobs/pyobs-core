@@ -5,4 +5,7 @@ Source extraction
 
 from .photometry import Photometry
 from .photutil import PhotUtilsPhotometry
-from .sep import SepPhotometry
+from .pysep import SepPhotometry
+
+
+__all__ = ['Photometry', 'PhotUtilsPhotometry', 'SepPhotometry']

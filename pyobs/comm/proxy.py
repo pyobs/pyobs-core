@@ -1,15 +1,21 @@
 from __future__ import annotations
 import inspect
 import types
+from typing import TYPE_CHECKING, Any, Type, List, Dict
 
+from pyobs.interfaces import Interface
+from pyobs.utils.threads.future import BaseFuture
 from pyobs.utils.types import cast_bound_arguments_to_simple
+import pyobs.interfaces.proxies
+if TYPE_CHECKING:
+    from pyobs.comm import Comm
 
 
 class Proxy:
     """A proxy for remote pyobs modules."""
     __module__ = 'pyobs.comm'
 
-    def __init__(self, comm: 'Comm', client: str, interfaces: list):
+    def __init__(self, comm: 'Comm', client: str, interfaces: List[Type[Interface]]):
         """Creates a new proxy.
 
         Args:
@@ -17,7 +23,6 @@ class Proxy:
             client: Name of client to connect to.
             interfaces: List of interfaces supported by client.
         """
-        from .comm import Comm
 
         # set client and interfaces
         self._comm: Comm = comm
@@ -33,25 +38,30 @@ class Proxy:
                     to_delete.append(i2)
         interfaces = [i for i in interfaces if i not in to_delete]
 
+        # interface proxies
+        interface_proxies = []
+        for iface in interfaces:
+            interface_proxies.append(getattr(pyobs.interfaces.proxies, iface.__name__ + 'Proxy'))
+
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})
+        self.__class__ = cls.__class__("Proxy", tuple([cls] + interface_proxies), {})  # type: ignore
 
         # create methods
         self._methods = self._create_methods()
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Name of the client."""
         return self._client
 
     @property
-    def method_names(self):
+    def method_names(self) -> List[str]:
         """List of method names."""
         return list(sorted(self._methods.keys()))
 
     @property
-    def interfaces(self):
+    def interfaces(self) -> List[Type[Interface]]:
         """List of interfaces."""
         return self._interfaces
 
@@ -66,7 +76,7 @@ class Proxy:
         """
         return inspect.signature(self._methods[method][0])
 
-    def interface_method(self, method: str):
+    def interface_method(self, method: str) -> Any:
         """Returns the method of the given name from the interface and not from the object itself.
 
         Args:
@@ -77,7 +87,7 @@ class Proxy:
         """
         return self._methods[method][0]
 
-    def execute(self, method, *args, **kwargs):
+    def execute(self, method: str, *args: Any, **kwargs: Any) -> BaseFuture:
         """Execute a method on the remote client.
 
         Args:
@@ -101,11 +111,9 @@ class Proxy:
         cast_bound_arguments_to_simple(ba)
 
         # do request and return future
-        future = self._comm.execute(self._client, method, *ba.args[1:])
-        future.set_signature(signature)
-        return future
+        return self._comm.execute(self._client, method, signature, *ba.args[1:])
 
-    def _create_methods(self):
+    def _create_methods(self) -> Dict[str, Any]:
         """Create local methods for the remote client."""
 
         # loop all interfaces and get methods
@@ -123,7 +131,7 @@ class Proxy:
         # return methods
         return methods
 
-    def _remote_function_wrapper(self, method):
+    def _remote_function_wrapper(self, method: str) -> Any:
         """Function wrapper for remote calls.
 
         Args:
@@ -133,8 +141,8 @@ class Proxy:
             Wrapper.
         """
 
-        def inner(self, *args, **kwargs):
-            return self.execute(method, *args, **kwargs)
+        def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
+            return this.execute(method, *args, **kwargs)
 
         return inner
 

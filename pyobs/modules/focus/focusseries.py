@@ -1,11 +1,14 @@
 import logging
-from typing import Union, Tuple
+from typing import Union, Tuple, Dict, Any, Optional, cast
 import threading
 import numpy as np
+from numpy.typing import NDArray
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IFocuser, ICamera, IAutoFocus, IFilters, ICameraExposureTime, IImageType
+from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
+from pyobs.interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IFocuserProxy, IFiltersProxy, \
+    IImageGrabberProxy
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
@@ -19,17 +22,19 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera], filters: Union[str, IFilters],
-                 series: FocusSeries, offset: bool = False, *args, **kwargs):
+    def __init__(self, focuser: Union[str, IFocuserProxy], camera: Union[str, IImageGrabberProxy], series: FocusSeries,
+                 offset: bool = False, filters: Optional[Union[str, IFiltersProxy]] = None,
+                 filter_name: Optional[str] = None, binning: Optional[int] = None, **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
             focuser: Name of IFocuser.
             camera: Name of ICamera.
             filters: Name of IFilters, if any.
+            filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store focuser and camera
         self._focuser = focuser
@@ -42,9 +47,9 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._series: FocusSeries = get_object(series, FocusSeries)
 
         # init camera settings mixin
-        CameraSettingsMixin.__init__(self, *args, filters=filters, **kwargs)
+        CameraSettingsMixin.__init__(self, filters=filters, filter_name=filter_name, binning=binning, **kwargs)
 
-    def open(self):
+    def open(self) -> None:
         """Open module"""
         Module.open(self)
 
@@ -53,16 +58,16 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # check focuser and camera
         try:
-            self.proxy(self._focuser, IFocuser)
-            self.proxy(self._camera, ICamera)
+            self.proxy(self._focuser, IFocuserProxy)
+            self.proxy(self._camera, IImageGrabberProxy)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
-    def close(self):
+    def close(self) -> None:
         """Close module."""
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: int, *args, **kwargs) -> Tuple[float, float]:
+    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -84,11 +89,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
 
         # do camera settings
         self._do_camera_settings(camera)
@@ -96,7 +101,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # get filter wheel and current filter
         filter_name = 'unknown'
         try:
-            filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+            filter_wheel: IFiltersProxy = self.proxy(self._filters, IFiltersProxy)
             filter_name = filter_wheel.get_filter().wait()
         except ValueError:
             log.warning('Filter module is not of type IFilters. Could not get filter.')
@@ -104,7 +109,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # get focus as first guess
         try:
             if self._offset:
-                guess = 0
+                guess = 0.
                 log.info('Using focus offset of 0mm as initial guess.')
             else:
                 guess = focuser.get_focus().wait()
@@ -113,7 +118,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             raise ValueError('Could not fetch current focus value.')
 
         # define array of focus values to iterate
-        focus_values = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
+        focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
 
         # define set_focus method
         set_focus = focuser.set_focus_offset if self._offset else focuser.set_focus
@@ -139,11 +144,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                if isinstance(camera, ICameraExposureTime):
+                if isinstance(camera, IExposureTimeProxy):
                     camera.set_exposure_time(exposure_time)
-                if isinstance(camera, IImageType):
+                if isinstance(camera, IImageTypeProxy):
                     camera.set_image_type(ImageType.FOCUS)
-                filename = camera.expose().wait()
+                filename = camera.grab_image().wait()
             except RemoteException:
                 log.error('Could not take image.')
                 continue
@@ -200,7 +205,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, *args, **kwargs) -> dict:
+    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
@@ -211,7 +216,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         return {}
 
     @timeout(20)
-    def abort(self, *args, **kwargs):
+    def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 

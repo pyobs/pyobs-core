@@ -1,27 +1,33 @@
 from threading import Event
 import logging
-from typing import Union, Dict, Tuple
+from typing import Union, Dict, Tuple, Optional, List, Any
 
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
+from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
+
+# logger for logging name of task
+task_name_logger = logging.getLogger(__name__ + ':task_name')
+task_name_logger.addFilter(DuplicateFilter())
 
 
 class ConfigStatus:
     """Status of a single configuration."""
 
-    def __init__(self, state='ATTEMPTED', reason=''):
+    def __init__(self, state: str = 'ATTEMPTED', reason: str = ''):
         """Initializes a new Status with an ATTEMPTED."""
-        self.start = Time.now()
-        self.end = None
-        self.state = state
-        self.reason = reason
-        self.time_completed = 0
+        self.start: Time = Time.now()
+        self.end: Optional[Time] = None
+        self.state: str = state
+        self.reason: str = reason
+        self.time_completed: float = 0.
 
-    def finish(self, state=None, reason=None, time_completed: int = 0) -> 'ConfigStatus':
+    def finish(self, state: Optional[str] = None, reason: Optional[str] = None, time_completed: float = 0.) \
+            -> 'ConfigStatus':
         """Finish this status with the given values and the current time.
 
         Args:
@@ -37,7 +43,7 @@ class ConfigStatus:
         self.end = Time.now()
         return self
 
-    def to_json(self):
+    def to_json(self) -> Dict[str, Any]:
         """Convert status to JSON for sending to portal."""
         return {
             'state': self.state,
@@ -45,7 +51,7 @@ class ConfigStatus:
                 'state': self.state,
                 'reason': self.reason,
                 'start': self.start.isot,
-                'end': self.end.isot,
+                'end': '' if self.end is None else self.end.isot,
                 'time_completed': self.time_completed
             }
         }
@@ -54,48 +60,67 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, config: dict, scripts: Dict[str, Script], *args, **kwargs):
+    def __init__(self, config: Dict[str, Any], scripts: Dict[str, Script], **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
             config: Configuration for task
             scripts: External scripts to run
         """
-        Task.__init__(self, *args, **kwargs)
+        Task.__init__(self, **kwargs)
 
         # store stuff
         self.config = config
         self.scripts = scripts
-        self.cur_script = None
+        self.cur_script: Optional[Script] = None
 
     @property
-    def id(self) -> str:
+    def id(self) -> Any:
         """ID of task."""
-        return self.config['request']['id']
+        if 'request' in self.config and 'id' in self.config['request']:
+            return self.config['request']['id']
+        else:
+            raise ValueError('No id found in request.')
 
     @property
     def name(self) -> str:
         """Returns name of task."""
-        return self.config['name']
+        if 'name' in self.config and isinstance(self.config['name'], str):
+            return self.config['name']
+        else:
+            raise ValueError('No name found in request group.')
 
     @property
     def duration(self) -> float:
         """Returns estimated duration of task in seconds."""
-        return self.config['request']['duration']
+        if 'request' in self.config and 'duration' in self.config['request'] \
+                and isinstance(self.config['request']['duration'], int):
+            return float(self.config['request']['duration'])
+        else:
+            raise ValueError('No duration found in request.')
 
-    def __eq__(self, other: 'LcoTask'):
+    def __eq__(self, other: object) -> bool:
         """Compares to tasks."""
-        return self.config == other.config
+        if isinstance(other, LcoTask):
+            return self.config == other.config
+        else:
+            return False
 
     @property
     def start(self) -> Time:
         """Start time for task"""
-        return self.config['start']
+        if 'start' in self.config and isinstance(self.config['start'], Time):
+            return self.config['start']
+        else:
+            raise ValueError('No start time found in request group.')
 
     @property
     def end(self) -> Time:
         """End time for task"""
-        return self.config['end']
+        if 'end' in self.config and isinstance(self.config['end'], Time):
+            return self.config['end']
+        else:
+            raise ValueError('No end time found in request group.')
 
     @property
     def observation_type(self) -> str:
@@ -104,7 +129,10 @@ class LcoTask(Task):
         Returns:
             observation_type of this task.
         """
-        return self.config['observation_type']
+        if 'observation_type' in self.config:
+            return self.config['observation_type']
+        else:
+            raise ValueError('No observation_type found in request group.')
 
     @property
     def can_start_late(self) -> bool:
@@ -115,7 +143,7 @@ class LcoTask(Task):
         """
         return self.observation_type == 'DIRECT'
 
-    def _get_config_script(self, config: dict) -> Script:
+    def _get_config_script(self, config: Dict[str, Any]) -> Script:
         """Get config script for given configuration.
 
         Args:
@@ -134,7 +162,7 @@ class LcoTask(Task):
             raise ValueError('No script found for configuration type "%s".' % config_type)
 
         # create script handler
-        return get_object(self.scripts[config_type],
+        return get_object(self.scripts[config_type], Script,
                           configuration=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
 
     def can_run(self) -> bool:
@@ -144,6 +172,9 @@ class LcoTask(Task):
             True, if task can run now.
         """
 
+        # get logger for task name and log
+        task_name_logger.info(f'Checking whether task {self.name} can run...')
+
         # loop configurations
         req = self.config['request']
         for config in req['configurations']:
@@ -151,13 +182,17 @@ class LcoTask(Task):
             runner = self._get_config_script(config)
 
             # if any runner can run, we proceed
-            if runner.can_run():
-                return True
+            try:
+                if runner.can_run():
+                    return True
+            except Exception:
+                log.exception('Error on evaluating whether task can run.')
+                return False
 
         # no config found that could run
         return False
 
-    def run(self, abort_event: Event):
+    def run(self, abort_event: Event) -> None:
         """Run a task
 
         Args:
@@ -169,6 +204,7 @@ class LcoTask(Task):
         req = self.config['request']
 
         # loop configurations
+        status: Optional[ConfigStatus]
         for config in req['configurations']:
             # aborted?
             if abort_event.is_set():
@@ -202,7 +238,7 @@ class LcoTask(Task):
         # finished task
         log.info('Finished task.')
 
-    def _run_script(self, abort_event, script: Script) -> Union[ConfigStatus, None]:
+    def _run_script(self, abort_event: Event, script: Script) -> Union[ConfigStatus, None]:
         """Run a config
 
         Args:
@@ -241,9 +277,12 @@ class LcoTask(Task):
 
     def is_finished(self) -> bool:
         """Whether task is finished."""
-        return self.config['state'] != 'PENDING'
+        if 'config' in self.config and isinstance(self.config['state'], str):
+            return self.config['state'] != 'PENDING'
+        else:
+            return False
 
-    def get_fits_headers(self, namespaces: list = None) -> dict:
+    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -254,7 +293,7 @@ class LcoTask(Task):
         """
 
         # get header from script
-        hdr = self.cur_script.get_fits_headers(namespaces) if self.cur_script is not None else {}
+        hdr = self.cur_script.get_fits_header_before(namespaces) if self.cur_script is not None else {}
 
         # return it
         return hdr

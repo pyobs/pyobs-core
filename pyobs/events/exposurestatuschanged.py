@@ -1,24 +1,46 @@
-from .event import Event
-from ..utils.enums import ExposureStatus
+from typing import Optional, Any, Dict
+from typing_extensions import TypedDict
+
+from pyobs.events.event import Event
+from pyobs.utils.enums import ExposureStatus
+
+
+DataType = TypedDict('DataType', {'last': Optional[str], 'current': str})
 
 
 class ExposureStatusChangedEvent(Event):
     """Event to be sent, when the exposure status of a device changes."""
     __module__ = 'pyobs.events'
 
-    def __init__(self, last: ExposureStatus = None, current: ExposureStatus = None):
+    def __init__(self, current: ExposureStatus,  last: Optional[ExposureStatus] = None, **kwargs: Any):
         Event.__init__(self)
-        self.data = None
-        if last is not None and current is not None:
-            self.data = {'last': last.value, 'current': current.value}
+        self.data: DataType = {
+            'last': last.value if last is not None else None,
+            'current': current.value
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> Event:
+        # get current
+        if 'current' not in d or not isinstance(d['current'], str):
+            raise ValueError('Invalid type for current.')
+        current: ExposureStatus = ExposureStatus(d['current'])
+
+        # get last
+        last: Optional[ExposureStatus] = None
+        if 'last' in d and isinstance(d['last'], str):
+            last = ExposureStatus(d['last'])
+
+        # return object
+        return ExposureStatusChangedEvent(current=current, last=last)
 
     @property
-    def last(self):
-        return None if self.data is None else ExposureStatus(self.data['last'])
+    def last(self) -> Optional[ExposureStatus]:
+        return ExposureStatus(self.data['last']) if self.data['last'] is not None else None
 
     @property
-    def current(self):
-        return None if self.data is None else ExposureStatus(self.data['current'])
+    def current(self) -> Optional[ExposureStatus]:
+        return ExposureStatus(self.data['current']) if self.data['current'] is not None else None
 
 
 __all__ = ['ExposureStatusChangedEvent']

@@ -1,48 +1,51 @@
 import io
 import logging
 import os
+from typing import Optional, Dict, Any, Tuple, cast, IO, List
 
 import yaml
 from astropy.io import fits
 import pandas as pd
 
-from pyobs.object import get_object, get_class_from_string
 from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 
 
-class VFSFile:
+class VFSFile(io.RawIOBase):
     """Base class for all VFS file classes."""
     __module__ = 'pyobs.vfs'
-    pass
+
+    def __enter__(self) -> 'VFSFile':
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        ...
 
 
-class VirtualFileSystem:
+class VirtualFileSystem(object):
     """Base for a virtual file system."""
     __module__ = 'pyobs.vfs'
 
-    def __init__(self, roots: dict = None, compression: dict = None, *args, **kwargs):
+    def __init__(self, roots: Optional[Dict[str, Any]] = None, **kwargs: Any):
         """Create a new VFS.
 
         Args:
             roots: Dictionary containing roots, see :mod:`~pyobs.vfs` for examples.
-            compression: Dictionary containing files that should be compressed.
         """
 
-        # store
-        self._roots = {} if roots is None else roots
-        self._compression = {'.gz': '/bin/gzip'} if compression is None else compression
-
         # if no root for 'pyobs' is given, add one
-        if 'pyobs' not in self._roots:
-            self._roots['pyobs'] = {
+        self._roots: Dict[str, Any] = {
+            'pyobs': {
                 'class': 'pyobs.vfs.LocalFile',
                 'root': os.path.expanduser('~/.pyobs/')
             }
+        }
+        if roots is not None:
+            self._roots.update(roots)
 
     @staticmethod
-    def split_root(path: str) -> tuple:
+    def split_root(path: str) -> Tuple[str, str]:
         """Splits the root from the rest of the path.
 
         Args:
@@ -68,19 +71,16 @@ class VirtualFileSystem:
         # return it
         return root, filename
 
-    def open_file(self, filename: str, mode: str, compression: bool = None) -> VFSFile:
+    def open_file(self, filename: str, mode: str) -> VFSFile:
         """Open a file. The handling class is chosen depending on the rootse in the filename.
 
         Args:
             filename (str): Name of file to open.
             mode (str): Opening mode.
-            compression (bool): Automatically (de)compress data if True. Automatically determine from filename if None.
 
         Returns:
             (IOBase) File like object for given file.
         """
-        from .gzippipe import GzipReader, GzipWriter
-
         # split root
         root, filename = VirtualFileSystem.split_root(filename)
 
@@ -89,20 +89,13 @@ class VirtualFileSystem:
             raise ValueError('Could not find root {0} for file.'.format(root))
 
         # create file object
-        fd = get_object(self._roots[root], name=filename, mode=mode)
-
-        # compression?
-        if compression or (compression is None and os.path.splitext(filename)[1] in self._compression):
-            # create pipe
-            if 'w' in mode:
-                fd = GzipWriter(fd, close_fd=True)
-            else:
-                fd = GzipReader(fd, close_fd=True)
+        from pyobs.object import get_object
+        fd = get_object(self._roots[root], object_class=VFSFile, name=filename, mode=mode)
 
         # return it
         return fd
 
-    def read_fits_image(self, filename) -> fits.PrimaryHDU:
+    def read_fits_image(self, filename: str) -> fits.PrimaryHDU:
         """Convenience function that wraps around open_file() to read a FITS file and put it into a astropy FITS
         structure.
 
@@ -118,7 +111,7 @@ class VirtualFileSystem:
             tmp.close()
             return hdu
 
-    def read_image(self, filename) -> Image:
+    def read_image(self, filename: str) -> Image:
         """Convenience function that wraps around open_file() to read an Image.
 
         Args:
@@ -130,7 +123,7 @@ class VirtualFileSystem:
         with self.open_file(filename, 'rb') as f:
             return Image.from_bytes(f.read())
 
-    def write_image(self, filename: str, image: Image, *args, **kwargs):
+    def write_image(self, filename: str, image: Image, *args: Any, **kwargs: Any) -> None:
         """Convenience function for writing an Image to a FITS file.
 
         Args:
@@ -142,7 +135,7 @@ class VirtualFileSystem:
         with self.open_file(filename, 'wb') as cache:
             image.writeto(cache, *args, **kwargs)
 
-    def read_csv(self, filename: str, *args, **kwargs) -> pd.DataFrame:
+    def read_csv(self, filename: str, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Convenience function for reading a CSV file into a DataFrame.
 
         Args:
@@ -162,7 +155,7 @@ class VirtualFileSystem:
             # on error, return empty dataframe
             return pd.DataFrame()
 
-    def write_csv(self, df: pd.DataFrame, filename: str, *args, **kwargs):
+    def write_csv(self, df: pd.DataFrame, filename: str, *args: Any, **kwargs: Any) -> None:
         """Convenience function for writing a CSV file from a DataFrame.
 
         Args:
@@ -179,7 +172,7 @@ class VirtualFileSystem:
                 # and write all content to file
                 f.write(sio.getvalue().encode('utf8'))
 
-    def read_yaml(self, filename: str, *args, **kwargs) -> dict:
+    def read_yaml(self, filename: str) -> Dict[str, Any]:
         """Convenience function for reading a YAML file into a dict.
 
         Args:
@@ -192,9 +185,9 @@ class VirtualFileSystem:
         # open file
         with self.open_file(filename, 'r') as f:
             # read YAML
-            return yaml.safe_load(f)
+            return cast(Dict[str, Any], yaml.safe_load(cast(IO[bytes], f)))
 
-    def write_yaml(self, data: dict, filename: str, *args, **kwargs):
+    def write_yaml(self, data: Dict[str, Any], filename: str) -> None:
         """Convenience function for writing a YAML file from a dict.
 
         Args:
@@ -229,6 +222,7 @@ class VirtualFileSystem:
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
+        from pyobs.object import get_class_from_string
         klass = get_class_from_string(self._roots[root]['class'])
 
         # get find method
@@ -253,6 +247,7 @@ class VirtualFileSystem:
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
+        from pyobs.object import get_class_from_string
         klass = get_class_from_string(self._roots[root]['class'])
 
         # get exists method

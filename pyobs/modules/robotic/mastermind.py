@@ -7,7 +7,7 @@ from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.interfaces import IFitsHeaderProvider, IAutonomous
+from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
 from pyobs.robotic.taskarchive import TaskArchive
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -16,12 +16,12 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
+class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     """Mastermind for a full robotic mode."""
     __module__ = 'pyobs.modules.robotic'
 
     def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300,
-                 *args, **kwargs):
+                 **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -29,7 +29,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
             allowed_late_start: Allowed seconds to start late.
             allowed_overrun: Allowed time for a task to exceed it's window in seconds
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # store
         self._allowed_late_start = allowed_late_start
@@ -70,17 +70,17 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
         # close scheduler
         self._task_archive.close()
 
-    def start(self, *args, **kwargs):
+    def start(self, **kwargs: Any):
         """Starts a service."""
         log.info('Starting robotic system...')
         self._running = True
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs: Any):
         """Stops a service."""
         log.info('Stopping robotic system...')
         self._running = False
 
-    def is_running(self, *args, **kwargs) -> bool:
+    def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._running
 
@@ -165,7 +165,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
             log.info('Finished task %s.', self._task.name)
             self._task = None
 
-    def get_fits_headers(self, namespaces: List[str] = None, *args, **kwargs) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -177,7 +177,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderProvider):
 
         # inside an observation?
         if self._task is not None:
-            hdr = self._task.get_fits_headers()
+            hdr = self._task.get_fits_header_before()
             hdr['TASK'] = self._task.name, 'Name of task'
             hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
             return hdr

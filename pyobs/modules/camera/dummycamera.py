@@ -4,14 +4,15 @@ import threading
 import time
 from datetime import datetime
 from threading import RLock
-from typing import Tuple, NamedTuple, Dict
+from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
 
-from astropy.io import fits
-
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
+from pyobs.interfaces import IWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
+if TYPE_CHECKING:
+    from pyobs.utils.simulation import SimWorld
+
 
 log = logging.getLogger(__name__)
 
@@ -23,18 +24,19 @@ class CoolingStatus(NamedTuple):
     temperatures: Dict[str, float] = {'CCD': 0., 'Back': 3.14}
 
 
-class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
+class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
     """A dummy camera for testing."""
     __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, readout_time: float = 2, sim: dict = None, world: 'SimWorld' = None, *args, **kwargs):
+    def __init__(self, readout_time: float = 2, sim: Optional[Dict[str, Any]] = None,
+                 world: Optional['SimWorld'] = None, **kwargs: Any):
         """Creates a new dummy cammera.
 
         Args:
             readout_time: Readout time in seconds.
             sim: Dictionary with config for image simulator.
         """
-        BaseCamera.__init__(self, *args, **kwargs)
+        BaseCamera.__init__(self, **kwargs)
 
         # add thread func
         self.add_thread_func(self._cooling_thread, True)
@@ -46,9 +48,9 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._sim['images'] = None
 
         # simulated world
-        from pyobs.utils.simulation.world import SimCamera
+        from pyobs.utils.simulation import SimCamera, SimWorld
         self._world = world if world is not None else \
-            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'})
+            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'}, SimWorld)
         self._camera: SimCamera = self._world.camera
 
         # init camera
@@ -61,7 +63,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         # simulator
         self._sim_images = sorted(glob.glob(self._sim['images'])) if self._sim['images'] else None
 
-    def _cooling_thread(self):
+    def _cooling_thread(self) -> None:
         while not self.closing.is_set():
             with self._coolingLock:
                 # adjust temperature
@@ -78,7 +80,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             # sleep for 1 second
             self.closing.wait(1)
 
-    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -99,7 +101,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             image = self._camera.get_image(exp_time, open_shutter)
             return image
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -151,7 +153,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         self._change_exposure_status(ExposureStatus.IDLE)
         return hdu
 
-    def _abort_exposure(self):
+    def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Returns:
@@ -159,7 +161,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -167,7 +169,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._camera.window
 
-    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -182,7 +184,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
 
-    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
+    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -190,7 +192,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._camera.binning
 
-    def set_binning(self, x: int, y: int, *args, **kwargs):
+    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -203,7 +205,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         log.info("Set binning to %dx%d.", x, y)
         self._camera.binning = (x, y)
 
-    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
+    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:
@@ -225,7 +227,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
             self._cooling = CoolingStatus(enabled=enabled, set_point=setpoint, power=self._cooling.power,
                                           temperatures=self._cooling.temperatures)
 
-    def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
+    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -237,7 +239,7 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         with self._coolingLock:
             return self._cooling.enabled, self._cooling.set_point, self._cooling.power
 
-    def get_temperatures(self, *args, **kwargs) -> dict:
+    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:
@@ -245,11 +247,11 @@ class DummyCamera(BaseCamera, ICameraWindow, ICameraBinning, ICooling):
         """
         return self._cooling.temperatures
 
-    def _set_config_readout_time(self, readout_time):
+    def _set_config_readout_time(self, readout_time: float) -> None:
         """Set readout time."""
         self._readout_time = readout_time
 
-    def _get_config_readout_time(self):
+    def _get_config_readout_time(self) -> float:
         """Returns readout time."""
         return self._readout_time
 

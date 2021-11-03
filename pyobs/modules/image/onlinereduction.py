@@ -1,17 +1,16 @@
 import logging
 import os
 from queue import Queue
-from typing import List, Union, Type
-
+from typing import List, Union, Type, Any, Dict, Optional
 from astropy.time import Time
 
+from pyobs.images import Image
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.events import NewImageEvent
 from pyobs.utils.archive import Archive
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
-from pyobs.images import CalibrationImage, BiasImage, DarkImage, FlatImage
 from pyobs.utils.pipeline import Pipeline
 
 log = logging.getLogger(__name__)
@@ -21,8 +20,8 @@ class OnlineReduction(Module):
     """Calibrates images online during the night."""
     __module__ = 'pyobs.modules.image'
 
-    def __init__(self, pipeline: Union[dict, Pipeline], archive: Union[dict, Archive],
-                 sources: Union[str, List[str]] = None, cache_size: int = 20, *args, **kwargs):
+    def __init__(self, pipeline: Union[Dict[str, Any], Pipeline], archive: Union[dict, Archive],
+                 sources: Union[str, Optional[List[str]]] = None, cache_size: int = 20, **kwargs: Any):
         """Creates a new image writer.
 
         Args:
@@ -31,7 +30,7 @@ class OnlineReduction(Module):
             sources: List of sources (e.g. cameras) to process images from or None for all.
             cache_size: Size of cache for calibration files.
         """
-        Module.__init__(self, *args, **kwargs)
+        Module.__init__(self, **kwargs)
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
@@ -43,7 +42,7 @@ class OnlineReduction(Module):
         # add thread func
         self.add_thread_func(self._worker, True)
 
-    def open(self):
+    def open(self) -> None:
         """Open image writer."""
         Module.open(self)
 
@@ -51,7 +50,7 @@ class OnlineReduction(Module):
         log.info('Subscribing to new image events...')
         self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str, *args, **kwargs):
+    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -64,17 +63,18 @@ class OnlineReduction(Module):
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
-            return
+            return False
 
         # only process OBJECT frames
         if event.image_type != ImageType.OBJECT:
-            return
+            return False
 
         # put into queue
         log.info('Received new image event from %s.', sender)
         self._queue.put(event.filename)
+        return True
 
-    def _worker(self):
+    def _worker(self) -> None:
         """Worker thread."""
 
         # run forever
@@ -107,9 +107,9 @@ class OnlineReduction(Module):
                     continue
 
                 # get master calibration frames
-                bias = self._get_master_calibration(BiasImage, date_obs, instrument, binning)
-                dark = self._get_master_calibration(DarkImage, date_obs, instrument, binning)
-                flat = self._get_master_calibration(FlatImage, date_obs, instrument, binning, filter_name)
+                bias = self._get_master_calibration(Image, date_obs, instrument, binning)
+                dark = self._get_master_calibration(Image, date_obs, instrument, binning)
+                flat = self._get_master_calibration(Image, date_obs, instrument, binning, filter_name)
 
                 # anything missing?
                 if bias is None or dark is None or flat is None:
@@ -133,8 +133,8 @@ class OnlineReduction(Module):
                 self.comm.send_event(NewImageEvent(outfile, ImageType.OBJECT, raw=filename))
             log.info('Finished image.')
 
-    def _get_master_calibration(self, image_class: Type[CalibrationImage], time: Time, instrument: str, binning: str,
-                                filter_name: str = None) -> Union[CalibrationImage, None]:
+    def _get_master_calibration(self, image_class: Type[Image], time: Time, instrument: str, binning: str,
+                                filter_name: Optional[str] = None) -> Optional[Union[Image]]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:

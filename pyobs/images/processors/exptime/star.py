@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Any, Dict
 
 from pyobs.object import get_object
 from pyobs.images import Image
@@ -13,8 +13,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
     """Estimate exposure time from a star."""
     __module__ = 'pyobs.images.processors.exptime'
 
-    def __init__(self, source_detection: Union[dict, SourceDetection], edge: float = 0.1, bias: float = 0., saturated: float = 0.7,
-                 *args, **kwargs):
+    def __init__(self, source_detection: Union[Dict[str, Any], SourceDetection], edge: float = 0.1, bias: float = 0.,
+                 saturated: float = 0.7, **kwargs: Any):
         """Create new exp time estimator from single star.
 
         Args:
@@ -23,27 +23,32 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
         """
+        ExpTimeEstimator.__init__(self, **kwargs)
+
         self._source_detection = source_detection
         self._edge = edge
         self._bias = bias
         self._saturated = saturated
         self.coordinates = (None, None)
 
-    def __call__(self, image: Image) -> float:
-        """Processes an image and returns a new best exposure time in seconds.
+    def __call__(self, image: Image) -> Image:
+        """Processes an image and stores new exposure time in exp_time attribute.
 
         Args:
             image: Image to process.
 
         Returns:
-            New best exposure time in seconds.
+            Original image.
         """
 
         # get object
         source_detection = get_object(self._source_detection, SourceDetection)
 
         # do photometry and get copy of catalog
-        catalog = source_detection(image).copy(True)
+        catalog = source_detection(image).catalog
+        if catalog is None:
+            log.info('No catalog found in image.')
+            return image
 
         # sort catalog by peak flux
         catalog.sort('peak')
@@ -70,8 +75,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         exp_time = image.header['EXPTIME']
 
         # calculate new exposure time and return it
-        new_exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
-        return new_exp_time
+        self.exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
+        return image
 
 
 __all__ = ['StarExpTimeEstimator']

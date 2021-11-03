@@ -19,15 +19,6 @@ def init_cli():
     parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
                         default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
 
-    # comm
-    parser.add_argument('--username', type=str, help='Username for connecting to server',
-                        default=os.environ.get('PYOBS_USERNAME'))
-    parser.add_argument('--password', type=str, help='Password for connecting to server',
-                        default=os.environ.get('PYOBS_PASSWORD'))
-    parser.add_argument('--server', type=str, help='server:port for server to connect to',
-                        default=os.environ.get('PYOBS_SERVER'))
-    parser.add_argument('--comm', type=str, choices=['xmpp'], default='xmpp')
-
     # debug stuff
     parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
                         default=os.environ.get('PYOBS_DEBUG_TIME'))
@@ -77,21 +68,16 @@ def start_daemon(app_class, pid_file=None, *args, **kwargs):
         run(*args, app_class=app_class, **kwargs)
 
 
-def run(app_class, config=None, log_file: str = None, log_level: str = 'info', log_rotate: bool = False,
-        *args, **kwargs):
+def run(app_class, **kwargs):
     """Run a pyobs application with the given options.
 
     Args:
         app_class: Class to create app from
-        config: Name of config file, if any.
-        log_file: Name of file to log to, if any.
-        log_level: Logging level.
-        log_rotate: Whether or not to rotate the logs.
     """
 
     # create app and run it
-    app = app_class(log_file, log_level, log_rotate)
-    app.run(config)
+    app = app_class(**kwargs)
+    app.run()
 
 
 def main():

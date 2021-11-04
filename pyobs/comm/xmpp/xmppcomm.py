@@ -471,10 +471,8 @@ class XmppComm(Comm):
         """
 
         # send it
-        print('received event:', event)
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
-                print('  - handler: ', handler)
                 # create thread and start it
                 thread = threading.Thread(name="event_%s" % handler.__name__,
                                           target=handler, args=(event, from_client),

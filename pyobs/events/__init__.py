@@ -18,6 +18,7 @@ from .newimage import NewImageEvent
 from .roofclosing import RoofClosingEvent
 from .roofopened import RoofOpenedEvent
 from .taskstarted import TaskStartedEvent
+from .taskfailed import TaskFailedEvent
 from .taskfinished import TaskFinishedEvent
 from .telescopemoving import TelescopeMovingEvent
 from .testevent import TestEvent

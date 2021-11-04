@@ -27,4 +27,4 @@ from .testevent import TestEvent
 __all__ = ['Event', 'BadWeatherEvent', 'ExposureStatusChangedEvent', 'FilterChangedEvent', 'FocusFoundEvent',
            'GoodWeatherEvent', 'InitializedEvent', 'LogEvent', 'ModuleClosedEvent', 'ModuleOpenedEvent',
            'MotionStatusChangedEvent', 'NewImageEvent', 'RoofClosingEvent', 'RoofOpenedEvent', 'TaskStartedEvent',
-           'TaskFinishedEvent', 'TelescopeMovingEvent', 'TestEvent']
+           'TaskFinishedEvent', 'TaskFailedEvent', 'TelescopeMovingEvent', 'TestEvent']

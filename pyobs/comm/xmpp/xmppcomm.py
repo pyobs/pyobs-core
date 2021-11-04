@@ -383,11 +383,15 @@ class XmppComm(Comm):
 
         # do we have a handler?
         if handler:
-            # store handler
+            # loop classes
             for ev in event_classes:
+                # initialize list
                 if ev not in self._event_handlers:
                     self._event_handlers[ev] = []
-                self._event_handlers[ev].append(handler)
+                # avoid duplicates
+                if handler not in self._event_handlers[ev]:
+                    # add handler
+                    self._event_handlers[ev].append(handler)
 
         # if event is not a local one, we also need to do some XMPP stuff
         if not event_class.local:
@@ -467,8 +471,10 @@ class XmppComm(Comm):
         """
 
         # send it
+        print('received event:', event)
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
+                print('  - handler: ', handler)
                 # create thread and start it
                 thread = threading.Thread(name="event_%s" % handler.__name__,
                                           target=handler, args=(event, from_client),

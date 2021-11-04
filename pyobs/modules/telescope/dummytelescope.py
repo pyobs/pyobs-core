@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
+from pyobs.events import FilterChangedEvent, TelescopeMovingEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderBefore, IFilters, ITemperatures, IOffsetsRaDec
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
@@ -51,7 +51,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # subscribe to events
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
-            self.comm.register_event(InitializedEvent)
             self.comm.register_event(TelescopeMovingEvent)
 
         # init status
@@ -205,7 +204,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._change_motion_status(MotionStatus.INITIALIZING)
         time.sleep(5.)
         self._change_motion_status(MotionStatus.IDLE)
-        self.comm.send_event(InitializedEvent())
 
     @timeout(60)
     def park(self, **kwargs: Any) -> None:

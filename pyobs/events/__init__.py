@@ -22,9 +22,4 @@ from .taskfailed import TaskFailedEvent
 from .taskfinished import TaskFinishedEvent
 from .telescopemoving import TelescopeMovingEvent
 from .testevent import TestEvent
-
-
-__all__ = ['Event', 'BadWeatherEvent', 'ExposureStatusChangedEvent', 'FilterChangedEvent', 'FocusFoundEvent',
-           'GoodWeatherEvent', 'LogEvent', 'ModuleClosedEvent', 'ModuleOpenedEvent',
-           'MotionStatusChangedEvent', 'NewImageEvent', 'NewSpectrumEvent', 'RoofClosingEvent', 'RoofOpenedEvent',
-           'TaskStartedEvent', 'TaskFinishedEvent', 'TaskFailedEvent', 'TelescopeMovingEvent', 'TestEvent']
+from .offsets import OffsetsEvent, OffsetsRaDecEvent, OffsetsAltAzEvent

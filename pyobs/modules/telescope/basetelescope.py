@@ -5,6 +5,7 @@ from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
+from pyobs.events import MoveRaDecEvent, MoveAltAzEvent
 from pyobs.interfaces import ITelescope, IFitsHeaderBefore
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
@@ -126,6 +127,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
+            self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
 
             # track telescope
             self._move_radec(ra, dec, abort_event=self._abort_move)
@@ -179,6 +181,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
+            self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
             self._change_motion_status(MotionStatus.SLEWING)
 
             # move telescope

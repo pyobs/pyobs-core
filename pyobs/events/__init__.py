@@ -13,6 +13,7 @@ from .log import LogEvent
 from .moduleclosed import ModuleClosedEvent
 from .moduleopened import ModuleOpenedEvent
 from .motionstatuschanged import MotionStatusChangedEvent
+from .move import MoveEvent, MoveRaDecEvent, MoveAltAzEvent
 from .newimage import NewImageEvent
 from .newspectrum import NewSpectrumEvent
 from .roofclosing import RoofClosingEvent

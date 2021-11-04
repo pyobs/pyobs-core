@@ -20,6 +20,5 @@ from .roofopened import RoofOpenedEvent
 from .taskstarted import TaskStartedEvent
 from .taskfailed import TaskFailedEvent
 from .taskfinished import TaskFinishedEvent
-from .telescopemoving import TelescopeMovingEvent
 from .testevent import TestEvent
 from .offsets import OffsetsEvent, OffsetsRaDecEvent, OffsetsAltAzEvent

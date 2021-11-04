@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.events import FilterChangedEvent, TelescopeMovingEvent, OffsetsRaDecEvent
+from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderBefore, IFilters, ITemperatures, IOffsetsRaDec
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
@@ -51,7 +51,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # subscribe to events
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
-            self.comm.register_event(TelescopeMovingEvent)
             self.comm.register_event(OffsetsRaDecEvent)
 
         # init status
@@ -68,9 +67,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         Raises:
             Exception: On any error.
         """
-
-        # send event
-        self.comm.send_event(TelescopeMovingEvent(ra=ra, dec=dec))
 
         # start slewing
         self.__move(ra, dec, abort_event)
@@ -91,9 +87,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
                           location=self.location, frame='altaz')
         icrs = coords.icrs
-
-        # send event
-        self.comm.send_event(TelescopeMovingEvent(alt=alt, az=az))
 
         # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)

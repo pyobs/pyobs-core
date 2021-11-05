@@ -50,6 +50,7 @@ from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
 from .IOffsetsAltAz import IOffsetsAltAz
 from .IOffsetsRaDec import IOffsetsRaDec
+from .ISpectrograph import ISpectrograph
 from .IVideo import IVideo
 from .IWeather import IWeather
 from .IWindow import IWindow

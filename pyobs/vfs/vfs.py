@@ -95,7 +95,7 @@ class VirtualFileSystem(object):
         # return it
         return fd
 
-    def read_fits_image(self, filename: str) -> fits.PrimaryHDU:
+    def read_fits(self, filename: str) -> fits.HDUList:
         """Convenience function that wraps around open_file() to read a FITS file and put it into a astropy FITS
         structure.
 
@@ -106,10 +106,21 @@ class VirtualFileSystem(object):
             A PrimaryHDU containing the FITS file.
         """
         with self.open_file(filename, 'rb') as f:
-            tmp = fits.open(f)
-            hdu = fits.PrimaryHDU(data=tmp[0].data, header=tmp[0].header)
-            tmp.close()
-            return hdu
+            return fits.HDUList.fromstring(f.readall())
+
+    def write_fits(self, filename: str, hdulist: fits.HDUList, *args: Any, **kwargs: Any) -> None:
+        """Convenience function for writing an Image to a FITS file.
+
+        Args:
+            filename: Name of file to write.
+            hdulist: hdu list to write.
+        """
+
+        # open file
+        with self.open_file(filename, 'wb') as cache:
+            with io.BytesIO() as bio:
+                hdulist.writeto(bio, *args, **kwargs)
+                cache.write(bio.getbuffer())
 
     def read_image(self, filename: str) -> Image:
         """Convenience function that wraps around open_file() to read an Image.

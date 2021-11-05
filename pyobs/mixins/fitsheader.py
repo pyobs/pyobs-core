@@ -331,4 +331,10 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
                 log.warning('Could not calculate CD matrix (rotation or CDELT1/CDELT2 missing.')
 
 
-__all__ = ['FitsHeaderMixin', 'ImageFitsHeaderMixin']
+class SpectrumFitsHeaderMixin(FitsHeaderMixin):
+    """Helper methods for all modules that need FITS headers for an image."""
+    __module__ = 'pyobs.mixins'
+    pass
+
+
+__all__ = ['FitsHeaderMixin', 'ImageFitsHeaderMixin', 'SpectrumFitsHeaderMixin']

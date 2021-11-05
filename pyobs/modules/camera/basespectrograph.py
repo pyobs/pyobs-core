@@ -1,21 +1,22 @@
 import datetime
 import logging
 import threading
-import warnings
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
-import numpy as np
 from astropy.io import fits
-from numpy.typing import NDArray
 
-from pyobs.mixins.fitsheader import ImageFitsHeaderMixin, SpectrumFitsHeaderMixin
-from pyobs.utils.enums import ImageType, ExposureStatus
-from pyobs.images import Image
+from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
+from pyobs.utils.enums import ExposureStatus
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
-from pyobs.interfaces import ICamera, IExposureTime, IImageType, ISpectrograph
+from pyobs.events import NewSpectrumEvent, ExposureStatusChangedEvent
+from pyobs.interfaces import ISpectrograph
 from pyobs.modules import timeout
 
 log = logging.getLogger(__name__)
+
+
+class ExposureInfo(NamedTuple):
+    """Info about a running exposure."""
+    start: datetime.datetime
 
 
 class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
@@ -23,7 +24,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
     __module__ = 'pyobs.modules.camera'
 
     def __init__(self, fits_headers: Optional[Dict[str, Any]] = None,
-                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
+                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits.gz',
                  fits_namespaces: Optional[List[str]] = None, **kwargs: Any):
         """Creates a new BaseCamera.
 
@@ -37,16 +38,22 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         SpectrumFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers,
                                          filenames=filenames)
 
+        # init camera
+        self._exposure: Optional[ExposureInfo] = None
+        self._spectrograph_status = ExposureStatus.IDLE
+
+        # multi-threading
+        self._expose_lock = threading.Lock()
+        self.expose_abort = threading.Event()
+
         # check
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    def _expose(self, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
-            exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
         Returns:
@@ -57,8 +64,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         """
         raise NotImplementedError
 
-    def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
-            -> Tuple[Optional[Image], Optional[str]]:
+    def __expose(self, broadcast: bool) -> Tuple[Optional[fits.PrimaryHDU], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
@@ -76,14 +82,11 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # request fits headers
         header_futures_before = self.request_fits_headers(before=True)
 
-        # open the shutter?
-        open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
-
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
         try:
-            image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if image is None or image.data is None:
+            spectrum = self._expose(abort_event=self.expose_abort)
+            if spectrum is None or spectrum.data is None:
                 self._exposure = None
                 return None, None
         except:
@@ -94,51 +97,39 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # request fits headers again
         header_futures_after = self.request_fits_headers(before=False)
 
-        # flip it?
-        if self._flip:
-            # do we have three dimensions in array? need this for deciding which axis to flip
-            is_3d = len(image.data.shape) == 3
-
-            # flip image and make contiguous again
-            flipped: NDArray[Any] = np.flip(image.data, axis=1 if is_3d else 0)  # type: ignore
-            image.data = np.ascontiguousarray(flipped)
-
         # add HDU name
-        image.header['EXTNAME'] = 'SCI'
-
-        # add image type
-        image.header['IMAGETYP'] = image_type.value
+        spectrum.header['EXTNAME'] = 'SCI'
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(image, header_futures_before)
-        self.add_requested_fits_headers(image, header_futures_after)
-        self.add_fits_headers(image)
-        filename = self.format_filename(image)
+        self.add_requested_fits_headers(spectrum, header_futures_before)
+        self.add_requested_fits_headers(spectrum, header_futures_after)
+        self.add_fits_headers(spectrum)
+        filename = self.format_filename(spectrum)
 
         # don't want to save?
         if filename is None:
-            return image, None
+            return spectrum, None
 
         # upload file
         try:
-            log.info('Uploading image to file server...')
-            self.vfs.write_image(filename, image)
+            log.info('Uploading spectrum to file server...')
+            self.vfs.write_fits(filename, fits.HDUList([spectrum]))
         except FileNotFoundError:
-            raise ValueError('Could not upload image.')
+            raise ValueError('Could not upload spectrum.')
 
         # broadcast image path
         if broadcast and self.comm:
-            log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, image_type))
+            log.info('Broadcasting spectrum ID...')
+            self.comm.send_event(NewSpectrumEvent(filename))
 
-        # return image and unique
+        # return spectrum and unique
         self._exposure = None
-        log.info('Finished image %s.', filename)
-        return image, filename
+        log.info('Finished spectrum %s.', filename)
+        return spectrum, filename
 
     @timeout(10)
-    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
-        """Grabs an image ans returns reference.
+    def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
+        """Grabs a spectrum and returns reference.
 
         Args:
             broadcast: Broadcast existence of image.
@@ -147,31 +138,53 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
             Name of image that was taken.
         """
         # acquire lock
-        log.info('Acquiring exclusive lock on camera...')
+        log.info('Acquiring exclusive lock on spectrograph...')
         if not self._expose_lock.acquire(blocking=False):
-            raise ValueError('Could not acquire camera lock for expose().')
+            raise ValueError('Could not acquire spectrograph lock for grab_spectrum().')
 
         # make sure that we release the lock
         try:
             # are we exposing?
-            if self._camera_status != ExposureStatus.IDLE:
-                raise CameraException('Cannot start new exposure because camera is not idle.')
+            if self._spectrograph_status != ExposureStatus.IDLE:
+                raise ValueError('Cannot start new exposure because spectrograph is not idle.')
 
             # expose
-            image, filename = self.__expose(self._exposure_time, self._image_type, broadcast)
-            if image is None:
-                raise ValueError('Could not take image.')
+            hdu, filename = self.__expose(broadcast)
+            if hdu is None:
+                raise ValueError('Could not take spectrum.')
             else:
                 if filename is None:
-                    raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
+                    raise ValueError('Spectrum has not been saved, so cannot be retrieved by filename.')
 
             # return filename
             return filename
 
         finally:
             # release lock
-            log.info('Releasing exclusive lock on camera...')
+            log.info('Releasing exclusive lock on spectrograph...')
             self._expose_lock.release()
+
+    def _change_exposure_status(self, status: ExposureStatus) -> None:
+        """Change exposure status and send event,
+
+        Args:
+            status: New exposure status.
+        """
+
+        # send event, if it changed
+        if self._spectrograph_status != status:
+            self.comm.send_event(ExposureStatusChangedEvent(last=self._spectrograph_status, current=status))
+
+        # set it
+        self._spectrograph_status = status
+
+    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
+        """Returns the current status of the spectrograph, which is one of 'idle', 'exposing', or 'readout'.
+
+        Returns:
+            Current status of spectrograph.
+        """
+        return self._spectrograph_status
 
 
 __all__ = ['BaseSpectrograph']

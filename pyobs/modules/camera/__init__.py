@@ -7,3 +7,4 @@ __title__ = 'Cameras'
 from .basecamera import BaseCamera
 from .basevideo import BaseVideo
 from .dummycamera import DummyCamera
+from .dummyspectrograph import DummySpectrograph

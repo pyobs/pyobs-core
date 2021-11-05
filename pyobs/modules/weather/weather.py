@@ -71,6 +71,13 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
     def start(self, **kwargs: Any) -> None:
         """Starts a service."""
+
+        # did status change and weather is now bad?
+        if not self._active and not self._is_good:
+            # send event!
+            self.comm.send_event(BadWeatherEvent())
+
+        # activate
         self._active = True
 
     def stop(self, **kwargs: Any) -> None:

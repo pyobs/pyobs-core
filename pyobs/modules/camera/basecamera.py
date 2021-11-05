@@ -7,7 +7,7 @@ import numpy as np
 from astropy.io import fits
 from numpy.typing import NDArray
 
-from pyobs.mixins.imagegrabber import ImageGrabberMixin
+from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.utils.enums import ImageType, ExposureStatus
 from pyobs.images import Image
 from pyobs.modules import Module
@@ -33,7 +33,7 @@ def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> flo
     return camera.get_exposure_time() + 30
 
 
-class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
+class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType):
     """Base class for all camera modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -52,8 +52,8 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
         Module.__init__(self, **kwargs)
-        ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
-                                   rotation=rotation, filenames=filenames)
+        ImageFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
+                                      rotation=rotation, filenames=filenames)
 
         # check
         if self.comm is None:

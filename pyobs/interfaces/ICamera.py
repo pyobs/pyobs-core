@@ -17,17 +17,6 @@ class ICamera(IAbortable, IImageGrabber):
         """
         raise NotImplementedError
 
-    def expose(self, broadcast: bool = True, **kwargs: Any) -> str:
-        """Starts exposure and returns reference to image.
-
-        Args:
-            broadcast: Broadcast existence of image.
-
-        Returns:
-            Name of image that was taken.
-        """
-        raise NotImplementedError
-
     def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence.
 

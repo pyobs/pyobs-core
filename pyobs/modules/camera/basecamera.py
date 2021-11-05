@@ -274,21 +274,6 @@ class BaseCamera(Module, ImageGrabberMixin, ICamera, IExposureTime, IImageType):
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def expose(self, broadcast: bool = True, **kwargs: Any) -> str:
-        """Starts exposure and returns reference to image.
-
-        Args:
-            exposure_time: Exposure time in seconds.
-            broadcast: Broadcast existence of image.
-
-        Returns:
-            Name of image that was taken.
-        """
-        warnings.warn('expose() has been replaced by grab_image() and will be removed in a future version.',
-                      DeprecationWarning)
-        return self.grab_image(broadcast, **kwargs)
-
-    @timeout(calc_expose_timeout)
     def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 

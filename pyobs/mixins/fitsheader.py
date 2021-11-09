@@ -282,6 +282,10 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         def v(k: str) -> Any:
             return hdr[k][0] if isinstance(k, list) or isinstance(k, tuple) else hdr[k]
 
+        # set CRVAL1/2 from RA/Dec
+        hdr['CRVAL1'] = hdr['TEL-RA']
+        hdr['CRVAL2'] = hdr['TEL-DEC']
+
         # pixel size in world coordinates
         if 'DET-PIXL' in hdr and 'TEL-FOCL' in hdr and 'DET-BIN1' in hdr and 'DET-BIN2' in hdr:
             tmp = 360. / (2. * math.pi) * v('DET-PIXL') / v('TEL-FOCL')

@@ -226,8 +226,6 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         if coords_ra_dec is not None:
             hdr['TEL-RA'] = (float(coords_ra_dec.ra.degree), 'Right ascension of telescope [degrees]')
             hdr['TEL-DEC'] = (float(coords_ra_dec.dec.degree), 'Declination of telescope [degrees]')
-            hdr['CRVAL1'] = hdr['TEL-RA']
-            hdr['CRVAL2'] = hdr['TEL-DEC']
         if coords_alt_az is not None:
             hdr['TEL-ALT'] = (float(coords_alt_az.alt.degree), 'Telescope altitude [degrees]')
             hdr['TEL-AZ'] = (float(coords_alt_az.az.degree), 'Telescope azimuth [degrees]')

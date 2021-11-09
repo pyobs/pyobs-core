@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Union, List, Dict, Tuple, Any
+from typing import Union, List, Dict, Tuple, Any, Optional
 import astropy.units as u
 
 from pyobs.modules import Module
@@ -165,7 +165,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             log.info('Finished task %s.', self._task.name)
             self._task = None
 
-    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -177,7 +178,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # inside an observation?
         if self._task is not None:
-            hdr = self._task.get_fits_header_before()
+            hdr = self._task.get_fits_headers()
             hdr['TASK'] = self._task.name, 'Name of task'
             hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
             return hdr

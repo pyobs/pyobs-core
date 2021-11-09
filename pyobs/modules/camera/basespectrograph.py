@@ -50,7 +50,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
-    def _expose(self, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, abort_event: threading.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -64,7 +64,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         """
         raise NotImplementedError
 
-    def __expose(self, broadcast: bool) -> Tuple[Optional[fits.PrimaryHDU], Optional[str]]:
+    def __expose(self, broadcast: bool) -> Tuple[Optional[fits.HDUList], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
@@ -85,8 +85,8 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
         try:
-            spectrum = self._expose(abort_event=self.expose_abort)
-            if spectrum is None or spectrum.data is None:
+            hdulist = self._expose(abort_event=self.expose_abort)
+            if hdulist is None or hdulist[0].data is None:
                 self._exposure = None
                 return None, None
         except:
@@ -98,22 +98,22 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         header_futures_after = self.request_fits_headers(before=False)
 
         # add HDU name
-        spectrum.header['EXTNAME'] = 'SCI'
+        hdulist[0].header['EXTNAME'] = 'SCI'
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(spectrum, header_futures_before)
-        self.add_requested_fits_headers(spectrum, header_futures_after)
-        self.add_fits_headers(spectrum)
-        filename = self.format_filename(spectrum)
+        self.add_requested_fits_headers(hdulist[0], header_futures_before)
+        self.add_requested_fits_headers(hdulist[0], header_futures_after)
+        self.add_fits_headers(hdulist[0])
+        filename = self.format_filename(hdulist[0])
 
         # don't want to save?
         if filename is None:
-            return spectrum, None
+            return hdulist, None
 
         # upload file
         try:
             log.info('Uploading spectrum to file server...')
-            self.vfs.write_fits(filename, fits.HDUList([spectrum]))
+            self.vfs.write_fits(filename, hdulist)
         except FileNotFoundError:
             raise ValueError('Could not upload spectrum.')
 
@@ -125,7 +125,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # return spectrum and unique
         self._exposure = None
         log.info('Finished spectrum %s.', filename)
-        return spectrum, filename
+        return hdulist, filename
 
     @timeout(10)
     def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
@@ -185,6 +185,14 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
             Current status of spectrograph.
         """
         return self._spectrograph_status
+
+    def abort(self, **kwargs: Any) -> None:
+        """Aborts the current exposure.
+
+        Raises:
+            ValueError: If exposure could not be aborted.
+        """
+        pass
 
 
 __all__ = ['BaseSpectrograph']

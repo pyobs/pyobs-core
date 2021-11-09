@@ -151,7 +151,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
                 camera.set_window(*full_frame).wait()
 
             # do exposure
-            filename = camera.expose(False).wait()
+            filename = camera.grab_image(False).wait()
 
             # download image
             try:

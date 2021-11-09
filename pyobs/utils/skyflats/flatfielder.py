@@ -343,7 +343,7 @@ class FlatFielder(Object):
             camera.set_exposure_time(float(self._exptime)).wait()
         if isinstance(camera, IImageTypeProxy):
             camera.set_image_type(ImageType.SKYFLAT)
-        filename = cam.expose(broadcast=False).wait()
+        filename = cam.grab_image(broadcast=False).wait()
 
         # analyse image
         self._analyse_image(filename)
@@ -473,7 +473,7 @@ class FlatFielder(Object):
             camera.set_exposure_time(float(self._exptime)).wait()
         if isinstance(camera, IImageTypeProxy):
             camera.set_image_type(ImageType.SKYFLAT).wait()
-        filename = camera.expose().wait()
+        filename = camera.grab_image().wait()
 
         # analyse image
         if self._analyse_image(filename):

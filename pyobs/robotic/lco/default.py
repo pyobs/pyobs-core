@@ -233,7 +233,7 @@ class LcoDefaultScript(Script):
                                  self.configuration['type'], exp + 1, ic['exposure_count'])
                     if isinstance(camera, IImageTypeProxy):
                         camera.set_image_type(self.image_type).wait()
-                    cast(ICameraProxy, camera).expose().wait()
+                    cast(ICameraProxy, camera).grab_image().wait()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs

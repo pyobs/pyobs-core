@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Any, Optional, TYPE_CHECKING
+from typing import Dict, Any, Optional, TYPE_CHECKING, Tuple
 import numpy as np
 from astropy.io import fits
 
@@ -28,16 +28,14 @@ class DummySpectrograph(BaseSpectrograph):
         """
         BaseSpectrograph.__init__(self, **kwargs)
 
-    def _expose(self, abort_event: threading.Event) -> fits.HDUList:
+    def _expose(self, abort_event: threading.Event) -> Tuple[fits.HDUList, Optional[str]]:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
-            exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
         Returns:
-            The actual image.
+            The actual image and, if present, a filename.
 
         Raises:
             ValueError: If exposure was not successful.
@@ -77,7 +75,7 @@ class DummySpectrograph(BaseSpectrograph):
         # finished
         log.info('Exposure finished.')
         self._change_exposure_status(ExposureStatus.IDLE)
-        return fits.HDUList([hdu])
+        return fits.HDUList([hdu]), None
 
     def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.

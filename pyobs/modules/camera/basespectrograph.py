@@ -50,7 +50,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
-    def _expose(self, abort_event: threading.Event) -> Tuple[fits.HDUList, Optional[str]]:
+    def _expose(self, abort_event: threading.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -83,10 +83,9 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         header_futures_before = self.request_fits_headers(before=True)
 
         # do the exposure
-        filename: Optional[str] = None
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
         try:
-            hdulist, filename = self._expose(abort_event=self.expose_abort)
+            hdulist = self._expose(abort_event=self.expose_abort)
             if hdulist is None or hdulist[0].data is None:
                 self._exposure = None
                 return None, None
@@ -107,8 +106,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         self.add_fits_headers(hdulist[0])
 
         # format filename
-        if filename is None:
-            filename = self.format_filename(hdulist[0])
+        filename = self.format_filename(hdulist[0])
 
         # don't want to save?
         if filename is None:

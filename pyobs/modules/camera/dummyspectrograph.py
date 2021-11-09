@@ -28,7 +28,7 @@ class DummySpectrograph(BaseSpectrograph):
         """
         BaseSpectrograph.__init__(self, **kwargs)
 
-    def _expose(self, abort_event: threading.Event) -> Tuple[fits.HDUList, Optional[str]]:
+    def _expose(self, abort_event: threading.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -75,7 +75,7 @@ class DummySpectrograph(BaseSpectrograph):
         # finished
         log.info('Exposure finished.')
         self._change_exposure_status(ExposureStatus.IDLE)
-        return fits.HDUList([hdu]), None
+        return fits.HDUList([hdu])
 
     def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.

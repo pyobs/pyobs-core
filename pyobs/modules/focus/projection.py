@@ -139,7 +139,7 @@ class AutoFocusProjection(Module, IAutoFocus):
                     camera.set_exposure_time(exposure_time).wait()
                 if isinstance(camera, IImageTypeProxy):
                     camera.set_image_type(ImageType.FOCUS).wait()
-                filename = camera.expose().wait()
+                filename = camera.grab_image().wait()
             except RemoteException:
                 raise ValueError('Could not take image.')
 

@@ -1,11 +1,10 @@
 from typing import Any
 
 from .IAbortable import IAbortable
-from .IImageGrabber import IImageGrabber
 from pyobs.utils.enums import ExposureStatus
 
 
-class ICamera(IAbortable, IImageGrabber):
+class ISpectrograph(IAbortable):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 
@@ -17,8 +16,19 @@ class ICamera(IAbortable, IImageGrabber):
         """
         raise NotImplementedError
 
+    def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
+        """Grabs a spectrum and returns reference.
+
+        Args:
+            broadcast: Broadcast existence of image.
+
+        Returns:
+            Name of image that was taken.
+        """
+        raise NotImplementedError
+
     def abort(self, **kwargs: Any) -> None:
-        """Aborts the current exposure and sequence.
+        """Aborts the current exposure.
 
         Raises:
             ValueError: If exposure could not be aborted.
@@ -34,4 +44,4 @@ class ICamera(IAbortable, IImageGrabber):
         raise NotImplementedError
 
 
-__all__ = ['ICamera']
+__all__ = ['ISpectrograph']

@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, Any, Dict, List
+from typing import Tuple, Any, Dict, List, Optional
 
 import requests
 import urllib.parse
@@ -47,8 +47,11 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         self._url = url
         self._session = requests.session()
 
+        # whether module is active, i.e. if None, weather is always good
+        self._active = True
+
         # current status
-        self._is_good = None
+        self._is_good: Optional[bool] = None
 
         # whole status
         self._status: Dict[str, Any] = {}
@@ -57,7 +60,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # add thread func
         self.add_thread_func(self._update, True)
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         Module.open(self)
 
@@ -66,13 +69,32 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             self.comm.register_event(BadWeatherEvent)
             self.comm.register_event(GoodWeatherEvent)
 
-    def _update(self):
+    def start(self, **kwargs: Any) -> None:
+        """Starts a service."""
+
+        # did status change and weather is now bad?
+        if not self._active and not self._is_good:
+            # send event!
+            self.comm.send_event(BadWeatherEvent())
+
+        # activate
+        self._active = True
+
+    def stop(self, **kwargs: Any) -> None:
+        """Stops a service."""
+        self._active = False
+
+    def is_running(self, **kwargs: Any) -> bool:
+        """Whether a service is running."""
+        return self._active
+
+    def _update(self) -> None:
         """Update weather info."""
 
         # loop forever
         while not self.closing.is_set():
             # new is_good status
-            is_good = None
+            is_good: Optional[bool] = None
             error = False
 
             try:
@@ -99,27 +121,38 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
             # did status change?
             if is_good != self._is_good:
-                if is_good:
-                    log.info(('Weather is now good.'))
-                    eta = Time.now() + self._system_init_time * u.second
-                    self.comm.send_event(GoodWeatherEvent(eta=eta))
-                else:
-                    log.info('Weather is now bad.')
-                    self.comm.send_event(BadWeatherEvent())
+                # only send changes, if active
+                if self._active:
+                    # did it change to good or bad?
+                    if is_good:
+                        log.info(('Weather is now good.'))
+                        eta = Time.now() + self._system_init_time * u.second
+                        self.comm.send_event(GoodWeatherEvent(eta=eta))
+                    else:
+                        log.info('Weather is now bad.')
+                        self.comm.send_event(BadWeatherEvent())
+
+                # store new state
                 self._is_good = is_good
 
             # sleep a little
             self.closing.wait(60 if error else 5)
 
-    def get_weather_status(self, **kwargs: Any) -> dict:
+    def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
     def is_weather_good(self, **kwargs: Any) -> bool:
         """Whether the weather is good to observe."""
+
+        # if not active, weather is always good
+        if not self._active:
+            return True
+
+        # otherwise it depends on the is_good flag
         return False if self._is_good is None else self._is_good
 
-    def get_current_weather(self, **kwargs: Any) -> dict:
+    def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
 
         Returns:
@@ -154,7 +187,8 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_header_before(self, namespaces: List[str] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

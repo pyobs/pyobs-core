@@ -18,7 +18,7 @@ from pyobs.modules import Module, timeout
 from pyobs.interfaces import IVideo, IImageType, IExposureTime
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.mixins.imagegrabber import ImageGrabberMixin
+from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
 from pyobs.utils.threads import Future
@@ -127,7 +127,7 @@ class ImageHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IImageType):
+class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, IImageType):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -156,8 +156,8 @@ class BaseVideo(Module, tornado.web.Application, ImageGrabberMixin, IVideo, IIma
             flip: Whether to flip around Y axis.
         """
         Module.__init__(self, **kwargs)
-        ImageGrabberMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
-                                   rotation=rotation, filenames=filenames)
+        ImageFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
+                                      rotation=rotation, filenames=filenames)
 
         # store
         self._io_loop: Optional[tornado.ioloop.IOLoop] = None

@@ -2,10 +2,12 @@ import typing
 
 from pyobs.utils.threads import Future
 from pyobs.utils.enums import WeatherSensors
+from .IStartStopProxy import IStartStopProxy
+from .IRunningProxy import IRunningProxy
 from .interfaceproxy import InterfaceProxy
 
 
-class IWeatherProxy(InterfaceProxy):
+class IWeatherProxy(IStartStopProxy, IRunningProxy, InterfaceProxy):
     def get_current_weather(self) -> Future[typing.Dict[str, typing.Any]]:
         ...
 
@@ -15,6 +17,15 @@ class IWeatherProxy(InterfaceProxy):
     def get_weather_status(self) -> Future[typing.Dict[str, typing.Any]]:
         ...
 
+    def is_running(self) -> Future[bool]:
+        ...
+
     def is_weather_good(self) -> Future[bool]:
+        ...
+
+    def start(self) -> Future[None]:
+        ...
+
+    def stop(self) -> Future[None]:
         ...
 

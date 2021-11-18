@@ -170,7 +170,7 @@ def test_abort():
         with pytest.raises(ValueError):
             camera.set_exposure_time(1.)
             camera.set_image_type(ImageType.OBJECT)
-            camera.expose()
+            camera.grab_image()
 
     # expose
     thread = threading.Thread(target=expose)

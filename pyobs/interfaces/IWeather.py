@@ -1,10 +1,10 @@
 from typing import Tuple, Any, Dict
 
-from .interface import Interface
+from . import IStartStop
 from pyobs.utils.enums import WeatherSensors
 
 
-class IWeather(Interface):
+class IWeather(IStartStop):
     """The module acts as a weather station."""
     __module__ = 'pyobs.interfaces'
 

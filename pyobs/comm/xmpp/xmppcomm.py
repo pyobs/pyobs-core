@@ -378,26 +378,56 @@ class XmppComm(Comm):
             handler: Event handler method.
         """
 
+        # we also want to register all events derived from the given one
+        event_classes = self._get_derived_events(event_class)
+
         # do we have a handler?
         if handler:
-            # store handler
-            if event_class not in self._event_handlers:
-                self._event_handlers[event_class] = []
-            self._event_handlers[event_class].append(handler)
+            # loop classes
+            for ev in event_classes:
+                # initialize list
+                if ev not in self._event_handlers:
+                    self._event_handlers[ev] = []
+                # avoid duplicates
+                if handler not in self._event_handlers[ev]:
+                    # add handler
+                    self._event_handlers[ev].append(handler)
 
         # if event is not a local one, we also need to do some XMPP stuff
         if not event_class.local:
+            self._register_events(event_classes, handler)
+
+    def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
+        """Return list of given event itself and all events derived from it.
+
+        Args:
+            event: Event class to check.
+
+        Returns:
+            List of event classes.
+        """
+        import pyobs.events
+        event_classes: List[Type[Event]] = []
+        for cls in inspect.getmembers(pyobs.events, inspect.isclass):
+            if issubclass(cls[1], event):
+                event_classes.append(cls[1])
+        return event_classes
+
+    def _register_events(self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None) \
+            -> None:
+        # loop events
+        for ev in events:
             # register event at XMPP
-            self._xmpp['xep_0030'].add_feature('pyobs:event:%s' % event_class.__name__)
+            self._xmpp['xep_0030'].add_feature('pyobs:event:%s' % ev.__name__)
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % event_class.__name__)
+                self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % ev.__name__)
 
-            # update caps and send presence
-            self._xmpp['xep_0115'].update_caps()
-            self._xmpp.send_presence()
+        # update caps and send presence
+        self._xmpp['xep_0115'].update_caps()
+        self._xmpp.send_presence()
 
     def _handle_event(self, msg: Any) -> None:
         """Handles an event.

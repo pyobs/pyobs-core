@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.events import FilterChangedEvent, InitializedEvent, TelescopeMovingEvent
+from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import IFocuser, IFitsHeaderBefore, IFilters, ITemperatures, IOffsetsRaDec
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
@@ -51,8 +51,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # subscribe to events
         if self.comm:
             self.comm.register_event(FilterChangedEvent)
-            self.comm.register_event(InitializedEvent)
-            self.comm.register_event(TelescopeMovingEvent)
+            self.comm.register_event(OffsetsRaDecEvent)
 
         # init status
         self._change_motion_status(MotionStatus.IDLE)
@@ -68,9 +67,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         Raises:
             Exception: On any error.
         """
-
-        # send event
-        self.comm.send_event(TelescopeMovingEvent(ra=ra, dec=dec))
 
         # start slewing
         self.__move(ra, dec, abort_event)
@@ -91,9 +87,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         coords = SkyCoord(alt=alt * u.degree, az=az * u.degree, obstime=Time.now(),
                           location=self.location, frame='altaz')
         icrs = coords.icrs
-
-        # send event
-        self.comm.send_event(TelescopeMovingEvent(alt=alt, az=az))
 
         # start slewing
         self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
@@ -205,7 +198,6 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._change_motion_status(MotionStatus.INITIALIZING)
         time.sleep(5.)
         self._change_motion_status(MotionStatus.IDLE)
-        self.comm.send_event(InitializedEvent())
 
     @timeout(60)
     def park(self, **kwargs: Any) -> None:
@@ -231,6 +223,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
+        self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
 
     def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:

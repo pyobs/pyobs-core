@@ -34,6 +34,7 @@ from .IRotationProxy import IRotationProxy
 from .IRunnableProxy import IRunnableProxy
 from .IRunningProxy import IRunningProxy
 from .IScriptRunnerProxy import IScriptRunnerProxy
+from .ISpectrographProxy import ISpectrographProxy
 from .IStartStopProxy import IStartStopProxy
 from .ISyncTargetProxy import ISyncTargetProxy
 from .ITelescopeProxy import ITelescopeProxy

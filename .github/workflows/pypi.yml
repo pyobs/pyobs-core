@@ -13,3 +13,4 @@ jobs:
         uses: JRubics/poetry-publish@v1.9
         with:
           pypi_token: ${{ secrets.pypi_password }}
+          ignore_dev_requirements: "yes"

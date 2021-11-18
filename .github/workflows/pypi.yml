@@ -17,9 +17,8 @@ jobs:
         run: |
           curl -fsS -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
           python get-poetry.py -y
-          echo "::set-env name=PATH::$HOME/.poetry/bin:$PATH"
       - name: Configure poetry
-        run: poetry config virtualenvs.in-project true
+        run: $HOME/.poetry/bin/poetry config virtualenvs.in-project true
       - name: Set up cache
         uses: actions/cache@v1
         id: cache
@@ -28,12 +27,12 @@ jobs:
           key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Ensure cache is healthy
         if: steps.cache.outputs.cache-hit == 'true'
-        run: poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+        run: $HOME/.poetry/bin/poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
       - name: Install Dependencies
-        run: poetry install
+        run: $HOME/.poetry/bin/poetry install
       - name: Publish
         env:
           PYPI_TOKEN: ${{ secrets.pypi_password }}
         run: |
-          poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry publish --build
+          $HOME/.poetry/bin/poetry config pypi-token.pypi $PYPI_TOKEN
+          $HOME/.poetry/bin/poetry publish --build

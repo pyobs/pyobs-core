@@ -34,21 +34,22 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "astroplan"
-version = "0.7"
+version = "0.8"
 description = "Observation planning package for astronomers"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 
 [package.dependencies]
-astropy = ">=1.3"
-numpy = ">=1.10"
+astropy = ">=4"
+numpy = ">=1.17"
 pytz = "*"
 six = "*"
 
 [package.extras]
-docs = ["sphinx-rtd-theme"]
-plotting = ["matplotlib (>=1.4,<3.3)"]
+all = ["matplotlib (>=1.4,<3.3)", "astroquery"]
+docs = ["sphinx-astropy", "sphinx-rtd-theme", "matplotlib (>=1.4,<3.3)", "astroquery"]
+plotting = ["astroquery", "matplotlib (>=1.4,<3.3)"]
 test = ["pytest-astropy"]
 
 [[package]]
@@ -86,13 +87,35 @@ docs = ["sphinx-astropy", "matplotlib"]
 test = ["pytest-astropy", "hypothesis (<4.42)"]
 
 [[package]]
+name = "astroquery"
+version = "0.4.4"
+description = "Functions and classes to access online astronomical data resources"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+astropy = ">=4.0"
+beautifulsoup4 = ">=4.3.2"
+html5lib = ">=0.999"
+keyring = ">=4.0"
+numpy = ">=1.16"
+pyvo = ">=1.1"
+requests = ">=2.4.3"
+
+[package.extras]
+all = ["mocpy (>=0.5.2)", "astropy-healpix", "boto3", "regions"]
+all_lt_39 = ["mocpy (>=0.5.2)", "regions", "pyregion", "astropy-healpix", "aplpy", "boto3"]
+docs = ["sphinx-astropy (>=1.5)", "scipy"]
+test = ["pytest-astropy", "matplotlib", "jinja2", "flask", "pytest-dependency"]
+
+[[package]]
 name = "astroscrappy"
-version = "1.0.9.dev81+g09a1c21"
+version = "1.1.0"
 description = "Speedy Cosmic Ray Annihilation Package in Python"
 category = "main"
 optional = false
 python-versions = ">=3.6"
-develop = false
 
 [package.dependencies]
 astropy = "*"
@@ -101,12 +124,6 @@ numpy = "*"
 [package.extras]
 docs = ["sphinx-astropy"]
 test = ["cython", "pytest-astropy", "scipy"]
-
-[package.source]
-type = "git"
-url = "https://github.com/astropy/astroscrappy.git"
-reference = "master"
-resolved_reference = "09a1c2130cc0806efb276ada10bff01284f691dd"
 
 [[package]]
 name = "backports.zoneinfo"
@@ -134,6 +151,21 @@ six = ">=1.4.1"
 [package.extras]
 tests = ["pytest (>=3.2.1,!=3.3.0)"]
 typecheck = ["mypy"]
+
+[[package]]
+name = "beautifulsoup4"
+version = "4.10.0"
+description = "Screen-scraping library"
+category = "main"
+optional = false
+python-versions = ">3.0.0"
+
+[package.dependencies]
+soupsieve = ">1.2"
+
+[package.extras]
+html5lib = ["html5lib"]
+lxml = ["lxml"]
 
 [[package]]
 name = "cachetools"
@@ -258,6 +290,24 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
+name = "html5lib"
+version = "1.1"
+description = "HTML parser based on the WHATWG HTML specification"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[package.dependencies]
+six = ">=1.9"
+webencodings = "*"
+
+[package.extras]
+all = ["genshi", "chardet (>=2.2)", "lxml"]
+chardet = ["chardet (>=2.2)"]
+genshi = ["genshi"]
+lxml = ["lxml"]
+
+[[package]]
 name = "idna"
 version = "3.3"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -308,6 +358,36 @@ perf = ["ipython"]
 testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "packaging", "pep517", "pyfakefs", "flufl.flake8", "pytest-perf (>=0.9.2)", "pytest-black (>=0.3.7)", "pytest-mypy", "importlib-resources (>=1.3)"]
 
 [[package]]
+name = "jeepney"
+version = "0.7.1"
+description = "Low-level, pure Python DBus protocol wrapper."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+test = ["pytest", "pytest-trio", "pytest-asyncio", "testpath", "trio", "async-timeout"]
+trio = ["trio", "async-generator"]
+
+[[package]]
+name = "keyring"
+version = "23.2.1"
+description = "Store and access your passwords safely."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+importlib-metadata = ">=3.6"
+jeepney = {version = ">=0.4.2", markers = "sys_platform == \"linux\""}
+pywin32-ctypes = {version = "<0.1.0 || >0.1.0,<0.1.1 || >0.1.1", markers = "sys_platform == \"win32\""}
+SecretStorage = {version = ">=3.2", markers = "sys_platform == \"linux\""}
+
+[package.extras]
+docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
+testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "pytest-black (>=0.3.7)", "pytest-mypy"]
+
+[[package]]
 name = "kiwisolver"
 version = "1.3.2"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -355,6 +435,14 @@ pillow = ">=6.2.0"
 pyparsing = ">=2.2.1"
 python-dateutil = ">=2.7"
 setuptools_scm = ">=4"
+
+[[package]]
+name = "mimeparse"
+version = "0.1.3"
+description = "A module provides basic functions for parsing mime-type names and matching them against a list of media-ranges."
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "networkx"
@@ -583,6 +671,19 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 tzdata = {version = "*", markers = "python_version >= \"3.6\""}
 
 [[package]]
+name = "pyvo"
+version = "1.1"
+description = "Astropy affiliated package for accessing Virtual Observatory data and services"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+astropy = "*"
+mimeparse = "*"
+requests = "*"
+
+[[package]]
 name = "pywavelets"
 version = "1.2.0"
 description = "PyWavelets, wavelet transform module"
@@ -592,6 +693,14 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 numpy = ">=1.17.3"
+
+[[package]]
+name = "pywin32-ctypes"
+version = "0.2.0"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pyyaml"
@@ -674,6 +783,18 @@ python-versions = ">=3.7,<3.11"
 numpy = ">=1.16.5,<1.23.0"
 
 [[package]]
+name = "secretstorage"
+version = "3.3.1"
+description = "Python bindings to FreeDesktop.org Secret Service API"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cryptography = ">=2.0"
+jeepney = ">=0.6"
+
+[[package]]
 name = "sep"
 version = "1.2.0"
 description = "Astronomical source extraction and photometry library"
@@ -714,6 +835,14 @@ description = "SleekXMPP is an elegant Python library for XMPP (aka Jabber, Goog
 category = "main"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "soupsieve"
+version = "2.3.1"
+description = "A modern CSS selector implementation for Beautiful Soup."
+category = "main"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "tifffile"
@@ -896,6 +1025,14 @@ secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "cer
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
+name = "webencodings"
+version = "0.5.1"
+description = "Character encoding aliases for legacy web content"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "zipp"
 version = "3.6.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -910,7 +1047,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "efd3c52687f40ec53a86029416fc3ecb937ae66683171b2f31b4f0bec692f92f"
+content-hash = "6cd833911b316038a94e845c4015a4ac87074adef141493cf9f4a3154e926739"
 
 [metadata.files]
 apscheduler = [
@@ -921,7 +1058,7 @@ asteval = [
     {file = "asteval-0.9.25.tar.gz", hash = "sha256:bea22b7d8fa16bcba95ebc72052ae5d8ca97114c9959bb47f8b8eebf30e4342f"},
 ]
 astroplan = [
-    {file = "astroplan-0.7.tar.gz", hash = "sha256:df4db93467e7f842952b4afeb1d584e89a0a70e99ec4e0aeed389747a7c069ae"},
+    {file = "astroplan-0.8.tar.gz", hash = "sha256:0cc463474e034f5f58f7399ef830ff60e91d2fac32e89cf2224e1de50946bdc7"},
 ]
 astropy = [
     {file = "astropy-4.3.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:a0764d7f68034c584dda8d1c9cc4357ade05cec4c1134db43bce804fcf656ff1"},
@@ -972,7 +1109,26 @@ astropy-healpix = [
     {file = "astropy_healpix-0.6-cp39-cp39-win_amd64.whl", hash = "sha256:46f7d2918079281d5be5899a286828904a01b65f088ab564f7c1e8636914cea1"},
     {file = "astropy_healpix-0.6.tar.gz", hash = "sha256:409a6621c383641456c074f0f0350a24a4a58e910eaeef14e9bbce3e00ad6690"},
 ]
-astroscrappy = []
+astroquery = [
+    {file = "astroquery-0.4.4-py3-none-any.whl", hash = "sha256:4f4d7fa81b9261541ce1867fb542da22de9d6ca81007ef586034a050009b7e6f"},
+    {file = "astroquery-0.4.4.tar.gz", hash = "sha256:96b62da2ebce1922df43cf338a6f85383bae88e182714e8e708923bc64b6ba63"},
+]
+astroscrappy = [
+    {file = "astroscrappy-1.1.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f7ccf66c0b1ae70bf9903b7c616e4f2ccde9b0f1d8b45bc2381da437b5056c8e"},
+    {file = "astroscrappy-1.1.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:738151cb4d31dab68f798e410e8cc2aba96b08013b953642f5dc2b183fefbc05"},
+    {file = "astroscrappy-1.1.0-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:feec81b2f2981e8a7662c9d28e6803ff025fb02f7a97fbc3079da0245477356b"},
+    {file = "astroscrappy-1.1.0-cp37-cp37m-win32.whl", hash = "sha256:09faf6b25e577e617454963c282d598c74145d288dc90603552b23cba37d7336"},
+    {file = "astroscrappy-1.1.0-cp37-cp37m-win_amd64.whl", hash = "sha256:1d014e45a8b5a63234398144bf3bcb3f470b9163fefcab02c0f40fb0a69b104f"},
+    {file = "astroscrappy-1.1.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:86dd6b3a4c106509dffda3946fb914975d1db20f296d9d0f1198390d715f3680"},
+    {file = "astroscrappy-1.1.0-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:ec765c1b731c41bd070d9bac8d6783fc570e3ca571e308d1043587e4e10878f2"},
+    {file = "astroscrappy-1.1.0-cp38-cp38-win32.whl", hash = "sha256:81d60df51295c7397cf28234e4ca365223675932f95870f0999f7c4f401ad83d"},
+    {file = "astroscrappy-1.1.0-cp38-cp38-win_amd64.whl", hash = "sha256:9c1252721d787a3c93af82cba4329786cadcba08dad4aed8739f43a71e04df71"},
+    {file = "astroscrappy-1.1.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:5af73a218b730139893847f039dce393ffa071d33d8ee722533a52f63fb28f28"},
+    {file = "astroscrappy-1.1.0-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:bd98ac26f13d1c7f317186b24cec8790c9691ba6c670cd8609aa1778c7eaf00a"},
+    {file = "astroscrappy-1.1.0-cp39-cp39-win32.whl", hash = "sha256:b6c71c6055690d69cdcf6064f72a69c337f82a6f94315d7052f6f99dfd302b47"},
+    {file = "astroscrappy-1.1.0-cp39-cp39-win_amd64.whl", hash = "sha256:89fdfef980921a23c6c15e63842be56c41627c43bcf8043017d365826e74f319"},
+    {file = "astroscrappy-1.1.0.tar.gz", hash = "sha256:7e196c7ce839b4b2fa8ddba8f75c1a1ee45ff1247d01e8c8e7b4debf6974156a"},
+]
 "backports.zoneinfo" = [
     {file = "backports.zoneinfo-0.2.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:da6013fd84a690242c310d77ddb8441a559e9cb3d3d59ebac9aca1a57b2e18bc"},
     {file = "backports.zoneinfo-0.2.1-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:89a48c0d158a3cc3f654da4c2de1ceba85263fafb861b98b59040a5086259722"},
@@ -999,6 +1155,10 @@ bcrypt = [
     {file = "bcrypt-3.2.0-cp36-abi3-win32.whl", hash = "sha256:a67fb841b35c28a59cebed05fbd3e80eea26e6d75851f0574a9273c80f3e9b55"},
     {file = "bcrypt-3.2.0-cp36-abi3-win_amd64.whl", hash = "sha256:81fec756feff5b6818ea7ab031205e1d323d8943d237303baca2c5f9c7846f34"},
     {file = "bcrypt-3.2.0.tar.gz", hash = "sha256:5b93c1726e50a93a033c36e5ca7fdcd29a5c7395af50a6892f5d9e7c6cfbfb29"},
+]
+beautifulsoup4 = [
+    {file = "beautifulsoup4-4.10.0-py3-none-any.whl", hash = "sha256:9a315ce70049920ea4572a4055bc4bd700c940521d36fc858205ad4fcde149bf"},
+    {file = "beautifulsoup4-4.10.0.tar.gz", hash = "sha256:c23ad23c521d818955a4151a67d81580319d4bf548d3d49f4223ae041ff98891"},
 ]
 cachetools = [
     {file = "cachetools-4.2.2-py3-none-any.whl", hash = "sha256:2cc0b89715337ab6dbba85b5b50effe2b0c74e035d83ee8ed637cf52f12ae001"},
@@ -1104,6 +1264,10 @@ fonttools = [
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
+html5lib = [
+    {file = "html5lib-1.1-py2.py3-none-any.whl", hash = "sha256:0d78f8fde1c230e99fe37986a60526d7049ed4bf8a9fadbad5f00e22e58e041d"},
+    {file = "html5lib-1.1.tar.gz", hash = "sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f"},
+]
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
@@ -1115,6 +1279,14 @@ imageio = [
 importlib-metadata = [
     {file = "importlib_metadata-4.8.2-py3-none-any.whl", hash = "sha256:53ccfd5c134223e497627b9815d5030edf77d2ed573922f7a0b8f8bb81a1c100"},
     {file = "importlib_metadata-4.8.2.tar.gz", hash = "sha256:75bdec14c397f528724c1bfd9709d660b33a4d2e77387a3358f20b848bb5e5fb"},
+]
+jeepney = [
+    {file = "jeepney-0.7.1-py3-none-any.whl", hash = "sha256:1b5a0ea5c0e7b166b2f5895b91a08c14de8915afda4407fb5022a195224958ac"},
+    {file = "jeepney-0.7.1.tar.gz", hash = "sha256:fa9e232dfa0c498bd0b8a3a73b8d8a31978304dcef0515adc859d4e096f96f4f"},
+]
+keyring = [
+    {file = "keyring-23.2.1-py3-none-any.whl", hash = "sha256:bd2145a237ed70c8ce72978b497619ddfcae640b6dcf494402d5143e37755c6e"},
+    {file = "keyring-23.2.1.tar.gz", hash = "sha256:6334aee6073db2fb1f30892697b1730105b5e9a77ce7e61fca6b435225493efe"},
 ]
 kiwisolver = [
     {file = "kiwisolver-1.3.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:1d819553730d3c2724582124aee8a03c846ec4362ded1034c16fb3ef309264e6"},
@@ -1205,6 +1377,9 @@ matplotlib = [
     {file = "matplotlib-3.5.0-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:dc8c5c23e7056e126275dbf29efba817b3d94196690930d0968873ac3a94ab82"},
     {file = "matplotlib-3.5.0-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:a0ea10faa3bab0714d3a19c7e0921279a68d57552414d6eceaea99f97d7735db"},
     {file = "matplotlib-3.5.0.tar.gz", hash = "sha256:38892a254420d95594285077276162a5e9e9c30b6da08bdc2a4d53331ad9a6fa"},
+]
+mimeparse = [
+    {file = "mimeparse-0.1.3.tar.gz", hash = "sha256:534ff6feefe1cd03984f444e6415aacc79c0a85f3b868ec41a2fd5003004c31e"},
 ]
 networkx = [
     {file = "networkx-2.6.3-py3-none-any.whl", hash = "sha256:80b6b89c77d1dfb64a4c7854981b60aeea6360ac02c6d4e4913319e0a313abef"},
@@ -1425,6 +1600,10 @@ pytz-deprecation-shim = [
     {file = "pytz_deprecation_shim-0.1.0.post0-py2.py3-none-any.whl", hash = "sha256:8314c9692a636c8eb3bda879b9f119e350e93223ae83e70e80c31675a0fdc1a6"},
     {file = "pytz_deprecation_shim-0.1.0.post0.tar.gz", hash = "sha256:af097bae1b616dde5c5744441e2ddc69e74dfdcb0c263129610d85b87445a59d"},
 ]
+pyvo = [
+    {file = "pyvo-1.1-py3-none-any.whl", hash = "sha256:a7a9b4f93b62d23e3d82837aa95877d8dd05e58b31078e08650fd4fa38972491"},
+    {file = "pyvo-1.1.tar.gz", hash = "sha256:e14f527ecbec48b71d57f48f301ec6a809f886096114529cf2d1fdcbaf6deb2b"},
+]
 pywavelets = [
     {file = "PyWavelets-1.2.0-cp310-cp310-macosx_10_13_universal2.whl", hash = "sha256:4c29efb581245e4ba3e76b23b1bf254a7c79821d7e63f432e68044cf2d233e9e"},
     {file = "PyWavelets-1.2.0-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:3089aa6b4962e1f5dbd0434a10f174f7a50f80bf64cb7d33cc725af07bd30ecc"},
@@ -1464,6 +1643,10 @@ pywavelets = [
     {file = "PyWavelets-1.2.0-cp39-cp39-win32.whl", hash = "sha256:fd5ca221ac7bedb2a9aebcf3b05020827564db5a979b25005b3a2c7ba84069a2"},
     {file = "PyWavelets-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:69cfc7f2ceb0a1097e7e8d1a026cbb2ff1afecc2d79820856f1abccb6cb59cc4"},
     {file = "PyWavelets-1.2.0.tar.gz", hash = "sha256:6cbd69b047bb4e00873097472133425f5f08a4e6bc8b3f0ae709274d4d5e9a8d"},
+]
+pywin32-ctypes = [
+    {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},
+    {file = "pywin32_ctypes-0.2.0-py2.py3-none-any.whl", hash = "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"},
 ]
 pyyaml = [
     {file = "PyYAML-6.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d4db7c7aef085872ef65a8fd7d6d09a14ae91f691dec3e87ee5ee0539d516f53"},
@@ -1569,6 +1752,10 @@ scipy = [
     {file = "scipy-1.7.2-cp39-cp39-win_amd64.whl", hash = "sha256:a80eb01c43fd98257ec7a49ff5cec0edba32031b5f86503f55399a48cb2c5379"},
     {file = "scipy-1.7.2.tar.gz", hash = "sha256:fa2dbabaaecdb502641b0b3c00dec05fb475ae48655c66da16c9ed24eda1e711"},
 ]
+secretstorage = [
+    {file = "SecretStorage-3.3.1-py3-none-any.whl", hash = "sha256:422d82c36172d88d6a0ed5afdec956514b189ddbfb72fefab0c8a1cee4eaf71f"},
+    {file = "SecretStorage-3.3.1.tar.gz", hash = "sha256:fd666c51a6bf200643495a04abb261f83229dcb6fd8472ec393df7ffc8b6f195"},
+]
 sep = [
     {file = "sep-1.2.0-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:96853e86c54fb3206358969a984fc4fd5776eee46a3e647cac1570ff8ae1327e"},
     {file = "sep-1.2.0-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:19588150e6d7e480ad8f51ac5e68d6bcfa258ff3c9f2dd2b9df4fbcca6e515a5"},
@@ -1612,6 +1799,10 @@ six = [
 ]
 sleekxmpp = [
     {file = "sleekxmpp-1.3.3.tar.gz", hash = "sha256:d213c1de71d92505f95ced0460ee0f84fdc4ddcacb7d7dd343739ed4028e5569"},
+]
+soupsieve = [
+    {file = "soupsieve-2.3.1-py3-none-any.whl", hash = "sha256:1a3cca2617c6b38c0343ed661b1fa5de5637f257d4fe22bd9f1338010a1efefb"},
+    {file = "soupsieve-2.3.1.tar.gz", hash = "sha256:b8d49b1cd4f037c7082a9683dfa1801aa2597fb11c3a1155b7a5b94829b4f1f9"},
 ]
 tifffile = [
     {file = "tifffile-2021.11.2-py3-none-any.whl", hash = "sha256:2e0066f90e2dbeb3e6a287cfd78bafbd2f142fabbca4a76a8ff809573baf5ad5"},
@@ -1723,6 +1914,10 @@ uncertainties = [
 urllib3 = [
     {file = "urllib3-1.26.7-py2.py3-none-any.whl", hash = "sha256:c4fdf4019605b6e5423637e01bc9fe4daef873709a7973e195ceba0a62bbc844"},
     {file = "urllib3-1.26.7.tar.gz", hash = "sha256:4987c65554f7a2dbf30c18fd48778ef124af6fab771a377103da0585e2336ece"},
+]
+webencodings = [
+    {file = "webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78"},
+    {file = "webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"},
 ]
 zipp = [
     {file = "zipp-3.6.0-py3-none-any.whl", hash = "sha256:9fe5ea21568a0a70e50f273397638d39b03353731e6cbbb3fd8502a33fec40bc"},

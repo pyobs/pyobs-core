@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IBinningProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_binning(self) -> 'Future[typing.Tuple[int, int]]':
         ...
 

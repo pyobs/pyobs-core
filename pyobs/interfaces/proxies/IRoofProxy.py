@@ -11,6 +11,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IRoofProxy(IMotionProxy, IReadyProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_motion_status(self, device: typing.Optional[str] = None) -> 'Future[MotionStatus]':
         ...
 

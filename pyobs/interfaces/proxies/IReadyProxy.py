@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IReadyProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def is_ready(self) -> 'Future[bool]':
         ...
 

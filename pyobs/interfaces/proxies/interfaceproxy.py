@@ -7,4 +7,6 @@ if typing.TYPE_CHECKING:
 
 
 class InterfaceProxy:
+    __module__ = 'pyobs.interfaces.proxies'
+
     ...

@@ -11,6 +11,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IFocuserProxy(IMotionProxy, IReadyProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_focus(self) -> 'Future[float]':
         ...
 

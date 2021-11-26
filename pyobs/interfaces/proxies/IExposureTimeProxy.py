@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IExposureTimeProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_exposure_time(self) -> 'Future[float]':
         ...
 

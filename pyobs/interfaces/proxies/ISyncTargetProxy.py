@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ISyncTargetProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def sync_target(self) -> 'Future[None]':
         ...
 

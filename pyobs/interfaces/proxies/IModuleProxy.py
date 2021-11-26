@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IModuleProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def label(self) -> 'Future[str]':
         ...
 

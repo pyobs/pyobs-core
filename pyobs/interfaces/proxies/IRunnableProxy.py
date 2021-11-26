@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IRunnableProxy(IAbortableProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def abort(self) -> 'Future[None]':
         ...
 

@@ -11,6 +11,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IFiltersProxy(IMotionProxy, IReadyProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_filter(self) -> 'Future[str]':
         ...
 

@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IConfigProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_config_caps(self) -> 'Future[typing.Dict[str, typing.Tuple[bool, bool, bool]]]':
         ...
 

@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ICalibrateProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def calibrate(self) -> 'Future[None]':
         ...
 

@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IImageGrabberProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def grab_image(self, broadcast: bool = True) -> 'Future[str]':
         ...
 

@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ICoolingProxy(ITemperaturesProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_cooling_status(self) -> 'Future[typing.Tuple[bool, float, float]]':
         ...
 

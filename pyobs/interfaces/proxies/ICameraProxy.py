@@ -11,6 +11,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ICameraProxy(IAbortableProxy, IImageGrabberProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def abort(self) -> 'Future[None]':
         ...
 

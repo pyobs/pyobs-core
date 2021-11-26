@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IImageTypeProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_image_type(self) -> 'Future[ImageType]':
         ...
 

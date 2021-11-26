@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IFlatFieldProxy(IAbortableProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def abort(self) -> 'Future[None]':
         ...
 

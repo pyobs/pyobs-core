@@ -13,6 +13,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ITelescopeProxy(IMotionProxy, IReadyProxy, IPointingAltAzProxy, IPointingRaDecProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_altaz(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IVideoProxy(IImageGrabberProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_video(self) -> 'Future[str]':
         ...
 

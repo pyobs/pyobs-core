@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IAbortableProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def abort(self) -> 'Future[None]':
         ...
 

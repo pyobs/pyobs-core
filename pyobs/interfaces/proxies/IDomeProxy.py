@@ -13,6 +13,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IDomeProxy(IRoofProxy, IMotionProxy, IReadyProxy, IPointingAltAzProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_altaz(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IScriptRunnerProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def run_script(self, script: str) -> 'Future[None]':
         ...
 

@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IImageFormatProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_image_format(self) -> 'Future[ImageFormat]':
         ...
 

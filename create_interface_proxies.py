@@ -100,6 +100,7 @@ def main() -> None:
                 if len(parents) > 0:
                     py.write('(' + ', '.join([p.__name__ + 'Proxy' for p in parents]) + ')')
                 py.write(':\n')
+                py.write('    __module__ = \'pyobs.interfaces.proxies\'\n\n')
 
                 # loop methods
                 for method_name, method in methods:

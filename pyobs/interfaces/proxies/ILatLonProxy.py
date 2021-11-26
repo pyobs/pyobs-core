@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ILatLonProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_latlon(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

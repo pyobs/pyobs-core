@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IRunningProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def is_running(self) -> 'Future[bool]':
         ...
 

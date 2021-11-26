@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IWindowProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_full_frame(self) -> 'Future[typing.Tuple[int, int, int, int]]':
         ...
 

@@ -11,6 +11,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IWeatherProxy(IStartStopProxy, IRunningProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_current_weather(self) -> 'Future[typing.Dict[str, typing.Any]]':
         ...
 

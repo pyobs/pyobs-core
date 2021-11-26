@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IFocusModelProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_optimal_focus(self) -> 'Future[float]':
         ...
 

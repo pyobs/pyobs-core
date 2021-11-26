@@ -10,6 +10,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ISpectrographProxy(IAbortableProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def abort(self) -> 'Future[None]':
         ...
 

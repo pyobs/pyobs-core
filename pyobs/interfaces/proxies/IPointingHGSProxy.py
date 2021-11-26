@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IPointingHGSProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_hgs_lon_lat(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

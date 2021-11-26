@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IPointingAltAzProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_altaz(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

@@ -9,6 +9,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IAcquisitionProxy(IRunningProxy, InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def acquire_target(self) -> 'Future[typing.Dict[str, typing.Any]]':
         ...
 

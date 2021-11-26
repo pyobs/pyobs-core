@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class ITemperaturesProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_temperatures(self) -> 'Future[typing.Dict[str, float]]':
         ...
 

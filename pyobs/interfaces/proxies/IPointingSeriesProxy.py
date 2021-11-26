@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IPointingSeriesProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def add_pointing_measure(self) -> 'Future[None]':
         ...
 

@@ -8,6 +8,8 @@ from .interfaceproxy import InterfaceProxy
 
 
 class IOffsetsRaDecProxy(InterfaceProxy):
+    __module__ = 'pyobs.interfaces.proxies'
+
     def get_offsets_radec(self) -> 'Future[typing.Tuple[float, float]]':
         ...
 

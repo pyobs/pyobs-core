@@ -77,8 +77,10 @@ def main() -> None:
                 methods = inspect.getmembers(interface, inspect.isfunction)
 
                 # write imports
+                py.write('from __future__ import annotations\n\n')
                 py.write('import typing\n\n')
-                py.write('from pyobs.utils.threads import Future\n')
+                py.write('if typing.TYPE_CHECKING:\n')
+                py.write('    from pyobs.utils.threads import Future\n')
 
                 # get all used types
                 used_types = get_used_types(methods)
@@ -119,7 +121,7 @@ def main() -> None:
 
                     # return annotation
                     return_annotation = annotation_to_str(sig.return_annotation)
-                    py.write(f') -> Future[{return_annotation}]:\n        ...\n\n')
+                    py.write(f') -> \'Future[{return_annotation}]\':\n        ...\n\n')
 
                 # no methods?
                 if len(methods) == 0:

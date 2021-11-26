@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import typing
 
-from pyobs.utils.threads import Future
+if typing.TYPE_CHECKING:
+    from pyobs.utils.threads import Future
 from .interfaceproxy import InterfaceProxy
 
 
 class ICalibrateProxy(InterfaceProxy):
-    def calibrate(self) -> Future[None]:
+    def calibrate(self) -> 'Future[None]':
         ...
 

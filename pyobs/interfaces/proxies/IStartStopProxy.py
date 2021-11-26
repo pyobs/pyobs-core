@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import typing
 
-from pyobs.utils.threads import Future
+if typing.TYPE_CHECKING:
+    from pyobs.utils.threads import Future
 from .IRunningProxy import IRunningProxy
 from .interfaceproxy import InterfaceProxy
 
 
 class IStartStopProxy(IRunningProxy, InterfaceProxy):
-    def is_running(self) -> Future[bool]:
+    def is_running(self) -> 'Future[bool]':
         ...
 
-    def start(self) -> Future[None]:
+    def start(self) -> 'Future[None]':
         ...
 
-    def stop(self) -> Future[None]:
+    def stop(self) -> 'Future[None]':
         ...
 

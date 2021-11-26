@@ -17,8 +17,12 @@ The most convenient way for getting access to other modules' method is by using 
 which can easily be obtained by using the :meth:`~pyobs.comm.Comm.proxy` method or the ``[]`` operator like this (if
 the module named 'camera' implements the :class:`~pyobs.interfaces.ICamera` interface)::
 
-    camera: ICamera = comm['camera']
-    camera.expose()
+    camera = comm['camera']
+    camera.expose().wait()
+
+Note that camera is now not of type :class:`~pyobs.interfaces.ICamera`, but it is a
+:class:`~pyobs.interfaces.proxies.ICameraProxy`, which implements exactly the same methods, but with them returning
+Futures instead of their return values directly -- thus the call to ``wait()`` at the end.
 
 Each :class:`~pyobs.modules.Module` that was configured with a Comm object (see :mod:`~pyobs.modules`) has
 an attribute ``comm`` for easy access.

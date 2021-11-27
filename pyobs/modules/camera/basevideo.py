@@ -135,7 +135,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
                  filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
                  fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
                  centre: Optional[Tuple[float, float]] = None, rotation: float = 0., cache_size: int = 5,
-                 live_view: bool = True, flip: bool = False, **kwargs: Any):
+                 live_view: bool = True, flip: bool = False, sleep_time: int = 600, **kwargs: Any):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -154,6 +154,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             cache_size: Size of cache for previous images.
             live_view: If True, live view is served via web server.
             flip: Whether to flip around Y axis.
+            sleep_time: Time in s with inactivity after which the camera should go to sleep.
         """
         Module.__init__(self, **kwargs)
         ImageFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
@@ -177,6 +178,13 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         self._last_image: Optional[LastImage] = None
         self._last_time = 0.
         self._flip = flip
+        self._sleep_time = sleep_time
+
+        # active
+        self._active = False
+        self._active_time = 0.
+        self._active_lock = threading.Lock()
+        self.add_thread_func(self._active_update)
 
         # image cache
         self._cache = DataCache(cache_size)
@@ -227,7 +235,46 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         self._io_loop.start()
 
     @property
+    def camera_active(self) -> bool:
+        """Whether camera is currently active."""
+        return self._active
+
+    def _activate_camera(self) -> None:
+        """Can be overridden by derived class to implement inactivity sleep"""
+        pass
+
+    def _deactivate_camera(self) -> None:
+        """Can be overridden by derived class to implement inactivity sleep"""
+        pass
+
+    def _on_image_request(self) -> None:
+        """Called, when a new image is requested, sets active=True."""
+        with self._active_lock:
+            self._active = True
+            self._active_time = time.time()
+            self._activate_camera()
+
+    def _active_update(self) -> None:
+        """Checking active status regularly."""
+        while not self.closing.is_set():
+            # go to sleep?
+            if time.time() - self._active_time > self._sleep_time:
+                with self._active_lock:
+                    self._active = False
+                    self._active_time = 0
+                    self._deactivate_camera()
+
+            # wait a little for next check
+            self.closing.wait(1)
+
+    @property
     def image_jpeg(self) -> Tuple[Optional[int], Optional[bytes]]:
+        """Return image as jpeg."""
+
+        # activate camera, first image will most probably be None
+        self._on_image_request()
+
+        # return what we got
         with self._lock:
             return self._frame_num, None if self._last_image is None else self._last_image.jpeg
 
@@ -366,6 +413,9 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         Returns:
             Name of image that was taken.
         """
+
+        # activate camera
+        self._on_image_request()
 
         # acquire lock
         with self._image_request_lock:

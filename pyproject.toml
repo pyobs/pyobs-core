@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "0.14.1"
+version = "0.14.2"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -11,7 +11,7 @@ python = ">=3.7,<3.11"
 scipy = "^1.7.2"
 pandas = "^1.1.5"
 astropy = "^4.2"
-astroplan =  "^0.7"
+astroplan =  "^0.8"
 numpy = "^1.21"
 paramiko = "^2.8"
 pytz = "^2021.3"
@@ -28,6 +28,7 @@ typing-extensions = "^4.0"
 sep = [{ version = "^1.2", platform = "linux" }]
 pyinotify = [{ version = "^0.9", platform = "linux" }]
 python-daemon = [{ version = "^2.3", platform = "linux" }]
+astroquery = "^0.4.4"
 
 [tool.poetry.dev-dependencies]
 types-cryptography = "^3.3.7"

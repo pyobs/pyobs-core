@@ -1,8 +1,12 @@
 ## Changelog
 
-### v0.15
+
+### v0.14.2
+* Fixed a bug with Poetry
+
+### v0.14.1
 * Added possibility to use class hierarchy for events, i.e. subscribe to a class and receive all derived events.
-* 
+* Change to Poetry as build system
 
 ### v0.14 (2021-11-03)
 * Guiding modules accept a pipeline now, so more image processors than just Offsets can run.

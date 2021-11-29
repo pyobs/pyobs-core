@@ -239,6 +239,22 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         """Whether camera is currently active."""
         return self._active
 
+    def activate_camera(self) -> None:
+        """Activate camera."""
+        with self._active_lock:
+            self._active_time = time.time()
+            if not self._active:
+                self._activate_camera()
+            self._active = True
+
+    def deactivate_camera(self) -> None:
+        """Deactivate camera."""
+        with self._active_lock:
+            self._active_time = 0
+            if self._active:
+                self._deactivate_camera()
+            self._active = False
+
     def _activate_camera(self) -> None:
         """Can be overridden by derived class to implement inactivity sleep"""
         pass
@@ -247,22 +263,13 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         """Can be overridden by derived class to implement inactivity sleep"""
         pass
 
-    def _on_image_request(self) -> None:
-        """Called, when a new image is requested, sets active=True."""
-        with self._active_lock:
-            self._active = True
-            self._active_time = time.time()
-            self._activate_camera()
-
     def _active_update(self) -> None:
         """Checking active status regularly."""
+        self._active_time = time.time()
         while not self.closing.is_set():
             # go to sleep?
-            if time.time() - self._active_time > self._sleep_time:
-                with self._active_lock:
-                    self._active = False
-                    self._active_time = 0
-                    self._deactivate_camera()
+            if time.time() - self._active_time > self._sleep_time and self._active:
+                self.deactivate_camera()
 
             # wait a little for next check
             self.closing.wait(1)
@@ -272,7 +279,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         """Return image as jpeg."""
 
         # activate camera, first image will most probably be None
-        self._on_image_request()
+        self.activate_camera()
 
         # return what we got
         with self._lock:
@@ -415,7 +422,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         """
 
         # activate camera
-        self._on_image_request()
+        self.activate_camera()
 
         # acquire lock
         with self._image_request_lock:

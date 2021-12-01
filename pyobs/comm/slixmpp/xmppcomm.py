@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import asyncio
 import functools
 import inspect
 import json
@@ -8,8 +10,10 @@ import ssl
 import threading
 import time
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
-from sleekxmpp import ElementBase
-from sleekxmpp.xmlstream import ET
+
+import slixmpp
+from slixmpp import ElementBase
+from slixmpp.xmlstream import ET
 import xml.sax.saxutils
 
 from pyobs.comm import Comm
@@ -38,7 +42,7 @@ class XmppComm(Comm):
     like this::
 
         comm:
-            class: pyobs.xmpp.XmppComm
+            class: pyobs.sleekxmpp.XmppComm
             jid:  someuser@example.com/pyobs
 
     Using this, *pyobs* tries to connect to example.com as user ``someuser`` with resource ``pyobs``. Since ``pyobs``
@@ -55,7 +59,7 @@ class XmppComm(Comm):
     in the same directory as the module config::
 
         comm_cfg: &comm
-            class: pyobs.comm.xmpp.XmppComm
+            class: pyobs.comm.sleekxmpp.XmppComm
             domain: example.com
 
     Now in the module configuration, one can simply do this::
@@ -80,7 +84,7 @@ class XmppComm(Comm):
     parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
 
     """
-    __module__ = 'pyobs.comm.xmpp'
+    __module__ = 'pyobs.comm.sleekxmpp'
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
                  resource: str = 'pyobs', password: str = '', server: Optional[str] = None,
@@ -135,6 +139,7 @@ class XmppComm(Comm):
 
         # create client
         self._xmpp = XmppClient(self._jid, password)
+        #self._xmpp = slixmpp.ClientXMPP(self._jid, password)
         self._xmpp.add_event_handler('pubsub_publish', self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
@@ -167,26 +172,17 @@ class XmppComm(Comm):
         # create RPC handler
         self._rpc = RPC(self._xmpp, self.module)
 
-        # server given?
-        server = () if self._server is None else tuple(self._server.split(':'))
+        # start thread
+        thread = threading.Thread(target=self._xmpp_thread)
+        thread.start()
 
-        # connect
-        self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
-        if self._xmpp.connect(server, use_tls=self._use_tls, reattempt=False):
-            # start processing
-            self._xmpp.process(block=False)
-
-            # wait for connected
-            if not self._xmpp.wait_connect():
-                raise ValueError('Could not connect to XMPP server.')
-            self._connected = True
-
-            # subscribe to events
-            self.register_event(LogEvent)
-
-        else:
-            # TODO: catch exceptions in open() methods
+        # wait for connected
+        if not self._xmpp.wait_connect():
             raise ValueError('Could not connect to XMPP server.')
+        self._connected = True
+
+        # subscribe to events
+        self.register_event(LogEvent)
 
     def close(self) -> None:
         """Close connection."""
@@ -194,8 +190,20 @@ class XmppComm(Comm):
         # close parent class
         Comm.close(self)
 
-        # disconnect from xmpp server
+        # disconnect from sleekxmpp server
         self._xmpp.disconnect()
+
+    def _xmpp_thread(self):
+        """Thread for handling XMPP server."""
+        # server given?
+        server = () if self._server is None else tuple(self._server.split(':'))
+
+        # connect
+        #self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
+        self._xmpp.connect(address=('127.0.0.1', 5222), force_starttls=False, disable_starttls=True)
+
+        # start processing
+        self._xmpp.process()
 
     @property
     def name(self) -> Optional[str]:
@@ -238,14 +246,6 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # get interfaces
-        if client not in self._interface_cache:
-            # get interface names
-            interface_names = self._xmpp.get_interfaces(client)
-
-            # get interfaces
-            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
-
         # convert to classes
         return self._interface_cache[client]
 
@@ -286,7 +286,7 @@ class XmppComm(Comm):
             raise ValueError('No RPC.')
         return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
-    def _got_online(self, msg: Any) -> None:
+    async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
 
         Args:
@@ -301,6 +301,10 @@ class XmppComm(Comm):
         # clear interface cache, just in case there is something there
         if jid in self._interface_cache:
             del self._interface_cache[jid]
+
+        # interfaces
+        interface_names = await self._xmpp.get_interfaces(jid)
+        self._interface_cache[jid] = self._interface_names_to_classes(interface_names)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
@@ -356,7 +360,7 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__, block=False,
+        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
                                        callback=functools.partial(self._send_event_callback, event=event))
 
     @staticmethod
@@ -441,7 +445,7 @@ class XmppComm(Comm):
         body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
 
         # do we have a <delay> element?
-        delay = msg.findall('{urn:xmpp:delay}delay')
+        delay = msg.findall('{urn:sleekxmpp:delay}delay')
         if len(delay) > 0:
             # ignore this message
             return

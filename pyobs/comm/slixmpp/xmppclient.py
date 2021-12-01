@@ -1,17 +1,18 @@
+import asyncio
 import logging
 import threading
-import sleekxmpp
-import sleekxmpp.xmlstream
+import slixmpp
+import slixmpp.xmlstream
 from typing import List, Any
 
-from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
-from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
+from pyobs.comm.sleekxmpp.xep_0009.rpc import XEP_0009
+from pyobs.comm.sleekxmpp.xep_0009_timeout import XEP_0009_timeout
 
 
 log = logging.getLogger(__name__)
 
 
-class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
+class XmppClient(slixmpp.ClientXMPP):  # type: ignore
     """XMPP client for pyobs."""
 
     def __init__(self, jid: str, password: str):
@@ -24,7 +25,7 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
             password: Password to use for connection.
         """
 
-        sleekxmpp.ClientXMPP.__init__(self, jid, password)
+        slixmpp.ClientXMPP.__init__(self, jid, password)
 
         # stuff
         self._connect_event = threading.Event()
@@ -53,7 +54,7 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
         self.add_event_handler('auth_success', lambda ev: self._auth(True))
         self.add_event_handler('failed_auth', lambda ev: self._auth(False))
 
-    def get_interfaces(self, jid: str) -> List[str]:
+    async def get_interfaces(self, jid: str) -> List[str]:
         """Return list of interfaces for the given JID.
 
         Args:
@@ -68,13 +69,15 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
 
         # request features
         try:
-            info = self['xep_0030'].get_info(jid=jid, cached=False)
-        except sleekxmpp.exceptions.IqError:
+            info = await self['xep_0030'].get_info(jid=jid, cached=False)
+        except slixmpp.exceptions.IqError:
             raise IndexError()
 
         # extract pyobs interfaces
+        if info is None:
+            return []
         try:
-            if isinstance(info, sleekxmpp.stanza.iq.Iq):
+            if isinstance(info, slixmpp.stanza.iq.Iq):
                 info = info['disco_info']
             prefix = 'pyobs:interface:'
             return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]

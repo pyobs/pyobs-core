@@ -33,11 +33,11 @@ be another class definition with a ``class`` keyword, referring to a class of th
 So in a configuration file, we can always specify a Comm object like this::
 
     comm:
-        class: pyobs.comm.sleekxmpp.XmppComm
+        class: pyobs.comm.xmpp.XmppComm
         jid: someone@example.com
         password: secret
 
-An object of type :class:`~pyobs.comm.sleekxmpp.XmppComm` (which is a class derived from
+An object of type :class:`~pyobs.comm.xmpp.XmppComm` (which is a class derived from
 :class:`~pyobs.comm.Comm`) will automatically be created.
 
 With a Comm object, proxies to other modules can easily be created (see :mod:`~pyobs.comm` for details)::

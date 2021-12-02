@@ -87,7 +87,7 @@ class RPC(object):
         # don't wait for response, just return future
         return future
 
-    def _on_jabber_rpc_method_call(self, iq: Any) -> None:
+    async def _on_jabber_rpc_method_call(self, iq: Any) -> None:
         """React on remote method call.
 
         Args:
@@ -148,7 +148,7 @@ class RPC(object):
             fault['string'] = str(e)
             self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
-    def _on_jabber_rpc_method_response(self, iq: Any) -> None:
+    async def _on_jabber_rpc_method_response(self, iq: Any) -> None:
         """Received a response for a method call.
 
         Args:
@@ -177,7 +177,7 @@ class RPC(object):
         else:
             future.set_value(None)
 
-    def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
+    async def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
         """Method call timed out.
 
         Args:
@@ -188,7 +188,7 @@ class RPC(object):
         pid = iq['id']
         self._futures[pid].set_timeout(timeout)
 
-    def _on_jabber_rpc_method_fault(self, iq: Any) -> None:
+    async def _on_jabber_rpc_method_fault(self, iq: Any) -> None:
         """Communication to host failed.
 
         Args:
@@ -208,7 +208,7 @@ class RPC(object):
         # set error
         future.cancel_with_error(InvocationException(fault['string']))
 
-    def _on_jabber_rpc_error(self, iq: Any) -> None:
+    async def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.
 
         Args:

@@ -354,6 +354,7 @@ class XmppComm(Comm):
         Args:
             event (Event): Event to send
         """
+        return
 
         # create stanza
         stanza = EventStanza()

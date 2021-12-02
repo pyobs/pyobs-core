@@ -32,9 +32,9 @@ class XEP_0009_timeout(BasePlugin):
         self.xmpp.add_event_handler('jabber_rpc_method_timeout', self._on_jabber_rpc_method_timeout)
 
     def make_iq_method_timeout(self, pid, pto, timeout):
-        iq = self.xmpp.makeIqResult(pid)
-        iq.attrib['to'] = pto
-        iq.attrib['from'] = self.xmpp.boundjid.full
+        iq = self.xmpp.make_iq_result(pid)
+        iq['to'] = pto
+        iq['from'] = self.xmpp.boundjid.full
         iq.enable('rpc_query')
         iq['rpc_query']['method_timeout']['timeout'] = timeout
         return iq

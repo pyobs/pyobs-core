@@ -354,7 +354,14 @@ class XmppComm(Comm):
         Args:
             event (Event): Event to send
         """
-        return
+        asyncio.run_coroutine_threadsafe(self._send_event(event), self._loop)
+
+    async def _send_event(self, event: Event) -> None:
+        """Send an event to other clients.
+
+        Args:
+            event (Event): Event to send
+        """
 
         # create stanza
         stanza = EventStanza()
@@ -364,8 +371,13 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-                                       callback=functools.partial(self._send_event_callback, event=event))
+        #self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
+        #                               callback=functools.partial(self._send_event_callback, event=event))
+        asyncio.run_coroutine_threadsafe(
+            self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
+                                           callback=functools.partial(self._send_event_callback, event=event)),
+            self._loop
+        )
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
@@ -403,7 +415,7 @@ class XmppComm(Comm):
 
         # if event is not a local one, we also need to do some XMPP stuff
         if not event_class.local:
-            self._register_events(event_classes, handler)
+            asyncio.run_coroutine_threadsafe(self._register_events(event_classes, handler), self._loop)
 
     def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
         """Return list of given event itself and all events derived from it.
@@ -421,8 +433,8 @@ class XmppComm(Comm):
                 event_classes.append(cls[1])
         return event_classes
 
-    def _register_events(self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None) \
-            -> None:
+    async def _register_events(self, events: List[Type[Event]],
+                               handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         # loop events
         for ev in events:
             # register event at XMPP
@@ -434,7 +446,7 @@ class XmppComm(Comm):
                 self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % ev.__name__)
 
         # update caps and send presence
-        self._xmpp['xep_0115'].update_caps()
+        await self._xmpp['xep_0115'].update_caps()
         self._xmpp.send_presence()
 
     async def _handle_event(self, msg: Any) -> None:

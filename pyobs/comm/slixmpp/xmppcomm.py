@@ -285,8 +285,6 @@ class XmppComm(Comm):
         """
         if self._rpc is None:
             raise ValueError('No RPC.')
-        #return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
-
         task = asyncio.run_coroutine_threadsafe(self._rpc.call(self._get_full_client_name(client), method,
                                                                signature, *args), self._loop)
         return task.result(10)

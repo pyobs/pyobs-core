@@ -306,7 +306,8 @@ class Comm:
             while not self._log_queue.empty():
                 # get item and send it
                 entry = self._log_queue.get_nowait()
-                self.send_event(entry)
+                # TODO: re-enable
+                #self.send_event(entry)
 
             # sleep a little
             self._closing.wait(1)

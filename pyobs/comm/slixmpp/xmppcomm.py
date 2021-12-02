@@ -115,6 +115,7 @@ class XmppComm(Comm):
         self._resource = resource
         self._server = server
         self._use_tls = use_tls
+        self._loop = asyncio.get_event_loop()
 
         # build jid
         if jid:
@@ -284,7 +285,11 @@ class XmppComm(Comm):
         """
         if self._rpc is None:
             raise ValueError('No RPC.')
-        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
+        #return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
+
+        task = asyncio.run_coroutine_threadsafe(self._rpc.call(self._get_full_client_name(client), method,
+                                                               signature, *args), self._loop)
+        return task.result(10)
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
@@ -439,6 +444,8 @@ class XmppComm(Comm):
         Args:
             msg: Received XMPP message.
         """
+        # TODO: remove
+        return
 
         # get body, unescape it, parse it
         # node = msg['pubsub_event'][items']['node']

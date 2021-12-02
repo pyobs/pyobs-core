@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 import queue
@@ -306,8 +307,7 @@ class Comm:
             while not self._log_queue.empty():
                 # get item and send it
                 entry = self._log_queue.get_nowait()
-                # TODO: re-enable
-                #self.send_event(entry)
+                self.send_event(entry)
 
             # sleep a little
             self._closing.wait(1)

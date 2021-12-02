@@ -1,6 +1,8 @@
+import asyncio
 import copy
 import inspect
 import logging
+from functools import partial
 from threading import RLock
 from typing import Dict, Optional, Any, Callable, Tuple
 
@@ -127,7 +129,10 @@ class RPC(object):
                     response.send()
 
             # call method
-            return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
+            #return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
+            loop = asyncio.get_running_loop()
+            return_value = await loop.run_in_executor(None, partial(self._handler.execute, pmethod, *params,
+                                                                    sender=iq['from'].user))
             return_value = () if return_value is None else (return_value,)
 
             # send response

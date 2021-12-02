@@ -455,8 +455,6 @@ class XmppComm(Comm):
         Args:
             msg: Received XMPP message.
         """
-        # TODO: remove
-        return
 
         # get body, unescape it, parse it
         # node = msg['pubsub_event'][items']['node']

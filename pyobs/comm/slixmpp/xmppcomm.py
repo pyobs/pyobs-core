@@ -437,7 +437,7 @@ class XmppComm(Comm):
         self._xmpp['xep_0115'].update_caps()
         self._xmpp.send_presence()
 
-    def _handle_event(self, msg: Any) -> None:
+    async def _handle_event(self, msg: Any) -> None:
         """Handles an event.
 
         Args:
@@ -451,7 +451,7 @@ class XmppComm(Comm):
         body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
 
         # do we have a <delay> element?
-        delay = msg.findall('{urn:xmpp:delay}delay')
+        delay = msg.xml.findall('{urn:xmpp:delay}delay')
         if len(delay) > 0:
             # ignore this message
             return

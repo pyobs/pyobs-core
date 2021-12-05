@@ -93,24 +93,24 @@ class Module(Object, IModule, IConfig):
         self._device_name = name if name is not None else self.comm.name
         self._label = label if label is not None else self._device_name
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Object.open(self)
+        await Object.open(self)
 
         # open comm
         if self.comm is not None:
             # open it and connect module
-            self.comm.open()
+            await self.comm.open()
             self.comm.module = self
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
-        Object.close(self)
+        await Object.close(self)
 
         # close comm
         if self.comm is not None:
             log.info('Closing connection to server...')
-            self.comm.close()
+            await self.comm.close()
 
     def main(self) -> None:
         """Main loop for application."""

@@ -162,49 +162,44 @@ class XmppComm(Comm):
             raise ValueError('No RPC.')
         self._rpc.set_handler(module)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open the connection to the XMPP server.
 
         Returns:
             Whether opening was successful.
         """
-        Comm.open(self)
+        await Comm.open(self)
 
         # create RPC handler
         self._rpc = RPC(self._xmpp, self.module)
 
-        # start thread
-        thread = threading.Thread(target=self._xmpp_thread)
-        thread.start()
-
-        # wait for connected
-        if not self._xmpp.wait_connect():
-            raise ValueError('Could not connect to XMPP server.')
-        self._connected = True
-
-        # subscribe to events
-        self.register_event(LogEvent)
-
-    def close(self) -> None:
-        """Close connection."""
-
-        # close parent class
-        Comm.close(self)
-
-        # disconnect from xmpp server
-        self._xmpp.disconnect()
-
-    def _xmpp_thread(self):
-        """Thread for handling XMPP server."""
         # server given?
         server = () if self._server is None else tuple(self._server.split(':'))
 
-        # connect
-        #self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
-        self._xmpp.connect(address=('127.0.0.1', 5222), force_starttls=False, disable_starttls=True)
+        # prepare session start callback
+        connected_event = asyncio.Event()
+        callback = lambda _: connected_event.set()
+        self._xmpp.add_event_handler('session_start', callback)
 
-        # start processing
-        self._xmpp.process()
+        # connect
+        self._xmpp.connect(address=('127.0.0.1', 5222), force_starttls=False, disable_starttls=True)
+        self._xmpp.init_plugins()
+
+        # wait for connected
+        await connected_event.wait()
+        self._connected = True
+
+        # subscribe to events
+        await self.register_event(LogEvent)
+
+    async def close(self) -> None:
+        """Close connection."""
+
+        # close parent class
+        await Comm.close(self)
+
+        # disconnect from xmpp server
+        await self._xmpp.disconnect()
 
     @property
     def name(self) -> Optional[str]:
@@ -354,6 +349,9 @@ class XmppComm(Comm):
         Args:
             event (Event): Event to send
         """
+        # TODO: remove again
+        if not self._connected:
+            return
         asyncio.run_coroutine_threadsafe(self._send_event(event), self._loop)
 
     async def _send_event(self, event: Event) -> None:
@@ -389,7 +387,7 @@ class XmppComm(Comm):
         """
         log.debug('%s successfully sent.', event.__class__.__name__)
 
-    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -415,7 +413,7 @@ class XmppComm(Comm):
 
         # if event is not a local one, we also need to do some XMPP stuff
         if not event_class.local:
-            asyncio.run_coroutine_threadsafe(self._register_events(event_classes, handler), self._loop)
+            await self._register_events(event_classes, handler)
 
     def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
         """Return list of given event itself and all events derived from it.

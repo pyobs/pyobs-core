@@ -59,7 +59,7 @@ class Comm:
     def _set_module(self, module: 'Module') -> None:
         ...
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
 
         # start logging thread
@@ -68,7 +68,7 @@ class Comm:
         # some events
         self.register_event(ModuleClosedEvent, self._client_disconnected)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
 
         # close thread

@@ -60,14 +60,14 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # add thread func
         self.add_thread_func(self._update, True)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(BadWeatherEvent)
-            self.comm.register_event(GoodWeatherEvent)
+            await self.comm.register_event(BadWeatherEvent)
+            await self.comm.register_event(GoodWeatherEvent)
 
     def start(self, **kwargs: Any) -> None:
         """Starts a service."""

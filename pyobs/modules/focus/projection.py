@@ -45,12 +45,12 @@ class AutoFocusProjection(Module, IAutoFocus):
         self._data_lock = threading.RLock()
         self._data: List[Dict[str, float]]  = []
 
-    def open(self):
+    async def open(self):
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # register event
-        self.comm.register_event(FocusFoundEvent)
+        await self.comm.register_event(FocusFoundEvent)
 
         # check focuser and camera
         try:

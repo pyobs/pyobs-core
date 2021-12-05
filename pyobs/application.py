@@ -77,7 +77,7 @@ class Application:
         # init module with empty one
         self._module: Module = Module()
 
-    def run(self) -> None:
+    async def run(self) -> None:
         """Actually run the application."""
 
         # everything in a try/except/finally, so that we can shut down gracefully
@@ -91,7 +91,7 @@ class Application:
             log.info('Creating module...')
             self._module = get_object(cfg, Module)
             log.info('Opening module...')
-            self._module.open()
+            await self._module.open()
             log.info('Started successfully.')
 
             # run module
@@ -108,7 +108,7 @@ class Application:
             # close module
             if self._module is not None:
                 log.info('Closing module...')
-                self._module.close()
+                await self._module.close()
 
             # still threads running?
             if threading.active_count() > 1:

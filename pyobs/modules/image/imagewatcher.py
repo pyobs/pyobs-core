@@ -45,9 +45,9 @@ class ImageWatcher(Module):
             raise ValueError('No filename patterns given for the destinations.')
         self._destinations = destinations
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
         import pyinotify
 
         class EventHandler(pyinotify.ProcessEvent):
@@ -70,9 +70,9 @@ class ImageWatcher(Module):
             self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
             self._notifier.start()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close image watcher."""
-        Module.close(self)
+        await Module.close(self)
 
         # stop watching
         if self._notifier:

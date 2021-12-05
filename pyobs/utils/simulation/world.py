@@ -60,29 +60,29 @@ class SimWorld(Object):
         else:
             raise ValueError('Invalid camera.')
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Object.open(self)
+        await Object.open(self)
 
         # open telescope
         if hasattr(self.telescope, 'open'):
-            self.telescope.open()
+            await self.telescope.open()
 
         # open camera
         if hasattr(self.telescope, 'open'):
-            self.camera.open()
+            await self.camera.open()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
-        Object.close(self)
+        await Object.close(self)
 
         # close telescope
         if hasattr(self.telescope, 'close'):
-            self.telescope.close()
+            await self.telescope.close()
 
         # close camera
         if hasattr(self.camera, 'close'):
-            self.camera.close()
+            await self.camera.close()
 
     @property
     def time(self) -> Time:

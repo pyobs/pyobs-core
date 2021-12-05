@@ -50,9 +50,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, **kwargs)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # check telescope and camera
         try:

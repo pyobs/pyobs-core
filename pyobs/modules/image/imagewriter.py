@@ -31,14 +31,14 @@ class ImageWriter(Module):
         self._sources = [sources] if isinstance(sources, str) else sources
         self._queue = Queue()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open image writer."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to channel with new images
         if self.comm is not None:
             log.info('Subscribing to new image events...')
-            self.comm.register_event(NewImageEvent, self.process_new_image_event)
+            await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.

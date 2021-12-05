@@ -33,9 +33,9 @@ class Trigger(Module, IAutonomous):
             kls = get_class_from_string(trigger['event'])
             trigger['event'] = kls
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # get a list of all events
         events = list(set([t['event'] for t in self._triggers]))
@@ -45,7 +45,7 @@ class Trigger(Module, IAutonomous):
 
         # register them
         for event in events:
-            self.comm.register_event(event, self._handle_event)
+            await self.comm.register_event(event, self._handle_event)
 
     def start(self, **kwargs: Any) -> None:
         """Starts a service."""

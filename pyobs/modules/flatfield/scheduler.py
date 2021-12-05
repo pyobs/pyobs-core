@@ -50,9 +50,9 @@ class FlatFieldScheduler(Module, IRunnable):
                                     max_exptime=max_exptime, timespan=timespan, filter_change=filter_change,
                                     count=count)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # check flat field
         try:

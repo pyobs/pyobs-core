@@ -28,16 +28,16 @@ class FluentLogger(Module):
         self._port = port
         self._fluent: Optional[sender.FluentSender] = None
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
         from fluent import sender
-        Module.open(self)
+        await Module.open(self)
 
         # get handler
         self._fluent = sender.FluentSender('pyobs', host=self._hostname, port=self._port)
 
         # listen to log events
-        self.comm.register_event(LogEvent, self._process_log_entry)
+        await self.comm.register_event(LogEvent, self._process_log_entry)
 
     def _process_log_entry(self, event: Event, sender: str) -> bool:
         """Process a new log entry.

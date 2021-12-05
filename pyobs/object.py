@@ -7,6 +7,7 @@ and helper methods for creating other Objects.
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import datetime
 import threading
@@ -229,7 +230,7 @@ class Object:
         self._threads[t] = (func, restart)
         return t
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
 
         # start threads and watchdog
@@ -242,7 +243,10 @@ class Object:
         # open child objects
         for obj in self._child_objects:
             if hasattr(obj, 'open'):
-                obj.open()
+                if asyncio.iscoroutinefunction(obj.open):
+                    await obj.open()
+                else:
+                    obj.open()
 
         # success
         self._opened = True
@@ -252,7 +256,7 @@ class Object:
         """Whether object has been opened."""
         return self._opened
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
 
         # request closing of object (used for long-running methods)
@@ -261,7 +265,7 @@ class Object:
         # close child objects
         for obj in self._child_objects:
             if hasattr(obj, 'close'):
-                obj.close()
+                await obj.close()
 
         # join watchdog and then all threads
         if self._watchdog and self._watchdog.is_alive():

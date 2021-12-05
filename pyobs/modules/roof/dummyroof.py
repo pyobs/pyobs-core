@@ -28,8 +28,8 @@ class DummyRoof(BaseRoof, IRoof):
         self._abort_motion = threading.Event()
 
         # register event
-        self.comm.register_event(RoofOpenedEvent)
-        self.comm.register_event(RoofClosingEvent)
+        await self.comm.register_event(RoofOpenedEvent)
+        await self.comm.register_event(RoofClosingEvent)
 
     @timeout(15)
     def open_roof(self, **kwargs: Any) -> None:

@@ -25,13 +25,13 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         self._next_image: Image = None
         self._lock = threading.Lock()
 
-    def open(self):
+    async def open(self):
         """Open module."""
-        BaseGuiding.open(self)
+        await BaseGuiding.open(self)
 
         # subscribe to channel with new images
         log.info('Subscribing to new image events...')
-        self.comm.register_event(NewImageEvent, self.add_image)
+        await self.comm.register_event(NewImageEvent, self.add_image)
 
     def set_exposure_time(self, exposure_time: float, **kwargs: Any):
         """Set the exposure time for the auto-guider.

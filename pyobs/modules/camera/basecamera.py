@@ -72,14 +72,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._expose_lock = threading.Lock()
         self.expose_abort = threading.Event()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(NewImageEvent)
-            self.comm.register_event(ExposureStatusChangedEvent)
+            await self.comm.register_event(NewImageEvent)
+            await self.comm.register_event(ExposureStatusChangedEvent)
 
     def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
         """Set the exposure time in seconds.

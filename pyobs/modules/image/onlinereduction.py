@@ -42,13 +42,13 @@ class OnlineReduction(Module):
         # add thread func
         self.add_thread_func(self._worker, True)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open image writer."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to channel with new images
         log.info('Subscribing to new image events...')
-        self.comm.register_event(NewImageEvent, self.process_new_image_event)
+        await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.

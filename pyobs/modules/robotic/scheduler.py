@@ -69,15 +69,15 @@ class Scheduler(Module, IStartStop, IRunnable):
         self.add_thread_func(self._schedule_thread, True)
         self.add_thread_func(self._update_thread, True)
 
-    def open(self):
+    async def open(self):
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(TaskStartedEvent, self._on_task_started)
-            self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
-            self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
+            await self.comm.register_event(TaskStartedEvent, self._on_task_started)
+            await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
+            await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
     def start(self, **kwargs: Any):
         """Start scheduler."""

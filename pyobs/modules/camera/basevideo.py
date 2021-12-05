@@ -201,17 +201,17 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # add thread func
         self.add_thread_func(self._http, False)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
         if self._io_loop is not None:
             self._io_loop.add_callback(self._io_loop.stop)
-        Module.close(self)
+        await Module.close(self)
 
     @property
     def opened(self) -> bool:

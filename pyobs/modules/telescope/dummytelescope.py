@@ -44,14 +44,14 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._lock_focus = threading.Lock()
         self._abort_focus = threading.Event()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        BaseTelescope.open(self)
+        await BaseTelescope.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(FilterChangedEvent)
-            self.comm.register_event(OffsetsRaDecEvent)
+            await self.comm.register_event(FilterChangedEvent)
+            await self.comm.register_event(OffsetsRaDecEvent)
 
         # init status
         self._change_motion_status(MotionStatus.IDLE)

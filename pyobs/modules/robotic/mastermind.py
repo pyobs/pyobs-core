@@ -48,14 +48,14 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._obs = None
         self._exp = None
 
-    def open(self):
+    async def open(self):
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(TaskStartedEvent)
-            self.comm.register_event(TaskFinishedEvent)
+            await self.comm.register_event(TaskStartedEvent)
+            await self.comm.register_event(TaskFinishedEvent)
 
         # start
         self._running = True
@@ -63,9 +63,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # open scheduler
         self._task_archive.open()
 
-    def close(self):
+    async def close(self):
         """Close module."""
-        Module.close(self)
+        await Module.close(self)
 
         # close scheduler
         self._task_archive.close()

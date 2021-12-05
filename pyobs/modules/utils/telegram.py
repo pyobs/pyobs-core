@@ -55,10 +55,10 @@ class Telegram(Module):
         # thread
         self.add_thread_func(self._log_sender_thread)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
-        Module.open(self)
+        await Module.open(self)
 
         # get dispatcher
         self._updater = Updater(token=self._token)
@@ -87,11 +87,11 @@ class Telegram(Module):
         self._updater.start_polling(poll_interval=0.1)
 
         # listen to log events
-        self.comm.register_event(LogEvent, self._process_log_entry)
+        await self.comm.register_event(LogEvent, self._process_log_entry)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
-        Module.close(self)
+        await Module.close(self)
 
         # stop telegram
         if self._updater is not None:

@@ -73,9 +73,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             # add it
             #self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # check telescope, camera, and filters
         try:
@@ -87,12 +87,12 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
             # subscribe to events
             if self.comm:
-                self.comm.register_event(BadWeatherEvent, self._abort_weather)
-                self.comm.register_event(RoofClosingEvent, self._abort_weather)
+                await self.comm.register_event(BadWeatherEvent, self._abort_weather)
+                await self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
-        Module.close(self)
+        await Module.close(self)
         self._abort.set()
 
     def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter: str,

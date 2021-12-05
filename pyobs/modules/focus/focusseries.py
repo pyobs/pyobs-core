@@ -49,12 +49,12 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, filters=filters, filter_name=filter_name, binning=binning, **kwargs)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # register event
-        self.comm.register_event(FocusFoundEvent)
+        await self.comm.register_event(FocusFoundEvent)
 
         # check focuser and camera
         try:
@@ -62,9 +62,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             self.proxy(self._camera, IImageGrabberProxy)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
-
-    def close(self) -> None:
-        """Close module."""
 
     @timeout(600)
     def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:

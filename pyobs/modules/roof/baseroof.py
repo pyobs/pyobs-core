@@ -21,9 +21,9 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         WeatherAwareMixin.__init__(self, **kwargs)
         MotionStatusMixin.__init__(self, **kwargs)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # open mixins
         WeatherAwareMixin.open(self)

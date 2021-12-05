@@ -37,9 +37,9 @@ class BasePointing(Module, PipelineMixin):
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # check telescope
         try:

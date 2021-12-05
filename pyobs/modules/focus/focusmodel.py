@@ -127,14 +127,14 @@ class FocusModel(Module, IFocusModel):
         if update:
             self._calc_focus_model()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
-        self.comm.register_event(FocusFoundEvent, self._on_focus_found)
+        await self.comm.register_event(FocusFoundEvent, self._on_focus_found)
         if self._filter_offsets is not None and self._filter_wheel is not None:
-            self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
+            await self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
 
     def _run_thread(self) -> None:
         # wait a little

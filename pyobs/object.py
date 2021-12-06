@@ -11,7 +11,8 @@ import asyncio
 import copy
 import datetime
 import threading
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
+import time
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Coroutine
 import logging
 import pytz
 from astroplan import Observer
@@ -19,6 +20,8 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     from pyobs.vfs import VirtualFileSystem
 
@@ -152,10 +155,7 @@ class Object:
         from pyobs.vfs import VirtualFileSystem
 
         # an event that will be fired when closing the module
-        self.closing = threading.Event()
-
-        # closing event
-        self.closing = threading.Event()
+        self.closing = asyncio.Event()
 
         # child objects
         self._child_objects: List[Any] = []
@@ -212,6 +212,8 @@ class Object:
         # thread function(s)
         self._threads: Dict[threading.Thread, Tuple[Callable[[], None], bool]] = {}
         self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
+        self._background_coroutines: List[Coroutine] = []
+        self._background_tasks: List[asyncio.Task] = []
 
     def add_thread_func(self, func: Callable[[], None], restart: bool = True) -> threading.Thread:
         """Add a new function that should be run in a thread.
@@ -230,6 +232,19 @@ class Object:
         self._threads[t] = (func, restart)
         return t
 
+    def add_background_task(self, func: Coroutine, restart: bool = True) -> asyncio.Task:
+        """Add a new function that should be run in a thread.
+
+        MUST be called in constructor of derived class or at least before calling open() on the object.
+
+        Args:
+            func: Func to add.
+            restart: Whether to restart this function.
+        """
+
+        # create thread
+        self._background_coroutines.append(func)
+
     async def open(self) -> None:
         """Open module."""
 
@@ -239,6 +254,10 @@ class Object:
             thread.start()
         if len(self._threads) > 0 and self._watchdog:
             self._watchdog.start()
+
+        # start background tasks
+        for func in self._background_coroutines:
+            return asyncio.create_task(func())
 
         # open child objects
         for obj in self._child_objects:
@@ -313,7 +332,8 @@ class Object:
                     return
 
             # sleep a little
-            self.closing.wait(1)
+            #await event_wait(self.closing, 1)
+            time.sleep(1)
 
     def check_running(self) -> bool:
         """Check, whether an object should be closing. Can be polled by long-running methods.

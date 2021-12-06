@@ -9,6 +9,8 @@ import random
 
 from pyobs.object import Object
 from pyobs.utils.enums import MotionStatus
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
 
@@ -65,7 +67,7 @@ class SimTelescope(Object):
         self._pos_lock = threading.RLock()
 
         # threads
-        self.add_thread_func(self._move_thread)
+        self.add_background_task(self._move_task)
 
     @property
     def position(self) -> SkyCoord:
@@ -134,7 +136,7 @@ class SimTelescope(Object):
         # set offsets
         self._offsets = (ra, dec)
 
-    def _move_thread(self) -> None:
+    async def _move_task(self) -> None:
         """Move the telescope over time."""
 
         # run until closed
@@ -186,7 +188,7 @@ class SimTelescope(Object):
                     self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
 
             # sleep a second
-            self.closing.wait(1)
+            await event_wait(self.closing, 1)
 
 
 __all__ = ['SimTelescope']

@@ -12,7 +12,8 @@ import copy
 import datetime
 import threading
 import time
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Coroutine
+from collections import Coroutine
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
 import pytz
 from astroplan import Observer
@@ -209,14 +210,12 @@ class Object:
         # opened?
         self._opened = False
 
-        # thread function(s)
-        self._threads: Dict[threading.Thread, Tuple[Callable[[], None], bool]] = {}
-        self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
-        self._background_coroutines: List[Coroutine] = []
-        self._background_tasks: List[asyncio.Task] = []
+        # background tasks
+        self._background_tasks: Dict[Callable[[], Coroutine], Tuple[Optional[asyncio.Task], bool]] = {}
+        self._watchdog_task: Optional[asyncio.Task] = None
 
-    def add_thread_func(self, func: Callable[[], None], restart: bool = True) -> threading.Thread:
-        """Add a new function that should be run in a thread.
+    def add_background_task(self, func: Callable[[], Coroutine], restart: bool = True):
+        """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
 
@@ -226,38 +225,17 @@ class Object:
         """
 
         # create thread
-        t = threading.Thread(target=Object._thread_func, name=func.__name__, args=(func,))
-
-        # add it
-        self._threads[t] = (func, restart)
-        return t
-
-    def add_background_task(self, func: Coroutine, restart: bool = True) -> asyncio.Task:
-        """Add a new function that should be run in a thread.
-
-        MUST be called in constructor of derived class or at least before calling open() on the object.
-
-        Args:
-            func: Func to add.
-            restart: Whether to restart this function.
-        """
-
-        # create thread
-        self._background_coroutines.append(func)
+        self._background_tasks[func] = (None, restart)
 
     async def open(self) -> None:
         """Open module."""
 
-        # start threads and watchdog
-        for thread, (target, _) in self._threads.items():
-            log.info('Starting thread for %s...', target.__name__)
-            thread.start()
-        if len(self._threads) > 0 and self._watchdog:
-            self._watchdog.start()
-
         # start background tasks
-        for func in self._background_coroutines:
-            return asyncio.create_task(func())
+        for func, (task, restart) in self._background_tasks.items():
+            log.info('Starting background task for %s...', func.__name__)
+            self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
+        if len(self._background_tasks) > 0:
+            self._watchdog_task = asyncio.create_task(self._watchdog())
 
         # open child objects
         for obj in self._child_objects:
@@ -287,53 +265,51 @@ class Object:
                 await obj.close()
 
         # join watchdog and then all threads
-        if self._watchdog and self._watchdog.is_alive():
-            self._watchdog.join()
-        for t in self._threads.keys():
-            if t.is_alive():
-                t.join()
+        if self._watchdog_task and not self._watchdog_task.done():
+            self._watchdog_task.cancel()
+        for func, (task, restart) in self._background_tasks.items():
+            if task and not task.done():
+                task.cancel()
 
     @staticmethod
-    def _thread_func(target: Callable[[], None]) -> None:
+    async def _background_func(target: Callable[[], Coroutine]) -> None:
         """Run given function.
 
         Args:
             target: Function to run.
         """
         try:
-            target()
+            await target()
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
     def quit(self) -> None:
         """Can be overloaded to quit program."""
-        ...
+        pass
 
-    def _watchdog_func(self) -> None:
+    async def _watchdog(self) -> None:
         """Watchdog thread that tries to restart threads if they quit."""
 
         while not self.closing.is_set():
-            # get dead threads that need to be restarted
+            # get dead taks that need to be restarted
             dead = {}
-            for thread, (target, restart) in self._threads.items():
-                if not thread.is_alive():
-                    dead[thread] = (target, restart)
+            for func, (task, restart) in self._background_tasks.items():
+                if task.done():
+                    dead[func] = restart
 
-            # restart dead threads or quit
-            for thread, (target, restart) in dead.items():
+            # restart dead tasks or quit
+            for func, restart in dead.items():
                 if restart:
-                    log.error('Thread for %s has died, restarting...', target.__name__)
-                    del self._threads[thread]
-                    thread = self.add_thread_func(target, restart)
-                    thread.start()
+                    log.error('Background task for %s has died, restarting...', func.__name__)
+                    del self._background_tasks[func]
+                    self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
                 else:
-                    log.error('Thread for %s has died, quitting...', target.__name__)
+                    log.error('Background task for %s has died, quitting...', func.__name__)
                     self.quit()
                     return
 
             # sleep a little
-            #await event_wait(self.closing, 1)
-            time.sleep(1)
+            await event_wait(self.closing, 1)
 
     def check_running(self) -> bool:
         """Check, whether an object should be closing. Can be polled by long-running methods.

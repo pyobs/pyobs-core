@@ -242,6 +242,10 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
+        # if it doesn't exist, wait a second
+        if client not in self._interface_cache:
+            asyncio.sleep(1)
+
         # convert to classes
         return self._interface_cache[client]
 
@@ -280,9 +284,7 @@ class XmppComm(Comm):
         """
         if self._rpc is None:
             raise ValueError('No RPC.')
-        task = asyncio.run_coroutine_threadsafe(self._rpc.call(self._get_full_client_name(client), method,
-                                                               signature, *args), self._loop)
-        return task.result(10)
+        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.

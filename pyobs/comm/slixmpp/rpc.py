@@ -58,7 +58,7 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    async def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
         """Call a method on a remote host.
 
         Args:
@@ -81,7 +81,7 @@ class RPC(object):
 
         # send request
         try:
-            await iq.send()
+            asyncio.ensure_future(iq.send())
         except slixmpp.exceptions.IqError:
             # we handle exceptions elsewhere
             pass

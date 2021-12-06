@@ -194,7 +194,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         raise NotImplementedError
 
-    def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
+    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
             -> Tuple[Optional[Image], Optional[str]]:
         """Wrapper for a single exposure.
 
@@ -219,7 +219,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
-            image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
+            image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.data is None:
                 self._exposure = None
                 return None, None
@@ -295,7 +295,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
                 raise CameraException('Cannot start new exposure because camera is not idle.')
 
             # expose
-            image, filename = self.__expose(self._exposure_time, self._image_type, broadcast)
+            image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
             if image is None:
                 raise ValueError('Could not take image.')
             else:

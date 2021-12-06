@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import logging
 import threading
@@ -101,7 +102,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             image = self._camera.get_image(exp_time, open_shutter)
             return image
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -127,7 +128,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
                 self._exposing = False
                 self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
-            time.sleep(exposure_time / steps)
+            await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout

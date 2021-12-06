@@ -1,7 +1,9 @@
+import asyncio
 import inspect
 import threading
 from typing import TypeVar, Generic, Optional, List, Any, cast
 
+from pyobs.utils.parallel import event_wait
 from pyobs.comm.exceptions import TimeoutException
 from pyobs.utils.types import cast_response_to_real
 
@@ -15,7 +17,7 @@ class BaseFuture:
         self._exception: Optional[Exception] = None
         self._timeout: Optional[float] = None
         self._signature: Optional[inspect.Signature] = signature
-        self._event = threading.Event()
+        self._event = asyncio.Event()
 
         # already set?
         if empty:
@@ -25,7 +27,7 @@ class BaseFuture:
     def set_value(self, value: Any) -> None:
         ...
 
-    def wait(self) -> Any:
+    async def wait(self) -> Any:
         ...
 
     def is_done(self) -> bool:
@@ -55,8 +57,8 @@ class BaseFuture:
         return self._timeout
 
     @staticmethod
-    def wait_all(futures: List['BaseFuture']) -> List[Any]:
-        return [fut.wait() for fut in futures if fut is not None]
+    async def wait_all(futures: List['BaseFuture']) -> List[Any]:
+        return [await fut.wait() for fut in futures if fut is not None]
 
 
 class Future(BaseFuture, Generic[T]):
@@ -79,7 +81,7 @@ class Future(BaseFuture, Generic[T]):
         self._value = value
         self._event.set()
 
-    def wait(self) -> T:
+    async def wait(self) -> T:
         """
         Gets the value of this Future. This call will block until
         the result is available, or until the timeout expires.
@@ -89,12 +91,12 @@ class Future(BaseFuture, Generic[T]):
         # no need to wait, if finished already
         if not self._event.is_set():
             # wait a little first
-            self._event.wait(10)
+            await event_wait(self._event, 10)
 
             # got an additional timeout?
             if self._timeout is not None and self._timeout > 10:
                 # we already waited 10s, so subtract it
-                self._event.wait(self._timeout - 10.)
+                await event_wait(self._event, self._timeout - 10.)
 
         # got an exception?
         if self._exception:

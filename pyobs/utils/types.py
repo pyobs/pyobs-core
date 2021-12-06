@@ -67,7 +67,7 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
     # - handle dicts and tuples
 
     # any annotations?
-    if response is None or annotation == Parameter.empty or annotation == Any:
+    if response is None or annotation is None or annotation == Parameter.empty or annotation == Any:
         # no response or no annotation at all or Any
         return response
     elif (hasattr(annotation, '__origin__') and annotation.__origin__ == tuple) or isinstance(annotation, tuple):

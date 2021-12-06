@@ -74,28 +74,27 @@ class Application:
         # hack threading to set thread names on OS level
         self._hack_threading()
 
-        # init module with empty one
-        self._module: Module = Module()
+        # load config
+        log.info('Loading configuration from {0:s}...'.format(self._config))
+        with StringIO(pre_process_yaml(self._config)) as f:
+            cfg: Dict[str, Any] = yaml.safe_load(f)
+
+        # create module and open it
+        log.info('Creating module...')
+        self._module = get_object(cfg, Module)
 
     async def run(self) -> None:
         """Actually run the application."""
 
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
-            # load config
-            log.info('Loading configuration from {0:s}...'.format(self._config))
-            with StringIO(pre_process_yaml(self._config)) as f:
-                cfg: Dict[str, Any] = yaml.safe_load(f)
-
-            # create module and open it
-            log.info('Creating module...')
-            self._module = get_object(cfg, Module)
+            # open module
             log.info('Opening module...')
             await self._module.open()
             log.info('Started successfully.')
 
             # run module
-            self._run()
+            await self._run()
 
         except:
             # some exception was thrown
@@ -134,7 +133,7 @@ class Application:
             # finished
             log.info('Finished shutting down.')
 
-    def _run(self) -> None:
+    async def _run(self) -> None:
         """Method that finally runs the module, can be overridden by derived classes."""
 
         # add signal handlers
@@ -142,7 +141,7 @@ class Application:
         signal.signal(signal.SIGINT, self._signal_handler)
 
         # run module
-        self._module.main()
+        await self._module.main()
 
     def _signal_handler(self, signum: Any, frame: Any) -> None:
         """React to signals and quit module."""

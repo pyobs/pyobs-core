@@ -66,7 +66,7 @@ class Comm:
         self._logging_thread.start()
 
         # some events
-        self.register_event(ModuleClosedEvent, self._client_disconnected)
+        await self.register_event(ModuleClosedEvent, self._client_disconnected)
 
     async def close(self) -> None:
         """Close module."""
@@ -328,7 +328,8 @@ class Comm:
         """
         pass
 
-    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) \
+            -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

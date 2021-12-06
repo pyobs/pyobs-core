@@ -387,7 +387,8 @@ class XmppComm(Comm):
         """
         log.debug('%s successfully sent.', event.__class__.__name__)
 
-    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) \
+            -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

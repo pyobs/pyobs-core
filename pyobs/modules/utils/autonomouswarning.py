@@ -3,7 +3,6 @@ import os
 import subprocess
 from typing import Optional, Any
 
-from pyobs.interfaces import IAutonomousProxy
 from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
 
@@ -79,7 +78,7 @@ class AutonomousWarning(Module):
         while not self.closing.is_set():
             # check for autonomous modules
             autonomous = list(self.comm.clients_with_interface(IAutonomous))
-            is_auto = any([self.comm.proxy(a, IAutonomousProxy).is_running().wait() for a in autonomous])
+            is_auto = any([self.comm.proxy(a, IAutonomous).is_running().wait() for a in autonomous])
 
             # did it change?
             if is_auto != self._autonomous:
@@ -103,7 +102,7 @@ class AutonomousWarning(Module):
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
                 autonomous = list(self.comm.clients_with_interface(IAutonomous))
-                is_auto = any([self.proxy(a, IAutonomousProxy).is_running().wait() for a in autonomous])
+                is_auto = any([self.proxy(a, IAutonomous).is_running().wait() for a in autonomous])
 
                 # play sound
                 if self._stop_sound is not None and is_auto:
@@ -116,7 +115,7 @@ class AutonomousWarning(Module):
                 for auto in autonomous:
                     # get proxy
                     log.info('  - %s', auto)
-                    proxy: IAutonomousProxy = self.comm.proxy(auto)
+                    proxy: IAutonomous = self.comm.proxy(auto)
 
                     # start/stop
                     if is_auto:

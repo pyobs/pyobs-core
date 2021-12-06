@@ -11,6 +11,8 @@ from pyobs.interfaces import IWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
 
@@ -40,7 +42,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         BaseCamera.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._cooling_thread, True)
+        self.add_background_task(self._cooling_thread, True)
 
         # store
         self._readout_time = readout_time
@@ -64,7 +66,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         # simulator
         self._sim_images = sorted(glob.glob(self._sim['images'])) if self._sim['images'] else None
 
-    def _cooling_thread(self) -> None:
+    async def _cooling_thread(self) -> None:
         while not self.closing.is_set():
             with self._coolingLock:
                 # adjust temperature
@@ -79,7 +81,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
                                               power=power, temperatures=temps)
 
             # sleep for 1 second
-            self.closing.wait(1)
+            await event_wait(self.closing, 1)
 
     async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.

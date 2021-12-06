@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
@@ -112,10 +113,11 @@ class Module(Object, IModule, IConfig):
             log.info('Closing connection to server...')
             await self.comm.close()
 
-    def main(self) -> None:
+    async def main(self) -> None:
         """Main loop for application."""
         while not self.closing.is_set():
-            self.closing.wait(1)
+            await asyncio.sleep(1)
+            #self.closing.wait(1)
 
     def name(self, **kwargs: Any) -> str:
         """Returns name of module."""

@@ -39,11 +39,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         self._min_altitude = min_altitude
 
         # some multi-threading stuff
-        self._lock_moving = threading.Lock()
-        self._abort_move = threading.Event()
+        self._lock_moving = asyncio.Lock()
+        self._abort_move = asyncio.Event()
 
         # celestial status
-        self._celestial_lock = threading.RLock()
         self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
@@ -123,7 +122,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             raise ValueError('Destination altitude below limit.')
 
         # acquire lock
-        with LockWithAbort(self._lock_moving, self._abort_move):
+        async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             self._change_motion_status(MotionStatus.SLEWING)
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
@@ -298,14 +297,13 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
 
         # store it
-        with self._celestial_lock:
-            self._celestial_headers = {
-                'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
-                'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
-                'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
-                'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
-                'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
-            }
+        self._celestial_headers = {
+            'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
+            'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
+            'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
+            'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
+            'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
+        }
 
 
 __all__ = ['BaseTelescope']

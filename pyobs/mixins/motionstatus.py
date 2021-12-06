@@ -22,10 +22,10 @@ class MotionStatusMixin:
         self.__motion_status = MotionStatus.UNKNOWN
         self.__motion_status_single = {i: MotionStatus.UNKNOWN for i in self.__motion_status_interfaces}
 
-    def open(self) -> None:
+    async def open(self) -> None:
         # subscribe to events
         if isinstance(self, Module) and self.comm:
-            self.comm.register_event(MotionStatusChangedEvent)
+            await self.comm.register_event(MotionStatusChangedEvent)
 
     def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
         """Change motion status and send event,

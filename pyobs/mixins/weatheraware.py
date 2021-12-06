@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from typing import Optional, Union, Any
@@ -8,6 +9,7 @@ from pyobs.events import BadWeatherEvent, GoodWeatherEvent, Event
 from pyobs.interfaces import IMotion
 from pyobs.mixins import MotionStatusMixin
 from pyobs.utils.enums import MotionStatus
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -21,17 +23,17 @@ class WeatherAwareMixin:
         self.__is_weather_good: Optional[bool] = None
         this = self
         if isinstance(self, Module):
-            self.add_thread_func(this.__weather_check, True)
+            self.add_background_task(this.__weather_check, True)
         else:
             raise ValueError('This is not a module.')
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open mixin."""
         # subscribe to events
         this = self
         if isinstance(self, Module) and self.comm is not None:
-            self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
-            self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
+            await self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
+            await self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
 
     def __on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort exposure if a bad weather event occurs.
@@ -74,7 +76,7 @@ class WeatherAwareMixin:
         self.__is_weather_good = True
         return True
 
-    def __weather_check(self) -> None:
+    async def __weather_check(self) -> None:
         """Thread for continuously checking for good weather"""
 
         # module?
@@ -83,7 +85,7 @@ class WeatherAwareMixin:
             module = self
 
             # wait a little
-            self.closing.wait(10)
+            await event_wait(self.closing, 10)
 
             # time of last park attempt
             last_park_attempt = None
@@ -101,7 +103,7 @@ class WeatherAwareMixin:
                         weather: IWeather = module.proxy(this.__weather, IWeather)
 
                         # get good status
-                        this.__is_weather_good = weather.is_weather_good().wait()
+                        this.__is_weather_good = await weather.is_weather_good()
 
                     except:
                         # could either not connect or weather is not good
@@ -112,7 +114,7 @@ class WeatherAwareMixin:
                     if this.__is_weather_good is False and \
                             self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
                         try:
-                            self.park()
+                            asyncio.create_task(self.park())
                             log.info('Weather seems to be bad, shutting down.')
                         except:
                             # only log, if last attempt is more than 60s ago
@@ -128,7 +130,7 @@ class WeatherAwareMixin:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 
                 # sleep a little
-                module.closing.wait(10)
+                await event_wait(module.closing, 10)
 
         else:
             # not a module

@@ -78,7 +78,8 @@ def run(app_class, **kwargs):
 
     # create app and run it
     app = app_class(**kwargs)
-    asyncio.run(app.run())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(app.run())
 
 
 def main():

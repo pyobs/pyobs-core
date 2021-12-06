@@ -12,7 +12,7 @@ from slixmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xm
 
 from pyobs.modules import Module
 from pyobs.comm.exceptions import *
-from pyobs.utils.threads.future import Future, BaseFuture
+from pyobs.utils.parallel import Future
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class RPC(object):
         # store
         self._client = client
         self._lock = RLock()
-        self._futures: Dict[str, BaseFuture] = {}
+        self._futures: Dict[str, Future] = {}
         self._handler = handler
         self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
 
@@ -58,7 +58,7 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Call a method on a remote host.
 
         Args:
@@ -76,7 +76,7 @@ class RPC(object):
 
         # create a future for this
         pid = iq['id']
-        future = Future[signature.return_annotation](signature=signature)
+        future = Future(signature=signature)
         self._futures[pid] = future
 
         # send request
@@ -175,9 +175,9 @@ class RPC(object):
 
         # set result of future
         if len(args) > 0:
-            future.set_value(args[0])
+            future.set_result(args[0])
         else:
-            future.set_value(None)
+            future.set_result(None)
 
     async def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
         """Method call timed out.

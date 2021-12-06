@@ -9,6 +9,7 @@ import re
 import ssl
 import threading
 import time
+from collections import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
 
 import slixmpp
@@ -107,7 +108,7 @@ class XmppComm(Comm):
         # variables
         self._rpc: Optional[RPC] = None
         self._connected = False
-        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], bool]]] = {}
+        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[[], bool]]]] = {}
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, List[Type[Interface]]] = {}
         self._user = user
@@ -187,10 +188,13 @@ class XmppComm(Comm):
 
         # wait for connected
         await connected_event.wait()
-        self._connected = True
 
         # subscribe to events
         await self.register_event(LogEvent)
+
+        # wait a little and finished
+        await asyncio.sleep(1)
+        self._connected = True
 
     async def close(self) -> None:
         """Close connection."""
@@ -495,10 +499,10 @@ class XmppComm(Comm):
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
                 # create thread and start it
-                thread = threading.Thread(name="event_%s" % handler.__name__,
-                                          target=handler, args=(event, from_client),
-                                          daemon=True)
-                thread.start()
+                if asyncio.iscoroutine(handler):
+                    asyncio.create_task(handler(event, from_client))
+                else:
+                    handler(event, from_client)
 
 
 __all__ = ['XmppComm']

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import contextlib
 import time
 import asyncio
@@ -72,9 +73,17 @@ class Future(asyncio.Future):
                     # we already waited 10s, so subtract it
                     self._wait_for_time(self.timeout - 10.)
 
-        # call parent
-        result = asyncio.Future.__await__(self)
-        print(result)
+        # not done? yield!
+        if not self.done():
+            self._asyncio_future_blocking = True
+            yield self  # This tells Task to wait for completion.
+
+        # still not done? raise exception.
+        if not self.done():
+            raise RuntimeError("await wasn't used with future")
+
+        # get result
+        result = self.result()
 
         # all ok, return value
         if self.signature is not None:
@@ -84,8 +93,8 @@ class Future(asyncio.Future):
             return result
 
     @staticmethod
-    async def wait_all(futures: List['BaseFuture']) -> List[Any]:
-        return [await fut.wait() for fut in futures if fut is not None]
+    async def wait_all(futures: List[Future]) -> List[Any]:
+        return [await fut for fut in futures if fut is not None]
 
 
 __all__ = ['Future']

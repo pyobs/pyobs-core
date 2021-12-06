@@ -81,7 +81,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             await self.comm.register_event(NewImageEvent)
             await self.comm.register_event(ExposureStatusChangedEvent)
 
-    def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -93,7 +93,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         log.info('Setting exposure time to %.5fs...', exposure_time)
         self._exposure_time = exposure_time
 
-    def get_exposure_time(self, **kwargs: Any) -> float:
+    async def get_exposure_time(self, **kwargs: Any) -> float:
         """Returns the exposure time in seconds.
 
         Returns:
@@ -101,7 +101,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._exposure_time
 
-    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
+    async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -110,7 +110,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         log.info('Setting image type to %s...', image_type)
         self._image_type = image_type
 
-    def get_image_type(self, **kwargs: Any) -> ImageType:
+    async def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:
@@ -132,7 +132,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # set it
         self._camera_status = status
 
-    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
+    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -140,7 +140,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._camera_status
 
-    def get_exposure_time_left(self, **kwargs: Any) -> float:
+    async def get_exposure_time_left(self, **kwargs: Any) -> float:
         """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:
@@ -156,7 +156,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         diff = self._exposure.start + duration - datetime.datetime.utcnow()
         return diff.total_seconds()
 
-    def get_exposure_progress(self, **kwargs: Any) -> float:
+    async def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:
@@ -178,7 +178,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -274,7 +274,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -318,7 +318,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         pass
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence.
 
         Returns:
@@ -405,7 +405,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
-    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:

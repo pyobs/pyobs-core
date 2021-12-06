@@ -3,7 +3,7 @@ import threading
 from typing import Dict, Any, Union
 
 from pyobs.interfaces import IRunnable
-from pyobs.interfaces.proxies import IFlatFieldProxy, IFiltersProxy, IBinningProxy
+from pyobs.interfaces import IFlatField, IFilters, IBinning
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.object import get_object
@@ -18,7 +18,7 @@ class FlatFieldScheduler(Module, IRunnable):
     """Run the flat-field scheduler."""
     __module__ = 'pyobs.modules.flatfield'
 
-    def __init__(self, flatfield: Union[str, IFlatFieldProxy], functions: Dict[str, str],
+    def __init__(self, flatfield: Union[str, IFlatField], functions: Dict[str, str],
                  priorities: Union[Dict[str, Any], SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
                  timespan: float = 7200, filter_change: float = 30, count: int = 20, **kwargs: Any):
         """Initialize a new flat field scheduler.
@@ -56,7 +56,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # check flat field
         try:
-            self.proxy(self._flatfield, IFlatFieldProxy)
+            self.proxy(self._flatfield, IFlatField)
         except ValueError:
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
@@ -68,7 +68,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # get flat fielder
         log.info('Getting proxy for flat fielder...')
-        flatfield: IFlatFieldProxy = self.proxy(self._flatfield, IFlatFieldProxy)
+        flatfield: IFlatField = self.proxy(self._flatfield, IFlatField)
 
         # do schedule
         log.info('Scheduling flats...')
@@ -84,9 +84,9 @@ class FlatFieldScheduler(Module, IRunnable):
 
             # start
             log.info('Taking %d flats in %s %dx%d...', self._count, item.filter_name, item.binning, item.binning)
-            if isinstance(flatfield, IFiltersProxy):
+            if isinstance(flatfield, IFilters):
                 flatfield.set_filter(item.filter_name)
-            if isinstance(flatfield, IBinningProxy):
+            if isinstance(flatfield, IBinning):
                 flatfield.set_binning(*item.binning)
             future = flatfield.flat_field(self._count)
 

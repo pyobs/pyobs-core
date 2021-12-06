@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Type, List, Dict
 from pyobs.interfaces import Interface
 from pyobs.utils.threads.future import BaseFuture
 from pyobs.utils.types import cast_bound_arguments_to_simple
-import pyobs.interfaces.proxies
 if TYPE_CHECKING:
     from pyobs.comm import Comm
 
@@ -38,14 +37,9 @@ class Proxy:
                     to_delete.append(i2)
         interfaces = [i for i in interfaces if i not in to_delete]
 
-        # interface proxies
-        interface_proxies = []
-        for iface in interfaces:
-            interface_proxies.append(getattr(pyobs.interfaces.proxies, iface.__name__ + 'Proxy'))
-
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interface_proxies), {})  # type: ignore
+        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})  # type: ignore
 
         # create methods
         self._methods = self._create_methods()

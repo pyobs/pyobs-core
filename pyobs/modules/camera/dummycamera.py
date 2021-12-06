@@ -80,7 +80,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             # sleep for 1 second
             self.closing.wait(1)
 
-    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -161,7 +161,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -169,7 +169,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         return self._camera.window
 
-    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
+    async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -184,7 +184,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
 
-    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -192,7 +192,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         return self._camera.binning
 
-    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
+    async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -205,7 +205,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         log.info("Set binning to %dx%d.", x, y)
         self._camera.binning = (x, y)
 
-    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
+    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:
@@ -227,7 +227,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             self._cooling = CoolingStatus(enabled=enabled, set_point=setpoint, power=self._cooling.power,
                                           temperatures=self._cooling.temperatures)
 
-    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -239,7 +239,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         with self._coolingLock:
             return self._cooling.enabled, self._cooling.set_point, self._cooling.power
 
-    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

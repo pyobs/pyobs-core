@@ -7,7 +7,7 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.interfaces.proxies import IAcquisitionProxy, ITelescopeProxy
+from pyobs.interfaces import IAcquisitionProxy, ITelescopeProxy
 from pyobs.modules import Module
 from pyobs.comm import InvocationException
 from pyobs.interfaces import IAutonomous

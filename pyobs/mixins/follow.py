@@ -5,10 +5,9 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.comm.exceptions import RemoteException
-from pyobs.interfaces.proxies import IPointingAltAzProxy, IPointingRaDecProxy
+from pyobs.interfaces import IPointingAltAz, IPointingRaDec
 from pyobs.modules import Module
 from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
-import pyobs.interfaces.proxies
 
 
 log = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union
         raise ValueError('Unknown mode.')
 
 
-def get_coord_remote(obj: Union[IPointingAltAzProxy, IPointingRaDecProxy],
+def get_coord_remote(obj: Union[IPointingAltAz, IPointingRaDec],
                      mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Optional[Tuple[float, float]]:
     """Gets coordinates from object
 
@@ -46,9 +45,9 @@ def get_coord_remote(obj: Union[IPointingAltAzProxy, IPointingRaDecProxy],
         Return from method call.
     """
 
-    if mode == IPointingAltAz and isinstance(obj, IPointingAltAzProxy):
+    if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
         return obj.get_altaz().wait()
-    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDecProxy):
+    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
         return obj.get_radec().wait()
     else:
         raise ValueError('Unknown mode.')
@@ -98,9 +97,6 @@ class FollowMixin:
         # store self for later
         this = self
 
-        # get proxy interface for follow mode
-        self.__follow_mode_proxy = getattr(pyobs.interfaces.proxies, mode.__name__ + 'Proxy')
-
         # add thread function only, if device is given
         if self.__follow_device is not None:
             if not isinstance(self, Module):
@@ -139,7 +135,7 @@ class FollowMixin:
 
             # get other device
             try:
-                device = module.proxy(this.__follow_device, this.__follow_mode_proxy)
+                device = module.proxy(this.__follow_device, this.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
                 log.warning('Cannot follow module, since it is of wrong type.')

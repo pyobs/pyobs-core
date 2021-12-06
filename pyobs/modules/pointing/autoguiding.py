@@ -4,7 +4,7 @@ from typing import Any, Optional
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
+from pyobs.interfaces import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
 from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)

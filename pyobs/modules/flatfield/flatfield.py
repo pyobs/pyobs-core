@@ -5,7 +5,7 @@ from typing import Union, Tuple, List, Optional, Any, Dict
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning
-from pyobs.interfaces.proxies import IFiltersProxy, ICameraProxy, ITelescopeProxy, IBinningProxy
+from pyobs.interfaces import IFiltersProxy, ICameraProxy, ITelescopeProxy, IBinning
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
@@ -109,7 +109,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             List of available binnings as (x, y) tuples.
         """
-        return self.proxy(self._camera, IBinningProxy).list_binnings().wait()
+        return self.proxy(self._camera, IBinning).list_binnings().wait()
 
     def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.

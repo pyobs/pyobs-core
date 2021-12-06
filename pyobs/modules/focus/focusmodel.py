@@ -7,7 +7,7 @@ import numpy as np
 if TYPE_CHECKING:
     import lmfit
 
-from pyobs.interfaces.proxies import IFocuserProxy, IFiltersProxy, IWeatherProxy, ITemperaturesProxy
+from pyobs.interfaces import IFocuser, IFilters, IWeather, ITemperatures
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.interfaces import IFocusModel
@@ -149,7 +149,7 @@ class FocusModel(Module, IFocusModel):
 
             # get focuser
             try:
-                focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
+                focuser: IFocuser = self.proxy(self._focuser, IFocuser)
             except ValueError:
                 log.warning('Could not connect to focuser.')
                 self.closing.wait(60)
@@ -211,7 +211,7 @@ class FocusModel(Module, IFocusModel):
                 # need a filter name?
                 if filter_name is None:
                     # get proxy
-                    wheel: IFiltersProxy = self.proxy(self._filter_wheel, IFiltersProxy)
+                    wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
 
                     # get filter
                     filter_name = wheel.get_filter().wait()
@@ -255,7 +255,7 @@ class FocusModel(Module, IFocusModel):
 
             # get weather proxy
             try:
-                weather: IWeatherProxy = self.proxy(self._weather, IWeatherProxy)
+                weather: IWeather = self.proxy(self._weather, IWeather)
             except ValueError:
                 raise ValueError('Could not connect to weather module.')
 
@@ -276,7 +276,7 @@ class FocusModel(Module, IFocusModel):
                 log.info('Fetching temperatures from module %s...', cfg['module'])
 
                 # get proxy
-                proxy: ITemperaturesProxy = self.proxy(cfg['module'], ITemperaturesProxy)
+                proxy: ITemperatures = self.proxy(cfg['module'], ITemperatures)
 
                 # get temperatures
                 module_temps[cfg['module']] = proxy.get_temperatures().wait()
@@ -307,7 +307,7 @@ class FocusModel(Module, IFocusModel):
         """
 
         # get focuser
-        focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
+        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get focus
         focus = self._get_optimal_focus(filter_name=filter_name)

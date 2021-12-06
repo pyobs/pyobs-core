@@ -4,7 +4,7 @@ import time
 import numpy as np
 from typing import Union, Optional, Any, Tuple, cast, Dict, List
 
-from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
+from pyobs.interfaces import IBinning, IWindow, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
     ITelescopeProxy, IAcquisitionProxy, ICameraProxy, IFiltersProxy, IImageTypeProxy
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
@@ -210,12 +210,12 @@ class LcoDefaultScript(Script):
                 Future.wait_all([track, set_filter])
 
                 # set binning and window
-                if isinstance(camera, IBinningProxy):
+                if isinstance(camera, IBinning):
                     bin_x = readout_mode['validation_schema']['bin_x']['default']
                     bin_y = readout_mode['validation_schema']['bin_y']['default']
                     log.info('Set binning to %dx%d...', bin_x, bin_y)
                     camera.set_binning(bin_x, bin_y).wait()
-                if isinstance(camera, IWindowProxy):
+                if isinstance(camera, IWindow):
                     full_frame = camera.get_full_frame().wait()
                     camera.set_window(*full_frame).wait()
 

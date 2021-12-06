@@ -3,7 +3,7 @@ import time
 from threading import Event
 from typing import Union, List, Any, Optional
 
-from pyobs.interfaces.proxies import IMotionProxy
+from pyobs.interfaces import IMotion
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
@@ -54,8 +54,8 @@ class WaitForMotionMixin:
         proxies = [self.proxy(device) for device in this.__wait_for_modules]
 
         # all need to be derived from IMotion
-        if not all([isinstance(p, IMotionProxy) for p in proxies]):
-            raise ValueError('Not all given devices are derived from IMotionProxy!')
+        if not all([isinstance(p, IMotion) for p in proxies]):
+            raise ValueError('Not all given devices are derived from IMotion!')
 
         # run until timeout
         start = time.time()

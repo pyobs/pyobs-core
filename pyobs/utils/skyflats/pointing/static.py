@@ -4,7 +4,7 @@ from typing import Any, cast
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.interfaces.proxies import ITelescopeProxy
+from pyobs.interfaces import ITelescope
 from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from .base import SkyFlatsBasePointing
@@ -29,7 +29,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         # whether we've moved already
         self._initialized = initialized
 
-    def __call__(self, telescope: ITelescopeProxy) -> Future[None]:
+    def __call__(self, telescope: ITelescope) -> Future[None]:
         """Move telescope.
 
         Args:

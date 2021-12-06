@@ -6,7 +6,7 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
-from ...interfaces.proxies import ITelescopeProxy, IOffsetsRaDecProxy
+from ...interfaces.proxies import ITelescope, IOffsetsRaDec
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    def __call__(self, image: Image, telescope: ITelescopeProxy, location: EarthLocation) -> bool:
+    def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -42,7 +42,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
 
         # telescope must be of type IRaDecOffsets
         tel = telescope
-        if not isinstance(telescope, IOffsetsRaDecProxy):
+        if not isinstance(telescope, IOffsetsRaDec):
             log.error('Given telescope cannot handle RA/Dec offsets.')
             return False
 

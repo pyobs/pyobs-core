@@ -8,7 +8,7 @@ import tornado.web
 import tornado.gen
 import numpy as np
 
-from pyobs.interfaces.proxies import ICameraProxy, IExposureTimeProxy, IWindowProxy
+from pyobs.interfaces import ICamera, IExposureTime, IWindow
 from pyobs.modules import Module
 from pyobs.interfaces import IStartStop
 
@@ -54,7 +54,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
     __module__ = 'pyobs.modules.utils'
 
-    def __init__(self, camera: Union[ICameraProxy, str], port: int = 37077, **kwargs: Any):
+    def __init__(self, camera: Union[ICamera, str], port: int = 37077, **kwargs: Any):
         """Initializes file cache.
 
         Args:
@@ -136,7 +136,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
 
             # get camera
             try:
-                camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
+                camera: ICamera = self.proxy(self._camera, ICameraProxy)
             except ValueError:
                 self.closing.wait(10)
                 continue
@@ -145,7 +145,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
             if isinstance(camera, IExposureTimeProxy):
                 # set exposure time
                 camera.set_exposure_time(self._exp_time).wait()
-            if isinstance(camera, IWindowProxy):
+            if isinstance(camera, IWindow):
                 # set full frame
                 full_frame = camera.get_full_frame().wait()
                 camera.set_window(*full_frame).wait()

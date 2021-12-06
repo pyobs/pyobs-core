@@ -2,7 +2,7 @@ import logging
 import time
 from typing import Optional, Union, Any
 
-from pyobs.interfaces.proxies import IWeatherProxy
+from pyobs.interfaces import IWeather
 from pyobs.modules import Module
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent, Event
 from pyobs.interfaces import IMotion
@@ -16,7 +16,7 @@ class WeatherAwareMixin:
     """Mixin for IMotion devices that should park(), when weather gets bad."""
     __module__ = 'pyobs.mixins'
 
-    def __init__(self, weather: Optional[Union[str, IWeatherProxy]] = None, **kwargs: Any):
+    def __init__(self, weather: Optional[Union[str, IWeather]] = None, **kwargs: Any):
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
         this = self
@@ -98,7 +98,7 @@ class WeatherAwareMixin:
                 else:
                     try:
                         # get proxy
-                        weather: IWeatherProxy = module.proxy(this.__weather, IWeatherProxy)
+                        weather: IWeather = module.proxy(this.__weather, IWeather)
 
                         # get good status
                         this.__is_weather_good = weather.is_weather_good().wait()

@@ -2,7 +2,7 @@ import logging
 from typing import Union, Dict, Any
 
 from pyobs.interfaces import IRunnable
-from pyobs.interfaces.proxies import ITelescopeProxy
+from pyobs.interfaces import ITelescopeProxy
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout

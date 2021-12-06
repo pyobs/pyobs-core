@@ -2,7 +2,7 @@ import logging
 import threading
 import typing
 
-from pyobs.interfaces.proxies import IFiltersProxy, IBinningProxy, IFlatFieldProxy, ITelescopeProxy, IRoofProxy
+from pyobs.interfaces import IFiltersProxy, IBinning, IFlatFieldProxy, ITelescopeProxy, IRoofProxy
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
@@ -109,7 +109,7 @@ class SkyFlats(Script):
 
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, *item.binning)
-            if isinstance(flatfield, IBinningProxy):
+            if isinstance(flatfield, IBinning):
                 flatfield.set_binning(*item.binning).wait()
             if isinstance(flatfield, IFiltersProxy):
                 flatfield.set_filter(item.filter_name).wait()

@@ -7,7 +7,7 @@ from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore
 from pyobs.images import Image
 from ._base import BasePointing
-from ...interfaces.proxies import ITelescopeProxy
+from ...interfaces.proxies import ITelescope
 
 log = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Union, Tuple, Optional, Any
 
-from pyobs.interfaces.proxies import IRoofProxy, ITelescopeProxy, IAcquisitionProxy, IAutoFocusProxy
+from pyobs.interfaces import IRoofProxy, ITelescopeProxy, IAcquisitionProxy, IAutoFocusProxy
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter

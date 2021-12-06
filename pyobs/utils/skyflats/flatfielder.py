@@ -16,8 +16,8 @@ from pyobs.utils.time import Time
 from pyobs.vfs import VirtualFileSystem
 from .exptimeeval import ExpTimeEval
 from .pointing import SkyFlatsBasePointing
-from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy, IFiltersProxy, IExposureTimeProxy, IBinningProxy, \
-    IWindowProxy, IImageTypeProxy
+from pyobs.interfaces import ITelescope, ICamera, IFilters, IExposureTime, IBinning, \
+    IWindow, IImageType
 from ...images import Image
 
 log = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ class FlatFielder(Object):
         self._cur_filter: Optional[str] = None
         self._cur_binning: Tuple[int, int] = (1, 1)
 
-    def __call__(self, telescope: ITelescopeProxy, camera: ICameraProxy, filters: Optional[IFiltersProxy] = None,
+    def __call__(self, telescope: ITelescope, camera: ICamera, filters: Optional[IFilters] = None,
                  filter_name: Optional[str] = None, count: int = 20, binning: Tuple[int, int] = (1, 1)) -> State:
         """Calls next step in state machine.
 
@@ -124,7 +124,7 @@ class FlatFielder(Object):
         """
 
         # camera must support exposure times
-        if not isinstance(camera, IExposureTimeProxy):
+        if not isinstance(camera, IExposureTime):
             raise ValueError('Camera must support exposure times.')
 
         # store
@@ -210,7 +210,7 @@ class FlatFielder(Object):
             return
 
         # set binning
-        if isinstance(camera, IBinningProxy):
+        if isinstance(camera, IBinning):
             log.info('Setting binning to %dx%d...', self._cur_binning[0], self._cur_binning[1])
             camera.set_binning(*self._cur_binning).wait()
 
@@ -244,7 +244,7 @@ class FlatFielder(Object):
 
         # set full frame
         cam = camera
-        if isinstance(camera, IWindowProxy):
+        if isinstance(camera, IWindow):
             full_frame = camera.get_full_frame().wait()
             camera.set_window(*full_frame).wait()
 
@@ -366,7 +366,7 @@ class FlatFielder(Object):
         Args:
             testing: Whether we're in testing mode or not.
         """
-        if isinstance(camera, IWindowProxy):
+        if isinstance(camera, IWindow):
             # get full frame
             left, top, width, height = camera.get_full_frame().wait()
 

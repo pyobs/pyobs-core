@@ -9,7 +9,7 @@ from astropy.io import fits
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
-from pyobs.interfaces.proxies import IFitsHeaderBeforeProxy, IFitsHeaderAfterProxy
+from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 from pyobs.utils.threads import Future
@@ -62,14 +62,14 @@ class FitsHeaderMixin:
             clients = module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
-            proxy: Union[IFitsHeaderBeforeProxy, IFitsHeaderAfterProxy]
+            proxy: Union[IFitsHeaderBefore, IFitsHeaderAfter]
             for client in clients:
                 log.debug('Requesting FITS headers from %s...', client)
                 if before:
-                    proxy = module.proxy(client, IFitsHeaderBeforeProxy)
+                    proxy = module.proxy(client, IFitsHeaderBefore)
                     futures[client] = proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
-                    proxy = module.proxy(client, IFitsHeaderAfterProxy)
+                    proxy = module.proxy(client, IFitsHeaderAfter)
                     futures[client] = proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished

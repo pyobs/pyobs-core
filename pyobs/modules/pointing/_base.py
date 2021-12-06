@@ -1,7 +1,7 @@
 from typing import Union, List, Dict, Any
 import logging
 
-from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy
+from pyobs.interfaces import ITelescopeProxy, ICameraProxy
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import get_object
 from pyobs.utils.offsets import ApplyOffsets

@@ -7,7 +7,7 @@ from scipy import optimize, ndimage
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
-from pyobs.interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, ICameraProxy, IFocuserProxy, IFiltersProxy
+from pyobs.interfaces import IExposureTime, IImageType, ICamera, IFocuser, IFilters
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
@@ -19,8 +19,8 @@ class AutoFocusProjection(Module, IAutoFocus):
     """Module for auto-focusing a telescope."""
     __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Union[str, IFocuserProxy], camera: Union[str, ICameraProxy],
-                 filters: Union[str, IFiltersProxy] = None, offset: bool = False, **kwargs: Any):
+    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, ICamera],
+                 filters: Union[str, IFilters] = None, offset: bool = False, **kwargs: Any):
         """Initialize a new auto focus system.
 
         Args:
@@ -54,8 +54,8 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # check focuser and camera
         try:
-            self.proxy(self._focuser, IFocuserProxy)
-            self.proxy(self._camera, ICameraProxy)
+            self.proxy(self._focuser, IFocuser)
+            self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
@@ -82,11 +82,11 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser: IFocuserProxy = self.proxy(self._focuser, IFocuserProxy)
+        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICameraProxy = self.proxy(self._camera, ICameraProxy)
+        camera: ICamera = self.proxy(self._camera, ICameraProxy)
 
         # get filter wheel and current filter
         filter_name = 'unknown'

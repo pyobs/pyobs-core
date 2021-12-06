@@ -3,7 +3,7 @@ import os
 import subprocess
 from typing import Optional, Any
 
-from pyobs.interfaces.proxies import IAutonomousProxy
+from pyobs.interfaces import IAutonomousProxy
 from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
 

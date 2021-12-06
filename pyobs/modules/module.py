@@ -167,7 +167,7 @@ class Module(Object, IModule, IConfig):
         """Quit module."""
         self.closing.set()
 
-    def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
+    async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
 
         All incoming variables in args and kwargs must be of simple type (i.e. int, float, str, bool, tuple) and will
@@ -207,7 +207,7 @@ class Module(Object, IModule, IConfig):
             del ba.arguments['kwargs']
 
         # call method
-        response = func(*func_args, **ba.arguments, **func_kwargs)
+        response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
         return cast_response_to_simple(response)

@@ -8,7 +8,7 @@ class ISyncTarget(Interface):
     :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
-    def sync_target(self, **kwargs: Any) -> None:
+    async def sync_target(self, **kwargs: Any) -> None:
         """Synchronize device on current target."""
         raise NotImplementedError
 

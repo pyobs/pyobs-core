@@ -7,7 +7,7 @@ class IBinning(Interface):
     """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
-    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
+    async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -19,7 +19,7 @@ class IBinning(Interface):
         """
         raise NotImplementedError
 
-    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -27,7 +27,7 @@ class IBinning(Interface):
         """
         raise NotImplementedError
 
-    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:

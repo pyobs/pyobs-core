@@ -7,7 +7,7 @@ class ICalibrate(Interface):
     """The module can calibrate a device."""
     __module__ = 'pyobs.interfaces'
 
-    def calibrate(self, **kwargs: Any) -> None:
+    async def calibrate(self, **kwargs: Any) -> None:
         """Calibrate the device."""
         raise NotImplementedError
 

@@ -7,7 +7,7 @@ class IFocuser(IMotion):
     """The module is a focusing device."""
     __module__ = 'pyobs.interfaces'
 
-    def set_focus(self, focus: float, **kwargs: Any) -> None:
+    async def set_focus(self, focus: float, **kwargs: Any) -> None:
         """Sets new focus.
 
         Args:
@@ -18,7 +18,7 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
-    def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
+    async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
         """Sets focus offset.
 
         Args:
@@ -29,7 +29,7 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
-    def get_focus(self, **kwargs: Any) -> float:
+    async def get_focus(self, **kwargs: Any) -> float:
         """Return current focus.
 
         Returns:
@@ -37,7 +37,7 @@ class IFocuser(IMotion):
         """
         raise NotImplementedError
 
-    def get_focus_offset(self, **kwargs: Any) -> float:
+    async def get_focus_offset(self, **kwargs: Any) -> float:
         """Return current focus offset.
 
         Returns:

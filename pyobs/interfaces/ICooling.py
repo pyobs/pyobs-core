@@ -7,7 +7,7 @@ class ICooling(ITemperatures):
     """The module can control the cooling of a device."""
     __module__ = 'pyobs.interfaces'
 
-    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -18,7 +18,7 @@ class ICooling(ITemperatures):
         """
         raise NotImplementedError
 
-    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
+    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:

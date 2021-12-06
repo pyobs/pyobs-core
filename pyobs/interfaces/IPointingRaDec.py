@@ -7,7 +7,7 @@ class IPointingRaDec(Interface):
     """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
-    def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
+    async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
         """Starts tracking on given coordinates.
 
         Args:
@@ -19,7 +19,7 @@ class IPointingRaDec(Interface):
         """
         raise NotImplementedError
 
-    def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:

@@ -7,7 +7,7 @@ class ITemperatures(Interface):
     """The module can return temperatures measured on some device."""
     __module__ = 'pyobs.interfaces'
 
-    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

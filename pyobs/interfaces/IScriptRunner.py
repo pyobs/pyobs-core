@@ -7,7 +7,7 @@ class IScriptRunner(Interface):
     """The module can execute a script."""
     __module__ = 'pyobs.interfaces'
 
-    def run_script(self, script: str, **kwargs: Any) -> None:
+    async def run_script(self, script: str, **kwargs: Any) -> None:
         """Run the given script.
 
         Args:

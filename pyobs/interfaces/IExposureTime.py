@@ -7,7 +7,7 @@ class IExposureTime(Interface):
     """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -18,7 +18,7 @@ class IExposureTime(Interface):
         """
         raise NotImplementedError
 
-    def get_exposure_time(self, **kwargs: Any) -> float:
+    async def get_exposure_time(self, **kwargs: Any) -> float:
         """Returns the exposure time in seconds.
 
         Returns:
@@ -26,7 +26,7 @@ class IExposureTime(Interface):
         """
         raise NotImplementedError
 
-    def get_exposure_time_left(self, **kwargs: Any) -> float:
+    async def get_exposure_time_left(self, **kwargs: Any) -> float:
         """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:

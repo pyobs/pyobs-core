@@ -7,7 +7,7 @@ class IFilters(IMotion):
     """The module can change filters in a device."""
     __module__ = 'pyobs.interfaces'
 
-    def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
@@ -15,7 +15,7 @@ class IFilters(IMotion):
         """
         raise NotImplementedError
 
-    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
+    async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -26,7 +26,7 @@ class IFilters(IMotion):
         """
         raise NotImplementedError
 
-    def get_filter(self, **kwargs: Any) -> str:
+    async def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:

@@ -7,7 +7,7 @@ class IAbortable(Interface):
     """The module has an abortable action."""
     __module__ = 'pyobs.interfaces'
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         raise NotImplementedError
 

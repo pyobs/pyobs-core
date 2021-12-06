@@ -8,7 +8,7 @@ class IFitsHeaderBefore(Interface):
     exposure)."""
     __module__ = 'pyobs.interfaces'
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

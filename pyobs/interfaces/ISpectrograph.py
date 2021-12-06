@@ -8,7 +8,7 @@ class ISpectrograph(IAbortable):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 
-    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
+    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -16,7 +16,7 @@ class ISpectrograph(IAbortable):
         """
         raise NotImplementedError
 
-    def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs a spectrum and returns reference.
 
         Args:
@@ -27,7 +27,7 @@ class ISpectrograph(IAbortable):
         """
         raise NotImplementedError
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure.
 
         Raises:
@@ -35,7 +35,7 @@ class ISpectrograph(IAbortable):
         """
         raise NotImplementedError
 
-    def get_exposure_progress(self, **kwargs: Any) -> float:
+    async def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:

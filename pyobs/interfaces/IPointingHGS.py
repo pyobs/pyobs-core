@@ -7,7 +7,7 @@ class IPointingHGS(Interface):
     """The module can move to Mu/Psi coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
-    def move_hgs_lon_lat(self, lon: float, lat: float, **kwargs: Any) -> None:
+    async def move_hgs_lon_lat(self, lon: float, lat: float, **kwargs: Any) -> None:
         """Moves on given coordinates.
 
         Args:
@@ -19,7 +19,7 @@ class IPointingHGS(Interface):
         """
         raise NotImplementedError
 
-    def get_hgs_lon_lat(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_hgs_lon_lat(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current longitude and latitude position.
 
         Returns:

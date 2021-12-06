@@ -91,7 +91,7 @@ class MotionStatusMixin:
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
         Args:

@@ -129,8 +129,6 @@ class RPC(object):
                     response.send()
 
             # call method
-            #return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
-            loop = asyncio.get_running_loop()
             return_value = await self._handler.execute(pmethod, *params, sender=iq['from'].user)
             return_value = () if return_value is None else (return_value,)
 

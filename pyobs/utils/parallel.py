@@ -1,26 +1,26 @@
-import asyncio
 import contextlib
 import time
+import asyncio
+import inspect
+from typing import TypeVar, Optional, List, Any, cast
+
+from pyobs.utils.types import cast_response_to_real
 
 
-async def event_wait(evt, timeout):
+async def event_wait(evt: asyncio.Event, timeout: float = 1.) -> bool:
     # suppress TimeoutError because we'll return False in case of timeout
     with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(evt.wait(), timeout)
     return evt.is_set()
 
 
-import asyncio
-import inspect
-import threading
-from typing import TypeVar, Generic, Optional, List, Any, cast
-
-from pyobs.utils.parallel import event_wait
-from pyobs.comm.exceptions import TimeoutException
-from pyobs.utils.types import cast_response_to_real
-
-
-T = TypeVar('T')
+async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.) -> bool:
+    # suppress TimeoutError because we'll return False in case of timeout
+    try:
+        await asyncio.wait_for(lock.acquire(), timeout)
+        return True
+    except asyncio.TimeoutError:
+        return False
 
 
 class Future(asyncio.Future):
@@ -79,9 +79,9 @@ class Future(asyncio.Future):
         # all ok, return value
         if self.signature is not None:
             # cast response to real types
-            return cast(T, cast_response_to_real(result, self.signature))
+            return cast_response_to_real(result, self.signature)
         else:
-            return cast(T, result)
+            return result
 
     @staticmethod
     async def wait_all(futures: List['BaseFuture']) -> List[Any]:

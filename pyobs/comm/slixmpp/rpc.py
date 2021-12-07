@@ -2,17 +2,16 @@ import asyncio
 import copy
 import inspect
 import logging
-from functools import partial
 from threading import RLock
 from typing import Dict, Optional, Any, Callable, Tuple
 
 import slixmpp
 import slixmpp.exceptions
-from slixmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 
 from pyobs.modules import Module
 from pyobs.comm.exceptions import *
 from pyobs.utils.parallel import Future
+from pyobs.comm.slixmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 
 log = logging.getLogger(__name__)
 
@@ -242,7 +241,7 @@ class RPC(object):
         }[condition]
         if e is None:
             RemoteException("An unexpected exception occurred at %s!" % iq['from'])
-        callback.cancel_with_error(e)
+        callback.set_exception(e)
 
 
 __all__ = ['RPC']

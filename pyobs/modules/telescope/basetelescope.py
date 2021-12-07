@@ -106,7 +106,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # do nothing, if initializing, parking or parked
-        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check observer
@@ -135,13 +135,13 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             log.info('Reached destination')
 
             # move dome, if exists
-            self._wait_for_motion(self._abort_move)
+            await self._wait_for_motion(self._abort_move)
 
             # finish slewing
             await self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
-            threading.Thread(target=self._update_celestial_headers).start()
+            asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
     async def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
@@ -196,7 +196,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             await self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
-            threading.Thread(target=self._update_celestial_headers).start()
+            asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
     async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
@@ -214,9 +214,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # positions
         try:
-            ra, dec = self.get_radec()
+            ra, dec = await self.get_radec()
             coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-            alt, az = self.get_altaz()
+            alt, az = await self.get_altaz()
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
 
         except Exception as e:

@@ -55,7 +55,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             await self.comm.register_event(OffsetsRaDecEvent)
 
         # init status
-        self._change_motion_status(MotionStatus.IDLE)
+        await self._change_motion_status(MotionStatus.IDLE)
 
     async def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -134,7 +134,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # acquire lock
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
-            self._change_motion_status(MotionStatus.SLEWING, interface='IFocuser')
+            await self._change_motion_status(MotionStatus.SLEWING, interface='IFocuser')
             ifoc = self._telescope.focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
@@ -145,7 +145,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
                 # move focus and sleep a little
                 self._telescope.focus = ifoc + i * dfoc
                 await asyncio.sleep(0.01)
-            self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
+            await self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
             self._telescope.focus = focus
 
     async def list_filters(self, **kwargs: Any) -> List[str]:

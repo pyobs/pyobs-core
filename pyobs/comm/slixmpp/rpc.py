@@ -208,7 +208,7 @@ class RPC(object):
             del self._futures[pid]
 
         # set error
-        future.cancel_with_error(InvocationException(fault['string']))
+        future.set_exception(InvocationException(fault['string']))
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.

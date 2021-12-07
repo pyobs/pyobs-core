@@ -6,6 +6,7 @@ from typing import Union, List, Any, Optional
 from pyobs.interfaces import IMotion
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class WaitForMotionMixin:
                                   for s in wait_for_states] if wait_for_states is not None else []
         self.__wait_for_timeout = wait_for_timeout
 
-    def _wait_for_motion(self, abort: Event) -> None:
+    async def _wait_for_motion(self, abort: Event) -> None:
         """Wait until all devices are in one of the given motion states.
 
         Args:
@@ -66,7 +67,7 @@ class WaitForMotionMixin:
                 raise TimeoutError
 
             # get all states and compare them
-            states = [p.get_motion_status().wait() for p in proxies]
+            states = [await p.get_motion_status() for p in proxies]
 
             # in a good state?
             good = [s in this.__wait_for_states for s in states]
@@ -77,7 +78,7 @@ class WaitForMotionMixin:
                 break
 
             # sleep a little
-            abort.wait(1)
+            event_wait(wait, 1)
 
 
 __all__ = ['WaitForMotionMixin']

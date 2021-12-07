@@ -60,7 +60,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -86,13 +86,13 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICameraProxy)
+        camera: ICamera = self.proxy(self._camera, ICamera)
 
         # get filter wheel and current filter
         filter_name = 'unknown'
         if self._filters is not None:
             try:
-                filter_wheel: IFiltersProxy = self.proxy(self._filters, IFiltersProxy)
+                filter_wheel: IFilters = self.proxy(self._filters, IFilters)
                 filter_name = filter_wheel.get_filter().wait()
             except ValueError:
                 log.warning('Filter module is not of type IFilters. Could not get filter.')
@@ -135,9 +135,9 @@ class AutoFocusProjection(Module, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                if isinstance(camera, IExposureTimeProxy):
+                if isinstance(camera, IExposureTime):
                     camera.set_exposure_time(exposure_time).wait()
-                if isinstance(camera, IImageTypeProxy):
+                if isinstance(camera, IImageType):
                     camera.set_image_type(ImageType.FOCUS).wait()
                 filename = camera.grab_image().wait()
             except RemoteException:
@@ -192,7 +192,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             focuser.set_focus(focus[0]).wait()
 
         # send event
-        self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
+        await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
 
         # return result
         return focus[0], focus[1]

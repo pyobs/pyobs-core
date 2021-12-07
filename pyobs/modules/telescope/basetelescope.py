@@ -124,11 +124,11 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
-            self._change_motion_status(MotionStatus.SLEWING)
+            await self._change_motion_status(MotionStatus.SLEWING)
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
-            self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
+            await self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
 
             # track telescope
             await self._move_radec(ra, dec, abort_event=self._abort_move)
@@ -138,7 +138,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(MotionStatus.TRACKING)
+            await self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()
@@ -182,18 +182,18 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
-            self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
-            self._change_motion_status(MotionStatus.SLEWING)
+            await self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
+            await self._change_motion_status(MotionStatus.SLEWING)
 
             # move telescope
             await self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
             # move dome, if exists
-            self._wait_for_motion(self._abort_move)
+            await self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(MotionStatus.POSITIONED)
+            await self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
             threading.Thread(target=self._update_celestial_headers).start()

@@ -7,6 +7,7 @@ import threading
 import astropy.units as u
 
 from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.parallel import event_wait
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderBefore
@@ -58,7 +59,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         self._status_lock = threading.RLock()
 
         # add thread func
-        self.add_thread_func(self._update, True)
+        self.add_background_task(self._update, True)
 
     async def open(self) -> None:
         """Open module."""
@@ -69,26 +70,26 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             await self.comm.register_event(BadWeatherEvent)
             await self.comm.register_event(GoodWeatherEvent)
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
 
         # did status change and weather is now bad?
         if not self._active and not self._is_good:
             # send event!
-            self.comm.send_event(BadWeatherEvent())
+            await self.comm.send_event(BadWeatherEvent())
 
         # activate
         self._active = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._active = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._active
 
-    def _update(self) -> None:
+    async def _update(self) -> None:
         """Update weather info."""
 
         # loop forever
@@ -127,22 +128,22 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                     if is_good:
                         log.info(('Weather is now good.'))
                         eta = Time.now() + self._system_init_time * u.second
-                        self.comm.send_event(GoodWeatherEvent(eta=eta))
+                        await self.comm.send_event(GoodWeatherEvent(eta=eta))
                     else:
                         log.info('Weather is now bad.')
-                        self.comm.send_event(BadWeatherEvent())
+                        await self.comm.send_event(BadWeatherEvent())
 
                 # store new state
                 self._is_good = is_good
 
             # sleep a little
-            self.closing.wait(60 if error else 5)
+            await event_wait(self.closing, 60 if error else 5)
 
-    def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
-    def is_weather_good(self, **kwargs: Any) -> bool:
+    async def is_weather_good(self, **kwargs: Any) -> bool:
         """Whether the weather is good to observe."""
 
         # if not active, weather is always good
@@ -152,7 +153,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # otherwise it depends on the is_good flag
         return False if self._is_good is None else self._is_good
 
-    def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
 
         Returns:
@@ -162,7 +163,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         with self._status_lock:
             return self._status
 
-    def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:
@@ -187,7 +188,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
             -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 

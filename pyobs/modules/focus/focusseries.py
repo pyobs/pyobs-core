@@ -64,7 +64,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
     @timeout(600)
-    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -197,7 +197,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             focuser.set_focus(focus[0]).wait()
 
         # send event
-        self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
+        await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
 
         # return result
         return focus[0], focus[1]

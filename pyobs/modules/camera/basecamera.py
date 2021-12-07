@@ -118,7 +118,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._image_type
 
-    def _change_exposure_status(self, status: ExposureStatus) -> None:
+    async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
 
         Args:
@@ -127,7 +127,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # send event, if it changed
         if self._camera_status != status:
-            self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
+            await self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
 
         # set it
         self._camera_status = status
@@ -266,7 +266,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, image_type))
+            await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # return image and unique
         self._exposure = None

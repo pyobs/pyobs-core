@@ -10,6 +10,7 @@ from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from .proxy import Proxy
 from .commlogging import CommLoggingHandler
 from ..interfaces import Interface
+from ..utils.parallel import event_wait
 from ..utils.threads.future import BaseFuture
 
 if TYPE_CHECKING:
@@ -39,8 +40,8 @@ class Comm:
         logging.getLogger().addHandler(handler)
 
         # logging thread
-        self._closing = threading.Event()
-        self._logging_thread = threading.Thread(target=self._logging)
+        self._closing = asyncio.Event()
+        self._logging_task: Optional[asyncio.Task] = None
 
     @property
     def module(self) -> Optional['Module']:
@@ -63,7 +64,7 @@ class Comm:
         """Open module."""
 
         # start logging thread
-        self._logging_thread.start()
+        self._logging_task = asyncio.create_task(self._logging())
 
         # some events
         await self.register_event(ModuleClosedEvent, self._client_disconnected)
@@ -73,7 +74,8 @@ class Comm:
 
         # close thread
         self._closing.set()
-        self._logging_thread.join()
+        if self._logging_task:
+            self._logging_task.cancel()
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.
@@ -298,19 +300,18 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _logging(self) -> None:
+    async def _logging(self) -> None:
         """Background thread for handling the logging."""
-
         # run until closing
         while not self._closing.is_set():
             # do we have a message in the queue?
             while not self._log_queue.empty():
                 # get item and send it
                 entry = self._log_queue.get_nowait()
-                self.send_event(entry)
+                await self.send_event(entry)
 
             # sleep a little
-            self._closing.wait(1)
+            await event_wait(self._closing, 1)
 
     def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.
@@ -320,7 +321,7 @@ class Comm:
         """
         self._log_queue.put_nowait(entry)
 
-    def send_event(self, event: Event) -> None:
+    async def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:

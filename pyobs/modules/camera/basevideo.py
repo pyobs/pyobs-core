@@ -359,7 +359,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
                 # reset
                 self._image_request = None
 
-    def _create_image(self, data: NDArray[Any], next_image: NextImage) -> Tuple[Image, str]:
+    async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> Tuple[Image, str]:
         """Create an Image object from numpy array.
 
         Args:
@@ -380,9 +380,9 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         self.add_fits_headers(image)
 
         # finish it up
-        return self._finish_image(image, next_image.broadcast, next_image.image_type)
+        return await self._finish_image(image, next_image.broadcast, next_image.image_type)
 
-    def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> Tuple[Image, str]:
+    async def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> Tuple[Image, str]:
         """Finish up an image at the end of _create_image.
 
         Args:
@@ -405,13 +405,13 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, image_type))
+            await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -433,7 +433,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info('Waiting for image to finish...')
         while image_request.image is None:
-            time.sleep(0.1)
+            asyncio.sleep(0.1)
 
         # remove from list
         self._image_requests.remove(image_request)
@@ -445,7 +445,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # finished
         return image_request.filename
 
-    def get_video(self, **kwargs: Any) -> str:
+    async def get_video(self, **kwargs: Any) -> str:
         """Returns path to video.
 
         Returns:
@@ -468,7 +468,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             # find file in cache and return it
             return self._cache[filename] if filename in self._cache else None
 
-    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
+    async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -477,7 +477,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         log.info('Setting image type to %s...', image_type)
         self._image_type = image_type
 
-    def get_image_type(self, **kwargs: Any) -> ImageType:
+    async def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:

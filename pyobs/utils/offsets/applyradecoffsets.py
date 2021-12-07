@@ -6,7 +6,7 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
-from ...interfaces.proxies import ITelescope, IOffsetsRaDec
+from ...interfaces import ITelescope, IOffsetsRaDec
 
 log = logging.getLogger(__name__)
 

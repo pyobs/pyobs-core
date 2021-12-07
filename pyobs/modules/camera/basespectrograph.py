@@ -50,7 +50,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
-    def _expose(self, abort_event: threading.Event) -> fits.HDUList:
+    async def _expose(self, abort_event: threading.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -64,7 +64,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         """
         raise NotImplementedError
 
-    def __expose(self, broadcast: bool) -> Tuple[Optional[fits.HDUList], Optional[str]]:
+    async def __expose(self, broadcast: bool) -> Tuple[Optional[fits.HDUList], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
@@ -85,7 +85,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
         try:
-            hdulist = self._expose(abort_event=self.expose_abort)
+            hdulist = await self._expose(abort_event=self.expose_abort)
             if hdulist is None or hdulist[0].data is None:
                 self._exposure = None
                 return None, None
@@ -122,7 +122,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting spectrum ID...')
-            self.comm.send_event(NewSpectrumEvent(filename))
+            await self.comm.send_event(NewSpectrumEvent(filename))
 
         # return spectrum and unique
         self._exposure = None
@@ -130,7 +130,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         return hdulist, filename
 
     @timeout(10)
-    def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs a spectrum and returns reference.
 
         Args:
@@ -151,7 +151,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
                 raise ValueError('Cannot start new exposure because spectrograph is not idle.')
 
             # expose
-            hdu, filename = self.__expose(broadcast)
+            hdu, filename = await self.__expose(broadcast)
             if hdu is None:
                 raise ValueError('Could not take spectrum.')
             else:
@@ -166,7 +166,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
             log.info('Releasing exclusive lock on spectrograph...')
             self._expose_lock.release()
 
-    def _change_exposure_status(self, status: ExposureStatus) -> None:
+    async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
 
         Args:
@@ -175,12 +175,12 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
 
         # send event, if it changed
         if self._spectrograph_status != status:
-            self.comm.send_event(ExposureStatusChangedEvent(last=self._spectrograph_status, current=status))
+            await self.comm.send_event(ExposureStatusChangedEvent(last=self._spectrograph_status, current=status))
 
         # set it
         self._spectrograph_status = status
 
-    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
+    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the spectrograph, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -188,7 +188,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         """
         return self._spectrograph_status
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure.
 
         Raises:

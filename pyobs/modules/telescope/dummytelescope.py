@@ -178,13 +178,13 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         if filter_name != self._telescope.filter:
             # set it
             logging.info('Setting filter to %s', filter_name)
-            self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
-            time.sleep(3)
-            self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
+            await self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
+            await asyncio.sleep(3)
+            await self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
             self._telescope.filter = filter_name
 
             # send event
-            self.comm.send_event(FilterChangedEvent(filter_name))
+            await self.comm.send_event(FilterChangedEvent(filter_name))
             logging.info('New filter set.')
 
     @timeout(60)
@@ -196,9 +196,11 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # INIT, wait a little, then IDLE
-        self._change_motion_status(MotionStatus.INITIALIZING)
+        log.info('Initializing telescope...')
+        await self._change_motion_status(MotionStatus.INITIALIZING)
         await asyncio.sleep(5)
-        self._change_motion_status(MotionStatus.IDLE)
+        await self._change_motion_status(MotionStatus.IDLE)
+        log.info('Telescope initialized.')
 
     @timeout(60)
     async def park(self, **kwargs: Any) -> None:
@@ -209,9 +211,11 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # PARK, wait a little, then PARKED
-        self._change_motion_status(MotionStatus.PARKING)
+        log.info('Parking telescope...')
+        await self._change_motion_status(MotionStatus.PARKING)
         await asyncio.sleep(5)
-        self._change_motion_status(MotionStatus.PARKED)
+        await self._change_motion_status(MotionStatus.PARKED)
+        log.info('Telescope parked.')
 
     async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
         """Move an RA/Dec offset.
@@ -224,7 +228,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
-        self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
+        await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
 
     async def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:

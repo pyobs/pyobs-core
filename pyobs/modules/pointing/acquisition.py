@@ -12,7 +12,7 @@ from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from ._base import BasePointing
-from ...interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, ITelescopeProxy, IImageGrabberProxy, \
+from ...interfaces import IExposureTimeProxy, IImageTypeProxy, ITelescopeProxy, IImageGrabberProxy, \
     IOffsetsRaDecProxy, IOffsetsAltAzProxy, ICameraProxy
 
 log = logging.getLogger(__name__)

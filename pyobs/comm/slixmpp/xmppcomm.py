@@ -246,10 +246,6 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
-        # if it doesn't exist, wait a second
-        if client not in self._interface_cache:
-            asyncio.sleep(1)
-
         # convert to classes
         return self._interface_cache[client]
 
@@ -349,18 +345,7 @@ class XmppComm(Comm):
         """
         return self._xmpp
 
-    def send_event(self, event: Event) -> None:
-        """Send an event to other clients.
-
-        Args:
-            event (Event): Event to send
-        """
-        # TODO: remove again
-        if not self._connected:
-            return
-        asyncio.run_coroutine_threadsafe(self._send_event(event), self._loop)
-
-    async def _send_event(self, event: Event) -> None:
+    async def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -375,13 +360,8 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        #self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-        #                               callback=functools.partial(self._send_event_callback, event=event))
-        asyncio.run_coroutine_threadsafe(
-            self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-                                           callback=functools.partial(self._send_event_callback, event=event)),
-            self._loop
-        )
+        await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
+                                             callback=functools.partial(self._send_event_callback, event=event))
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
@@ -499,7 +479,7 @@ class XmppComm(Comm):
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
                 # create thread and start it
-                if asyncio.iscoroutine(handler):
+                if asyncio.iscoroutinefunction(handler):
                     asyncio.create_task(handler(event, from_client))
                 else:
                     handler(event, from_client)

@@ -7,7 +7,7 @@ from astropy.coordinates import EarthLocation, AltAz
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
 from ..time import Time
-from ...interfaces.proxies import ITelescopeProxy, IOffsetsAltAzProxy
+from ...interfaces import ITelescopeProxy, IOffsetsAltAzProxy
 
 log = logging.getLogger(__name__)
 

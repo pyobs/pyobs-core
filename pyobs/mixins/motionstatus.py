@@ -27,7 +27,7 @@ class MotionStatusMixin:
         if isinstance(self, Module) and self.comm:
             await self.comm.register_event(MotionStatusChangedEvent)
 
-    def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
+    async def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
         """Change motion status and send event,
 
         Args:
@@ -71,8 +71,8 @@ class MotionStatusMixin:
             this = self
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self.comm.send_event(MotionStatusChangedEvent(status=this.__motion_status,
-                                                          interfaces=this.__motion_status_single))
+            await self.comm.send_event(MotionStatusChangedEvent(status=this.__motion_status,
+                                                                interfaces=this.__motion_status_single))
 
     def _combine_motion_status(self) -> MotionStatus:
         """Method for combining motion statuses for individual interfaces into the global one. Can be overriden."""

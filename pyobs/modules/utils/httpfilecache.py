@@ -19,14 +19,7 @@ class MainHandler(tornado.web.RequestHandler):
     """The request handler for the HTTP filecache."""
     __module__ = 'pyobs.modules.utils'
 
-    def initialize(self) -> None:
-        """Initializes the handler (instead of in the constructor)"""
-
-        # create a thread pool executor
-        self.executor = ThreadPoolExecutor(max_workers=30)
-
-    @tornado.gen.coroutine
-    def post(self, dummy: str) -> Any:
+    async def post(self, dummy: str) -> Any:
         """Handle incoming file.
 
         Args:
@@ -57,25 +50,26 @@ class MainHandler(tornado.web.RequestHandler):
 
         else:
             # store file and return filename
-            filename = yield self.executor.submit(app.store, self.request.body, filename)
+            loop = asyncio.get_running_loop()
+            filename = await loop.run_in_executor(None, app.store, self.request.body, filename)
             if filename is None:
                 raise tornado.web.HTTPError(404)
             log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
-            self.finish(bytes(filename, 'utf-8'))
+            await self.finish(bytes(filename, 'utf-8'))
 
-    @tornado.gen.coroutine
-    def get(self, filename: str) -> Any:
+    async def get(self, filename: str) -> Any:
         """Handle download request.
 
         Args:
             filename: Name of file to download.
         """
-
+        print('get', filename)
         # get app
         app = cast(HttpFileCache, self.application)
 
         # fetch data
-        data = yield self.executor.submit(app.fetch, filename)
+        loop = asyncio.get_running_loop()
+        data = await loop.run_in_executor(None, app.fetch, filename)
         if data is None:
             raise tornado.web.HTTPError(404)
         log.info('Serving file %s...', filename)
@@ -84,7 +78,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.set_header('content-type', 'application/octet-stream')
         self.set_header('content-disposition', 'attachment; filename="%s"' % filename)
         self.write(data)
-        self.finish()
+        await self.finish()
 
 
 class HttpFileCache(Module, tornado.web.Application):
@@ -101,7 +95,7 @@ class HttpFileCache(Module, tornado.web.Application):
         Module.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._http, False)
+        #self.add_thread_func(self._http, False)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [
@@ -117,36 +111,20 @@ class HttpFileCache(Module, tornado.web.Application):
         self._cache_size = cache_size
         self._max_file_size = max_file_size * 1024 * 1024
 
-    def close(self) -> None:
-        """Close server."""
+    async def open(self) -> None:
+        """Open server"""
 
-        # close io loop and parent
-        if self._io_loop is not None:
-            self._io_loop.add_callback(self._io_loop.stop)
-        Module.close(self)
+        # start listening
+        log.info('Starting HTTP file cache on port %d...', self._port)
+        self.listen(self._port, max_buffer_size=self._max_file_size, max_body_size=self._max_file_size)
+        self._is_listening = True
 
     @property
     def opened(self) -> bool:
         """Whether the server is started."""
         return self._is_listening
 
-    def _http(self) -> None:
-        """Thread function for the web server."""
-
-        # create io loop
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        self._io_loop = tornado.ioloop.IOLoop.current()
-        self._io_loop.make_current()
-
-        # start listening
-        log.info('Starting HTTP file cache on port %d...', self._port)
-        self.listen(self._port, max_buffer_size=self._max_file_size, max_body_size=self._max_file_size)
-
-        # start the io loop
-        self._is_listening = True
-        self._io_loop.start()
-
-    def store(self, data: bytearray, filename: Optional[str] = None) -> str:
+    async def store(self, data: bytearray, filename: Optional[str] = None) -> str:
         """Store an incoming file.
 
         Args:
@@ -170,7 +148,7 @@ class HttpFileCache(Module, tornado.web.Application):
             # finally, filename
             return filename
 
-    def fetch(self, filename: str) -> Union[None, bytearray]:
+    async def fetch(self, filename: str) -> Union[None, bytearray]:
         """Send a file to the requesting client.
 
         Args:

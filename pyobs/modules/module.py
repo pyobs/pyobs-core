@@ -22,7 +22,7 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
     """
 
     def timeout_decorator(func: F) -> F:
-        def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
+        async def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
             # define variables as non-local
             nonlocal func_timeout, func
 
@@ -37,10 +37,10 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
                     try:
                         if hasattr(func_timeout, 'timeout'):
                             # call timeout method, only works if this has the same parameters
-                            to = getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
+                            to = await getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
                         else:
                             # call method directly
-                            to = func_timeout(obj, *args, **kwargs)
+                            to = await func_timeout(obj, *args, **kwargs)
                     except:
                         log.exception('Could not call timeout method.')
 

@@ -121,7 +121,7 @@ class RPC(object):
 
             # do we have a timeout?
             if hasattr(method, 'timeout'):
-                timeout = getattr(method, 'timeout')(self._handler, **ba.arguments)
+                timeout = await getattr(method, 'timeout')(self._handler, **ba.arguments)
                 if timeout:
                     # yes, send it!
                     response = self._client.plugin['xep_0009_timeout'].\

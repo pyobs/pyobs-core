@@ -31,7 +31,7 @@ class Comm:
 
         self._proxies: Dict[str, Proxy] = {}
         self._module: Optional[Module] = None
-        self._log_queue: queue.Queue[LogEvent] = queue.Queue()
+        self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
 
         # add handler to global logger
@@ -304,14 +304,9 @@ class Comm:
         """Background thread for handling the logging."""
         # run until closing
         while not self._closing.is_set():
-            # do we have a message in the queue?
-            while not self._log_queue.empty():
-                # get item and send it
-                entry = self._log_queue.get_nowait()
-                await self.send_event(entry)
-
-            # sleep a little
-            await event_wait(self._closing, 1)
+            # get item (maybe wait for it) and send it
+            entry = await self._log_queue.get()
+            await self.send_event(entry)
 
     def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.

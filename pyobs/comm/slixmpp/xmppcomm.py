@@ -169,7 +169,6 @@ class XmppComm(Comm):
         Returns:
             Whether opening was successful.
         """
-        await Comm.open(self)
 
         # create RPC handler
         self._rpc = RPC(self._xmpp, self.module)
@@ -191,6 +190,9 @@ class XmppComm(Comm):
 
         # subscribe to events
         await self.register_event(LogEvent)
+
+        # open Comm
+        await Comm.open(self)
 
         # wait a little and finished
         await asyncio.sleep(1)

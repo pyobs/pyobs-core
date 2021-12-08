@@ -46,9 +46,9 @@ def get_coord_remote(obj: Union[IPointingAltAz, IPointingRaDec],
     """
 
     if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
-        return obj.get_altaz().wait()
+        return await obj.get_altaz()
     elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
-        return obj.get_radec().wait()
+        return await obj.get_radec()
     else:
         raise ValueError('Unknown mode.')
 
@@ -112,7 +112,7 @@ class FollowMixin:
         """Returns True, if we're following another device."""
         return self.__follow_device is not None
 
-    def __update_follow(self) -> None:
+    async def __update_follow(self) -> None:
         """Update function."""
 
         # store self for later

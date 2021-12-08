@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import threading
 from typing import Dict, Any, Union
 
 from pyobs.interfaces import IRunnable
@@ -7,6 +7,7 @@ from pyobs.interfaces import IFlatField, IFilters, IBinning
 from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.object import get_object
+from pyobs.utils.parallel import event_wait
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.time import Time
@@ -40,7 +41,7 @@ class FlatFieldScheduler(Module, IRunnable):
         self._count = count
 
         # abort
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
 
         # priorities
         prio = get_object(priorities, SkyflatPriorities)
@@ -61,10 +62,10 @@ class FlatFieldScheduler(Module, IRunnable):
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
     @timeout(7200)
-    def run(self, **kwargs: Any) -> None:
+    async def run(self, **kwargs: Any) -> None:
         """Perform flat-fielding"""
         log.info('Performing flat fielding...')
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
 
         # get flat fielder
         log.info('Getting proxy for flat fielder...')
@@ -85,26 +86,26 @@ class FlatFieldScheduler(Module, IRunnable):
             # start
             log.info('Taking %d flats in %s %dx%d...', self._count, item.filter_name, item.binning, item.binning)
             if isinstance(flatfield, IFilters):
-                flatfield.set_filter(item.filter_name)
+                await flatfield.set_filter(item.filter_name)
             if isinstance(flatfield, IBinning):
-                flatfield.set_binning(*item.binning)
+                await flatfield.set_binning(*item.binning)
             future = flatfield.flat_field(self._count)
 
             # wait for it
-            while not future.is_done():
+            while not future.done():
                 # aborted?
                 if self._abort.is_set():
                     log.info('Aborting current flat field...')
-                    flatfield.abort().wait()
+                    await flatfield.abort()
 
                 # sleep a little
-                self._abort.wait(1)
+                await event_wait(self._abort, 1)
 
         # finished
         log.info('Finished.')
 
     @timeout(20)
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 

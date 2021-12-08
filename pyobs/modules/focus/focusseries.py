@@ -93,7 +93,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         camera: IImageGrabber = self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
-        self._do_camera_settings(camera)
+        await self._do_camera_settings(camera)
 
         # get filter wheel and current filter
         filter_name = 'unknown'

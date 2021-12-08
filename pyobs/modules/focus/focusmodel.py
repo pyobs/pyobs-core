@@ -1,9 +1,13 @@
+import asyncio
 import logging
 from typing import Optional, Any, Dict, TYPE_CHECKING, cast
 
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
+
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     import lmfit
 
@@ -86,7 +90,7 @@ class FocusModel(Module, IFocusModel):
 
         # add thread func
         if interval is not None and interval > 0:
-            self.add_thread_func(self._run_thread, True)
+            self.add_background_task(self._update)
 
         # store
         self._focuser = focuser
@@ -136,15 +140,15 @@ class FocusModel(Module, IFocusModel):
         if self._filter_offsets is not None and self._filter_wheel is not None:
             await self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
 
-    def _run_thread(self) -> None:
+    async def _update(self) -> None:
         # wait a little
-        self.closing.wait(1)
+        await asyncio.sleep(1)
 
         # run until closed
         while not self.closing.is_set():
             # if not enabled, just sleep a little
             if not self._enabled:
-                self.closing.wait(1)
+                await event_wait(self.closing, 1)
                 continue
 
             # get focuser
@@ -152,11 +156,11 @@ class FocusModel(Module, IFocusModel):
                 focuser: IFocuser = self.proxy(self._focuser, IFocuser)
             except ValueError:
                 log.warning('Could not connect to focuser.')
-                self.closing.wait(60)
+                await event_wait(self.closing, 10)
                 continue
 
             # is focuser ready?
-            status = focuser.is_ready().wait()
+            status = await focuser.is_ready()
             if status is False:
                 # log
                 if self._focuser_ready:
@@ -164,7 +168,7 @@ class FocusModel(Module, IFocusModel):
                     self._focuser_ready = False
 
                 # sleep a little and continue
-                self.closing.wait(10)
+                await event_wait(self.closing, 10)
                 continue
 
             # came from not ready state?
@@ -175,17 +179,17 @@ class FocusModel(Module, IFocusModel):
             # now set focus
             try:
                 # set optimal focus
-                self.set_optimal_focus()
+                await self.set_optimal_focus()
             except ValueError:
                 # something went wrong, wait a little and continue
-                self.closing.wait(60)
+                await event_wait(self.closing, 10)
                 continue
 
             # sleep interval
             log.info('Going to sleep for %d seconds...', self._interval)
-            self.closing.wait(self._interval)
+            await event_wait(self.closing, self._interval)
 
-    def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
+    async def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Args:
@@ -214,7 +218,7 @@ class FocusModel(Module, IFocusModel):
                     wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
 
                     # get filter
-                    filter_name = wheel.get_filter().wait()
+                    filter_name = await wheel.get_filter()
 
                 # add offset
                 offset = self._filter_offsets[filter_name]
@@ -228,7 +232,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found optimal focus of %.4f.', focus)
         return float(focus)
 
-    def get_optimal_focus(self, **kwargs: Any) -> float:
+    async def get_optimal_focus(self, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Returns:
@@ -237,9 +241,9 @@ class FocusModel(Module, IFocusModel):
         Raises:
             ValueError: If anything went wrong.
         """
-        return self._get_optimal_focus()
+        return await self._get_optimal_focus()
 
-    def _get_values(self) -> Dict[str, float]:
+    async def _get_values(self) -> Dict[str, float]:
         """Retrieve all required values for the model.
 
         Returns:
@@ -260,7 +264,7 @@ class FocusModel(Module, IFocusModel):
                 raise ValueError('Could not connect to weather module.')
 
             # get value
-            time, val = weather.get_sensor_value(self._temp_station, self._temp_sensor).wait()
+            time, val = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
             if val is None:
                 raise ValueError('Received invalid temperature from weather station.')
 
@@ -279,7 +283,7 @@ class FocusModel(Module, IFocusModel):
                 proxy: ITemperatures = self.proxy(cfg['module'], ITemperatures)
 
                 # get temperatures
-                module_temps[cfg['module']] = proxy.get_temperatures().wait()
+                module_temps[cfg['module']] = await proxy.get_temperatures()
 
                 # log
                 vars = ', '.join(['%s=%.2f' % (k, v) for k, v in module_temps[cfg['module']].items()])
@@ -296,7 +300,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Found values for model: %s', vars)
         return variables
 
-    def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:
+    async def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:
         """Sets optimal focus.
 
         Args:
@@ -310,23 +314,23 @@ class FocusModel(Module, IFocusModel):
         focuser: IFocuser = self.proxy(self._focuser, IFocuser)
 
         # get focus
-        focus = self._get_optimal_focus(filter_name=filter_name)
+        focus = await self._get_optimal_focus(filter_name=filter_name)
 
         # set it
         log.info('Setting optimal focus...')
-        focuser.set_focus(focus).wait()
+        await focuser.set_focus(focus)
         log.info('Done.')
 
     @timeout(60)
-    def set_optimal_focus(self, **kwargs: Any) -> None:
+    async def set_optimal_focus(self, **kwargs: Any) -> None:
         """Sets optimal focus.
 
         Raises:
             ValueError: If anything went wrong.
         """
-        self._set_optimal_focus()
+        await self._set_optimal_focus()
 
-    def _on_focus_found(self, event: Event, sender: str) -> bool:
+    async def _on_focus_found(self, event: Event, sender: str) -> bool:
         """Receive FocusFoundEvent.
 
         Args:
@@ -338,7 +342,7 @@ class FocusModel(Module, IFocusModel):
         log.info('Received new focus of %.4f +- %.4f.', event.focus, event.error)
 
         # collect values for model
-        values = self._get_values()
+        values = await self._get_values()
 
         # add focus and datetime
         values['focus'] = event.focus

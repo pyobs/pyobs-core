@@ -1,6 +1,6 @@
 import logging
 import time
-from threading import Event
+from asyncio import Event
 from typing import Union, List, Any, Optional
 
 from pyobs.interfaces import IMotion
@@ -78,7 +78,7 @@ class WaitForMotionMixin:
                 break
 
             # sleep a little
-            event_wait(wait, 1)
+            await event_wait(abort, 1)
 
 
 __all__ = ['WaitForMotionMixin']

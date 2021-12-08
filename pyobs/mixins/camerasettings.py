@@ -27,7 +27,7 @@ class CameraSettingsMixin:
         self.__camerasettings_filter = filter_name
         self.__camerasettings_binning = binning
 
-    def _do_camera_settings(self, camera: Union[Module, IImageGrabber, IFilters,
+    async def _do_camera_settings(self, camera: Union[Module, IImageGrabber, IFilters,
                                                 IBinning, IWindow]) -> None:
         """Do camera settings for given camera."""
 
@@ -43,17 +43,17 @@ class CameraSettingsMixin:
 
             # set it
             log.info('Setting filter to %s...', self.__camerasettings_filter)
-            filters.set_filter(self.__camerasettings_filter).wait()
+            await filters.set_filter(self.__camerasettings_filter)
 
         # camera settings
         if self.__camerasettings_binning is not None and isinstance(camera, IBinning):
             log.info('Setting binning to %dx%d...', self.__camerasettings_binning, self.__camerasettings_binning)
-            camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning).wait()
+            await camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning)
         if isinstance(camera, IWindow):
             log.info('Set window to full frame...')
-            full_frame = camera.get_full_frame().wait()
+            full_frame = await camera.get_full_frame()
             if full_frame is not None:
-                camera.set_window(*full_frame).wait()
+                await camera.set_window(*full_frame)
             else:
                 raise ValueError('Could not get full frame size.')
 

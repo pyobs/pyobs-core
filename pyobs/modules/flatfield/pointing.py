@@ -30,7 +30,7 @@ class FlatFieldPointing(Module, IRunnable):
         self._pointing = pointing
 
     @timeout(60)
-    def run(self, **kwargs: Any) -> None:
+    async def run(self, **kwargs: Any) -> None:
         """Move telescope to pointing."""
 
         # get telescope
@@ -41,7 +41,7 @@ class FlatFieldPointing(Module, IRunnable):
         pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self.observer)
 
         # point
-        pointing(telescope).wait()
+        await pointing(telescope)
         log.info('Finished pointing telescope.')
 
     def abort(self, **kwargs: Any) -> None:

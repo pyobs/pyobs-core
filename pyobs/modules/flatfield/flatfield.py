@@ -103,15 +103,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
                             filter=filter, binning=binning[0])
 
-    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:
             List of available binnings as (x, y) tuples.
         """
-        return self.proxy(self._camera, IBinning).list_binnings().wait()
+        return await self.proxy(self._camera, IBinning).list_binnings()
 
-    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
+    async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -123,7 +123,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._binning = (x, y)
 
-    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -131,15 +131,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         return self._binning
 
-    def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
             List of available filters.
         """
-        return self.proxy(self._filter_wheel, IFiltersProxy).list_filters().wait()
+        return await self.proxy(self._filter_wheel, IFiltersProxy).list_filters()
 
-    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
+    async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -150,7 +150,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._filter = filter_name
 
-    def get_filter(self, **kwargs: Any) -> str:
+    async def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:
@@ -159,7 +159,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return '' if self._filter is None else self._filter
 
     @timeout(3600)
-    def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
+    async def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -192,7 +192,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         state = None
         while state != FlatFielder.State.FINISHED:
             # can we run?
-            if not telescope.is_ready().wait():
+            if not await telescope.is_ready():
                 log.error('Telescope not in valid state, aborting...')
                 return self._flat_fielder.image_count, self._flat_fielder.total_exptime
             if self._abort.is_set():
@@ -200,12 +200,12 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                 return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
             # do step
-            state = self._flat_fielder(telescope, camera, count=count, binning=self._binning,
-                                       filters=filters, filter_name=self._filter)
+            state = await self._flat_fielder(telescope, camera, count=count, binning=self._binning,
+                                             filters=filters, filter_name=self._filter)
 
         # stop telescope
         log.info('Stopping telescope...')
-        telescope.stop_motion().wait()
+        await telescope.stop_motion()
         log.info('Flat-fielding finished.')
 
         # return number of taken images

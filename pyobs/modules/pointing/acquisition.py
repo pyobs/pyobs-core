@@ -66,7 +66,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -81,11 +81,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         try:
             self._is_running = True
-            return self._acquire(self._default_exposure_time)
+            return await self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
 
-    def _acquire(self, exposure_time: float) -> Dict[str, Any]:
+    async def _acquire(self, exposure_time: float) -> Dict[str, Any]:
         """Actually acquire target."""
 
         # get telescope
@@ -97,19 +97,19 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
 
         # do camera settings
-        self._do_camera_settings(camera)
+        await self._do_camera_settings(camera)
 
         # try given number of attempts
         for a in range(self._attempts):
             # set exposure time and image type and take image
             if isinstance(camera, IExposureTimeProxy):
                 log.info('Exposing image for %.1f seconds...', exposure_time)
-                camera.set_exposure_time(exposure_time).wait()
+                await camera.set_exposure_time(exposure_time)
             else:
                 log.info('Exposing image...')
             if isinstance(camera, IImageTypeProxy):
                 camera.set_image_type(ImageType.ACQUISITION)
-            filename = camera.grab_image().wait()
+            filename = await camera.grab_image()
 
             # download image
             log.info('Downloading image...')
@@ -135,8 +135,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 log.info('Target successfully acquired.')
 
                 # get current Alt/Az
-                cur_alt, cur_az = telescope.get_altaz().wait()
-                cur_ra, cur_dec = telescope.get_radec().wait()
+                cur_alt, cur_az = await telescope.get_altaz()
+                cur_ra, cur_dec = await telescope.get_radec()
 
                 # prepare log entry
                 log_entry = {
@@ -149,9 +149,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
                 # Alt/Az or RA/Dec?
                 if isinstance(telescope, IOffsetsRaDecProxy):
-                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_offsets_radec().wait()
+                    log_entry['off_ra'], log_entry['off_dec'] = await telescope.get_offsets_radec()
                 elif isinstance(telescope, IOffsetsAltAzProxy):
-                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_offsets_altaz().wait()
+                    log_entry['off_alt'], log_entry['off_az'] = await telescope.get_offsets_altaz()
 
                 # write log
                 # TODO: reactivate!

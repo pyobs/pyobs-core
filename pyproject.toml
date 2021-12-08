@@ -29,6 +29,7 @@ sep = [{ version = "^1.2", platform = "linux" }]
 pyinotify = [{ version = "^0.9", platform = "linux" }]
 python-daemon = [{ version = "^2.3", platform = "linux" }]
 astroquery = "^0.4.4"
+qasync = "^0.22.0"
 
 [tool.poetry.dev-dependencies]
 types-cryptography = "^3.3.7"

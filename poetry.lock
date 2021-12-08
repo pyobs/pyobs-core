@@ -711,6 +711,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "qasync"
+version = "0.22.0"
+description = "Implementation of the PEP 3156 Event-Loop with Qt."
+category = "main"
+optional = false
+python-versions = "~=3.6"
+
+[[package]]
 name = "reproject"
 version = "0.8"
 description = "Reproject astronomical images"
@@ -1047,7 +1055,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "6cd833911b316038a94e845c4015a4ac87074adef141493cf9f4a3154e926739"
+content-hash = "182d54fc59aaa7e2198030b90eeb33329738b764899a2f43fc3d05d9c2b62684"
 
 [metadata.files]
 apscheduler = [
@@ -1682,6 +1690,10 @@ pyyaml = [
     {file = "PyYAML-6.0-cp39-cp39-win32.whl", hash = "sha256:b5b9eccad747aabaaffbc6064800670f0c297e52c12754eb1d976c57e4f74dcb"},
     {file = "PyYAML-6.0-cp39-cp39-win_amd64.whl", hash = "sha256:b3d267842bf12586ba6c734f89d1f5b871df0273157918b0ccefa29deb05c21c"},
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
+]
+qasync = [
+    {file = "qasync-0.22.0-py3-none-any.whl", hash = "sha256:c270f8fef209c58df78489977f5351d025582954a56b6333563711966c1ad177"},
+    {file = "qasync-0.22.0.tar.gz", hash = "sha256:bd77192a13b1c94835a0c87320e88008feaa691b7ee51860447dfa3c5f34708d"},
 ]
 reproject = [
     {file = "reproject-0.8-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:62c5ceec278d42144941e552a2a9778cd3efb3c3064e77dd70dd6fc2430e8f56"},

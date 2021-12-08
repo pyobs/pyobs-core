@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import os
-from queue import Queue
 from typing import List, Union, Type, Any, Dict, Optional
 from astropy.time import Time
 
@@ -34,13 +34,13 @@ class OnlineReduction(Module):
 
         # stuff
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._queue = Queue()
+        self._queue = asyncio.Queue()
         self._archive = None if archive is None else get_object(archive, Archive)
         self._pipeline = get_object(pipeline, Pipeline)
         self._cache = DataCache(size=cache_size)
 
         # add thread func
-        self.add_thread_func(self._worker, True)
+        self.add_background_task(self._worker, True)
 
     async def open(self) -> None:
         """Open image writer."""
@@ -71,18 +71,15 @@ class OnlineReduction(Module):
 
         # put into queue
         log.info('Received new image event from %s.', sender)
-        self._queue.put(event.filename)
+        self._queue.put_nowait(event.filename)
         return True
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Worker thread."""
 
         # run forever
         while not self.closing.is_set():
             # get next filename
-            if self._queue.empty():
-                self.closing.wait(1)
-                continue
             filename = self._queue.get()
 
             try:
@@ -130,7 +127,7 @@ class OnlineReduction(Module):
             # broadcast image path
             if self.comm:
                 log.info('Broadcasting image ID...')
-                self.comm.send_event(NewImageEvent(outfile, ImageType.OBJECT, raw=filename))
+                await self.comm.send_event(NewImageEvent(outfile, ImageType.OBJECT, raw=filename))
             log.info('Finished image.')
 
     def _get_master_calibration(self, image_class: Type[Image], time: Time, instrument: str, binning: str,

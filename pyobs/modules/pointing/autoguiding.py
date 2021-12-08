@@ -6,6 +6,7 @@ from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
 from pyobs.interfaces import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
 from pyobs.utils.enums import ImageType
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -28,9 +29,9 @@ class AutoGuiding(BaseGuiding):
         self._source_detection = SepSourceDetection()
 
         # add thread func
-        self.add_thread_func(self._auto_guiding, True)
+        self.add_background_task(self._auto_guiding)
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time for the auto-guider.
 
         Args:
@@ -42,7 +43,7 @@ class AutoGuiding(BaseGuiding):
         self._loop_closed = False
         self._reset_guiding(enabled=self._enabled)
 
-    def _auto_guiding(self) -> None:
+    async def _auto_guiding(self) -> None:
         # exposure time
         self._exposure_time = self._default_exposure_time
 
@@ -50,7 +51,7 @@ class AutoGuiding(BaseGuiding):
         while not self.closing.is_set():
             # not running?
             if not self._enabled:
-                self.closing.wait(1)
+                await event_wait(self.closing, 1)
                 continue
 
             try:
@@ -61,12 +62,12 @@ class AutoGuiding(BaseGuiding):
                 if isinstance(camera, IExposureTimeProxy):
                     # set exposure time
                     log.info('Taking image with an exposure time of %.2fs...', self._exposure_time)
-                    camera.set_exposure_time(self._exposure_time).wait()
+                    await camera.set_exposure_time(self._exposure_time)
                 else:
                     log.info('Taking image...')
                 if isinstance(camera, IImageTypeProxy):
-                    camera.set_image_type(ImageType.OBJECT).wait()
-                filename = camera.grab_image(broadcast=False).wait()
+                    await camera.set_image_type(ImageType.OBJECT)
+                filename = await camera.grab_image(broadcast=False)
 
                 # download image
                 image = self.vfs.read_image(filename)
@@ -81,11 +82,11 @@ class AutoGuiding(BaseGuiding):
                     self._exposure_time = processed_image.get_meta(ExpTime).exptime
 
                 # sleep a little
-                self.closing.wait(self._min_interval)
+                await event_wait(self.closing, self._min_interval)
 
             except Exception as e:
                 log.error('An error occurred: ', e)
-                self.closing.wait(5)
+                await event_wait(self.closing, 5)
 
 
 __all__ = ['AutoGuiding']

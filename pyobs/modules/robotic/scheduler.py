@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import json
 import logging
@@ -66,8 +67,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._blocks: List[ObservingBlock] = []
 
         # update thread
-        self.add_thread_func(self._schedule_thread, True)
-        self.add_thread_func(self._update_thread, True)
+        self.add_background_task(self._schedule_thread)
+        self.add_background_task(self._update_thread)
 
     async def open(self):
         """Open module."""
@@ -79,19 +80,19 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
-    def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any):
         """Start scheduler."""
         self._running = True
 
-    def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any):
         """Stop scheduler."""
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""
         return self._running
 
-    def _update_thread(self):
+    async def _update_thread(self):
         # time of last change in blocks
         last_change = None
 
@@ -99,7 +100,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         while not self.closing.is_set():
             # not running?
             if self._running is False:
-                self.closing.wait(1)
+                await asyncio.sleep(1)
                 continue
 
             # got new time of last change?
@@ -145,7 +146,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 self._initial_update_done = True
 
             # sleep a little
-            self.closing.wait(5)
+            await asyncio.sleep(5)
 
     @staticmethod
     def _compare_block_lists(blocks1: List[ObservingBlock], blocks2: List[ObservingBlock]) \
@@ -176,7 +177,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         unique2 = [names2[n] for n in additional2]
         return unique1, unique2
 
-    def _schedule_thread(self):
+    async def _schedule_thread(self):
         # run forever
         while not self.closing.is_set():
             # need update?
@@ -187,10 +188,11 @@ class Scheduler(Module, IStartStop, IRunnable):
                 # run scheduler in separate process and wait for it
                 p = mp.Process(target=self._schedule)
                 p.start()
-                p.join()
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(p.join())
 
             # sleep a little
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
     def _schedule(self):
         """Actually do the scheduling, usually run in a separate process."""
@@ -316,11 +318,11 @@ class Scheduler(Module, IStartStop, IRunnable):
         else:
             log.info('Finished calculating schedule for 0 blocks.')
 
-    def run(self, **kwargs: Any):
+    async def run(self, **kwargs: Any):
         """Trigger a re-schedule."""
         self._need_update = True
 
-    def _on_task_started(self, event: TaskStartedEvent, sender: str):
+    async def _on_task_started(self, event: TaskStartedEvent, sender: str):
         """Re-schedule when task has started and we can predict its end.
 
         Args:
@@ -342,7 +344,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = event.eta
 
-    def _on_task_finished(self, event: TaskFinishedEvent, sender: str):
+    async def _on_task_finished(self, event: TaskFinishedEvent, sender: str):
         """Reset current task, when it has finished.
 
         Args:
@@ -362,7 +364,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = Time.now()
 
-    def _on_good_weather(self, event: GoodWeatherEvent, sender: str):
+    async def _on_good_weather(self, event: GoodWeatherEvent, sender: str):
         """Re-schedule on incoming good weather event.
 
         Args:

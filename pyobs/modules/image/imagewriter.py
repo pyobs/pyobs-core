@@ -1,5 +1,5 @@
 import logging
-from queue import Queue
+import asyncio
 from typing import Union, List, Any, Optional
 
 from pyobs.modules import Module
@@ -24,12 +24,12 @@ class ImageWriter(Module):
         Module.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._worker, True)
+        self.add_background_task(self._worker, True)
 
         # variables
         self._filename = filename
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._queue = Queue()
+        self._queue = asyncio.Queue()
 
     async def open(self) -> None:
         """Open image writer."""
@@ -57,19 +57,16 @@ class ImageWriter(Module):
 
         # queue file
         log.info('Received new image event from %s.', sender)
-        self._queue.put(event.filename)
+        self._queue.put_nowait(event.filename)
         return True
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Worker thread."""
 
         # run forever
         while not self.closing.is_set():
             # get next filename
-            if self._queue.empty():
-                self.closing.wait(1)
-                continue
-            filename = self._queue.get()
+            filename = await self._queue.get()
 
             try:
                 # download image

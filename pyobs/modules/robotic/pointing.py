@@ -7,7 +7,7 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.interfaces import IAcquisitionProxy, ITelescopeProxy
+from pyobs.interfaces import IAcquisition, ITelescope
 from pyobs.modules import Module
 from pyobs.comm import InvocationException
 from pyobs.interfaces import IAutonomous
@@ -58,21 +58,21 @@ class PointingSeries(Module, IAutonomous):
             self._az_range = (0., 360. - 360. / self._num_az)
 
         # add thread func
-        self.add_thread_func(self._run_thread, False)
+        self.add_background_task(self._run_thread, False)
 
-    def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any):
         """Starts a service."""
         pass
 
-    def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any):
         """Stops a service."""
         pass
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return True
 
-    def _run_thread(self):
+    async def _run_thread(self):
         """Run a pointing series."""
 
         # create grid
@@ -87,8 +87,8 @@ class PointingSeries(Module, IAutonomous):
         grid = pd.DataFrame(grid).set_index(['alt', 'az'])
 
         # get acquisition and telescope units
-        acquisition: IAcquisitionProxy = self.proxy(self._acquisition, IAcquisitionProxy)
-        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+        acquisition = self.proxy(self._acquisition, IAcquisition)
+        telescope = self.proxy(self._telescope, ITelescope)
 
         # loop until finished
         while not self.closing.is_set():
@@ -137,10 +137,10 @@ class PointingSeries(Module, IAutonomous):
             # acquire target and process result
             try:
                 # move telescope
-                telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree)).wait()
+                await telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree))
 
                 # acquire target
-                acq = acquisition.acquire_target().wait()
+                acq = await acquisition.acquire_target()
 
                 #  process result
                 if acq is not None:

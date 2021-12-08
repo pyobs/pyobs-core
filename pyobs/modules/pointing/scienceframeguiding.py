@@ -1,11 +1,11 @@
 import logging
-import threading
-from typing import Any
+import asyncio
+from typing import Any, Optional
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
 from ._baseguiding import BaseGuiding
-
+from ...utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +19,10 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         BaseGuiding.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._auto_guiding, True)
+        self.add_background_task(self._auto_guiding, True)
 
         # variables
-        self._next_image: Image = None
-        self._lock = threading.Lock()
+        self._next_image: asyncio.Queue[Image] = asyncio.Queue()
 
     async def open(self):
         """Open module."""
@@ -41,7 +40,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
         raise NotImplementedError
 
-    def add_image(self, event: NewImageEvent, sender: str, **kwargs: Any):
+    async def add_image(self, event: NewImageEvent, sender: str, **kwargs: Any):
         """Processes an image asynchronously, returns immediately.
 
         Args:
@@ -61,36 +60,27 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         if image.header['IMAGETYP'] != 'object':
             return
 
-        # store filename as next image to process
-        with self._lock:
-            # do we have a filename in here already?
-            if self._next_image:
-                log.warning('Last image still being processed by auto-guiding, skipping new one.')
-                return
+        # do we have a filename in here already?
+        if not self._next_image.empty():
+            log.warning('Last image still being processed by auto-guiding, skipping new one.')
+            return
 
-            # store it
-            self._next_image = image
+        # store it
+        await self._next_image.put(image)
 
-    def _auto_guiding(self):
+    async def _auto_guiding(self):
         """the thread function for processing the images"""
 
         # run until closed
         while not self.closing.is_set():
             # get next image to process
-            with self._lock:
-                image = self._next_image
+            image = await self._next_image.get()
 
-            # got one?
-            if image is not None:
-                # process it
-                self._process_image(image)
-
-                # image finished
-                with self._lock:
-                    self._next_image = None
+            # process it
+            self._process_image(image)
 
             # wait for next image
-            self.closing.wait(0.1)
+            await event_wait(self.closing, 1)
 
 
 __all__ = ['ScienceFrameAutoGuiding']

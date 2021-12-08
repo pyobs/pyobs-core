@@ -8,6 +8,7 @@ from astropy.io import fits
 
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class ImageWatcher(Module):
         import pyinotify
 
         # add thread func
-        self.add_thread_func(self._worker, True)
+        self.add_background_task(self._worker)
 
         # variables
         self._watchpath = watchpath
@@ -97,7 +98,7 @@ class ImageWatcher(Module):
         with self._queue.mutex:
             self._queue.queue.clear()
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Worker thread."""
 
         # first, add all files from directory to queue
@@ -109,7 +110,7 @@ class ImageWatcher(Module):
         while not self.closing.is_set():
             # get next filename
             if self._queue.empty():
-                self.closing.wait(1)
+                await event_wait(self.closing, 1)
                 continue
             filename = self._queue.get()
             log.info('Working on file %s...', filename)

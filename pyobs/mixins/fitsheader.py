@@ -9,10 +9,9 @@ from astropy.io import fits
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
-from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
-from pyobs.utils.threads import Future
+from pyobs.utils.parallel import Future
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -75,8 +74,8 @@ class FitsHeaderMixin:
         # finished
         return futures
 
-    def add_requested_fits_headers(self, image: Union[Image, fits.PrimaryHDU], 
-                                   futures: Dict[str, Future[Dict[str, Tuple[Any, str]]]]) -> None:
+    async def add_requested_fits_headers(self, image: Union[Image, fits.PrimaryHDU],
+                                        futures: Dict[str, Future]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -89,7 +88,7 @@ class FitsHeaderMixin:
             # join thread
             log.info('Fetching FITS headers from %s...', client)
             try:
-                headers = future.wait()
+                headers = await future
             except TimeoutException:
                 log.warning('Fetching FITS headers from %s timed out.', client)
                 continue

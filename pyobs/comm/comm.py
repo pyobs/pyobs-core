@@ -7,11 +7,10 @@ import threading
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
+from pyobs.interfaces import Interface
+from pyobs.utils.parallel import Future
 from .proxy import Proxy
 from .commlogging import CommLoggingHandler
-from ..interfaces import Interface
-from ..utils.parallel import event_wait
-from ..utils.threads.future import BaseFuture
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -286,7 +285,7 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Execute a given method on a remote client.
 
         Args:

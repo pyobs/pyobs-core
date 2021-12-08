@@ -4,7 +4,7 @@ import types
 from typing import TYPE_CHECKING, Any, Type, List, Dict
 
 from pyobs.interfaces import Interface
-from pyobs.utils.threads.future import BaseFuture
+from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_bound_arguments_to_simple
 if TYPE_CHECKING:
     from pyobs.comm import Comm
@@ -81,7 +81,7 @@ class Proxy:
         """
         return self._methods[method][0]
 
-    def execute(self, method: str, *args: Any, **kwargs: Any) -> BaseFuture:
+    def execute(self, method: str, *args: Any, **kwargs: Any) -> Future:
         """Execute a method on the remote client.
 
         Args:

@@ -4,7 +4,7 @@ from typing import Any, List, Type
 
 from pyobs.comm import Comm
 from pyobs.interfaces import Interface
-from pyobs.utils.threads.future import BaseFuture, Future
+from pyobs.utils.parallel import Future
 
 log = logging.getLogger(__name__)
 
@@ -29,9 +29,9 @@ class DummyComm(Comm):
         """Interfaces are never supported."""
         return False
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Always fake a successful execution of a method."""
-        return Future[None](empty=True)
+        return Future(empty=True)
 
     @property
     def name(self) -> str:

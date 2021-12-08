@@ -21,7 +21,7 @@ from pyobs.images import Image
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
-from pyobs.utils.threads import Future
+from pyobs.utils.parallel import Future
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> flo
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
-    header_futures: Dict[str, Future[Dict[str, Tuple[Any, str]]]]
+    header_futures: Dict[str, Future]
     broadcast: bool
 
 

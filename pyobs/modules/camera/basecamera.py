@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import threading
@@ -28,9 +29,9 @@ class ExposureInfo(NamedTuple):
     exposure_time: float
 
 
-def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
+async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for expose()."""
-    return camera.get_exposure_time() + 30
+    return await camera.get_exposure_time() + 30
 
 
 class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType):
@@ -69,8 +70,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
-        self._expose_lock = threading.Lock()
-        self.expose_abort = threading.Event()
+        self._expose_lock = asyncio.Lock()
+        self.expose_abort = asyncio.Event()
 
     async def open(self) -> None:
         """Open module."""
@@ -247,8 +248,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header['IMAGETYP'] = image_type.value
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(image, header_futures_before)
-        self.add_requested_fits_headers(image, header_futures_after)
+        await self.add_requested_fits_headers(image, header_futures_before)
+        await self.add_requested_fits_headers(image, header_futures_after)
         self.add_fits_headers(image)
         filename = self.format_filename(image)
 
@@ -285,7 +286,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         # acquire lock
         log.info('Acquiring exclusive lock on camera...')
-        if not self._expose_lock.acquire(blocking=False):
+        if self._expose_lock.locked():
             raise ValueError('Could not acquire camera lock for expose().')
 
         # make sure that we release the lock

@@ -10,7 +10,7 @@ from sleekxmpp.plugins.xep_0009.binding import fault2xml, xml2fault, xml2py, py2
 
 from pyobs.modules import Module
 from pyobs.comm.exceptions import *
-from pyobs.utils.threads.future import Future, BaseFuture
+from pyobs.utils.parallel import Future
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class RPC(object):
         # store
         self._client = client
         self._lock = RLock()
-        self._futures: Dict[str, BaseFuture] = {}
+        self._futures: Dict[str, Future] = {}
         self._handler = handler
         self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
 
@@ -56,7 +56,7 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Call a method on a remote host.
 
         Args:

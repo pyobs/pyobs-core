@@ -290,7 +290,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             raise ValueError('Could not acquire camera lock for expose().')
 
         # make sure that we release the lock
-        try:
+        async with self._expose_lock:
             # are we exposing?
             if self._camera_status != ExposureStatus.IDLE:
                 raise CameraException('Cannot start new exposure because camera is not idle.')
@@ -304,12 +304,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
                     raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
 
             # return filename
-            return filename
-
-        finally:
-            # release lock
             log.info('Releasing exclusive lock on camera...')
-            self._expose_lock.release()
+            return filename
 
     def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.

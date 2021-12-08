@@ -119,26 +119,32 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             ValueError: If exposure was not successful.
         """
 
-        # do exposure
+        # start exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self._change_exposure_status(ExposureStatus.EXPOSING)
+        await self._change_exposure_status(ExposureStatus.EXPOSING)
         self._exposing = True
+
+        # request image
+        loop = asyncio.get_running_loop()
+        hdu_future = loop.run_in_executor(None, self._get_image, exposure_time, open_shutter)
+
+        # wait a little
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._change_exposure_status(ExposureStatus.IDLE)
+                await self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
             await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout
-        self._change_exposure_status(ExposureStatus.READOUT)
+        await self._change_exposure_status(ExposureStatus.READOUT)
         time.sleep(self._readout_time)
 
         # get image
-        hdu = self._get_image(exposure_time, open_shutter)
+        hdu = await hdu_future
 
         # add headers
         hdu.header['EXPTIME'] = exposure_time
@@ -153,7 +159,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
 
         # finished
         log.info('Exposure finished.')
-        self._change_exposure_status(ExposureStatus.IDLE)
+        await self._change_exposure_status(ExposureStatus.IDLE)
         return hdu
 
     def _abort_exposure(self) -> None:

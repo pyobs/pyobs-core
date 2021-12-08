@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import threading
 import warnings
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
@@ -70,7 +69,6 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
-        self._expose_lock = asyncio.Lock()
         self.expose_abort = asyncio.Event()
 
     async def open(self) -> None:
@@ -179,7 +177,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
-    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -201,7 +199,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Args:
             exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
+            image_type: Type of image.
             broadcast: Whether or not the new image should be broadcasted.
 
         Returns:
@@ -284,28 +282,23 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Returns:
             Name of image that was taken.
         """
-        # acquire lock
-        log.info('Acquiring exclusive lock on camera...')
-        if self._expose_lock.locked():
-            raise ValueError('Could not acquire camera lock for expose().')
 
-        # make sure that we release the lock
-        async with self._expose_lock:
-            # are we exposing?
-            if self._camera_status != ExposureStatus.IDLE:
-                raise CameraException('Cannot start new exposure because camera is not idle.')
+        # are we exposing?
+        if self._camera_status != ExposureStatus.IDLE:
+            raise CameraException('Cannot start new exposure because camera is not idle.')
+        await self._change_exposure_status(ExposureStatus.EXPOSING)
 
-            # expose
-            image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
-            if image is None:
-                raise ValueError('Could not take image.')
-            else:
-                if filename is None:
-                    raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
+        # expose
+        image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
+        if image is None:
+            raise ValueError('Could not take image.')
+        else:
+            if filename is None:
+                raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
 
-            # return filename
-            log.info('Releasing exclusive lock on camera...')
-            return filename
+        # return filename
+        await self._change_exposure_status(ExposureStatus.IDLE)
+        return filename
 
     def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
@@ -331,11 +324,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._abort_exposure()
 
         # wait for lock and unset event
-        acquired = self._expose_lock.acquire(blocking=True, timeout=5.)
-        self.expose_abort.clear()
-        if acquired:
-            self._expose_lock.release()
-        else:
+        try:
+            await asyncio.wait_for(self._expose_lock, 5.)
+        except asyncio.TimeoutError:
             raise ValueError('Could not abort exposure.')
 
     @staticmethod

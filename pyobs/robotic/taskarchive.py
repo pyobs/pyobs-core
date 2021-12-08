@@ -16,24 +16,24 @@ class TaskArchive(object):
         self.vfs = vfs
         self.observer = observer
 
-    def open(self) -> None:
+    async def open(self) -> None:
         pass
 
-    def close(self) -> None:
+    async def close(self) -> None:
         pass
 
     def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
         return klass(**kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
 
-    def last_changed(self) -> Optional[Time]:
+    async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
         raise NotImplementedError
 
-    def last_scheduled(self) -> Optional[Time]:
+    async def last_scheduled(self) -> Optional[Time]:
         """Returns time of last scheduler run."""
         raise NotImplementedError
 
-    def get_schedulable_blocks(self) -> List[ObservingBlock]:
+    async def get_schedulable_blocks(self) -> List[ObservingBlock]:
         """Returns list of schedulable blocks.
 
         Returns:
@@ -41,7 +41,7 @@ class TaskArchive(object):
         """
         raise NotImplementedError
 
-    def update_schedule(self, blocks: List[Task], start_time: Time) -> None:
+    async def update_schedule(self, blocks: List[Task], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -50,7 +50,7 @@ class TaskArchive(object):
         """
         raise NotImplementedError
 
-    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:
@@ -78,7 +78,7 @@ class TaskArchive(object):
         """
         raise NotImplementedError
 
-    def run_task(self, task: Task, abort_event: threading.Event) -> bool:
+    async def run_task(self, task: Task, abort_event: threading.Event) -> bool:
         """Run a task.
 
         Args:

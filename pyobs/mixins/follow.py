@@ -13,7 +13,7 @@ from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 log = logging.getLogger(__name__)
 
 
-def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
+async def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
         -> Tuple[float, float]:
     """Gets coordinates from object
 
@@ -33,8 +33,8 @@ def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union
         raise ValueError('Unknown mode.')
 
 
-def get_coord_remote(obj: Union[IPointingAltAz, IPointingRaDec],
-                     mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Optional[Tuple[float, float]]:
+async def get_coord_remote(obj: Union[IPointingAltAz, IPointingRaDec],
+                           mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Optional[Tuple[float, float]]:
     """Gets coordinates from object
 
     Args:
@@ -144,8 +144,8 @@ class FollowMixin:
 
             # get coordinates from other and from myself
             try:
-                my_coords = build_skycoord(get_coord_local(module, this.__follow_mode), this.__follow_mode)
-                xy_coords = get_coord_remote(device, this.__follow_mode)
+                my_coords = build_skycoord(await get_coord_local(module, this.__follow_mode), this.__follow_mode)
+                xy_coords = await get_coord_remote(device, this.__follow_mode)
                 if xy_coords is None:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)

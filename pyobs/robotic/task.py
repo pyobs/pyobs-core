@@ -1,5 +1,4 @@
-import threading
-from threading import Event
+from asyncio import Event
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from astroplan import Observer
@@ -41,7 +40,7 @@ class Task:
         """End time for task"""
         raise NotImplementedError
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -58,7 +57,7 @@ class Task:
         """
         raise NotImplementedError
 
-    def run(self, abort_event: Event) -> None:
+    async def run(self, abort_event: Event) -> None:
         """Run a task
 
         Args:
@@ -82,7 +81,7 @@ class Task:
         return {}
 
     @staticmethod
-    def _check_abort(abort_event: threading.Event, end: Time = None):
+    def _check_abort(abort_event: Event, end: Time = None):
         """Throws an exception, if abort_event is set or window has passed
 
         Args:

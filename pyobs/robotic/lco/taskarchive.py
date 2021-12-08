@@ -1,4 +1,4 @@
-import threading
+import asyncio
 from urllib.parse import urljoin
 import logging
 from typing import Union, List, Dict, Optional, Any, cast
@@ -65,7 +65,6 @@ class LcoTaskArchive(TaskArchive):
         self.instruments: Dict[str, Any] = {}
         self._update = update
         self._last_schedule_time: Optional[Time] = None
-        self._last_schedule_lock = threading.RLock()
         self.scripts = scripts
         self._proxies = {} if proxies is None else proxies
 
@@ -79,32 +78,20 @@ class LcoTaskArchive(TaskArchive):
             'Authorization': 'Token ' + token
         }
 
-        # update thread
-        self._update_lock = threading.RLock()
-        self._update_thread: Optional[threading.Thread] = None
-        self._closing = threading.Event()
-
         # task list
         self._tasks: Dict[str, LcoTask] = {}
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open scheduler."""
 
         # get stuff from portal
-        self._init_from_portal()
+        await self._init_from_portal()
 
         # start update thread
         if self._update:
-            self._update_thread = threading.Thread(target=self._update_schedule)
-            self._update_thread.start()
+            asyncio.create_task(self._update_schedule())
 
-    def close(self) -> None:
-        """Close scheduler."""
-        if self._update_thread is not None and self._update_thread.is_alive():
-            self._closing.set()
-            self._update_thread.join()
-
-    def _init_from_portal(self) -> None:
+    async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
 
         # get instruments
@@ -116,67 +103,64 @@ class LcoTaskArchive(TaskArchive):
         # store instruments
         self.instruments = {k.lower(): v for k, v in res.json().items()}
 
-    def _update_schedule(self) -> None:
+    async def _update_schedule(self) -> None:
         """Update thread."""
-        while not self._closing.is_set():
+        while True:
             # do actual update
             try:
-                self._update_now()
+                await self._update_now()
             except:
                 log.exception('An exception occurred.')
 
             # sleep a little
-            self._closing.wait(10)
+            await asyncio.sleep(10)
 
-    def _update_now(self, force: bool = False) -> None:
+    async def _update_now(self, force: bool = False) -> None:
         """Update list of requests.
 
         Args:
             force: Force update.
         """
 
-        # only want to do this once at a time
-        with self._last_schedule_lock:
-            # remember now
-            now = Time.now()
+        # remember now
+        now = Time.now()
 
-            # get time of last scheduler run and check, whether we need an update, which is not the case, if
-            # - we updated before
-            # - AND last update was after last schedule update
-            # - AND last update is less then 1 min ago
-            # - AND force is set to False
-            last_scheduled = self.last_scheduled()
-            if self._last_schedule_time is not None and \
-                    (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
-                    self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
-                    force is False:
-                # need no update
-                return
+        # get time of last scheduler run and check, whether we need an update, which is not the case, if
+        # - we updated before
+        # - AND last update was after last schedule update
+        # - AND last update is less then 1 min ago
+        # - AND force is set to False
+        last_scheduled = self.last_scheduled()
+        if self._last_schedule_time is not None and \
+                (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
+                self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
+                force is False:
+            # need no update
+            return
 
-            # need update!
-            try:
-                tasks = self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
-                                               include_running=False)
-            except Timeout:
-                log.error('Request timed out')
-                self._closing.wait(60)
-                return
-            except ValueError:
-                log.warning('Could not fetch schedule.')
-                return
+        # need update!
+        try:
+            tasks = self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
+                                           include_running=False)
+        except Timeout:
+            log.error('Request timed out')
+            await asyncio.sleep(60)
+            return
+        except ValueError:
+            log.warning('Could not fetch schedule.')
+            return
 
-            # any changes?
-            if sorted(tasks) != sorted(self._tasks):
-                log.info('Task list changed, found %d task(s) to run.', len(tasks))
+        # any changes?
+        if sorted(tasks) != sorted(self._tasks):
+            log.info('Task list changed, found %d task(s) to run.', len(tasks))
 
-            # update
-            with self._update_lock:
-                self._tasks = cast(Dict[str, LcoTask], tasks)
+        # update
+        self._tasks = cast(Dict[str, LcoTask], tasks)
 
-            # finished
-            self._last_schedule_time = now
+        # finished
+        self._last_schedule_time = now
 
-    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:
@@ -244,16 +228,15 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # loop all tasks
-        with self._update_lock:
-            for task in self._tasks.values():
-                # running now?
-                if task.start <= time < task.end and not task.is_finished():
-                    return task
+        for task in self._tasks.values():
+            # running now?
+            if task.start <= time < task.end and not task.is_finished():
+                return task
 
         # nothing found
         return None
 
-    def run_task(self, task: Task, abort_event: threading.Event) -> bool:
+    async def run_task(self, task: Task, abort_event: asyncio.Event) -> bool:
         """Run a task.
 
         Args:
@@ -265,15 +248,15 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # run task
-        task.run(abort_event)
+        await task.run(abort_event)
 
         # force update tasks
-        self._update_now(force=True)
+        await self._update_now(force=True)
 
         # finish
         return True
 
-    def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
+    async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         """Send report to LCO portal
 
         Args:
@@ -296,7 +279,7 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def last_changed(self) -> Optional[Time]:
+    async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
 
         # try to update time
@@ -317,7 +300,7 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def last_scheduled(self) -> Optional[Time]:
+    async def last_scheduled(self) -> Optional[Time]:
         """Returns time of last scheduler run."""
 
         # try to update time
@@ -338,7 +321,7 @@ class LcoTaskArchive(TaskArchive):
             if res is not None:
                 res.close()
 
-    def get_schedulable_blocks(self) -> List[ObservingBlock]:
+    async def get_schedulable_blocks(self) -> List[ObservingBlock]:
         """Returns list of schedulable blocks.
 
         Returns:
@@ -423,7 +406,7 @@ class LcoTaskArchive(TaskArchive):
         # return blocks
         return blocks
 
-    def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -435,12 +418,12 @@ class LcoTaskArchive(TaskArchive):
         observations = self._create_observations(blocks)
 
         # cancel schedule
-        self._cancel_schedule(start_time)
+        await self._cancel_schedule(start_time)
 
         # send new schedule
-        self._submit_observations(observations)
+        await self._submit_observations(observations)
 
-    def _cancel_schedule(self, now: Time) -> None:
+    async def _cancel_schedule(self, now: Time) -> None:
         """Cancel future schedule."""
 
         # define parameters
@@ -496,7 +479,7 @@ class LcoTaskArchive(TaskArchive):
         # return list
         return observations
 
-    def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
+    async def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
         """Submit observations.
 
         Args:

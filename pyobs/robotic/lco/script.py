@@ -45,7 +45,7 @@ class LcoScript(Script):
         return get_object(self.scripts[config_type], Script,
                           configuration=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -56,9 +56,9 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # if any runner can run, we proceed
-        return runner.can_run()
+        return await runner.can_run()
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self, abort_event: threading.Event) -> None:
         """Run script.
 
         Args:
@@ -72,7 +72,7 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # run it
-        runner.run(abort_event=abort_event)
+        await runner.run(abort_event=abort_event)
 
 
 __all__ = ['LcoScript']

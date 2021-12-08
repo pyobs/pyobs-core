@@ -165,7 +165,7 @@ class LcoTask(Task):
         return get_object(self.scripts[config_type], Script,
                           configuration=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -183,7 +183,7 @@ class LcoTask(Task):
 
             # if any runner can run, we proceed
             try:
-                if runner.can_run():
+                if await runner.can_run():
                     return True
             except Exception:
                 log.exception('Error on evaluating whether task can run.')
@@ -192,7 +192,7 @@ class LcoTask(Task):
         # no config found that could run
         return False
 
-    def run(self, abort_event: Event) -> None:
+    async def run(self, abort_event: Event) -> None:
         """Run a task
 
         Args:
@@ -214,7 +214,7 @@ class LcoTask(Task):
             if isinstance(self.task_archive, LcoTaskArchive):
                 status = ConfigStatus()
                 self.config['state'] = 'ATTEMPTED'
-                self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
+                await self.task_archive.send_update(config['configuration_status'], status.finish().to_json())
 
             # get config runner
             script = self._get_config_script(config)
@@ -227,18 +227,18 @@ class LcoTask(Task):
             # run config
             log.info('Running config...')
             self.cur_script = script
-            status = self._run_script(abort_event, script)
+            status = await self._run_script(abort_event, script)
             self.cur_script = None
 
             # send status
             if status is not None and isinstance(self.task_archive, LcoTaskArchive):
                 self.config['state'] = status.state
-                self.task_archive.send_update(config['configuration_status'], status.to_json())
+                await self.task_archive.send_update(config['configuration_status'], status.to_json())
 
         # finished task
         log.info('Finished task.')
 
-    def _run_script(self, abort_event: Event, script: Script) -> Union[ConfigStatus, None]:
+    async def _run_script(self, abort_event: Event, script: Script) -> Union[ConfigStatus, None]:
         """Run a config
 
         Args:
@@ -258,7 +258,7 @@ class LcoTask(Task):
 
             # run it
             log.info('Running task %d: %s...', self.id, self.config['name'])
-            script.run(abort_event)
+            await script.run(abort_event)
 
             # finished config
             config_status.finish(state='COMPLETED', time_completed=script.exptime_done)

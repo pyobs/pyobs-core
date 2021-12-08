@@ -1,15 +1,11 @@
-from typing import Tuple
-
 import pytest
-from astroplan import Observer
 from astropy.io import fits
 import numpy as np
-import threading
+import asyncio
 
 from pyobs.comm.dummy import DummyComm
 from pyobs.environment import Environment
 from pyobs.images import Image
-from pyobs.interfaces import ICamera
 from pyobs.modules.camera import BaseCamera
 from pyobs.utils.enums import ImageType, ExposureStatus
 
@@ -109,7 +105,7 @@ class DummyCam(BaseCamera):
     def __init__(self, *args, **kwargs):
         BaseCamera.__init__(self, *args, **kwargs)
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         # exposing
         self._camera_status = ExposureStatus.EXPOSING
 
@@ -173,7 +169,7 @@ def test_abort():
             camera.grab_image()
 
     # expose
-    thread = threading.Thread(target=expose)
+    thread = asyncio.Thread(target=expose)
     thread.start()
 
     # abort

@@ -1,8 +1,8 @@
 import logging
-import threading
+import asyncio
 import typing
 
-from pyobs.interfaces import IFiltersProxy, IBinning, IFlatFieldProxy, ITelescopeProxy, IRoofProxy
+from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 class SkyFlats(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
-    def __init__(self, roof: typing.Union[str, IRoofProxy], telescope: typing.Union[str, ITelescopeProxy],
-                 flatfield: typing.Union[str, IFlatFieldProxy], functions: dict,
+    def __init__(self, roof: typing.Union[str, IRoof], telescope: typing.Union[str, ITelescope],
+                 flatfield: typing.Union[str, IFlatField], functions: dict,
                  priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
                  timespan: float = 7200, filter_change: float = 30, count: int = 20, readout: dict = None,
                  *args, **kwargs):
@@ -55,7 +55,7 @@ class SkyFlats(Script):
                                     timespan=timespan, filter_change=filter_change, count=count,
                                     readout=readout)
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -64,20 +64,20 @@ class SkyFlats(Script):
 
         # get modules
         try:
-            roof: IRoofProxy = self.comm.proxy(self._roof, IRoofProxy)
-            telescope: ITelescopeProxy = self.comm.proxy(self._telescope, ITelescopeProxy)
-            self.comm.proxy(self._flatfield, IFlatFieldProxy)
+            roof = self.comm.proxy(self._roof, IRoof)
+            telescope = self.comm.proxy(self._telescope, ITelescope)
+            self.comm.proxy(self._flatfield, IFlatField)
         except ValueError:
             return False
 
         # we need an open roof and a working telescope
-        if not roof.is_ready().wait() or not telescope.is_ready().wait():
+        if not await roof.is_ready() or not await telescope.is_ready():
             return False
 
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event):
+    async def run(self, abort_event: asyncio.Event):
         """Run script.
 
         Args:
@@ -88,7 +88,7 @@ class SkyFlats(Script):
         """
 
         # get proxy for flatfield
-        flatfield: IFlatFieldProxy = self.comm.proxy(self._flatfield, IFlatFieldProxy)
+        flatfield = self.comm.proxy(self._flatfield, IFlatField)
 
         # schedule
         log.info('Scheduling flat-fields...')
@@ -110,10 +110,10 @@ class SkyFlats(Script):
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, *item.binning)
             if isinstance(flatfield, IBinning):
-                flatfield.set_binning(*item.binning).wait()
-            if isinstance(flatfield, IFiltersProxy):
-                flatfield.set_filter(item.filter_name).wait()
-            done, exp_time = flatfield.flat_field(self._count).wait()
+                await flatfield.set_binning(*item.binning)
+            if isinstance(flatfield, IFilters):
+                await flatfield.set_filter(item.filter_name)
+            done, exp_time = await flatfield.flat_field(self._count)
             log.info('Finished flat-fields.')
 
             # increase exposure time

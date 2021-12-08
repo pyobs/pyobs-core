@@ -3,7 +3,6 @@ from typing import Tuple, Any, Dict, List, Optional
 
 import requests
 import urllib.parse
-import threading
 import astropy.units as u
 
 from pyobs.utils.enums import WeatherSensors
@@ -56,7 +55,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # whole status
         self._status: Dict[str, Any] = {}
-        self._status_lock = threading.RLock()
 
         # add thread func
         self.add_background_task(self._update, True)
@@ -111,8 +109,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
                 # store it
                 is_good = status['good']
-                with self._status_lock:
-                    self._status = status
+                self._status = status
 
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as e:
                 # on error, we're always bad
@@ -160,8 +157,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
             with sensor information, which contain a value and a good flag.
         """
-        with self._status_lock:
-            return self._status
+        return self._status
 
     async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
@@ -200,8 +196,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # copy status
-        with self._status_lock:
-            status = dict(self._status)
+        status = dict(self._status)
 
         # got sensors?
         if 'sensors' not in status:

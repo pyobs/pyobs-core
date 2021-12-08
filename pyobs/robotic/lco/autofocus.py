@@ -64,7 +64,7 @@ class LcoAutoFocusScript(Script):
         autofocus = self.comm.safe_proxy(self.autofocus, IAutoFocusProxy)
         return roof, telescope, acquisition, autofocus
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -86,17 +86,17 @@ class LcoAutoFocusScript(Script):
             return False
 
         # we need an open roof and a working telescope
-        if not roof.is_ready().wait():
+        if not await roof.is_ready():
             cannot_run_logger.info('Cannot run task, roof not ready.')
             return False
-        if not telescope.is_ready().wait():
+        if not await telescope.is_ready():
             cannot_run_logger.info('Cannot run task, telescope not ready.')
             return False
 
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self, abort_event: threading.Event) -> None:
         """Run script.
 
         Args:
@@ -114,7 +114,7 @@ class LcoAutoFocusScript(Script):
         # got a target?
         target = self.configuration['target']
         log.info('Moving to target %s...', target['name'])
-        telescope.move_radec(target['ra'], target['dec']).wait()
+        await telescope.move_radec(target['ra'], target['dec'])
 
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
@@ -130,12 +130,12 @@ class LcoAutoFocusScript(Script):
             if acquisition is None:
                 raise ValueError('No acquisition given.')
             log.info('Performing acquisition...')
-            acquisition.acquire_target().wait()
+            await acquisition.acquire_target()
 
         # do auto focus
         if autofocus is None:
             raise ValueError('No autofocus given.')
-        autofocus.auto_focus(self._count, self._step, self._exptime).wait()
+        await autofocus.auto_focus(self._count, self._step, self._exptime)
 
 
 __all__ = ['LcoAutoFocusScript']

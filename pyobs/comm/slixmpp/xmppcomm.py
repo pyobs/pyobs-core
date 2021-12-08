@@ -480,11 +480,10 @@ class XmppComm(Comm):
         # send it
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
-                # create thread and start it
-                if asyncio.iscoroutinefunction(handler):
-                    asyncio.create_task(handler(event, from_client))
-                else:
-                    handler(event, from_client)
+                # handle it
+                ret = handler(event, from_client)
+                if asyncio.iscoroutine(ret):
+                    asyncio.create_task(ret)
 
 
 __all__ = ['XmppComm']

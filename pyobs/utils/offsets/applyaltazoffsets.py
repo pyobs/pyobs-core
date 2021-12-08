@@ -29,7 +29,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    def __call__(self, image: Image, telescope: ITelescopeProxy, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescopeProxy, location: EarthLocation) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -67,10 +67,10 @@ class ApplyAltAzOffsets(ApplyOffsets):
         log.info('Transformed to Alt/Az shift of dAlt=%.2f", dAz=%.2f".', dalt.arcsec, daz.arcsec)
 
         # get current offset
-        cur_dalt, cur_daz = telescope.get_offsets_altaz().wait()
+        cur_dalt, cur_daz = await telescope.get_offsets_altaz()
 
         # log it
-        self._log_offset(tel, 'dalt', cur_dalt, dalt.degree, 'daz', cur_daz, daz.degree)
+        await self._log_offset(tel, 'dalt', cur_dalt, dalt.degree, 'daz', cur_daz, daz.degree)
 
         # too large or too small?
         diff = np.sqrt(dalt.arcsec**2. + daz.arcsec**2)
@@ -83,7 +83,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
 
         # move offset
         log.info('Offsetting telescope...')
-        telescope.set_offsets_altaz(float(cur_dalt + dalt.degree), float(cur_daz + daz.degree)).wait()
+        await telescope.set_offsets_altaz(float(cur_dalt + dalt.degree), float(cur_daz + daz.degree))
         return True
 
 

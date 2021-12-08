@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import subprocess
@@ -43,9 +44,9 @@ class AutonomousWarning(Module):
         self._autonomous = False
 
         # threads
-        self.add_thread_func(self._heartbeat)
-        self.add_thread_func(self._check_autonomous)
-        self.add_thread_func(self._check_trigger)
+        self.add_background_task(self._heartbeat)
+        self.add_background_task(self._check_autonomous)
+        self.add_background_task(self._check_trigger)
 
     def _play_sound(self, sound: str) -> None:
         """Play a sound.
@@ -61,7 +62,7 @@ class AutonomousWarning(Module):
         # play sound and set stderr to devnull to avoid warning
         subprocess.Popen([self._player, '-q', sound], stderr=subprocess.DEVNULL,).wait()
 
-    def _heartbeat(self) -> None:
+    async def _heartbeat(self) -> None:
         """Play sound in given interval, if an autonomous module is running."""
 
         while not self.closing.is_set():
@@ -70,9 +71,9 @@ class AutonomousWarning(Module):
                 self._play_sound(self._warn_sound)
 
             # sleep
-            self.closing.wait(self._warn_interval)
+            await asyncio.sleep(self._warn_interval)
 
-    def _check_autonomous(self) -> None:
+    async def _check_autonomous(self) -> None:
         """Checks for autonomous modules."""
 
         while not self.closing.is_set():
@@ -92,9 +93,9 @@ class AutonomousWarning(Module):
             self._autonomous = is_auto
 
             # sleep a little
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
-    def _check_trigger(self) -> None:
+    async def _check_trigger(self) -> None:
         """Checks for trigger to start/stop autonomous modules."""
 
         while not self.closing.is_set():
@@ -102,7 +103,7 @@ class AutonomousWarning(Module):
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
                 autonomous = list(self.comm.clients_with_interface(IAutonomous))
-                is_auto = any([self.proxy(a, IAutonomous).is_running().wait() for a in autonomous])
+                is_auto = any([await self.proxy(a, IAutonomous).is_running() for a in autonomous])
 
                 # play sound
                 if self._stop_sound is not None and is_auto:
@@ -119,16 +120,16 @@ class AutonomousWarning(Module):
 
                     # start/stop
                     if is_auto:
-                        proxy.stop()
+                        await proxy.stop()
                     else:
-                        proxy.start()
+                        await proxy.start()
                 log.info('Finished.')
 
                 # remove file
                 os.remove(self._trigger_file)
 
             # sleep a little
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
 
 __all__ = ['AutonomousWarning']

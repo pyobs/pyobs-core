@@ -1,6 +1,6 @@
+import asyncio
 import datetime
 import logging
-import threading
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 from astropy.io import fits
 
@@ -43,14 +43,14 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         self._spectrograph_status = ExposureStatus.IDLE
 
         # multi-threading
-        self._expose_lock = threading.Lock()
-        self.expose_abort = threading.Event()
+        self._expose_lock = asyncio.Lock()
+        self.expose_abort = asyncio.Event()
 
         # check
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
-    async def _expose(self, abort_event: threading.Event) -> fits.HDUList:
+    async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -101,8 +101,8 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         hdulist[0].header['EXTNAME'] = 'SCI'
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(hdulist[0], header_futures_before)
-        self.add_requested_fits_headers(hdulist[0], header_futures_after)
+        await self.add_requested_fits_headers(hdulist[0], header_futures_before)
+        await self.add_requested_fits_headers(hdulist[0], header_futures_after)
         self.add_fits_headers(hdulist[0])
 
         # format filename
@@ -139,32 +139,23 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         Returns:
             Name of image that was taken.
         """
-        # acquire lock
-        log.info('Acquiring exclusive lock on spectrograph...')
-        if not self._expose_lock.acquire(blocking=False):
-            raise ValueError('Could not acquire spectrograph lock for grab_spectrum().')
 
-        # make sure that we release the lock
-        try:
-            # are we exposing?
-            if self._spectrograph_status != ExposureStatus.IDLE:
-                raise ValueError('Cannot start new exposure because spectrograph is not idle.')
+        # are we exposing?
+        if self._spectrograph_status != ExposureStatus.IDLE:
+            raise ValueError('Cannot start new exposure because spectrograph is not idle.')
+        await self._change_exposure_status(ExposureStatus.EXPOSING)
 
-            # expose
-            hdu, filename = await self.__expose(broadcast)
-            if hdu is None:
-                raise ValueError('Could not take spectrum.')
-            else:
-                if filename is None:
-                    raise ValueError('Spectrum has not been saved, so cannot be retrieved by filename.')
+        # expose
+        hdu, filename = await self.__expose(broadcast)
+        if hdu is None:
+            raise ValueError('Could not take spectrum.')
+        else:
+            if filename is None:
+                raise ValueError('Spectrum has not been saved, so cannot be retrieved by filename.')
 
-            # return filename
-            return filename
-
-        finally:
-            # release lock
-            log.info('Releasing exclusive lock on spectrograph...')
-            self._expose_lock.release()
+        # return filename
+        await self._change_exposure_status(ExposureStatus.IDLE)
+        return filename
 
     async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,

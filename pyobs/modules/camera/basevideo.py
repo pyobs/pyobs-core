@@ -286,7 +286,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         image, filename = None, None
         if self._next_image is not None:
             # create image and reset
-            image, filename = self._create_image(data, self._next_image)
+            image, filename = await self._create_image(data, self._next_image)
             self._next_image = None
             with self._image_request_lock:
                 for req in self._image_requests:

@@ -1,5 +1,4 @@
 import asyncio
-import threading
 from typing import Dict, Any, Tuple, Union, List, Optional
 
 from astropy.coordinates import SkyCoord, ICRS, AltAz
@@ -80,7 +79,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
         raise NotImplementedError
 
-    async def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -144,7 +143,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
-    async def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
+    async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -199,7 +198,8 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
-    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

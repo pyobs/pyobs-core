@@ -28,7 +28,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -58,10 +58,10 @@ class ApplyRaDecOffsets(ApplyOffsets):
         log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra.arcsec, ddec.arcsec)
 
         # get current offset
-        cur_dra, cur_ddec = telescope.get_offsets_radec().wait()
+        cur_dra, cur_ddec = await telescope.get_offsets_radec()
 
         # log it
-        self._log_offset(tel, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
+        await self._log_offset(tel, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
 
         # too large or too small?
         diff = np.sqrt(dra.arcsec**2. + ddec.arcsec**2)
@@ -74,7 +74,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
 
         # move offset
         log.info('Offsetting telescope...')
-        telescope.set_offsets_radec(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree)).wait()
+        await telescope.set_offsets_radec(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree))
         return True
 
 

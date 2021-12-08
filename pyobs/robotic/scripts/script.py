@@ -26,11 +26,11 @@ class Script:
         self.comm = comm
         self.observer = observer
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Whether this config can currently run."""
         raise NotImplementedError
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self, abort_event: threading.Event) -> None:
         """Run script.
 
         Args:

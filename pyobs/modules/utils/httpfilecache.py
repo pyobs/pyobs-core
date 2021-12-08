@@ -63,7 +63,7 @@ class MainHandler(tornado.web.RequestHandler):
         Args:
             filename: Name of file to download.
         """
-        print('get', filename)
+
         # get app
         app = cast(HttpFileCache, self.application)
 
@@ -94,9 +94,6 @@ class HttpFileCache(Module, tornado.web.Application):
         """
         Module.__init__(self, **kwargs)
 
-        # add thread func
-        #self.add_thread_func(self._http, False)
-
         # init tornado web server
         tornado.web.Application.__init__(self, [
             (r"/(.*)", MainHandler),
@@ -105,7 +102,6 @@ class HttpFileCache(Module, tornado.web.Application):
         # store stuff
         self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._cache = DataCache(cache_size)
-        self._lock = threading.RLock()
         self._is_listening = False
         self._port = port
         self._cache_size = cache_size
@@ -124,7 +120,7 @@ class HttpFileCache(Module, tornado.web.Application):
         """Whether the server is started."""
         return self._is_listening
 
-    async def store(self, data: bytearray, filename: Optional[str] = None) -> str:
+    def store(self, data: bytearray, filename: Optional[str] = None) -> str:
         """Store an incoming file.
 
         Args:
@@ -135,20 +131,18 @@ class HttpFileCache(Module, tornado.web.Application):
             Filename in cache.
         """
 
-        # acquire lock on cache
-        with self._lock:
-            # no filename given?
-            if filename is None:
-                # create a unique filename
-                filename = str(uuid.uuid4())
+        # no filename given?
+        if filename is None:
+            # create a unique filename
+            filename = str(uuid.uuid4())
 
-            # store it
-            self._cache[filename] = data
+        # store it
+        self._cache[filename] = data
 
-            # finally, filename
-            return filename
+        # finally, filename
+        return filename
 
-    async def fetch(self, filename: str) -> Union[None, bytearray]:
+    def fetch(self, filename: str) -> Union[None, bytearray]:
         """Send a file to the requesting client.
 
         Args:
@@ -158,10 +152,8 @@ class HttpFileCache(Module, tornado.web.Application):
             Data of file.
         """
 
-        # acquire lock on cache
-        with self._lock:
-            # find file in cache and return it
-            return self._cache[filename] if filename in self._cache else None
+        # find file in cache and return it
+        return self._cache[filename] if filename in self._cache else None
 
 
 __all__ = ['HttpFileCache']

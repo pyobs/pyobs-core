@@ -52,7 +52,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
 
         # simulated world
         from pyobs.utils.simulation import SimCamera, SimWorld
-        self._world = world if world is not None else \
+        self._world = self.get_object(world, SimWorld) if world is not None else \
             self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'}, SimWorld)
         self._camera: SimCamera = self._world.camera
 

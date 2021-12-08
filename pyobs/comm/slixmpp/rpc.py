@@ -103,7 +103,8 @@ class RPC(object):
         try:
             # no handler?
             if self._handler is None:
-                raise ValueError('No handler specified.')
+                return
+                #raise ValueError('No handler specified.')
 
             # get method
             with self._lock:

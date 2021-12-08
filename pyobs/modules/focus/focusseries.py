@@ -99,7 +99,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         filter_name = 'unknown'
         try:
             filter_wheel: IFilters = self.proxy(self._filters, IFilters)
-            filter_name = filter_wheel.get_filter().wait()
+            filter_name = await filter_wheel.get_filter()
         except ValueError:
             log.warning('Filter module is not of type IFilters. Could not get filter.')
 
@@ -109,7 +109,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 guess = 0.
                 log.info('Using focus offset of 0mm as initial guess.')
             else:
-                guess = focuser.get_focus().wait()
+                guess = await focuser.get_focus()
                 log.info('Using current focus of %.2fmm as initial guess.', guess)
         except RemoteException:
             raise ValueError('Could not fetch current focus value.')
@@ -132,7 +132,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                set_focus(float(foc)).wait()
+                await set_focus(float(foc))
             except RemoteException:
                 raise ValueError('Could not set new focus value.')
 
@@ -142,10 +142,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 raise InterruptedError()
             try:
                 if isinstance(camera, IExposureTime):
-                    camera.set_exposure_time(exposure_time)
+                    await camera.set_exposure_time(exposure_time)
                 if isinstance(camera, IImageType):
-                    camera.set_image_type(ImageType.FOCUS)
-                filename = camera.grab_image().wait()
+                    await camera.set_image_type(ImageType.FOCUS)
+                filename = await camera.grab_image()
             except RemoteException:
                 log.error('Could not take image.')
                 continue
@@ -175,10 +175,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             # reset to initial values
             if self._offset:
                 log.info('Resetting focus offset to initial guess of %.3f mm.', guess)
-                focuser.set_focus_offset(focus[0]).wait()
+                await focuser.set_focus_offset(focus[0])
             else:
                 log.info('Resetting focus to initial guess of %.3f mm.', guess)
-                focuser.set_focus(focus[0]).wait()
+                await focuser.set_focus(focus[0])
 
             # raise error
             raise ValueError('Could not find best focus.')
@@ -189,12 +189,12 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # log and set focus
         if self._offset:
             log.info('Setting new focus offset of (%.3f+-%.3f) mm.', focus[0], focus[1])
-            absolute = focus[0] + focuser.get_focus().wait()
-            focuser.set_focus_offset(focus[0]).wait()
+            absolute = focus[0] + await focuser.get_focus()
+            await focuser.set_focus_offset(focus[0])
         else:
             log.info('Setting new focus value of (%.3f+-%.3f) mm.', focus[0], focus[1])
-            absolute = focus[0] + focuser.get_focus_offset().wait()
-            focuser.set_focus(focus[0]).wait()
+            absolute = focus[0] + await focuser.get_focus_offset()
+            await focuser.set_focus(focus[0])
 
         # send event
         await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
@@ -202,7 +202,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # return result
         return focus[0], focus[1]
 
-    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
@@ -213,7 +213,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         return {}
 
     @timeout(20)
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 

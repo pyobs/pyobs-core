@@ -288,7 +288,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             # create image and reset
             image, filename = await self._create_image(data, self._next_image)
             self._next_image = None
-            with self._image_request_lock:
+            async with self._image_request_lock:
                 for req in self._image_requests:
                     req.image = image
                     req.filename = filename
@@ -392,7 +392,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         await self.activate_camera()
 
         # acquire lock
-        with self._image_request_lock:
+        async with self._image_request_lock:
             # request new image
             image_request = ImageRequest(broadcast)
             self._image_requests.append(image_request)

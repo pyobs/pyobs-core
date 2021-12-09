@@ -110,7 +110,7 @@ class FitsHeaderMixin:
                     else:
                         image.header[key] = value
 
-    def add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -126,7 +126,7 @@ class FitsHeaderMixin:
 
         # add more fits headers
         self._fitsheadermixin_add_fits_headers(image)
-        self._fitsheadermixin_add_framenum(image)
+        await self._fitsheadermixin_add_framenum(image)
 
     def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FITS header keywords to the given FITS header.
@@ -169,7 +169,7 @@ class FitsHeaderMixin:
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(module.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
-    def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FRAMENUM keyword to header
 
         Args:
@@ -191,7 +191,7 @@ class FitsHeaderMixin:
             # try to load it
             try:
                 # load cache
-                cache = module.vfs.read_yaml(self._fitsheadermixin_cache)
+                cache = await module.vfs.read_yaml(self._fitsheadermixin_cache)
 
                 # get new number
                 if cache is not None and 'framenum' in cache:
@@ -206,8 +206,8 @@ class FitsHeaderMixin:
 
             # write file
             try:
-                module.vfs.write_yaml({'night': night, 'framenum': self._fitsheadermixin_frame_num},
-                                      self._fitsheadermixin_cache)
+                await module.vfs.write_yaml({'night': night, 'framenum': self._fitsheadermixin_frame_num},
+                                            self._fitsheadermixin_cache)
             except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 

@@ -248,7 +248,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, header_futures_before)
         await self.add_requested_fits_headers(image, header_futures_after)
-        self.add_fits_headers(image)
+        await self.add_fits_headers(image)
         filename = self.format_filename(image)
 
         # don't want to save?
@@ -258,7 +258,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # upload file
         try:
             log.info('Uploading image to file server...')
-            self.vfs.write_image(filename, image)
+            await self.vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError('Could not upload image.')
 

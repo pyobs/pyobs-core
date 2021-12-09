@@ -70,7 +70,7 @@ class AutoGuiding(BaseGuiding):
                 filename = await camera.grab_image(broadcast=False)
 
                 # download image
-                image = self.vfs.read_image(filename)
+                image = await self.vfs.read_image(filename)
 
                 # process it
                 log.info('Processing image...')

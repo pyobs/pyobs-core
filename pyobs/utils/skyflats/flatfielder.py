@@ -255,7 +255,7 @@ class FlatFielder(Object):
         filename = await cam.grab_image(broadcast=False)
 
         # download image
-        bias = self.vfs.read_image(filename)
+        bias = await self.vfs.read_image(filename)
         avg = float(np.median(bias.data))
 
         # return it
@@ -391,7 +391,7 @@ class FlatFielder(Object):
         """
 
         # download image
-        flat_field = self.vfs.read_image(filename)
+        flat_field = await self.vfs.read_image(filename)
         if flat_field is None:
             return False
 

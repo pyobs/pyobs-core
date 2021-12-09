@@ -147,7 +147,7 @@ class AutoFocusProjection(Module, IAutoFocus):
             # download image
             log.info('Downloading image...')
             try:
-                img = self.vfs.read_image(filename)
+                img = await self.vfs.read_image(filename)
             except FileNotFoundError:
                 raise ValueError('Could not download image.')
 

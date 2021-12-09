@@ -103,7 +103,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # add fits headers and format filename
         await self.add_requested_fits_headers(hdulist[0], header_futures_before)
         await self.add_requested_fits_headers(hdulist[0], header_futures_after)
-        self.add_fits_headers(hdulist[0])
+        await self.add_fits_headers(hdulist[0])
 
         # format filename
         filename = self.format_filename(hdulist[0])
@@ -115,7 +115,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         # upload file
         try:
             log.info('Uploading spectrum to file server...')
-            self.vfs.write_fits(filename, hdulist)
+            await self.vfs.write_fits(filename, hdulist)
         except FileNotFoundError:
             raise ValueError('Could not upload spectrum.')
 

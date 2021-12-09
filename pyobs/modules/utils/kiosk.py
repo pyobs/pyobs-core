@@ -136,7 +136,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
 
             # download image
             try:
-                image = self.vfs.read_image(filename)
+                image = await self.vfs.read_image(filename)
             except FileNotFoundError:
                 continue
 

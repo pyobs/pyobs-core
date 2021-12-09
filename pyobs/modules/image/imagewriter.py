@@ -71,7 +71,7 @@ class ImageWriter(Module):
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                img = self.vfs.read_image(filename)
+                img = await self.vfs.read_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue
@@ -86,7 +86,7 @@ class ImageWriter(Module):
             try:
                 # open output
                 log.info('Storing image as %s...',  output)
-                self.vfs.write_image(output, img)
+                await self.vfs.write_image(output, img)
             except Exception:
                 log.error('Could not store image.')
 

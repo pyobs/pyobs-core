@@ -1,7 +1,6 @@
 import asyncio
 import glob
 import logging
-import time
 from datetime import datetime
 from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
 
@@ -134,7 +133,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
 
         # readout
         await self._change_exposure_status(ExposureStatus.READOUT)
-        time.sleep(self._readout_time)
+        await asyncio.sleep(self._readout_time)
 
         # get image
         image = await hdu_future

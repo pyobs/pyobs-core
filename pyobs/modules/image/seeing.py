@@ -43,7 +43,7 @@ class Seeing(Module):
         log.info('Subscribing to new image events...')
         await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
+    async def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -56,7 +56,7 @@ class Seeing(Module):
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
-            return false
+            return False
 
         # put into queue
         log.info('Received new image event from %s.', sender)
@@ -64,7 +64,7 @@ class Seeing(Module):
         # download image
         try:
             log.info('Downloading file %s...', event.filename)
-            image = self.vfs.read_image(event.filename)
+            image = await self.vfs.read_image(event.filename)
 
         except FileNotFoundError:
             log.error('Could not download image.')

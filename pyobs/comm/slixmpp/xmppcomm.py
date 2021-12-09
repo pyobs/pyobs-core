@@ -369,17 +369,9 @@ class XmppComm(Comm):
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
 
-        # we try to send events multiple times
-        for i in range(5):
-            try:
-                # try
-                await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-                                                     callback=functools.partial(self._send_event_callback, event=event))
-                # success, we're finished
-                return
-            except slixmpp.xmlstream.xmlstream.NotConnectedError:
-                # try again
-                pass
+        # send it
+        await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
+                                             callback=functools.partial(self._send_event_callback, event=event))
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:

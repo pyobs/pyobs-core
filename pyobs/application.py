@@ -1,9 +1,8 @@
+import asyncio
 import logging
-import os
 import signal
-import threading
-import time
 import warnings
+import threading
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
 from typing import Optional, Any, Dict
@@ -13,7 +12,6 @@ import yaml
 from pyobs.object import get_object
 from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
-from pyobs.utils.logger import DuplicateFilter
 
 # just init logger with something here, will be overwritten in __init__
 log = logging.getLogger(__name__)
@@ -83,7 +81,41 @@ class Application:
         log.info('Creating module...')
         self._module = get_object(cfg, Module)
 
-    async def run(self) -> None:
+    def run(self) -> None:
+        """Run app."""
+
+        # signals
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, self._signal_handler, sig)
+
+        # run main task forever
+        loop.create_task(self._main())
+        loop.run_forever()
+
+        # main finished, cancel all tasks
+        tasks = asyncio.all_tasks(loop=loop)
+        for t in tasks:
+            t.cancel()
+        group = asyncio.gather(*tasks, return_exceptions=True)
+        loop.run_until_complete(group)
+
+        # finished
+        loop.close()
+
+    def _signal_handler(self, sig) -> None:
+        """React to signals and quit module."""
+
+        # stop loop
+        loop = asyncio.get_running_loop()
+        loop.stop()
+
+        # reset signal handlers
+        log.info(f'Got signal: {sig!s}, shutting down.')
+        loop.remove_signal_handler(signal.SIGTERM)
+        loop.add_signal_handler(signal.SIGINT, lambda: None)
+
+    async def _main(self) -> None:
         """Actually run the application."""
 
         # everything in a try/except/finally, so that we can shut down gracefully
@@ -94,7 +126,7 @@ class Application:
             log.info('Started successfully.')
 
             # run module
-            await self._run()
+            await self._module.main()
 
         except:
             # some exception was thrown
@@ -109,43 +141,8 @@ class Application:
                 log.info('Closing module...')
                 await self._module.close()
 
-            # still threads running?
-            if threading.active_count() > 1:
-                # get logger
-                wait_logger = logging.getLogger(__name__ + ':wait')
-                wait_logger.addFilter(DuplicateFilter())
-
-                # wait for them to end
-                start_shutdown = time.time()
-                while threading.active_count() > 1:
-                    # print threads
-                    names = [t.name for t in threading.enumerate() if t != threading.current_thread()]
-                    wait_logger.info('Waiting for threads to close: ' + ','.join(names))
-
-                    # after 30 seconds, kill everything
-                    if time.time() - start_shutdown > 30:
-                        wait_logger.error('Threads did not close gracefully, forcing exit...')
-                        os._exit(0)
-
-                    # wait a little
-                    time.sleep(2)
-
             # finished
             log.info('Finished shutting down.')
-
-    async def _run(self) -> None:
-        """Method that finally runs the module, can be overridden by derived classes."""
-
-        # add signal handlers
-        signal.signal(signal.SIGTERM, self._signal_handler)
-        signal.signal(signal.SIGINT, self._signal_handler)
-
-        # run module
-        await self._module.main()
-
-    def _signal_handler(self, signum: Any, frame: Any) -> None:
-        """React to signals and quit module."""
-        self._module.quit()
 
     def _hack_threading(self) -> None:
         """Bad hack to set thread name on OS level."""

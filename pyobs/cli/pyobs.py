@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import os
 
 
@@ -78,8 +77,7 @@ def run(app_class, **kwargs):
 
     # create app and run it
     app = app_class(**kwargs)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app.run())
+    app.run()
 
 
 def main():

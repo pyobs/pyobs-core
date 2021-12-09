@@ -280,6 +280,11 @@ class Object:
         """
         try:
             await target()
+
+        except asyncio.CancelledError:
+            # task was canceled
+            return
+
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 

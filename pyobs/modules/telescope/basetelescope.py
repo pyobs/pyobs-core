@@ -257,7 +257,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
     async def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
- 
+
         # wait a little
         await event_wait(self.closing, 10)
 

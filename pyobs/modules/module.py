@@ -116,8 +116,10 @@ class Module(Object, IModule, IConfig):
     async def main(self) -> None:
         """Main loop for application."""
         while not self.closing.is_set():
-            await asyncio.sleep(1)
-            #self.closing.wait(1)
+            try:
+                await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                return
 
     def name(self, **kwargs: Any) -> str:
         """Returns name of module."""

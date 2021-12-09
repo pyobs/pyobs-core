@@ -87,8 +87,8 @@ class PointingSeries(Module, IAutonomous):
         grid = pd.DataFrame(grid).set_index(['alt', 'az'])
 
         # get acquisition and telescope units
-        acquisition = self.proxy(self._acquisition, IAcquisition)
-        telescope = self.proxy(self._telescope, ITelescope)
+        acquisition = await self.proxy(self._acquisition, IAcquisition)
+        telescope = await self.proxy(self._telescope, ITelescope)
 
         # loop until finished
         while not self.closing.is_set():

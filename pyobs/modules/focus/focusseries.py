@@ -58,8 +58,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # check focuser and camera
         try:
-            self.proxy(self._focuser, IFocuser)
-            self.proxy(self._camera, IImageGrabber)
+            await self.proxy(self._focuser, IFocuser)
+            await self.proxy(self._camera, IImageGrabber)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
@@ -86,11 +86,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser = await self.proxy(self._focuser, IFocuser)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: IImageGrabber = self.proxy(self._camera, IImageGrabber)
+        camera = await self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
         await self._do_camera_settings(camera)
@@ -98,7 +98,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # get filter wheel and current filter
         filter_name = 'unknown'
         try:
-            filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+            filter_wheel = await self.proxy(self._filters, IFilters)
             filter_name = await filter_wheel.get_filter()
         except ValueError:
             log.warning('Filter module is not of type IFilters. Could not get filter.')

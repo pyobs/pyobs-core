@@ -117,7 +117,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
 
             # get camera
             try:
-                camera: ICamera = self.proxy(self._camera, ICamera)
+                camera = await self.proxy(self._camera, ICamera)
             except ValueError:
                 await asyncio.sleep(10)
                 continue

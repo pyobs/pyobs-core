@@ -270,7 +270,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # fetch from BaseTelescope
-        hdr = BaseTelescope.get_fits_header_before(self)
+        hdr = await BaseTelescope.get_fits_header_before(self)
 
         # focus
         hdr['TEL-FOCU'] = (self._telescope.focus, 'Focus position [mm]')

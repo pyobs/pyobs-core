@@ -43,13 +43,13 @@ class BasePointing(Module, PipelineMixin):
 
         # check telescope
         try:
-            self.proxy(self._telescope, ITelescopeProxy)
+            await self.proxy(self._telescope, ITelescopeProxy)
         except ValueError:
             log.warning('Given telescope does not exist or is not of correct type at the moment.')
 
         # check camera
         try:
-            self.proxy(self._camera, ICameraProxy)
+            await self.proxy(self._camera, ICameraProxy)
         except ValueError:
             log.warning('Given camera does not exist or is not of correct type at the moment.')
 

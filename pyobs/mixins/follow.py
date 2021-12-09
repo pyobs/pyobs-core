@@ -135,7 +135,7 @@ class FollowMixin:
 
             # get other device
             try:
-                device = module.proxy(this.__follow_device, this.__follow_mode)
+                device = await module.proxy(this.__follow_device, this.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
                 log.warning('Cannot follow module, since it is of wrong type.')

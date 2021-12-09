@@ -100,7 +100,7 @@ class WeatherAwareMixin:
                 else:
                     try:
                         # get proxy
-                        weather: IWeather = module.proxy(this.__weather, IWeather)
+                        weather: IWeather = await module.proxy(this.__weather, IWeather)
 
                         # get good status
                         this.__is_weather_good = await weather.is_weather_good()

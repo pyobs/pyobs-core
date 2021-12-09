@@ -35,7 +35,7 @@ class FlatFieldPointing(Module, IRunnable):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+        telescope = await self.proxy(self._telescope, ITelescopeProxy)
 
         # pointing
         pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self.observer)

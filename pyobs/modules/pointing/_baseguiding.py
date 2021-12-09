@@ -168,7 +168,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
 
         # get telescope
         try:
-            telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+            telescope = await self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.error('Given telescope does not exist or is not of correct type.')
             return image

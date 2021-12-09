@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+from collections import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits
@@ -43,8 +44,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_cache = '/pyobs/modules/%s/cache.yaml' % module.name()
         self._fitsheadermixin_frame_num = 0
 
-    def request_fits_headers(self, before: bool = True) \
-            -> Dict[str, Future[Dict[str, Tuple[Any, str]]]]:
+    async def request_fits_headers(self, before: bool = True) -> Dict[str, Coroutine]:
         """Request FITS headers from other modules.
 
         Returns:
@@ -52,30 +52,30 @@ class FitsHeaderMixin:
         """
 
         # init
-        futures = {}
+        futures: Dict[str, Coroutine] = {}
 
         # we can only do this with a comm module
         module = cast(Module, self)
         if module.comm:
             # get clients that provide fits headers
-            clients = module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
+            clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
             proxy: Union[IFitsHeaderBefore, IFitsHeaderAfter]
             for client in clients:
                 log.debug('Requesting FITS headers from %s...', client)
                 if before:
-                    proxy = module.proxy(client, IFitsHeaderBefore)
+                    proxy = await module.proxy(client, IFitsHeaderBefore)
                     futures[client] = proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
-                    proxy = module.proxy(client, IFitsHeaderAfter)
+                    proxy = await module.proxy(client, IFitsHeaderAfter)
                     futures[client] = proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished
         return futures
 
     async def add_requested_fits_headers(self, image: Union[Image, fits.PrimaryHDU],
-                                        futures: Dict[str, Future]) -> None:
+                                        futures: Dict[str, Coroutine]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:

@@ -52,7 +52,7 @@ class WaitForMotionMixin:
             raise ValueError('This is not a module.')
 
         # get all proxies
-        proxies = [self.proxy(device) for device in this.__wait_for_modules]
+        proxies = [await self.proxy(device) for device in this.__wait_for_modules]
 
         # all need to be derived from IMotion
         if not all([isinstance(p, IMotion) for p in proxies]):

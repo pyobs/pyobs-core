@@ -59,7 +59,7 @@ class Trigger(Module, IAutonomous):
         """Whether a service is running."""
         return self._running
 
-    def _handle_event(self, event: Event, sender: str) -> bool:
+    async def _handle_event(self, event: Event, sender: str) -> bool:
         """Handle an incoming event.
 
         Args:
@@ -80,7 +80,7 @@ class Trigger(Module, IAutonomous):
 
                 # get proxy
                 try:
-                    proxy = self.comm.proxy(trigger['module'])
+                    proxy = await self.comm.proxy(trigger['module'])
 
                     # call it
                     proxy.execute(trigger['method'])

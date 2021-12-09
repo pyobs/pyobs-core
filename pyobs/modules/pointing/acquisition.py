@@ -56,8 +56,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # check telescope and camera
         try:
-            self.proxy(self._telescope, ITelescopeProxy)
-            self.proxy(self._camera, ICameraProxy)
+            await self.proxy(self._telescope, ITelescopeProxy)
+            await self.proxy(self._camera, ICameraProxy)
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
@@ -90,11 +90,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+        telescope = await self.proxy(self._telescope, ITelescopeProxy)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
+        camera = await self.proxy(self._camera, IImageGrabberProxy)
 
         # do camera settings
         await self._do_camera_settings(camera)

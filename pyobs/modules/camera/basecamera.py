@@ -210,7 +210,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
 
         # request fits headers
-        header_futures_before = self.request_fits_headers(before=True)
+        header_futures_before = await self.request_fits_headers(before=True)
 
         # open the shutter?
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
@@ -228,7 +228,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             raise
 
         # request fits headers again
-        header_futures_after = self.request_fits_headers(before=False)
+        header_futures_after = await self.request_fits_headers(before=False)
 
         # flip it?
         if self._flip:

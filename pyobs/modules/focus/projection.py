@@ -55,8 +55,8 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # check focuser and camera
         try:
-            self.proxy(self._focuser, IFocuser)
-            self.proxy(self._camera, ICamera)
+            await self.proxy(self._focuser, IFocuser)
+            await self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
 
@@ -83,17 +83,17 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # get focuser
         log.info('Getting proxy for focuser...')
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser = await self.proxy(self._focuser, IFocuser)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: ICamera = self.proxy(self._camera, ICamera)
+        camera = await self.proxy(self._camera, ICamera)
 
         # get filter wheel and current filter
         filter_name = 'unknown'
         if self._filters is not None:
             try:
-                filter_wheel: IFilters = self.proxy(self._filters, IFilters)
+                filter_wheel = await self.proxy(self._filters, IFilters)
                 filter_name = await filter_wheel.get_filter()
             except ValueError:
                 log.warning('Filter module is not of type IFilters. Could not get filter.')

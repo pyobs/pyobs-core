@@ -57,7 +57,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # check flat field
         try:
-            self.proxy(self._flatfield, IFlatField)
+            await self.proxy(self._flatfield, IFlatField)
         except ValueError:
             log.warning('Flatfield module does not exist or is not of correct type at the moment.')
 
@@ -69,7 +69,7 @@ class FlatFieldScheduler(Module, IRunnable):
 
         # get flat fielder
         log.info('Getting proxy for flat fielder...')
-        flatfield: IFlatField = self.proxy(self._flatfield, IFlatField)
+        flatfield = await self.proxy(self._flatfield, IFlatField)
 
         # do schedule
         log.info('Scheduling flats...')

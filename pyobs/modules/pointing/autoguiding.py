@@ -56,7 +56,7 @@ class AutoGuiding(BaseGuiding):
 
             try:
                 # get camera
-                camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
+                camera = await self.proxy(self._camera, IImageGrabberProxy)
 
                 # take image
                 if isinstance(camera, IExposureTimeProxy):

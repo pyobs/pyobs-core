@@ -153,7 +153,7 @@ class FocusModel(Module, IFocusModel):
 
             # get focuser
             try:
-                focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+                focuser = await self.proxy(self._focuser, IFocuser)
             except ValueError:
                 log.warning('Could not connect to focuser.')
                 await event_wait(self.closing, 10)
@@ -215,7 +215,7 @@ class FocusModel(Module, IFocusModel):
                 # need a filter name?
                 if filter_name is None:
                     # get proxy
-                    wheel: IFilters = self.proxy(self._filter_wheel, IFilters)
+                    wheel = await self.proxy(self._filter_wheel, IFilters)
 
                     # get filter
                     filter_name = await wheel.get_filter()
@@ -259,7 +259,7 @@ class FocusModel(Module, IFocusModel):
 
             # get weather proxy
             try:
-                weather: IWeather = self.proxy(self._weather, IWeather)
+                weather = await self.proxy(self._weather, IWeather)
             except ValueError:
                 raise ValueError('Could not connect to weather module.')
 
@@ -280,7 +280,7 @@ class FocusModel(Module, IFocusModel):
                 log.info('Fetching temperatures from module %s...', cfg['module'])
 
                 # get proxy
-                proxy: ITemperatures = self.proxy(cfg['module'], ITemperatures)
+                proxy = await self.proxy(cfg['module'], ITemperatures)
 
                 # get temperatures
                 module_temps[cfg['module']] = await proxy.get_temperatures()
@@ -311,7 +311,7 @@ class FocusModel(Module, IFocusModel):
         """
 
         # get focuser
-        focuser: IFocuser = self.proxy(self._focuser, IFocuser)
+        focuser = await self.proxy(self._focuser, IFocuser)
 
         # get focus
         focus = await self._get_optimal_focus(filter_name=filter_name)

@@ -414,14 +414,14 @@ class Object:
         return obj
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
         ...
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
@@ -443,7 +443,7 @@ class Object:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-        return self.comm.proxy(name_or_object, obj_type)
+        return await self.comm.proxy(name_or_object, obj_type)
 
 
 __all__ = ['get_object', 'get_class_from_string', 'create_object', 'Object']

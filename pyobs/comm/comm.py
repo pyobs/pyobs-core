@@ -92,7 +92,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    def __getitem__(self, client: str) -> Optional[Union['Module', Proxy]]:
+    async def _get_client(self, client: str) -> Optional[Union['Module', Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -112,7 +112,7 @@ class Comm:
         if client not in self._proxies or not self._cache_proxies:
             # get interfaces
             try:
-                interfaces = self.get_interfaces(client)
+                interfaces = await self.get_interfaces(client)
             except IndexError:
                 return None
 
@@ -124,14 +124,14 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
         ...
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
@@ -160,7 +160,7 @@ class Comm:
 
         elif isinstance(name_or_object, str):
             # get proxy
-            proxy = self[name_or_object]
+            proxy = await self._get_client(name_or_object)
 
             # check it
             if proxy is None:
@@ -175,12 +175,12 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Optional[Union[Any, ProxyType]]:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
-            return self.proxy(name_or_object, obj_type)
+            return await self.proxy(name_or_object, obj_type)
         except ValueError:
             return None
 
@@ -212,7 +212,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
+    async def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:
@@ -221,9 +221,9 @@ class Comm:
         Returns:
             (list) List of currently connected clients that implement the given interface.
         """
-        return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
+        return [c for c in self.clients if await self._supports_interface(c, interface)]
 
-    def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -237,7 +237,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:

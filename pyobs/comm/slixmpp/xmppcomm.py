@@ -231,7 +231,7 @@ class XmppComm(Comm):
         """
         return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
 
-    def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -248,10 +248,16 @@ class XmppComm(Comm):
         if '@' not in client:
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
+        # does it exist?
+        if client not in self._interface_cache:
+            # get it
+            interface_names = await self._xmpp.get_interfaces(client)
+            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
+
         # convert to classes
         return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -267,7 +273,7 @@ class XmppComm(Comm):
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
         # update interface cache and get interface names
-        interfaces = self.get_interfaces(client)
+        interfaces = await self.get_interfaces(client)
 
         # supported?
         return interface in interfaces
@@ -304,9 +310,9 @@ class XmppComm(Comm):
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
-        # interfaces
-        interface_names = await self._xmpp.get_interfaces(jid)
-        self._interface_cache[jid] = self._interface_names_to_classes(interface_names)
+        # interfaces, first wait a little for the client to connect properly
+        await asyncio.sleep(2)
+        await self.get_interfaces(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
@@ -362,8 +368,18 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-                                             callback=functools.partial(self._send_event_callback, event=event))
+
+        # we try to send events multiple times
+        for i in range(5):
+            try:
+                # try
+                await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
+                                                     callback=functools.partial(self._send_event_callback, event=event))
+                # success, we're finished
+                return
+            except slixmpp.xmlstream.xmlstream.NotConnectedError:
+                # try again
+                pass
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:

@@ -237,13 +237,13 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
     async def _active_update(self) -> None:
         """Checking active status regularly."""
         self._active_time = time.time()
-        while not self.closing.is_set():
+        while True:
             # go to sleep?
             if time.time() - self._active_time > self._sleep_time and self._active:
                 await self.deactivate_camera()
 
             # wait a little for next check
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
     @property
     async def image_jpeg(self) -> Tuple[Optional[int], Optional[bytes]]:
@@ -301,7 +301,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             if now - self._last_time > self._interval:
                 # write to buffer and reset interval
                 loop = asyncio.get_running_loop()
-                jpeg = await loop.run_in_executor(self.create_jpeg, data)
+                jpeg = await loop.run_in_executor(None, self.create_jpeg, data)
                 self._last_time = now
 
         # store both

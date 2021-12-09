@@ -18,7 +18,7 @@ from pyobs.events.event import EventFactory
 from .rpc import RPC
 from .xmppclient import XmppClient
 from ...interfaces import Interface
-from ...utils.threads.future import BaseFuture
+from ...utils.parallel import Future
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
@@ -270,7 +270,7 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Execute a given method on a remote client.
 
         Args:

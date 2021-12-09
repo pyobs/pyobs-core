@@ -1,7 +1,8 @@
+from collections import Coroutine
 from datetime import datetime
 import io
 import logging
-import threading
+import asyncio
 import time
 import asyncio
 from typing import Dict, Any, Tuple, NamedTuple, Optional, List
@@ -51,7 +52,7 @@ async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) 
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
-    header_futures: Dict[str, Future]
+    header_futures: Dict[str, Coroutine]
     broadcast: bool
 
 
@@ -89,7 +90,7 @@ class VideoHandler(tornado.web.RequestHandler):
         while True:
             try:
                 # Generating images for mjpeg stream and wraps them into http resp
-                num, image = self.application.image_jpeg
+                num, image = await self.application.image_jpeg()
                 if image is None:
                     continue
                 if num != last_num or time.time() > last_time + 10:
@@ -99,7 +100,7 @@ class VideoHandler(tornado.web.RequestHandler):
                     self.write("Content-type: image/jpeg\r\n")
                     self.write("Content-length: %s\r\n\r\n" % len(image))
                     self.write(image)
-                    yield self.flush()
+                    await self.flush()
                 else:
                     await asyncio.sleep(0.1)
             except tornado.iostream.StreamClosedError:
@@ -168,7 +169,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         self._frame_num = 0
         self._live_view = live_view
         self._image_type = ImageType.OBJECT
-        self._image_request_lock = threading.Lock()
+        self._image_request_lock = asyncio.Lock()
         self._image_requests: List[ImageRequest] = []
         self._next_image: Optional[NextImage] = None
         self._last_image: Optional[LastImage] = None
@@ -245,7 +246,6 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             # wait a little for next check
             await asyncio.sleep(1)
 
-    @property
     async def image_jpeg(self) -> Tuple[Optional[int], Optional[bytes]]:
         """Return image as jpeg."""
 
@@ -310,7 +310,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
 
         # signal it
         self._new_image_event.set()
-        self._new_image_event = threading.Event()
+        self._new_image_event = asyncio.Event()
 
         # prepare next image
         if len(self._image_requests) > 0:
@@ -321,7 +321,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             logging.info('Preparing to catch next image...')
             self._next_image = NextImage(date_obs=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f"),
                                          image_type=self._image_type,
-                                         header_futures=self.request_fits_headers(),
+                                         header_futures=await self.request_fits_headers(),
                                          broadcast=broadcast)
 
             # reset
@@ -345,7 +345,7 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, next_image.header_futures)
-        self.add_fits_headers(image)
+        await self.add_fits_headers(image)
 
         # finish it up
         return await self._finish_image(image, next_image.broadcast, next_image.image_type)

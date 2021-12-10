@@ -8,7 +8,7 @@ class IImageGrabber(Interface):
     __module__ = 'pyobs.interfaces'
 
     async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
-        """Grabs an image ans returns reference.
+        """Grabs an image and returns reference.
 
         Args:
             broadcast: Broadcast existence of image.

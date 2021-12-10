@@ -182,7 +182,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler('session_start', callback)
 
         # connect
-        self._xmpp.connect(address=('127.0.0.1', 5222), force_starttls=False, disable_starttls=True)
+        self._xmpp.connect(address=server, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 
         # wait for connected

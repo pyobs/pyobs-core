@@ -173,11 +173,12 @@ class RPC(object):
             future = self._futures[pid]
             del self._futures[pid]
 
-        # set result of future
-        if len(args) > 0:
-            future.set_result(args[0])
-        else:
-            future.set_result(None)
+        # set result of future, if it's not set already (probably with an exception)
+        if not future.done():
+            if len(args) > 0:
+                future.set_result(args[0])
+            else:
+                future.set_result(None)
 
     async def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
         """Method call timed out.
@@ -208,7 +209,8 @@ class RPC(object):
             del self._futures[pid]
 
         # set error
-        future.set_exception(InvocationException(fault['string']))
+        if not future.done():
+            future.set_exception(InvocationException(fault['string']))
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.

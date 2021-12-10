@@ -97,4 +97,4 @@ class Future(asyncio.Future):
         return [await fut for fut in futures if fut is not None]
 
 
-__all__ = ['Future']
+__all__ = ['Future', 'event_wait']

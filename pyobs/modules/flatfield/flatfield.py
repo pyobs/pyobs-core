@@ -1,12 +1,11 @@
 import logging
-import threading
+import asyncio
 from enum import Enum
 from typing import Union, Tuple, List, Optional, Any, Dict
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning, ITelescope, ICamera
 from pyobs.modules import Module
-from pyobs.object import get_object
 from pyobs.modules import timeout
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats import FlatFielder
@@ -47,7 +46,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         self._telescope = telescope
         self._camera = camera
         self._filter_wheel = filters
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
 
         # flat fielder
         self._flat_fielder = self.get_object(flat_fielder, FlatFielder, callback=self.callback)
@@ -165,8 +164,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             Number of images actually taken and total exposure time in ms
         """
+
         log.info('Performing flat fielding...')
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
 
         # get telescope
         log.info('Getting proxy for telescope...')
@@ -209,13 +209,13 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
 
     @timeout(20)
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
 
-    def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
+    async def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Abort on bad weather."""
-        self.abort()
+        await self.abort()
         return True
 
 

@@ -1,16 +1,13 @@
 import asyncio
 import logging
 from typing import Optional, Any, Dict, TYPE_CHECKING, cast
-
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
-
-from pyobs.utils.parallel import event_wait
-
 if TYPE_CHECKING:
     import lmfit
 
+from pyobs.utils.parallel import event_wait
 from pyobs.interfaces import IFocuser, IFilters, IWeather, ITemperatures
 from pyobs.modules import Module
 from pyobs.modules import timeout
@@ -203,7 +200,7 @@ class FocusModel(Module, IFocusModel):
         """
 
         # get values for variables
-        values = self._get_values()
+        values = await self._get_values()
 
         # evaluate model
         log.info('Evaluating model...')
@@ -243,7 +240,7 @@ class FocusModel(Module, IFocusModel):
         """
         return await self._get_optimal_focus()
 
-    async def _get_values(self) -> Dict[str, float]:
+    async def _get_values(self) -> Dict[str, Any]:
         """Retrieve all required values for the model.
 
         Returns:

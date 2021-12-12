@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import threading
 from typing import Any, Optional
 
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
@@ -25,8 +24,12 @@ class DummyRoof(BaseRoof, IRoof):
         self.open_percentage = 0
 
         # allow to abort motion
-        self._lock_motion = threading.Lock()
-        self._abort_motion = threading.Event()
+        self._lock_motion = asyncio.Lock()
+        self._abort_motion = asyncio.Event()
+
+    async def open(self) -> None:
+        """Open module."""
+        await BaseRoof.open(self)
 
         # register event
         await self.comm.register_event(RoofOpenedEvent)

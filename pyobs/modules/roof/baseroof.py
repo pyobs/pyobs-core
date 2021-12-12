@@ -26,10 +26,11 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await Module.open(self)
 
         # open mixins
-        WeatherAwareMixin.open(self)
-        MotionStatusMixin.open(self)
+        await WeatherAwareMixin.open(self)
+        await MotionStatusMixin.open(self)
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -39,11 +40,11 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
             Dictionary containing FITS headers.
         """
         return {
-            'ROOF-OPN': (self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
+            'ROOF-OPN': (await self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                          'True for open, false for closed roof')
         }
 
-    def is_ready(self, **kwargs: Any) -> bool:
+    async def is_ready(self, **kwargs: Any) -> bool:
         """Returns the device is "ready", whatever that means for the specific device.
 
         Returns:
@@ -51,8 +52,8 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """
 
         # check that motion is not in one of the states listed below
-        return self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.INITIALIZING,
-                                                MotionStatus.PARKING, MotionStatus.ERROR, MotionStatus.UNKNOWN]
+        return await self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.INITIALIZING,
+                                                      MotionStatus.PARKING, MotionStatus.ERROR, MotionStatus.UNKNOWN]
 
 
 __all__ = ['BaseRoof']

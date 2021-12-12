@@ -5,7 +5,7 @@ class SkyflatPriorities:
     """Base class for sky flat priorities."""
     __module__ = 'pyobs.utils.skyflats.priorities'
 
-    def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
+    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
         return {}
 
 

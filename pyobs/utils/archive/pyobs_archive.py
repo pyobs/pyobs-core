@@ -1,4 +1,6 @@
+import asyncio
 import io
+from functools import partial
 from typing import List, Dict, Any, Optional, cast
 import requests
 import urllib.parse
@@ -34,10 +36,11 @@ class PyobsArchive(Archive):
         self._headers = {'Authorization': 'Token ' + token}
         self._proxies = proxies
 
-    def list_options(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
-                     site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
-                     image_type: Optional[ImageType] = None, binning: Optional[str] = None,
-                     filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> Dict[str, List[Any]]:
+    async def list_options(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
+                           site: Optional[str] = None, telescope: Optional[str] = None,
+                           instrument: Optional[str] = None, image_type: Optional[ImageType] = None,
+                           binning: Optional[str] = None, filter_name: Optional[str] = None,
+                           rlevel: Optional[int] = None) -> Dict[str, List[Any]]:
         # build URL
         url = urllib.parse.urljoin(self._url, 'frames/aggregate/')
 
@@ -46,17 +49,19 @@ class PyobsArchive(Archive):
                                    filter_name, rlevel)
 
         # do request
-        r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
+        loop = asyncio.get_running_loop()
+        r = await loop.run_in_executor(None, partial(requests.get, url, params=params, headers=self._headers,
+                                                     proxies=self._proxies))
         if r.status_code != 200:
             raise ValueError('Could not query frames: %s' % str(r.content))
 
         # create frames and return them
         return r.json()
 
-    def list_frames(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
-                    site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
-                    image_type: Optional[ImageType] = None, binning: Optional[str] = None,
-                    filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> List[FrameInfo]:
+    async def list_frames(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
+                          site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
+                          image_type: Optional[ImageType] = None, binning: Optional[str] = None,
+                          filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> List[FrameInfo]:
         # build URL
         url = urllib.parse.urljoin(self._url, 'frames/')
 
@@ -72,9 +77,11 @@ class PyobsArchive(Archive):
         params['limit'] = 1000
 
         # loop until we got all
+        loop = asyncio.get_running_loop()
         while True:
             # do request
-            r = requests.get(url, params=params, headers=self._headers, proxies=self._proxies)
+            r = await loop.run_in_executor(None, partial(requests.get, url, params=params, headers=self._headers,
+                                                         proxies=self._proxies))
             if r.status_code != 200:
                 raise ValueError('Could not query frames')
 
@@ -119,7 +126,7 @@ class PyobsArchive(Archive):
             params['RLEVEL'] = rlevel
         return params
 
-    def download_frames(self, infos: List[FrameInfo]) -> List[Image]:
+    async def download_frames(self, infos: List[FrameInfo]) -> List[Image]:
         # loop infos
         images = []
         for info in infos:
@@ -130,7 +137,9 @@ class PyobsArchive(Archive):
 
             # download
             url = urllib.parse.urljoin(self._url, info.url)
-            r = requests.get(url, headers=self._headers, proxies=self._proxies)
+            loop = asyncio.get_running_loop()
+            r = await loop.run_in_executor(None, partial(requests.get, url, headers=self._headers,
+                                                         proxies=self._proxies))
 
             # create image
             try:
@@ -142,13 +151,15 @@ class PyobsArchive(Archive):
         # return all
         return images
 
-    def download_headers(self, infos: List[PyobsArchiveFrameInfo]) -> List[Dict[str, Any]]:
+    async def download_headers(self, infos: List[PyobsArchiveFrameInfo]) -> List[Dict[str, Any]]:
         # loop infos
         headers = []
         for info in infos:
             # download
             url = urllib.parse.urljoin(self._url, info.url).replace('download', 'headers')
-            r = requests.get(url, headers=self._headers, proxies=self._proxies)
+            loop = asyncio.get_running_loop()
+            r = await loop.run_in_executor(None, partial(requests.get, url, headers=self._headers,
+                                                         proxies=self._proxies))
 
             try:
                 results = r.json()['results']
@@ -160,15 +171,16 @@ class PyobsArchive(Archive):
         # return all
         return headers
 
-    def upload_frames(self, images: List[Image]) -> None:
+    async def upload_frames(self, images: List[Image]) -> None:
         # build URL
         url = urllib.parse.urljoin(self._url, 'frames/create/')
 
         # create session
         session = requests.session()
+        loop = asyncio.get_running_loop()
 
         # do some initial GET request for getting the csrftoken
-        session.get(self._url, headers=self._headers, proxies=self._proxies)
+        await loop.run_in_executor(None, partial(session.get, self._url, headers=self._headers, proxies=self._proxies))
 
         # define list of files and url
         files = {}
@@ -185,8 +197,9 @@ class PyobsArchive(Archive):
                 files[filename] = bio.getvalue()
 
         # post it
-        r = session.post(url, data={'csrfmiddlewaretoken': session.cookies['csrftoken']},
-                         files=files, headers=self._headers, proxies=self._proxies)
+        r = await loop.run_in_executor(None, partial(session.post, url,
+                                                     data={'csrfmiddlewaretoken': session.cookies['csrftoken']},
+                                                     files=files, headers=self._headers, proxies=self._proxies))
 
         # success, if status code is 200
         if r.status_code != 200:

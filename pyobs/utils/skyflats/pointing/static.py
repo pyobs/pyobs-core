@@ -1,14 +1,12 @@
 import logging
-from typing import Any, cast
-
+from typing import Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.interfaces import ITelescope
-from pyobs.utils.threads import Future
 from pyobs.utils.time import Time
 from .base import SkyFlatsBasePointing
-
+from ...parallel import Future
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +27,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         # whether we've moved already
         self._initialized = initialized
 
-    def __call__(self, telescope: ITelescope) -> Future[None]:
+    async def __call__(self, telescope: ITelescope) -> None:
         """Move telescope.
 
         Args:
@@ -40,7 +38,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         """
 
         if self._initialized:
-            return Future[None](empty=True)
+            return
         self._initialized = True
 
         # calculate Alt/Az position of sun
@@ -55,9 +53,9 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
         # move telescope
         log.info('Moving telescope to Alt=80, Az=%.2f...', altaz.az.degree)
-        return telescope.move_altaz(80, float(altaz.az.degree))
+        return await telescope.move_altaz(80, float(altaz.az.degree))
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Reset pointing."""
         self._initialized = False
 

@@ -1,8 +1,7 @@
 import logging
 from typing import Union, Dict, Any
 
-from pyobs.interfaces import IRunnable
-from pyobs.interfaces import ITelescopeProxy
+from pyobs.interfaces import IRunnable, ITelescope
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
@@ -15,8 +14,8 @@ class FlatFieldPointing(Module, IRunnable):
     """Module for pointing a telescope."""
     __module__ = 'pyobs.modules.flatfield'
 
-    def __init__(self, telescope: Union[str, ITelescopeProxy],
-                 pointing: Union[Dict[str, Any], SkyFlatsBasePointing], **kwargs: Any):
+    def __init__(self, telescope: Union[str, ITelescope], pointing: Union[Dict[str, Any], SkyFlatsBasePointing],
+                 **kwargs: Any):
         """Initialize a new flat field pointing.
 
         Args:
@@ -35,7 +34,7 @@ class FlatFieldPointing(Module, IRunnable):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope = await self.proxy(self._telescope, ITelescopeProxy)
+        telescope = await self.proxy(self._telescope, ITelescope)
 
         # pointing
         pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self.observer)

@@ -104,11 +104,11 @@ class Scheduler(Module, IStartStop, IRunnable):
                 continue
 
             # got new time of last change?
-            t = self._task_archive.last_changed()
+            t = await self._task_archive.last_changed()
             if last_change is None or last_change < t:
                 # get schedulable blocks and sort them
                 log.info('Found update in schedulable block, downloading them...')
-                blocks = sorted(self._task_archive.get_schedulable_blocks(),
+                blocks = sorted(await self._task_archive.get_schedulable_blocks(),
                                 key=lambda x: json.dumps(x.configuration, sort_keys=True))
                 log.info('Downloaded %d schedulable block(s).', len(blocks))
 
@@ -186,15 +186,19 @@ class Scheduler(Module, IStartStop, IRunnable):
                 self._need_update = False
 
                 # run scheduler in separate process and wait for it
-                p = mp.Process(target=self._schedule)
+                p = mp.Process(target=self._schedule_process)
                 p.start()
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(p.join())
+                await loop.run_in_executor(None, p.join)
 
             # sleep a little
             await asyncio.sleep(1)
 
-    def _schedule(self):
+    def _schedule_process(self):
+        """This is run in a new process and starts a new loop running the _schedule method."""
+        asyncio.run(self._schedule())
+
+    async def _schedule(self):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
@@ -235,7 +239,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             # get running task from archive
             log.info('Trying to find running block in current schedule...')
             now = Time.now()
-            tasks = self._task_archive.get_pending_tasks(now, now, include_running=True)
+            tasks = await self._task_archive.get_pending_tasks(now, now, include_running=True)
             if self._current_task_id in tasks:
                 running_task = tasks[self._current_task_id]
             else:
@@ -284,7 +288,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # no blocks found?
         if len(blocks) == 0:
             log.info('No blocks left for scheduling.')
-            self._task_archive.update_schedule([], start)
+            await self._task_archive.update_schedule([], start)
             return
 
         # log it
@@ -298,7 +302,8 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # run scheduler
         time_range = Schedule(start, end)
-        schedule = scheduler(blocks, time_range)
+        loop = asyncio.get_running_loop()
+        schedule = await loop.run_in_executor(None, scheduler, blocks, time_range)
 
         # if need new update, skip here
         if self._need_update:
@@ -306,7 +311,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return
 
         # update
-        self._task_archive.update_schedule(schedule.scheduled_blocks, start)
+        await self._task_archive.update_schedule(schedule.scheduled_blocks, start)
         if len(schedule.scheduled_blocks) > 0:
             log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
             for i, block in enumerate(schedule.scheduled_blocks, 1):

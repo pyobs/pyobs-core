@@ -11,7 +11,7 @@ class ConstSkyflatPriorities(SkyflatPriorities):
         SkyflatPriorities.__init__(self)
         self._priorities = priorities
 
-    def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
+    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
         return self._priorities
 
 

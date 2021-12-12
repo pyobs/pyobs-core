@@ -1,12 +1,10 @@
 import asyncio
 import logging
-import threading
 from typing import Union, Tuple, Type, Optional, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.comm.exceptions import RemoteException
-from pyobs.interfaces import IPointingAltAz, IPointingRaDec
 from pyobs.modules import Module
 from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 
@@ -14,28 +12,8 @@ from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 log = logging.getLogger(__name__)
 
 
-async def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
+async def get_coords(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
         -> Tuple[float, float]:
-    """Gets coordinates from object
-
-    Args:
-        obj: Object to fetch coordinates from.
-        mode: IAltAz or IRaDec.
-
-    Returns:
-        Return from method call.
-    """
-
-    if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
-        return await obj.get_altaz()
-    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
-        return await obj.get_radec()
-    else:
-        raise ValueError('Unknown mode.')
-
-
-async def get_coord_remote(obj: Union[IPointingAltAz, IPointingRaDec],
-                           mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> Optional[Tuple[float, float]]:
     """Gets coordinates from object
 
     Args:
@@ -145,8 +123,8 @@ class FollowMixin:
 
             # get coordinates from other and from myself
             try:
-                my_coords = build_skycoord(await get_coord_local(module, this.__follow_mode), this.__follow_mode)
-                xy_coords = await get_coord_remote(device, this.__follow_mode)
+                my_coords = build_skycoord(await get_coords(module, this.__follow_mode), this.__follow_mode)
+                xy_coords = await get_coords(device, this.__follow_mode)
                 if xy_coords is None:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)

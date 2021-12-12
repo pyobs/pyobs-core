@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import threading
 from typing import Union, Tuple, Type, Optional, Any
@@ -26,9 +27,9 @@ async def get_coord_local(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type
     """
 
     if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
-        return obj.get_altaz()
+        return await obj.get_altaz()
     elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
-        return obj.get_radec()
+        return await obj.get_radec()
     else:
         raise ValueError('Unknown mode.')
 
@@ -101,7 +102,7 @@ class FollowMixin:
         if self.__follow_device is not None:
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self.add_thread_func(this.__update_follow)
+            self.add_background_task(this.__update_follow)
 
         # check
         if not isinstance(self, self.__follow_mode):
@@ -122,7 +123,7 @@ class FollowMixin:
         module = self
 
         # wait a little
-        module.closing.wait(10)
+        await asyncio.sleep(10)
 
         # run until closing
         connected = True
@@ -130,7 +131,7 @@ class FollowMixin:
             # not ready?
             if isinstance(self, IReady):
                 if not self.is_ready() and this.__follow_only_when_ready:
-                    module.closing.wait(this.__follow_interval)
+                    await asyncio.sleep(this.__follow_interval)
                     continue
 
             # get other device
@@ -139,7 +140,7 @@ class FollowMixin:
             except ValueError:
                 # cannot follow, wait a little longer
                 log.warning('Cannot follow module, since it is of wrong type.')
-                module.closing.wait(this.__follow_interval * 10)
+                await asyncio.sleep(this.__follow_interval * 10)
                 continue
 
             # get coordinates from other and from myself
@@ -154,21 +155,21 @@ class FollowMixin:
                 if connected:
                     log.warning('Could not fetch coordinates.')
                 connected = False
-                module.closing.wait(this.__follow_interval * 10.)
+                await asyncio.sleep(this.__follow_interval * 10.)
                 continue
 
             # is separation larger than tolerance?
             if my_coords.separation(other_coords).degree > this.__follow_tolerance:
                 # move to other
                 if this.__follow_mode == IPointingAltAz and isinstance(self, IPointingAltAz):
-                    threading.Thread(target=self.move_altaz, args=xy_coords).start()
+                    asyncio.create_task(self.move_altaz(*xy_coords))
                 elif this.__follow_mode == IPointingRaDec and isinstance(self, IPointingRaDec):
-                    threading.Thread(target=self.move_radec, args=xy_coords).start()
+                    asyncio.create_task(self.move_radec(*xy_coords))
                 else:
                     raise ValueError('invalid follow mode.')
 
             # sleep a little
-            module.closing.wait(this.__follow_interval)
+            await asyncio.sleep(this.__follow_interval)
 
 
 __all__ = ['FollowMixin']

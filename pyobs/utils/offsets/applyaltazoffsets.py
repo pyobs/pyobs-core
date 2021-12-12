@@ -1,13 +1,12 @@
 import logging
 from typing import Any
-
 import numpy as np
 from astropy.coordinates import EarthLocation, AltAz
 
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
 from ..time import Time
-from ...interfaces import ITelescopeProxy, IOffsetsAltAzProxy
+from ...interfaces import ITelescope, IOffsetsAltAz
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    async def __call__(self, image: Image, telescope: ITelescopeProxy, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -43,7 +42,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
 
         # telescope must be of type IAltAzOffsets
         tel = telescope
-        if not isinstance(telescope, IOffsetsAltAzProxy):
+        if not isinstance(telescope, IOffsetsAltAz):
             log.error('Given telescope cannot handle Alt/Az offsets.')
             return False
 

@@ -35,7 +35,7 @@ class WeatherAwareMixin:
             await self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
             await self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
 
-    def __on_bad_weather(self, event: Event, sender: str) -> bool:
+    async def __on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort exposure if a bad weather event occurs.
 
         Args:
@@ -52,15 +52,15 @@ class WeatherAwareMixin:
 
         # do we need to park?
         if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-            if self.get_motion_status() != MotionStatus.PARKED:
+            if await self.get_motion_status() != MotionStatus.PARKED:
                 log.warning('Received bad weather event, shutting down.')
-                self.park()
+                await self.park()
             return True
         else:
             log.error('This is not a MotionStatusMixin/IMotion.')
             return False
 
-    def _on_good_weather(self, event: Event, sender: str) -> bool:
+    async def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Change status of weather.
 
         Args:
@@ -112,7 +112,7 @@ class WeatherAwareMixin:
                 # if not good, park now
                 if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
                     if this.__is_weather_good is False and \
-                            self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
+                            await self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.PARKING]:
                         try:
                             asyncio.create_task(self.park())
                             log.info('Weather seems to be bad, shutting down.')

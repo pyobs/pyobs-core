@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import time
 from typing import Any, Dict
 
 from pyobs.interfaces import IAcquisition
@@ -20,12 +20,12 @@ class DummyAcquisition(Module, IAcquisition):
         # store
         self._is_running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -40,14 +40,14 @@ class DummyAcquisition(Module, IAcquisition):
 
         try:
             self._is_running = True
-            return self._acquire()
+            return await self._acquire()
         finally:
             self._is_running = False
 
-    def _acquire(self) -> Dict[str, Any]:
+    async def _acquire(self) -> Dict[str, Any]:
         """Actually acquire target."""
         log.info('Acquiring target.')
-        time.sleep(5)
+        await asyncio.sleep(5)
         log.info('Finished.')
         return {}
 

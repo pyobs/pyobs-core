@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from typing import Any, Optional
+from typing import Any
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
@@ -77,7 +77,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
             image = await self._next_image.get()
 
             # process it
-            self._process_image(image)
+            await self._process_image(image)
 
             # wait for next image
             await event_wait(self.closing, 1)

@@ -4,7 +4,7 @@ from typing import Any, Optional
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.interfaces import IExposureTimeProxy, IImageTypeProxy, IImageGrabberProxy
+from pyobs.interfaces import IExposureTime, IImageType, IImageGrabber
 from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import event_wait
 
@@ -41,7 +41,7 @@ class AutoGuiding(BaseGuiding):
         self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
-        self._reset_guiding(enabled=self._enabled)
+        await self._reset_guiding(enabled=self._enabled)
 
     async def _auto_guiding(self) -> None:
         # exposure time
@@ -56,16 +56,16 @@ class AutoGuiding(BaseGuiding):
 
             try:
                 # get camera
-                camera = await self.proxy(self._camera, IImageGrabberProxy)
+                camera = await self.proxy(self._camera, IImageGrabber)
 
                 # take image
-                if isinstance(camera, IExposureTimeProxy):
+                if isinstance(camera, IExposureTime):
                     # set exposure time
                     log.info('Taking image with an exposure time of %.2fs...', self._exposure_time)
                     await camera.set_exposure_time(self._exposure_time)
                 else:
                     log.info('Taking image...')
-                if isinstance(camera, IImageTypeProxy):
+                if isinstance(camera, IImageType):
                     await camera.set_image_type(ImageType.OBJECT)
                 filename = await camera.grab_image(broadcast=False)
 
@@ -74,7 +74,7 @@ class AutoGuiding(BaseGuiding):
 
                 # process it
                 log.info('Processing image...')
-                processed_image = self._process_image(image)
+                processed_image = await self._process_image(image)
                 log.info('Done.')
 
                 # new exposure time?

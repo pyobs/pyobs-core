@@ -12,8 +12,8 @@ from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from ._base import BasePointing
-from ...interfaces import IExposureTimeProxy, IImageTypeProxy, ITelescopeProxy, IImageGrabberProxy, \
-    IOffsetsRaDecProxy, IOffsetsAltAzProxy, ICameraProxy
+from ...interfaces import IExposureTime, IImageType, ITelescope, IImageGrabber, \
+    IOffsetsRaDec, IOffsetsAltAz, ICamera
 
 log = logging.getLogger(__name__)
 
@@ -56,12 +56,12 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # check telescope and camera
         try:
-            await self.proxy(self._telescope, ITelescopeProxy)
-            await self.proxy(self._camera, ICameraProxy)
+            await self.proxy(self._telescope, ITelescope)
+            await self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 
@@ -90,11 +90,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope = await self.proxy(self._telescope, ITelescopeProxy)
+        telescope = await self.proxy(self._telescope, ITelescope)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera = await self.proxy(self._camera, IImageGrabberProxy)
+        camera = await self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
         await self._do_camera_settings(camera)
@@ -102,13 +102,13 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # try given number of attempts
         for a in range(self._attempts):
             # set exposure time and image type and take image
-            if isinstance(camera, IExposureTimeProxy):
+            if isinstance(camera, IExposureTime):
                 log.info('Exposing image for %.1f seconds...', exposure_time)
                 await camera.set_exposure_time(exposure_time)
             else:
                 log.info('Exposing image...')
-            if isinstance(camera, IImageTypeProxy):
-                camera.set_image_type(ImageType.ACQUISITION)
+            if isinstance(camera, IImageType):
+                await camera.set_image_type(ImageType.ACQUISITION)
             filename = await camera.grab_image()
 
             # download image
@@ -148,9 +148,9 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 }
 
                 # Alt/Az or RA/Dec?
-                if isinstance(telescope, IOffsetsRaDecProxy):
+                if isinstance(telescope, IOffsetsRaDec):
                     log_entry['off_ra'], log_entry['off_dec'] = await telescope.get_offsets_radec()
-                elif isinstance(telescope, IOffsetsAltAzProxy):
+                elif isinstance(telescope, IOffsetsAltAz):
                     log_entry['off_alt'], log_entry['off_az'] = await telescope.get_offsets_altaz()
 
                 # write log
@@ -167,7 +167,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 raise ValueError('Calculated offsets too large.')
 
             # apply offsets
-            if self._apply(image, telescope, self.location):
+            if await self._apply(image, telescope, self.location):
                 log.info('Finished image.')
             else:
                 log.warning('Could not apply offsets.')

@@ -108,7 +108,7 @@ class FollowMixin:
         while not module.closing.is_set():
             # not ready?
             if isinstance(self, IReady):
-                if not self.is_ready() and this.__follow_only_when_ready:
+                if not await self.is_ready() and this.__follow_only_when_ready:
                     await asyncio.sleep(this.__follow_interval)
                     continue
 

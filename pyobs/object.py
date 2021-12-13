@@ -240,10 +240,7 @@ class Object:
         # open child objects
         for obj in self._child_objects:
             if hasattr(obj, 'open'):
-                if asyncio.iscoroutinefunction(obj.open):
-                    await obj.open()
-                else:
-                    obj.open()
+                await obj.open()
 
         # success
         self._opened = True

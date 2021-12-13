@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import inspect
 import logging
@@ -18,7 +19,7 @@ log = logging.getLogger(__name__)
 class RPC(object):
     """RPC wrapper around XEP0009."""
 
-    def __init__(self, client: sleekxmpp.ClientXMPP, handler: Optional[Module] = None):
+    def __init__(self, client: sleekxmpp.ClientXMPP, loop, handler: Optional[Module] = None):
         """Create a new RPC wrapper.
 
         Args:
@@ -32,9 +33,10 @@ class RPC(object):
         self._futures: Dict[str, Future] = {}
         self._handler = handler
         self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
+        self._loop = loop
 
         # set up callbacks
-        client.add_event_handler('jabber_rpc_method_call', self._on_jabber_rpc_method_call, threaded=True)
+        client.add_event_handler('jabber_rpc_method_call', self._on_jabber_rpc_method_call)
         client.add_event_handler('jabber_rpc_method_timeout', self._on_jabber_rpc_method_timeout)
         client.add_event_handler('jabber_rpc_method_response', self._on_jabber_rpc_method_response)
         client.add_event_handler('jabber_rpc_method_fault', self._on_jabber_rpc_method_fault)
@@ -74,7 +76,7 @@ class RPC(object):
 
         # create a future for this
         pid = iq['id']
-        future = Future[signature.return_annotation](signature=signature)
+        future = Future(signature=signature)
         self._futures[pid] = future
 
         # send request
@@ -99,27 +101,38 @@ class RPC(object):
         params = xml2py(iq['rpc_query']['method_call']['params'])
         pmethod = iq['rpc_query']['method_call']['method_name']
 
-        try:
-            # no handler?
-            if self._handler is None:
-                raise ValueError('No handler specified.')
+        # no handler?
+        if self._handler is None:
+            raise ValueError('No handler specified.')
 
-            # get method
-            with self._lock:
-                try:
-                    method, signature = self._methods[pmethod]
-                except KeyError:
-                    log.error("No handler available for %s!", pmethod)
-                    self._client.plugin['xep_0009'].item_not_found(iq).send()
-                    return
+        # get method
+        with self._lock:
+            try:
+                method, signature = self._methods[pmethod]
+
+            except KeyError:
+                log.error("No handler available for %s!", pmethod)
+                self._client.plugin['xep_0009'].item_not_found(iq).send()
+                return
 
             # bind parameters
             ba = signature.bind(*params)
             ba.apply_defaults()
 
+        # call method
+        asyncio.run_coroutine_threadsafe(self._call_remote(iq, pmethod, method, ba.arguments), self._loop)
+
+    async def _call_remote(self, iq: Any, method_name: str, method: Callable, arguments: dict) -> None:
+        """React on remote method call.
+
+        Args:
+            iq: Received XMPP message.
+        """
+
+        try:
             # do we have a timeout?
             if hasattr(method, 'timeout'):
-                timeout = getattr(method, 'timeout')(self._handler, **ba.arguments)
+                timeout = await getattr(method, 'timeout')(self._handler, **arguments)
                 if timeout:
                     # yes, send it!
                     response = self._client.plugin['xep_0009_timeout'].\
@@ -127,7 +140,7 @@ class RPC(object):
                     response.send()
 
             # call method
-            return_value = self._handler.execute(pmethod, *params, sender=iq['from'].user)
+            return_value = await self._handler.execute(method_name, **arguments, sender=iq['from'].user)
             return_value = () if return_value is None else (return_value,)
 
             # send response
@@ -140,7 +153,7 @@ class RPC(object):
 
         except Exception as e:
             # something else went wrong
-            log.warning('Error during call to %s: %s', pmethod, str(e), exc_info=True)
+            log.warning('Error during call to %s: %s', method_name, str(e), exc_info=True)
 
             # send response
             fault = dict()
@@ -149,6 +162,14 @@ class RPC(object):
             self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
 
     def _on_jabber_rpc_method_response(self, iq: Any) -> None:
+        """Received a response for a method call.
+
+        Args:
+            iq: Received XMPP message.
+        """
+        asyncio.run_coroutine_threadsafe(self._method_response(iq), self._loop)
+
+    async def _method_response(self, iq: Any) -> None:
         """Received a response for a method call.
 
         Args:
@@ -172,10 +193,11 @@ class RPC(object):
             del self._futures[pid]
 
         # set result of future
-        if len(args) > 0:
-            future.set_value(args[0])
-        else:
-            future.set_value(None)
+        if not future.done():
+            if len(args) > 0:
+                future.set_result(args[0])
+            else:
+                future.set_result(None)
 
     def _on_jabber_rpc_method_timeout(self, iq: Any) -> None:
         """Method call timed out.
@@ -206,7 +228,7 @@ class RPC(object):
             del self._futures[pid]
 
         # set error
-        future.cancel_with_error(InvocationException(fault['string']))
+        future.set_exception(InvocationException(fault['string']))
 
     def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.

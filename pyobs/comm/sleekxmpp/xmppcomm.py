@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import asyncio
 import functools
 import inspect
 import json
@@ -111,6 +113,7 @@ class XmppComm(Comm):
         self._resource = resource
         self._server = server
         self._use_tls = use_tls
+        self._loop = None
 
         # build jid
         if jid:
@@ -156,16 +159,19 @@ class XmppComm(Comm):
             raise ValueError('No RPC.')
         self._rpc.set_handler(module)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open the connection to the XMPP server.
 
         Returns:
             Whether opening was successful.
         """
-        Comm.open(self)
+        await Comm.open(self)
+
+        # store loop
+        self._loop = asyncio.get_running_loop()
 
         # create RPC handler
-        self._rpc = RPC(self._xmpp, self.module)
+        self._rpc = RPC(self._xmpp, self._loop, self.module)
 
         # server given?
         server = () if self._server is None else tuple(self._server.split(':'))
@@ -182,17 +188,17 @@ class XmppComm(Comm):
             self._connected = True
 
             # subscribe to events
-            self.register_event(LogEvent)
+            await self.register_event(LogEvent)
 
         else:
             # TODO: catch exceptions in open() methods
             raise ValueError('Could not connect to XMPP server.')
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close connection."""
 
         # close parent class
-        Comm.close(self)
+        await Comm.close(self)
 
         # disconnect from sleekxmpp server
         self._xmpp.disconnect()
@@ -221,7 +227,7 @@ class XmppComm(Comm):
         """
         return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
 
-    def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -241,7 +247,8 @@ class XmppComm(Comm):
         # get interfaces
         if client not in self._interface_cache:
             # get interface names
-            interface_names = self._xmpp.get_interfaces(client)
+            loop = asyncio.get_running_loop()
+            interface_names = await loop.run_in_executor(None, self._xmpp.get_interfaces, client)
 
             # get interfaces
             self._interface_cache[client] = self._interface_names_to_classes(interface_names)
@@ -249,7 +256,7 @@ class XmppComm(Comm):
         # convert to classes
         return self._interface_cache[client]
 
-    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -265,7 +272,7 @@ class XmppComm(Comm):
             client = '%s@%s/%s' % (client, self._domain, self._resource)
 
         # update interface cache and get interface names
-        interfaces = self.get_interfaces(client)
+        interfaces = await self.get_interfaces(client)
 
         # supported?
         return interface in interfaces
@@ -341,7 +348,7 @@ class XmppComm(Comm):
         """
         return self._xmpp
 
-    def send_event(self, event: Event) -> None:
+    async def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -369,7 +376,7 @@ class XmppComm(Comm):
         """
         log.debug('%s successfully sent.', event.__class__.__name__)
 
-    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -473,11 +480,11 @@ class XmppComm(Comm):
         # send it
         if event.__class__ in self._event_handlers:
             for handler in self._event_handlers[event.__class__]:
-                # create thread and start it
-                thread = threading.Thread(name="event_%s" % handler.__name__,
-                                          target=handler, args=(event, from_client),
-                                          daemon=True)
-                thread.start()
+                # run handler
+                if asyncio.iscoroutinefunction(handler):
+                    asyncio.run_coroutine_threadsafe(handler(event, from_client), self._loop)
+                else:
+                    handler(event, from_client)
 
 
 __all__ = ['XmppComm']

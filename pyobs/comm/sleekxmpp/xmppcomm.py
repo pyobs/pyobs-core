@@ -38,7 +38,7 @@ class XmppComm(Comm):
     like this::
 
         comm:
-            class: pyobs.xmpp.XmppComm
+            class: pyobs.sleekxmpp.XmppComm
             jid:  someuser@example.com/pyobs
 
     Using this, *pyobs* tries to connect to example.com as user ``someuser`` with resource ``pyobs``. Since ``pyobs``
@@ -55,7 +55,7 @@ class XmppComm(Comm):
     in the same directory as the module config::
 
         comm_cfg: &comm
-            class: pyobs.comm.xmpp.XmppComm
+            class: pyobs.comm.sleekxmpp.XmppComm
             domain: example.com
 
     Now in the module configuration, one can simply do this::
@@ -80,7 +80,7 @@ class XmppComm(Comm):
     parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
 
     """
-    __module__ = 'pyobs.comm.xmpp'
+    __module__ = 'pyobs.comm.sleekxmpp'
 
     def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
                  resource: str = 'pyobs', password: str = '', server: Optional[str] = None,
@@ -194,7 +194,7 @@ class XmppComm(Comm):
         # close parent class
         Comm.close(self)
 
-        # disconnect from xmpp server
+        # disconnect from sleekxmpp server
         self._xmpp.disconnect()
 
     @property
@@ -441,7 +441,7 @@ class XmppComm(Comm):
         body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
 
         # do we have a <delay> element?
-        delay = msg.findall('{urn:xmpp:delay}delay')
+        delay = msg.findall('{urn:sleekxmpp:delay}delay')
         if len(delay) > 0:
             # ignore this message
             return

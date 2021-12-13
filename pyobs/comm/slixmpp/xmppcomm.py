@@ -116,6 +116,8 @@ class XmppComm(Comm):
         self._server = server
         self._use_tls = use_tls
         self._loop = asyncio.get_event_loop()
+        self._safe_send_attempts = 5
+        self._safe_send_wait = 1
 
         # build jid
         if jid:
@@ -270,7 +272,7 @@ class XmppComm(Comm):
 
         # request features
         try:
-            info = await self._xmpp['xep_0030'].get_info(jid=jid, cached=False)
+            info = await self._safe_send(self._xmpp['xep_0030'].get_info, jid=jid, cached=False)
         except slixmpp.exceptions.IqError:
             raise IndexError()
 
@@ -320,7 +322,8 @@ class XmppComm(Comm):
         """
         if self._rpc is None:
             raise ValueError('No RPC.')
-        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
+        jid = self._get_full_client_name(client)
+        return self._rpc.call(jid, method, signature, *args)
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
@@ -398,8 +401,8 @@ class XmppComm(Comm):
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
 
         # send it
-        await self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__,
-                                             callback=functools.partial(self._send_event_callback, event=event))
+        await self._safe_send(self._xmpp['xep_0163'].publish, stanza, node='pyobs:event:%s' % event.__class__.__name__,
+                              callback=functools.partial(self._send_event_callback, event=event))
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
@@ -469,7 +472,7 @@ class XmppComm(Comm):
                 self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % ev.__name__)
 
         # update caps and send presence
-        await self._xmpp['xep_0115'].update_caps()
+        await self._safe_send(self._xmpp['xep_0115'].update_caps)
         self._xmpp.send_presence()
 
     async def _handle_event(self, msg: Any) -> None:
@@ -520,6 +523,31 @@ class XmppComm(Comm):
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
+
+    async def _safe_send(self, method: Callable[[...], Coroutine], *args: Any, **kwargs: Any):
+        """Safely send an XMPP message.
+
+        Args:
+            method: Method to call.
+            *args: Parameters for method.
+            **kwargs: Parameters for method.
+
+        Returns:
+            Return value from method.
+        """
+
+        # try multiple times
+        for i in range(self._safe_send_attempts):
+            try:
+                # execute method and return result
+                return await method(*args, **kwargs)
+
+            except slixmpp.exceptions.IqTimeout:
+                # timeout occurred, try again after some wait
+                await asyncio.sleep(self._safe_send_wait)
+
+        # never should reach this
+        raise slixmpp.exceptions.IqTimeout
 
 
 __all__ = ['XmppComm']

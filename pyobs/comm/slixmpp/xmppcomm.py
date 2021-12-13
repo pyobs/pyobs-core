@@ -6,13 +6,12 @@ import inspect
 import json
 import logging
 import re
-import ssl
-import threading
 import time
 from collections import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
 
 import slixmpp
+import slixmpp.exceptions
 from slixmpp import ElementBase
 from slixmpp.xmlstream import ET
 import xml.sax.saxutils
@@ -178,8 +177,7 @@ class XmppComm(Comm):
 
         # prepare session start callback
         connected_event = asyncio.Event()
-        callback = lambda _: connected_event.set()
-        self._xmpp.add_event_handler('session_start', callback)
+        self._xmpp.add_event_handler('session_start', lambda _: connected_event.set())
 
         # connect
         self._xmpp.connect(address=server, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
@@ -251,11 +249,41 @@ class XmppComm(Comm):
         # does it exist?
         if client not in self._interface_cache:
             # get it
-            interface_names = await self._xmpp.get_interfaces(client)
+            interface_names = await self._get_interfaces(client)
             self._interface_cache[client] = self._interface_names_to_classes(interface_names)
 
         # convert to classes
         return self._interface_cache[client]
+
+    async def _get_interfaces(self, jid: str) -> List[str]:
+        """Return list of interfaces for the given JID.
+
+        Args:
+            jid: JID to get interfaces for.
+
+        Returns:
+            List of interface names
+
+        Raises:
+            IndexError: If client cannot be found.
+        """
+
+        # request features
+        try:
+            info = await self._xmpp['xep_0030'].get_info(jid=jid, cached=False)
+        except slixmpp.exceptions.IqError:
+            raise IndexError()
+
+        # extract pyobs interfaces
+        if info is None:
+            return []
+        try:
+            if isinstance(info, slixmpp.stanza.iq.Iq):
+                info = info['disco_info']
+            prefix = 'pyobs:interface:'
+            return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
+        except TypeError:
+            raise IndexError()
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.

@@ -54,36 +54,6 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         self.add_event_handler('auth_success', lambda ev: self._auth(True))
         self.add_event_handler('failed_auth', lambda ev: self._auth(False))
 
-    async def get_interfaces(self, jid: str) -> List[str]:
-        """Return list of interfaces for the given JID.
-
-        Args:
-            jid: JID to get interfaces for.
-
-        Returns:
-            List of interface names
-
-        Raises:
-            IndexError: If client cannot be found.
-        """
-
-        # request features
-        try:
-            info = await self['xep_0030'].get_info(jid=jid, cached=False)
-        except slixmpp.exceptions.IqError:
-            raise IndexError()
-
-        # extract pyobs interfaces
-        if info is None:
-            return []
-        try:
-            if isinstance(info, slixmpp.stanza.iq.Iq):
-                info = info['disco_info']
-            prefix = 'pyobs:interface:'
-            return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
-        except TypeError:
-            raise IndexError()
-
     def wait_connect(self) -> bool:
         """Wait for client to connect.
 

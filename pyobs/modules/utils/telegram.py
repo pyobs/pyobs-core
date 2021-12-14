@@ -1,7 +1,8 @@
+import asyncio
 import io
 import logging
-import multiprocessing
 from enum import Enum
+from functools import partial
 from inspect import Parameter
 from pprint import pprint
 from threading import Thread
@@ -46,19 +47,21 @@ class Telegram(Module):
         self._password = password
         self._allow_new_users = allow_new_users
         self._updater: Optional[Updater] = None
-        self._message_queue = multiprocessing.Queue()  # type: ignore
+        self._message_queue = asyncio.Queue()
+        self._loop = None
 
         # get log levels
         self._log_levels = {logging.getLevelName(x): x for x in range(1, 101)
                             if not logging.getLevelName(x).startswith('Level')}
 
         # thread
-        self.add_thread_func(self._log_sender_thread)
+        self.add_background_task(self._log_sender_thread)
 
     async def open(self) -> None:
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
         await Module.open(self)
+        self._loop = asyncio.get_running_loop()
 
         # get dispatcher
         self._updater = Updater(token=self._token)
@@ -79,7 +82,7 @@ class Telegram(Module):
 
         # load storage file
         try:
-            dispatcher.bot_data['storage'] = self.vfs.read_yaml('/pyobs/telegram.yaml')
+            dispatcher.bot_data['storage'] = await self.vfs.read_yaml('/pyobs/telegram.yaml')
         except FileNotFoundError:
             dispatcher.bot_data['storage'] = {}
 
@@ -97,13 +100,13 @@ class Telegram(Module):
         if self._updater is not None:
             self._updater.stop()
 
-    def _save_storage(self, context: CallbackContext) -> None:
+    async def _save_storage(self, context: CallbackContext) -> None:
         """Save storage file.
 
         Args:
             context: Telegram context.
         """
-        self.vfs.write_yaml(context.bot_data['storage'], '/pyobs/telegram.yaml')
+        await self.vfs.write_yaml(context.bot_data['storage'], '/pyobs/telegram.yaml')
 
     @staticmethod
     def _is_user_authorized(context: CallbackContext, user_id: int) -> bool:
@@ -136,7 +139,7 @@ class Telegram(Module):
             'name': name,
             'loglevel': None
         }
-        self._save_storage(context)
+        asyncio.run_coroutine_threadsafe(self._save_storage(context), self._loop)
 
     def _command_start(self, update: Update, context: CallbackContext) -> None:
         """Handle /start command.
@@ -210,7 +213,15 @@ class Telegram(Module):
             update: Message to process.
             context: Telegram context.
         """
+        asyncio.run_coroutine_threadsafe(self._handle_buttons_async(update, context), self._loop)
 
+    async def _handle_buttons_async(self, update: Update, context: CallbackContext) -> None:
+        """Handle click on buttons.
+
+        Args:
+            update: Message to process.
+            context: Telegram context.
+        """
         if context.user_data is None:
             raise ValueError('No user data in context.')
 
@@ -237,7 +248,7 @@ class Telegram(Module):
         # what state are we in?
         if context.user_data['state'] == TelegramUserState.EXEC_MODULE:
             # get proxy for selected module
-            proxy = self.proxy(query.data)
+            proxy = await self.proxy(query.data)
 
             # show buttons for all modules
             keyboard = [[InlineKeyboardButton(m, callback_data='%s.%s' % (query.data, m))]
@@ -273,13 +284,22 @@ class Telegram(Module):
             # set log level
             s = context.bot_data['storage']
             s['users'][query.from_user.id]['loglevel'] = query.data
-            self._save_storage(context)
+            await self._save_storage(context)
 
             # change to IDLE state
             query.edit_message_text(text='Changed log level to %s.' % query.data)
             context.user_data['state'] = TelegramUserState.IDLE
 
     def _handle_params(self, update: Update, context: CallbackContext) -> None:
+        """Handle input of params when in EXEC_PARAMS state.
+
+        Args:
+            update: Message to process.
+            context: Telegram context.
+        """
+        asyncio.run_coroutine_threadsafe(self._handle_params_async(update, context), self._loop)
+
+    async def _handle_params_async(self, update: Update, context: CallbackContext) -> None:
         """Handle input of params when in EXEC_PARAMS state.
 
         Args:
@@ -296,7 +316,7 @@ class Telegram(Module):
 
         # get proxy and method signature
         module, method = context.user_data['method'].split('.')
-        proxy = self.proxy(module)
+        proxy = await self.proxy(module)
         signature = proxy.signature(method)
 
         # get list of parameters
@@ -337,9 +357,8 @@ class Telegram(Module):
             context.bot.send_message(chat_id=update.effective_chat.id, text='Executing #%d:\n%s' % (call_id, command))
 
             # start call
-            Thread(target=self._call_method, args=(context, update.effective_chat.id, call_id,
-                                                   context.user_data['method'],
-                                                   context.user_data['params'])).run()
+            asyncio.create_task(self._call_method(context, update.effective_chat.id, call_id,
+                                                  context.user_data['method'], context.user_data['params']))
 
             # reset
             self._reset_state(context)
@@ -359,8 +378,8 @@ class Telegram(Module):
             # send it
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
-    def _call_method(self, context: CallbackContext, chat_id: int, call_id: int, method: str,
-                     params: List[Any]) -> None:
+    async def _call_method(self, context: CallbackContext, chat_id: int, call_id: int, method: str,
+                           params: List[Any]) -> None:
         """
 
         Args:
@@ -372,11 +391,11 @@ class Telegram(Module):
         """
         # get proxy
         module, method_name = method.split('.')
-        proxy = self.proxy(module)
+        proxy = await self.proxy(module)
 
         # call it
         func = getattr(proxy, method_name)
-        response = func(*params).wait()
+        response = await func(*params)
 
         # set message
         if response is None:
@@ -493,28 +512,29 @@ class Telegram(Module):
             # is it larger than the log entry level?
             if level >= user_level:
                 # queue message
-                self._message_queue.put((user_id, message))
+                self._message_queue.put_nowait((user_id, message))
 
         return True
 
-    def _log_sender_thread(self) -> None:
+    async def _log_sender_thread(self) -> None:
         """Thread for sending messages."""
-        
-        while not self.closing.is_set():
-            # send all messages in queue
-            while not self._message_queue.empty():
-                # get next entry
-                user_id, message = self._message_queue.get()
 
-                # send message
-                try:
-                    if self._updater is None:
-                        raise ValueError('No update initialised.')
-                    self._updater.bot.send_message(chat_id=user_id, text=message)
-                except Exception:
-                    # something went wrong, sleep a little and queue message again
-                    self.closing.wait(10)
-                    self._message_queue.put((user_id, message))
+        loop = asyncio.get_running_loop()
+        while not self.closing.is_set():
+            # get next entry
+            user_id, message = await self._message_queue.get()
+
+            # send message
+            try:
+                if self._updater is None:
+                    raise ValueError('No update initialised.')
+                await loop.run_in_executor(None, partial(self._updater.bot.send_message,
+                                                         chat_id=user_id, text=message))
+
+            except Exception:
+                # something went wrong, sleep a little and queue message again
+                await asyncio.sleep(10)
+                await self._message_queue.put((user_id, message))
 
 
 __all__ = ['Telegram']

@@ -44,10 +44,10 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         self.register_plugin('xep_0060')  # PubSub
         self.register_plugin('xep_0115')  # Entity Capabilities
         self.register_plugin('xep_0163')  # Personal Eventing Protocol
-        #self.register_plugin('xep_0199')  # XMPP Ping
+        self.register_plugin('xep_0199')  # XMPP Ping
 
         # enable keep alive pings
-        #self['xep_0199'].enable_keepalive(300, 30)
+        self['xep_0199'].enable_keepalive()
 
         # handle session_start and message events
         self.add_event_handler("session_start", self.session_start)

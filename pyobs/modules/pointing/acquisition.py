@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Tuple, Dict, Any, Optional
 import astropy.units as u
@@ -120,7 +121,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # get offset
             log.info('Analysing image...')
-            image = self.run_pipeline(image)
+            loop = asyncio.get_running_loop()
+            image = await loop.run_in_executor(None, self.run_pipeline, image)
 
             # calculate distance from offset
             osd = image.get_meta(OnSkyDistance)

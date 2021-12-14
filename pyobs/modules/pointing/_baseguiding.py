@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
 from astropy.coordinates import SkyCoord
@@ -94,7 +95,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         self.reset_pipeline()
         if image is not None:
             # if image is given, process it
-            self.run_pipeline(image)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.run_pipeline, image)
 
     async def _process_image(self, image: Image) -> Optional[Image]:
         """Processes a single image and offsets telescope.
@@ -165,7 +167,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         self._last_header = image.header
 
         # get offset
-        image = self.run_pipeline(image)
+        loop = asyncio.get_running_loop()
+        image = await loop.run_in_executor(None, self.run_pipeline, image)
 
         # get telescope
         try:

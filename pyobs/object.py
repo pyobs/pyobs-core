@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import datetime
+import inspect
 import threading
 import time
 from collections import Coroutine
@@ -35,16 +36,17 @@ ProxyType = TypeVar('ProxyType')
 
 
 @overload
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass], **kwargs: Any) \
-        -> ObjectClass: ...
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+               object_class: Type[ObjectClass], **kwargs: Any) -> ObjectClass: ...
 
 
 @overload
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: None, **kwargs: Any) -> Any: ...
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any], object_class: None,
+               **kwargs: Any) -> Any: ...
 
 
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
-               **kwargs: Any) -> Union[ObjectClass, Any]:
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+               object_class: Optional[Type[ObjectClass]] = None, **kwargs: Any) -> Union[ObjectClass, Any]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -70,6 +72,10 @@ def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optio
 
         # a dict is given, so create object
         obj = create_object(config_or_object)
+
+    elif inspect.isclass(config_or_object):
+        # config_or_object is a type, so create it using its constructor
+        obj = config_or_object(**kwargs)
 
     else:
         # just use given object
@@ -324,15 +330,16 @@ class Object:
         return True
 
     @overload
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
-                   copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
-                   **kwargs: Any) -> Any: ...
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: None, copy_comm: bool = True, **kwargs: Any) -> Any: ...
 
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
-                   copy_comm: bool = True, **kwargs: Any) -> Union[ObjectClass, Any]:
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
+                   **kwargs: Any) -> Union[ObjectClass, Any]:
         """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
@@ -362,14 +369,15 @@ class Object:
         return get_object(config_or_object, object_class, **params)
 
     @overload
-    def get_safe_object(self, config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
-                        copy_comm: bool = True, **kwargs: Any) -> Optional[ObjectClass]: ...
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                        object_class: Type[ObjectClass], copy_comm: bool = True,
+                        **kwargs: Any) -> Optional[ObjectClass]: ...
 
     @overload
-    def get_safe_object(self, config_or_object: Union[ObjectClass, Any], object_class: None,
-                        copy_comm: bool = True, **kwargs: Any) -> Optional[Any]: ...
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                        object_class: None, copy_comm: bool = True, **kwargs: Any) -> Optional[Any]: ...
 
-    def get_safe_object(self, config_or_object: Union[Dict[str, Any], Any],
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                         object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
                         **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
         """Calls get_object in a safe way and returns None, if an exceptions thrown."""
@@ -380,14 +388,14 @@ class Object:
             return None
 
     @overload
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
-                         copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                         object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
-                         **kwargs: Any) -> Any: ...
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                         object_class: None, copy_comm: bool = True, **kwargs: Any) -> Any: ...
 
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any],
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                          object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
                          **kwargs: Any) -> Union[ObjectClass, Any]:
         """Create a new sub-module, which will automatically be opened and closed.

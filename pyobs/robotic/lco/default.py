@@ -64,12 +64,12 @@ class LcoDefaultScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof = self.comm.safe_proxy(self.roof, IRoof)
-        telescope = self.comm.safe_proxy(self.telescope, ITelescope)
-        camera = self.comm.safe_proxy(self.camera, ICamera)
-        filters = self.comm.safe_proxy(self.filters, IFilters)
-        autoguider = self.comm.safe_proxy(self.autoguider, IAutoGuiding)
-        acquisition = self.comm.safe_proxy(self.acquisition, IAcquisition)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        camera = await self.comm.safe_proxy(self.camera, ICamera)
+        filters = await self.comm.safe_proxy(self.filters, IFilters)
+        autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
         return roof, telescope, camera, filters, autoguider, acquisition
 
     async def can_run(self) -> bool:

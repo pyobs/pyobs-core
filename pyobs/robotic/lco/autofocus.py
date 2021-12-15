@@ -1,5 +1,4 @@
 import logging
-import threading
 from typing import Union, Tuple, Optional, Any
 
 from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus

@@ -257,7 +257,6 @@ class LcoTaskArchive(TaskArchive):
 
         Args:
             task: Task to run
-            abort_event: Abort event
 
         Returns:
             Success or not

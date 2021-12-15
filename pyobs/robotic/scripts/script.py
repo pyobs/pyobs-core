@@ -1,5 +1,4 @@
 import logging
-import threading
 from typing import Any, TypeVar, Optional, List, Dict
 from astroplan import Observer
 

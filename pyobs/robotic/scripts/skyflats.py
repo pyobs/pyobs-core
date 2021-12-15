@@ -1,5 +1,4 @@
 import logging
-import asyncio
 import typing
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
@@ -79,9 +78,6 @@ class SkyFlats(Script):
 
     async def run(self):
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted

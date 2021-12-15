@@ -192,12 +192,8 @@ class LcoTask(Task):
         # no config found that could run
         return False
 
-    async def run(self, abort_event: Event) -> None:
-        """Run a task
-
-        Args:
-            abort_event: Event to be triggered to abort task.
-        """
+    async def run(self) -> None:
+        """Run a task"""
         from pyobs.robotic.lco import LcoTaskArchive
 
         # get request
@@ -206,10 +202,6 @@ class LcoTask(Task):
         # loop configurations
         status: Optional[ConfigStatus]
         for config in req['configurations']:
-            # aborted?
-            if abort_event.is_set():
-                break
-
             # send an ATTEMPTED status
             if isinstance(self.task_archive, LcoTaskArchive):
                 status = ConfigStatus()
@@ -227,7 +219,7 @@ class LcoTask(Task):
             # run config
             log.info('Running config...')
             self.cur_script = script
-            status = await self._run_script(abort_event, script)
+            status = await self._run_script(script)
             self.cur_script = None
 
             # send status
@@ -238,11 +230,10 @@ class LcoTask(Task):
         # finished task
         log.info('Finished task.')
 
-    async def _run_script(self, abort_event: Event, script: Script) -> Union[ConfigStatus, None]:
+    async def _run_script(self, script: Script) -> Union[ConfigStatus, None]:
         """Run a config
 
         Args:
-            abort_event: Event for signaling abort
             script: Script to run
 
         Returns:
@@ -253,12 +244,9 @@ class LcoTask(Task):
         config_status = ConfigStatus()
 
         try:
-            # check first
-            self._check_abort(abort_event)
-
             # run it
             log.info('Running task %d: %s...', self.id, self.config['name'])
-            await script.run(abort_event)
+            await script.run()
 
             # finished config
             config_status.finish(state='COMPLETED', time_completed=script.exptime_done)

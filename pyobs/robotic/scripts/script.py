@@ -30,29 +30,13 @@ class Script:
         """Whether this config can currently run."""
         raise NotImplementedError
 
-    async def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
         """
         raise NotImplementedError
-
-    def _check_abort(self, abort_event: threading.Event) -> None:
-        """Check, whether we can continue with script.
-
-        Args:
-            abort_event: Event to abort run.
-
-        Raises:
-            InterruptedError: If interrupted
-        """
-
-        if abort_event.is_set() or not self.can_run():
-            raise InterruptedError
 
     def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Any]:
         """Returns FITS header for the current status of this module.

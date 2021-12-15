@@ -58,11 +58,8 @@ class LcoScript(Script):
         # if any runner can run, we proceed
         return await runner.can_run()
 
-    async def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
@@ -72,7 +69,7 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # run it
-        await runner.run(abort_event=abort_event)
+        await runner.run()
 
 
 __all__ = ['LcoScript']

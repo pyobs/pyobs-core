@@ -57,12 +57,8 @@ class Task:
         """
         raise NotImplementedError
 
-    async def run(self, abort_event: Event) -> None:
-        """Run a task
-
-        Args:
-            abort_event: Event to be triggered to abort task.
-        """
+    async def run(self) -> None:
+        """Run a task"""
         raise NotImplementedError
 
     def is_finished(self) -> bool:

@@ -95,11 +95,8 @@ class LcoAutoFocusScript(Script):
         # seems alright
         return True
 
-    async def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted

@@ -1,6 +1,4 @@
-import threading
 from typing import Dict, Optional, Any, Type, List
-
 from astroplan import Observer, ObservingBlock
 
 from pyobs.comm import Comm
@@ -78,12 +76,11 @@ class TaskArchive(object):
         """
         raise NotImplementedError
 
-    async def run_task(self, task: Task, abort_event: threading.Event) -> bool:
+    async def run_task(self, task: Task) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
-            abort_event: Abort event
 
         Returns:
             Success or not

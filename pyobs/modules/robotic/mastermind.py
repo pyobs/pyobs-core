@@ -134,33 +134,14 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             eta = now + self._task.duration * u.second
 
             # send event
-            self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
             # run task in thread
             log.info('Running task %s...', self._task.name)
-            abort_event = threading.Event()
-            task_thread = threading.Thread(target=self._task_archive.run_task, args=(self._task, abort_event))
-            task_thread.start()
-
-            # wait for it
-            while True:
-                # not alive anymore?
-                if not task_thread.is_alive():
-                    # finished
-                    break
-
-                # closing?
-                if self.closing.is_set() or Time.now() > task.end + self._allowed_overrun * u.second:
-                    # set event and wait for thread
-                    abort_event.set()
-                    task_thread.join()
-                    break
-
-                # just sleep a little and wait
-                await asyncio.sleep(10)
+            await self._task_archive.run_task(self._task)
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
 
             # finish
             log.info('Finished task %s.', self._task.name)

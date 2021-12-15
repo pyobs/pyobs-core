@@ -77,7 +77,7 @@ class SkyFlats(Script):
         # seems alright
         return True
 
-    async def run(self, abort_event: asyncio.Event):
+    async def run(self):
         """Run script.
 
         Args:
@@ -105,8 +105,6 @@ class SkyFlats(Script):
         # do flat fields
         item: SchedulerItem
         for item in self._scheduler:
-            self._check_abort(abort_event)
-
             # do flat fields
             log.info('Performing flat-fields in %s %dx%d...', item.filter_name, *item.binning)
             if isinstance(flatfield, IBinning):

@@ -117,11 +117,8 @@ class LcoDefaultScript(Script):
         # seems alright
         return True
 
-    async def run(self, abort_event: asyncio.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
@@ -189,8 +186,6 @@ class LcoDefaultScript(Script):
 
             # loop instrument configs
             for ic in self.configuration['instrument_configs']:
-                self._check_abort(abort_event)
-
                 # get readout mode
                 for readout_mode in instrument['modes']['readout']['modes']:
                     if readout_mode['code'] == ic['mode']:
@@ -221,8 +216,6 @@ class LcoDefaultScript(Script):
 
                 # loop images
                 for exp in range(ic['exposure_count']):
-                    self._check_abort(abort_event)
-
                     # do exposures
                     if isinstance(camera, IExposureTime):
                         log.info('Exposing %s image %d/%d for %.2fs...',
@@ -260,10 +253,9 @@ class LcoDefaultScript(Script):
             await autoguider.stop()
 
         # finally, stop telescope
-        if not abort_event.is_set():
-            if self.image_type == ImageType.OBJECT:
-                log.info('Stopping telescope...')
-                await cast(ITelescope, telescope).stop_motion()
+        if self.image_type == ImageType.OBJECT:
+            log.info('Stopping telescope...')
+            await cast(ITelescope, telescope).stop_motion()
 
     def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Any]:
         """Returns FITS header for the current status of this module.

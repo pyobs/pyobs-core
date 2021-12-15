@@ -1,5 +1,4 @@
 import logging
-import asyncio
 import time
 import numpy as np
 from typing import Union, Optional, Any, Tuple, cast, Dict, List
@@ -54,8 +53,8 @@ class LcoDefaultScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> Tuple[Optional[IRoof], Optional[ITelescope], Optional[ICamera],
-                                    Optional[IFilters], Optional[IAutoGuiding], Optional[IAcquisition]]:
+    async def _get_proxies(self) -> Tuple[Optional[IRoof], Optional[ITelescope], Optional[ICamera],
+                                          Optional[IFilters], Optional[IAutoGuiding], Optional[IAcquisition]]:
         """Get proxies for running the task
 
         Returns:
@@ -80,7 +79,7 @@ class LcoDefaultScript(Script):
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # need camera
         if camera is None:
@@ -125,7 +124,7 @@ class LcoDefaultScript(Script):
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # got a target?
         target = self.configuration['target']

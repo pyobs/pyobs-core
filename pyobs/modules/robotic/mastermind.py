@@ -62,14 +62,14 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._running = True
 
         # open scheduler
-        self._task_archive.open()
+        await self._task_archive.open()
 
     async def close(self):
         """Close module."""
         await Module.close(self)
 
         # close scheduler
-        self._task_archive.close()
+        await self._task_archive.close()
 
     async def start(self, **kwargs: Any):
         """Starts a service."""

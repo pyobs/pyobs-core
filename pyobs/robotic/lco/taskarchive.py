@@ -170,6 +170,8 @@ class LcoTaskArchive(TaskArchive):
         # any changes?
         if sorted(tasks) != sorted(self._tasks):
             log.info('Task list changed, found %d task(s) to run.', len(tasks))
+            for task_id, task in tasks.items():
+                log.info(f'  - {task.start} to {task.end}: {task.name} (#{task_id})')
 
         # update
         self._tasks = cast(Dict[str, LcoTask], tasks)
@@ -211,7 +213,7 @@ class LcoTaskArchive(TaskArchive):
 
         # do request
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self._header, json=params, timeout=10) as response:
+            async with session.get(url, headers=self._header, params=params, timeout=10) as response:
                 if response.status != 200:
                     raise RuntimeError('Invalid response from portal.')
                 data = await response.json()

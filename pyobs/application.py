@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import platform
 import signal
 import warnings
 import threading
@@ -20,8 +21,7 @@ log = logging.getLogger(__name__)
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
-    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = 'info', log_rotate: bool = False,
-                 **kwargs: Any):
+    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = 'info', **kwargs: Any):
         """Initializes a pyobs application.
 
         Args:
@@ -45,13 +45,11 @@ class Application:
 
         # create file logging handler, if log file is given
         if log_file is not None:
-            file_handler: logging.FileHandler
-            if log_rotate:
-                # create automatically rotated log
-                file_handler = TimedRotatingFileHandler(log_file, when='W0')
+            # in Windows, append a FileHandler, otherwise we use a WatchedFileHandler, which works well with logrotate
+            if platform.system() == 'Windows':
+                file_handler = logging.FileHandler(log_file)
             else:
-                # create simple file log
-                file_handler = logging.FileHandler(log_file, mode='a')
+                file_handler = logging.handlers.WatchedFileHandler(log_file)
 
             # add log file handler
             file_handler.setFormatter(formatter)

@@ -16,8 +16,6 @@ def init_cli():
                         default=os.environ.get('PYOBS_LOG_LEVEL', 'info'))
     parser.add_argument('-l', '--log-file', type=str, help='file to write log into',
                         default=os.environ.get('PYOBS_LOG_FILE'))
-    parser.add_argument('--log-rotate', action='store_true', help='rotate logs automatically',
-                        default=os.environ.get('PYOBS_LOG_ROTATE') in ['yes', 'true'])
 
     # debug stuff
     parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',

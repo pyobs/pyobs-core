@@ -212,7 +212,7 @@ class LcoTask(Task):
             script = self._get_config_script(config)
 
             # can run?
-            if not script.can_run():
+            if not await script.can_run():
                 log.warning('Cannot run config.')
                 continue
 

@@ -1,11 +1,9 @@
 import asyncio
 import io
 import logging
-from typing import Union, Any, cast, Optional
-import tornado.ioloop
-import tornado.web
-import tornado.gen
+from typing import Union, Any, Optional
 import numpy as np
+from aiohttp import web
 
 from pyobs.interfaces import ICamera, IExposureTime, IWindow
 from pyobs.modules import Module
@@ -14,41 +12,7 @@ from pyobs.interfaces import IStartStop
 log = logging.getLogger(__name__)
 
 
-class MainHandler(tornado.web.RequestHandler):
-    """The request handler for the HTTP filecache."""
-
-    def initialize(self) -> None:
-        """Initializes the handler (instead of in the constructor)"""
-
-        # create empty image
-        from PIL import Image, ImageDraw
-        img = Image.new('RGB', (300, 300), color=(0, 0, 0))
-        d = ImageDraw.Draw(img)
-        d.text((110, 150), "No image taken yet", fill=(255, 255, 255))
-
-        # create image from data array
-        with io.BytesIO() as bio:
-            img.save(bio, format='jpeg')
-            self._empty = bio.getvalue()
-
-    async def get(self) -> Any:
-        """Handle download request."""
-
-        # get image
-        app = cast(Kiosk, self.application)
-        image = app.image()
-
-        # none?
-        if image is None:
-            image = self._empty
-
-        # set headers and send data
-        self.set_header('content-type', 'image/jpeg')
-        self.write(image)
-        await self.finish()
-
-
-class Kiosk(Module, tornado.web.Application, IStartStop):
+class Kiosk(Module, IStartStop):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
     __module__ = 'pyobs.modules.utils'
 
@@ -64,13 +28,7 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         # add thread funcs
         self.add_background_task(self._camera_thread)
 
-        # init tornado web server
-        tornado.web.Application.__init__(self, [
-            (r"/image.jpg", MainHandler),
-        ])
-
         # store stuff
-        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._is_listening = False
         self._camera = camera
         self._port = port
@@ -78,29 +36,71 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
         self._running = False
         self._image: Optional[bytes] = None
 
+        # create empty image
+        from PIL import Image, ImageDraw
+        img = Image.new('RGB', (300, 300), color=(0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.text((110, 150), "No image taken yet", fill=(255, 255, 255))
+
+        # create image from data array
+        with io.BytesIO() as bio:
+            img.save(bio, format='jpeg')
+            self._empty = bio.getvalue()
+
+        # define web server
+        self._app = web.Application()
+        self._app.add_routes([web.get('/image.jpg', self.image_handler)])
+        self._runner = web.AppRunner(self._app)
+        self._site: Optional[web.TCPSite] = None
+
     async def open(self) -> None:
-        """Open module."""
+        """Open server"""
         await Module.open(self)
 
         # start listening
-        log.info('Starting HTTP file cache on port %d...', self._port)
-        self.listen(self._port)
+        log.info('Starting HTTP server on port %d...', self._port)
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        await self._site.start()
         self._is_listening = True
+
+    async def close(self) -> None:
+        """Close server"""
+        await Module.close(self)
+
+        # stop server
+        await self._runner.cleanup()
+
+    async def image_handler(self, request: web.Request) -> web.Response:
+        """Handles access to /* and returns a specified image.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing image.
+        """
+
+        # get image
+        image = self._empty if self._image is None else self._image
+
+        # send it
+        return web.Response(body=image, content_type='image/fits')
 
     @property
     def opened(self) -> bool:
         """Whether the server is started."""
         return self._is_listening
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Start kiosk mode."""
         self._running = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stop kiosk mode."""
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether kiosk mode is running."""
         return self._running
 
@@ -153,10 +153,6 @@ class Kiosk(Module, tornado.web.Application, IStartStop):
 
                 # cut
                 self._exp_time = max(self._exp_time, 30)
-
-    def image(self) -> Optional[bytes]:
-        """Return image data."""
-        return self._image
 
 
 __all__ = ['Kiosk']

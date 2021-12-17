@@ -319,7 +319,6 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # set abort event
         log.info('Aborting current image and sequence...')
-        self._exposures_left = 0
         self.expose_abort.set()
 
         # do camera-specific abort

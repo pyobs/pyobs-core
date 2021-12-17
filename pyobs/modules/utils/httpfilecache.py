@@ -1,13 +1,6 @@
-import asyncio
 import logging
-import re
-import threading
-import uuid
-from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Any, Optional, cast
-import tornado.ioloop
-import tornado.web
-import tornado.gen
+from typing import Any, Optional
+from aiohttp import web
 
 from pyobs.modules import Module
 from pyobs.utils.cache import DataCache
@@ -15,73 +8,7 @@ from pyobs.utils.cache import DataCache
 log = logging.getLogger(__name__)
 
 
-class MainHandler(tornado.web.RequestHandler):
-    """The request handler for the HTTP filecache."""
-    __module__ = 'pyobs.modules.utils'
-
-    async def post(self, dummy: str) -> Any:
-        """Handle incoming file.
-
-        Args:
-            dummy: Name of incoming file.
-        """
-
-        # get app
-        app = cast(HttpFileCache, self.application)
-
-        # try to find a filename
-        filename = None
-
-        # do we have a filename in the URL?
-        if dummy is not None and len(dummy) > 0:
-            filename = dummy
-
-        # do we have a content-disposition?
-        elif 'Content-Disposition' in self.request.headers:
-            # extract it
-            m = re.search('filename="(.*)"', self.request.headers['Content-Disposition'])
-            if m:
-                filename = m.group(1)
-
-        # still nothing?
-        if filename is None:
-            log.info('Received un-named file.')
-            raise tornado.web.HTTPError(404)
-
-        else:
-            # store file and return filename
-            loop = asyncio.get_running_loop()
-            filename = await loop.run_in_executor(None, app.store, self.request.body, filename)
-            if filename is None:
-                raise tornado.web.HTTPError(404)
-            log.info('Stored file as %s with %d bytes.', filename, len(self.request.body))
-            await self.finish(bytes(filename, 'utf-8'))
-
-    async def get(self, filename: str) -> Any:
-        """Handle download request.
-
-        Args:
-            filename: Name of file to download.
-        """
-
-        # get app
-        app = cast(HttpFileCache, self.application)
-
-        # fetch data
-        loop = asyncio.get_running_loop()
-        data = await loop.run_in_executor(None, app.fetch, filename)
-        if data is None:
-            raise tornado.web.HTTPError(404)
-        log.info('Serving file %s...', filename)
-
-        # set headers and send data
-        self.set_header('content-type', 'application/octet-stream')
-        self.set_header('content-disposition', 'attachment; filename="%s"' % filename)
-        self.write(data)
-        await self.finish()
-
-
-class HttpFileCache(Module, tornado.web.Application):
+class HttpFileCache(Module):
     """A file cache based on a HTTP server."""
 
     def __init__(self, port: int = 37075, cache_size: int = 25, max_file_size: int = 100, **kwargs: Any):
@@ -94,66 +21,78 @@ class HttpFileCache(Module, tornado.web.Application):
         """
         Module.__init__(self, **kwargs)
 
-        # init tornado web server
-        tornado.web.Application.__init__(self, [
-            (r"/(.*)", MainHandler),
-        ])
-
         # store stuff
-        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._cache = DataCache(cache_size)
         self._is_listening = False
         self._port = port
         self._cache_size = cache_size
         self._max_file_size = max_file_size * 1024 * 1024
 
+        # define web server
+        self._app = web.Application()
+        self._app.add_routes([web.get('/{filename}', self.download_handler),
+                              web.post('/', self.upload_handler)])
+        self._runner = web.AppRunner(self._app)
+        self._site: Optional[web.TCPSite] = None
+
     async def open(self) -> None:
         """Open server"""
+        await Module.open(self)
 
         # start listening
         log.info('Starting HTTP file cache on port %d...', self._port)
-        self.listen(self._port, max_buffer_size=self._max_file_size, max_body_size=self._max_file_size)
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        await self._site.start()
         self._is_listening = True
+
+    async def close(self) -> None:
+        """Close server"""
+        await Module.close(self)
+
+        # stop server
+        await self._runner.cleanup()
 
     @property
     def opened(self) -> bool:
         """Whether the server is started."""
         return self._is_listening
 
-    def store(self, data: bytearray, filename: Optional[str] = None) -> str:
-        """Store an incoming file.
+    async def download_handler(self, request: web.Request) -> web.Response:
+        # get filename
+        filename = request.match_info['filename']
 
-        Args:
-            data: Data to store.
-            filename: Filename to store as.
+        # get data
+        if filename not in self._cache:
+            raise web.HTTPNotFound()
+        data = self._cache[filename]
 
-        Returns:
-            Filename in cache.
-        """
+        # send it
+        log.info(f'Serving file {filename}.')
+        return web.Response(body=data)
 
-        # no filename given?
+    async def upload_handler(self, request: web.Request) -> web.Response:
+        # read multipart data
+        reader = await request.multipart()
+        filename: Optional[str] = None
+        data: Optional[bytes] = None
+        async for field in reader:
+            # we expect a file called 'file'
+            if field.name == 'file':
+                filename = field.filename
+                data = await field.read()
+                break
+
+        # no filename
         if filename is None:
-            # create a unique filename
-            filename = str(uuid.uuid4())
+            raise web.HTTPNotFound()
 
         # store it
+        log.info(f'Storing file {filename}.')
         self._cache[filename] = data
 
-        # finally, filename
-        return filename
-
-    def fetch(self, filename: str) -> Union[None, bytearray]:
-        """Send a file to the requesting client.
-
-        Args:
-            filename: Name of file to send.
-
-        Returns:
-            Data of file.
-        """
-
-        # find file in cache and return it
-        return self._cache[filename] if filename in self._cache else None
+        # return filename
+        return web.Response(body=filename)
 
 
 __all__ = ['HttpFileCache']

@@ -132,7 +132,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                await set_focus(float(foc))
+                if self._offset:
+                    await focuser.set_focus_offset(float(foc))
+                else:
+                    await focuser.set_focus(float(foc))
+
             except RemoteException:
                 raise ValueError('Could not set new focus value.')
 
@@ -174,17 +178,17 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # reset to initial values
             if self._offset:
-                log.info('Resetting focus offset to initial guess of %.3f mm.', guess)
-                await focuser.set_focus_offset(focus[0])
+                log.info('Resetting focus offset to 0.', guess)
+                await focuser.set_focus_offset(0)
             else:
                 log.info('Resetting focus to initial guess of %.3f mm.', guess)
-                await focuser.set_focus(focus[0])
+                await focuser.set_focus(guess)
 
             # raise error
             raise ValueError('Could not find best focus.')
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
-        absolute = None
+        absolute: Optional[float] = None
 
         # log and set focus
         if self._offset:

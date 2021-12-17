@@ -6,7 +6,7 @@ import numpy as np
 from scipy import optimize, ndimage
 
 from pyobs.comm import RemoteException
-from pyobs.interfaces import IAutoFocus
+from pyobs.interfaces import IAutoFocus, IImageGrabber
 from pyobs.events import FocusFoundEvent
 from pyobs.interfaces import IExposureTime, IImageType, ICamera, IFocuser, IFilters
 from pyobs.modules import Module
@@ -34,6 +34,7 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # test import
         import lmfit
+        log.info(f'Found lmfit {lmfit.__version__}.')
 
         # store focuser and camera
         self._focuser = focuser
@@ -87,7 +88,7 @@ class AutoFocusProjection(Module, IAutoFocus):
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera = await self.proxy(self._camera, ICamera)
+        camera = await self.proxy(self._camera, IImageGrabber)
 
         # get filter wheel and current filter
         filter_name = 'unknown'
@@ -127,7 +128,11 @@ class AutoFocusProjection(Module, IAutoFocus):
             if self._abort.is_set():
                 raise InterruptedError()
             try:
-                await set_focus(float(foc))
+                if self._offset:
+                    await focuser.set_focus_offset(float(foc))
+                else:
+                    await focuser.set_focus(float(foc))
+
             except RemoteException:
                 raise ValueError('Could not set new focus value.')
 
@@ -171,11 +176,11 @@ class AutoFocusProjection(Module, IAutoFocus):
 
             # reset to initial values
             if self._offset:
-                log.info('Resetting focus offset to initial guess of %.3f mm.', guess)
-                await focuser.set_focus_offset(focus[0])
+                log.info('Resetting focus offset to 0.', guess)
+                await focuser.set_focus_offset(0.)
             else:
                 log.info('Resetting focus to initial guess of %.3f mm.', guess)
-                await focuser.set_focus(focus[0])
+                await focuser.set_focus(guess)
 
             # raise error
             raise ValueError('Could not find best focus.')

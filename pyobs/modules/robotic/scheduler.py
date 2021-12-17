@@ -4,8 +4,7 @@ import json
 import logging
 import multiprocessing as mp
 from typing import Union, List, Tuple, Any
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
-    PriorityScheduler
+from astroplan import AtNightConstraint, Transitioner, Schedule, TimeConstraint, ObservingBlock, PriorityScheduler
 from astropy.time import TimeDelta
 import astropy.units as u
 

@@ -179,7 +179,8 @@ class LcoTaskArchive(TaskArchive):
         # finished
         self._last_schedule_time = now
 
-    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) \
+            -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:
@@ -341,7 +342,7 @@ class LcoTaskArchive(TaskArchive):
         schedulable = await self._portal_get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'))
 
         # get proposal priorities
-        data =  await self._portal_get(urljoin(self._url, '/api/proposals/'))
+        data = await self._portal_get(urljoin(self._url, '/api/proposals/'))
         tac_priorities = {p['id']: p['tac_priority'] for p in data['results']}
 
         # loop all request groups
@@ -391,7 +392,7 @@ class LcoTaskArchive(TaskArchive):
                             constraints.append(AtNightConstraint.twilight_astronomical())
 
                     # priority is base_priority times duration in minutes
-                    #priority = base_priority * duration.value / 60.
+                    # priority = base_priority * duration.value / 60.
                     priority = base_priority
 
                     # create block

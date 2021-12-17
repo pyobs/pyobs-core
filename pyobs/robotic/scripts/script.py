@@ -1,8 +1,7 @@
 import logging
 from typing import Any, TypeVar, Optional, List, Dict
-from astroplan import Observer
 
-from pyobs.comm import Comm
+from pyobs.object import Object
 from pyobs.robotic import TaskArchive
 
 log = logging.getLogger(__name__)
@@ -11,19 +10,20 @@ log = logging.getLogger(__name__)
 ProxyClass = TypeVar('ProxyClass')
 
 
-class Script:
-    def __init__(self, configuration: Any, task_archive: TaskArchive, comm: Comm, observer: Observer, **kwargs: Any):
+class Script(Object):
+    def __init__(self, configuration: Any, task_archive: TaskArchive, **kwargs: Any):
         """Init Script.
 
         Args:
             comm: Comm object to use
             observer: Observer to use
         """
+        Object.__init__(self, **kwargs)
+
+        # store
         self.exptime_done: float = 0.
         self.configuration = configuration
         self.task_archive = task_archive
-        self.comm = comm
-        self.observer = observer
 
     async def can_run(self) -> bool:
         """Whether this config can currently run."""

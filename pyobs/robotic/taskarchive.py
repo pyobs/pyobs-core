@@ -1,19 +1,15 @@
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Optional, Any, Type, List
-from astroplan import Observer, ObservingBlock
+from astroplan import ObservingBlock
 
-from pyobs.comm import Comm
 from pyobs.utils.time import Time
-from pyobs.vfs import VirtualFileSystem
 from .task import Task
+from ..object import Object
 
 
-class TaskArchive(object, metaclass=ABCMeta):
-    def __init__(self, comm: Optional[Comm] = None, vfs: Optional[VirtualFileSystem] = None,
-                 observer: Optional[Observer] = None, **kwargs: Any):
-        self.comm = comm
-        self.vfs = vfs
-        self.observer = observer
+class TaskArchive(Object, metaclass=ABCMeta):
+    def __init__(self, **kwargs: Any):
+        Object.__init__(self, **kwargs)
 
     async def open(self) -> None:
         pass
@@ -22,7 +18,7 @@ class TaskArchive(object, metaclass=ABCMeta):
         pass
 
     def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
-        return klass(**kwargs, tasks=self, comm=self.comm, vfs=self.vfs, observer=self.observer)
+        return self.get_object(klass, tasks=self, **kwargs)
 
     @abstractmethod
     async def last_changed(self) -> Optional[Time]:
@@ -54,7 +50,8 @@ class TaskArchive(object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) \
+            -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:

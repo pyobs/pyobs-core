@@ -2,19 +2,16 @@ from abc import ABCMeta, abstractmethod
 from asyncio import Event
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
-from astroplan import Observer
-
-from pyobs.comm import Comm
+from pyobs.object import Object
 from pyobs.utils.time import Time
 if TYPE_CHECKING:
     from pyobs.robotic.taskarchive import TaskArchive
 
 
-class Task(metaclass=ABCMeta):
-    def __init__(self, tasks: 'TaskArchive', comm: Comm, observer: Observer, **kwargs: Any):
+class Task(Object, metaclass=ABCMeta):
+    def __init__(self, tasks: 'TaskArchive', **kwargs: Any):
+        Object.__init__(self, **kwargs)
         self.task_archive = tasks
-        self.comm = comm
-        self.observer = observer
 
     @property
     @abstractmethod
@@ -85,26 +82,6 @@ class Task(metaclass=ABCMeta):
             Dictionary containing FITS headers.
         """
         return {}
-
-    @staticmethod
-    def _check_abort(abort_event: Event, end: Time = None):
-        """Throws an exception, if abort_event is set or window has passed
-
-        Args:
-            abort_event: Event to check
-            end: End of observing window for task
-
-        Raises:
-            InterruptedError: if task should be aborted
-        """
-
-        # check abort event
-        if abort_event.is_set():
-            raise InterruptedError
-
-        # check time
-        if end is not None and end < Time.now():
-            raise InterruptedError
 
 
 __all__ = ['Task']

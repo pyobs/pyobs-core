@@ -41,8 +41,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self.add_background_task(self._run_thread, True)
 
         # get task archive
-        self._task_archive: TaskArchive = get_object(tasks, object_class=TaskArchive,
-                                                     comm=self.comm, vfs=self.vfs, observer=self.observer)
+        self._task_archive = self.add_child_object(tasks, TaskArchive)
 
         # observation name and exposure number
         self._task = None
@@ -60,16 +59,6 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # start
         self._running = True
-
-        # open scheduler
-        await self._task_archive.open()
-
-    async def close(self):
-        """Close module."""
-        await Module.close(self)
-
-        # close scheduler
-        await self._task_archive.close()
 
     async def start(self, **kwargs: Any):
         """Starts a service."""

@@ -1,4 +1,3 @@
-from threading import Event
 import logging
 from typing import Union, Dict, Tuple, Optional, List, Any
 

@@ -284,8 +284,8 @@ class FocusModel(Module, IFocusModel):
                 module_temps[cfg['module']] = await proxy.get_temperatures()
 
                 # log
-                vars = ', '.join(['%s=%.2f' % (k, v) for k, v in module_temps[cfg['module']].items()])
-                log.info('Received temperatures: %s', vars)
+                vals = ', '.join(['%s=%.2f' % (k, v) for k, v in module_temps[cfg['module']].items()])
+                log.info('Received temperatures: %s', vals)
 
             # store, what we need
             if cfg['sensor'] not in module_temps[cfg['module']]:
@@ -294,8 +294,8 @@ class FocusModel(Module, IFocusModel):
             variables[var] = module_temps[cfg['module']][cfg['sensor']]
 
         # log
-        vars = ', '.join(['%s=%.2f' % (k, v) for k, v in variables.items()])
-        log.info('Found values for model: %s', vars)
+        vals = ', '.join(['%s=%.2f' % (k, v) for k, v in variables.items()])
+        log.info('Found values for model: %s', vals)
         return variables
 
     async def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:

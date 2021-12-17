@@ -254,7 +254,8 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # return what we got
         return self._frame_num, None if self._last_image is None else self._last_image.jpeg
 
-    def create_jpeg(self, data: NDArray[Any]) -> bytes:
+    @staticmethod
+    def create_jpeg(data: NDArray[Any]) -> bytes:
         """Create a JPEG ge from a numpy array and return as bytes.
 
         Args:

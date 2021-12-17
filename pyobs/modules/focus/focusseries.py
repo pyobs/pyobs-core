@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Tuple, Dict, Any, Optional, cast
+from typing import Union, Tuple, Dict, Any, Optional
 import threading
 import numpy as np
 from numpy.typing import NDArray

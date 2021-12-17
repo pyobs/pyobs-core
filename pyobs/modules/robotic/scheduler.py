@@ -260,7 +260,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # remove currently running block and filter by start time
         blocks = []
-        for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, copied_blocks):
+        for b in filter(lambda x: x.configuration['request']['id'] != self._current_task_id, copied_blocks):
             time_constraint_found = False
             # loop all constraints
             for c in b.constraints:

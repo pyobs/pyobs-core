@@ -123,7 +123,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 if self._active:
                     # did it change to good or bad?
                     if is_good:
-                        log.info(('Weather is now good.'))
+                        log.info('Weather is now good.')
                         eta = Time.now() + self._system_init_time * u.second
                         await self.comm.send_event(GoodWeatherEvent(eta=eta))
                     else:

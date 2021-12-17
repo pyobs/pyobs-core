@@ -7,6 +7,7 @@ from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning, ITelescope, ICamera
 from pyobs.modules import Module
 from pyobs.modules import timeout
+from pyobs.utils.enums import MotionStatus
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats import FlatFielder
 
@@ -216,6 +217,21 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
     async def _abort_weather(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Abort on bad weather."""
         await self.abort()
+        return True
+
+    async def init(self, **kwargs: Any) -> None:
+        pass
+
+    async def park(self, **kwargs: Any) -> None:
+        pass
+
+    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+        return MotionStatus.IDLE
+
+    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+        pass
+
+    async def is_ready(self, **kwargs: Any) -> bool:
         return True
 
 

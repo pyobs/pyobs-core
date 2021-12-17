@@ -53,7 +53,6 @@ def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectC
         config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
             is given, a new object is created.
         object_class: Class to check object against.
-        allow_none: if True, a None value does not trigger an exception
 
     Returns:
         (New) object (created from config) that optionally passed class check.

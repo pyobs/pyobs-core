@@ -7,7 +7,7 @@ class Publisher(Object):
     def __init__(self, **kwargs: Any):
         Object.__init__(self, **kwargs)
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs: Any) -> None:
         """Publish the given results.
 
         Args:

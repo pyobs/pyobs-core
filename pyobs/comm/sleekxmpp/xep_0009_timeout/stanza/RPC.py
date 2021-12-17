@@ -5,7 +5,7 @@ class MethodTimeout(ElementBase):
     name = 'methodTimeout'
     namespace = 'jabber:iq:rpc'
     plugin_attrib = 'method_timeout'
-    interfaces = set(('timeout',))
+    interfaces = {'timeout'}
     subinterfaces = set(())
     plugin_attrib_map = {}
     plugin_tag_map = {}

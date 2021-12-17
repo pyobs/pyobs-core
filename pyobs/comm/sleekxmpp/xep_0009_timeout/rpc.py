@@ -1,7 +1,7 @@
 import logging
-from sleekxmpp.plugins import BasePlugin
+from sleekxmpp.plugins.base import BasePlugin
 from sleekxmpp.plugins.xep_0009.stanza.RPC import RPCQuery
-from sleekxmpp.xmlstream import register_stanza_plugin
+from sleekxmpp.xmlstream.stanzabase import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import MatchXPath
 
@@ -16,7 +16,7 @@ class XEP_0009_timeout(BasePlugin):
 
     name = 'xep_0009_timeout'
     description = 'XEP-0009-timeout: Jabber-RPC timeout extension'
-    dependencies = set(['xep_0009'])
+    dependencies = {'xep_0009'}
     stanza = stanza
 
     def plugin_init(self):

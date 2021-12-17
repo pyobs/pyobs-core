@@ -1,7 +1,7 @@
 import logging
-from slixmpp.plugins import BasePlugin
+from slixmpp.plugins.base import BasePlugin
 from slixmpp.plugins.xep_0009.stanza.RPC import RPCQuery
-from slixmpp.xmlstream import register_stanza_plugin
+from slixmpp.xmlstream.stanzabase import register_stanza_plugin
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXPath
 
@@ -16,7 +16,7 @@ class XEP_0009_timeout(BasePlugin):
 
     name = 'xep_0009_timeout'
     description = 'XEP-0009-timeout: Jabber-RPC timeout extension'
-    dependencies = set(['xep_0009'])
+    dependencies = {'xep_0009'}
     stanza = stanza
 
     def plugin_init(self):

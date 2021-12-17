@@ -1,5 +1,6 @@
 import argparse
 import os
+from typing import Type, Any
 
 
 def init_cli():
@@ -45,7 +46,7 @@ def parse_cli(parser: argparse.ArgumentParser):
     return vars(args)
 
 
-def start_daemon(app_class, pid_file=None, *args, **kwargs):
+def start_daemon(app_class, pid_file=None, **kwargs: Any) -> None:
     """Start process as a daemon.
 
     Args:
@@ -63,10 +64,10 @@ def start_daemon(app_class, pid_file=None, *args, **kwargs):
             working_directory=run_dir,
             umask=0o002,
             pidfile=pidfile.TimeoutPIDLockFile(pid_file)) as context:
-        run(*args, app_class=app_class, **kwargs)
+        run(app_class, **kwargs)
 
 
-def run(app_class, **kwargs):
+def run(app_class: Type, **kwargs: Any) -> None:
     """Run a pyobs application with the given options.
 
     Args:
@@ -78,7 +79,7 @@ def run(app_class, **kwargs):
     app.run()
 
 
-def main():
+def main() -> None:
     from pyobs.application import Application
 
     # init argument parsing and add PID/Daemon stuff

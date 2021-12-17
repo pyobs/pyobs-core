@@ -284,4 +284,4 @@ def format_filename(hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional
     return ff(hdr)
 
 
-__all__ = ['format_filename', 'FilenameFormatter']
+__all__ = ['format_filename', 'FilenameFormatter', 'fitssec']

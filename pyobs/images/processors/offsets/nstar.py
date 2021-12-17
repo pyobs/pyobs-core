@@ -166,15 +166,8 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         def min_distance_from_border(source) -> None:
             # calculate the minimum distance of source to any image border (across x and y)
-            return np.min(
-                np.array(
-                    (
-                        (width / 2 - np.abs(source["y"] - width / 2)),
-                        (height / 2 - np.abs(source["x"] - height / 2)),
-                    )
-                ),
-                axis=0,
-            )
+            return min(width / 2 - np.abs(source["y"] - width / 2),
+                       height / 2 - np.abs(source["x"] - height / 2))
 
         sources.add_column(Column(name="min_dist", data=min_distance_from_border(sources)))
         sources.sort("min_dist")

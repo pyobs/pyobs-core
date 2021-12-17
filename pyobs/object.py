@@ -11,8 +11,6 @@ import asyncio
 import copy
 import datetime
 import inspect
-import threading
-import time
 from collections import Coroutine
 from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
@@ -366,7 +364,8 @@ class Object:
         params.update({
             'timezone': self.timezone,
             'location': self.location,
-            'vfs': self.vfs
+            'vfs': self.vfs,
+            'observer': self.observer
         })
         if copy_comm:
             params['comm'] = self.comm

@@ -59,6 +59,15 @@ class HttpFileCache(Module):
         return self._is_listening
 
     async def download_handler(self, request: web.Request) -> web.Response:
+        """Handles GET access to /{filename} and returns image.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing image.
+        """
+
         # get filename
         filename = request.match_info['filename']
 
@@ -72,6 +81,15 @@ class HttpFileCache(Module):
         return web.Response(body=data)
 
     async def upload_handler(self, request: web.Request) -> web.Response:
+        """Handles PUSH access to /, stores image and returns filename.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing filename.
+        """
+
         # read multipart data
         reader = await request.multipart()
         filename: Optional[str] = None

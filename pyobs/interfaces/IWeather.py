@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any, Dict
 
-from . import IStartStop
+from .IStartStop import IStartStop
 from pyobs.utils.enums import WeatherSensors
 
 

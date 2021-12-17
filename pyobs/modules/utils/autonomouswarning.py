@@ -79,7 +79,7 @@ class AutonomousWarning(Module):
         while not self.closing.is_set():
             # check for autonomous modules
             autonomous = list(await self.comm.clients_with_interface(IAutonomous))
-            is_auto = any([await self.comm.proxy(a, IAutonomous).is_running().wait() for a in autonomous])
+            is_auto = any([await(await self.comm.proxy(a, IAutonomous)).is_running().wait() for a in autonomous])
 
             # did it change?
             if is_auto != self._autonomous:

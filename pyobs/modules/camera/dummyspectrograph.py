@@ -2,14 +2,12 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Any, Optional, TYPE_CHECKING, Tuple
+from typing import Any
 import numpy as np
 from astropy.io import fits
 
 from pyobs.modules.camera.basespectrograph import BaseSpectrograph
 from pyobs.utils.enums import ExposureStatus
-if TYPE_CHECKING:
-    from pyobs.utils.simulation import SimWorld
 
 
 log = logging.getLogger(__name__)

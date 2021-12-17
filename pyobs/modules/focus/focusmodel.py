@@ -84,6 +84,7 @@ class FocusModel(Module, IFocusModel):
 
         # check import
         import lmfit
+        log.info(f'Found lmfit {lmfit.__version__}.')
 
         # add thread func
         if interval is not None and interval > 0:

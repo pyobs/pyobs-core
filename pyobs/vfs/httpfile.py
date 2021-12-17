@@ -1,4 +1,5 @@
 import io
+import uuid
 from typing import Optional, Any
 from urllib.parse import urljoin
 import logging
@@ -182,9 +183,7 @@ class HttpFile(VFSFile, io.RawIOBase):
         """If in write mode, actually send the file to the HTTP server."""
 
         # filename given?
-        headers = {}
-        if self._filename is not None:
-            headers['content-disposition'] = 'attachment; filename="%s"' % self._filename
+        filename = str(uuid.uuid4()) if self._filename is None else self._filename
 
         # check
         if self._upload_path is None:
@@ -192,8 +191,8 @@ class HttpFile(VFSFile, io.RawIOBase):
 
         # send data and return image ID
         try:
-            r = requests_retry_session().post(self._upload_path, data=self._buffer, headers=headers, auth=self._auth,
-                                              timeout=5)
+            r = requests_retry_session().post(self._upload_path, files=dict(file=(self._filename, self._buffer)),
+                                              auth=self._auth, timeout=5)
             if r.status_code == 401:
                 log.error('Wrong credentials for uploading file.')
                 raise FileNotFoundError

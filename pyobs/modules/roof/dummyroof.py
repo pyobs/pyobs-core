@@ -36,7 +36,7 @@ class DummyRoof(BaseRoof, IRoof):
         await self.comm.register_event(RoofClosingEvent)
 
     @timeout(15)
-    async def open_roof(self, **kwargs: Any) -> None:
+    async def init(self, **kwargs: Any) -> None:
         """Open the roof.
 
         Raises:
@@ -73,7 +73,7 @@ class DummyRoof(BaseRoof, IRoof):
                 self.comm.send_event(RoofOpenedEvent())
 
     @timeout(15)
-    async def close_roof(self, **kwargs: Any) -> None:
+    async def park(self, **kwargs: Any) -> None:
         """Close the roof.
 
         Raises:

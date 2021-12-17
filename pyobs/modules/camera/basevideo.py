@@ -463,4 +463,4 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         return self._image_type
 
 
-__all__ = ['BaseVideo']
+__all__ = ['BaseVideo', 'NextImage']

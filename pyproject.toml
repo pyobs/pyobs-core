@@ -43,6 +43,7 @@ types-requests = "^2.25.11"
 types-setuptools = "^57.4.2"
 types-toml = "^0.10.1"
 types-tornado = "^5.1.1"
+mypy = "^0.920"
 
 [tool.poetry.scripts]
 pyobs = 'pyobs.cli.pyobs:main'

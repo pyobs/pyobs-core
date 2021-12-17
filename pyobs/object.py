@@ -337,6 +337,10 @@ class Object:
                    object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
+    def get_object(self, config_or_object: Type[ObjectClass], object_class: None = None,
+                   copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
     def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                    object_class: None, copy_comm: bool = True, **kwargs: Any) -> Any: ...
 
@@ -393,6 +397,10 @@ class Object:
     @overload
     def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                          object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(self, config_or_object: Type[ObjectClass], object_class: None = None,
+                         copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
     def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],

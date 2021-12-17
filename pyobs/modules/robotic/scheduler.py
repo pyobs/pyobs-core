@@ -385,5 +385,9 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._need_update = True
         self._schedule_start = event.eta
 
+    async def abort(self, **kwargs: Any) -> None:
+        # TODO: implement this
+        pass
+
 
 __all__ = ['Scheduler']

@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any
 
 from .interface import Interface
@@ -9,6 +9,7 @@ class ILatLon(Interface, metaclass=ABCMeta):
     Usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def move_latlon(self, lat: float, lon: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
@@ -19,15 +20,16 @@ class ILatLon(Interface, metaclass=ABCMeta):
         Raises:
             ValueError: If device could not move.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_latlon(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current Latitude and Longitude.
 
         Returns:
             Tuple of current Latitude and Longitude in degrees.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['ILatLon']

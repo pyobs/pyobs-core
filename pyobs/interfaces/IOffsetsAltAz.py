@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any
 
 from .interface import Interface
@@ -9,6 +9,7 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     :class:`~pyobs.interfaces.IAltAz`."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def set_offsets_altaz(self, dalt: float, daz: float, **kwargs: Any) -> None:
         """Move an Alt/Az offset.
 
@@ -19,15 +20,16 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         Raises:
             ValueError: If offset could not be set.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_offsets_altaz(self, **kwargs: Any) -> Tuple[float, float]:
         """Get Alt/Az offset.
 
         Returns:
             Tuple with alt and az offsets.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IOffsetsAltAz']

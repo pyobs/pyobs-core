@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Any, Optional
 
 from .interface import Interface
@@ -9,6 +9,7 @@ class IFitsHeaderAfter(Interface, metaclass=ABCMeta):
     exposure)."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def get_fits_header_after(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
@@ -18,7 +19,7 @@ class IFitsHeaderAfter(Interface, metaclass=ABCMeta):
         Returns:
             Dictionary containing FITS headers.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IFitsHeaderAfter']

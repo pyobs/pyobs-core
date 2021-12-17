@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any, Dict
 
 from . import IStartStop
@@ -9,14 +9,17 @@ class IWeather(IStartStop, metaclass=ABCMeta):
     """The module acts as a weather station."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def is_weather_good(self, **kwargs: Any) -> bool:
         """Whether the weather is good to observe."""
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
 
@@ -24,8 +27,9 @@ class IWeather(IStartStop, metaclass=ABCMeta):
             Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
             with sensor information, which contain a value and a good flag.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
 
@@ -36,7 +40,7 @@ class IWeather(IStartStop, metaclass=ABCMeta):
         Returns:
             Tuple of current value of given sensor or None and time of measurement or None.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IWeather']

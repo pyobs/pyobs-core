@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any
 
 from .interface import Interface
@@ -9,6 +9,7 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
     :class:`~pyobs.interfaces.IRaDec`."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
         """Move an RA/Dec offset.
 
@@ -19,15 +20,16 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
         Raises:
             ValueError: If offset could not be set.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:
             Tuple with RA and Dec offsets.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IOffsetsRaDec']

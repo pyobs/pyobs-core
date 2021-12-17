@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any
 
 from .interface import Interface
@@ -8,6 +8,7 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
     """The module can move to Alt/Az coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
@@ -18,15 +19,16 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         Raises:
             ValueError: If device could not move.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IPointingAltAz']

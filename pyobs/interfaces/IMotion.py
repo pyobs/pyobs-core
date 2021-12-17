@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Any, Optional
 
@@ -10,22 +10,25 @@ class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
     __module__ = 'pyobs.interfaces'
 
+    @abstractmethod
     async def init(self, **kwargs: Any) -> None:
         """Initialize device.
 
         Raises:
             ValueError: If device could not be initialized.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def park(self, **kwargs: Any) -> None:
         """Park device.
 
         Raises:
             ValueError: If device could not be parked.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
@@ -35,15 +38,16 @@ class IMotion(IReady, metaclass=ABCMeta):
         Returns:
             A string from the Status enumerator.
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:
             device: Name of device to stop, or None for all.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IMotion']

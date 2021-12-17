@@ -89,7 +89,7 @@ class FlatFieldScheduler(Module, IRunnable):
                 await flatfield.set_filter(item.filter_name)
             if isinstance(flatfield, IBinning):
                 await flatfield.set_binning(*item.binning)
-            future = flatfield.flat_field(self._count)
+            future = asyncio.create_task(flatfield.flat_field(self._count))
 
             # wait for it
             while not future.done():

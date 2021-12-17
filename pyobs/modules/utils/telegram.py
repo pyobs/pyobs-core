@@ -5,7 +5,6 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter
 from pprint import pprint
-from threading import Thread
 from typing import Any, Optional, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update

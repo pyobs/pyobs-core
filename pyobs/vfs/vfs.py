@@ -2,6 +2,7 @@ import asyncio
 import io
 import logging
 import os
+from abc import ABCMeta
 from functools import partial
 from typing import Optional, Dict, Any, Tuple, cast, IO, List
 
@@ -14,7 +15,7 @@ from pyobs.images import Image
 log = logging.getLogger(__name__)
 
 
-class VFSFile(io.RawIOBase):
+class VFSFile(io.RawIOBase, metaclass=ABCMeta):
     """Base class for all VFS file classes."""
     __module__ = 'pyobs.vfs'
 

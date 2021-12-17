@@ -103,7 +103,7 @@ class AutonomousWarning(Module):
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
                 autonomous = list(await self.comm.clients_with_interface(IAutonomous))
-                is_auto = any([await self.proxy(a, IAutonomous).is_running() for a in autonomous])
+                is_auto = any([await (await self.proxy(a, IAutonomous)).is_running() for a in autonomous])
 
                 # play sound
                 if self._stop_sound is not None and is_auto:

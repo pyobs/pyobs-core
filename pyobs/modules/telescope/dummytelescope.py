@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import threading
-import time
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 
 from astropy.coordinates import SkyCoord

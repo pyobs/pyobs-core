@@ -306,5 +306,12 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             'M2': 12.
         }
 
+    async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
+        log.error('Not implemented')
+
+    async def is_ready(self, **kwargs: Any) -> bool:
+        log.error('Not implemented')
+        return True
+
 
 __all__ = ['DummyTelescope']

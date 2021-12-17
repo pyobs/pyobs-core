@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 
 
-class ICalibrate(Interface):
+class ICalibrate(Interface, metaclass=ABCMeta):
     """The module can calibrate a device."""
     __module__ = 'pyobs.interfaces'
 

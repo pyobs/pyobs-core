@@ -1,10 +1,11 @@
+from abc import ABCMeta
 from typing import Tuple, Any, Dict
 
 from . import IStartStop
 from pyobs.utils.enums import WeatherSensors
 
 
-class IWeather(IStartStop):
+class IWeather(IStartStop, metaclass=ABCMeta):
     """The module acts as a weather station."""
     __module__ = 'pyobs.interfaces'
 

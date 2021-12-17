@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IMotion import IMotion
 
 
-class IFocuser(IMotion):
+class IFocuser(IMotion, metaclass=ABCMeta):
     """The module is a focusing device."""
     __module__ = 'pyobs.interfaces'
 

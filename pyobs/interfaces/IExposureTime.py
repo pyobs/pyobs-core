@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 
 
-class IExposureTime(Interface):
+class IExposureTime(Interface, metaclass=ABCMeta):
     """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 

@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 
 
-class IRunning(Interface):
+class IRunning(Interface, metaclass=ABCMeta):
     """The module can be running."""
     __module__ = 'pyobs.interfaces'
 

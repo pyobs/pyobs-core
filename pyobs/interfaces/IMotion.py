@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from enum import Enum
 from typing import Any, Optional
 
@@ -5,7 +6,7 @@ from .IReady import IReady
 from pyobs.utils.enums import MotionStatus
 
 
-class IMotion(IReady):
+class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
     __module__ = 'pyobs.interfaces'
 

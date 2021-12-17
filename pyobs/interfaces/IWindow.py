@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .interface import Interface
 
 
-class IWindow(Interface):
+class IWindow(Interface, metaclass=ABCMeta):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 

@@ -1,10 +1,11 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 from pyobs.utils.enums import ImageType
 
 
-class IImageType(Interface):
+class IImageType(Interface, metaclass=ABCMeta):
     """The module supports different image types (e.g. object, bias, dark, etc), mainly used by cameras."""
     __module__ = 'pyobs.interfaces'
 

@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any, Dict, Tuple, List
 
 from .interface import Interface
 
 
-class IConfig(Interface):
+class IConfig(Interface, metaclass=ABCMeta):
     """The module allows access to some of its configuration options."""
     __module__ = 'pyobs.interfaces'
 

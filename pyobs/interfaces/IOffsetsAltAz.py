@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .interface import Interface
 
 
-class IOffsetsAltAz(Interface):
+class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     """The module supports Alt/Az offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IAltAz`."""
     __module__ = 'pyobs.interfaces'

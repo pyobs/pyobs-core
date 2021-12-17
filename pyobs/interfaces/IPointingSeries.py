@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 
 
-class IPointingSeries(Interface):
+class IPointingSeries(Interface, metaclass=ABCMeta):
     """The module provides the interface for a device that initializes and finalizes a pointing series and adds points
     to it."""
     __module__ = 'pyobs.interfaces'

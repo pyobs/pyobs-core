@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IAbortable import IAbortable
@@ -5,7 +6,7 @@ from .IImageGrabber import IImageGrabber
 from pyobs.utils.enums import ExposureStatus
 
 
-class ICamera(IAbortable, IImageGrabber):
+class ICamera(IAbortable, IImageGrabber, metaclass=ABCMeta):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 

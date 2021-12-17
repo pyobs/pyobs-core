@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IMotion import IMotion
 
 
-class IRotation(IMotion):
+class IRotation(IMotion, metaclass=ABCMeta):
     """The module controls a device that can rotate."""
     __module__ = 'pyobs.interfaces'
 

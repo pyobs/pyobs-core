@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IRunning import IRunning
 
 
-class IStartStop(IRunning):
+class IStartStop(IRunning, metaclass=ABCMeta):
     """The module can be started and stopped."""
     __module__ = 'pyobs.interfaces'
 

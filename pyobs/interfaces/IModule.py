@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any, Optional
 
 from .interface import Interface
 
 
-class IModule(Interface):
+class IModule(Interface, metaclass=ABCMeta):
     """The module is actually a module. Implemented by all modules."""
     __module__ = 'pyobs.interfaces'
 

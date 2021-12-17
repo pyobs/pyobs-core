@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IImageGrabber import IImageGrabber
 
 
-class IVideo(IImageGrabber):
+class IVideo(IImageGrabber, metaclass=ABCMeta):
     """The module controls a video streaming device."""
     __module__ = 'pyobs.interfaces'
 

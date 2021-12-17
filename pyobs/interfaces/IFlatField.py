@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .IAbortable import IAbortable
 
 
-class IFlatField(IAbortable):
+class IFlatField(IAbortable, metaclass=ABCMeta):
     """The module performs flat-fielding."""
     __module__ = 'pyobs.interfaces'
 

@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, List, Any
 
 from .interface import Interface
 
 
-class IBinning(Interface):
+class IBinning(Interface, metaclass=ABCMeta):
     """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
     __module__ = 'pyobs.interfaces'
 

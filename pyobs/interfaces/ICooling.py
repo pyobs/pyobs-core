@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .ITemperatures import ITemperatures
 
 
-class ICooling(ITemperatures):
+class ICooling(ITemperatures, metaclass=ABCMeta):
     """The module can control the cooling of a device."""
     __module__ = 'pyobs.interfaces'
 

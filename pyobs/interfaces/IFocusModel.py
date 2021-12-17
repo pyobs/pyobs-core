@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .interface import Interface
 
 
-class IFocusModel(Interface):
+class IFocusModel(Interface, metaclass=ABCMeta):
     """The module provides a model for the telescope focus, e.g. based on temperatures."""
     __module__ = 'pyobs.interfaces'
 

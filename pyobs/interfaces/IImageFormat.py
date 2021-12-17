@@ -1,10 +1,11 @@
+from abc import ABCMeta
 from typing import List, Any
 
 from .interface import Interface
 from pyobs.utils.enums import ImageFormat
 
 
-class IImageFormat(Interface):
+class IImageFormat(Interface, metaclass=ABCMeta):
     """The module supports different image formats (e.g. INT16, FLOAT32), mainly used by cameras."""
     __module__ = 'pyobs.interfaces'
 

@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IStartStop import IStartStop
 
 
-class IAutoGuiding(IStartStop):
+class IAutoGuiding(IStartStop, metaclass=ABCMeta):
     """The module can perform auto-guiding."""
     __module__ = 'pyobs.interfaces'
 

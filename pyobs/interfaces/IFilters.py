@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import List, Any
 
 from .IMotion import IMotion
 
 
-class IFilters(IMotion):
+class IFilters(IMotion, metaclass=ABCMeta):
     """The module can change filters in a device."""
     __module__ = 'pyobs.interfaces'
 

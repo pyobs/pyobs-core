@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import List, Dict, Tuple, Any, Optional
 
 from .interface import Interface
 
 
-class IFitsHeaderAfter(Interface):
+class IFitsHeaderAfter(Interface, metaclass=ABCMeta):
     """The module provides some additional header entries for FITS headers after some event (usually the end of the
     exposure)."""
     __module__ = 'pyobs.interfaces'

@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any, Dict
 
 from .IAbortable import IAbortable
 
 
-class IAutoFocus(IAbortable):
+class IAutoFocus(IAbortable, metaclass=ABCMeta):
     """The module can perform an auto-focus."""
     __module__ = 'pyobs.interfaces'
 

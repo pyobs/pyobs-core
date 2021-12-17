@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .interface import Interface
 
 
-class IPointingRaDec(Interface):
+class IPointingRaDec(Interface, metaclass=ABCMeta):
     """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 

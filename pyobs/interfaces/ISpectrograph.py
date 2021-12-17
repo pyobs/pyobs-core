@@ -1,10 +1,11 @@
+from abc import ABCMeta
 from typing import Any
 
 from .IAbortable import IAbortable
 from pyobs.utils.enums import ExposureStatus
 
 
-class ISpectrograph(IAbortable):
+class ISpectrograph(IAbortable, metaclass=ABCMeta):
     """The module controls a camera."""
     __module__ = 'pyobs.interfaces'
 

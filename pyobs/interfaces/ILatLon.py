@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .interface import Interface
 
 
-class ILatLon(Interface):
+class ILatLon(Interface, metaclass=ABCMeta):
     """The module can move to general Lat/Lon coordinates, which have to be async defined by the module itself.
     Usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'

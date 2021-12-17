@@ -1,9 +1,10 @@
+from abc import ABCMeta
 from typing import Tuple, Any
 
 from .interface import Interface
 
 
-class IPointingHGS(Interface):
+class IPointingHGS(Interface, metaclass=ABCMeta):
     """The module can move to Mu/Psi coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
     __module__ = 'pyobs.interfaces'
 

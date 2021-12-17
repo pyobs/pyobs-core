@@ -1,6 +1,7 @@
 import logging
 import threading
 import sleekxmpp
+import sleekxmpp.exceptions
 import sleekxmpp.xmlstream
 from typing import List, Any
 

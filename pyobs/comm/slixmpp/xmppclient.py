@@ -1,9 +1,8 @@
-import asyncio
 import logging
 import threading
 import slixmpp
 import slixmpp.xmlstream
-from typing import List, Any
+from typing import Any
 
 from pyobs.comm.slixmpp.xep_0009.rpc import XEP_0009
 from pyobs.comm.slixmpp.xep_0009_timeout import XEP_0009_timeout

@@ -7,8 +7,8 @@ import json
 import logging
 import re
 import ssl
-import threading
 import time
+from collections import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
 from sleekxmpp import ElementBase
 from sleekxmpp.xmlstream import ET
@@ -105,7 +105,7 @@ class XmppComm(Comm):
         # variables
         self._rpc: Optional[RPC] = None
         self._connected = False
-        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], bool]]] = {}
+        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[bool]]]] = {}
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, List[Type[Interface]]] = {}
         self._user = user
@@ -376,7 +376,8 @@ class XmppComm(Comm):
         """
         log.debug('%s successfully sent.', event.__class__.__name__)
 
-    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event],
+                             handler: Optional[Callable[[Event, str], Coroutine[bool]]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

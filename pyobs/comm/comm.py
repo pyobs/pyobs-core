@@ -1,9 +1,8 @@
 import asyncio
 import inspect
 import logging
-import queue
+from collections import Coroutine
 from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
-import threading
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
@@ -184,7 +183,7 @@ class Comm:
         except ValueError:
             return None
 
-    def _client_disconnected(self, event: Event, sender: str) -> bool:
+    async def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.
 
         Args:
@@ -323,8 +322,8 @@ class Comm:
         """
         pass
 
-    async def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) \
-            -> None:
+    async def register_event(self, event_class: Type[Event],
+                             handler: Optional[Callable[[Event, str], Coroutine[bool]]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

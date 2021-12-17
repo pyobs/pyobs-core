@@ -262,7 +262,7 @@ class RPC(object):
         }[condition]
         if e is None:
             RemoteException("An unexpected exception occurred at %s!" % iq['from'])
-        callback.cancel_with_error(e)
+        callback.set_exception(e)
 
 
 __all__ = ['RPC']

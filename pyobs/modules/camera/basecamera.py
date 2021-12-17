@@ -324,12 +324,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # do camera-specific abort
         self._abort_exposure()
-
-        # wait for lock and unset event
-        try:
-            await asyncio.wait_for(self._expose_lock, 5.)
-        except asyncio.TimeoutError:
-            raise ValueError('Could not abort exposure.')
+        # TODO: do we need to wait for abort?
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int) -> None:

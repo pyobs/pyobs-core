@@ -1,4 +1,5 @@
 import logging
+from abc import ABCMeta
 from typing import List, Dict, Tuple, Any, Optional
 
 from pyobs.interfaces import IDome
@@ -8,7 +9,7 @@ from .baseroof import BaseRoof
 log = logging.getLogger(__name__)
 
 
-class BaseDome(IDome, BaseRoof):
+class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
     """Base class for domes."""
     __module__ = 'pyobs.modules.roof'
 

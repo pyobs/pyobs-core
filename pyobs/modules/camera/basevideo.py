@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from collections import Coroutine
 from datetime import datetime
 import io
@@ -126,7 +127,7 @@ class ImageHandler(tornado.web.RequestHandler):
         await self.finish()
 
 
-class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, IImageType):
+class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 

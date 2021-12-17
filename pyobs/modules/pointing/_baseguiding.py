@@ -1,4 +1,5 @@
 import asyncio
+from abc import ABCMeta
 from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
 from astropy.coordinates import SkyCoord
@@ -13,7 +14,7 @@ from ...interfaces import ITelescope
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
+class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMeta):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.pointing'
 

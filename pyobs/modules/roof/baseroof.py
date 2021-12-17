@@ -1,4 +1,5 @@
 import logging
+from abc import ABCMeta
 from typing import List, Dict, Tuple, Any, Optional
 
 from pyobs.interfaces import IRoof, IFitsHeaderBefore
@@ -9,7 +10,7 @@ from pyobs.utils.enums import MotionStatus
 log = logging.getLogger(__name__)
 
 
-class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, Module):
+class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, Module, metaclass=ABCMeta):
     """Base class for roofs."""
     __module__ = 'pyobs.modules.roof'
 

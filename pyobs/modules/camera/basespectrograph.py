@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 from astropy.io import fits
 
@@ -19,7 +20,7 @@ class ExposureInfo(NamedTuple):
     start: datetime.datetime
 
 
-class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
+class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass=ABCMeta):
     """Base class for all spectrograph modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -50,6 +51,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         if self.comm is None:
             log.warning('No comm module given, will not be able to signal new images!')
 
+    @abstractmethod
     async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
@@ -62,14 +64,12 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         Raises:
             ValueError: If exposure was not successful.
         """
-        raise NotImplementedError
+        ...
 
     async def __expose(self, broadcast: bool) -> Tuple[Optional[fits.HDUList], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
-            exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
             broadcast: Whether or not the new image should be broadcasted.
 
         Returns:
@@ -80,7 +80,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
         """
 
         # request fits headers
-        header_futures_before = self.request_fits_headers(before=True)
+        header_futures_before = await self.request_fits_headers(before=True)
 
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
@@ -95,7 +95,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph):
             raise
 
         # request fits headers again
-        header_futures_after = self.request_fits_headers(before=False)
+        header_futures_after = await self.request_fits_headers(before=False)
 
         # add HDU name
         hdulist[0].header['EXTNAME'] = 'SCI'

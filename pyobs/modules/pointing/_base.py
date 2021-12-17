@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from typing import Union, List, Dict, Any
 import logging
 
@@ -11,7 +12,7 @@ from pyobs.images import ImageProcessor
 log = logging.getLogger(__name__)
 
 
-class BasePointing(Module, PipelineMixin):
+class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
     """Base class for guiding and acquisition modules."""
     __module__ = 'pyobs.modules.pointing'
 

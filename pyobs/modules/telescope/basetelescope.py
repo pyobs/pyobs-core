@@ -1,6 +1,6 @@
 import asyncio
+from abc import ABCMeta, abstractmethod
 from typing import Dict, Any, Tuple, Union, List, Optional
-
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
@@ -18,7 +18,8 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module,
+                    metaclass=ABCMeta):
     """Base class for telescopes."""
     __module__ = 'pyobs.modules.telescope'
 
@@ -63,22 +64,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
 
-    async def init(self, **kwargs: Any) -> None:
-        """Initialize telescope.
-
-        Raises:
-            ValueError: If telescope could not be initialized.
-        """
-        raise NotImplementedError
-
-    async def park(self, **kwargs: Any) -> None:
-        """Park telescope.
-
-        Raises:
-            ValueError: If telescope could not be parked.
-        """
-        raise NotImplementedError
-
+    @abstractmethod
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
@@ -90,7 +76,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             Exception: On any error.
         """
-        raise NotImplementedError
+        ...
 
     @timeout(1200)
     async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
@@ -143,6 +129,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
+    @abstractmethod
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
@@ -154,7 +141,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             Exception: On error.
         """
-        raise NotImplementedError
+        ...
 
     @timeout(1200)
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:

@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import logging
 import warnings
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
 from astropy.io import fits
@@ -33,7 +34,7 @@ async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) 
     return await camera.get_exposure_time() + 30
 
 
-class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType):
+class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType, metaclass=ABCMeta):
     """Base class for all camera modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -177,6 +178,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
+    @abstractmethod
     async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
@@ -191,7 +193,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Raises:
             ValueError: If exposure was not successful.
         """
-        raise NotImplementedError
+        ...
 
     async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
             -> Tuple[Optional[Image], Optional[str]]:

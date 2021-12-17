@@ -93,15 +93,3 @@ class SphericalGrid:
         ax = fig.add_subplot(projection='3d')
         x, y, z = list(zip(*grid))
         ax.scatter(x, z, y)
-
-
-if __name__ == '__main__':
-    grid = SphericalGrid.equidistributed(500)
-    cart = SphericalGrid.convert_to_cartesian(grid)
-    SphericalGrid.plot_cartesian(cart)
-
-    grid = SphericalGrid.lonlat(20, 20)
-    cart = SphericalGrid.convert_to_cartesian(grid)
-    SphericalGrid.plot_cartesian(cart)
-
-    plt.show()

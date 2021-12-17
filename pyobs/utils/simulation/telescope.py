@@ -22,7 +22,7 @@ class SimTelescope(Object):
     def __init__(self, world: 'SimWorld', position: Optional[Tuple[float, float]] = None,
                  offsets: Optional[Tuple[float, float]] = None, pointing_offset: Optional[Tuple[float, float]] = None,
                  move_accuracy: float = 2., speed: float = 20., focus: float = 50, filters: Optional[List[str]] = None,
-                 filter: str = 'clear', drift: Optional[Tuple[float, float]] = None, focal_length: float = 5000.,
+                 filter_name: str = 'clear', drift: Optional[Tuple[float, float]] = None, focal_length: float = 5000.,
                  **kwargs: Any):
         """Initializes new telescope.
 
@@ -35,7 +35,7 @@ class SimTelescope(Object):
             speed: Speed of telescope in deg/sec.
             focus: Telescope focus.
             filters: List of filters.
-            filter: Current filter.
+            filter_name: Current filter.
             drift: RA/Dec drift of telescope in arcsec/sec.
             focal_length: Focal length of telescope in mm.
         """
@@ -55,7 +55,7 @@ class SimTelescope(Object):
         self.speed = speed     # telescope speed in deg/sec
         self.focus = focus
         self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
-        self.filter = filter
+        self.filter_name = filter_name
         self.drift = (0., 0.) if drift is None else drift     # arcsec/sec in RA/Dec
         self.focal_length = focal_length
 

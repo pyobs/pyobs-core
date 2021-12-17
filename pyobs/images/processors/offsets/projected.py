@@ -155,8 +155,8 @@ class ProjectedOffsets(Offsets):
     @staticmethod
     def _subtract_sky(data, frac=0.15, sbin=10):
         # find continuum for every of the sbin bins
-        bins = np.zeros((sbin))
-        binxs = np.zeros((sbin))
+        bins = np.zeros((sbin,))
+        binxs = np.zeros((sbin,))
         x = list(range(len(data)))
         w1 = 0
         w2 = float(len(x)) / sbin

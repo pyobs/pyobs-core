@@ -10,11 +10,11 @@ class IImageFormat(Interface, metaclass=ABCMeta):
     __module__ = 'pyobs.interfaces'
 
     @abstractmethod
-    async def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
+    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.
 
         Args:
-            format: New image format.
+            fmt: New image format.
 
         Raises:
             ValueError: If format could not be set.

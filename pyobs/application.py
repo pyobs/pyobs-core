@@ -158,8 +158,8 @@ class Application:
             threading.Thread._bootstrap = _thread_name_hack  # type: ignore
 
         except ImportError:
-            log = logging.getLogger('pyobs')
-            log.warning('prctl module is not installed. You will not be able to see thread names')
+            logger = logging.getLogger('pyobs')
+            logger.warning('prctl module is not installed. You will not be able to see thread names')
 
             def set_thread_name(name: str) -> None:
                 pass

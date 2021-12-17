@@ -161,7 +161,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         Returns:
             Name of currently set filter.
         """
-        return self._telescope.filter
+        return self._telescope.filter_name
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -174,13 +174,13 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # log and send event
-        if filter_name != self._telescope.filter:
+        if filter_name != self._telescope.filter_name:
             # set it
             logging.info('Setting filter to %s', filter_name)
             await self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
             await asyncio.sleep(3)
             await self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
-            self._telescope.filter = filter_name
+            self._telescope.filter_name = filter_name
 
             # send event
             await self.comm.send_event(FilterChangedEvent(filter_name))

@@ -17,7 +17,7 @@ def fault2xml(fault):
     value['faultCode'] = fault['code']
     value['faultString'] = fault['string']
     fault = ET.Element("fault", {'xmlns': _namespace})
-    fault.append(_py2xml((value)))
+    fault.append(_py2xml((value,)))
     return fault
 
 def xml2fault(params):

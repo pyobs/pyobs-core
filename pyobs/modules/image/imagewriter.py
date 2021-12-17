@@ -3,7 +3,7 @@ import asyncio
 from typing import Union, List, Any, Optional
 
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent
+from pyobs.events import NewImageEvent, Event
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class ImageWriter(Module):
             log.info('Subscribing to new image events...')
             await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
+    async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -50,6 +50,8 @@ class ImageWriter(Module):
         Returns:
             Success
         """
+        if not isinstance(event, NewImageEvent):
+            return False
 
         # filter by source
         if self._sources is not None and sender not in self._sources:

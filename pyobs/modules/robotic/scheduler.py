@@ -10,7 +10,7 @@ import astropy.units as u
 
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.events import GoodWeatherEvent
+from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
@@ -326,13 +326,15 @@ class Scheduler(Module, IStartStop, IRunnable):
         """Trigger a re-schedule."""
         self._need_update = True
 
-    async def _on_task_started(self, event: TaskStartedEvent, sender: str):
+    async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.
 
         Args:
             event: The task started event.
             sender: Who sent it.
         """
+        if not isinstance(event, TaskStartedEvent):
+            return False
 
         # store it
         self._current_task_id = event.id
@@ -348,13 +350,17 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = event.eta
 
-    async def _on_task_finished(self, event: TaskFinishedEvent, sender: str):
+        return True
+
+    async def _on_task_finished(self, event: Event, sender: str) -> bool:
         """Reset current task, when it has finished.
 
         Args:
             event: The task finished event.
             sender: Who sent it.
         """
+        if not isinstance(event, TaskFinishedEvent):
+            return False
 
         # reset current task
         self._current_task_id = None
@@ -368,13 +374,17 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = Time.now()
 
-    async def _on_good_weather(self, event: GoodWeatherEvent, sender: str):
+        return True
+
+    async def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Re-schedule on incoming good weather event.
 
         Args:
             event: The good weather event.
             sender: Who sent it.
         """
+        if not isinstance(event, GoodWeatherEvent):
+            return False
 
         # get ETA in minutes
         eta = (event.eta - Time.now()).sec / 60
@@ -383,6 +393,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # set it
         self._need_update = True
         self._schedule_start = event.eta
+        return True
 
     async def abort(self, **kwargs: Any) -> None:
         # TODO: implement this

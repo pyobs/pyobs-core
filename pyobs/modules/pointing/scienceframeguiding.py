@@ -2,7 +2,7 @@ import logging
 import asyncio
 from typing import Any
 
-from pyobs.events import NewImageEvent
+from pyobs.events import NewImageEvent, Event
 from pyobs.images import Image
 from ._baseguiding import BaseGuiding
 from ...utils.parallel import event_wait
@@ -24,7 +24,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         # variables
         self._next_image: asyncio.Queue[Image] = asyncio.Queue()
 
-    async def open(self):
+    async def open(self) -> None:
         """Open module."""
         await BaseGuiding.open(self)
 
@@ -40,7 +40,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
         raise NotImplementedError
 
-    async def add_image(self, event: NewImageEvent, sender: str, **kwargs: Any):
+    async def add_image(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Processes an image asynchronously, returns immediately.
 
         Args:
@@ -49,8 +49,8 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
 
         # did it come from correct camera and are we enabled?
-        if sender != self._camera or not self._enabled:
-            return
+        if sender != self._camera or not self._enabled or not isinstance(event, NewImageEvent):
+            return False
         log.info('Received new image.')
 
         # download image
@@ -58,15 +58,16 @@ class ScienceFrameAutoGuiding(BaseGuiding):
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
-            return
+            return False
 
         # do we have a filename in here already?
         if not self._next_image.empty():
             log.warning('Last image still being processed by auto-guiding, skipping new one.')
-            return
+            return False
 
         # store it
         await self._next_image.put(image)
+        return True
 
     async def _auto_guiding(self):
         """the thread function for processing the images"""

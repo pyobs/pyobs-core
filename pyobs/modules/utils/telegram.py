@@ -11,7 +11,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
 from pyobs.modules import Module
-from pyobs.events import LogEvent
+from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
 
@@ -484,13 +484,15 @@ class Telegram(Module):
         update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
                                   reply_markup=reply_markup)
 
-    def _process_log_entry(self, entry: LogEvent, sender: str) -> bool:
+    async def _process_log_entry(self, entry: Event, sender: str) -> bool:
         """Process a new log entry.
 
         Args:
             entry: The log event.
             sender: Name of sender.
         """
+        if not isinstance(entry, LogEvent):
+            return False
 
         # get numerical value for log level
         level = self._log_levels[entry.level]

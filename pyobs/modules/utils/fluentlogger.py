@@ -39,7 +39,7 @@ class FluentLogger(Module):
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)
 
-    def _process_log_entry(self, event: Event, sender: str) -> bool:
+    async def _process_log_entry(self, event: Event, sender: str) -> bool:
         """Process a new log entry.
 
         Args:

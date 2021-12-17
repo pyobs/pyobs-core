@@ -25,9 +25,9 @@ class Broadcast(ImageProcessor):
         # store
         self._formatter = FilenameFormatter(filename)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Initialize processor."""
-        ImageProcessor.open(self)
+        await ImageProcessor.open(self)
 
         # register event
         if self.comm is not None:

@@ -467,7 +467,7 @@ class FocusModel(Module, IFocusModel):
         # return residuals
         return cast(np.ndarray, (np.array(focus) - np.array(model)) / np.array(error))
 
-    def _on_filter_changed(self, event: FilterChangedEvent, sender: str) -> bool:
+    async def _on_filter_changed(self, event: FilterChangedEvent, sender: str) -> bool:
         """Receive FilterChangedEvent and set focus.
 
         Args:
@@ -482,7 +482,7 @@ class FocusModel(Module, IFocusModel):
         # log and change
         try:
             log.info('Detected filter change to %s, adjusting focus...', event.filter)
-            self._set_optimal_focus(event.filter)
+            await self._set_optimal_focus(event.filter)
             return True
         except ValueError:
             log.error('Could not set focus.')

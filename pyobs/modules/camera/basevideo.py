@@ -7,12 +7,8 @@ import time
 import asyncio
 from typing import Dict, Any, Tuple, NamedTuple, Optional, List
 import numpy as np
-import tornado
-import tornado.web
-import tornado.gen
-import tornado.iostream
-import tornado.ioloop
 import PIL.Image
+from aiohttp import web
 from numpy.typing import NDArray
 
 from pyobs.modules import Module, timeout
@@ -51,7 +47,7 @@ async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) 
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
-    header_futures: Dict[str, Coroutine]
+    header_futures: Dict[str, Coroutine[Dict[str, Tuple[Any, str]], None, None]]
     broadcast: bool
 
 
@@ -69,63 +65,7 @@ class LastImage(NamedTuple):
     filename: Optional[str]
 
 
-class MainHandler(tornado.web.RequestHandler):
-    async def get(self) -> None:
-        self.write(INDEX_HTML)
-        await self.finish()
-
-
-class VideoHandler(tornado.web.RequestHandler):
-    async def get(self) -> Any:
-        self.application: BaseVideo
-        self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-        self.set_header('Pragma', 'no-cache')
-        self.set_header('Content-Type', 'multipart/x-mixed-replace;boundary=--jpgboundary')
-        self.set_header('Connection', 'close')
-
-        my_boundary = "--jpgboundary\r\n"
-        last_num = None
-        last_time = 0.
-        while True:
-            try:
-                # Generating images for mjpeg stream and wraps them into http resp
-                num, image = await self.application.image_jpeg()
-                if image is None:
-                    continue
-                if num != last_num or time.time() > last_time + 10:
-                    last_num = num
-                    last_time = time.time()
-                    self.write(my_boundary)
-                    self.write("Content-type: image/jpeg\r\n")
-                    self.write("Content-length: %s\r\n\r\n" % len(image))
-                    self.write(image)
-                    await self.flush()
-                else:
-                    await asyncio.sleep(0.1)
-            except tornado.iostream.StreamClosedError:
-                # stream closed
-                break
-
-
-class ImageHandler(tornado.web.RequestHandler):
-    async def get(self, filename: str) -> Any:
-        self.application: BaseVideo
-        # fetch data
-        data = self.application.fetch(filename)
-        if data is None:
-            raise tornado.web.HTTPError(404)
-        log.info('Serving file %s...', filename)
-
-        # send image
-        self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-        self.set_header('Pragma', 'no-cache')
-        self.set_header('Content-Type', 'image/fits')
-        self.set_header("Content-length", len(data))
-        self.write(data)
-        await self.finish()
-
-
-class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
+class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
     """Base class for all webcam modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -159,7 +99,6 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
                                       rotation=rotation, filenames=filenames)
 
         # store
-        self._io_loop: Optional[tornado.ioloop.IOLoop] = None
         self._is_listening = False
         self._port = http_port
         self._interval = interval
@@ -184,28 +123,112 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
         # image cache
         self._cache = DataCache(cache_size)
 
-        # handlers
-        handlers: List[Any] = [(r"/", MainHandler), (r"/video.mjpg", VideoHandler), (r"/(.*)", ImageHandler)]
-        if not live_view:
-            # remove video handler
-            handlers.pop(1)
-
-        # init tornado web server
-        tornado.web.Application.__init__(self, handlers)
+        # define web server
+        self._app = web.Application()
+        self._app.add_routes([web.get('/', self.web_handler),
+                              web.get('/video.mjpg', self.video_handler),
+                              web.get('/{filename}', self.image_handler)])
+        self._runner = web.AppRunner(self._app)
+        self._site: Optional[web.TCPSite] = None
 
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
 
         # start listening
-        log.info('Starting HTTP server on port %d...', self._port)
-        self.listen(self._port)
+        log.info('Starting HTTP file cache on port %d...', self._port)
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        await self._site.start()
         self._is_listening = True
+
+    async def close(self) -> None:
+        """Close server"""
+        await Module.close(self)
+
+        # stop server
+        await self._runner.cleanup()
 
     @property
     def opened(self) -> bool:
         """Whether the server is started."""
         return self._is_listening
+
+    async def web_handler(self, request: web.Request) -> web.Response:
+        """Handles access to / and returns HTML page.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing web page.
+        """
+        return web.Response(text=INDEX_HTML, content_type='text/html')
+
+    async def video_handler(self, request: web.Request) -> web.StreamResponse:
+        """Handles access to /video.mjpg and returns the video.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing video stream.
+        """
+
+        # create response
+        response = web.StreamResponse()
+        response.content_type = 'multipart/x-mixed-replace; boundary=--jpgboundary'
+        await response.prepare(request)
+
+        last_num = None
+        last_time = 0.
+        interval = 1.
+        while True:
+            # not reached interval?
+            if time.time() < last_time + interval:
+                await asyncio.sleep(0.01)
+                continue
+
+            # get image
+            num, image = await self.image_jpeg()
+            if image is None:
+                await asyncio.sleep(0.01)
+                continue
+
+            # is it actually a new image?
+            if num == last_num:
+                await asyncio.sleep(0.01)
+                continue
+
+            # now send image!
+            last_num = num
+            last_time = time.time()
+            await response.write(b'--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n' + image + b'\r\n')
+
+        # return response
+        return response
+
+    async def image_handler(self, request: web.Request) -> web.Response:
+        """Handles access to /* and returns a specified image.
+
+        Args:
+            request: Request to respond to.
+
+        Returns:
+            Response containing image.
+        """
+
+        # get filename
+        filename = request.match_info['filename']
+
+        # get data
+        if filename not in self._cache:
+            raise web.HTTPNotFound()
+        data = self._cache[filename]
+
+        # send it
+        log.info(f'Serving file {filename}.')
+        return web.Response(body=data, content_type='image/fits')
 
     @property
     def camera_active(self) -> bool:
@@ -364,6 +387,8 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
 
         # format filename
         filename = self.format_filename(image)
+        if filename is None:
+            filename = 'image.fits'
 
         # store it and return filename
         log.info('Writing image %s to cache...', filename)
@@ -419,19 +444,6 @@ class BaseVideo(Module, tornado.web.Application, ImageFitsHeaderMixin, IVideo, I
             Path to video.
         """
         return self._video_path
-
-    def fetch(self, filename: str) -> Optional[bytearray]:
-        """Send a file to the requesting client.
-
-        Args:
-            filename: Name of file to send.
-
-        Returns:
-            Data of file.
-        """
-
-        # find file in cache and return it
-        return self._cache[filename] if filename in self._cache else None
 
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.

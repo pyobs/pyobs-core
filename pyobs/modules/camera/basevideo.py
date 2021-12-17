@@ -3,7 +3,6 @@ from collections import Coroutine
 from datetime import datetime
 import io
 import logging
-import asyncio
 import time
 import asyncio
 from typing import Dict, Any, Tuple, NamedTuple, Optional, List
@@ -23,7 +22,6 @@ from pyobs.images import Image
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
-from pyobs.utils.parallel import Future
 
 log = logging.getLogger(__name__)
 

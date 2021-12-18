@@ -95,14 +95,14 @@ class Module(Object, IModule, IConfig):
         self._label = label if label is not None else self._device_name
 
     async def open(self) -> None:
-        """Open module."""
-        await Object.open(self)
-
         # open comm
         if self.comm is not None:
             # open it and connect module
             await self.comm.open()
             self.comm.module = self
+
+        """Open module."""
+        await Object.open(self)
 
     async def close(self) -> None:
         """Close module."""

@@ -47,15 +47,15 @@ class Trigger(Module, IAutonomous):
         for event in events:
             await self.comm.register_event(event, self._handle_event)
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         self._running = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._running
 
@@ -83,7 +83,7 @@ class Trigger(Module, IAutonomous):
                     proxy = await self.comm.proxy(trigger['module'])
 
                     # call it
-                    proxy.execute(trigger['method'])
+                    await proxy.execute(trigger['method'])
 
                 except ValueError:
                     log.exception('Could not execute command on proxy %s.', trigger['module'])

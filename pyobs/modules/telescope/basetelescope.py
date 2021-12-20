@@ -157,7 +157,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # do nothing, if initializing, parking or parked
-        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check altitude
@@ -165,7 +165,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             raise ValueError('Destination altitude below limit.')
 
         # acquire lock
-        with LockWithAbort(self._lock_moving, self._abort_move):
+        async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
             await self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))

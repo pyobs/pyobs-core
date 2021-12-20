@@ -76,7 +76,7 @@ class SkyFlats(Script):
         # seems alright
         return True
 
-    async def run(self):
+    async def run(self) -> None:
         """Run script.
 
         Raises:
@@ -88,7 +88,7 @@ class SkyFlats(Script):
 
         # schedule
         log.info('Scheduling flat-fields...')
-        self._scheduler(Time.now())
+        await self._scheduler(Time.now())
 
         # log schedule
         log.info('Found schedule:')

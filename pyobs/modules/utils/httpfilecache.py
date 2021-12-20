@@ -42,7 +42,7 @@ class HttpFileCache(Module):
         # start listening
         log.info('Starting HTTP file cache on port %d...', self._port)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        self._site = web.TCPSite(self._runner, '0.0.0.0', self._port)
         await self._site.start()
         self._is_listening = True
 

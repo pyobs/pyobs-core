@@ -19,7 +19,7 @@ class FitsHeaderOffsets(Offsets):
         self.center = center
         self.target = target
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:

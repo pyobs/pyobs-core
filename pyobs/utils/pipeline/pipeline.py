@@ -1,5 +1,7 @@
+import asyncio
 import logging
-from typing import Union, List, Optional
+from functools import partial
+from typing import Union, List, Optional, Any, Dict
 import numpy as np
 import astropy.units as u
 
@@ -16,17 +18,18 @@ log = logging.getLogger(__name__)
 class Pipeline(Object, PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: List[Union[dict, ImageProcessor]], *args, **kwargs):
+    def __init__(self, steps: List[Union[Dict[str, Any], ImageProcessor]], **kwargs: Any):
         """Pipeline for science images.
 
         Args:
             steps: List of pipeline steps to perform.
         """
-        Object.__init__(self, *args, **kwargs)
+        Object.__init__(self, **kwargs)
         PipelineMixin.__init__(self, steps)
 
-    def _combine_calib_images(self, images: List[Image], bias: Image = None, normalize: bool = False,
-                              method: str = 'average'):
+    @staticmethod
+    def _combine_calib_images(images: List[Image], bias: Optional[Image] = None, normalize: bool = False,
+                              method: str = 'average') -> Image:
         """Combine a list of given images.
 
         Args:
@@ -71,7 +74,12 @@ class Pipeline(Object, PipelineMixin):
         # finished
         return image
 
-    def create_master_bias(self, images: List[Image]) -> Image:
+    async def _combine_calib_images_async(self, images: List[Image], **kwargs: Any) -> Image:
+        return await asyncio.get_running_loop().run_in_executor(None, partial(
+            self._combine_calib_images, images, **kwargs
+        ))
+
+    async def create_master_bias(self, images: List[Image]) -> Image:
         """Create master bias frame.
 
         Args:
@@ -80,9 +88,9 @@ class Pipeline(Object, PipelineMixin):
         Returns:
             Master bias frame.
         """
-        return self._combine_calib_images(images)
+        return await self._combine_calib_images_async(images)
 
-    def create_master_dark(self, images: List[Image], bias: Image) -> Image:
+    async def create_master_dark(self, images: List[Image], bias: Image) -> Image:
         """Create master dark frame.
 
         Args:
@@ -92,9 +100,9 @@ class Pipeline(Object, PipelineMixin):
         Returns:
             Master dark frame.
         """
-        return self._combine_calib_images(images, bias=bias)
+        return await self._combine_calib_images_async(images, bias=bias)
 
-    def create_master_flat(self, images: List[Image], bias: Image) -> Image:
+    async def create_master_flat(self, images: List[Image], bias: Image) -> Image:
         """Create master flat frame.
 
         Args:
@@ -104,9 +112,9 @@ class Pipeline(Object, PipelineMixin):
         Returns:
             Master flat frame.
         """
-        return self._combine_calib_images(images, bias=bias, normalize=True, method='median')
+        return await self._combine_calib_images_async(images, bias=bias, normalize=True, method='median')
 
-    def calibrate(self, image: Image) -> Image:
+    async def calibrate(self, image: Image) -> Image:
         """Calibrate a single science frame.
 
         Args:
@@ -120,11 +128,11 @@ class Pipeline(Object, PipelineMixin):
         calibrated = image.copy()
 
         # run pipeline
-        return self.run_pipeline(calibrated)
+        return await self.run_pipeline(calibrated)
 
     @staticmethod
-    def find_master(archive: Archive, image_type: ImageType, time: Time, instrument: str,
-                    binning: str, filter_name: Optional[str] = None, max_days: float = 30.) -> Optional[Image]:
+    async def find_master(archive: Archive, image_type: ImageType, time: Time, instrument: str,
+                          binning: str, filter_name: Optional[str] = None, max_days: float = 30.) -> Optional[Image]:
         """Find and download master calibration frame.
 
         Args:
@@ -143,9 +151,9 @@ class Pipeline(Object, PipelineMixin):
         # find reduced frames from +- N days
         log.info('Searching for %s %s master calibration frames%s from instrument %s.',
                  binning, image_type.value, '' if filter_name is None else ' in ' + filter_name, instrument)
-        infos = archive.list_frames(start=time - max_days * u.day, end=time + max_days * u.day,
-                                    instrument=instrument, image_type=image_type, binning=binning,
-                                    filter_name=filter_name, rlevel=1)
+        infos = await archive.list_frames(start=time - max_days * u.day, end=time + max_days * u.day,
+                                          instrument=instrument, image_type=image_type, binning=binning,
+                                          filter_name=filter_name, rlevel=1)
 
         # found none?
         if len(infos) == 0:
@@ -158,7 +166,8 @@ class Pipeline(Object, PipelineMixin):
         log.info('Found %s frame %s.', image_type.name, info.filename)
 
         # download it
-        return archive.download_frames([info])[0]
+        data = await archive.download_frames([info])
+        return data[0]
 
 
 __all__ = ['Pipeline']

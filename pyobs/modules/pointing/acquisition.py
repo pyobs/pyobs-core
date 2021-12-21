@@ -122,7 +122,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             # get offset
             log.info('Analysing image...')
             loop = asyncio.get_running_loop()
-            image = await loop.run_in_executor(None, self.run_pipeline, image)
+            image = await self.run_pipeline(image)
 
             # calculate distance from offset
             osd = image.get_meta(OnSkyDistance)

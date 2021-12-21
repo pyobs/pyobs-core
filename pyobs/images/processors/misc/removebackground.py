@@ -1,6 +1,5 @@
 import logging
-from typing import Any
-
+from typing import Any, Tuple
 from astropy.stats import SigmaClip
 
 from pyobs.images.processor import ImageProcessor
@@ -13,7 +12,7 @@ class RemoveBackground(ImageProcessor):
     """Remove background from image."""
     __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, sigma: float = 3., box_size: tuple = (50, 50), filter_size: tuple = (3, 3),
+    def __init__(self, sigma: float = 3., box_size: Tuple[int, int] = (50, 50), filter_size: Tuple[int, int] = (3, 3),
                  **kwargs: Any):
         """Init an image processor that removes background from image.
 
@@ -29,7 +28,7 @@ class RemoveBackground(ImageProcessor):
         self.box_size = box_size
         self.filter_size = filter_size
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Remove background from image.
 
         Args:

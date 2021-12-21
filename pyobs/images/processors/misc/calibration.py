@@ -1,5 +1,5 @@
-import multiprocessing
-import threading
+import asyncio
+from functools import partial
 from typing import Union, Optional, List, Tuple, Any, Dict, cast
 import logging
 import astropy.units as u
@@ -37,7 +37,7 @@ class Calibration(ImageProcessor):
         # get archive
         self._archive = get_object(archive, Archive)
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Calibrate an image.
 
         Args:
@@ -50,28 +50,31 @@ class Calibration(ImageProcessor):
 
         # get calibration masters
         try:
-            bias = self._find_master(image, ImageType.BIAS)
-            dark = self._find_master(image, ImageType.DARK)
-            flat = self._find_master(image, ImageType.SKYFLAT)
+            bias = await self._find_master(image, ImageType.BIAS)
+            dark = await self._find_master(image, ImageType.DARK)
+            flat = await self._find_master(image, ImageType.SKYFLAT)
         except ValueError as e:
             log.error('Could not find calibration frames: ' + str(e))
             return image
 
         # calibrate image
-        c = ccdproc.ccd_process(image.to_ccddata(),
-                                oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
-                                trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
-                                error=True,
-                                master_bias=bias.to_ccddata() if bias is not None else None,
-                                dark_frame=dark.to_ccddata() if dark is not None else None,
-                                master_flat=flat.to_ccddata() if flat is not None else None,
-                                bad_pixel_mask=None,
-                                gain=image.header['DET-GAIN'] * u.electron / u.adu,
-                                readnoise=image.header['DET-RON'] * u.electron,
-                                dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
-                                data_exposure=image.header['EXPTIME'] * u.second,
-                                dark_scale=True,
-                                gain_corrected=False)
+        c = await asyncio.get_running_loop().run_in_executor(None, partial(
+            ccdproc.ccd_process,
+            image.to_ccddata,
+            oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
+            trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
+            error=True,
+            master_bias=bias.to_ccddata() if bias is not None else None,
+            dark_frame=dark.to_ccddata() if dark is not None else None,
+            master_flat=flat.to_ccddata() if flat is not None else None,
+            bad_pixel_mask=None,
+            gain=image.header['DET-GAIN'] * u.electron / u.adu,
+            readnoise=image.header['DET-RON'] * u.electron,
+            dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
+            data_exposure=image.header['EXPTIME'] * u.second,
+            dark_scale=True,
+            gain_corrected=False
+        ))
 
         # to image
         calibrated = Image.from_ccddata(c)
@@ -98,7 +101,7 @@ class Calibration(ImageProcessor):
         # finished
         return calibrated
 
-    def _find_master(self, image: Image, image_type: ImageType) -> Optional[Image]:
+    async def _find_master(self, image: Image, image_type: ImageType) -> Optional[Image]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -128,9 +131,9 @@ class Calibration(ImageProcessor):
                 return item
 
         # try to download one
-        master = Pipeline.find_master(self._archive, image_type, time, instrument, binning,
-                                      None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
-                                      max_days=30)
+        master = await Pipeline.find_master(self._archive, image_type, time, instrument, binning,
+                                            None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
+                                            max_days=30)
 
         # nothing?
         if master is None:
@@ -148,4 +151,3 @@ class Calibration(ImageProcessor):
 
 
 __all__ = ['Calibration']
-

@@ -31,7 +31,7 @@ class PipelineMixin:
         for step in self.__pipeline_steps:
             step.reset()
 
-    def run_pipeline(self, image: Image) -> Image:
+    async def run_pipeline(self, image: Image) -> Image:
         """Run the pipeline on the given image.
 
         Args:
@@ -44,7 +44,7 @@ class PipelineMixin:
         # loop steps
         for step in self.__pipeline_steps:
             try:
-                image = step(image)
+                image = await step(image)
             except Exception as e:
                 log.exception(f'Could not run pipeline step {step.__class__.__name__}: {e}')
 

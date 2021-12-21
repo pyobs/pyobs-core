@@ -31,7 +31,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._saturated = saturated
         self.coordinates = (None, None)
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and stores new exposure time in exp_time attribute.
 
         Args:
@@ -45,7 +45,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         source_detection = get_object(self._source_detection, SourceDetection)
 
         # do photometry and get copy of catalog
-        catalog = source_detection(image).catalog
+        catalog = (await source_detection(image)).catalog
         if catalog is None:
             log.info('No catalog found in image.')
             return image

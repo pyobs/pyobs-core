@@ -97,7 +97,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         if image is not None:
             # if image is given, process it
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self.run_pipeline, image)
+            await self.run_pipeline(image)
 
     async def _process_image(self, image: Image) -> Optional[Image]:
         """Processes a single image and offsets telescope.
@@ -168,8 +168,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         self._last_header = image.header
 
         # get offset
-        loop = asyncio.get_running_loop()
-        image = await loop.run_in_executor(None, self.run_pipeline, image)
+        image = await self.run_pipeline(image)
 
         # get telescope
         try:

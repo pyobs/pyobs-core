@@ -101,7 +101,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
-    def _boxes_from_ref(self, image: Image, star_box_size: int) -> List:
+    async def _boxes_from_ref(self, image: Image, star_box_size: int) -> List:
         """Calculate the boxes around self.N_stars best sources in the image.
 
         Args:
@@ -117,7 +117,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         """
 
         # run pipeline on 1st image
-        img = self.run_pipeline(image)
+        img = await self.run_pipeline(image)
 
         # check data and catalog
         if img.data is None:
@@ -316,14 +316,19 @@ class NStarOffsets(Offsets, PipelineMixin):
         # estimate initial parameter values
         # constant offset of 2d gaussian
         a = np.min(corr)
+
         # height of 2d gaussian
         b = np.max(corr) - a
+
         # gaussian peak position (estimate from maximum pixel position in correlation)
         max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
         x0, y0 = x[tuple(max_index)], y[tuple(max_index)]
+
         # estimate width of 2d gaussian as radius of area with values above half maximum
         half_max = np.max(corr - a) / 2 + a
-        greater_than_half_max_area = np.sum(corr >= half_max) # sum over binary array
+
+        # sum over binary array
+        greater_than_half_max_area = np.sum(corr >= half_max)
         sigma_x = np.sqrt(greater_than_half_max_area / np.pi)
         sigma_y = sigma_x
 
@@ -339,7 +344,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (
                 sigma_x ** 2 + sigma_y ** 2
         ) / 2
-        mask = mask_circle_around_peak # np.logical_and(mask_value_above_background, mask_circle_around_peak)
+        mask = mask_circle_around_peak
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]
 

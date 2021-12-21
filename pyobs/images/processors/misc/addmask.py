@@ -35,7 +35,7 @@ class AddMask(ImageProcessor):
                 else:
                     raise ValueError('Unknown mask format.')
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Add mask to image.
 
         Args:

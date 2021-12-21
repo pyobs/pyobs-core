@@ -1,4 +1,6 @@
 import logging
+from abc import ABCMeta, abstractmethod
+
 from astropy.wcs import WCS
 
 from pyobs.images import Image
@@ -8,11 +10,12 @@ from pyobs.images.processor import ImageProcessor
 log = logging.getLogger(__name__)
 
 
-class Offsets(ImageProcessor):
+class Offsets(ImageProcessor, metaclass=ABCMeta):
     """Base class for determining offsets."""
     __module__ = 'pyobs.images.processors.offsets'
 
-    def __call__(self, image: Image) -> Image:
+    @abstractmethod
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in meta data.
 
         Args:

@@ -1,7 +1,5 @@
 from typing import Any
-
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table
 import logging
 import numpy as np
 from photutils import CircularAnnulus, CircularAperture, aperture_photometry

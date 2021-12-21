@@ -92,6 +92,12 @@ class AstrometryDotNet(Astrometry):
         # send it
         r = requests.post(self.url, json=data)
 
+        # send it
+        # async with aiohttp.ClientSession() as session:
+        #     async with session.get(self.url, json=data) as response:
+        #         status_code = response.status
+        #         json = await response.json()
+
         # success?
         if r.status_code != 200 or 'error' in r.json():
             # set error

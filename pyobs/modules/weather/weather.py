@@ -1,13 +1,11 @@
 import asyncio
 import logging
 from typing import Tuple, Any, Dict, List, Optional
-
-import requests
+import aiohttp
 import urllib.parse
 import astropy.units as u
 
 from pyobs.utils.enums import WeatherSensors
-from pyobs.utils.parallel import event_wait
 from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderBefore
@@ -46,7 +44,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # store and create session
         self._system_init_time = system_init_time
         self._url = url
-        self._session = requests.session()
 
         # whether module is active, i.e. if None, weather is always good
         self._active = True
@@ -99,12 +96,14 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
             try:
                 # fetch status
-                res = self._session.get(urllib.parse.urljoin(self._url, 'api/current/'), timeout=5)
-                if res.status_code != 200:
-                    raise ValueError('Could not connect to weather station.')
+                url = urllib.parse.urljoin(self._url, 'api/current/')
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=5) as response:
+                        if response.status != 200:
+                            raise ValueError('Could not connect to weather station.')
+                        status = await response.json()
 
                 # to json
-                status = res.json()
                 if 'good' not in status:
                     raise ValueError('Good parameter not found in response from weather station.')
 
@@ -112,7 +111,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 is_good = status['good']
                 self._status = status
 
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as e:
+            except Exception as e:
                 # on error, we're always bad
                 log.error('Request failed: %s', e)
                 is_good = False
@@ -173,12 +172,13 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # do request
         url = urllib.parse.urljoin(self._url, 'api/stations/%s/%s/' % (station, sensor.value))
-        res = self._session.get(url)
-        if res.status_code != 200:
-            raise ValueError('Could not connect to weather station.')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=5) as response:
+                if response.status != 200:
+                    raise ValueError('Could not connect to weather station.')
+                status = await response.json()
 
         # to json
-        status = res.json()
         if 'time' not in status or 'value' not in status:
             raise ValueError('Time and/or value parameters not found in response from weather station.')
 

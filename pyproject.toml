@@ -7,10 +7,10 @@ authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.9,<3.11"
 scipy = "^1.7.2"
 pandas = "^1.1.5"
-astropy = "^4.2"
+astropy = "^5.0"
 astroplan =  "^0.8"
 numpy = "^1.21"
 paramiko = "^2.8"

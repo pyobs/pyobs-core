@@ -48,6 +48,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         self._camera = camera
         self._filter_wheel = filters
         self._abort = asyncio.Event()
+        self._running = False
 
         # flat fielder
         self._flat_fielder = self.get_object(flat_fielder, FlatFielder, callback=self.callback)
@@ -166,48 +167,58 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             Number of images actually taken and total exposure time in ms
         """
 
-        log.info('Performing flat fielding...')
-        self._abort = asyncio.Event()
+        # check
+        if self._running:
+            raise ValueError('Already running.')
+        self._running = True
 
-        # get telescope
-        log.info('Getting proxy for telescope...')
-        telescope = await self.proxy(self._telescope, ITelescope)
+        try:
+            # start
+            log.info('Performing flat fielding...')
+            self._abort = asyncio.Event()
 
-        # get camera
-        log.info('Getting proxy for camera...')
-        camera = await self.proxy(self._camera, ICamera)
+            # get telescope
+            log.info('Getting proxy for telescope...')
+            telescope = await self.proxy(self._telescope, ITelescope)
 
-        # get filter wheel
-        filters: Optional[IFilters] = None
-        if self._filter_wheel is not None:
-            log.info('Getting proxy for filter wheel...')
-            filters = await self.proxy(self._filter_wheel, IFilters)
+            # get camera
+            log.info('Getting proxy for camera...')
+            camera = await self.proxy(self._camera, ICamera)
 
-        # reset
-        self._flat_fielder.reset()
+            # get filter wheel
+            filters: Optional[IFilters] = None
+            if self._filter_wheel is not None:
+                log.info('Getting proxy for filter wheel...')
+                filters = await self.proxy(self._filter_wheel, IFilters)
 
-        # run until state is finished or we aborted
-        state = None
-        while state != FlatFielder.State.FINISHED:
-            # can we run?
-            if not await telescope.is_ready():
-                log.error('Telescope not in valid state, aborting...')
-                return self._flat_fielder.image_count, self._flat_fielder.total_exptime
-            if self._abort.is_set():
-                log.warning('Aborting flat-fielding...')
-                return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+            # reset
+            self._flat_fielder.reset()
 
-            # do step
-            state = await self._flat_fielder(telescope, camera, count=count, binning=self._binning,
-                                             filters=filters, filter_name=self._filter)
+            # run until state is finished or we aborted
+            state = None
+            while state != FlatFielder.State.FINISHED:
+                # can we run?
+                if not await telescope.is_ready():
+                    log.error('Telescope not in valid state, aborting...')
+                    return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+                if self._abort.is_set():
+                    log.warning('Aborting flat-fielding...')
+                    return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
-        # stop telescope
-        log.info('Stopping telescope...')
-        await telescope.stop_motion()
-        log.info('Flat-fielding finished.')
+                # do step
+                state = await self._flat_fielder(telescope, camera, count=count, binning=self._binning,
+                                                 filters=filters, filter_name=self._filter)
 
-        # return number of taken images
-        return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
+            # stop telescope
+            log.info('Stopping telescope...')
+            await telescope.stop_motion()
+            log.info('Flat-fielding finished.')
+
+            # return number of taken images
+            return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
+
+        finally:
+            self._running = False
 
     @timeout(20)
     async def abort(self, **kwargs: Any) -> None:

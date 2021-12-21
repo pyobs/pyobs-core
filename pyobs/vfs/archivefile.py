@@ -24,10 +24,10 @@ class ArchiveFile(HttpFile):
         """
 
         # init
-        HttpFile.__init__(self, name, mode)
+        HttpFile.__init__(self, name, mode, upload='')
 
         # only allow write access for now
-        if mode != 'w':
+        if 'w' not in mode:
             raise ValueError('Only write operations allowed.')
 
         # store
@@ -41,7 +41,7 @@ class ArchiveFile(HttpFile):
         async with aiohttp.ClientSession() as session:
             # do some initial GET request for getting the csrftoken
             async with session.get(self._url, headers=self._headers) as response:
-                token = response.cookies['csrftoken']
+                token = response.cookies['csrftoken'].value
 
             # define list of files and url
             url = self._url + 'frames/create/'

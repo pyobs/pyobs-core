@@ -81,7 +81,7 @@ class Proxy:
         """
         return self._methods[method][0]
 
-    def execute(self, method: str, *args: Any, **kwargs: Any) -> Future:
+    async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a method on the remote client.
 
         Args:
@@ -105,7 +105,7 @@ class Proxy:
         cast_bound_arguments_to_simple(ba)
 
         # do request and return future
-        return self._comm.execute(self._client, method, signature, *ba.args[1:])
+        return await self._comm.execute(self._client, method, signature, *ba.args[1:])
 
     def _create_methods(self) -> Dict[str, Any]:
         """Create local methods for the remote client."""
@@ -135,8 +135,8 @@ class Proxy:
             Wrapper.
         """
 
-        def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
-            return this.execute(method, *args, **kwargs)
+        async def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
+            return await this.execute(method, *args, **kwargs)
 
         return inner
 

@@ -57,7 +57,7 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
+    async def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
         """Call a method on a remote host.
 
         Args:
@@ -80,13 +80,14 @@ class RPC(object):
 
         # send request
         try:
-            asyncio.ensure_future(iq.send())
+            await iq.send()
         except slixmpp.exceptions.IqError:
-            # we handle exceptions elsewhere
-            pass
+            raise RemoteException('Could not send command.')
+        except slixmpp.exceptions.IqTimeout:
+            raise TimeoutException()
 
         # don't wait for response, just return future
-        return future
+        return await future
 
     async def _on_jabber_rpc_method_call(self, iq: Any) -> None:
         """React on remote method call.

@@ -277,7 +277,7 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
+    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
@@ -291,7 +291,7 @@ class XmppComm(Comm):
         """
         if self._rpc is None:
             raise ValueError('No RPC.')
-        return self._rpc.call(self._get_full_client_name(client), method, signature, *args)
+        return await self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
     def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.

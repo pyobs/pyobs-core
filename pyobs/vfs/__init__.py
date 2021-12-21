@@ -59,7 +59,7 @@ from .vfs import VirtualFileSystem
 from .file import VFSFile
 from .localfile import LocalFile
 from .httpfile import HttpFile
-#from .memfile import MemoryFile
+from .memfile import MemoryFile
 #from .sshfile import SSHFile
 from .tempfile import TempFile
 #from .archivefile import ArchiveFile

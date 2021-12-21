@@ -65,7 +65,7 @@ class AutonomousWarning(Module):
     async def _heartbeat(self) -> None:
         """Play sound in given interval, if an autonomous module is running."""
 
-        while not self.closing.is_set():
+        while True:
             # play sound
             if self._autonomous:
                 self._play_sound(self._warn_sound)
@@ -76,7 +76,7 @@ class AutonomousWarning(Module):
     async def _check_autonomous(self) -> None:
         """Checks for autonomous modules."""
 
-        while not self.closing.is_set():
+        while True:
             # check for autonomous modules
             autonomous = list(await self.comm.clients_with_interface(IAutonomous))
             is_auto = any([await(await self.comm.proxy(a, IAutonomous)).is_running().wait() for a in autonomous])
@@ -98,7 +98,7 @@ class AutonomousWarning(Module):
     async def _check_trigger(self) -> None:
         """Checks for trigger to start/stop autonomous modules."""
 
-        while not self.closing.is_set():
+        while True:
             # does file exist?
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules

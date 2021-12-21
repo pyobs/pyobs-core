@@ -246,15 +246,15 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
 
         # wait a little
-        await event_wait(self.closing, 10)
+        await asyncio.sleep(10)
 
         # run until closing
-        while not self.closing.is_set():
+        while True:
             # update headers
             await self._update_celestial_headers()
 
             # sleep a little
-            await event_wait(self.closing, 30)
+            await asyncio.sleep(30)
 
     async def _update_celestial_headers(self) -> None:
         """Calculate positions and distances to celestial objects like moon and sun."""

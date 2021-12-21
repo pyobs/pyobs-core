@@ -143,10 +143,10 @@ class FocusModel(Module, IFocusModel):
         await asyncio.sleep(1)
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # if not enabled, just sleep a little
             if not self._enabled:
-                await event_wait(self.closing, 1)
+                await asyncio.sleep(1)
                 continue
 
             # get focuser
@@ -154,7 +154,7 @@ class FocusModel(Module, IFocusModel):
                 focuser = await self.proxy(self._focuser, IFocuser)
             except ValueError:
                 log.warning('Could not connect to focuser.')
-                await event_wait(self.closing, 10)
+                await asyncio.sleep(10)
                 continue
 
             # is focuser ready?
@@ -166,7 +166,7 @@ class FocusModel(Module, IFocusModel):
                     self._focuser_ready = False
 
                 # sleep a little and continue
-                await event_wait(self.closing, 10)
+                await asyncio.sleep(10)
                 continue
 
             # came from not ready state?
@@ -180,12 +180,12 @@ class FocusModel(Module, IFocusModel):
                 await self.set_optimal_focus()
             except ValueError:
                 # something went wrong, wait a little and continue
-                await event_wait(self.closing, 10)
+                await asyncio.sleep(10)
                 continue
 
             # sleep interval
             log.info('Going to sleep for %d seconds...', self._interval)
-            await event_wait(self.closing, self._interval)
+            await asyncio.sleep(self._interval)
 
     async def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
         """Returns the optimal focus.

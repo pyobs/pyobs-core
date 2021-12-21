@@ -66,7 +66,7 @@ class ImageWriter(Module):
         """Worker thread."""
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # get next filename
             filename = await self._queue.get()
 

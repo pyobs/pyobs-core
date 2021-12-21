@@ -31,7 +31,7 @@ class StandAlone(Module):
     async def _message_func(self):
         """Thread function for async processing."""
         # loop until closing
-        while not self.closing.is_set():
+        while True:
             # log message
             log.info(self._message)
 

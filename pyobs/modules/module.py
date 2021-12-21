@@ -115,7 +115,7 @@ class Module(Object, IModule, IConfig):
 
     async def main(self) -> None:
         """Main loop for application."""
-        while not self.closing.is_set():
+        while True:
             try:
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
@@ -167,7 +167,7 @@ class Module(Object, IModule, IConfig):
 
     def quit(self) -> None:
         """Quit module."""
-        self.closing.set()
+        asyncio.get_event_loop().close()
 
     async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion

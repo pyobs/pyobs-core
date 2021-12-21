@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Tuple, Any, Dict, List, Optional
 
@@ -91,7 +92,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Update weather info."""
 
         # loop forever
-        while not self.closing.is_set():
+        while True:
             # new is_good status
             is_good: Optional[bool] = None
             error = False
@@ -134,7 +135,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 self._is_good = is_good
 
             # sleep a little
-            await event_wait(self.closing, 60 if error else 5)
+            await asyncio.sleep(60 if error else 5)
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

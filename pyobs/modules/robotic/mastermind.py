@@ -82,7 +82,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         first_late_start_warning = True
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # not running?
             if not self._running:
                 # sleep a little and continue

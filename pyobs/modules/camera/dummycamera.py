@@ -61,7 +61,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         self._sim_images = sorted(glob.glob(self._sim['images'])) if self._sim['images'] else None
 
     async def _cooling_thread(self) -> None:
-        while not self.closing.is_set():
+        while True:
             # adjust temperature
             temps = self._cooling.temperatures
             temps['CCD'] -= (self._cooling.temperatures['CCD'] - self._cooling.set_point) * 0.05
@@ -74,7 +74,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
                                           power=power, temperatures=temps)
 
             # sleep for 1 second
-            await event_wait(self.closing, 1)
+            await asyncio.sleep(1)
 
     async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.

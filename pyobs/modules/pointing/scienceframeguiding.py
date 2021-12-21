@@ -69,11 +69,11 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         await self._next_image.put(image)
         return True
 
-    async def _auto_guiding(self):
+    async def _auto_guiding(self) -> None:
         """the thread function for processing the images"""
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # get next image to process
             image = await self._next_image.get()
 
@@ -81,7 +81,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
             await self._process_image(image)
 
             # wait for next image
-            await event_wait(self.closing, 1)
+            await asyncio.sleep(1)
 
 
 __all__ = ['ScienceFrameAutoGuiding']

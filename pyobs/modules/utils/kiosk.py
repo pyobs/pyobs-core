@@ -108,7 +108,7 @@ class Kiosk(Module, IStartStop):
         """Thread for taking images."""
 
         # loop until closing
-        while not self.closing.is_set():
+        while True:
             # are we running?
             if not self._running:
                 # no, so wait a little and continue

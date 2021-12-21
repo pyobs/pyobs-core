@@ -521,7 +521,7 @@ class Telegram(Module):
         """Thread for sending messages."""
 
         loop = asyncio.get_running_loop()
-        while not self.closing.is_set():
+        while True:
             # get next entry
             user_id, message = await self._message_queue.get()
 

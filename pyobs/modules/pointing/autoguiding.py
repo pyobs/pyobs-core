@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -48,10 +49,10 @@ class AutoGuiding(BaseGuiding):
         self._exposure_time = self._default_exposure_time
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # not running?
             if not self._enabled:
-                await event_wait(self.closing, 1)
+                await asyncio.sleep(1)
                 continue
 
             try:
@@ -82,11 +83,11 @@ class AutoGuiding(BaseGuiding):
                     self._exposure_time = processed_image.get_meta(ExpTime).exptime
 
                 # sleep a little
-                await event_wait(self.closing, self._min_interval)
+                await asyncio.sleep(self._min_interval)
 
             except Exception as e:
                 log.error('An error occurred: ', e)
-                await event_wait(self.closing, 5)
+                await asyncio.sleep(5)
 
 
 __all__ = ['AutoGuiding']

@@ -107,7 +107,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame='icrs'))
 
         # wait for it
-        while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set() and not self.closing.is_set():
+        while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
             await asyncio.sleep(1)
 
     async def get_focus(self, **kwargs: Any) -> float:

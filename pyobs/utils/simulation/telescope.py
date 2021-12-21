@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -140,7 +141,7 @@ class SimTelescope(Object):
         """Move the telescope over time."""
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
 
             # do we have destination coordinates?
             if self._dest_coords is not None:
@@ -188,7 +189,7 @@ class SimTelescope(Object):
                     self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
 
             # sleep a second
-            await event_wait(self.closing, 1)
+            await asyncio.sleep(1)
 
 
 __all__ = ['SimTelescope']

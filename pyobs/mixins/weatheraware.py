@@ -85,13 +85,13 @@ class WeatherAwareMixin:
             module = self
 
             # wait a little
-            await event_wait(self.closing, 10)
+            await asyncio.sleep(10)
 
             # time of last park attempt
             last_park_attempt = None
 
             # run until closing
-            while not module.closing.is_set():
+            while True:
                 # got a weather module?
                 if this.__weather is None:
                     # weather is always good
@@ -130,7 +130,7 @@ class WeatherAwareMixin:
                     raise ValueError('This is not a MotionStatusMixin/IMotion.')
 
                 # sleep a little
-                await event_wait(module.closing, 10)
+                await asyncio.sleep(10)
 
         else:
             # not a module

@@ -91,7 +91,7 @@ class PointingSeries(Module, IAutonomous):
         telescope = await self.proxy(self._telescope, ITelescope)
 
         # loop until finished
-        while not self.closing.is_set():
+        while True:
             # get all entries without offset measurements
             todo = list(grid[~grid['done']].index)
             if len(todo) / len(grid) < self._finish:
@@ -104,10 +104,6 @@ class PointingSeries(Module, IAutonomous):
 
             # try to find a good point
             while True:
-                # aborted or not running?
-                if self.closing.is_set():
-                    return
-
                 # pick a random index and remove from list
                 alt, az = random.sample(todo, 1)[0]
                 todo.remove((alt, az))
@@ -154,10 +150,7 @@ class PointingSeries(Module, IAutonomous):
             grid.loc[alt, az] = True
 
         # finished
-        if self.closing.is_set():
-            log.info('Pointing series aborted.')
-        else:
-            log.info('Pointing series finished.')
+        log.info('Pointing series finished.')
 
     def _process_acquisition(self, datetime: str, ra: float, dec: float, alt: float, az: float,
                              off_ra: float = None, off_dec: float = None, off_alt: float = None, off_az: float = None):

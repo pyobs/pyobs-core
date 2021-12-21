@@ -96,7 +96,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         last_change = None
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # not running?
             if self._running is False:
                 await asyncio.sleep(1)
@@ -178,7 +178,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def _schedule_thread(self):
         # run forever
-        while not self.closing.is_set():
+        while True:
             # need update?
             if self._need_update and self._initial_update_done:
                 # reset need for update

@@ -107,10 +107,10 @@ class ImageWatcher(Module):
             self.add_image(filename)
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # get next filename
             if self._queue.empty():
-                await event_wait(self.closing, 1)
+                await asyncio.sleep(1)
                 continue
             filename = self._queue.get()
             log.info('Working on file %s...', filename)

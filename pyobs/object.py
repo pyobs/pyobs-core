@@ -158,9 +158,6 @@ class Object:
         """
         from pyobs.vfs import VirtualFileSystem
 
-        # an event that will be fired when closing the module
-        self.closing = asyncio.Event()
-
         # child objects
         self._child_objects: List[Any] = []
 
@@ -259,9 +256,6 @@ class Object:
     async def close(self) -> None:
         """Close module."""
 
-        # request closing of object (used for long-running methods)
-        self.closing.set()
-
         # close child objects
         for obj in self._child_objects:
             if hasattr(obj, 'close'):
@@ -298,7 +292,7 @@ class Object:
     async def _watchdog(self) -> None:
         """Watchdog thread that tries to restart threads if they quit."""
 
-        while not self.closing.is_set():
+        while True:
             # get dead taks that need to be restarted
             dead = {}
             for func, (task, restart) in self._background_tasks.items():
@@ -317,17 +311,7 @@ class Object:
                     return
 
             # sleep a little
-            await event_wait(self.closing, 1)
-
-    def check_running(self) -> bool:
-        """Check, whether an object should be closing. Can be polled by long-running methods.
-
-        Raises:
-            InterruptedError: Raised when object should be closing.
-        """
-        if self.closing.is_set():
-            raise InterruptedError
-        return True
+            await asyncio.sleep(1)
 
     @overload
     def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],

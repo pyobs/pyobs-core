@@ -61,15 +61,14 @@ class FitsHeaderMixin:
             clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
-            proxy: Union[IFitsHeaderBefore, IFitsHeaderAfter]
             for client in clients:
                 log.debug('Requesting FITS headers from %s...', client)
                 if before:
-                    proxy = await module.proxy(client, IFitsHeaderBefore)
-                    futures[client] = proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    proxy1 = await module.proxy(client, IFitsHeaderBefore)
+                    futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
-                    proxy = await module.proxy(client, IFitsHeaderAfter)
-                    futures[client] = proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    proxy2 = await module.proxy(client, IFitsHeaderAfter)
+                    futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished
         return futures

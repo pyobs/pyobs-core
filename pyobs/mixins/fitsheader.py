@@ -205,8 +205,8 @@ class FitsHeaderMixin:
 
             # write file
             try:
-                await module.vfs.write_yaml({'night': night, 'framenum': self._fitsheadermixin_frame_num},
-                                            self._fitsheadermixin_cache)
+                await module.vfs.write_yaml(self._fitsheadermixin_cache,
+                                            {'night': night, 'framenum': self._fitsheadermixin_frame_num})
             except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 

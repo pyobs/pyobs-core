@@ -105,7 +105,7 @@ class Telegram(Module):
         Args:
             context: Telegram context.
         """
-        await self.vfs.write_yaml(context.bot_data['storage'], '/pyobs/telegram.yaml')
+        await self.vfs.write_yaml('/pyobs/telegram.yaml', context.bot_data['storage'])
 
     @staticmethod
     def _is_user_authorized(context: CallbackContext, user_id: int) -> bool:

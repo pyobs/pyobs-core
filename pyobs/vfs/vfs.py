@@ -97,9 +97,8 @@ class VirtualFileSystem(object):
         Returns:
             A PrimaryHDU containing the FITS file.
         """
-        with self.open_file(filename, 'rb') as f:
-            loop = asyncio.get_running_loop()
-            data = await loop.run_in_executor(None, f.readall)
+        async with self.open_file(filename, 'rb') as f:
+            data = await f.read()
             return fits.HDUList.fromstring(data)
 
     async def write_fits(self, filename: str, hdulist: fits.HDUList, *args: Any, **kwargs: Any) -> None:
@@ -111,10 +110,10 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        with self.open_file(filename, 'wb') as cache:
+        async with self.open_file(filename, 'wb') as f:
             with io.BytesIO() as bio:
                 hdulist.writeto(bio, *args, **kwargs)
-                cache.write(bio.getbuffer())
+                await f.write(bio.getvalue())
 
     async def read_image(self, filename: str) -> Image:
         """Convenience function that wraps around open_file() to read an Image.
@@ -125,9 +124,8 @@ class VirtualFileSystem(object):
         Returns:
             An image object
         """
-        with self.open_file(filename, 'rb') as f:
-            loop = asyncio.get_running_loop()
-            data = await loop.run_in_executor(None, f.read)
+        async with self.open_file(filename, 'rb') as f:
+            data = await f.read()
             return Image.from_bytes(data)
 
     async def write_image(self, filename: str, image: Image, *args: Any, **kwargs: Any) -> None:
@@ -139,9 +137,10 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        with self.open_file(filename, 'wb') as cache:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, partial(image.writeto, cache, *args, **kwargs))
+        async with self.open_file(filename, 'wb') as f:
+            with io.BytesIO() as bio:
+                image.writeto(bio, *args, **kwargs)
+                await f.write(bio.getvalue())
 
     async def read_csv(self, filename: str, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Convenience function for reading a CSV file into a DataFrame.
@@ -155,35 +154,32 @@ class VirtualFileSystem(object):
 
         try:
             # open file
-            with self.open_file(filename, 'r') as f:
-                # read data and return it
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, partial(pd.read_csv, f, *args, **kwargs))
+            async with self.open_file(filename, 'r') as f:
+                data = await f.read()
+                return pd.read_csv(io.StringIO(data), *args, **kwargs)
 
         except pd.errors.EmptyDataError:
             # on error, return empty dataframe
             return pd.DataFrame()
 
-    async def write_csv(self, df: pd.DataFrame, filename: str, *args: Any, **kwargs: Any) -> None:
+    async def write_csv(self, filename: str, df: pd.DataFrame, *args: Any, **kwargs: Any) -> None:
         """Convenience function for writing a CSV file from a DataFrame.
 
         Args:
-            df: DataFrame to write.
             filename: Name of file to write.
+            df: DataFrame to write.
         """
 
-        with self.open_file(filename, 'w') as f:
+        async with self.open_file(filename, 'w') as f:
             # create a StringIO as temporary write target
             with io.StringIO() as sio:
                 # write table to sio
                 df.to_csv(sio, *args, **kwargs)
-                data = sio.getvalue().encode('utf8')
 
                 # and write all content to file
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, partial(f.write, data, *args, **kwargs))
+                await f.write(sio.getvalue())
 
-    async def read_yaml(self, filename: str) -> Dict[str, Any]:
+    async def read_yaml(self, filename: str) -> Any:
         """Convenience function for reading a YAML file into a dict.
 
         Args:
@@ -194,13 +190,12 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        with self.open_file(filename, 'r') as f:
+        async with self.open_file(filename, 'r') as f:
             # read YAML
-            loop = asyncio.get_running_loop()
-            data = await loop.run_in_executor(None, yaml.safe_load, cast(IO[bytes], f))
-            return cast(Dict[str, Any], data)
+            data = await f.read()
+            return yaml.safe_load(io.StringIO(data))
 
-    async def write_yaml(self, data: Dict[str, Any], filename: str) -> None:
+    async def write_yaml(self, filename: str, data: Any) -> None:
         """Convenience function for writing a YAML file from a dict.
 
         Args:
@@ -209,16 +204,14 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        with self.open_file(filename, 'w') as f:
+        async with self.open_file(filename, 'w') as f:
             # create StringIO as temp storage
             with io.StringIO() as sio:
                 # dump to StringIO
                 yaml.dump(data, sio)
-                data = bytes(sio.getvalue(), 'utf8')
 
                 # write file from StringIO
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, f.write, data)
+                await f.write(sio.getvalue())
 
     def find(self, path: str, pattern: str):
         """Find a file in the given path.

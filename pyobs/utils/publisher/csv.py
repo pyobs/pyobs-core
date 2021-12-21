@@ -36,7 +36,7 @@ class CsvPublisher(Publisher):
         csv = pd.concat([csv, row], ignore_index=True)
 
         # write it
-        self.vfs.write_csv(csv, self._filename, index=False)
+        self.vfs.write_csv(self._filename, csv, index=False)
 
     def data(self) -> pd.DataFrame:
         """Return data that has so far been published."""

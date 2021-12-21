@@ -4,7 +4,7 @@ from tempfile import NamedTemporaryFile
 import logging
 from typing import Optional, Any
 
-from .vfs import VFSFile
+from .file import VFSFile
 
 
 log = logging.getLogger(__name__)

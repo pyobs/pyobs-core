@@ -4,7 +4,7 @@ from typing import Optional, Any
 import paramiko
 import paramiko.sftp
 
-from .vfs import VFSFile
+from .file import VFSFile
 
 
 class SSHFile(VFSFile, paramiko.SFTPFile):

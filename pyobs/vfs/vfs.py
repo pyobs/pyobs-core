@@ -2,28 +2,17 @@ import asyncio
 import io
 import logging
 import os
-from abc import ABCMeta
 from functools import partial
-from typing import Optional, Dict, Any, Tuple, cast, IO, List
-
+from typing import Optional, Dict, Any, Tuple, cast, IO
 import yaml
 from astropy.io import fits
 import pandas as pd
 
 from pyobs.images import Image
+from .file import VFSFile
+
 
 log = logging.getLogger(__name__)
-
-
-class VFSFile(io.RawIOBase, metaclass=ABCMeta):
-    """Base class for all VFS file classes."""
-    __module__ = 'pyobs.vfs'
-
-    def __enter__(self) -> 'VFSFile':
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        ...
 
 
 class VirtualFileSystem(object):

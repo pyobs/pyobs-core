@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 import logging
 import requests
 
-from .vfs import VFSFile
+from .file import VFSFile
 from ..utils.http import requests_retry_session
 
 log = logging.getLogger(__name__)

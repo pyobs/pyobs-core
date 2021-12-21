@@ -2,7 +2,7 @@ import io
 import logging
 from typing import Dict, Any
 
-from .vfs import VFSFile
+from .file import VFSFile
 
 
 log = logging.getLogger(__name__)

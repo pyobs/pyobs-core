@@ -3,7 +3,7 @@ from typing import Optional
 import logging
 import requests
 
-from .httpfile import HttpFile
+from .file import HttpFile
 
 
 log = logging.getLogger(__name__)

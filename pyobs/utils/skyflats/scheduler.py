@@ -80,12 +80,13 @@ class Scheduler:
         # init evaluator
         self._eval.init(time)
 
-        # sort filters by priority
-        priorities = sorted((await self._priorities()).items(), key=operator.itemgetter(1), reverse=True)
+        # sort filters by priority in a List of (filter, binning, priority) tuples
+        tmp = [(k, v) for k, v in (await self._priorities()).items()]
+        priorities = sorted(tmp, key=operator.itemgetter(1), reverse=True)
 
         # place them
         schedules: List[SchedulerItem] = []
-        for filter_name, binning, _, priority in priorities:
+        for (filter_name, binning), priority in priorities:
             # find possible time
             self._find_slot(schedules, filter_name, binning, priority)
 
@@ -105,6 +106,10 @@ class Scheduler:
             return item
         else:
             raise StopIteration
+
+    def __getitem__(self, item):
+        """Return schedule item."""
+        return self._schedules[item]
 
     def _find_slot(self, schedules: List[SchedulerItem], filter_name: str, binning: Tuple[int, int],
                    priority: float) -> None:
@@ -159,7 +164,7 @@ class Scheduler:
             schedules: List of existing scheduler items
             start: Start time of new item
             end: End time of new item
-.items()
+
         Returns:
             Whether it overlaps
         """

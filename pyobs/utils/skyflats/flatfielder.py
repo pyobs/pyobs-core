@@ -220,10 +220,11 @@ class FlatFielder(Object):
         future_track = self._pointing(telescope) if self._pointing is not None else None
 
         # get filter from first step and set it
-        future_filter = Future[None](empty=True)
         if filters is not None and self._cur_filter is not None:
             log.info('Setting filter to %s...', self._cur_filter)
-            future_filter = filters.set_filter(self._cur_filter)
+            future_filter = await filters.set_filter(self._cur_filter)
+        else:
+            future_filter = Future(empty=True)
 
         # wait for both
         await Future.wait_all([future_track, future_filter])
@@ -462,7 +463,7 @@ class FlatFielder(Object):
 
         # move telescope
         if self._pointing is not None:
-            self._pointing(telescope).wait()
+            await self._pointing(telescope)
 
         # do exposures, do not broadcast while testing
         now = Time.now()

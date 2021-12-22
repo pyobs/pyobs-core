@@ -3,7 +3,8 @@ import contextlib
 import time
 import asyncio
 import inspect
-from typing import TypeVar, Optional, List, Any, cast
+from collections import Coroutine
+from typing import TypeVar, Optional, List, Any, cast, Union
 
 from pyobs.utils.types import cast_response_to_real
 
@@ -25,7 +26,7 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.) -> bool:
 
 
 class Future(asyncio.Future):
-    def __init__(self, empty: bool = False, signature: Optional[inspect.Signature] = None, *args, **kwargs):
+    def __init__(self, empty: bool = False, signature: Optional[inspect.Signature] = None, *args: Any, **kwargs: Any):
         asyncio.Future.__init__(self, *args, **kwargs)
 
         """Init new base future."""
@@ -49,7 +50,7 @@ class Future(asyncio.Future):
         """
         return self.timeout
 
-    def _wait_for_time(self, timeout: float = 0):
+    def _wait_for_time(self, timeout: float = 0) -> None:
         """Waits a little.
 
         Args:
@@ -60,7 +61,7 @@ class Future(asyncio.Future):
             return
         raise TimeoutError
 
-    def __await__(self):
+    def __await__(self) -> Any:
         # not finished? need to wait.
         if not self.done():
             try:
@@ -93,7 +94,7 @@ class Future(asyncio.Future):
             return result
 
     @staticmethod
-    async def wait_all(futures: List[Future]) -> List[Any]:
+    async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any]]]]) -> List[Any]:
         return [await fut for fut in futures if fut is not None]
 
 

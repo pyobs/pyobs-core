@@ -323,7 +323,10 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # do camera-specific abort
         self._abort_exposure()
-        # TODO: do we need to wait for abort?
+
+        # wait until state is not EXPOSING anymore
+        while await self.get_exposure_status() == ExposureStatus.EXPOSING:
+            await asyncio.sleep(0.1)
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int) -> None:

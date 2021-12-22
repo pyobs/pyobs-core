@@ -90,7 +90,7 @@ class AstrometryDotNet(Astrometry):
 
         # send it
         async with aiohttp.ClientSession() as session:
-            async with session.get(self.url, json=data, timeout=10) as response:
+            async with session.post(self.url, json=data, timeout=10) as response:
                 status_code = response.status
                 json = await response.json()
 

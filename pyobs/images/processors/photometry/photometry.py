@@ -1,12 +1,15 @@
+from abc import ABCMeta, abstractmethod
+
 from pyobs.images import Image
 from pyobs.images.processor import ImageProcessor
 
 
-class Photometry(ImageProcessor):
+class Photometry(ImageProcessor, metaclass=ABCMeta):
     """Base class for photometry processors."""
     __module__ = 'pyobs.images.processors.photometry'
 
-    def __call__(self, image: Image) -> Image:
+    @abstractmethod
+    async def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
@@ -15,7 +18,7 @@ class Photometry(ImageProcessor):
         Returns:
             Image with attached catalog.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['Photometry']

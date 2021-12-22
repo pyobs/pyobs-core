@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 import logging
 import numpy as np
@@ -39,7 +40,7 @@ class SepPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
@@ -48,6 +49,11 @@ class SepPhotometry(Photometry):
         Returns:
             Image with attached catalog.
         """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, SepPhotometry._photometry, image)
+
+    @staticmethod
+    def _photometry(image: Image) -> Image:
         import sep
         from pyobs.images.processors.detection import SepSourceDetection
 

@@ -1,3 +1,5 @@
+import asyncio
+from functools import partial
 from typing import Any
 from astropy.stats import sigma_clipped_stats
 import logging
@@ -38,7 +40,7 @@ class PhotUtilsPhotometry(Photometry):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
         Args:
@@ -47,6 +49,7 @@ class PhotUtilsPhotometry(Photometry):
         Returns:
             Image with attached catalog.
         """
+        loop = asyncio.get_running_loop()
 
         # no pixel scale given?
         if image.pixel_scale is None:
@@ -83,7 +86,9 @@ class PhotUtilsPhotometry(Photometry):
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = aperture_photometry(image.data, aperture, mask=image.mask, error=image.uncertainty)
+            phot = await loop.run_in_executor(None, partial(
+                aperture_photometry, image.data, aperture, mask=image.mask, error=image.uncertainty
+            ))
 
             # calc flux
             bkg_median_np = np.array(bkg_median)

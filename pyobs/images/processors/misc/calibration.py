@@ -60,7 +60,7 @@ class Calibration(ImageProcessor):
         # calibrate image
         c = await asyncio.get_running_loop().run_in_executor(None, partial(
             ccdproc.ccd_process,
-            image.to_ccddata,
+            image.to_ccddata(),
             oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
             trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
             error=True,

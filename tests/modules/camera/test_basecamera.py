@@ -10,7 +10,6 @@ from pyobs.modules.camera import BaseCamera, DummyCamera
 from pyobs.utils.enums import ImageType, ExposureStatus
 
 
-@pytest.mark.asyncio
 async def test_open_close():
     """Test basic open/close of BaseCamera."""
 
@@ -20,8 +19,7 @@ async def test_open_close():
     await camera.close()
 
 
-@pytest.mark.asyncio
-def test_remaining():
+async def test_remaining():
     """Test the methods for remaining exposure time and progress."""
 
     # open camera
@@ -38,7 +36,7 @@ def test_remaining():
     await camera.close()
 
 
-def test_add_fits_headers():
+async def test_add_fits_headers():
     """Check adding FITS headers. Only check for existence, only for some we check actual value."""
 
     # create comm

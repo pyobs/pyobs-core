@@ -14,7 +14,6 @@ from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.object import get_object
 from pyobs.robotic import TaskArchive
 
 
@@ -396,7 +395,6 @@ class Scheduler(Module, IStartStop, IRunnable):
         return True
 
     async def abort(self, **kwargs: Any) -> None:
-        # TODO: implement this
         pass
 
 

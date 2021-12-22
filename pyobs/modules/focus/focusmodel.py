@@ -4,10 +4,10 @@ from typing import Optional, Any, Dict, TYPE_CHECKING, cast
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 if TYPE_CHECKING:
     import lmfit
 
-from pyobs.utils.parallel import event_wait
 from pyobs.interfaces import IFocuser, IFilters, IWeather, ITemperatures
 from pyobs.modules import Module
 from pyobs.modules import timeout
@@ -350,17 +350,17 @@ class FocusModel(Module, IFocusModel):
 
         # write log
         if self._publisher is not None:
-            self._publisher(**values)
+            await self._publisher(**values)
 
         # finally, calculate new model
         log.info('Re-calculating model...')
-        self._calc_focus_model()
+        await self._calc_focus_model()
 
         # finished
         log.info('Done.')
         return True
 
-    def _calc_focus_model(self) -> None:
+    async def _calc_focus_model(self) -> None:
         """Calculate new focus model from saved entries."""
         import lmfit
 
@@ -369,7 +369,7 @@ class FocusModel(Module, IFocusModel):
             return
 
         # only take clear filter images for now
-        data = self._publisher.data()
+        data = await self._publisher.data()
 
         # enough measurements?
         if len(data) < self._min_measurements:
@@ -425,7 +425,7 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
 
-    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> np.ndarray:
+    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> npt.NDArray[float]:
         """Fit method for model
 
         Args:
@@ -465,9 +465,9 @@ class FocusModel(Module, IFocusModel):
             error.append(row['error'])
 
         # return residuals
-        return cast(np.ndarray, (np.array(focus) - np.array(model)) / np.array(error))
+        return cast(npt.NDArray[float], (np.array(focus) - np.array(model)) / np.array(error))
 
-    async def _on_filter_changed(self, event: FilterChangedEvent, sender: str) -> bool:
+    async def _on_filter_changed(self, event: Event, sender: str) -> bool:
         """Receive FilterChangedEvent and set focus.
 
         Args:
@@ -476,7 +476,7 @@ class FocusModel(Module, IFocusModel):
         """
 
         # wrong sender?
-        if sender != self._filter_wheel:
+        if sender != self._filter_wheel or not isinstance(event, FilterChangedEvent):
             return False
 
         # log and change

@@ -100,7 +100,7 @@ class ApplyOffsets(Object):
         log_entry['separation'] = np.sqrt(log_entry[x_header]**2 + log_entry[y_header]**2)
 
         # log it
-        self._publisher(**log_entry)
+        await self._publisher(**log_entry)
 
 
 __all__ = ['ApplyOffsets']

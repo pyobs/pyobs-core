@@ -91,13 +91,13 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         await Module.close(self)
         self._abort.set()
 
-    def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str,
-                 binning: Tuple[int, int]) -> None:
+    async def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str,
+                       binning: Tuple[int, int]) -> None:
         """Callback for flat-field class to call with statistics."""
         # write log
         if self._publisher is not None:
-            self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
-                            filter=filter_name, binning=binning[0])
+            await self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
+                                  filter=filter_name, binning=binning[0])
 
     async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.

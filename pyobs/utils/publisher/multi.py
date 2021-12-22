@@ -1,4 +1,4 @@
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, Dict
 import logging
 
 from .publisher import Publisher
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class MultiPublisher(Publisher):
     """Forwards a message to multiple publishers."""
 
-    def __init__(self, publishers: Optional[List[Union[Publisher, dict]]] = None, **kwargs: Any):
+    def __init__(self, publishers: Optional[List[Union[Publisher, Dict[str, Any]]]] = None, **kwargs: Any):
         """Initialize new multi publisher.
 
         Args:
@@ -21,7 +21,7 @@ class MultiPublisher(Publisher):
         # store
         self._publishers: List[Publisher] = [] if publishers is None else [self.add_child_object(p) for p in publishers]
 
-    def __call__(self, **kwargs: Any) -> None:
+    async def __call__(self, **kwargs: Any) -> None:
         """Publish the given results.
 
         Args:
@@ -31,7 +31,7 @@ class MultiPublisher(Publisher):
         # loop all publishers
         for p in self._publishers:
             # forward message
-            p(**kwargs)
+            await p(**kwargs)
 
 
 __all__ = ['MultiPublisher']

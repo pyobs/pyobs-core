@@ -158,7 +158,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 # write log
                 # TODO: reactivate!
                 #if self._publisher is not None:
-                #    self._publisher(**log_entry)
+                #    await self._publisher(**log_entry)
 
                 # finished
                 return log_entry

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from enum import Enum
 import logging
-from typing import Dict, Union, Callable, Optional, Tuple, Any, cast
+from typing import Dict, Union, Callable, Optional, Tuple, Any, cast, Coroutine
 import astropy.units as u
 from astropy.time import TimeDelta
 import numpy as np
@@ -42,7 +42,7 @@ class FlatFielder(Object):
                  test_frame: Optional[Tuple[float, float, float, float]] = None,
                  counts_frame: Optional[Tuple[float, float, float, float]] = None, allowed_offset_frac: float = 0.2,
                  min_counts: int = 100, pointing: Optional[Union[Dict[str, Any], SkyFlatsBasePointing]] = None,
-                 callback: Optional[Callable[..., Any]] = None, **kwargs: Any):
+                 callback: Optional[Callable[..., Coroutine[Any, Any, None]]] = None, **kwargs: Any):
         """Initialize a new flat fielder.
 
         Args:
@@ -490,8 +490,8 @@ class FlatFielder(Object):
                 if self.observer is None:
                     raise ValueError('No observer given.')
                 sun = self.observer.sun_altaz(now)
-                self._callback(datetime=now.isot, solalt=sun.alt.degree, exptime=self._exptime, counts=self._target_count,
-                               filter=self._cur_filter, binning=self._cur_binning)
+                await self._callback(datetime=now.isot, solalt=sun.alt.degree, exptime=self._exptime,
+                                     counts=self._target_count, filter=self._cur_filter, binning=self._cur_binning)
 
         # then evaluate exposure time
         state = self._eval_exptime()

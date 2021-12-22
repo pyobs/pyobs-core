@@ -21,7 +21,7 @@ class LogPublisher(Publisher):
             raise ValueError('Unknown log level.')
         self._log_function = getattr(log, level)
 
-    def __call__(self, **kwargs: Any) -> None:
+    async def __call__(self, **kwargs: Any) -> None:
         """Publish the given results.
 
         Args:

@@ -102,7 +102,7 @@ class Seeing(Module):
 
         # log it
         if self._publisher is not None:
-            self._publisher(time=Time.now().isot, seeing=seeing)
+            await self._publisher(time=Time.now().isot, seeing=seeing)
         return True
 
 

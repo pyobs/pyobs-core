@@ -1,5 +1,4 @@
 from typing import Any
-
 import pandas as pd
 import logging
 
@@ -21,7 +20,7 @@ class CsvPublisher(Publisher):
         # store
         self._filename = filename
 
-    def __call__(self, **kwargs: Any) -> None:
+    async def __call__(self, **kwargs: Any) -> None:
         """Publish the given results.
 
         Args:
@@ -36,15 +35,15 @@ class CsvPublisher(Publisher):
         csv = pd.concat([csv, row], ignore_index=True)
 
         # write it
-        self.vfs.write_csv(self._filename, csv, index=False)
+        await self.vfs.write_csv(self._filename, csv, index=False)
 
-    def data(self) -> pd.DataFrame:
+    async def data(self) -> pd.DataFrame:
         """Return data that has so far been published."""
 
         # load data
         try:
             # load it
-            return self.vfs.read_csv(self._filename, index_col=False)
+            return await self.vfs.read_csv(self._filename, index_col=False)
 
         except FileNotFoundError:
             # file not found, so start new with row

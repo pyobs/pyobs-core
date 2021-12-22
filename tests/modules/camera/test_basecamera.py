@@ -6,34 +6,36 @@ import asyncio
 from pyobs.comm.dummy import DummyComm
 from pyobs.environment import Environment
 from pyobs.images import Image
-from pyobs.modules.camera import BaseCamera
+from pyobs.modules.camera import BaseCamera, DummyCamera
 from pyobs.utils.enums import ImageType, ExposureStatus
 
 
-def test_open_close():
+@pytest.mark.asyncio
+async def test_open_close():
     """Test basic open/close of BaseCamera."""
 
     # create camera, open and close it
-    camera = BaseCamera(comm=DummyComm())
-    camera.open()
-    camera.close()
+    camera = DummyCamera()
+    await camera.open()
+    await camera.close()
 
 
+@pytest.mark.asyncio
 def test_remaining():
     """Test the methods for remaining exposure time and progress."""
 
     # open camera
-    camera = BaseCamera(comm=DummyComm())
-    camera.open()
+    camera = DummyCamera()
+    await camera.open()
 
     # no exposure, so both should be zero
-    assert 0 == camera.get_exposure_time_left()
-    assert 0 == camera.get_exposure_progress()
+    assert 0 == await camera.get_exposure_time_left()
+    assert 0 == await camera.get_exposure_progress()
 
     # more tests will be done with DummyCamera
 
     # close camera
-    camera.close()
+    await camera.close()
 
 
 def test_add_fits_headers():
@@ -46,17 +48,17 @@ def test_add_fits_headers():
     centre = (100, 100)
     rotation = 42
     camera = BaseCamera(centre=centre, rotation=rotation, comm=comm, location='SAAO')
-    camera.open()
+    await camera.open()
 
     # try empty header
     hdr = fits.Header()
-    camera._add_fits_headers(hdr)
+    await camera._add_fits_headers(hdr)
     assert 0 == len(hdr)
 
     # add DATE-OBS and IMAGETYP
     hdr['DATE-OBS'] = '2019-01-31T03:00:00.000'
     hdr['IMAGETYP'] = 'object'
-    camera._add_fits_headers(hdr)
+    await camera._add_fits_headers(hdr)
 
     # now we should get some values
     assert 2000 == hdr['EQUINOX']
@@ -182,9 +184,10 @@ def test_abort():
     camera.close()
 
 
-def test_trimsec():
+async def test_trimsec():
     # create camera, no need for opening it
-    camera = DummyCam()
+    camera = DummyCamera()
+    await camera.open()
 
     # define full frame
     full = {'left': 50, 'width': 100, 'top': 0, 'height': 100}

@@ -127,8 +127,7 @@ class ImageWatcher(Module):
                     # store it
                     log.info('Storing file as %s...', out_filename)
                     try:
-                        async with self.vfs.open_file(out_filename, 'w') as dest:
-                            fits_file.writeto(dest)
+                        await self.vfs.write_fits(out_filename, fits_file)
                     except:
                         log.exception('Error while copying file, skipping for now.')
                         success = False

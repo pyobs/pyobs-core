@@ -1,14 +1,12 @@
 import glob
 import logging
 import os
-from queue import Queue
+import asyncio
 from typing import Any, Optional, List
-
 from astropy.io import fits
 
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
-from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +37,7 @@ class ImageWatcher(Module):
         # variables
         self._watchpath = watchpath
         self._notifier = None
-        self._queue = Queue()
+        self._queue = asyncio.Queue[str]()
 
         # filename patterns
         if not destinations:
@@ -89,30 +87,27 @@ class ImageWatcher(Module):
 
         # log file
         log.info('Adding new image %s...', filename)
-        self._queue.put(filename)
+        self._queue.put_nowait(filename)
 
-    def _clear_queue(self) -> None:
+    async def _clear_queue(self) -> None:
         """Clear the queue with new files."""
 
         # clear queue
-        with self._queue.mutex:
-            self._queue.queue.clear()
+        while not self._queue.empty():
+            await self._queue.get()
 
     async def _worker(self) -> None:
         """Worker thread."""
 
         # first, add all files from directory to queue
-        self._clear_queue()
+        await self._clear_queue()
         for filename in sorted(glob.glob(os.path.join(self._watchpath, '*'))):
             self.add_image(filename)
 
         # run forever
         while True:
             # get next filename
-            if self._queue.empty():
-                await asyncio.sleep(1)
-                continue
-            filename = self._queue.get()
+            filename = await self._queue.get()
             log.info('Working on file %s...', filename)
 
             # better safe than sorry
@@ -126,11 +121,13 @@ class ImageWatcher(Module):
 
                     # create filename
                     out_filename = format_filename(fits_file['SCI'].header, pattern)
+                    if out_filename is None:
+                        raise ValueError('Could not create name for file.')
 
                     # store it
                     log.info('Storing file as %s...', out_filename)
                     try:
-                        with self.vfs.open_file(out_filename, 'w') as dest:
+                        async with self.vfs.open_file(out_filename, 'w') as dest:
                             fits_file.writeto(dest)
                     except:
                         log.exception('Error while copying file, skipping for now.')

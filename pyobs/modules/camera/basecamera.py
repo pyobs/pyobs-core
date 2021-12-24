@@ -302,7 +302,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         await self._change_exposure_status(ExposureStatus.IDLE)
         return filename
 
-    def _abort_exposure(self) -> None:
+    async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Raises:
@@ -322,7 +322,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self.expose_abort.set()
 
         # do camera-specific abort
-        self._abort_exposure()
+        await self._abort_exposure()
 
         # wait until state is not EXPOSING anymore
         while await self.get_exposure_status() == ExposureStatus.EXPOSING:

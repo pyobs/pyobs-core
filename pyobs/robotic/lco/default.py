@@ -133,7 +133,7 @@ class LcoDefaultScript(Script):
             if telescope is None:
                 raise ValueError('No telescope given.')
             log.info('Moving to target %s...', target['name'])
-            track = telescope.move_radec(target['ra'], target['dec'])
+            track = await telescope.move_radec(target['ra'], target['dec'])
 
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
@@ -198,7 +198,7 @@ class LcoDefaultScript(Script):
                 set_filter = Future[None](empty=True)
                 if 'optical_elements' in ic and 'filter' in ic['optical_elements'] and filters is not None:
                     log.info('Setting filter to %s...', ic['optical_elements']['filter'])
-                    set_filter = filters.set_filter(ic['optical_elements']['filter'])
+                    set_filter = await filters.set_filter(ic['optical_elements']['filter'])
 
                 # wait for tracking and filter
                 await Future.wait_all([track, set_filter])

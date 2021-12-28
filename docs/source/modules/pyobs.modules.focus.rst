@@ -3,13 +3,6 @@ Focus (pyobs.modules.focus)
 
 .. automodule:: pyobs.modules.focus
 
-AutoFocusProjection
-~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: pyobs.modules.focus.AutoFocusProjection
-   :members:
-   :show-inheritance:
-
 AutoFocusSeries
 ~~~~~~~~~~~~~~~
 

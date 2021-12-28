@@ -17,13 +17,6 @@ ImageWriter
    :members:
    :show-inheritance:
 
-OnlineReduction
-~~~~~~~~~~~~~~~
-
-.. autoclass:: pyobs.modules.image.OnlineReduction
-   :members:
-   :show-inheritance:
-
 Seeing
 ~~~~~~
 

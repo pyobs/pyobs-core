@@ -1,0 +1,2 @@
+.. automodule:: pyobs.modules.acquisition
+

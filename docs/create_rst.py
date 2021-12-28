@@ -238,26 +238,15 @@ def create_utils_rst():
 
 
 def create_modules_rst():
-    # what to do?
-    extra_packages = [pyobs_alpaca, pyobs_asi, pyobs_fli, pyobs_gui, pyobs_sbig]
-
     # clean up
     os.system('rm -rf source/modules/*')
 
     # first do pyobs.modules, since that's the more complicated case
     for module in find_submodules(pyobs.modules):
         # module
-        write_module_rst('source/modules/pyobs/%s.rst' % module.__name__, module, classes=True,
+        write_module_rst('source/modules/%s.rst' % module.__name__, module, classes=True,
                          class_kwargs=dict(members=True, inheritance=True))
-    write_index_file('source/modules/pyobs/', title='Core modules (pyobs.modules)', relative_title=False)
-
-    # do others
-    for pkg in extra_packages:
-        write_module_rst('source/modules/%s.rst' % pkg.__name__, pkg, classes=True,
-                         class_kwargs=dict(members=True, inheritance=True))
-
-    # global index file
-    write_index_file('source/modules/', title='Modules', topics=['pyobs/index'] + [p.__name__ for p in extra_packages])
+    write_index_file('source/modules/', title='Core modules (pyobs.modules)', relative_title=False)
 
     # add to git
     os.system('git add source/modules/')
@@ -284,9 +273,6 @@ if __name__ == '__main__':
     if args.all or args.interfaces:
         with open('source/api/interfaces.rst', 'w') as rst:
             write_module(rst, pyobs.interfaces, header_level=1, classes=True, ignore_classes=['Interface'],
-                         class_kwargs=dict(members=True, inheritance=True, undoc_members=True))
-        with open('source/api/proxies.rst', 'w') as rst:
-            write_module(rst, pyobs.interfaces.proxies, header_level=1, classes=True, ignore_classes=['InterfaceProxy'],
                          class_kwargs=dict(members=True, inheritance=True, undoc_members=True))
 
     if args.all or args.utils:

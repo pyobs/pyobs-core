@@ -13,23 +13,10 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-import sys
-sys.path.insert(0, os.path.abspath('../../pyobs-core/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-sbig/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-fli/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-alpaca/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-asi/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-gui/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-weather/'))
-sys.path.insert(0, os.path.abspath('../../pyobs-archive/'))
 
 # -- Django --------------------
 import os
 import sys
-import django
-sys.path.insert(0, os.path.abspath('..'))
-os.environ['DJANGO_SETTINGS_MODULE'] = 'pyobs_weather.settings'
-django.setup()
 
 
 # -- Project information -----------------------------------------------------
@@ -39,9 +26,9 @@ copyright = '2021, Tim-Oliver Husser'
 author = 'Tim-Oliver Husser'
 
 # The short X.Y version
-version = '0.13'
+version = '0.15'
 # The full version, including alpha/beta/rc tags
-release = '0.13alpha'
+release = '0.15alpha20'
 
 
 # -- General configuration ---------------------------------------------------

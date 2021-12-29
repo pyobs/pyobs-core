@@ -9,8 +9,13 @@ class IModule(Interface, metaclass=ABCMeta):
     __module__ = 'pyobs.interfaces'
 
     @abstractmethod
-    async def label(self, **kwargs: Any) -> str:
+    async def get_label(self, **kwargs: Any) -> str:
         """Returns label of module."""
+        ...
+
+    @abstractmethod
+    async def get_version(self, **kwargs: Any) -> str:
+        """Returns pyobs version of module."""
         ...
 
 

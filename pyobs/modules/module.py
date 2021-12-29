@@ -7,6 +7,7 @@ from py_expression_eval import Parser
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
+from pyobs.version import version
 
 log = logging.getLogger(__name__)
 
@@ -125,9 +126,13 @@ class Module(Object, IModule, IConfig):
         """Returns name of module."""
         return '' if self._device_name is None else self._device_name
 
-    def label(self, **kwargs: Any) -> str:
+    async def get_label(self, **kwargs: Any) -> str:
         """Returns label of module."""
         return '' if self._label is None else self._label
+
+    async def get_version(self, **kwargs: Any) -> str:
+        """Returns pyobs version of module."""
+        return version()
 
     @property
     def interfaces(self) -> List[Type[Interface]]:

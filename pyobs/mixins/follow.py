@@ -105,7 +105,7 @@ class FollowMixin:
 
         # run until closing
         connected = True
-        while not module.closing.is_set():
+        while True:
             # not ready?
             if isinstance(self, IReady):
                 if not await self.is_ready() and this.__follow_only_when_ready:

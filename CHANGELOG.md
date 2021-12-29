@@ -1,9 +1,10 @@
 ## Changelog
 
-### v0.15.0
-* Added Comm implementatio for SliXMPP (which should now be default) and moved old comm.xmpp to comm.sleekcmpp.
+### v0.15.0 (2021-12-29)
+* Added Comm implementation for SliXMPP (which should now be default) and moved old comm.xmpp to comm.sleekcmpp.
 * Using asyncio throughout the project, all method and event handlers are async now, as well as open/close methods.
 * Got rid of multi-threading as best as possible.
+* VFS now also uses asyncio.
 
 ### v0.14.2
 * Fixed a bug with Poetry

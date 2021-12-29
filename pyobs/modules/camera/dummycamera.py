@@ -1,15 +1,15 @@
+import asyncio
 import glob
 import logging
-import threading
-import time
 from datetime import datetime
-from threading import RLock
 from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
 
 from pyobs.interfaces import IWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
 
@@ -39,7 +39,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         BaseCamera.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._cooling_thread, True)
+        self.add_background_task(self._cooling_thread, True)
 
         # store
         self._readout_time = readout_time
@@ -49,38 +49,34 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
 
         # simulated world
         from pyobs.utils.simulation import SimCamera, SimWorld
-        self._world = world if world is not None else \
-            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'}, SimWorld)
+        self._world = self.get_object(world, SimWorld) if world is not None else \
+            self.add_child_object(SimWorld)
         self._camera: SimCamera = self._world.camera
 
         # init camera
         self._cooling = CoolingStatus()
         self._exposing = True
 
-        # locks
-        self._coolingLock = RLock()
-
         # simulator
         self._sim_images = sorted(glob.glob(self._sim['images'])) if self._sim['images'] else None
 
-    def _cooling_thread(self) -> None:
-        while not self.closing.is_set():
-            with self._coolingLock:
-                # adjust temperature
-                temps = self._cooling.temperatures
-                temps['CCD'] -= (self._cooling.temperatures['CCD'] - self._cooling.set_point) * 0.05
+    async def _cooling_thread(self) -> None:
+        while True:
+            # adjust temperature
+            temps = self._cooling.temperatures
+            temps['CCD'] -= (self._cooling.temperatures['CCD'] - self._cooling.set_point) * 0.05
 
-                # cooling power
-                power = (60. - self._cooling.temperatures['CCD']) / 70. * 100.
+            # cooling power
+            power = (60. - self._cooling.temperatures['CCD']) / 70. * 100.
 
-                # create new object
-                self._cooling = CoolingStatus(enabled=self._cooling.enabled, set_point=self._cooling.set_point,
-                                              power=power, temperatures=temps)
+            # create new object
+            self._cooling = CoolingStatus(enabled=self._cooling.enabled, set_point=self._cooling.set_point,
+                                          power=power, temperatures=temps)
 
             # sleep for 1 second
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
-    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -101,7 +97,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             image = self._camera.get_image(exp_time, open_shutter)
             return image
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -116,42 +112,46 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             ValueError: If exposure was not successful.
         """
 
-        # do exposure
+        # start exposure
         log.info('Starting exposure with {0:s} shutter...'.format('open' if open_shutter else 'closed'))
         date_obs = datetime.utcnow()
-        self._change_exposure_status(ExposureStatus.EXPOSING)
         self._exposing = True
+
+        # request image
+        loop = asyncio.get_running_loop()
+        hdu_future = loop.run_in_executor(None, self._get_image, exposure_time, open_shutter)
+
+        # wait a little
         steps = 10
         for i in range(steps):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
-                self._change_exposure_status(ExposureStatus.IDLE)
+                await self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Exposure was aborted.')
-            time.sleep(exposure_time / steps)
+            await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 
         # readout
-        self._change_exposure_status(ExposureStatus.READOUT)
-        time.sleep(self._readout_time)
+        await self._change_exposure_status(ExposureStatus.READOUT)
+        await asyncio.sleep(self._readout_time)
 
         # get image
-        hdu = self._get_image(exposure_time, open_shutter)
+        image = await hdu_future
 
         # add headers
-        hdu.header['EXPTIME'] = exposure_time
-        hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._camera.binning[0], 'Binning factor used on X axis')
-        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._camera.binning[1], 'Binning factor used on Y axis')
-        hdu.header['XORGSUBF'] = (self._camera.window[0], 'Subframe origin on X axis')
-        hdu.header['YORGSUBF'] = (self._camera.window[1], 'Subframe origin on Y axis')
+        image.header['EXPTIME'] = exposure_time
+        image.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        image.header['XBINNING'] = image.header['DET-BIN1'] = (self._camera.binning[0], 'Binning factor used on X axis')
+        image.header['YBINNING'] = image.header['DET-BIN2'] = (self._camera.binning[1], 'Binning factor used on Y axis')
+        image.header['XORGSUBF'] = (self._camera.window[0], 'Subframe origin on X axis')
+        image.header['YORGSUBF'] = (self._camera.window[1], 'Subframe origin on Y axis')
 
         # biassec/trimsec
-        self.set_biassec_trimsec(hdu.header, *self._camera.full_frame)
+        self.set_biassec_trimsec(image.header, *self._camera.full_frame)
 
         # finished
         log.info('Exposure finished.')
-        self._change_exposure_status(ExposureStatus.IDLE)
-        return hdu
+        return image
 
     def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
@@ -161,7 +161,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         self._exposing = False
 
-    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -169,7 +169,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         return self._camera.window
 
-    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
+    async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -184,7 +184,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
 
-    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -192,7 +192,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         """
         return self._camera.binning
 
-    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
+    async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -205,7 +205,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         log.info("Set binning to %dx%d.", x, y)
         self._camera.binning = (x, y)
 
-    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
+    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:
@@ -223,11 +223,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             log.info('Disabling cooling.')
 
         # set
-        with self._coolingLock:
-            self._cooling = CoolingStatus(enabled=enabled, set_point=setpoint, power=self._cooling.power,
-                                          temperatures=self._cooling.temperatures)
+        self._cooling = CoolingStatus(enabled=enabled, set_point=setpoint, power=self._cooling.power,
+                                      temperatures=self._cooling.temperatures)
 
-    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -236,10 +235,9 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
                 SetPoint: Setpoint for the cooling in celsius.
                 Power:    Current cooling power in percent or None.
         """
-        with self._coolingLock:
-            return self._cooling.enabled, self._cooling.set_point, self._cooling.power
+        return self._cooling.enabled, self._cooling.set_point, self._cooling.power
 
-    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

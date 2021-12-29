@@ -1,14 +1,14 @@
-import threading
+import asyncio
 from urllib.parse import urljoin
 import logging
-from typing import Union, List, Dict, Optional, Any, cast
-import requests
+from typing import List, Dict, Optional, Any, cast
+
+import aiohttp as aiohttp
 from astroplan import TimeConstraint, AirmassConstraint, ObservingBlock, FixedTarget, MoonSeparationConstraint, \
     MoonIlluminationConstraint, AtNightConstraint
 from astropy.coordinates import SkyCoord
 from astropy.time import TimeDelta
 import astropy.units as u
-from requests import Timeout
 
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
@@ -65,7 +65,6 @@ class LcoTaskArchive(TaskArchive):
         self.instruments: Dict[str, Any] = {}
         self._update = update
         self._last_schedule_time: Optional[Time] = None
-        self._last_schedule_lock = threading.RLock()
         self.scripts = scripts
         self._proxies = {} if proxies is None else proxies
 
@@ -79,104 +78,109 @@ class LcoTaskArchive(TaskArchive):
             'Authorization': 'Token ' + token
         }
 
-        # update thread
-        self._update_lock = threading.RLock()
-        self._update_thread: Optional[threading.Thread] = None
-        self._closing = threading.Event()
-
         # task list
         self._tasks: Dict[str, LcoTask] = {}
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open scheduler."""
 
         # get stuff from portal
-        self._init_from_portal()
+        await self._init_from_portal()
 
         # start update thread
         if self._update:
-            self._update_thread = threading.Thread(target=self._update_schedule)
-            self._update_thread.start()
+            asyncio.create_task(self._update_schedule())
 
-    def close(self) -> None:
-        """Close scheduler."""
-        if self._update_thread is not None and self._update_thread.is_alive():
-            self._closing.set()
-            self._update_thread.join()
+    async def _portal_get(self, url: str) -> dict:
+        """Do a GET request on the portal.
 
-    def _init_from_portal(self) -> None:
+        Args:
+            url: URL to request.
+
+        Returns:
+            Response for request.
+
+        Raises:
+            RuntimeError if the call failed.
+            TimeoutError if the call timed out.
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=self._header, timeout=10) as response:
+                if response.status != 200:
+                    raise RuntimeError('Invalid response from portal: ' + await response.text())
+                return await response.json()
+
+    async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
 
         # get instruments
-        url = urljoin(self._url, '/api/instruments/')
-        res = requests.get(url, headers=self._header, proxies=self._proxies)
-        if res.status_code != 200:
-            raise RuntimeError('Invalid response from portal.')
+        # don't catch exception, we want to fail, if something goes wrong here
+        data = await self._portal_get(urljoin(self._url, '/api/instruments/'))
 
-        # store instruments
-        self.instruments = {k.lower(): v for k, v in res.json().items()}
+        # and store
+        self.instruments = {k.lower(): v for k, v in data.items()}
 
-    def _update_schedule(self) -> None:
+    async def _update_schedule(self) -> None:
         """Update thread."""
-        while not self._closing.is_set():
+        while True:
             # do actual update
             try:
-                self._update_now()
+                await self._update_now()
             except:
                 log.exception('An exception occurred.')
 
             # sleep a little
-            self._closing.wait(10)
+            await asyncio.sleep(10)
 
-    def _update_now(self, force: bool = False) -> None:
+    async def _update_now(self, force: bool = False) -> None:
         """Update list of requests.
 
         Args:
             force: Force update.
         """
 
-        # only want to do this once at a time
-        with self._last_schedule_lock:
-            # remember now
-            now = Time.now()
+        # remember now
+        now = Time.now()
 
-            # get time of last scheduler run and check, whether we need an update, which is not the case, if
-            # - we updated before
-            # - AND last update was after last schedule update
-            # - AND last update is less then 1 min ago
-            # - AND force is set to False
-            last_scheduled = self.last_scheduled()
-            if self._last_schedule_time is not None and \
-                    (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
-                    self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
-                    force is False:
-                # need no update
-                return
+        # get time of last scheduler run and check, whether we need an update, which is not the case, if
+        # - we updated before
+        # - AND last update was after last schedule update
+        # - AND last update is less then 1 min ago
+        # - AND force is set to False
+        last_scheduled = await self.last_scheduled()
+        if self._last_schedule_time is not None and \
+                (last_scheduled is None or self._last_schedule_time >= last_scheduled) and \
+                self._last_schedule_time > now - TimeDelta(1. * u.minute) and \
+                force is False:
+            # need no update
+            return
 
-            # need update!
-            try:
-                tasks = self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
-                                               include_running=False)
-            except Timeout:
-                log.error('Request timed out')
-                self._closing.wait(60)
-                return
-            except ValueError:
-                log.warning('Could not fetch schedule.')
-                return
+        # need update!
+        try:
+            tasks = await self.get_pending_tasks(end_after=now, start_before=now + TimeDelta(24 * u.hour),
+                                                 include_running=False)
+        except TimeoutError:
+            log.error('Request timed out')
+            await asyncio.sleep(60)
+            return
+        except RuntimeError:
+            log.warning('Could not fetch schedule.')
+            return
 
-            # any changes?
-            if sorted(tasks) != sorted(self._tasks):
-                log.info('Task list changed, found %d task(s) to run.', len(tasks))
+        # any changes?
+        if sorted(tasks) != sorted(self._tasks):
+            log.info('Task list changed, found %d task(s) to run.', len(tasks))
+            for task_id, task in tasks.items():
+                log.info(f'  - {task.start} to {task.end}: {task.name} (#{task_id})')
 
-            # update
-            with self._update_lock:
-                self._tasks = cast(Dict[str, LcoTask], tasks)
+        # update
+        self._tasks = cast(Dict[str, LcoTask], tasks)
 
-            # finished
-            self._last_schedule_time = now
+        # finished
+        self._last_schedule_time = now
 
-    def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) \
+            -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:
@@ -189,7 +193,7 @@ class LcoTaskArchive(TaskArchive):
 
         Raises:
             Timeout: If request timed out.
-            ValueError: If something goes wrong.
+            RuntimeError: If something goes wrong.
         """
 
         # define states
@@ -209,29 +213,28 @@ class LcoTaskArchive(TaskArchive):
         }
 
         # do request
-        r = requests.get(url, params=params, headers=self._header, timeout=10, proxies=self._proxies)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=self._header, params=params, timeout=10) as response:
+                if response.status != 200:
+                    raise RuntimeError('Invalid response from portal.')
+                data = await response.json()
 
-        # success?
-        if r.status_code != 200:
-            raise ValueError()
+                # get schedule
+                schedules = data['results']
 
-        # get schedule
-        schedules = r.json()['results']
+                # create tasks
+                tasks = {}
+                for sched in schedules:
+                    # parse start and end
+                    sched['start'] = Time(sched['start'])
+                    sched['end'] = Time(sched['end'])
 
-        # create tasks
-        tasks = {}
-        for sched in schedules:
-            # parse start and end
-            sched['start'] = Time(sched['start'])
-            sched['end'] = Time(sched['end'])
+                    # create task
+                    task = self._create_task(LcoTask, config=sched, scripts=self.scripts)
+                    tasks[sched['request']['id']] = task
 
-            # create task
-            task = self._create_task(LcoTask, config=sched, scripts=self.scripts)
-            tasks[sched['request']['id']] = task
-
-        # finished
-        r.close()
-        return tasks
+                # finished
+                return tasks
 
     def get_task(self, time: Time) -> Optional[LcoTask]:
         """Returns the active task at the given time.
@@ -244,36 +247,34 @@ class LcoTaskArchive(TaskArchive):
         """
 
         # loop all tasks
-        with self._update_lock:
-            for task in self._tasks.values():
-                # running now?
-                if task.start <= time < task.end and not task.is_finished():
-                    return task
+        for task in self._tasks.values():
+            # running now?
+            if task.start <= time < task.end and not task.is_finished():
+                return task
 
         # nothing found
         return None
 
-    def run_task(self, task: Task, abort_event: threading.Event) -> bool:
+    async def run_task(self, task: Task) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
-            abort_event: Abort event
 
         Returns:
             Success or not
         """
 
         # run task
-        task.run(abort_event)
+        await task.run()
 
         # force update tasks
-        self._update_now(force=True)
+        await self._update_now(force=True)
 
         # finish
         return True
 
-    def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
+    async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         """Send report to LCO portal
 
         Args:
@@ -285,60 +286,48 @@ class LcoTaskArchive(TaskArchive):
         url = urljoin(self._url, '/api/configurationstatus/%d/' % status_id)
 
         # do request
-        res = None
         try:
-            res = requests.patch(url, json=status, headers=self._header, timeout=10, proxies=self._proxies)
-            if res.status_code != 200:
-                log.error('Could not update configuration status: %s', res.text)
-        except Timeout:
-            log.error('Request timed out.')
-        finally:
-            if res is not None:
-                res.close()
+            async with aiohttp.ClientSession() as session:
+                async with session.patch(url, json=status, headers=self._header, timeout=10) as response:
+                    if response.status != 200:
+                        log.error('Could not update configuration status: %s', await response.text())
 
-    def last_changed(self) -> Optional[Time]:
+        except TimeoutError:
+            log.error('Request timed out.')
+
+    async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
 
         # try to update time
-        res = None
         try:
-            res = requests.get(urljoin(self._url, '/api/last_changed/'), headers=self._header, timeout=10,
-                               proxies=self._proxies)
-            if res.status_code != 200:
-                raise ValueError
-            self._last_changed = res.json()['last_change_time']
+            # get data
+            data = await self._portal_get(urljoin(self._url, '/api/last_changed/'))
+
+            # get last change
+            self._last_changed = data['last_change_time']
             return self._last_changed
 
-        except:
+        except TimeoutError:
             # in case of errors, return last time
             return self._last_changed
 
-        finally:
-            if res is not None:
-                res.close()
-
-    def last_scheduled(self) -> Optional[Time]:
+    async def last_scheduled(self) -> Optional[Time]:
         """Returns time of last scheduler run."""
 
         # try to update time
-        res = None
         try:
-            res = requests.get(urljoin(self._url, '/api/last_scheduled/'), headers=self._header, timeout=10,
-                               proxies=self._proxies)
-            if res.status_code != 200:
-                raise ValueError
-            self._last_scheduled = Time(res.json()['last_schedule_time'])
-            return self._last_scheduled
+            # get data
+            data = await self._portal_get(urljoin(self._url, '/api/last_scheduled/'))
 
-        except:
+            # get last change
+            self._last_changed = data['last_schedule_time']
+            return self._last_changed
+
+        except TimeoutError:
             # in case of errors, return last time
             return self._last_scheduled
 
-        finally:
-            if res is not None:
-                res.close()
-
-    def get_schedulable_blocks(self) -> List[ObservingBlock]:
+    async def get_schedulable_blocks(self) -> List[ObservingBlock]:
         """Returns list of schedulable blocks.
 
         Returns:
@@ -349,20 +338,12 @@ class LcoTaskArchive(TaskArchive):
         if self._portal_instrument_type is None:
             raise ValueError('No instrument type for portal set.')
 
-        # get requests
-        res = requests.get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'), headers=self._header,
-                         proxies=self._proxies)
-        if res.status_code != 200:
-            raise ValueError('Could not fetch list of schedulable requests.')
-        schedulable = res.json()
-        res.close()
+        # get data
+        schedulable = await self._portal_get(urljoin(self._url, '/api/requestgroups/schedulable_requests/'))
 
         # get proposal priorities
-        res = requests.get(urljoin(self._url, '/api/proposals/'), headers=self._header, proxies=self._proxies)
-        if res.status_code != 200:
-            raise ValueError('Could not fetch list of proposals.')
-        tac_priorities = {p['id']: p['tac_priority'] for p in res.json()['results']}
-        res.close()
+        data = await self._portal_get(urljoin(self._url, '/api/proposals/'))
+        tac_priorities = {p['id']: p['tac_priority'] for p in data['results']}
 
         # loop all request groups
         blocks = []
@@ -411,7 +392,7 @@ class LcoTaskArchive(TaskArchive):
                             constraints.append(AtNightConstraint.twilight_astronomical())
 
                     # priority is base_priority times duration in minutes
-                    #priority = base_priority * duration.value / 60.
+                    # priority = base_priority * duration.value / 60.
                     priority = base_priority
 
                     # create block
@@ -423,7 +404,7 @@ class LcoTaskArchive(TaskArchive):
         # return blocks
         return blocks
 
-    def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -435,12 +416,12 @@ class LcoTaskArchive(TaskArchive):
         observations = self._create_observations(blocks)
 
         # cancel schedule
-        self._cancel_schedule(start_time)
+        await self._cancel_schedule(start_time)
 
         # send new schedule
-        self._submit_observations(observations)
+        await self._submit_observations(observations)
 
-    def _cancel_schedule(self, now: Time) -> None:
+    async def _cancel_schedule(self, now: Time) -> None:
         """Cancel future schedule."""
 
         # define parameters
@@ -452,15 +433,16 @@ class LcoTaskArchive(TaskArchive):
             'end': (now + self._period).isot
         }
 
+        # url and headers
+        url = urljoin(self._url, '/api/observations/cancel/')
+        headers = {'Authorization': 'Token ' + self._token, 'Content-Type': 'application/json; charset=utf8'}
+
         # cancel schedule
         log.info('Deleting all scheduled tasks after %s...', now.isot)
-        res = requests.post(urljoin(self._url, '/api/observations/cancel/'), json=params,
-                          headers={'Authorization': 'Token ' + self._token,
-                                   'Content-Type': 'application/json; charset=utf8'},
-                          proxies=self._proxies)
-        res.close()
-        if res.status_code != 200:
-            raise ValueError('Could not cancel schedule.')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=params, headers=headers, timeout=10) as response:
+                if response.status != 200:
+                    log.error('Could not cancel schedule: %s', await response.text())
 
     def _create_observations(self, blocks: List[ObservingBlock]) -> List[Dict[str, Any]]:
         """Create observations from schedule.
@@ -496,7 +478,7 @@ class LcoTaskArchive(TaskArchive):
         # return list
         return observations
 
-    def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
+    async def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
         """Submit observations.
 
         Args:
@@ -507,22 +489,23 @@ class LcoTaskArchive(TaskArchive):
         if len(observations) == 0:
             return
 
+        # url and headers
+        url = urljoin(self._url, '/api/observations/')
+        headers = {'Authorization': 'Token ' + self._token, 'Content-Type': 'application/json; charset=utf8'}
+
         # submit obervations
-        res = requests.post(urljoin(self._url, '/api/observations/'), json=observations,
-                            headers={'Authorization': 'Token ' + self._token,
-                                     'Content-Type': 'application/json; charset=utf8'},
-                            proxies=self._proxies)
-        res.close()
-        if res.status_code != 201:
-            raise ValueError('Could not submit observations.')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=observations, headers=headers, timeout=10) as response:
+                if response.status != 200:
+                    log.error('Could not submit observations: %s', await response.text())
+                data = await response.json()
 
         # log
-        json = res.json()
-        log.info('%d observations created.', json['num_created'])
+        log.info('%d observations created.', data['num_created'])
 
         # errors?
-        if 'errors' in json:
-            for err in json['errors'].values():
+        if 'errors' in data:
+            for err in data['errors'].values():
                 log.warning('Error from portal: %s', err['non_field_errors'])
 
 

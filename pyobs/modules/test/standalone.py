@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -21,21 +22,21 @@ class StandAlone(Module):
         Module.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._message_func, True)
+        self.add_background_task(self._message_func)
 
         # store
         self._message = message
         self._interval = interval
 
-    def _message_func(self):
+    async def _message_func(self):
         """Thread function for async processing."""
         # loop until closing
-        while not self.closing.is_set():
+        while True:
             # log message
             log.info(self._message)
 
             # sleep a little
-            self.closing.wait(self._interval)
+            await asyncio.sleep(self._interval)
 
 
 __all__ = ['StandAlone']

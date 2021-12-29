@@ -1,11 +1,14 @@
+import asyncio
 import inspect
 import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
 
+from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
+from pyobs.version import version, version_tuple
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +24,7 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
     """
 
     def timeout_decorator(func: F) -> F:
-        def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
+        async def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
             # define variables as non-local
             nonlocal func_timeout, func
 
@@ -36,10 +39,10 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
                     try:
                         if hasattr(func_timeout, 'timeout'):
                             # call timeout method, only works if this has the same parameters
-                            to = getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
+                            to = await getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
                         else:
                             # call method directly
-                            to = func_timeout(obj, *args, **kwargs)
+                            to = await func_timeout(obj, *args, **kwargs)
                     except:
                         log.exception('Could not call timeout method.')
 
@@ -93,37 +96,73 @@ class Module(Object, IModule, IConfig):
         self._device_name = name if name is not None else self.comm.name
         self._label = label if label is not None else self._device_name
 
-    def open(self) -> None:
-        """Open module."""
-        Object.open(self)
-
+    async def open(self) -> None:
         # open comm
         if self.comm is not None:
             # open it and connect module
-            self.comm.open()
+            await self.comm.open()
             self.comm.module = self
 
-    def close(self) -> None:
+            # react to connecting modules
+            await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)
+
+        """Open module."""
+        await Object.open(self)
+
+    async def close(self) -> None:
         """Close module."""
-        Object.close(self)
+        await Object.close(self)
 
         # close comm
         if self.comm is not None:
             log.info('Closing connection to server...')
-            self.comm.close()
+            await self.comm.close()
 
-    def main(self) -> None:
+    async def main(self) -> None:
         """Main loop for application."""
-        while not self.closing.is_set():
-            self.closing.wait(1)
+        while True:
+            try:
+                await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                return
 
     def name(self, **kwargs: Any) -> str:
         """Returns name of module."""
         return '' if self._device_name is None else self._device_name
 
-    def label(self, **kwargs: Any) -> str:
+    async def get_label(self, **kwargs: Any) -> str:
         """Returns label of module."""
         return '' if self._label is None else self._label
+
+    async def get_version(self, **kwargs: Any) -> str:
+        """Returns pyobs version of module."""
+        return version()
+
+    async def _on_module_opened(self, event: Event, sender: str) -> bool:
+        """React to other modules connecting."""
+        if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
+            return False
+
+        # get proxy and version
+        proxy = await self.proxy(sender, IModule)
+        module_version = await proxy.get_version()
+        my_version = version()
+
+        # log it
+        log.warning(f'Other module {sender} found, running on pyobs {module_version}.')
+
+        # check minor and major version, ignore patch level
+        v1, v2 = version_tuple(my_version), version_tuple(module_version)
+        if v1[:2] != v2[:2]:
+            if v1 > v2:
+                log.warning(f'Found module "{sender}" with older pyobs version {module_version}, please update it.')
+            else:
+                log.error(f'Found module "{sender}" with newer pyobs version {module_version}, '
+                          f'please update this module.')
+                self.quit()
+
+        # okay
+        return True
 
     @property
     def interfaces(self) -> List[Type[Interface]]:
@@ -163,9 +202,9 @@ class Module(Object, IModule, IConfig):
 
     def quit(self) -> None:
         """Quit module."""
-        self.closing.set()
+        asyncio.get_event_loop().stop()
 
-    def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
+    async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
 
         All incoming variables in args and kwargs must be of simple type (i.e. int, float, str, bool, tuple) and will
@@ -205,7 +244,7 @@ class Module(Object, IModule, IConfig):
             del ba.arguments['kwargs']
 
         # call method
-        response = func(*func_args, **ba.arguments, **func_kwargs)
+        response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
         return cast_response_to_simple(response)

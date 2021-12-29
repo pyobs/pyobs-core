@@ -1,13 +1,15 @@
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Any, Dict
 
 from .IAbortable import IAbortable
 
 
-class IAutoFocus(IAbortable):
+class IAutoFocus(IAbortable, metaclass=ABCMeta):
     """The module can perform an auto-focus."""
     __module__ = 'pyobs.interfaces'
 
-    def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) \
+    @abstractmethod
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) \
             -> Tuple[float, float]:
         """Perform an auto-focus series.
 
@@ -26,9 +28,10 @@ class IAutoFocus(IAbortable):
         Raises:
             ValueError: If focus could not be obtained.
         """
-        raise NotImplementedError
+        ...
 
-    def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
+    @abstractmethod
+    async def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.
@@ -36,7 +39,7 @@ class IAutoFocus(IAbortable):
         Returns:
             Dictionary with current status.
         """
-        raise NotImplementedError
+        ...
 
 
 __all__ = ['IAutoFocus']

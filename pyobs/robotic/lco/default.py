@@ -1,15 +1,14 @@
 import logging
-import threading
 import time
 import numpy as np
 from typing import Union, Optional, Any, Tuple, cast, Dict, List
 
-from pyobs.interfaces.proxies import IBinningProxy, IWindowProxy, IExposureTimeProxy, IRoofProxy, IAutoGuidingProxy, \
-    ITelescopeProxy, IAcquisitionProxy, ICameraProxy, IFiltersProxy, IImageTypeProxy
+from pyobs.interfaces import IBinning, IWindow, IExposureTime, IRoof, IAutoGuiding, \
+    ITelescope, IAcquisition, ICamera, IFilters, IImageType
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
-from pyobs.utils.threads import Future
+from pyobs.utils.parallel import Future
 
 
 log = logging.getLogger(__name__)
@@ -22,11 +21,11 @@ cannot_run_logger.addFilter(DuplicateFilter())
 class LcoDefaultScript(Script):
     """Default script for LCO configs."""
 
-    def __init__(self, camera: Union[str, ICameraProxy], roof: Optional[Union[str, IRoofProxy]] = None,
-                 telescope: Optional[Union[str, ITelescopeProxy]] = None,
-                 filters: Optional[Union[str, IFiltersProxy]] = None,
-                 autoguider: Optional[Union[str, IAutoGuidingProxy]] = None,
-                 acquisition: Optional[Union[str, IAcquisitionProxy]] = None, **kwargs: Any):
+    def __init__(self, camera: Union[str, ICamera], roof: Optional[Union[str, IRoof]] = None,
+                 telescope: Optional[Union[str, ITelescope]] = None,
+                 filters: Optional[Union[str, IFilters]] = None,
+                 autoguider: Optional[Union[str, IAutoGuiding]] = None,
+                 acquisition: Optional[Union[str, IAcquisition]] = None, **kwargs: Any):
         """Initialize a new LCO default script.
 
         Args:
@@ -54,8 +53,8 @@ class LcoDefaultScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> Tuple[Optional[IRoofProxy], Optional[ITelescopeProxy], Optional[ICameraProxy],
-                                    Optional[IFiltersProxy], Optional[IAutoGuidingProxy], Optional[IAcquisitionProxy]]:
+    async def _get_proxies(self) -> Tuple[Optional[IRoof], Optional[ITelescope], Optional[ICamera],
+                                          Optional[IFilters], Optional[IAutoGuiding], Optional[IAcquisition]]:
         """Get proxies for running the task
 
         Returns:
@@ -64,15 +63,15 @@ class LcoDefaultScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof = self.comm.safe_proxy(self.roof, IRoofProxy)
-        telescope = self.comm.safe_proxy(self.telescope, ITelescopeProxy)
-        camera = self.comm.safe_proxy(self.camera, ICameraProxy)
-        filters = self.comm.safe_proxy(self.filters, IFiltersProxy)
-        autoguider = self.comm.safe_proxy(self.autoguider, IAutoGuidingProxy)
-        acquisition = self.comm.safe_proxy(self.acquisition, IAcquisitionProxy)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        camera = await self.comm.safe_proxy(self.camera, ICamera)
+        filters = await self.comm.safe_proxy(self.filters, IFilters)
+        autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
         return roof, telescope, camera, filters, autoguider, acquisition
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -80,7 +79,7 @@ class LcoDefaultScript(Script):
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # need camera
         if camera is None:
@@ -90,10 +89,10 @@ class LcoDefaultScript(Script):
         # for OBJECT exposure we need more
         if self.image_type == ImageType.OBJECT:
             # we need an open roof and a working telescope
-            if roof is None or not roof.is_ready().wait():
+            if roof is None or not await roof.is_ready():
                 cannot_run_logger.warning('Cannot run task, no roof found or roof not ready.')
                 return False
-            if telescope is None or not telescope.is_ready().wait():
+            if telescope is None or not await telescope.is_ready():
                 cannot_run_logger.warning('Cannot run task, no telescope found or telescope not ready.')
                 return False
 
@@ -117,18 +116,15 @@ class LcoDefaultScript(Script):
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = self._get_proxies()
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # got a target?
         target = self.configuration['target']
@@ -137,19 +133,19 @@ class LcoDefaultScript(Script):
             if telescope is None:
                 raise ValueError('No telescope given.')
             log.info('Moving to target %s...', target['name'])
-            track = telescope.move_radec(target['ra'], target['dec'])
+            track = await telescope.move_radec(target['ra'], target['dec'])
 
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
                 self.configuration['acquisition_config']['mode'] == 'ON':
             # wait for track
-            track.wait()
+            await track
 
             # do acquisition
             if acquisition is None:
                 raise ValueError('No acquisition given.')
             log.info('Performing acquisition...')
-            acquisition.acquire_target().wait()
+            await acquisition.acquire_target()
 
         # guiding?
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
@@ -157,7 +153,7 @@ class LcoDefaultScript(Script):
             if autoguider is None:
                 raise ValueError('No autoguider given.')
             log.info('Starting auto-guiding...')
-            autoguider.start().wait()
+            await autoguider.start()
 
         # total (exposure) time done in this config
         self.exptime_done = 0.
@@ -189,8 +185,6 @@ class LcoDefaultScript(Script):
 
             # loop instrument configs
             for ic in self.configuration['instrument_configs']:
-                self._check_abort(abort_event)
-
                 # get readout mode
                 for readout_mode in instrument['modes']['readout']['modes']:
                     if readout_mode['code'] == ic['mode']:
@@ -204,36 +198,34 @@ class LcoDefaultScript(Script):
                 set_filter = Future[None](empty=True)
                 if 'optical_elements' in ic and 'filter' in ic['optical_elements'] and filters is not None:
                     log.info('Setting filter to %s...', ic['optical_elements']['filter'])
-                    set_filter = filters.set_filter(ic['optical_elements']['filter'])
+                    set_filter = await filters.set_filter(ic['optical_elements']['filter'])
 
                 # wait for tracking and filter
-                Future.wait_all([track, set_filter])
+                await Future.wait_all([track, set_filter])
 
                 # set binning and window
-                if isinstance(camera, IBinningProxy):
+                if isinstance(camera, IBinning):
                     bin_x = readout_mode['validation_schema']['bin_x']['default']
                     bin_y = readout_mode['validation_schema']['bin_y']['default']
                     log.info('Set binning to %dx%d...', bin_x, bin_y)
-                    camera.set_binning(bin_x, bin_y).wait()
-                if isinstance(camera, IWindowProxy):
-                    full_frame = camera.get_full_frame().wait()
-                    camera.set_window(*full_frame).wait()
+                    await camera.set_binning(bin_x, bin_y)
+                if isinstance(camera, IWindow):
+                    full_frame = await camera.get_full_frame()
+                    await camera.set_window(*full_frame)
 
                 # loop images
                 for exp in range(ic['exposure_count']):
-                    self._check_abort(abort_event)
-
                     # do exposures
-                    if isinstance(camera, IExposureTimeProxy):
+                    if isinstance(camera, IExposureTime):
                         log.info('Exposing %s image %d/%d for %.2fs...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'], ic['exposure_time'])
-                        camera.set_exposure_time(ic['exposure_time']).wait()
+                        await camera.set_exposure_time(ic['exposure_time'])
                     else:
                         log.info('Exposing %s image %d/%d...',
                                  self.configuration['type'], exp + 1, ic['exposure_count'])
-                    if isinstance(camera, IImageTypeProxy):
-                        camera.set_image_type(self.image_type).wait()
-                    cast(ICameraProxy, camera).grab_image().wait()
+                    if isinstance(camera, IImageType):
+                        await camera.set_image_type(self.image_type)
+                    await cast(ICamera, camera).grab_image()
                     self.exptime_done += ic['exposure_time']
 
             # store duration for all ICs
@@ -257,13 +249,12 @@ class LcoDefaultScript(Script):
         if 'guiding_config' in self.configuration and 'mode' in self.configuration['guiding_config'] and \
                 self.configuration['guiding_config']['mode'] == 'ON' and autoguider is not None:
             log.info('Stopping auto-guiding...')
-            autoguider.stop().wait()
+            await autoguider.stop()
 
         # finally, stop telescope
-        if not abort_event.is_set():
-            if self.image_type == ImageType.OBJECT:
-                log.info('Stopping telescope...')
-                cast(ITelescopeProxy, telescope).stop_motion().wait()
+        if self.image_type == ImageType.OBJECT:
+            log.info('Stopping telescope...')
+            await cast(ITelescope, telescope).stop_motion()
 
     def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Any]:
         """Returns FITS header for the current status of this module.

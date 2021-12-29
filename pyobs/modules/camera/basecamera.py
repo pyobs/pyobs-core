@@ -1,7 +1,8 @@
+import asyncio
 import datetime
 import logging
-import threading
 import warnings
+from abc import ABCMeta, abstractmethod
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
 from astropy.io import fits
@@ -28,12 +29,12 @@ class ExposureInfo(NamedTuple):
     exposure_time: float
 
 
-def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
+async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for expose()."""
-    return camera.get_exposure_time() + 30
+    return await camera.get_exposure_time() + 30
 
 
-class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType):
+class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType, metaclass=ABCMeta):
     """Base class for all camera modules."""
     __module__ = 'pyobs.modules.camera'
 
@@ -69,19 +70,18 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
-        self._expose_lock = threading.Lock()
-        self.expose_abort = threading.Event()
+        self.expose_abort = asyncio.Event()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(NewImageEvent)
-            self.comm.register_event(ExposureStatusChangedEvent)
+            await self.comm.register_event(NewImageEvent)
+            await self.comm.register_event(ExposureStatusChangedEvent)
 
-    def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -93,7 +93,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         log.info('Setting exposure time to %.5fs...', exposure_time)
         self._exposure_time = exposure_time
 
-    def get_exposure_time(self, **kwargs: Any) -> float:
+    async def get_exposure_time(self, **kwargs: Any) -> float:
         """Returns the exposure time in seconds.
 
         Returns:
@@ -101,7 +101,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._exposure_time
 
-    def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
+    async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
         Args:
@@ -110,7 +110,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         log.info('Setting image type to %s...', image_type)
         self._image_type = image_type
 
-    def get_image_type(self, **kwargs: Any) -> ImageType:
+    async def get_image_type(self, **kwargs: Any) -> ImageType:
         """Returns the current image type.
 
         Returns:
@@ -118,7 +118,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._image_type
 
-    def _change_exposure_status(self, status: ExposureStatus) -> None:
+    async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
 
         Args:
@@ -127,12 +127,12 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # send event, if it changed
         if self._camera_status != status:
-            self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
+            await self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
 
         # set it
         self._camera_status = status
 
-    def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
+    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
         """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
 
         Returns:
@@ -140,7 +140,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         return self._camera_status
 
-    def get_exposure_time_left(self, **kwargs: Any) -> float:
+    async def get_exposure_time_left(self, **kwargs: Any) -> float:
         """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:
@@ -156,7 +156,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         diff = self._exposure.start + duration - datetime.datetime.utcnow()
         return diff.total_seconds()
 
-    def get_exposure_progress(self, **kwargs: Any) -> float:
+    async def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:
@@ -178,7 +178,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             percentage = diff.total_seconds() / self._exposure[1] * 100.
             return min(percentage, 100.)
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    @abstractmethod
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -192,15 +193,15 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Raises:
             ValueError: If exposure was not successful.
         """
-        raise NotImplementedError
+        ...
 
-    def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
+    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
             -> Tuple[Optional[Image], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
             exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
+            image_type: Type of image.
             broadcast: Whether or not the new image should be broadcasted.
 
         Returns:
@@ -211,7 +212,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
 
         # request fits headers
-        header_futures_before = self.request_fits_headers(before=True)
+        header_futures_before = await self.request_fits_headers(before=True)
 
         # open the shutter?
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
@@ -219,7 +220,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
-            image = self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
+            image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.data is None:
                 self._exposure = None
                 return None, None
@@ -229,7 +230,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             raise
 
         # request fits headers again
-        header_futures_after = self.request_fits_headers(before=False)
+        header_futures_after = await self.request_fits_headers(before=False)
 
         # flip it?
         if self._flip:
@@ -247,9 +248,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header['IMAGETYP'] = image_type.value
 
         # add fits headers and format filename
-        self.add_requested_fits_headers(image, header_futures_before)
-        self.add_requested_fits_headers(image, header_futures_after)
-        self.add_fits_headers(image)
+        await self.add_requested_fits_headers(image, header_futures_before)
+        await self.add_requested_fits_headers(image, header_futures_after)
+        await self.add_fits_headers(image)
         filename = self.format_filename(image)
 
         # don't want to save?
@@ -259,14 +260,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # upload file
         try:
             log.info('Uploading image to file server...')
-            self.vfs.write_image(filename, image)
+            await self.vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError('Could not upload image.')
 
         # broadcast image path
         if broadcast and self.comm:
             log.info('Broadcasting image ID...')
-            self.comm.send_event(NewImageEvent(filename, image_type))
+            await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # return image and unique
         self._exposure = None
@@ -274,7 +275,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         return image, filename
 
     @timeout(calc_expose_timeout)
-    def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -283,34 +284,25 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Returns:
             Name of image that was taken.
         """
-        # acquire lock
-        log.info('Acquiring exclusive lock on camera...')
-        if not self._expose_lock.acquire(blocking=False):
-            raise ValueError('Could not acquire camera lock for expose().')
 
-        # make sure that we release the lock
-        try:
-            # are we exposing?
-            if self._camera_status != ExposureStatus.IDLE:
-                raise CameraException('Cannot start new exposure because camera is not idle.')
+        # are we exposing?
+        if self._camera_status != ExposureStatus.IDLE:
+            raise CameraException('Cannot start new exposure because camera is not idle.')
+        await self._change_exposure_status(ExposureStatus.EXPOSING)
 
-            # expose
-            image, filename = self.__expose(self._exposure_time, self._image_type, broadcast)
-            if image is None:
-                raise ValueError('Could not take image.')
-            else:
-                if filename is None:
-                    raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
+        # expose
+        image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
+        if image is None:
+            raise ValueError('Could not take image.')
+        else:
+            if filename is None:
+                raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
 
-            # return filename
-            return filename
+        # return filename
+        await self._change_exposure_status(ExposureStatus.IDLE)
+        return filename
 
-        finally:
-            # release lock
-            log.info('Releasing exclusive lock on camera...')
-            self._expose_lock.release()
-
-    def _abort_exposure(self) -> None:
+    async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Raises:
@@ -318,7 +310,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         pass
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure and sequence.
 
         Returns:
@@ -327,19 +319,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # set abort event
         log.info('Aborting current image and sequence...')
-        self._exposures_left = 0
         self.expose_abort.set()
 
         # do camera-specific abort
-        self._abort_exposure()
+        await self._abort_exposure()
 
-        # wait for lock and unset event
-        acquired = self._expose_lock.acquire(blocking=True, timeout=5.)
-        self.expose_abort.clear()
-        if acquired:
-            self._expose_lock.release()
-        else:
-            raise ValueError('Could not abort exposure.')
+        # wait until state is not EXPOSING anymore
+        while await self.get_exposure_status() == ExposureStatus.EXPOSING:
+            await asyncio.sleep(0.1)
 
     @staticmethod
     def set_biassec_trimsec(hdr: fits.Header, left: int, top: int, width: int, height: int) -> None:
@@ -405,7 +392,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
             hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
 
-    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:

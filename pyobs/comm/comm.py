@@ -1,15 +1,15 @@
+import asyncio
 import inspect
 import logging
-import queue
+from collections import Coroutine
 from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
-import threading
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
+from pyobs.interfaces import Interface
+from pyobs.utils.parallel import Future
 from .proxy import Proxy
 from .commlogging import CommLoggingHandler
-from ..interfaces import Interface
-from ..utils.threads.future import BaseFuture
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -29,7 +29,7 @@ class Comm:
 
         self._proxies: Dict[str, Proxy] = {}
         self._module: Optional[Module] = None
-        self._log_queue: queue.Queue[LogEvent] = queue.Queue()
+        self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
 
         # add handler to global logger
@@ -38,8 +38,8 @@ class Comm:
         logging.getLogger().addHandler(handler)
 
         # logging thread
-        self._closing = threading.Event()
-        self._logging_thread = threading.Thread(target=self._logging)
+        self._closing = asyncio.Event()
+        self._logging_task: Optional[asyncio.Task] = None
 
     @property
     def module(self) -> Optional['Module']:
@@ -58,21 +58,22 @@ class Comm:
     def _set_module(self, module: 'Module') -> None:
         ...
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
 
         # start logging thread
-        self._logging_thread.start()
+        self._logging_task = asyncio.create_task(self._logging())
 
         # some events
-        self.register_event(ModuleClosedEvent, self._client_disconnected)
+        await self.register_event(ModuleClosedEvent, self._client_disconnected)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
 
         # close thread
         self._closing.set()
-        self._logging_thread.join()
+        if self._logging_task:
+            self._logging_task.cancel()
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.
@@ -90,7 +91,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    def __getitem__(self, client: str) -> Optional[Union['Module', Proxy]]:
+    async def _get_client(self, client: str) -> Optional[Union['Module', Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -110,7 +111,7 @@ class Comm:
         if client not in self._proxies or not self._cache_proxies:
             # get interfaces
             try:
-                interfaces = self.get_interfaces(client)
+                interfaces = await self.get_interfaces(client)
             except IndexError:
                 return None
 
@@ -122,14 +123,14 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
         ...
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
@@ -158,7 +159,7 @@ class Comm:
 
         elif isinstance(name_or_object, str):
             # get proxy
-            proxy = self[name_or_object]
+            proxy = await self._get_client(name_or_object)
 
             # check it
             if proxy is None:
@@ -173,16 +174,16 @@ class Comm:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Optional[Union[Any, ProxyType]]:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
-            return self.proxy(name_or_object, obj_type)
+            return await self.proxy(name_or_object, obj_type)
         except ValueError:
             return None
 
-    def _client_disconnected(self, event: Event, sender: str) -> bool:
+    async def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.
 
         Args:
@@ -210,7 +211,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
+    async def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:
@@ -219,9 +220,9 @@ class Comm:
         Returns:
             (list) List of currently connected clients that implement the given interface.
         """
-        return list(filter(lambda c: self._supports_interface(c, interface), self.clients))
+        return [c for c in self.clients if await self._supports_interface(c, interface)]
 
-    def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -235,7 +236,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -283,7 +284,7 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> BaseFuture:
+    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         """Execute a given method on a remote client.
 
         Args:
@@ -297,19 +298,13 @@ class Comm:
         """
         raise NotImplementedError
 
-    def _logging(self) -> None:
+    async def _logging(self) -> None:
         """Background thread for handling the logging."""
-
         # run until closing
         while not self._closing.is_set():
-            # do we have a message in the queue?
-            while not self._log_queue.empty():
-                # get item and send it
-                entry = self._log_queue.get_nowait()
-                self.send_event(entry)
-
-            # sleep a little
-            self._closing.wait(1)
+            # get item (maybe wait for it) and send it
+            entry = await self._log_queue.get()
+            await self.send_event(entry)
 
     def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.
@@ -319,7 +314,7 @@ class Comm:
         """
         self._log_queue.put_nowait(entry)
 
-    def send_event(self, event: Event) -> None:
+    async def send_event(self, event: Event) -> None:
         """Send an event to other clients.
 
         Args:
@@ -327,7 +322,8 @@ class Comm:
         """
         pass
 
-    def register_event(self, event_class: Type[Event], handler: Optional[Callable[[Event, str], bool]] = None) -> None:
+    async def register_event(self, event_class: Type[Event],
+                             handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 

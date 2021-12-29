@@ -1,20 +1,19 @@
+import asyncio
 import copy
 import json
 import logging
 import multiprocessing as mp
 from typing import Union, List, Tuple, Any
-from astroplan import AtNightConstraint, Transitioner, SequentialScheduler, Schedule, TimeConstraint, ObservingBlock, \
-    PriorityScheduler
+from astroplan import AtNightConstraint, Transitioner, Schedule, TimeConstraint, ObservingBlock, PriorityScheduler
 from astropy.time import TimeDelta
 import astropy.units as u
 
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.events import GoodWeatherEvent
+from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.object import get_object
 from pyobs.robotic import TaskArchive
 
 
@@ -43,7 +42,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         Module.__init__(self, **kwargs)
 
         # get scheduler
-        self._task_archive = get_object(tasks, TaskArchive)
+        self._task_archive = self.add_child_object(tasks, TaskArchive)
 
         # store
         self._schedule_range = schedule_range
@@ -66,48 +65,48 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._blocks: List[ObservingBlock] = []
 
         # update thread
-        self.add_thread_func(self._schedule_thread, True)
-        self.add_thread_func(self._update_thread, True)
+        self.add_background_task(self._schedule_thread)
+        self.add_background_task(self._update_thread)
 
-    def open(self):
+    async def open(self):
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(TaskStartedEvent, self._on_task_started)
-            self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
-            self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
+            await self.comm.register_event(TaskStartedEvent, self._on_task_started)
+            await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
+            await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
-    def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any):
         """Start scheduler."""
         self._running = True
 
-    def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any):
         """Stop scheduler."""
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""
         return self._running
 
-    def _update_thread(self):
+    async def _update_thread(self):
         # time of last change in blocks
         last_change = None
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # not running?
             if self._running is False:
-                self.closing.wait(1)
+                await asyncio.sleep(1)
                 continue
 
             # got new time of last change?
-            t = self._task_archive.last_changed()
+            t = await self._task_archive.last_changed()
             if last_change is None or last_change < t:
                 # get schedulable blocks and sort them
                 log.info('Found update in schedulable block, downloading them...')
-                blocks = sorted(self._task_archive.get_schedulable_blocks(),
+                blocks = sorted(await self._task_archive.get_schedulable_blocks(),
                                 key=lambda x: json.dumps(x.configuration, sort_keys=True))
                 log.info('Downloaded %d schedulable block(s).', len(blocks))
 
@@ -145,7 +144,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 self._initial_update_done = True
 
             # sleep a little
-            self.closing.wait(5)
+            await asyncio.sleep(5)
 
     @staticmethod
     def _compare_block_lists(blocks1: List[ObservingBlock], blocks2: List[ObservingBlock]) \
@@ -176,23 +175,28 @@ class Scheduler(Module, IStartStop, IRunnable):
         unique2 = [names2[n] for n in additional2]
         return unique1, unique2
 
-    def _schedule_thread(self):
+    async def _schedule_thread(self):
         # run forever
-        while not self.closing.is_set():
+        while True:
             # need update?
             if self._need_update and self._initial_update_done:
                 # reset need for update
                 self._need_update = False
 
                 # run scheduler in separate process and wait for it
-                p = mp.Process(target=self._schedule)
+                p = mp.Process(target=self._schedule_process)
                 p.start()
-                p.join()
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, p.join)
 
             # sleep a little
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
-    def _schedule(self):
+    def _schedule_process(self):
+        """This is run in a new process and starts a new loop running the _schedule method."""
+        asyncio.run(self._schedule())
+
+    async def _schedule(self):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
@@ -233,7 +237,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             # get running task from archive
             log.info('Trying to find running block in current schedule...')
             now = Time.now()
-            tasks = self._task_archive.get_pending_tasks(now, now, include_running=True)
+            tasks = await self._task_archive.get_pending_tasks(now, now, include_running=True)
             if self._current_task_id in tasks:
                 running_task = tasks[self._current_task_id]
             else:
@@ -255,7 +259,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # remove currently running block and filter by start time
         blocks = []
-        for b in filter(lambda b: b.configuration['request']['id'] != self._current_task_id, copied_blocks):
+        for b in filter(lambda x: x.configuration['request']['id'] != self._current_task_id, copied_blocks):
             time_constraint_found = False
             # loop all constraints
             for c in b.constraints:
@@ -282,7 +286,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # no blocks found?
         if len(blocks) == 0:
             log.info('No blocks left for scheduling.')
-            self._task_archive.update_schedule([], start)
+            await self._task_archive.update_schedule([], start)
             return
 
         # log it
@@ -296,7 +300,8 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # run scheduler
         time_range = Schedule(start, end)
-        schedule = scheduler(blocks, time_range)
+        loop = asyncio.get_running_loop()
+        schedule = await loop.run_in_executor(None, scheduler, blocks, time_range)
 
         # if need new update, skip here
         if self._need_update:
@@ -304,7 +309,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return
 
         # update
-        self._task_archive.update_schedule(schedule.scheduled_blocks, start)
+        await self._task_archive.update_schedule(schedule.scheduled_blocks, start)
         if len(schedule.scheduled_blocks) > 0:
             log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
             for i, block in enumerate(schedule.scheduled_blocks, 1):
@@ -316,17 +321,19 @@ class Scheduler(Module, IStartStop, IRunnable):
         else:
             log.info('Finished calculating schedule for 0 blocks.')
 
-    def run(self, **kwargs: Any):
+    async def run(self, **kwargs: Any):
         """Trigger a re-schedule."""
         self._need_update = True
 
-    def _on_task_started(self, event: TaskStartedEvent, sender: str):
+    async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.
 
         Args:
             event: The task started event.
             sender: Who sent it.
         """
+        if not isinstance(event, TaskStartedEvent):
+            return False
 
         # store it
         self._current_task_id = event.id
@@ -342,13 +349,17 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = event.eta
 
-    def _on_task_finished(self, event: TaskFinishedEvent, sender: str):
+        return True
+
+    async def _on_task_finished(self, event: Event, sender: str) -> bool:
         """Reset current task, when it has finished.
 
         Args:
             event: The task finished event.
             sender: Who sent it.
         """
+        if not isinstance(event, TaskFinishedEvent):
+            return False
 
         # reset current task
         self._current_task_id = None
@@ -362,13 +373,17 @@ class Scheduler(Module, IStartStop, IRunnable):
             self._need_update = True
             self._schedule_start = Time.now()
 
-    def _on_good_weather(self, event: GoodWeatherEvent, sender: str):
+        return True
+
+    async def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Re-schedule on incoming good weather event.
 
         Args:
             event: The good weather event.
             sender: Who sent it.
         """
+        if not isinstance(event, GoodWeatherEvent):
+            return False
 
         # get ETA in minutes
         eta = (event.eta - Time.now()).sec / 60
@@ -377,6 +392,10 @@ class Scheduler(Module, IStartStop, IRunnable):
         # set it
         self._need_update = True
         self._schedule_start = event.eta
+        return True
+
+    async def abort(self, **kwargs: Any) -> None:
+        pass
 
 
 __all__ = ['Scheduler']

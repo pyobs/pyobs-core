@@ -1,12 +1,11 @@
 import fnmatch
-from io import FileIO
 import os
-from typing import Any, Optional, Iterator
+from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast
 
-from .vfs import VFSFile
+from .file import VFSFile
 
 
-class LocalFile(VFSFile, FileIO):  # type: ignore
+class LocalFile(VFSFile):
     """Wraps a local file with the virtual file system."""
     __module__ = 'pyobs.vfs'
 
@@ -40,8 +39,22 @@ class LocalFile(VFSFile, FileIO):  # type: ignore
             else:
                 raise ValueError('Cannot write into sub-directory with disabled mkdir option.')
 
-        # init FileIO
-        FileIO.__init__(self, full_path, mode)
+        # file object
+        self.fd: IO[Any] = open(full_path, mode)
+
+    async def close(self) -> None:
+        if self.fd:
+            self.fd.close()
+
+    async def read(self, n: int = -1) -> AnyStr:
+        if self.fd is None:
+            raise OSError
+        return cast(AnyStr, self.fd.read(n))
+
+    async def write(self, s: AnyStr) -> None:
+        if self.fd is None:
+            raise OSError
+        self.fd.write(s)
 
     @staticmethod
     def find(path: str, pattern: str, root: str = '', *args: Any, **kwargs: Any) -> Iterator[str]:

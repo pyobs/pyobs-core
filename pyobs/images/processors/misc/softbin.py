@@ -23,7 +23,7 @@ class SoftBin(ImageProcessor):
         # store
         self.binning = binning
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Bin an image.
 
         Args:

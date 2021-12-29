@@ -1,3 +1,5 @@
+import asyncio
+from abc import ABCMeta
 from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
 from astropy.coordinates import SkyCoord
@@ -7,12 +9,12 @@ from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore
 from pyobs.images import Image
 from ._base import BasePointing
-from ...interfaces.proxies import ITelescopeProxy
+from ...interfaces import ITelescope
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
+class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMeta):
     """Base class for guiding modules."""
     __module__ = 'pyobs.modules.pointing'
 
@@ -42,17 +44,17 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         self._last_header = None
         self._ref_header = None
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
         log.info('Start auto-guiding...')
-        self._reset_guiding(enabled=True)
+        await self._reset_guiding(enabled=True)
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
         log.info('Stopping autp-guiding...')
-        self._reset_guiding(enabled=False)
+        await self._reset_guiding(enabled=False)
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether auto-guiding is running.
 
         Returns:
@@ -60,7 +62,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         """
         return self._enabled
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -78,7 +81,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
             'AGSTATE': (state, 'Autoguider state')
         }
 
-    def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
+    async def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
         """Reset guiding.
 
         Args:
@@ -93,9 +96,10 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         self.reset_pipeline()
         if image is not None:
             # if image is given, process it
-            self.run_pipeline(image)
+            loop = asyncio.get_running_loop()
+            await self.run_pipeline(image)
 
-    def _process_image(self, image: Image) -> Optional[Image]:
+    async def _process_image(self, image: Image) -> Optional[Image]:
         """Processes a single image and offsets telescope.
 
         Args:
@@ -113,7 +117,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         # reference header?
         if self._ref_header is None:
             log.info('Setting new reference image...')
-            self._reset_guiding(image=image)
+            await self._reset_guiding(image=image)
             return None
 
         # check RA/Dec in header and separation
@@ -123,14 +127,14 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         if self._separation_reset is not None and separation * 3600. > self._separation_reset:
             log.warning('Nominal position of reference and new image differ by %.2f", resetting reference...',
                             separation * 3600.)
-            self._reset_guiding(image=image)
+            await self._reset_guiding(image=image)
             return None
 
         # check filter
         if 'FILTER' in image.header and 'FILTER' in self._ref_header and \
                 image.header['FILTER'] != self._ref_header['FILTER']:
             log.warning('The filter has been changed since the last exposure, resetting reference...')
-            self._reset_guiding(image=image)
+            await self._reset_guiding(image=image)
             return None
 
         # get time
@@ -142,7 +146,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
             t0 = Time(self._last_header['DATE-OBS'])
             if (date_obs - t0).sec > self._max_interval:
                 log.warning('Time between current and last image is too large, resetting reference...')
-                self._reset_guiding(image=image)
+                await self._reset_guiding(image=image)
                 return None
             if (date_obs - t0).sec < self._min_interval:
                 log.warning('Time between current and last image is too small, ignoring image...')
@@ -152,7 +156,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
             if 'TEL-FOCU' in image.header:
                 if abs(image.header['TEL-FOCU'] - self._last_header['TEL-FOCU']) > 0.05:
                     log.warning('Focus difference between current and last image is too large, resetting reference...')
-                    self._reset_guiding(image=image)
+                    await self._reset_guiding(image=image)
                     return None
 
         # exposure time too large?
@@ -164,17 +168,17 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore):
         self._last_header = image.header
 
         # get offset
-        image = self.run_pipeline(image)
+        image = await self.run_pipeline(image)
 
         # get telescope
         try:
-            telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+            telescope = await self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.error('Given telescope does not exist or is not of correct type.')
             return image
 
         # apply offsets
-        if self._apply(image, telescope, self.location):
+        if await self._apply(image, telescope, self.location):
             log.info('Finished image.')
         else:
             log.warning('Could not apply offsets.')

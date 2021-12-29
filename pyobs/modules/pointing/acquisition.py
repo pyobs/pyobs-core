@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Tuple, Dict, Any, Optional
 import astropy.units as u
@@ -12,8 +13,8 @@ from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 from ._base import BasePointing
-from ...interfaces.proxies import IExposureTimeProxy, IImageTypeProxy, ITelescopeProxy, IImageGrabberProxy, \
-    IOffsetsRaDecProxy, IOffsetsAltAzProxy, ICameraProxy
+from ...interfaces import IExposureTime, IImageType, ITelescope, IImageGrabber, \
+    IOffsetsRaDec, IOffsetsAltAz, ICamera
 
 log = logging.getLogger(__name__)
 
@@ -50,23 +51,23 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, **kwargs)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module"""
-        Module.open(self)
+        await Module.open(self)
 
         # check telescope and camera
         try:
-            self.proxy(self._telescope, ITelescopeProxy)
-            self.proxy(self._camera, ICameraProxy)
+            await self.proxy(self._telescope, ITelescope)
+            await self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Either camera or telescope do not exist or are not of correct type at the moment.')
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._is_running
 
     @timeout(120)
-    def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -81,46 +82,47 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         try:
             self._is_running = True
-            return self._acquire(self._default_exposure_time)
+            return await self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
 
-    def _acquire(self, exposure_time: float) -> Dict[str, Any]:
+    async def _acquire(self, exposure_time: float) -> Dict[str, Any]:
         """Actually acquire target."""
 
         # get telescope
         log.info('Getting proxy for telescope...')
-        telescope: ITelescopeProxy = self.proxy(self._telescope, ITelescopeProxy)
+        telescope = await self.proxy(self._telescope, ITelescope)
 
         # get camera
         log.info('Getting proxy for camera...')
-        camera: IImageGrabberProxy = self.proxy(self._camera, IImageGrabberProxy)
+        camera = await self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
-        self._do_camera_settings(camera)
+        await self._do_camera_settings(camera)
 
         # try given number of attempts
         for a in range(self._attempts):
             # set exposure time and image type and take image
-            if isinstance(camera, IExposureTimeProxy):
+            if isinstance(camera, IExposureTime):
                 log.info('Exposing image for %.1f seconds...', exposure_time)
-                camera.set_exposure_time(exposure_time).wait()
+                await camera.set_exposure_time(exposure_time)
             else:
                 log.info('Exposing image...')
-            if isinstance(camera, IImageTypeProxy):
-                camera.set_image_type(ImageType.ACQUISITION)
-            filename = camera.grab_image().wait()
+            if isinstance(camera, IImageType):
+                await camera.set_image_type(ImageType.ACQUISITION)
+            filename = await camera.grab_image()
 
             # download image
             log.info('Downloading image...')
             if filename is None:
                 log.warning('Did not receive an image.')
                 continue
-            image = self.vfs.read_image(filename)
+            image = await self.vfs.read_image(filename)
 
             # get offset
             log.info('Analysing image...')
-            image = self.run_pipeline(image)
+            loop = asyncio.get_running_loop()
+            image = await self.run_pipeline(image)
 
             # calculate distance from offset
             osd = image.get_meta(OnSkyDistance)
@@ -135,8 +137,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 log.info('Target successfully acquired.')
 
                 # get current Alt/Az
-                cur_alt, cur_az = telescope.get_altaz().wait()
-                cur_ra, cur_dec = telescope.get_radec().wait()
+                cur_alt, cur_az = await telescope.get_altaz()
+                cur_ra, cur_dec = await telescope.get_radec()
 
                 # prepare log entry
                 log_entry = {
@@ -148,15 +150,15 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 }
 
                 # Alt/Az or RA/Dec?
-                if isinstance(telescope, IOffsetsRaDecProxy):
-                    log_entry['off_ra'], log_entry['off_dec'] = telescope.get_offsets_radec().wait()
-                elif isinstance(telescope, IOffsetsAltAzProxy):
-                    log_entry['off_alt'], log_entry['off_az'] = telescope.get_offsets_altaz().wait()
+                if isinstance(telescope, IOffsetsRaDec):
+                    log_entry['off_ra'], log_entry['off_dec'] = await telescope.get_offsets_radec()
+                elif isinstance(telescope, IOffsetsAltAz):
+                    log_entry['off_alt'], log_entry['off_az'] = await telescope.get_offsets_altaz()
 
                 # write log
                 # TODO: reactivate!
                 #if self._publisher is not None:
-                #    self._publisher(**log_entry)
+                #    await self._publisher(**log_entry)
 
                 # finished
                 return log_entry
@@ -167,7 +169,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 raise ValueError('Calculated offsets too large.')
 
             # apply offsets
-            if self._apply(image, telescope, self.location):
+            if await self._apply(image, telescope, self.location):
                 log.info('Finished image.')
             else:
                 log.warning('Could not apply offsets.')

@@ -230,18 +230,18 @@ class FilenameFormatter:
         else:
             return ''
 
-    def _format_string(self, hdr: fits.Header, key: str, format: str) -> str:
+    def _format_string(self, hdr: fits.Header, key: str, fmt: str) -> str:
         """Formats a string using Python string substitution.
 
         Args:
             hdr: FITS header to take values from.
             key: The name of the FITS header key to use.
-            format: A Python string format like %d, %05d, or %4.1f.
+            fmt: A Python string format like %d, %05d, or %4.1f.
 
         Returns:
             Formatted string.
         """
-        fmt = '%' + format
+        fmt = '%' + fmt
         return str(fmt % self._value(hdr, key))
 
     def _format_type(self, hdr: fits.Header, key: str) -> str:
@@ -284,4 +284,4 @@ def format_filename(hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional
     return ff(hdr)
 
 
-__all__ = ['format_filename', 'FilenameFormatter']
+__all__ = ['format_filename', 'FilenameFormatter', 'fitssec']

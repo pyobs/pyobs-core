@@ -1,11 +1,12 @@
 import logging
 import time
-from threading import Event
+from asyncio import Event
 from typing import Union, List, Any, Optional
 
-from pyobs.interfaces.proxies import IMotionProxy
+from pyobs.interfaces import IMotion
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class WaitForMotionMixin:
                                   for s in wait_for_states] if wait_for_states is not None else []
         self.__wait_for_timeout = wait_for_timeout
 
-    def _wait_for_motion(self, abort: Event) -> None:
+    async def _wait_for_motion(self, abort: Event) -> None:
         """Wait until all devices are in one of the given motion states.
 
         Args:
@@ -51,11 +52,11 @@ class WaitForMotionMixin:
             raise ValueError('This is not a module.')
 
         # get all proxies
-        proxies = [self.proxy(device) for device in this.__wait_for_modules]
+        proxies = [await self.proxy(device) for device in this.__wait_for_modules]
 
         # all need to be derived from IMotion
-        if not all([isinstance(p, IMotionProxy) for p in proxies]):
-            raise ValueError('Not all given devices are derived from IMotionProxy!')
+        if not all([isinstance(p, IMotion) for p in proxies]):
+            raise ValueError('Not all given devices are derived from IMotion!')
 
         # run until timeout
         start = time.time()
@@ -66,7 +67,7 @@ class WaitForMotionMixin:
                 raise TimeoutError
 
             # get all states and compare them
-            states = [p.get_motion_status().wait() for p in proxies]
+            states = [await p.get_motion_status() for p in proxies]
 
             # in a good state?
             good = [s in this.__wait_for_states for s in states]
@@ -77,7 +78,7 @@ class WaitForMotionMixin:
                 break
 
             # sleep a little
-            abort.wait(1)
+            await event_wait(abort, 1)
 
 
 __all__ = ['WaitForMotionMixin']

@@ -1,8 +1,7 @@
 import logging
-import threading
 from typing import Union, Tuple, Optional, Any
 
-from pyobs.interfaces.proxies import IRoofProxy, ITelescopeProxy, IAcquisitionProxy, IAutoFocusProxy
+from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
@@ -17,11 +16,10 @@ cannot_run_logger.addFilter(DuplicateFilter())
 class LcoAutoFocusScript(Script):
     """Auto focus script for LCO configs."""
 
-    def __init__(self, roof: Optional[Union[str, IRoofProxy]] = None,
-                 telescope: Optional[Union[str, ITelescopeProxy]] = None,
-                 acquisition: Optional[Union[str, IAcquisitionProxy]] = None,
-                 autofocus: Optional[Union[str, IAutoFocusProxy]] = None,
-                 count: int = 5, step: float = 0.1, exptime: float = 2., **kwargs: Any):
+    def __init__(self, roof: Optional[Union[str, IRoof]] = None, telescope: Optional[Union[str, ITelescope]] = None,
+                 acquisition: Optional[Union[str, IAcquisition]] = None,
+                 autofocus: Optional[Union[str, IAutoFocus]] = None, count: int = 5, step: float = 0.1,
+                 exptime: float = 2., **kwargs: Any):
         """Initialize a new LCO auto focus script.
 
         Args:
@@ -48,8 +46,8 @@ class LcoAutoFocusScript(Script):
         elif self.configuration['type'] == 'DARK':
             self.image_type = ImageType.DARK
 
-    def _get_proxies(self) -> Tuple[Optional[IRoofProxy], Optional[ITelescopeProxy],
-                                    Optional[IAcquisitionProxy], Optional[IAutoFocusProxy]]:
+    async def _get_proxies(self) -> Tuple[Optional[IRoof], Optional[ITelescope],
+                                          Optional[IAcquisition], Optional[IAutoFocus]]:
         """Get proxies for running the task
 
         Returns:
@@ -58,13 +56,13 @@ class LcoAutoFocusScript(Script):
         Raises:
             ValueError: If could not get proxies for all modules
         """
-        roof = self.comm.safe_proxy(self.roof, IRoofProxy)
-        telescope = self.comm.safe_proxy(self.telescope, ITelescopeProxy)
-        acquisition = self.comm.safe_proxy(self.acquisition, IAcquisitionProxy)
-        autofocus = self.comm.safe_proxy(self.autofocus, IAutoFocusProxy)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
+        autofocus = await self.comm.safe_proxy(self.autofocus, IAutoFocus)
         return roof, telescope, acquisition, autofocus
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -72,7 +70,7 @@ class LcoAutoFocusScript(Script):
         """
 
         # get proxies
-        roof, telescope, acquisition, autofocus = self._get_proxies()
+        roof, telescope, acquisition, autofocus = await self._get_proxies()
 
         # need everything
         if roof is None or telescope is None or autofocus is None:
@@ -86,35 +84,32 @@ class LcoAutoFocusScript(Script):
             return False
 
         # we need an open roof and a working telescope
-        if not roof.is_ready().wait():
+        if not await roof.is_ready():
             cannot_run_logger.info('Cannot run task, roof not ready.')
             return False
-        if not telescope.is_ready().wait():
+        if not await telescope.is_ready():
             cannot_run_logger.info('Cannot run task, telescope not ready.')
             return False
 
         # seems alright
         return True
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
         """
 
         # get proxies
-        roof, telescope, acquisition, autofocus = self._get_proxies()
+        roof, telescope, acquisition, autofocus = await self._get_proxies()
         if telescope is None:
             raise ValueError('No telescope given.')
 
         # got a target?
         target = self.configuration['target']
         log.info('Moving to target %s...', target['name'])
-        telescope.move_radec(target['ra'], target['dec']).wait()
+        await telescope.move_radec(target['ra'], target['dec'])
 
         # acquisition?
         if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
@@ -130,12 +125,12 @@ class LcoAutoFocusScript(Script):
             if acquisition is None:
                 raise ValueError('No acquisition given.')
             log.info('Performing acquisition...')
-            acquisition.acquire_target().wait()
+            await acquisition.acquire_target()
 
         # do auto focus
         if autofocus is None:
             raise ValueError('No autofocus given.')
-        autofocus.auto_focus(self._count, self._step, self._exptime).wait()
+        await autofocus.auto_focus(self._count, self._step, self._exptime)
 
 
 __all__ = ['LcoAutoFocusScript']

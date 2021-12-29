@@ -1,7 +1,6 @@
 import logging
 from typing import Any
-
-import requests
+import aiohttp
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
@@ -32,7 +31,7 @@ class AstrometryDotNet(Astrometry):
         self.source_count = source_count
         self.radius = radius
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
 
         Writes WCSERR=1 into FITS header on failure.
@@ -90,25 +89,28 @@ class AstrometryDotNet(Astrometry):
                  cx, cy)
 
         # send it
-        r = requests.post(self.url, json=data)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(self.url, json=data, timeout=10) as response:
+                status_code = response.status
+                json = await response.json()
 
         # success?
-        if r.status_code != 200 or 'error' in r.json():
+        if status_code != 200 or 'error' in json:
             # set error
             img.header['WCSERR'] = 1
-            if 'error' in r.json():
+            if 'error' in json:
                 # "Could not find WCS file." is just an info, which means that WCS was not successful
-                if r.json()['error'] == 'Could not find WCS file.':
+                if json['error'] == 'Could not find WCS file.':
                     log.info('Could not determine WCS.')
                 else:
-                    log.warning('Received error from astrometry service: %s', r.json()['error'])
+                    log.warning('Received error from astrometry service: %s', json['error'])
             else:
                 log.error('Could not connect to astrometry service.')
             return img
 
         else:
             # copy keywords
-            hdr = r.json()
+            hdr = json
             header_keywords_to_update = ['CTYPE1', 'CTYPE2', 'CRPIX1', 'CRPIX2', 'CRVAL1',
                                          'CRVAL2', 'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
             for keyword in header_keywords_to_update:

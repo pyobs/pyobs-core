@@ -1,9 +1,8 @@
 import glob
 import logging
 import os
-from queue import Queue
+import asyncio
 from typing import Any, Optional, List
-
 from astropy.io import fits
 
 from pyobs.modules import Module
@@ -33,21 +32,21 @@ class ImageWatcher(Module):
         import pyinotify
 
         # add thread func
-        self.add_thread_func(self._worker, True)
+        self.add_background_task(self._worker)
 
         # variables
         self._watchpath = watchpath
         self._notifier = None
-        self._queue = Queue()
+        self._queue = asyncio.Queue[str]()
 
         # filename patterns
         if not destinations:
             raise ValueError('No filename patterns given for the destinations.')
         self._destinations = destinations
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
         import pyinotify
 
         class EventHandler(pyinotify.ProcessEvent):
@@ -70,9 +69,9 @@ class ImageWatcher(Module):
             self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
             self._notifier.start()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close image watcher."""
-        Module.close(self)
+        await Module.close(self)
 
         # stop watching
         if self._notifier:
@@ -88,30 +87,27 @@ class ImageWatcher(Module):
 
         # log file
         log.info('Adding new image %s...', filename)
-        self._queue.put(filename)
+        self._queue.put_nowait(filename)
 
-    def _clear_queue(self) -> None:
+    async def _clear_queue(self) -> None:
         """Clear the queue with new files."""
 
         # clear queue
-        with self._queue.mutex:
-            self._queue.queue.clear()
+        while not self._queue.empty():
+            await self._queue.get()
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Worker thread."""
 
         # first, add all files from directory to queue
-        self._clear_queue()
+        await self._clear_queue()
         for filename in sorted(glob.glob(os.path.join(self._watchpath, '*'))):
             self.add_image(filename)
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # get next filename
-            if self._queue.empty():
-                self.closing.wait(1)
-                continue
-            filename = self._queue.get()
+            filename = await self._queue.get()
             log.info('Working on file %s...', filename)
 
             # better safe than sorry
@@ -125,12 +121,13 @@ class ImageWatcher(Module):
 
                     # create filename
                     out_filename = format_filename(fits_file['SCI'].header, pattern)
+                    if out_filename is None:
+                        raise ValueError('Could not create name for file.')
 
                     # store it
                     log.info('Storing file as %s...', out_filename)
                     try:
-                        with self.vfs.open_file(out_filename, 'w') as dest:
-                            fits_file.writeto(dest)
+                        await self.vfs.write_fits(out_filename, fits_file)
                     except:
                         log.exception('Error while copying file, skipping for now.')
                         success = False

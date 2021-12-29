@@ -5,7 +5,7 @@ from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent
+from pyobs.events import NewImageEvent, Event
 from pyobs.utils.publisher import Publisher
 from pyobs.utils.time import Time
 
@@ -35,15 +35,15 @@ class Seeing(Module):
         self._max_ellipticity = max_ellipticity
         self._correct_for_airmass = correct_for_airmass
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to channel with new images
         log.info('Subscribing to new image events...')
-        self.comm.register_event(NewImageEvent, self.process_new_image_event)
+        await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
+    async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -53,10 +53,12 @@ class Seeing(Module):
         Returns:
             Success
         """
+        if not isinstance(event, NewImageEvent):
+            return False
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
-            return false
+            return False
 
         # put into queue
         log.info('Received new image event from %s.', sender)
@@ -64,7 +66,7 @@ class Seeing(Module):
         # download image
         try:
             log.info('Downloading file %s...', event.filename)
-            image = self.vfs.read_image(event.filename)
+            image = await self.vfs.read_image(event.filename)
 
         except FileNotFoundError:
             log.error('Could not download image.')
@@ -100,7 +102,7 @@ class Seeing(Module):
 
         # log it
         if self._publisher is not None:
-            self._publisher(time=Time.now().isot, seeing=seeing)
+            await self._publisher(time=Time.now().isot, seeing=seeing)
         return True
 
 

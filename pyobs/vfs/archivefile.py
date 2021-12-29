@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 import logging
-import requests
+import aiohttp
 
 from .httpfile import HttpFile
 
@@ -24,44 +24,44 @@ class ArchiveFile(HttpFile):
         """
 
         # init
-        HttpFile.__init__(self, name, mode)
+        HttpFile.__init__(self, name, mode, upload='')
 
         # only allow write access for now
-        if mode != 'w':
+        if 'w' not in mode:
             raise ValueError('Only write operations allowed.')
 
         # store
         self._url = url + ('/' if not url.endswith('/') else '')
         self._headers = {'Authorization': 'Token ' + token} if token is not None else {}
 
-    def _upload(self) -> None:
+    async def _upload(self) -> None:
         """If in write mode, actually send the file to the archive."""
 
-        # create session
-        session = requests.session()
+        # open session
+        async with aiohttp.ClientSession() as session:
+            # do some initial GET request for getting the csrftoken
+            async with session.get(self._url, headers=self._headers) as response:
+                token = response.cookies['csrftoken'].value
 
-        # do some initial GET request for getting the csrftoken
-        session.get(self._url, headers=self._headers)
+            # define list of files and url
+            url = self._url + 'frames/create/'
+            data = aiohttp.FormData()
+            data.add_field('csrfmiddlewaretoken', token)
+            data.add_field('file', self._buffer, filename=os.path.basename(self.filename))
 
-        # define list of files and url
-        files = {os.path.basename(self._filename): self._buffer}
-        url = self._url + 'frames/create/'
+            # send data and return image ID
+            async with session.post(url, auth=self._auth, data=data, timeout=10, headers=self._headers) as response:
+                # success, if status code is 200
+                if response.status != 200:
+                    raise ValueError('Cannot write file, received status_code %d.' % response.status)
 
-        # post it
-        r = session.post(url, data={'csrfmiddlewaretoken': session.cookies['csrftoken']},
-                         files=files, headers=self._headers)
-
-        # success, if status code is 200
-        if r.status_code != 200:
-            raise ValueError('Cannot write file, received status_code %d.' % r.status_code)
-
-        # check json
-        json = r.json()
-        if 'created' not in json or json['created'] == 0:
-            if 'errors' in json:
-                raise ValueError('Could not create file in archive: ' + str(json['errors']))
-            else:
-                raise ValueError('Could not create file in archive.')
+                # check json
+                json = await response.json()
+                if 'created' not in json or json['created'] == 0:
+                    if 'errors' in json:
+                        raise ValueError('Could not create file in archive: ' + str(json['errors']))
+                    else:
+                        raise ValueError('Could not create file in archive.')
 
 
 __all__ = ['ArchiveFile']

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import threading
 from typing import Union, List, Dict, Tuple, Any, Optional
@@ -37,66 +38,55 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._running = False
 
         # add thread func
-        self.add_thread_func(self._run_thread, True)
+        self.add_background_task(self._run_thread, True)
 
         # get task archive
-        self._task_archive: TaskArchive = get_object(tasks, object_class=TaskArchive,
-                                                     comm=self.comm, vfs=self.vfs, observer=self.observer)
+        self._task_archive = self.add_child_object(tasks, TaskArchive)
 
         # observation name and exposure number
         self._task = None
         self._obs = None
         self._exp = None
 
-    def open(self):
+    async def open(self):
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(TaskStartedEvent)
-            self.comm.register_event(TaskFinishedEvent)
+            await self.comm.register_event(TaskStartedEvent)
+            await self.comm.register_event(TaskFinishedEvent)
 
         # start
         self._running = True
 
-        # open scheduler
-        self._task_archive.open()
-
-    def close(self):
-        """Close module."""
-        Module.close(self)
-
-        # close scheduler
-        self._task_archive.close()
-
-    def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any):
         """Starts a service."""
         log.info('Starting robotic system...')
         self._running = True
 
-    def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any):
         """Stops a service."""
         log.info('Stopping robotic system...')
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._running
 
-    def _run_thread(self):
+    async def _run_thread(self):
         # wait a little
-        self.closing.wait(1)
+        await asyncio.sleep(1)
 
         # flags
         first_late_start_warning = True
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # not running?
             if not self._running:
                 # sleep a little and continue
-                self.closing.wait(1)
+                await asyncio.sleep(1)
                 continue
 
             # get now
@@ -104,9 +94,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # find task that we want to run now
             task: Task = self._task_archive.get_task(now)
-            if task is None or not task.can_run():
+            if task is None or not await task.can_run():
                 # no task found
-                self.closing.wait(10)
+                await asyncio.sleep(10)
                 continue
 
             # starting too late?
@@ -120,7 +110,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                     first_late_start_warning = False
 
                     # sleep a little and skip
-                    self.closing.wait(10)
+                    await asyncio.sleep(10)
                     continue
 
             # reset warning
@@ -133,39 +123,20 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             eta = now + self._task.duration * u.second
 
             # send event
-            self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
             # run task in thread
             log.info('Running task %s...', self._task.name)
-            abort_event = threading.Event()
-            task_thread = threading.Thread(target=self._task_archive.run_task, args=(self._task, abort_event))
-            task_thread.start()
-
-            # wait for it
-            while True:
-                # not alive anymore?
-                if not task_thread.is_alive():
-                    # finished
-                    break
-
-                # closing?
-                if self.closing.is_set() or Time.now() > task.end + self._allowed_overrun * u.second:
-                    # set event and wait for thread
-                    abort_event.set()
-                    task_thread.join()
-                    break
-
-                # just sleep a little and wait
-                self.closing.wait(10)
+            await self._task_archive.run_task(self._task)
 
             # send event
-            self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
 
             # finish
             log.info('Finished task %s.', self._task.name)
             self._task = None
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
             -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 

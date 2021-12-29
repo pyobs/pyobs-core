@@ -1,6 +1,6 @@
-import threading
+import asyncio
+from abc import ABCMeta, abstractmethod
 from typing import Dict, Any, Tuple, Union, List, Optional
-
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
@@ -11,13 +11,15 @@ from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
+from pyobs.utils.parallel import event_wait
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module):
+class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module,
+                    metaclass=ABCMeta):
     """Base class for telescopes."""
     __module__ = 'pyobs.modules.telescope'
 
@@ -37,15 +39,14 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         self._min_altitude = min_altitude
 
         # some multi-threading stuff
-        self._lock_moving = threading.Lock()
-        self._abort_move = threading.Event()
+        self._lock_moving = asyncio.Lock()
+        self._abort_move = asyncio.Event()
 
         # celestial status
-        self._celestial_lock = threading.RLock()
         self._celestial_headers: Dict[str, Any] = {}
 
         # add thread func
-        self.add_thread_func(self._celestial, True)
+        self.add_background_task(self._celestial, True)
 
         # init mixins
         WeatherAwareMixin.__init__(self, **kwargs)
@@ -55,31 +56,16 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
                                     wait_for_timeout=60000,
                                     wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING])
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # open mixins
-        WeatherAwareMixin.open(self)
-        MotionStatusMixin.open(self)
+        await WeatherAwareMixin.open(self)
+        await MotionStatusMixin.open(self)
 
-    def init(self, **kwargs: Any) -> None:
-        """Initialize telescope.
-
-        Raises:
-            ValueError: If telescope could not be initialized.
-        """
-        raise NotImplementedError
-
-    def park(self, **kwargs: Any) -> None:
-        """Park telescope.
-
-        Raises:
-            ValueError: If telescope could not be parked.
-        """
-        raise NotImplementedError
-
-    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    @abstractmethod
+    async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -90,10 +76,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             Exception: On any error.
         """
-        raise NotImplementedError
+        ...
 
     @timeout(1200)
-    def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
+    async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
         """Starts tracking on given coordinates.
 
         Args:
@@ -105,7 +91,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # do nothing, if initializing, parking or parked
-        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check observer
@@ -121,29 +107,30 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             raise ValueError('Destination altitude below limit.')
 
         # acquire lock
-        with LockWithAbort(self._lock_moving, self._abort_move):
+        async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
-            self._change_motion_status(MotionStatus.SLEWING)
+            await self._change_motion_status(MotionStatus.SLEWING)
             log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
                      ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
                      ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
-            self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
+            await self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
 
             # track telescope
-            self._move_radec(ra, dec, abort_event=self._abort_move)
+            await self._move_radec(ra, dec, abort_event=self._abort_move)
             log.info('Reached destination')
 
             # move dome, if exists
-            self._wait_for_motion(self._abort_move)
+            await self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(MotionStatus.TRACKING)
+            await self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
-            threading.Thread(target=self._update_celestial_headers).start()
+            asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
-    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
+    @abstractmethod
+    async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -154,10 +141,10 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         Raises:
             Exception: On error.
         """
-        raise NotImplementedError
+        ...
 
     @timeout(1200)
-    def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
+    async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         """Moves to given coordinates.
 
         Args:
@@ -170,7 +157,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         """
 
         # do nothing, if initializing, parking or parked
-        if self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check altitude
@@ -178,27 +165,28 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             raise ValueError('Destination altitude below limit.')
 
         # acquire lock
-        with LockWithAbort(self._lock_moving, self._abort_move):
+        async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             log.info("Moving telescope to Alt=%.2f°, Az=%.2f°...", alt, az)
-            self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
-            self._change_motion_status(MotionStatus.SLEWING)
+            await self.comm.send_event(MoveAltAzEvent(alt=alt, az=az))
+            await self._change_motion_status(MotionStatus.SLEWING)
 
             # move telescope
-            self._move_altaz(alt, az, abort_event=self._abort_move)
+            await self._move_altaz(alt, az, abort_event=self._abort_move)
             log.info('Reached destination')
 
             # move dome, if exists
-            self._wait_for_motion(self._abort_move)
+            await self._wait_for_motion(self._abort_move)
 
             # finish slewing
-            self._change_motion_status(MotionStatus.POSITIONED)
+            await self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
-            threading.Thread(target=self._update_celestial_headers).start()
+            asyncio.create_task(self._update_celestial_headers())
             log.info('Finished moving telescope.')
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+            -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -213,9 +201,9 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # positions
         try:
-            ra, dec = self.get_radec()
+            ra, dec = await self.get_radec()
             coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-            alt, az = self.get_altaz()
+            alt, az = await self.get_altaz()
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
 
         except Exception as e:
@@ -254,21 +242,21 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # finish
         return hdr
 
-    def _celestial(self) -> None:
+    async def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
- 
+
         # wait a little
-        self.closing.wait(10)
+        await asyncio.sleep(10)
 
         # run until closing
-        while not self.closing.is_set():
+        while True:
             # update headers
-            self._update_celestial_headers()
+            await self._update_celestial_headers()
 
             # sleep a little
-            self.closing.wait(30)
+            await asyncio.sleep(30)
 
-    def _update_celestial_headers(self) -> None:
+    async def _update_celestial_headers(self) -> None:
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
@@ -281,7 +269,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # get telescope alt/az
         try:
-            alt, az = self.get_altaz()
+            alt, az = await self.get_altaz()
             tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
         except:
             alt, az, tel_altaz = None, None, None
@@ -296,14 +284,13 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
 
         # store it
-        with self._celestial_lock:
-            self._celestial_headers = {
-                'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
-                'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
-                'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
-                'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
-                'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
-            }
+        self._celestial_headers = {
+            'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
+            'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
+            'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
+            'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
+            'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
+        }
 
 
 __all__ = ['BaseTelescope']

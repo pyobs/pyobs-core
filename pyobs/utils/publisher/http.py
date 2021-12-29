@@ -51,17 +51,17 @@ class HistoryCsvHandler(tornado.web.RequestHandler):
 
 
 class HttpPublisher(Publisher, tornado.web.Application):
-    def __init__(self, port: int = 37077, keep: int = 10, *args, **kwargs):
+    def __init__(self, port: int = 37077, keep: int = 10, **kwargs):
         """Initialize new CSV publisher.
 
         Args:
             filename: Name of file to log in.
             keep: Number of entries to keep.
         """
-        Publisher.__init__(self, *args, **kwargs)
+        Publisher.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._http, False)
+        self.add_background_task(self._http, False)
 
         # init tornado web server
         tornado.web.Application.__init__(self, [

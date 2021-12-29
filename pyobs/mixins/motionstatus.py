@@ -22,12 +22,12 @@ class MotionStatusMixin:
         self.__motion_status = MotionStatus.UNKNOWN
         self.__motion_status_single = {i: MotionStatus.UNKNOWN for i in self.__motion_status_interfaces}
 
-    def open(self) -> None:
+    async def open(self) -> None:
         # subscribe to events
         if isinstance(self, Module) and self.comm:
-            self.comm.register_event(MotionStatusChangedEvent)
+            await self.comm.register_event(MotionStatusChangedEvent)
 
-    def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
+    async def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
         """Change motion status and send event,
 
         Args:
@@ -71,8 +71,8 @@ class MotionStatusMixin:
             this = self
             if not isinstance(self, Module):
                 raise ValueError('This is not a module.')
-            self.comm.send_event(MotionStatusChangedEvent(status=this.__motion_status,
-                                                          interfaces=this.__motion_status_single))
+            await self.comm.send_event(MotionStatusChangedEvent(status=this.__motion_status,
+                                                                interfaces=this.__motion_status_single))
 
     def _combine_motion_status(self) -> MotionStatus:
         """Method for combining motion statuses for individual interfaces into the global one. Can be overriden."""
@@ -91,7 +91,7 @@ class MotionStatusMixin:
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
         Args:

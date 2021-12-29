@@ -1,9 +1,8 @@
+import asyncio
 import logging
 from typing import Tuple, Any, Dict, List, Optional
-
-import requests
+import aiohttp
 import urllib.parse
-import threading
 import astropy.units as u
 
 from pyobs.utils.enums import WeatherSensors
@@ -45,7 +44,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # store and create session
         self._system_init_time = system_init_time
         self._url = url
-        self._session = requests.session()
 
         # whether module is active, i.e. if None, weather is always good
         self._active = True
@@ -55,65 +53,65 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # whole status
         self._status: Dict[str, Any] = {}
-        self._status_lock = threading.RLock()
 
         # add thread func
-        self.add_thread_func(self._update, True)
+        self.add_background_task(self._update, True)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(BadWeatherEvent)
-            self.comm.register_event(GoodWeatherEvent)
+            await self.comm.register_event(BadWeatherEvent)
+            await self.comm.register_event(GoodWeatherEvent)
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
 
         # did status change and weather is now bad?
         if not self._active and not self._is_good:
             # send event!
-            self.comm.send_event(BadWeatherEvent())
+            await self.comm.send_event(BadWeatherEvent())
 
         # activate
         self._active = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._active = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._active
 
-    def _update(self) -> None:
+    async def _update(self) -> None:
         """Update weather info."""
 
         # loop forever
-        while not self.closing.is_set():
+        while True:
             # new is_good status
             is_good: Optional[bool] = None
             error = False
 
             try:
                 # fetch status
-                res = self._session.get(urllib.parse.urljoin(self._url, 'api/current/'), timeout=5)
-                if res.status_code != 200:
-                    raise ValueError('Could not connect to weather station.')
+                url = urllib.parse.urljoin(self._url, 'api/current/')
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=5) as response:
+                        if response.status != 200:
+                            raise ValueError('Could not connect to weather station.')
+                        status = await response.json()
 
                 # to json
-                status = res.json()
                 if 'good' not in status:
                     raise ValueError('Good parameter not found in response from weather station.')
 
                 # store it
                 is_good = status['good']
-                with self._status_lock:
-                    self._status = status
+                self._status = status
 
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as e:
+            except Exception as e:
                 # on error, we're always bad
                 log.error('Request failed: %s', e)
                 is_good = False
@@ -125,24 +123,24 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 if self._active:
                     # did it change to good or bad?
                     if is_good:
-                        log.info(('Weather is now good.'))
+                        log.info('Weather is now good.')
                         eta = Time.now() + self._system_init_time * u.second
-                        self.comm.send_event(GoodWeatherEvent(eta=eta))
+                        await self.comm.send_event(GoodWeatherEvent(eta=eta))
                     else:
                         log.info('Weather is now bad.')
-                        self.comm.send_event(BadWeatherEvent())
+                        await self.comm.send_event(BadWeatherEvent())
 
                 # store new state
                 self._is_good = is_good
 
             # sleep a little
-            self.closing.wait(60 if error else 5)
+            await asyncio.sleep(60 if error else 5)
 
-    def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
-    def is_weather_good(self, **kwargs: Any) -> bool:
+    async def is_weather_good(self, **kwargs: Any) -> bool:
         """Whether the weather is good to observe."""
 
         # if not active, weather is always good
@@ -152,17 +150,16 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # otherwise it depends on the is_good flag
         return False if self._is_good is None else self._is_good
 
-    def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
 
         Returns:
             Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
             with sensor information, which contain a value and a good flag.
         """
-        with self._status_lock:
-            return self._status
+        return self._status
 
-    def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
 
         Args:
@@ -175,19 +172,20 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # do request
         url = urllib.parse.urljoin(self._url, 'api/stations/%s/%s/' % (station, sensor.value))
-        res = self._session.get(url)
-        if res.status_code != 200:
-            raise ValueError('Could not connect to weather station.')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=5) as response:
+                if response.status != 200:
+                    raise ValueError('Could not connect to weather station.')
+                status = await response.json()
 
         # to json
-        status = res.json()
         if 'time' not in status or 'value' not in status:
             raise ValueError('Time and/or value parameters not found in response from weather station.')
 
         # return time and value
         return status['time'], status['value']
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
             -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
@@ -199,8 +197,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # copy status
-        with self._status_lock:
-            status = dict(self._status)
+        status = dict(self._status)
 
         # got sensors?
         if 'sensors' not in status:

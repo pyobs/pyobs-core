@@ -1,8 +1,10 @@
-from __future__ import annotations
+import asyncio
+from functools import partial
 from typing import Tuple, TYPE_CHECKING, Any, Optional
 from astropy.table import Table
 import logging
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from .sourcedetection import SourceDetection
@@ -42,7 +44,7 @@ class SepSourceDetection(SourceDetection):
         self.clean = clean
         self.clean_param = clean_param
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
@@ -52,6 +54,7 @@ class SepSourceDetection(SourceDetection):
             Image with attached catalog.
         """
         import sep
+        loop = asyncio.get_running_loop()
 
         # got data?
         if image.data is None:
@@ -65,9 +68,10 @@ class SepSourceDetection(SourceDetection):
         data, bkg = SepSourceDetection.remove_background(image.data, mask)
 
         # extract sources
-        sources = sep.extract(data, self.threshold, err=bkg.globalrms, minarea=self.minarea,
-                              deblend_nthresh=self.deblend_nthresh, deblend_cont=self.deblend_cont,
-                              clean=self.clean, clean_param=self.clean_param, mask=image.mask)
+        sources = await loop.run_in_executor(None, partial(sep.extract, data, self.threshold, err=bkg.globalrms,
+                                                           minarea=self.minarea, deblend_nthresh=self.deblend_nthresh,
+                                                           deblend_cont=self.deblend_cont, clean=self.clean,
+                                                           clean_param=self.clean_param, mask=image.mask))
 
         # convert to astropy table
         sources = pd.DataFrame(sources)
@@ -93,9 +97,10 @@ class SepSourceDetection(SourceDetection):
 
         # equivalent of FLUX_AUTO
         gain = image.header['DET-GAIN'] if 'DET-GAIN' in image.header else None
-        flux, fluxerr, flag = sep.sum_ellipse(data, x, y, sources['a'], sources['b'],
-                                              sources['theta'], 2.5 * kronrad,
-                                              subpix=1, mask=image.mask, gain=gain)
+        flux, fluxerr, flag = await loop.run_in_executor(None, partial(sep.sum_ellipse, data, x, y,
+                                                                       sources['a'], sources['b'], sources['theta'],
+                                                                       2.5 * kronrad, subpix=5, mask=image.mask,
+                                                                       gain=gain))
         sources['flag'] |= flag
         sources['flux'] = flux
 
@@ -134,7 +139,8 @@ class SepSourceDetection(SourceDetection):
         return img
 
     @staticmethod
-    def remove_background(data: np.ndarray, mask: Optional[np.ndarray] = None) -> Tuple[np.ndarray, 'Background']:
+    def remove_background(data: npt.NDArray[float], mask: Optional[npt.NDArray[float]] = None) \
+            -> Tuple[npt.NDArray[float], 'Background']:
         """Remove background from image in data.
 
         Args:

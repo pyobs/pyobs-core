@@ -1,5 +1,4 @@
 import logging
-import threading
 from typing import Dict, Any
 
 from pyobs.object import get_object
@@ -42,10 +41,9 @@ class LcoScript(Script):
             raise ValueError('No script found for script type "%s".' % config_type)
 
         # create script handler
-        return get_object(self.scripts[config_type], Script,
-                          configuration=config, task_archive=self.task_archive, comm=self.comm, observer=self.observer)
+        return self.get_object(self.scripts[config_type], Script, configuration=config, task_archive=self.task_archive)
 
-    def can_run(self) -> bool:
+    async def can_run(self) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -56,13 +54,10 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # if any runner can run, we proceed
-        return runner.can_run()
+        return await runner.can_run()
 
-    def run(self, abort_event: threading.Event) -> None:
+    async def run(self) -> None:
         """Run script.
-
-        Args:
-            abort_event: Event to abort run.
 
         Raises:
             InterruptedError: If interrupted
@@ -72,7 +67,7 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # run it
-        runner.run(abort_event=abort_event)
+        await runner.run()
 
 
 __all__ = ['LcoScript']

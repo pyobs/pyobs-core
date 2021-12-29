@@ -26,7 +26,7 @@ class CreateFilename(ImageProcessor):
             pattern = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits'
         self._formatter = FilenameFormatter(pattern)
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Add filename to image.
 
         Args:

@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import threading
-import time
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
 
 from astropy.coordinates import SkyCoord
@@ -34,7 +34,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # init world and get telescope
         from pyobs.utils.simulation import SimWorld
         self._world = world if world is not None else \
-            self.add_child_object({'class': 'pyobs.utils.simulation.world.SimWorld'}, SimWorld)
+            self.add_child_object(SimWorld)
         self._telescope = self._world.telescope
 
         # automatically send status updates
@@ -44,19 +44,19 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         self._lock_focus = threading.Lock()
         self._abort_focus = threading.Event()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        BaseTelescope.open(self)
+        await BaseTelescope.open(self)
 
         # subscribe to events
         if self.comm:
-            self.comm.register_event(FilterChangedEvent)
-            self.comm.register_event(OffsetsRaDecEvent)
+            await self.comm.register_event(FilterChangedEvent)
+            await self.comm.register_event(OffsetsRaDecEvent)
 
         # init status
-        self._change_motion_status(MotionStatus.IDLE)
+        await self._change_motion_status(MotionStatus.IDLE)
 
-    def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    async def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -69,9 +69,9 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # start slewing
-        self.__move(ra, dec, abort_event)
+        await self.__move(ra, dec, abort_event)
 
-    def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
+    async def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -89,9 +89,9 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         icrs = coords.icrs
 
         # start slewing
-        self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
+        await self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
-    def __move(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    async def __move(self, ra: float, dec: float, abort_event: threading.Event) -> None:
         """Simulate move.
 
        Args:
@@ -108,9 +108,9 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
 
         # wait for it
         while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
-            self.closing.wait(1)
+            await asyncio.sleep(1)
 
-    def get_focus(self, **kwargs: Any) -> float:
+    async def get_focus(self, **kwargs: Any) -> float:
         """Return current focus.
 
         Returns:
@@ -119,7 +119,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         return self._telescope.focus
 
     @timeout(60)
-    def set_focus(self, focus: float, **kwargs: Any) -> None:
+    async def set_focus(self, focus: float, **kwargs: Any) -> None:
         """Sets new focus.
 
         Args:
@@ -133,7 +133,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # acquire lock
         with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
-            self._change_motion_status(MotionStatus.SLEWING, interface='IFocuser')
+            await self._change_motion_status(MotionStatus.SLEWING, interface='IFocuser')
             ifoc = self._telescope.focus * 1.
             dfoc = (focus - ifoc) / 300.
             for i in range(300):
@@ -143,11 +143,11 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
 
                 # move focus and sleep a little
                 self._telescope.focus = ifoc + i * dfoc
-                time.sleep(0.01)
-            self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
+                await asyncio.sleep(0.01)
+            await self._change_motion_status(MotionStatus.POSITIONED, interface='IFocuser')
             self._telescope.focus = focus
 
-    def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
 
         Returns:
@@ -155,15 +155,15 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.filters
 
-    def get_filter(self, **kwargs: Any) -> str:
+    async def get_filter(self, **kwargs: Any) -> str:
         """Get currently set filter.
 
         Returns:
             Name of currently set filter.
         """
-        return self._telescope.filter
+        return self._telescope.filter_name
 
-    def set_filter(self, filter_name: str, **kwargs: Any) -> None:
+    async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
 
         Args:
@@ -174,20 +174,20 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # log and send event
-        if filter_name != self._telescope.filter:
+        if filter_name != self._telescope.filter_name:
             # set it
             logging.info('Setting filter to %s', filter_name)
-            self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
-            time.sleep(3)
-            self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
-            self._telescope.filter = filter_name
+            await self._change_motion_status(MotionStatus.SLEWING, interface='IFilters')
+            await asyncio.sleep(3)
+            await self._change_motion_status(MotionStatus.POSITIONED, interface='IFilters')
+            self._telescope.filter_name = filter_name
 
             # send event
-            self.comm.send_event(FilterChangedEvent(filter_name))
+            await self.comm.send_event(FilterChangedEvent(filter_name))
             logging.info('New filter set.')
 
     @timeout(60)
-    def init(self, **kwargs: Any) -> None:
+    async def init(self, **kwargs: Any) -> None:
         """Initialize telescope.
 
         Raises:
@@ -195,12 +195,14 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # INIT, wait a little, then IDLE
-        self._change_motion_status(MotionStatus.INITIALIZING)
-        time.sleep(5.)
-        self._change_motion_status(MotionStatus.IDLE)
+        log.info('Initializing telescope...')
+        await self._change_motion_status(MotionStatus.INITIALIZING)
+        await asyncio.sleep(5)
+        await self._change_motion_status(MotionStatus.IDLE)
+        log.info('Telescope initialized.')
 
     @timeout(60)
-    def park(self, **kwargs: Any) -> None:
+    async def park(self, **kwargs: Any) -> None:
         """Park telescope.
 
         Raises:
@@ -208,11 +210,13 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # PARK, wait a little, then PARKED
-        self._change_motion_status(MotionStatus.PARKING)
-        time.sleep(5.)
-        self._change_motion_status(MotionStatus.PARKED)
+        log.info('Parking telescope...')
+        await self._change_motion_status(MotionStatus.PARKING)
+        await asyncio.sleep(5)
+        await self._change_motion_status(MotionStatus.PARKED)
+        log.info('Telescope parked.')
 
-    def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
+    async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
         """Move an RA/Dec offset.
 
         Args:
@@ -223,10 +227,10 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             ValueError: If offset could not be set.
         """
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
-        self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
+        await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
 
-    def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:
@@ -234,7 +238,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return self._telescope.offsets
 
-    def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:
@@ -242,7 +246,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
 
-    def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
@@ -254,7 +258,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         else:
             raise ValueError('No observer given.')
 
-    def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -265,7 +269,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
 
         # fetch from BaseTelescope
-        hdr = BaseTelescope.get_fits_header_before(self)
+        hdr = await BaseTelescope.get_fits_header_before(self)
 
         # focus
         hdr['TEL-FOCU'] = (self._telescope.focus, 'Focus position [mm]')
@@ -273,7 +277,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         # finished
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
-    def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:
@@ -281,7 +285,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         pass
 
-    def get_focus_offset(self, **kwargs: Any) -> float:
+    async def get_focus_offset(self, **kwargs: Any) -> float:
         """Return current focus offset.
 
         Returns:
@@ -289,7 +293,7 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
         """
         return 0
 
-    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:
@@ -300,6 +304,13 @@ class DummyTelescope(BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHead
             'M1': 10.,
             'M2': 12.
         }
+
+    async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
+        log.error('Not implemented')
+
+    async def is_ready(self, **kwargs: Any) -> bool:
+        log.error('Not implemented')
+        return True
 
 
 __all__ = ['DummyTelescope']

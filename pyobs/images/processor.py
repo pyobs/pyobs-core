@@ -1,15 +1,17 @@
+from abc import ABCMeta, abstractmethod
 from typing import Any
 
 from pyobs.images import Image
 from pyobs.object import Object
 
 
-class ImageProcessor(Object):
+class ImageProcessor(Object, metaclass=ABCMeta):
     def __init__(self, **kwargs: Any):
         """Init new image processor."""
         Object.__init__(self, **kwargs)
 
-    def __call__(self, image: Image) -> Image:
+    @abstractmethod
+    async def __call__(self, image: Image) -> Image:
         """Processes an image.
 
         Args:
@@ -18,9 +20,9 @@ class ImageProcessor(Object):
         Returns:
             Processed image.
         """
-        raise NotImplementedError
+        ...
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Resets state of image processor"""
         pass
 

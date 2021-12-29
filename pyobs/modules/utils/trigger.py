@@ -33,9 +33,9 @@ class Trigger(Module, IAutonomous):
             kls = get_class_from_string(trigger['event'])
             trigger['event'] = kls
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # get a list of all events
         events = list(set([t['event'] for t in self._triggers]))
@@ -45,21 +45,21 @@ class Trigger(Module, IAutonomous):
 
         # register them
         for event in events:
-            self.comm.register_event(event, self._handle_event)
+            await self.comm.register_event(event, self._handle_event)
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         self._running = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
         return self._running
 
-    def _handle_event(self, event: Event, sender: str) -> bool:
+    async def _handle_event(self, event: Event, sender: str) -> bool:
         """Handle an incoming event.
 
         Args:
@@ -80,10 +80,10 @@ class Trigger(Module, IAutonomous):
 
                 # get proxy
                 try:
-                    proxy = self.comm.proxy(trigger['module'])
+                    proxy = await self.comm.proxy(trigger['module'])
 
                     # call it
-                    proxy.execute(trigger['method'])
+                    await proxy.execute(trigger['method'])
 
                 except ValueError:
                     log.exception('Could not execute command on proxy %s.', trigger['module'])

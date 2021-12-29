@@ -20,22 +20,23 @@ class Archive:
     """Base class for image archives."""
     __module__ = 'pyobs.utils.archive'
 
-    def list_options(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
-                     site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
-                     image_type: Optional[ImageType] = None, binning: Optional[str] = None,
-                     filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> Dict[str, List[Any]]:
+    async def list_options(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
+                           site: Optional[str] = None, telescope: Optional[str] = None,
+                           instrument: Optional[str] = None, image_type: Optional[ImageType] = None,
+                           binning: Optional[str] = None, filter_name: Optional[str] = None,
+                           rlevel: Optional[int] = None) -> Dict[str, List[Any]]:
         raise NotImplementedError
 
-    def list_frames(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
-                    site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
-                    image_type: Optional[ImageType] = None, binning: Optional[str] = None,
-                    filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> List[FrameInfo]:
+    async def list_frames(self, start: Optional[Time] = None, end: Optional[Time] = None, night: Optional[str] = None,
+                          site: Optional[str] = None, telescope: Optional[str] = None, instrument: Optional[str] = None,
+                          image_type: Optional[ImageType] = None, binning: Optional[str] = None,
+                          filter_name: Optional[str] = None, rlevel: Optional[int] = None) -> List[FrameInfo]:
         raise NotImplementedError
 
-    def download_frames(self, frames: List[FrameInfo]) -> List['Image']:
+    async def download_frames(self, frames: List[FrameInfo]) -> List['Image']:
         raise NotImplementedError
 
-    def upload_frames(self, frames: List['Image']) -> None:
+    async def upload_frames(self, frames: List['Image']) -> None:
         raise NotImplementedError
 
 

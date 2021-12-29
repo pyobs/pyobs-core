@@ -1,9 +1,9 @@
 import logging
-from queue import Queue
+import asyncio
 from typing import Union, List, Any, Optional
 
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent
+from pyobs.events import NewImageEvent, Event
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
@@ -24,23 +24,23 @@ class ImageWriter(Module):
         Module.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._worker, True)
+        self.add_background_task(self._worker, True)
 
         # variables
         self._filename = filename
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._queue = Queue()
+        self._queue = asyncio.Queue()
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open image writer."""
-        Module.open(self)
+        await Module.open(self)
 
         # subscribe to channel with new images
         if self.comm is not None:
             log.info('Subscribing to new image events...')
-            self.comm.register_event(NewImageEvent, self.process_new_image_event)
+            await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
-    def process_new_image_event(self, event: NewImageEvent, sender: str) -> bool:
+    async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
 
         Args:
@@ -50,6 +50,8 @@ class ImageWriter(Module):
         Returns:
             Success
         """
+        if not isinstance(event, NewImageEvent):
+            return False
 
         # filter by source
         if self._sources is not None and sender not in self._sources:
@@ -57,24 +59,21 @@ class ImageWriter(Module):
 
         # queue file
         log.info('Received new image event from %s.', sender)
-        self._queue.put(event.filename)
+        self._queue.put_nowait(event.filename)
         return True
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Worker thread."""
 
         # run forever
-        while not self.closing.is_set():
+        while True:
             # get next filename
-            if self._queue.empty():
-                self.closing.wait(1)
-                continue
-            filename = self._queue.get()
+            filename = await self._queue.get()
 
             try:
                 # download image
                 log.info('Downloading file %s...', filename)
-                img = self.vfs.read_image(filename)
+                img = await self.vfs.read_image(filename)
             except FileNotFoundError:
                 log.error('Could not download image.')
                 continue
@@ -89,7 +88,7 @@ class ImageWriter(Module):
             try:
                 # open output
                 log.info('Storing image as %s...',  output)
-                self.vfs.write_image(output, img)
+                await self.vfs.write_image(output, img)
             except Exception:
                 log.error('Could not store image.')
 

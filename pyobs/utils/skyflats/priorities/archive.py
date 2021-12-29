@@ -22,11 +22,11 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         self._site = site
         self._instrument = instrument
 
-    def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
+    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
-        frames = self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now, site=self._site,
-                                           instrument=self._instrument, image_type=ImageType.SKYFLAT, rlevel=1)
+        frames = await self._archive.list_frames(start=now - TimeDelta(100 * u.day), end=now, site=self._site,
+                                                 instrument=self._instrument, image_type=ImageType.SKYFLAT, rlevel=1)
 
         # get priorities
         from_archive: Dict[Tuple[str, int], float] = {}

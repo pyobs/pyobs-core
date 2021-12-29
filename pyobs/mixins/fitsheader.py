@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+from collections import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits
@@ -9,10 +10,9 @@ from astropy.io import fits
 from pyobs.comm import TimeoutException, InvocationException, RemoteException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
-from pyobs.interfaces.proxies import IFitsHeaderBeforeProxy, IFitsHeaderAfterProxy
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
-from pyobs.utils.threads import Future
+from pyobs.utils.parallel import Future
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -44,8 +44,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_cache = '/pyobs/modules/%s/cache.yaml' % module.name()
         self._fitsheadermixin_frame_num = 0
 
-    def request_fits_headers(self, before: bool = True) \
-            -> Dict[str, Future[Dict[str, Tuple[Any, str]]]]:
+    async def request_fits_headers(self, before: bool = True) -> Dict[str, Coroutine]:
         """Request FITS headers from other modules.
 
         Returns:
@@ -53,30 +52,29 @@ class FitsHeaderMixin:
         """
 
         # init
-        futures = {}
+        futures: Dict[str, Coroutine] = {}
 
         # we can only do this with a comm module
         module = cast(Module, self)
         if module.comm:
             # get clients that provide fits headers
-            clients = module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
+            clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
-            proxy: Union[IFitsHeaderBeforeProxy, IFitsHeaderAfterProxy]
             for client in clients:
                 log.debug('Requesting FITS headers from %s...', client)
                 if before:
-                    proxy = module.proxy(client, IFitsHeaderBeforeProxy)
-                    futures[client] = proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    proxy1 = await module.proxy(client, IFitsHeaderBefore)
+                    futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
-                    proxy = module.proxy(client, IFitsHeaderAfterProxy)
-                    futures[client] = proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    proxy2 = await module.proxy(client, IFitsHeaderAfter)
+                    futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished
         return futures
 
-    def add_requested_fits_headers(self, image: Union[Image, fits.PrimaryHDU], 
-                                   futures: Dict[str, Future[Dict[str, Tuple[Any, str]]]]) -> None:
+    async def add_requested_fits_headers(self, image: Union[Image, fits.PrimaryHDU],
+                                        futures: Dict[str, Coroutine]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -89,7 +87,7 @@ class FitsHeaderMixin:
             # join thread
             log.info('Fetching FITS headers from %s...', client)
             try:
-                headers = future.wait()
+                headers = await future
             except TimeoutException:
                 log.warning('Fetching FITS headers from %s timed out.', client)
                 continue
@@ -111,7 +109,7 @@ class FitsHeaderMixin:
                     else:
                         image.header[key] = value
 
-    def add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -127,7 +125,7 @@ class FitsHeaderMixin:
 
         # add more fits headers
         self._fitsheadermixin_add_fits_headers(image)
-        self._fitsheadermixin_add_framenum(image)
+        await self._fitsheadermixin_add_framenum(image)
 
     def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FITS header keywords to the given FITS header.
@@ -170,7 +168,7 @@ class FitsHeaderMixin:
         # date of night this observation is in
         hdr['DAY-OBS'] = (date_obs.night_obs(module.observer).strftime('%Y-%m-%d'), 'Night of observation')
 
-    def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FRAMENUM keyword to header
 
         Args:
@@ -192,7 +190,7 @@ class FitsHeaderMixin:
             # try to load it
             try:
                 # load cache
-                cache = module.vfs.read_yaml(self._fitsheadermixin_cache)
+                cache = await module.vfs.read_yaml(self._fitsheadermixin_cache)
 
                 # get new number
                 if cache is not None and 'framenum' in cache:
@@ -207,8 +205,8 @@ class FitsHeaderMixin:
 
             # write file
             try:
-                module.vfs.write_yaml({'night': night, 'framenum': self._fitsheadermixin_frame_num},
-                                      self._fitsheadermixin_cache)
+                await module.vfs.write_yaml(self._fitsheadermixin_cache,
+                                            {'night': night, 'framenum': self._fitsheadermixin_frame_num})
             except (FileNotFoundError, ValueError):
                 log.warning('Could not write camera cache file.')
 

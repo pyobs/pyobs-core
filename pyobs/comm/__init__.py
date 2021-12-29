@@ -8,7 +8,7 @@ developing a new module that needs to communicate with other modules.
 In a configuration file, the Comm object is defined at top-level like this::
 
     comm:
-        class: pyobs.comm.xmpp.XmppComm
+        class: pyobs.comm.sleekxmpp.XmppComm
 
 Except for a single parameter defined in :class:`~pyobs.comm.Comm`'s constructor, all parameters are defined in
 derived classes.
@@ -20,16 +20,14 @@ the module named 'camera' implements the :class:`~pyobs.interfaces.ICamera` inte
     camera = comm['camera']
     camera.expose().wait()
 
-Note that camera is now not of type :class:`~pyobs.interfaces.ICamera`, but it is a
-:class:`~pyobs.interfaces.proxies.ICameraProxy`, which implements exactly the same methods, but with them returning
-Futures instead of their return values directly -- thus the call to ``wait()`` at the end.
+Note that camera is now not of type :class:`~pyobs.interfaces.ICamera`.
 
 Each :class:`~pyobs.modules.Module` that was configured with a Comm object (see :mod:`~pyobs.modules`) has
 an attribute ``comm`` for easy access.
 
 There is currently one one implementation of the Comm interface:
 
-* :class:`~pyobs.comm.xmpp.XmppComm` uses the XMPP protocol for communication.
+* :class:`~pyobs.comm.sleekxmpp.XmppComm` uses the XMPP protocol for communication.
 
 .. seealso::
 
@@ -42,4 +40,4 @@ from .proxy import Proxy
 from .exceptions import *
 
 
-__all__ = ['Comm', 'Proxy']
+__all__ = ['Comm', 'Proxy', 'RemoteException', 'InvocationException', 'AuthorizationException', 'TimeoutException']

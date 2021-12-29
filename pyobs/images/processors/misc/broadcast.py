@@ -25,15 +25,15 @@ class Broadcast(ImageProcessor):
         # store
         self._formatter = FilenameFormatter(filename)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Initialize processor."""
-        ImageProcessor.open(self)
+        await ImageProcessor.open(self)
 
         # register event
         if self.comm is not None:
-            self.comm.register_event(NewImageEvent)
+            await self.comm.register_event(NewImageEvent)
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Broadcast image.
 
         Args:
@@ -47,10 +47,10 @@ class Broadcast(ImageProcessor):
         filename = image.format_filename(self._formatter)
 
         # upload
-        self.vfs.write_image(filename, image)
+        await self.vfs.write_image(filename, image)
 
         # broadcast
-        self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header['IMAGETYP'])))
+        await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header['IMAGETYP'])))
 
         # finished
         return image

@@ -1,7 +1,7 @@
 import time
 from collections import namedtuple
 from threading import Lock
-from typing import Any, List, Dict
+from typing import Any, Dict
 
 
 class DataCacheEntry:
@@ -99,7 +99,7 @@ class DataCache(object):
             # check size
             if len(self._cache) > self._size:
                 # sort cache values by update time
-                cache = sorted(self._cache.values(), key=lambda c: c.time, reverse=True)
+                cache = sorted(self._cache.values(), key=lambda x: x.time, reverse=True)
 
                 # delete all elements except for the latest N
                 for c in cache[self._size:]:

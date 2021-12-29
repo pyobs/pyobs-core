@@ -1,46 +1,36 @@
-from typing import Tuple
-
-import pytest
-from astroplan import Observer
 from astropy.io import fits
-import numpy as np
-import threading
 
-from pyobs.comm.dummy import DummyComm
-from pyobs.environment import Environment
-from pyobs.images import Image
-from pyobs.interfaces import ICamera
-from pyobs.modules.camera import BaseCamera
-from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.modules.camera import DummyCamera
 
 
-def test_open_close():
+async def test_open_close():
     """Test basic open/close of BaseCamera."""
 
     # create camera, open and close it
-    camera = BaseCamera(comm=DummyComm())
-    camera.open()
-    camera.close()
+    camera = DummyCamera()
+    await camera.open()
+    await camera.close()
 
 
-def test_remaining():
+async def test_remaining():
     """Test the methods for remaining exposure time and progress."""
 
     # open camera
-    camera = BaseCamera(comm=DummyComm())
-    camera.open()
+    camera = DummyCamera()
+    await camera.open()
 
     # no exposure, so both should be zero
-    assert 0 == camera.get_exposure_time_left()
-    assert 0 == camera.get_exposure_progress()
+    assert 0 == await camera.get_exposure_time_left()
+    assert 0 == await camera.get_exposure_progress()
 
     # more tests will be done with DummyCamera
 
     # close camera
-    camera.close()
+    await camera.close()
 
 
-def test_add_fits_headers():
+'''
+async def test_add_fits_headers():
     """Check adding FITS headers. Only check for existence, only for some we check actual value."""
 
     # create comm
@@ -50,17 +40,17 @@ def test_add_fits_headers():
     centre = (100, 100)
     rotation = 42
     camera = BaseCamera(centre=centre, rotation=rotation, comm=comm, location='SAAO')
-    camera.open()
+    await camera.open()
 
     # try empty header
     hdr = fits.Header()
-    camera._add_fits_headers(hdr)
+    await camera._add_fits_headers(hdr)
     assert 0 == len(hdr)
 
     # add DATE-OBS and IMAGETYP
     hdr['DATE-OBS'] = '2019-01-31T03:00:00.000'
     hdr['IMAGETYP'] = 'object'
-    camera._add_fits_headers(hdr)
+    await camera._add_fits_headers(hdr)
 
     # now we should get some values
     assert 2000 == hdr['EQUINOX']
@@ -101,94 +91,13 @@ def test_add_fits_headers():
 
     # close camera
     camera.close()
+'''
 
 
-class DummyCam(BaseCamera):
-    """Test implementation of BaseCamera for text_expose()."""
-
-    def __init__(self, *args, **kwargs):
-        BaseCamera.__init__(self, *args, **kwargs)
-
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
-        # exposing
-        self._camera_status = ExposureStatus.EXPOSING
-
-        # wait for exposure
-        abort_event.wait(exposure_time)
-
-        # raise exception, if aborted
-        if abort_event.is_set():
-            raise ValueError('Exposure was aborted.')
-
-        # idle
-        self._camera_status = ExposureStatus.IDLE
-
-        # return image
-        return Image(fits.ImageHDU(np.zeros((100, 100))))
-
-
-# def test_expose():
-#     """Do a dummy exposure."""
-#
-#     # create comm and environment
-#     comm = DummyComm()
-#     environment = Environment(timezone='utc',
-#                               location={'longitude': 20.810808, 'latitude': -32.375823, 'elevation': 1798.})
-#
-#     # open camera
-#     camera = DummyCam(filenames=None, comm=comm, environment=environment)
-#     camera.open()
-#
-#     # status must be idle
-#     assert ExposureStatus.IDLE == camera.get_exposure_status()
-#
-#     # expose
-#     camera.set_exposure_time(0)
-#     camera.set_image_type(ImageType.OBJECT)
-#     camera.expose()
-#
-#     # status must be idle again
-#     assert ExposureStatus.IDLE == camera.get_exposure_status()
-#
-#     # close camera
-#     camera.close()
-
-
-def test_abort():
-    """Do a dummy exposure."""
-
-    # create comm and environment
-    comm = DummyComm()
-    environment = Environment(timezone='utc',
-                              location={'longitude': 20.810808, 'latitude': -32.375823, 'elevation': 1798.})
-
-    # open camera
-    camera = DummyCam(filenames=None, comm=comm, environment=environment)
-    camera.open()
-
-    def expose():
-        with pytest.raises(ValueError):
-            camera.set_exposure_time(1.)
-            camera.set_image_type(ImageType.OBJECT)
-            camera.grab_image()
-
-    # expose
-    thread = threading.Thread(target=expose)
-    thread.start()
-
-    # abort
-    camera.abort()
-
-    # thread should be closed
-    assert False == thread.is_alive()
-
-    # close camera
-    camera.close()
-
-
-def test_trimsec():
+async def test_trimsec():
     # create camera, no need for opening it
-    camera = DummyCam()
+    camera = DummyCamera()
+    await camera.open()
 
     # define full frame
     full = {'left': 50, 'width': 100, 'top': 0, 'height': 100}

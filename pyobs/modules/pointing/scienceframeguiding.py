@@ -1,11 +1,11 @@
 import logging
-import threading
+import asyncio
 from typing import Any
 
-from pyobs.events import NewImageEvent
+from pyobs.events import NewImageEvent, Event
 from pyobs.images import Image
 from ._baseguiding import BaseGuiding
-
+from ...utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -19,19 +19,18 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         BaseGuiding.__init__(self, **kwargs)
 
         # add thread func
-        self.add_thread_func(self._auto_guiding, True)
+        self.add_background_task(self._auto_guiding, True)
 
         # variables
-        self._next_image: Image = None
-        self._lock = threading.Lock()
+        self._next_image: asyncio.Queue[Image] = asyncio.Queue()
 
-    def open(self):
+    async def open(self) -> None:
         """Open module."""
-        BaseGuiding.open(self)
+        await BaseGuiding.open(self)
 
         # subscribe to channel with new images
         log.info('Subscribing to new image events...')
-        self.comm.register_event(NewImageEvent, self.add_image)
+        await self.comm.register_event(NewImageEvent, self.add_image)
 
     def set_exposure_time(self, exposure_time: float, **kwargs: Any):
         """Set the exposure time for the auto-guider.
@@ -41,7 +40,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
         raise NotImplementedError
 
-    def add_image(self, event: NewImageEvent, sender: str, **kwargs: Any):
+    async def add_image(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Processes an image asynchronously, returns immediately.
 
         Args:
@@ -50,47 +49,39 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
 
         # did it come from correct camera and are we enabled?
-        if sender != self._camera or not self._enabled:
-            return
+        if sender != self._camera or not self._enabled or not isinstance(event, NewImageEvent):
+            return False
         log.info('Received new image.')
 
         # download image
-        image = self.vfs.read_image(event.filename)
+        image = await self.vfs.read_image(event.filename)
 
         # we only accept OBJECT images
         if image.header['IMAGETYP'] != 'object':
-            return
+            return False
 
-        # store filename as next image to process
-        with self._lock:
-            # do we have a filename in here already?
-            if self._next_image:
-                log.warning('Last image still being processed by auto-guiding, skipping new one.')
-                return
+        # do we have a filename in here already?
+        if not self._next_image.empty():
+            log.warning('Last image still being processed by auto-guiding, skipping new one.')
+            return False
 
-            # store it
-            self._next_image = image
+        # store it
+        await self._next_image.put(image)
+        return True
 
-    def _auto_guiding(self):
+    async def _auto_guiding(self) -> None:
         """the thread function for processing the images"""
 
         # run until closed
-        while not self.closing.is_set():
+        while True:
             # get next image to process
-            with self._lock:
-                image = self._next_image
+            image = await self._next_image.get()
 
-            # got one?
-            if image is not None:
-                # process it
-                self._process_image(image)
-
-                # image finished
-                with self._lock:
-                    self._next_image = None
+            # process it
+            await self._process_image(image)
 
             # wait for next image
-            self.closing.wait(0.1)
+            await asyncio.sleep(1)
 
 
 __all__ = ['ScienceFrameAutoGuiding']

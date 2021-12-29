@@ -1,7 +1,8 @@
+from abc import ABCMeta
 from typing import Union, List, Dict, Any
 import logging
 
-from pyobs.interfaces.proxies import ITelescopeProxy, ICameraProxy
+from pyobs.interfaces import ITelescope, ICamera
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import get_object
 from pyobs.utils.offsets import ApplyOffsets
@@ -11,11 +12,11 @@ from pyobs.images import ImageProcessor
 log = logging.getLogger(__name__)
 
 
-class BasePointing(Module, PipelineMixin):
+class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
     """Base class for guiding and acquisition modules."""
     __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, camera: Union[str, ICameraProxy], telescope: Union[str, ITelescopeProxy],
+    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
                  pipeline: List[Union[Dict[str, Any], ImageProcessor]], apply: Union[Dict[str, Any], ApplyOffsets],
                  **kwargs: Any):
         """Initializes a new base pointing.
@@ -37,19 +38,19 @@ class BasePointing(Module, PipelineMixin):
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        Module.open(self)
+        await Module.open(self)
 
         # check telescope
         try:
-            self.proxy(self._telescope, ITelescopeProxy)
+            await self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.warning('Given telescope does not exist or is not of correct type at the moment.')
 
         # check camera
         try:
-            self.proxy(self._camera, ICameraProxy)
+            await self.proxy(self._camera, ICamera)
         except ValueError:
             log.warning('Given camera does not exist or is not of correct type at the moment.')
 

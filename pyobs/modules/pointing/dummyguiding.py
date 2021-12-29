@@ -15,18 +15,18 @@ class DummyAutoGuiding(Module, IAutoGuiding):
         Module.__init__(self, **kwargs)
         self._running = False
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         pass
 
-    def start(self, **kwargs: Any) -> None:
+    async def start(self, **kwargs: Any) -> None:
         log.info('Start guiding.')
         self._running = True
 
-    def stop(self, **kwargs: Any) -> None:
+    async def stop(self, **kwargs: Any) -> None:
         log.info('Stop guiding.')
         self._running = False
 
-    def is_running(self, **kwargs: Any) -> bool:
+    async def is_running(self, **kwargs: Any) -> bool:
         return self._running
 
 

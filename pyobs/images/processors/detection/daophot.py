@@ -1,3 +1,4 @@
+import asyncio
 from typing import Tuple, Any
 import logging
 
@@ -32,7 +33,7 @@ class DaophotSourceDetection(SourceDetection):
         self.bkg_box_size = bkg_box_size
         self.bkg_filter_size = bkg_filter_size
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
         Args:
@@ -62,7 +63,8 @@ class DaophotSourceDetection(SourceDetection):
 
         # find stars
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)
-        sources = daofind(data - median)
+        loop = asyncio.get_running_loop()
+        sources = await loop.run_in_executor(None, daofind, data - median)
 
         # rename columns
         sources.rename_column('xcentroid', 'x')

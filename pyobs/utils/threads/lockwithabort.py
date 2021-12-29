@@ -1,6 +1,9 @@
+import asyncio
 import logging
 import threading
 from typing import Any, Union
+
+from pyobs.utils.parallel import acquire_lock
 
 log = logging.getLogger(__name__)
 
@@ -11,14 +14,14 @@ class AcquireLockFailed(Exception):
 
 class LockWithAbort(object):
     """Tries to acquire a lock. If unsuccessful, it sets the event and tries again."""
-    def __init__(self, lock: Union[threading.Lock, threading.RLock], event: threading.Event):
+    def __init__(self, lock: asyncio.Lock, event: asyncio.Event):
         self.lock = lock
         self.event = event
         self.acquired = False
 
-    def __enter__(self) -> None:
+    async def __aenter__(self) -> None:
         # first try to acquire lock without timeout
-        self.acquired = self.lock.acquire(timeout=0.)
+        self.acquired = await acquire_lock(self.lock)
 
         # not successful?
         if not self.acquired:
@@ -26,7 +29,7 @@ class LockWithAbort(object):
             self.event.set()
 
             # try to acquire again with a timeout
-            self.acquired = self.lock.acquire(timeout=10.)
+            self.acquired = await acquire_lock(self.lock, 10.)
 
             # still not successful?
             if not self.acquired:
@@ -36,7 +39,7 @@ class LockWithAbort(object):
         # got lock, so unset abort and remember that we were successful
         self.event.clear()
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         # if we acquired the lock, we release it again here
         if self.acquired:
             self.lock.release()

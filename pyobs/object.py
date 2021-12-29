@@ -7,9 +7,11 @@ and helper methods for creating other Objects.
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import datetime
-import threading
+import inspect
+from collections import Coroutine
 from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
 import pytz
@@ -18,6 +20,8 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
+from pyobs.utils.parallel import event_wait
+
 if TYPE_CHECKING:
     from pyobs.vfs import VirtualFileSystem
 
@@ -30,23 +34,23 @@ ProxyType = TypeVar('ProxyType')
 
 
 @overload
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass], **kwargs: Any) \
-        -> ObjectClass: ...
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+               object_class: Type[ObjectClass], **kwargs: Any) -> ObjectClass: ...
 
 
 @overload
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: None, **kwargs: Any) -> Any: ...
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any], object_class: None,
+               **kwargs: Any) -> Any: ...
 
 
-def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
-               **kwargs: Any) -> Union[ObjectClass, Any]:
+def get_object(config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+               object_class: Optional[Type[ObjectClass]] = None, **kwargs: Any) -> Union[ObjectClass, Any]:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
         config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
             is given, a new object is created.
         object_class: Class to check object against.
-        allow_none: if True, a None value does not trigger an exception
 
     Returns:
         (New) object (created from config) that optionally passed class check.
@@ -65,6 +69,10 @@ def get_object(config_or_object: Union[Dict[str, Any], Any], object_class: Optio
 
         # a dict is given, so create object
         obj = create_object(config_or_object)
+
+    elif inspect.isclass(config_or_object):
+        # config_or_object is a type, so create it using its constructor
+        obj = config_or_object(**kwargs)
 
     else:
         # just use given object
@@ -150,12 +158,6 @@ class Object:
         """
         from pyobs.vfs import VirtualFileSystem
 
-        # an event that will be fired when closing the module
-        self.closing = threading.Event()
-
-        # closing event
-        self.closing = threading.Event()
-
         # child objects
         self._child_objects: List[Any] = []
 
@@ -208,12 +210,12 @@ class Object:
         # opened?
         self._opened = False
 
-        # thread function(s)
-        self._threads: Dict[threading.Thread, Tuple[Callable[[], None], bool]] = {}
-        self._watchdog = threading.Thread(target=self._watchdog_func, name='watchdog')
+        # background tasks
+        self._background_tasks: Dict[Callable[[], Coroutine], Tuple[Optional[asyncio.Task], bool]] = {}
+        self._watchdog_task: Optional[asyncio.Task] = None
 
-    def add_thread_func(self, func: Callable[[], None], restart: bool = True) -> threading.Thread:
-        """Add a new function that should be run in a thread.
+    def add_background_task(self, func: Callable[[], Coroutine], restart: bool = True):
+        """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
 
@@ -223,26 +225,25 @@ class Object:
         """
 
         # create thread
-        t = threading.Thread(target=Object._thread_func, name=func.__name__, args=(func,))
+        self._background_tasks[func] = (None, restart)
 
-        # add it
-        self._threads[t] = (func, restart)
-        return t
-
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
 
-        # start threads and watchdog
-        for thread, (target, _) in self._threads.items():
-            log.info('Starting thread for %s...', target.__name__)
-            thread.start()
-        if len(self._threads) > 0 and self._watchdog:
-            self._watchdog.start()
+        # start background tasks
+        for func, (task, restart) in self._background_tasks.items():
+            log.info('Starting background task for %s...', func.__name__)
+            self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
+        if len(self._background_tasks) > 0:
+            self._watchdog_task = asyncio.create_task(self._watchdog())
 
         # open child objects
         for obj in self._child_objects:
             if hasattr(obj, 'open'):
-                obj.open()
+                if asyncio.iscoroutinefunction(obj.open):
+                    await obj.open()
+                else:
+                    obj.open()
 
         # success
         self._opened = True
@@ -252,85 +253,81 @@ class Object:
         """Whether object has been opened."""
         return self._opened
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close module."""
-
-        # request closing of object (used for long-running methods)
-        self.closing.set()
 
         # close child objects
         for obj in self._child_objects:
             if hasattr(obj, 'close'):
-                obj.close()
+                await obj.close()
 
         # join watchdog and then all threads
-        if self._watchdog and self._watchdog.is_alive():
-            self._watchdog.join()
-        for t in self._threads.keys():
-            if t.is_alive():
-                t.join()
+        if self._watchdog_task and not self._watchdog_task.done():
+            self._watchdog_task.cancel()
+        for func, (task, restart) in self._background_tasks.items():
+            if task and not task.done():
+                task.cancel()
 
     @staticmethod
-    def _thread_func(target: Callable[[], None]) -> None:
+    async def _background_func(target: Callable[[], Coroutine]) -> None:
         """Run given function.
 
         Args:
             target: Function to run.
         """
         try:
-            target()
+            await target()
+
+        except asyncio.CancelledError:
+            # task was canceled
+            return
+
         except:
             log.exception('Exception in thread method %s.' % target.__name__)
 
     def quit(self) -> None:
         """Can be overloaded to quit program."""
-        ...
+        pass
 
-    def _watchdog_func(self) -> None:
+    async def _watchdog(self) -> None:
         """Watchdog thread that tries to restart threads if they quit."""
 
-        while not self.closing.is_set():
-            # get dead threads that need to be restarted
+        while True:
+            # get dead taks that need to be restarted
             dead = {}
-            for thread, (target, restart) in self._threads.items():
-                if not thread.is_alive():
-                    dead[thread] = (target, restart)
+            for func, (task, restart) in self._background_tasks.items():
+                if task.done():
+                    dead[func] = restart
 
-            # restart dead threads or quit
-            for thread, (target, restart) in dead.items():
+            # restart dead tasks or quit
+            for func, restart in dead.items():
                 if restart:
-                    log.error('Thread for %s has died, restarting...', target.__name__)
-                    del self._threads[thread]
-                    thread = self.add_thread_func(target, restart)
-                    thread.start()
+                    log.error('Background task for %s has died, restarting...', func.__name__)
+                    del self._background_tasks[func]
+                    self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
                 else:
-                    log.error('Thread for %s has died, quitting...', target.__name__)
+                    log.error('Background task for %s has died, quitting...', func.__name__)
                     self.quit()
                     return
 
             # sleep a little
-            self.closing.wait(1)
-
-    def check_running(self) -> bool:
-        """Check, whether an object should be closing. Can be polled by long-running methods.
-
-        Raises:
-            InterruptedError: Raised when object should be closing.
-        """
-        if self.closing.is_set():
-            raise InterruptedError
-        return True
+            await asyncio.sleep(1)
 
     @overload
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def get_object(self, config_or_object: Type[ObjectClass], object_class: None = None,
                    copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
-                   **kwargs: Any) -> Any: ...
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: None, copy_comm: bool = True, **kwargs: Any) -> Any: ...
 
-    def get_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None,
-                   copy_comm: bool = True, **kwargs: Any) -> Union[ObjectClass, Any]:
+    def get_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                   object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
+                   **kwargs: Any) -> Union[ObjectClass, Any]:
         """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
@@ -351,7 +348,8 @@ class Object:
         params.update({
             'timezone': self.timezone,
             'location': self.location,
-            'vfs': self.vfs
+            'vfs': self.vfs,
+            'observer': self.observer
         })
         if copy_comm:
             params['comm'] = self.comm
@@ -360,14 +358,15 @@ class Object:
         return get_object(config_or_object, object_class, **params)
 
     @overload
-    def get_safe_object(self, config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass],
-                        copy_comm: bool = True, **kwargs: Any) -> Optional[ObjectClass]: ...
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                        object_class: Type[ObjectClass], copy_comm: bool = True,
+                        **kwargs: Any) -> Optional[ObjectClass]: ...
 
     @overload
-    def get_safe_object(self, config_or_object: Union[ObjectClass, Any], object_class: None,
-                        copy_comm: bool = True, **kwargs: Any) -> Optional[Any]: ...
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                        object_class: None, copy_comm: bool = True, **kwargs: Any) -> Optional[Any]: ...
 
-    def get_safe_object(self, config_or_object: Union[Dict[str, Any], Any],
+    def get_safe_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                         object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
                         **kwargs: Any) -> Optional[Union[ObjectClass, Any]]:
         """Calls get_object in a safe way and returns None, if an exceptions thrown."""
@@ -378,14 +377,18 @@ class Object:
             return None
 
     @overload
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: Type[ObjectClass],
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                         object_class: Type[ObjectClass], copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(self, config_or_object: Type[ObjectClass], object_class: None = None,
                          copy_comm: bool = True, **kwargs: Any) -> ObjectClass: ...
 
     @overload
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any], object_class: None, copy_comm: bool = True,
-                         **kwargs: Any) -> Any: ...
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
+                         object_class: None, copy_comm: bool = True, **kwargs: Any) -> Any: ...
 
-    def add_child_object(self, config_or_object: Union[Dict[str, Any], Any],
+    def add_child_object(self, config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
                          object_class: Optional[Type[ObjectClass]] = None, copy_comm: bool = True,
                          **kwargs: Any) -> Union[ObjectClass, Any]:
         """Create a new sub-module, which will automatically be opened and closed.
@@ -409,14 +412,14 @@ class Object:
         return obj
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
         ...
 
     @overload
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
             -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
@@ -438,7 +441,7 @@ class Object:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-        return self.comm.proxy(name_or_object, obj_type)
+        return await self.comm.proxy(name_or_object, obj_type)
 
 
 __all__ = ['get_object', 'get_class_from_string', 'create_object', 'Object']

@@ -1,13 +1,12 @@
 import logging
 from typing import Any
-
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
 
 from pyobs.images import Image
+from pyobs.images.meta import PixelOffsets, OnSkyDistance
 from . import Offsets
-from ...meta import PixelOffsets, OnSkyDistance
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class AstrometryOffsets(Offsets):
         """
         Offsets.__init__(self, **kwargs)
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:

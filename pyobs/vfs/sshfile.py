@@ -1,14 +1,17 @@
 import os
-from typing import Optional, Any
+from typing import Optional, Any, AnyStr
 
 import paramiko
 import paramiko.sftp
 
-from .vfs import VFSFile
+from .file import VFSFile
 
 
-class SSHFile(VFSFile, paramiko.SFTPFile):
+class SSHFile(VFSFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
+
+
+
     __module__ = 'pyobs.vfs'
 
     def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: Optional[str] = None, port: int = 22,
@@ -61,26 +64,19 @@ class SSHFile(VFSFile, paramiko.SFTPFile):
             else:
                 raise ValueError('Cannot write into sub-directory with disabled mkdir option.')
 
-        # just the code from paramiko.SFTPClient.open
-        imode = 0
-        if ('r' in mode) or ('+' in mode):
-            imode |= paramiko.sftp.SFTP_FLAG_READ
-        if ('w' in mode) or ('+' in mode) or ('a' in mode):
-            imode |= paramiko.sftp.SFTP_FLAG_WRITE
-        if 'w' in mode:
-            imode |= paramiko.sftp.SFTP_FLAG_CREATE | paramiko.sftp.SFTP_FLAG_TRUNC
-        if 'a' in mode:
-            imode |= paramiko.sftp.SFTP_FLAG_CREATE | paramiko.sftp.SFTP_FLAG_APPEND
-        if 'x' in mode:
-            imode |= paramiko.sftp.SFTP_FLAG_CREATE | paramiko.sftp.SFTP_FLAG_EXCL
-        attrblock = paramiko.SFTPAttributes()
-        t, msg = self._sftp._request(paramiko.sftp.CMD_OPEN, full_path, imode, attrblock)  # type: ignore
-        if t != paramiko.sftp.CMD_HANDLE:
-            raise paramiko.SFTPError('Expected handle')
-        handle = msg.get_binary()
+        # open file
+        self._fd = self._sftp.file(full_path, mode)
 
-        # init FileIO
-        paramiko.SFTPFile.__init__(self, self._sftp, handle, mode, bufsize)
+    async def close(self) -> None:
+        """Close file."""
+        self._sftp.close()
+        self._ssh.close()
+
+    async def read(self, n: int = -1) -> AnyStr:
+        return self._fd.read(n)
+
+    async def write(self, s: AnyStr) -> None:
+        self._fd.write(s)
 
 
 __all__ = ['SSHFile']

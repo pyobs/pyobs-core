@@ -6,7 +6,7 @@ from pyobs.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time
 
 
-def test_scheduler():
+async def test_scheduler():
     # init observer and time
     observer = Observer.at_site('SAAO')
     now = Time('2019-11-21T17:10:00Z')
@@ -23,7 +23,7 @@ def test_scheduler():
 
     # create scheduler
     scheduler = Scheduler(functions, priorities, observer)
-    scheduler(now)
+    await scheduler(now)
 
     # test order
     assert scheduler[0].filter_name == 'B'

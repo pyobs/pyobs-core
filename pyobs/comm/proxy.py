@@ -4,9 +4,8 @@ import types
 from typing import TYPE_CHECKING, Any, Type, List, Dict
 
 from pyobs.interfaces import Interface
-from pyobs.utils.threads.future import BaseFuture
+from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_bound_arguments_to_simple
-import pyobs.interfaces.proxies
 if TYPE_CHECKING:
     from pyobs.comm import Comm
 
@@ -38,14 +37,9 @@ class Proxy:
                     to_delete.append(i2)
         interfaces = [i for i in interfaces if i not in to_delete]
 
-        # interface proxies
-        interface_proxies = []
-        for iface in interfaces:
-            interface_proxies.append(getattr(pyobs.interfaces.proxies, iface.__name__ + 'Proxy'))
-
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interface_proxies), {})  # type: ignore
+        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})  # type: ignore
 
         # create methods
         self._methods = self._create_methods()
@@ -87,7 +81,7 @@ class Proxy:
         """
         return self._methods[method][0]
 
-    def execute(self, method: str, *args: Any, **kwargs: Any) -> BaseFuture:
+    async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a method on the remote client.
 
         Args:
@@ -111,7 +105,7 @@ class Proxy:
         cast_bound_arguments_to_simple(ba)
 
         # do request and return future
-        return self._comm.execute(self._client, method, signature, *ba.args[1:])
+        return await self._comm.execute(self._client, method, signature, *ba.args[1:])
 
     def _create_methods(self) -> Dict[str, Any]:
         """Create local methods for the remote client."""
@@ -141,8 +135,8 @@ class Proxy:
             Wrapper.
         """
 
-        def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
-            return this.execute(method, *args, **kwargs)
+        async def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
+            return await this.execute(method, *args, **kwargs)
 
         return inner
 

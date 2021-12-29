@@ -55,7 +55,8 @@ The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
 """
 __title__ = 'Virtual File System'
 
-from .vfs import VirtualFileSystem, VFSFile
+from .vfs import VirtualFileSystem
+from .file import VFSFile
 from .localfile import LocalFile
 from .httpfile import HttpFile
 from .memfile import MemoryFile
@@ -64,5 +65,4 @@ from .tempfile import TempFile
 from .archivefile import ArchiveFile
 
 
-__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TempFile',
-           'ArchiveFile']
+__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TempFile', 'ArchiveFile']

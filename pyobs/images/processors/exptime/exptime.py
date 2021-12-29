@@ -1,4 +1,5 @@
 import logging
+from abc import ABCMeta, abstractmethod
 from typing import Any, Optional
 
 from pyobs.images import Image
@@ -9,7 +10,7 @@ from pyobs.images.processor import ImageProcessor
 log = logging.getLogger(__name__)
 
 
-class ExpTimeEstimator(ImageProcessor):
+class ExpTimeEstimator(ImageProcessor, metaclass=ABCMeta):
     """Estimate exposure time."""
     __module__ = 'pyobs.images.processors.exptime'
 
@@ -19,7 +20,8 @@ class ExpTimeEstimator(ImageProcessor):
         self._min_exp_time = min_exp_time
         self._max_exp_time = max_exp_time
 
-    def __call__(self, image: Image) -> Image:
+    @abstractmethod
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and stores new exposure time in exp_time attribute.
 
         Args:
@@ -28,7 +30,7 @@ class ExpTimeEstimator(ImageProcessor):
         Returns:
             Original image.
         """
-        raise NotImplementedError
+        ...
 
     def _set_exp_time(self, image: Image, exp_time: float) -> None:
         """Internal setter for exposure time."""

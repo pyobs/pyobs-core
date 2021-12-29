@@ -1,6 +1,6 @@
 from inspect import BoundArguments, Signature, Parameter
 from enum import Enum
-from typing import Any
+from typing import Any, get_origin
 import xml.sax.saxutils
 
 
@@ -63,21 +63,20 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
     annotation = signature.return_annotation
 
     # TODO: For future Python versions (3.9?)
-    # - use get_origin() instead of __origin__
     # - handle dicts and tuples
 
     # any annotations?
-    if response is None or annotation == Parameter.empty or annotation == Any:
+    if response is None or annotation is None or annotation == Parameter.empty or annotation == Any:
         # no response or no annotation at all or Any
         return response
-    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == tuple) or isinstance(annotation, tuple):
+    elif (get_origin(annotation) == tuple) or isinstance(annotation, tuple):
         # parse tuple
         # return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
         return response
-    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == list) or isinstance(annotation, list):
+    elif (get_origin(annotation) == list) or isinstance(annotation, list):
         # parse list
         return response
-    elif (hasattr(annotation, '__origin__') and annotation.__origin__ == dict) or isinstance(annotation, dict):
+    elif (get_origin(annotation) == dict) or isinstance(annotation, dict):
         # just return it
         return response
     else:

@@ -1,16 +1,15 @@
 import os
-from io import FileIO
 from tempfile import NamedTemporaryFile
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, AnyStr, cast
 
-from .vfs import VFSFile
+from .localfile import VFSFile
 
 
 log = logging.getLogger(__name__)
 
 
-class TempFile(VFSFile, FileIO):
+class TempFile(VFSFile):
     """A temporary file."""
     __module__ = 'pyobs.vfs'
 
@@ -26,6 +25,7 @@ class TempFile(VFSFile, FileIO):
             root: Temp directory.
             mkdir: Whether to automatically create directories.
         """
+
         # no root given?
         if root is None:
             raise ValueError('No root directory given.')
@@ -50,28 +50,40 @@ class TempFile(VFSFile, FileIO):
 
         # build filename
         self.filename = name
-        full_name = os.path.join(root, name)
+        self.full_name = os.path.join(root, name)
 
         # need to create directory?
-        path = os.path.dirname(full_name)
+        path = os.path.dirname(self.full_name)
         if not os.path.exists(path):
             if mkdir:
                 os.makedirs(path)
             else:
                 raise ValueError('Cannot write into sub-directory with disabled mkdir option.')
 
-        # init FileIO
-        FileIO.__init__(self, full_name, mode)
+        # init fd
+        self.mode = mode
+        self.fd = open(self.full_name, mode)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close file."""
 
         # close file
-        FileIO.close(self)
+        if self.fd:
+            self.fd.close()
 
         # remove file
         if 'w' in self.mode:
-            os.remove(self.filename)
+            os.remove(self.full_name)
+
+    async def read(self, n: int = -1) -> AnyStr:
+        if self.fd is None:
+            raise OSError
+        return cast(AnyStr, self.fd.read(n))
+
+    async def write(self, s: AnyStr) -> None:
+        if self.fd is None:
+            raise OSError
+        self.fd.write(s)
 
 
 __all__ = ['TempFile']

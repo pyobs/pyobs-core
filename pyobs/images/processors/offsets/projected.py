@@ -1,15 +1,15 @@
 import logging
-from typing import Tuple, Any
-
+from typing import Tuple, Any, Optional, List
 import numpy as np
+import numpy.typing as npt
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
 import re
 
 from pyobs.images import Image
 from pyobs.utils.pid import PID
+from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
-from ...meta import PixelOffsets
 
 log = logging.getLogger(__name__)
 
@@ -23,16 +23,16 @@ class ProjectedOffsets(Offsets):
         Offsets.__init__(self, **kwargs)
 
         # init
-        self._ref_image = None
+        self._ref_image: Optional[Tuple[npt.NDArray[float], npt.NDArray[float]]] = None
         self._pid_ra = None
         self._pid_dec = None
 
-    def reset(self):
+    async def reset(self) -> None:
         """Resets guiding."""
         log.info('Reset auto-guiding.')
         self._ref_image = None
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
@@ -68,7 +68,7 @@ class ProjectedOffsets(Offsets):
         image.set_meta(PixelOffsets(dx, dy))
         return image
 
-    def _process(self, image: Image) -> Tuple[np.ndarray, np.ndarray]:
+    def _process(self, image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:
         """Project image along x and y axes and return results.
 
         Args:
@@ -87,7 +87,7 @@ class ProjectedOffsets(Offsets):
 
         # trimsec
         if 'TRIMSEC' in hdr:
-            m = re.match('\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]', hdr['TRIMSEC'])
+            m = re.match(r'\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]', hdr['TRIMSEC'])
             if m is None:
                 raise ValueError('Invalid trimsec.')
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
@@ -101,19 +101,19 @@ class ProjectedOffsets(Offsets):
         return self._subtract_sky(sum_x), self._subtract_sky(sum_y)
 
     @staticmethod
-    def _gaussian(pars, x):
+    def _gaussian(pars: List[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
         return a * np.exp(-((x - x0) ** 2) / (2. * sigma ** 2))
 
     @staticmethod
-    def _gaussian_fit(pars, y, x):
+    def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
         err = y - ProjectedOffsets._gaussian(pars, x)
         return (err * err).sum()
 
     @staticmethod
-    def _correlate(data1, data2, fit_width=10):
+    def _correlate(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> Optional[float]:
         # do cross-correlation
         corr = np.correlate(data1, data2, "full")
 
@@ -137,12 +137,12 @@ class ProjectedOffsets(Offsets):
         result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)
 
         # sanity check and finish up
-        shift = result[1]
+        shift = float(result[1])
         if shift < centre - fit_width or shift > centre + fit_width:
             return None
         return shift
 
-    def _init_pid(self):
+    def _init_pid(self) -> None:
         # init pids
         Kp = 0.2
         Ki = 0.16
@@ -153,10 +153,10 @@ class ProjectedOffsets(Offsets):
         self._pid_dec = PID(Kp, Ki, Kd)
 
     @staticmethod
-    def _subtract_sky(data, frac=0.15, sbin=10):
+    def _subtract_sky(data: npt.NDArray[float], frac: float = 0.15, sbin: int = 10) -> npt.NDArray[float]:
         # find continuum for every of the sbin bins
-        bins = np.zeros((sbin))
-        binxs = np.zeros((sbin))
+        bins = np.zeros((sbin,))
+        binxs = np.zeros((sbin,))
         x = list(range(len(data)))
         w1 = 0
         w2 = float(len(x)) / sbin

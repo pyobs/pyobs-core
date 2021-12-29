@@ -149,7 +149,7 @@ class Module(Object, IModule, IConfig):
         my_version = version()
 
         # log it
-        log.warning(f'Other module {sender} found, running on pyobs {module_version}.')
+        log.debug(f'Other module {sender} found, running on pyobs {module_version}.')
 
         # check minor and major version, ignore patch level
         v1, v2 = version_tuple(my_version), version_tuple(module_version)

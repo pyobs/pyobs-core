@@ -155,11 +155,11 @@ class Module(Object, IModule, IConfig):
         v1, v2 = version_tuple(my_version), version_tuple(module_version)
         if v1[:2] != v2[:2]:
             if v1 > v2:
-                log.warning(f'Found module "{sender}" with older pyobs version {module_version}, please update it.')
+                log.error(f'Found module "{sender}" with older pyobs version {module_version} (<{my_version}), '
+                          f'please update it.')
             else:
-                log.error(f'Found module "{sender}" with newer pyobs version {module_version}, '
+                log.error(f'Found module "{sender}" with newer pyobs version {module_version} (>{my_version}), '
                           f'please update this module.')
-                self.quit()
 
         # okay
         return True

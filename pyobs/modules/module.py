@@ -4,10 +4,11 @@ import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
 
+from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
-from pyobs.version import version
+from pyobs.version import version, version_tuple
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +103,9 @@ class Module(Object, IModule, IConfig):
             await self.comm.open()
             self.comm.module = self
 
+            # react to connecting modules
+            await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)
+
         """Open module."""
         await Object.open(self)
 
@@ -133,6 +137,32 @@ class Module(Object, IModule, IConfig):
     async def get_version(self, **kwargs: Any) -> str:
         """Returns pyobs version of module."""
         return version()
+
+    async def _on_module_opened(self, event: Event, sender: str) -> bool:
+        """React to other modules connecting."""
+        if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
+            return False
+
+        # get proxy and version
+        proxy = await self.proxy(sender, IModule)
+        module_version = await proxy.get_version()
+        my_version = version()
+
+        # log it
+        log.warning(f'Other module {sender} found, running on pyobs {module_version}.')
+
+        # check minor and major version, ignore patch level
+        v1, v2 = version_tuple(my_version), version_tuple(module_version)
+        if v1[:2] != v2[:2]:
+            if v1 > v2:
+                log.warning(f'Found module "{sender}" with older pyobs version {module_version}, please update it.')
+            else:
+                log.error(f'Found module "{sender}" with newer pyobs version {module_version}, '
+                          f'please update this module.')
+                self.quit()
+
+        # okay
+        return True
 
     @property
     def interfaces(self) -> List[Type[Interface]]:

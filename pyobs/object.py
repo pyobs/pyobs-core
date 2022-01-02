@@ -12,7 +12,7 @@ import copy
 import datetime
 import inspect
 from collections import Coroutine
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Awaitable
 import logging
 import pytz
 from astroplan import Observer
@@ -234,10 +234,12 @@ class Object:
         self._opened = False
 
         # background tasks
-        self._background_tasks: Dict[Callable[[], Coroutine], Tuple[Optional[asyncio.Task], bool]] = {}
-        self._watchdog_task: Optional[asyncio.Task] = None
+        self._background_tasks: Dict[
+            Callable[..., Coroutine[Any, Any, None]], Tuple[Optional[asyncio.Task[bool]], bool]
+        ] = {}
+        self._watchdog_task: Optional[asyncio.Task[None]] = None
 
-    def add_background_task(self, func: Callable[[], Coroutine], restart: bool = True):
+    def add_background_task(self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True) -> None:
         """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -292,7 +294,7 @@ class Object:
                 task.cancel()
 
     @staticmethod
-    async def _background_func(target: Callable[[], Coroutine]) -> None:
+    async def _background_func(target: Callable[..., Coroutine[Any, Any, None]]) -> None:
         """Run given function.
 
         Args:

@@ -6,7 +6,8 @@ from .IRunning import IRunning
 
 class IStartStop(IRunning, metaclass=ABCMeta):
     """The module can be started and stopped."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def start(self, **kwargs: Any) -> None:
@@ -19,4 +20,4 @@ class IStartStop(IRunning, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IStartStop']
+__all__ = ["IStartStop"]

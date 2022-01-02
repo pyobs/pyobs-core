@@ -36,7 +36,7 @@ class LcoScript(Script):
         """
 
         # what do we run?
-        config_type = config['extra_params']['script_name']
+        config_type = config["extra_params"]["script_name"]
         if config_type not in self.scripts:
             raise ValueError('No script found for script type "%s".' % config_type)
 
@@ -70,4 +70,4 @@ class LcoScript(Script):
         await runner.run()
 
 
-__all__ = ['LcoScript']
+__all__ = ["LcoScript"]

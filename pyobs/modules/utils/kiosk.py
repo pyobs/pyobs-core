@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 
 class Kiosk(Module, IStartStop):
     """A kiosk mode for a pyobs camera that takes images and published them via HTTP."""
-    __module__ = 'pyobs.modules.utils'
+
+    __module__ = "pyobs.modules.utils"
 
     def __init__(self, camera: Union[ICamera, str], port: int = 37077, **kwargs: Any):
         """Initializes file cache.
@@ -38,18 +39,19 @@ class Kiosk(Module, IStartStop):
 
         # create empty image
         from PIL import Image, ImageDraw
-        img = Image.new('RGB', (300, 300), color=(0, 0, 0))
+
+        img = Image.new("RGB", (300, 300), color=(0, 0, 0))
         d = ImageDraw.Draw(img)
         d.text((110, 150), "No image taken yet", fill=(255, 255, 255))
 
         # create image from data array
         with io.BytesIO() as bio:
-            img.save(bio, format='jpeg')
+            img.save(bio, format="jpeg")
             self._empty = bio.getvalue()
 
         # define web server
         self._app = web.Application()
-        self._app.add_routes([web.get('/image.jpg', self.image_handler)])
+        self._app.add_routes([web.get("/image.jpg", self.image_handler)])
         self._runner = web.AppRunner(self._app)
         self._site: Optional[web.TCPSite] = None
 
@@ -58,9 +60,9 @@ class Kiosk(Module, IStartStop):
         await Module.open(self)
 
         # start listening
-        log.info('Starting HTTP server on port %d...', self._port)
+        log.info("Starting HTTP server on port %d...", self._port)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        self._site = web.TCPSite(self._runner, "localhost", self._port)
         await self._site.start()
         self._is_listening = True
 
@@ -85,7 +87,7 @@ class Kiosk(Module, IStartStop):
         image = self._empty if self._image is None else self._image
 
         # send it
-        return web.Response(body=image, content_type='image/fits')
+        return web.Response(body=image, content_type="image/fits")
 
     @property
     def opened(self) -> bool:
@@ -155,4 +157,4 @@ class Kiosk(Module, IStartStop):
                 self._exp_time = max(self._exp_time, 30)
 
 
-__all__ = ['Kiosk']
+__all__ = ["Kiosk"]

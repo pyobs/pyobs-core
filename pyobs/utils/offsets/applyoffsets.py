@@ -17,7 +17,8 @@ log = logging.getLogger(__name__)
 
 class ApplyOffsets(Object):
     """Apply offsets from a given image to a given telescope."""
-    __module__ = 'pyobs.utils.offsets'
+
+    __module__ = "pyobs.utils.offsets"
 
     def __init__(self, log_file: Optional[str] = None, log_absolute: bool = False, **kwargs: Any):
         Object.__init__(self, **kwargs)
@@ -52,10 +53,10 @@ class ApplyOffsets(Object):
 
         # get offsets
         offsets = image.get_meta(PixelOffsets)
-        log.info('Found pixel shift of dx=%.2f, dy=%.2f.', offsets.dx, offsets.dy)
+        log.info("Found pixel shift of dx=%.2f, dy=%.2f.", offsets.dx, offsets.dy)
 
         # get reference pixel and date obs
-        cx, cy = image.header['DET-CPX1'], image.header['DET-CPX2']
+        cx, cy = image.header["DET-CPX1"], image.header["DET-CPX2"]
 
         # get WCS and RA/DEC for pixel and pixel + dx/dy
         w = WCS(image.header)
@@ -63,8 +64,16 @@ class ApplyOffsets(Object):
         target = w.pixel_to_world(cx + offsets.dx, cy + offsets.dy)
         return center, target
 
-    async def _log_offset(self, telescope: ITelescope, x_header: str, x_cur: float, x_delta: float,
-                    y_header: str, y_cur: float, y_delta: float) -> None:
+    async def _log_offset(
+        self,
+        telescope: ITelescope,
+        x_header: str,
+        x_cur: float,
+        x_delta: float,
+        y_header: str,
+        y_cur: float,
+        y_delta: float,
+    ) -> None:
         """Logs offset.
 
         Args:
@@ -82,25 +91,25 @@ class ApplyOffsets(Object):
             return
 
         # init
-        log_entry = {'datetime': Time.now().isot}
+        log_entry = {"datetime": Time.now().isot}
 
         # RA/Dec?
         if isinstance(telescope, IPointingRaDec):
-            log_entry['ra'], log_entry['dec'] = await telescope.get_radec()
+            log_entry["ra"], log_entry["dec"] = await telescope.get_radec()
 
         # Alt/Az?
         if isinstance(telescope, IPointingAltAz):
-            log_entry['alt'], log_entry['az'] = await telescope.get_altaz()
+            log_entry["alt"], log_entry["az"] = await telescope.get_altaz()
 
         # add entry
-        log_entry[x_header] = x_delta + (x_cur if self._log_absolute else 0.)
-        log_entry[y_header] = y_delta + (y_cur if self._log_absolute else 0.)
+        log_entry[x_header] = x_delta + (x_cur if self._log_absolute else 0.0)
+        log_entry[y_header] = y_delta + (y_cur if self._log_absolute else 0.0)
 
         # add separation (assume Euclidian space)
-        log_entry['separation'] = np.sqrt(log_entry[x_header]**2 + log_entry[y_header]**2)
+        log_entry["separation"] = np.sqrt(log_entry[x_header] ** 2 + log_entry[y_header] ** 2)
 
         # log it
         await self._publisher(**log_entry)
 
 
-__all__ = ['ApplyOffsets']
+__all__ = ["ApplyOffsets"]

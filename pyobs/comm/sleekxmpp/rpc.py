@@ -36,11 +36,11 @@ class RPC(object):
         self._loop = loop
 
         # set up callbacks
-        client.add_event_handler('jabber_rpc_method_call', self._on_jabber_rpc_method_call)
-        client.add_event_handler('jabber_rpc_method_timeout', self._on_jabber_rpc_method_timeout)
-        client.add_event_handler('jabber_rpc_method_response', self._on_jabber_rpc_method_response)
-        client.add_event_handler('jabber_rpc_method_fault', self._on_jabber_rpc_method_fault)
-        client.add_event_handler('jabber_rpc_error', self._on_jabber_rpc_error)
+        client.add_event_handler("jabber_rpc_method_call", self._on_jabber_rpc_method_call)
+        client.add_event_handler("jabber_rpc_method_timeout", self._on_jabber_rpc_method_timeout)
+        client.add_event_handler("jabber_rpc_method_response", self._on_jabber_rpc_method_response)
+        client.add_event_handler("jabber_rpc_method_fault", self._on_jabber_rpc_method_fault)
+        client.add_event_handler("jabber_rpc_error", self._on_jabber_rpc_error)
 
         # register handler
         self.set_handler(handler)
@@ -72,10 +72,10 @@ class RPC(object):
         """
 
         # create the method call
-        iq = self._client.plugin['xep_0009'].make_iq_method_call(target_jid, method, py2xml(*args))
+        iq = self._client.plugin["xep_0009"].make_iq_method_call(target_jid, method, py2xml(*args))
 
         # create a future for this
-        pid = iq['id']
+        pid = iq["id"]
         future = Future(signature=signature)
         self._futures[pid] = future
 
@@ -98,13 +98,13 @@ class RPC(object):
         """
 
         # get method and parameters
-        iq.enable('rpc_query')
-        params = xml2py(iq['rpc_query']['method_call']['params'])
-        pmethod = iq['rpc_query']['method_call']['method_name']
+        iq.enable("rpc_query")
+        params = xml2py(iq["rpc_query"]["method_call"]["params"])
+        pmethod = iq["rpc_query"]["method_call"]["method_name"]
 
         # no handler?
         if self._handler is None:
-            raise ValueError('No handler specified.')
+            raise ValueError("No handler specified.")
 
         # get method
         with self._lock:
@@ -113,7 +113,7 @@ class RPC(object):
 
             except KeyError:
                 log.error("No handler available for %s!", pmethod)
-                self._client.plugin['xep_0009'].item_not_found(iq).send()
+                self._client.plugin["xep_0009"].item_not_found(iq).send()
                 return
 
             # bind parameters
@@ -132,35 +132,36 @@ class RPC(object):
 
         try:
             # do we have a timeout?
-            if hasattr(method, 'timeout'):
-                timeout = await getattr(method, 'timeout')(self._handler, **arguments)
+            if hasattr(method, "timeout"):
+                timeout = await getattr(method, "timeout")(self._handler, **arguments)
                 if timeout:
                     # yes, send it!
-                    response = self._client.plugin['xep_0009_timeout'].\
-                        make_iq_method_timeout(iq['id'], iq['from'], int(timeout))
+                    response = self._client.plugin["xep_0009_timeout"].make_iq_method_timeout(
+                        iq["id"], iq["from"], int(timeout)
+                    )
                     response.send()
 
             # call method
-            return_value = await self._handler.execute(method_name, **arguments, sender=iq['from'].user)
+            return_value = await self._handler.execute(method_name, **arguments, sender=iq["from"].user)
             return_value = () if return_value is None else (return_value,)
 
             # send response
-            self._client.plugin['xep_0009'].make_iq_method_response(iq['id'], iq['from'], py2xml(*return_value)).send()
+            self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()
 
         except InvocationException as ie:
             # could not invoke method
-            fault = {'code': 500, 'string': ie.get_message()}
-            self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
+            fault = {"code": 500, "string": ie.get_message()}
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
 
         except Exception as e:
             # something else went wrong
-            log.warning('Error during call to %s: %s', method_name, str(e), exc_info=True)
+            log.warning("Error during call to %s: %s", method_name, str(e), exc_info=True)
 
             # send response
             fault = dict()
-            fault['code'] = 500
-            fault['string'] = str(e)
-            self._client.plugin['xep_0009'].send_fault(iq, fault2xml(fault))
+            fault["code"] = 500
+            fault["string"] = str(e)
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
 
     def _on_jabber_rpc_method_response(self, iq: Any) -> None:
         """Received a response for a method call.
@@ -178,15 +179,15 @@ class RPC(object):
         """
 
         # get message
-        iq.enable('rpc_query')
+        iq.enable("rpc_query")
         try:
-            args = xml2py(iq['rpc_query']['method_response']['params'])
+            args = xml2py(iq["rpc_query"]["method_response"]["params"])
         except ValueError:
-            log.error('Could not parse method response: %s', iq)
+            log.error("Could not parse method response: %s", iq)
             return
 
         # get future
-        pid = iq['id']
+        pid = iq["id"]
         with self._lock:
             if pid not in self._futures:
                 return
@@ -206,9 +207,9 @@ class RPC(object):
         Args:
             iq: Received XMPP message.
         """
-        iq.enable('rpc_query')
-        timeout = iq['rpc_query']['method_timeout']['timeout']
-        pid = iq['id']
+        iq.enable("rpc_query")
+        timeout = iq["rpc_query"]["method_timeout"]["timeout"]
+        pid = iq["id"]
         self._futures[pid].set_timeout(timeout)
 
     def _on_jabber_rpc_method_fault(self, iq: Any) -> None:
@@ -219,17 +220,17 @@ class RPC(object):
         """
 
         # get message
-        iq.enable('rpc_query')
-        fault = xml2fault(iq['rpc_query']['method_response']['fault'])
+        iq.enable("rpc_query")
+        fault = xml2fault(iq["rpc_query"]["method_response"]["fault"])
 
         # get future
-        pid = iq['id']
+        pid = iq["id"]
         with self._lock:
             future = self._futures[pid]
             del self._futures[pid]
 
         # set error
-        future.set_exception(InvocationException(fault['string']))
+        future.set_exception(InvocationException(fault["string"]))
 
     def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.
@@ -239,31 +240,30 @@ class RPC(object):
         """
 
         # get message
-        pmethod = self._client.plugin['xep_0009'].extract_method(iq['rpc_query'])
-        condition = iq['error']['condition']
+        pmethod = self._client.plugin["xep_0009"].extract_method(iq["rpc_query"])
+        condition = iq["error"]["condition"]
 
         # get future
-        pid = iq['id']
+        pid = iq["id"]
         with self._lock:
             callback = self._futures[pid]
             del self._futures[pid]
 
         # set error
         e = {
-            'item-not-found':
-                RemoteException("No remote handler available for %s at %s!" % (pmethod, iq['from'])),
-            'forbidden':
-                AuthorizationException("Forbidden to invoke remote handler for %s at %s!" % (pmethod, iq['from'])),
-            'undefined-condition':
-                RemoteException("An unexpected problem occured trying to invoke %s at %s!" % (pmethod, iq['from'])),
-            'service-unavailable':
-                RemoteException("The service at %s is unavailable." % iq['from']),
-            'remote-server-not-found':
-                RemoteException("Could not find remote server for %s." % iq['from'])
+            "item-not-found": RemoteException("No remote handler available for %s at %s!" % (pmethod, iq["from"])),
+            "forbidden": AuthorizationException(
+                "Forbidden to invoke remote handler for %s at %s!" % (pmethod, iq["from"])
+            ),
+            "undefined-condition": RemoteException(
+                "An unexpected problem occured trying to invoke %s at %s!" % (pmethod, iq["from"])
+            ),
+            "service-unavailable": RemoteException("The service at %s is unavailable." % iq["from"]),
+            "remote-server-not-found": RemoteException("Could not find remote server for %s." % iq["from"]),
         }[condition]
         if e is None:
-            RemoteException("An unexpected exception occurred at %s!" % iq['from'])
+            RemoteException("An unexpected exception occurred at %s!" % iq["from"])
         callback.set_exception(e)
 
 
-__all__ = ['RPC']
+__all__ = ["RPC"]

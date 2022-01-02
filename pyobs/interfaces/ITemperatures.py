@@ -6,7 +6,8 @@ from .interface import Interface
 
 class ITemperatures(Interface, metaclass=ABCMeta):
     """The module can return temperatures measured on some device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
@@ -18,4 +19,4 @@ class ITemperatures(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['ITemperatures']
+__all__ = ["ITemperatures"]

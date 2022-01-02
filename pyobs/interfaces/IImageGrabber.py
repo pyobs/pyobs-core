@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IImageGrabber(Interface, metaclass=ABCMeta):
     """The module can grab and return an image from whatever device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
@@ -21,4 +22,4 @@ class IImageGrabber(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IImageGrabber']
+__all__ = ["IImageGrabber"]

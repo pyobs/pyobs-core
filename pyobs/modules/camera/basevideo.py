@@ -38,10 +38,10 @@ INDEX_HTML = """
 
 async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for grabe_image()."""
-    if hasattr(webcam, 'get_exposure_time'):
-        return 2. * await webcam.get_exposure_time() + 30.
+    if hasattr(webcam, "get_exposure_time"):
+        return 2.0 * await webcam.get_exposure_time() + 30.0
     else:
-        return 30.
+        return 30.0
 
 
 class NextImage(NamedTuple):
@@ -67,13 +67,25 @@ class LastImage(NamedTuple):
 
 class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
     """Base class for all webcam modules."""
-    __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, http_port: int = 37077, interval: float = 0.5, video_path: str = '/webcam/video.mjpg',
-                 filenames: str = '/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits',
-                 fits_namespaces: Optional[List[str]] = None, fits_headers: Optional[Dict[str, Any]] = None,
-                 centre: Optional[Tuple[float, float]] = None, rotation: float = 0., cache_size: int = 5,
-                 live_view: bool = True, flip: bool = False, sleep_time: int = 600, **kwargs: Any):
+    __module__ = "pyobs.modules.camera"
+
+    def __init__(
+        self,
+        http_port: int = 37077,
+        interval: float = 0.5,
+        video_path: str = "/webcam/video.mjpg",
+        filenames: str = "/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
+        fits_namespaces: Optional[List[str]] = None,
+        fits_headers: Optional[Dict[str, Any]] = None,
+        centre: Optional[Tuple[float, float]] = None,
+        rotation: float = 0.0,
+        cache_size: int = 5,
+        live_view: bool = True,
+        flip: bool = False,
+        sleep_time: int = 600,
+        **kwargs: Any,
+    ):
         """Creates a new BaseWebcam.
 
         On the receiving end, a VFS root with a HTTPFile must exist with the same name as in image_path and video_path,
@@ -95,8 +107,14 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             sleep_time: Time in s with inactivity after which the camera should go to sleep.
         """
         Module.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
-                                      rotation=rotation, filenames=filenames)
+        ImageFitsHeaderMixin.__init__(
+            self,
+            fits_namespaces=fits_namespaces,
+            fits_headers=fits_headers,
+            centre=centre,
+            rotation=rotation,
+            filenames=filenames,
+        )
 
         # store
         self._is_listening = False
@@ -111,13 +129,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._image_requests: List[ImageRequest] = []
         self._next_image: Optional[NextImage] = None
         self._last_image: Optional[LastImage] = None
-        self._last_time = 0.
+        self._last_time = 0.0
         self._flip = flip
         self._sleep_time = sleep_time
 
         # active
         self._active = False
-        self._active_time = 0.
+        self._active_time = 0.0
         self.add_background_task(self._active_update)
 
         # image cache
@@ -125,9 +143,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # define web server
         self._app = web.Application()
-        self._app.add_routes([web.get('/', self.web_handler),
-                              web.get('/video.mjpg', self.video_handler),
-                              web.get('/{filename}', self.image_handler)])
+        self._app.add_routes(
+            [
+                web.get("/", self.web_handler),
+                web.get("/video.mjpg", self.video_handler),
+                web.get("/{filename}", self.image_handler),
+            ]
+        )
         self._runner = web.AppRunner(self._app)
         self._site: Optional[web.TCPSite] = None
 
@@ -136,9 +158,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         await Module.open(self)
 
         # start listening
-        log.info('Starting HTTP file cache on port %d...', self._port)
+        log.info("Starting HTTP file cache on port %d...", self._port)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, 'localhost', self._port)
+        self._site = web.TCPSite(self._runner, "localhost", self._port)
         await self._site.start()
         self._is_listening = True
 
@@ -163,7 +185,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Returns:
             Response containing web page.
         """
-        return web.Response(text=INDEX_HTML, content_type='text/html')
+        return web.Response(text=INDEX_HTML, content_type="text/html")
 
     async def video_handler(self, request: web.Request) -> web.StreamResponse:
         """Handles access to /video.mjpg and returns the video.
@@ -177,12 +199,12 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # create response
         response = web.StreamResponse()
-        response.content_type = 'multipart/x-mixed-replace; boundary=--jpgboundary'
+        response.content_type = "multipart/x-mixed-replace; boundary=--jpgboundary"
         await response.prepare(request)
 
         last_num = None
-        last_time = 0.
-        interval = 1.
+        last_time = 0.0
+        interval = 1.0
         while True:
             # not reached interval?
             if time.time() < last_time + interval:
@@ -203,7 +225,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # now send image!
             last_num = num
             last_time = time.time()
-            await response.write(b'--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n' + image + b'\r\n')
+            await response.write(b"--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n" + image + b"\r\n")
 
         # return response
         return response
@@ -219,7 +241,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """
 
         # get filename
-        filename = request.match_info['filename']
+        filename = request.match_info["filename"]
 
         # get data
         if filename not in self._cache:
@@ -227,8 +249,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         data = self._cache[filename]
 
         # send it
-        log.info(f'Serving file {filename}.')
-        return web.Response(body=data, content_type='image/fits')
+        log.info(f"Serving file {filename}.")
+        return web.Response(body=data, content_type="image/fits")
 
     @property
     def camera_active(self) -> bool:
@@ -341,11 +363,13 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             broadcast = any([req.broadcast for req in self._image_requests])
 
             # store everything
-            logging.info('Preparing to catch next image...')
-            self._next_image = NextImage(date_obs=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f"),
-                                         image_type=self._image_type,
-                                         header_futures=await self.request_fits_headers(),
-                                         broadcast=broadcast)
+            logging.info("Preparing to catch next image...")
+            self._next_image = NextImage(
+                date_obs=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                image_type=self._image_type,
+                header_futures=await self.request_fits_headers(),
+                broadcast=broadcast,
+            )
 
             # reset
             self._image_request = None
@@ -363,8 +387,8 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # create image
         flipped: NDArray[Any] = np.flip(data, axis=0)  # type: ignore
         image = Image(flipped)
-        image.header['DATE-OBS'] = next_image.date_obs
-        image.header['IMAGETYP'] = next_image.image_type.value
+        image.header["DATE-OBS"] = next_image.date_obs
+        image.header["IMAGETYP"] = next_image.image_type.value
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, next_image.header_futures)
@@ -388,15 +412,15 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # format filename
         filename = self.format_filename(image)
         if filename is None:
-            filename = 'image.fits'
+            filename = "image.fits"
 
         # store it and return filename
-        log.info('Writing image %s to cache...', filename)
-        self._cache[image.header['FNAME']] = image.to_bytes()
+        log.info("Writing image %s to cache...", filename)
+        self._cache[image.header["FNAME"]] = image.to_bytes()
 
         # broadcast image path
         if broadcast and self.comm:
-            log.info('Broadcasting image ID...')
+            log.info("Broadcasting image ID...")
             await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
@@ -423,7 +447,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             self._image_requests.append(image_request)
 
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
-        log.info('Waiting for image to finish...')
+        log.info("Waiting for image to finish...")
         while image_request.image is None:
             await asyncio.sleep(0.1)
 
@@ -432,7 +456,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # no image?
         if image_request.image is None or image_request.filename is None:
-            raise ValueError('Could not take image.')
+            raise ValueError("Could not take image.")
 
         # finished
         return image_request.filename
@@ -451,7 +475,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         Args:
             image_type: New image type.
         """
-        log.info('Setting image type to %s...', image_type)
+        log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
 
     async def get_image_type(self, **kwargs: Any) -> ImageType:
@@ -463,4 +487,4 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         return self._image_type
 
 
-__all__ = ['BaseVideo', 'NextImage']
+__all__ = ["BaseVideo", "NextImage"]

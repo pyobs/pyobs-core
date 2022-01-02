@@ -34,6 +34,7 @@ class InvocationException(RemoteException):
     Exception raised when a problem occurs during the remote invocation
     of a method.
     """
+
     pass
 
 
@@ -42,12 +43,14 @@ class AuthorizationException(RemoteException):
     Exception raised when the caller is not authorized to invoke the
     remote method.
     """
+
     pass
 
 
 class TimeoutException(RemoteException):
     """Exception raised on function call timeout."""
+
     pass
 
 
-__all__ = ['RemoteException', 'InvocationException', 'AuthorizationException', 'TimeoutException']
+__all__ = ["RemoteException", "InvocationException", "AuthorizationException", "TimeoutException"]

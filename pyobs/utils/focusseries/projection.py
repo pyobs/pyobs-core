@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 
 class ProjectionFocusSeries(FocusSeries):
     """Focus series from projected x/y."""
-    __module__ = 'pyobs.utils.focusseries'
+
+    __module__ = "pyobs.utils.focusseries"
 
     def __init__(self, backsub: bool = True, xbad: Optional[List[int]] = None, ybad: Optional[List[int]] = None):
         """Initialize a new projection focus series.
@@ -68,8 +69,8 @@ class ProjectionFocusSeries(FocusSeries):
         yavg = np.average(yclean)
         x = xwind * (xclean - xavg) / xavg
         y = ywind * (yclean - yavg) / yavg
-        xcorr = np.correlate(x, x, mode='same')
-        ycorr = np.correlate(y, y, mode='same')
+        xcorr = np.correlate(x, x, mode="same")
+        ycorr = np.correlate(y, y, mode="same")
 
         # filter out the peak (e.g. cosmics, ...)
         # imx = np.argmax(xcorr)
@@ -82,14 +83,24 @@ class ProjectionFocusSeries(FocusSeries):
         yfit = self._fit_correlation(ycorr)
 
         # log it
-        log.info('Found x=%.1f+-%.1f and y=%.1f+-%.1f.',
-                 xfit.params['fwhm'].value, xfit.params['fwhm'].stderr,
-                 yfit.params['fwhm'].value, yfit.params['fwhm'].stderr)
+        log.info(
+            "Found x=%.1f+-%.1f and y=%.1f+-%.1f.",
+            xfit.params["fwhm"].value,
+            xfit.params["fwhm"].stderr,
+            yfit.params["fwhm"].value,
+            yfit.params["fwhm"].stderr,
+        )
 
         # add to list
-        self._data.append({'focus': float(image.header['TEL-FOCU']),
-                           'x': float(xfit.params['fwhm'].value), 'xerr': float(xfit.params['fwhm'].stderr),
-                           'y': float(yfit.params['fwhm'].value), 'yerr': float(yfit.params['fwhm'].stderr)})
+        self._data.append(
+            {
+                "focus": float(image.header["TEL-FOCU"]),
+                "x": float(xfit.params["fwhm"].value),
+                "xerr": float(xfit.params["fwhm"].stderr),
+                "y": float(yfit.params["fwhm"].value),
+                "yerr": float(yfit.params["fwhm"].stderr),
+            }
+        )
 
     def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
@@ -99,11 +110,11 @@ class ProjectionFocusSeries(FocusSeries):
         """
 
         # get data
-        focus = [d['focus'] for d in self._data]
-        xfwhm = [d['x'] for d in self._data]
-        xsig = [d['xerr'] for d in self._data]
-        yfwhm = [d['y'] for d in self._data]
-        ysig = [d['yerr'] for d in self._data]
+        focus = [d["focus"] for d in self._data]
+        xfwhm = [d["x"] for d in self._data]
+        xsig = [d["xerr"] for d in self._data]
+        yfwhm = [d["y"] for d in self._data]
+        ysig = [d["yerr"] for d in self._data]
 
         # fit focus
         try:
@@ -113,10 +124,10 @@ class ProjectionFocusSeries(FocusSeries):
             # weighted mean
             xerr = np.sqrt(xerr)
             yerr = np.sqrt(yerr)
-            foc = (xfoc / xerr + yfoc / yerr) / (1. / xerr + 1. / yerr)
-            err = 2. / (1. / xerr + 1. / yerr)
+            foc = (xfoc / xerr + yfoc / yerr) / (1.0 / xerr + 1.0 / yerr)
+            err = 2.0 / (1.0 / xerr + 1.0 / yerr)
         except (RuntimeError, RuntimeWarning):
-            raise ValueError('Could not find best focus.')
+            raise ValueError("Could not find best focus.")
 
         # get min and max foci
         min_focus = np.min(focus)
@@ -137,12 +148,13 @@ class ProjectionFocusSeries(FocusSeries):
         nwind = ndata - 2 * border
         w = np.zeros(ndata)
         for i in range(nwind):
-            w[i + border] = np.sin(np.pi * (i + 1.) / (nwind + 1.))
+            w[i + border] = np.sin(np.pi * (i + 1.0) / (nwind + 1.0))
         return w
 
     @staticmethod
-    def _clean(data: np.ndarray, backsub: bool = True, xbad: Optional[np.ndarray] = None,
-               ybad: Optional[np.ndarray] = None) -> np.ndarray:
+    def _clean(
+        data: np.ndarray, backsub: bool = True, xbad: Optional[np.ndarray] = None, ybad: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         """
         Removes global slopes and fills up bad rows (ybad) or columns (xbad).
         """
@@ -192,10 +204,10 @@ class ProjectionFocusSeries(FocusSeries):
         # initial guess
         x = np.arange(len(correl))
         pars = model.guess(correl, x=x)
-        pars['sigma'].value = 20.
+        pars["sigma"].value = 20.0
 
         # fit
         return model.fit(correl, pars, x=x)
 
 
-__all__ = ['ProjectionFocusSeries']
+__all__ = ["ProjectionFocusSeries"]

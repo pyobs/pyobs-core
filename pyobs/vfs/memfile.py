@@ -10,12 +10,13 @@ log = logging.getLogger(__name__)
 
 class MemoryFile(VFSFile):
     """A file stored in memory."""
-    __module__ = 'pyobs.vfs'
+
+    __module__ = "pyobs.vfs"
 
     """Global buffer."""
     _buffer: Dict[str, AnyStr] = {}
 
-    def __init__(self, name: str, mode: str = 'r', **kwargs: Any):
+    def __init__(self, name: str, mode: str = "r", **kwargs: Any):
         """Open/create a file in memory.
 
         Args:
@@ -33,8 +34,8 @@ class MemoryFile(VFSFile):
         self._open = True
 
         # overwrite?
-        if 'w' in mode:
-            MemoryFile._buffer[name] = b'' if 'b' in mode else ''
+        if "w" in mode:
+            MemoryFile._buffer[name] = b"" if "b" in mode else ""
 
     async def read(self, n: int = -1) -> AnyStr:
         """Read number of bytes from stream.
@@ -52,7 +53,7 @@ class MemoryFile(VFSFile):
             self._pos = len(data) - 1
         else:
             # extract data to read
-            data = MemoryFile._buffer[self._filename][self._pos:self._pos + n]
+            data = MemoryFile._buffer[self._filename][self._pos : self._pos + n]
             self._pos += n
 
         # return data
@@ -78,4 +79,4 @@ class MemoryFile(VFSFile):
         return not self._open
 
 
-__all__ = ['MemoryFile']
+__all__ = ["MemoryFile"]

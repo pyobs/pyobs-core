@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 
 class DummyRoof(BaseRoof, IRoof):
     """A dummy camera for testing."""
-    __module__ = 'pyobs.modules.roof'
+
+    __module__ = "pyobs.modules.roof"
 
     def __init__(self, **kwargs: Any):
         """Creates a new dummy root."""
@@ -130,4 +131,4 @@ class DummyRoof(BaseRoof, IRoof):
             await self._change_motion_status(MotionStatus.IDLE)
 
 
-__all__ = ['DummyRoof']
+__all__ = ["DummyRoof"]

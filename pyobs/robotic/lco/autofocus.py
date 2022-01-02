@@ -9,17 +9,24 @@ from pyobs.utils.logger import DuplicateFilter
 log = logging.getLogger(__name__)
 
 # logger for logging name of task
-cannot_run_logger = logging.getLogger(__name__ + ':cannot_run')
+cannot_run_logger = logging.getLogger(__name__ + ":cannot_run")
 cannot_run_logger.addFilter(DuplicateFilter())
 
 
 class LcoAutoFocusScript(Script):
     """Auto focus script for LCO configs."""
 
-    def __init__(self, roof: Optional[Union[str, IRoof]] = None, telescope: Optional[Union[str, ITelescope]] = None,
-                 acquisition: Optional[Union[str, IAcquisition]] = None,
-                 autofocus: Optional[Union[str, IAutoFocus]] = None, count: int = 5, step: float = 0.1,
-                 exptime: float = 2., **kwargs: Any):
+    def __init__(
+        self,
+        roof: Optional[Union[str, IRoof]] = None,
+        telescope: Optional[Union[str, ITelescope]] = None,
+        acquisition: Optional[Union[str, IAcquisition]] = None,
+        autofocus: Optional[Union[str, IAutoFocus]] = None,
+        count: int = 5,
+        step: float = 0.1,
+        exptime: float = 2.0,
+        **kwargs: Any,
+    ):
         """Initialize a new LCO auto focus script.
 
         Args:
@@ -41,13 +48,14 @@ class LcoAutoFocusScript(Script):
 
         # get image type
         self.image_type = ImageType.OBJECT
-        if self.configuration['type'] == 'BIAS':
+        if self.configuration["type"] == "BIAS":
             self.image_type = ImageType.BIAS
-        elif self.configuration['type'] == 'DARK':
+        elif self.configuration["type"] == "DARK":
             self.image_type = ImageType.DARK
 
-    async def _get_proxies(self) -> Tuple[Optional[IRoof], Optional[ITelescope],
-                                          Optional[IAcquisition], Optional[IAutoFocus]]:
+    async def _get_proxies(
+        self,
+    ) -> Tuple[Optional[IRoof], Optional[ITelescope], Optional[IAcquisition], Optional[IAutoFocus]]:
         """Get proxies for running the task
 
         Returns:
@@ -74,21 +82,25 @@ class LcoAutoFocusScript(Script):
 
         # need everything
         if roof is None or telescope is None or autofocus is None:
-            cannot_run_logger.info('Cannot run task, no roof, telescope, or auto-focusser found.')
+            cannot_run_logger.info("Cannot run task, no roof, telescope, or auto-focusser found.")
             return False
 
         # acquisition?
-        if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
-                self.configuration['acquisition_config']['mode'] == 'ON' and acquisition is None:
-            cannot_run_logger.info('Cannot run task, no acquisition found.')
+        if (
+            "acquisition_config" in self.configuration
+            and "mode" in self.configuration["acquisition_config"]
+            and self.configuration["acquisition_config"]["mode"] == "ON"
+            and acquisition is None
+        ):
+            cannot_run_logger.info("Cannot run task, no acquisition found.")
             return False
 
         # we need an open roof and a working telescope
         if not await roof.is_ready():
-            cannot_run_logger.info('Cannot run task, roof not ready.')
+            cannot_run_logger.info("Cannot run task, roof not ready.")
             return False
         if not await telescope.is_ready():
-            cannot_run_logger.info('Cannot run task, telescope not ready.')
+            cannot_run_logger.info("Cannot run task, telescope not ready.")
             return False
 
         # seems alright
@@ -104,16 +116,19 @@ class LcoAutoFocusScript(Script):
         # get proxies
         roof, telescope, acquisition, autofocus = await self._get_proxies()
         if telescope is None:
-            raise ValueError('No telescope given.')
+            raise ValueError("No telescope given.")
 
         # got a target?
-        target = self.configuration['target']
-        log.info('Moving to target %s...', target['name'])
-        await telescope.move_radec(target['ra'], target['dec'])
+        target = self.configuration["target"]
+        log.info("Moving to target %s...", target["name"])
+        await telescope.move_radec(target["ra"], target["dec"])
 
         # acquisition?
-        if 'acquisition_config' in self.configuration and 'mode' in self.configuration['acquisition_config'] and \
-                self.configuration['acquisition_config']['mode'] == 'ON':
+        if (
+            "acquisition_config" in self.configuration
+            and "mode" in self.configuration["acquisition_config"]
+            and self.configuration["acquisition_config"]["mode"] == "ON"
+        ):
             # TODO: unfortunately this never happens, since the LCO portal forces acquisition mode to OFF, see:
             # observation_portal/requestgroups/serializers.py:288 in portal code:
             # if data['type'] in ['LAMP_FLAT', 'ARC', 'AUTO_FOCUS', 'NRES_BIAS', 'NRES_DARK', 'BIAS', 'DARK', 'SCRIPT']:
@@ -123,14 +138,14 @@ class LcoAutoFocusScript(Script):
 
             # do acquisition
             if acquisition is None:
-                raise ValueError('No acquisition given.')
-            log.info('Performing acquisition...')
+                raise ValueError("No acquisition given.")
+            log.info("Performing acquisition...")
             await acquisition.acquire_target()
 
         # do auto focus
         if autofocus is None:
-            raise ValueError('No autofocus given.')
+            raise ValueError("No autofocus given.")
         await autofocus.auto_focus(self._count, self._step, self._exptime)
 
 
-__all__ = ['LcoAutoFocusScript']
+__all__ = ["LcoAutoFocusScript"]

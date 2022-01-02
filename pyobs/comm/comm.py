@@ -17,12 +17,13 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-ProxyType = TypeVar('ProxyType')
+ProxyType = TypeVar("ProxyType")
 
 
 class Comm:
     """Base class for all Comm modules in pyobs."""
-    __module__ = 'pyobs.comm'
+
+    __module__ = "pyobs.comm"
 
     def __init__(self, cache_proxies: bool = True):
         """Creates a comm module."""
@@ -42,12 +43,12 @@ class Comm:
         self._logging_task: Optional[asyncio.Task] = None
 
     @property
-    def module(self) -> Optional['Module']:
+    def module(self) -> Optional["Module"]:
         """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
-    def module(self, module: 'Module') -> None:
+    def module(self, module: "Module") -> None:
         """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
         self._set_module(module)
@@ -55,7 +56,7 @@ class Comm:
         # store module
         self._module = module
 
-    def _set_module(self, module: 'Module') -> None:
+    def _set_module(self, module: "Module") -> None:
         ...
 
     async def open(self) -> None:
@@ -91,7 +92,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    async def _get_client(self, client: str) -> Optional[Union['Module', Proxy]]:
+    async def _get_client(self, client: str) -> Optional[Union["Module", Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -102,7 +103,7 @@ class Comm:
         """
 
         # return module, if "main" is requested
-        if client == 'main':
+        if client == "main":
             return self.module
         if client is None:
             return None
@@ -130,8 +131,9 @@ class Comm:
     async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
         ...
 
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
-            -> Union[Any, ProxyType]:
+    async def proxy(
+        self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None
+    ) -> Union[Any, ProxyType]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -167,15 +169,17 @@ class Comm:
             elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
-                raise ValueError('Proxy obtained from given name "%s" is not of requested type "%s".' %
-                                 (name_or_object, obj_type))
+                raise ValueError(
+                    'Proxy obtained from given name "%s" is not of requested type "%s".' % (name_or_object, obj_type)
+                )
 
         else:
             # completely wrong...
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
-    async def safe_proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) \
-            -> Optional[Union[Any, ProxyType]]:
+    async def safe_proxy(
+        self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None
+    ) -> Optional[Union[Any, ProxyType]]:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
@@ -322,8 +326,9 @@ class Comm:
         """
         pass
 
-    async def register_event(self, event_class: Type[Event],
-                             handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None) -> None:
+    async def register_event(
+        self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+    ) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -334,4 +339,4 @@ class Comm:
         pass
 
 
-__all__ = ['Comm']
+__all__ = ["Comm"]

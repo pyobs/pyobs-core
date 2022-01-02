@@ -12,9 +12,10 @@ log = logging.getLogger(__name__)
 
 class Broadcast(ImageProcessor):
     """Broadcast image."""
-    __module__ = 'pyobs.images.processors.misc'
 
-    def __init__(self, filename: str = '/cache/processed_{ORIGNAME}', **kwargs: Any):
+    __module__ = "pyobs.images.processors.misc"
+
+    def __init__(self, filename: str = "/cache/processed_{ORIGNAME}", **kwargs: Any):
         """Init an image processor that broadcasts an image
 
         Args:
@@ -50,10 +51,10 @@ class Broadcast(ImageProcessor):
         await self.vfs.write_image(filename, image)
 
         # broadcast
-        await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header['IMAGETYP'])))
+        await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header["IMAGETYP"])))
 
         # finished
         return image
 
 
-__all__ = ['Broadcast']
+__all__ = ["Broadcast"]

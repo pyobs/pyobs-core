@@ -14,10 +14,19 @@ log = logging.getLogger(__name__)
 
 class PhotUtilsPhotometry(Photometry):
     """Perform photometry using PhotUtils."""
-    __module__ = 'pyobs.images.processors.photometry'
 
-    def __init__(self, threshold: float = 1.5, minarea: int = 5, deblend_nthresh: int = 32,
-                 deblend_cont: float = 0.005, clean: bool = True, clean_param: float = 1.0, **kwargs: Any):
+    __module__ = "pyobs.images.processors.photometry"
+
+    def __init__(
+        self,
+        threshold: float = 1.5,
+        minarea: int = 5,
+        deblend_nthresh: int = 32,
+        deblend_cont: float = 0.005,
+        clean: bool = True,
+        clean_param: float = 1.0,
+        **kwargs: Any,
+    ):
         """Initializes an aperture photometry based on PhotUtils.
 
         Args:
@@ -53,29 +62,29 @@ class PhotUtilsPhotometry(Photometry):
 
         # no pixel scale given?
         if image.pixel_scale is None:
-            log.warning('No pixel scale provided by image.')
+            log.warning("No pixel scale provided by image.")
             return image
 
         # fetch catalog
         if image.catalog is None:
-            log.warning('No catalog in image.')
+            log.warning("No catalog in image.")
             return image
         sources = image.catalog.copy()
 
         # get positions
-        positions = [(x - 1, y - 1) for x, y in sources.iterrows('x', 'y')]
+        positions = [(x - 1, y - 1) for x, y in sources.iterrows("x", "y")]
 
         # perform aperture photometry for diameters of 1" to 8"
         for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
             # extraction radius in pixels
-            radius = diameter / 2. / image.pixel_scale
+            radius = diameter / 2.0 / image.pixel_scale
             if radius < 1:
                 continue
 
             # defines apertures
             aperture = CircularAperture(positions, r=radius)
             annulus_aperture = CircularAnnulus(positions, r_in=2 * radius, r_out=3 * radius)
-            annulus_masks = annulus_aperture.to_mask(method='center')
+            annulus_masks = annulus_aperture.to_mask(method="center")
 
             # loop annuli
             bkg_median = []
@@ -86,17 +95,17 @@ class PhotUtilsPhotometry(Photometry):
                 bkg_median.append(median_sigclip)
 
             # do photometry
-            phot = await loop.run_in_executor(None, partial(
-                aperture_photometry, image.data, aperture, mask=image.mask, error=image.uncertainty
-            ))
+            phot = await loop.run_in_executor(
+                None, partial(aperture_photometry, image.data, aperture, mask=image.mask, error=image.uncertainty)
+            )
 
             # calc flux
             bkg_median_np = np.array(bkg_median)
             aper_bkg = bkg_median_np * aperture.area
-            sources['fluxaper%d' % diameter] = phot['aperture_sum'] - aper_bkg
-            if 'aperture_sum_err' in phot.columns:
-                sources['fluxerr%d' % diameter] = phot['aperture_sum_err']
-            sources['bkgaper%d' % diameter] = bkg_median_np
+            sources["fluxaper%d" % diameter] = phot["aperture_sum"] - aper_bkg
+            if "aperture_sum_err" in phot.columns:
+                sources["fluxerr%d" % diameter] = phot["aperture_sum_err"]
+            sources["bkgaper%d" % diameter] = bkg_median_np
 
         # copy image, set catalog and return it
         img = image.copy()
@@ -104,4 +113,4 @@ class PhotUtilsPhotometry(Photometry):
         return img
 
 
-__all__ = ['PhotUtilsPhotometry']
+__all__ = ["PhotUtilsPhotometry"]

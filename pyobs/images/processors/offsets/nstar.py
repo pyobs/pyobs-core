@@ -21,8 +21,15 @@ class CorrelationMaxCloseToBorderError(Exception):
 class NStarOffsets(Offsets, PipelineMixin):
     """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
-    def __init__(self, num_stars: int = 10, max_offset: float = 4., min_pixels: int = 3, min_sources: int = 1,
-                 pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None, **kwargs: Any):
+    def __init__(
+        self,
+        num_stars: int = 10,
+        max_offset: float = 4.0,
+        min_pixels: int = 3,
+        min_sources: int = 1,
+        pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
+        **kwargs: Any,
+    ):
         """Initializes a new auto guiding system.
 
         Requires pyobs.images.processors.detection.SepSourceDetection and
@@ -77,15 +84,15 @@ class NStarOffsets(Offsets, PipelineMixin):
                 self.ref_boxes = self._boxes_from_ref(image, star_box_size)
 
                 # reset and finish
-                image.meta['offsets'] = (0, 0)
+                image.meta["offsets"] = (0, 0)
                 return image
 
             except ValueError as e:
                 # didn't work
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 self.reset()
-                if 'offsets' in image.meta:
-                    del image.meta['offsets']
+                if "offsets" in image.meta:
+                    del image.meta["offsets"]
                 self.offset = None, None
                 return image
 
@@ -93,7 +100,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         log.info("Perform auto-guiding on new image...")
         offsets = self._calculate_offsets(image)
         if offsets[0] is not None:
-            image.meta['offsets'] = offsets
+            image.meta["offsets"] = offsets
         return image
 
     @staticmethod
@@ -121,29 +128,28 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # check data and catalog
         if img.data is None:
-            raise ValueError('No data found in image.')
+            raise ValueError("No data found in image.")
         if img.catalog is None:
-            raise ValueError('No catalog found in image.')
+            raise ValueError("No catalog found in image.")
 
         # do photometry and get catalog
         sources = self._fits2numpy(img.catalog)
 
         # filter sources
-        sources = self.remove_sources_close_to_border(
-            sources, img.data.shape, star_box_size // 2 + 1
-        )
+        sources = self.remove_sources_close_to_border(sources, img.data.shape, star_box_size // 2 + 1)
         sources = self.remove_bad_sources(sources)
         self._check_sources_count(sources)
         selected_sources = self._select_brightest_sources(self.num_stars, sources)
 
         # extract boxes
-        return photutils.psf.extract_stars(NDData(img.data.astype(float)), selected_sources,
-                                           size=star_box_size).all_stars
+        return photutils.psf.extract_stars(
+            NDData(img.data.astype(float)), selected_sources, size=star_box_size
+        ).all_stars
 
     @staticmethod
     def _fits2numpy(sources: Table) -> Table:
         """Convert from FITS to numpy conventions for pixel coordinates."""
-        for k in ['x', 'y', 'xmin', 'xmax', 'ymin', 'ymax', 'xpeak', 'ypeak']:
+        for k in ["x", "y", "xmin", "xmax", "ymin", "ymax", "xpeak", "ypeak"]:
             if k in sources:
                 sources[k] -= 1
         return sources
@@ -151,12 +157,12 @@ class NStarOffsets(Offsets, PipelineMixin):
     @staticmethod
     def remove_sources_close_to_border(sources: Table, image_shape: tuple, min_dist) -> Table:
         """Remove table rows from sources when source is closer than given distance from border of image.
-        
+
         Args:
             sources: Input table.
             image_shape: Shape of image.
             min_dist: Minimum distance from border in pixels.
-            
+
         Returns:
             Filtered table.
         ."""
@@ -166,8 +172,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         def min_distance_from_border(source) -> None:
             # calculate the minimum distance of source to any image border (across x and y)
-            return min(width / 2 - np.abs(source["y"] - width / 2),
-                       height / 2 - np.abs(source["x"] - height / 2))
+            return min(width / 2 - np.abs(source["y"] - width / 2), height / 2 - np.abs(source["x"] - height / 2))
 
         sources.add_column(Column(name="min_dist", data=min_distance_from_border(sources)))
         sources.sort("min_dist")
@@ -175,8 +180,9 @@ class NStarOffsets(Offsets, PipelineMixin):
         sources_result = sources[np.where(sources["min_dist"] > min_dist)]
         return sources_result
 
-    def remove_bad_sources(self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5,
-                           saturation: int = 50000) -> Table:
+    def remove_bad_sources(
+        self, sources: Table, max_ellipticity: float = 0.4, min_bkg_factor: float = 1.5, saturation: int = 50000
+    ) -> Table:
         """Remove bad sources from table.
 
         Args:
@@ -190,10 +196,10 @@ class NStarOffsets(Offsets, PipelineMixin):
         """
 
         # remove saturated sources
-        sources = sources[sources['peak'] < saturation]
+        sources = sources[sources["peak"] < saturation]
 
         # remove small sources
-        sources = sources[np.where(sources['tnpix'] >= self.min_pixels)]
+        sources = sources[np.where(sources["tnpix"] >= self.min_pixels)]
 
         # remove large sources
         tnpix_median = np.median(sources["tnpix"])
@@ -208,11 +214,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         sources = sources[np.where(sources["background"] > 0)]
 
         # remove sources with low contrast to background
-        sources = sources[
-            np.where(
-                (sources["peak"] + sources["background"]) / sources["background"] > min_bkg_factor
-            )
-        ]
+        sources = sources[np.where((sources["peak"] + sources["background"]) / sources["background"] > min_bkg_factor)]
         return sources
 
     @staticmethod
@@ -255,7 +257,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
     def _calculate_offsets(self, image: Image) -> Tuple[Optional[float], Optional[float]]:
         """Calculate offsets of given image to ref image for every star.
-        
+
         Args:
             image: Image to calculate offset for.
 
@@ -278,7 +280,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax].astype(float)
 
             # correlate
-            corr = signal.correlate2d(current_boxed_image, box.data, mode='same', boundary='wrap')
+            corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
 
             try:
                 offset = self._offsets_from_corr(corr)
@@ -294,8 +296,9 @@ class NStarOffsets(Offsets, PipelineMixin):
         return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
 
     @staticmethod
-    def _gauss2d(x: NDArray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float) \
-            -> NDArray[float]:
+    def _gauss2d(
+        x: NDArray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float
+    ) -> NDArray[float]:
         """2D Gaussian function."""
         return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
 
@@ -341,9 +344,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # only use data points that clearly belong to peak to avoid border effects
         # mask_value_above_background = ydata > -1e5  # a + .1*b
-        mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (
-                sigma_x ** 2 + sigma_y ** 2
-        ) / 2
+        mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (sigma_x ** 2 + sigma_y ** 2) / 2
         mask = mask_circle_around_peak
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]
@@ -360,9 +361,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         # check quality of fit
         median_squared_relative_residue_threshold = 1e-1
         fit_ydata_restricted = self._gauss2d(xdata_restricted, *popt)
-        square_rel_res = np.square(
-            (fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted
-        )
+        square_rel_res = np.square((fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted)
         median_squared_rel_res = np.median(np.square(square_rel_res))
 
         if median_squared_rel_res > median_squared_relative_residue_threshold:

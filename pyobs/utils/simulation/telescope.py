@@ -18,13 +18,24 @@ if TYPE_CHECKING:
 
 class SimTelescope(Object):
     """A simulated telescope on an equitorial mount."""
-    __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, world: 'SimWorld', position: Optional[Tuple[float, float]] = None,
-                 offsets: Optional[Tuple[float, float]] = None, pointing_offset: Optional[Tuple[float, float]] = None,
-                 move_accuracy: float = 2., speed: float = 20., focus: float = 50, filters: Optional[List[str]] = None,
-                 filter_name: str = 'clear', drift: Optional[Tuple[float, float]] = None, focal_length: float = 5000.,
-                 **kwargs: Any):
+    __module__ = "pyobs.utils.simulation"
+
+    def __init__(
+        self,
+        world: "SimWorld",
+        position: Optional[Tuple[float, float]] = None,
+        offsets: Optional[Tuple[float, float]] = None,
+        pointing_offset: Optional[Tuple[float, float]] = None,
+        move_accuracy: float = 2.0,
+        speed: float = 20.0,
+        focus: float = 50,
+        filters: Optional[List[str]] = None,
+        filter_name: str = "clear",
+        drift: Optional[Tuple[float, float]] = None,
+        focal_length: float = 5000.0,
+        **kwargs: Any,
+    ):
         """Initializes new telescope.
 
         Args:
@@ -48,20 +59,23 @@ class SimTelescope(Object):
         self.status_callback = None
 
         # init
-        self._position = SkyCoord(0. * u.deg, 0. * u.deg, frame='icrs') if position is None else \
-            SkyCoord(position[0] * u.deg, position[1] * u.deg, frame='icrs')
-        self._offsets = (0., 0.) if offsets is None else offsets
-        self.pointing_offset = (20., 2.) if pointing_offset is None else pointing_offset
+        self._position = (
+            SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs")
+            if position is None
+            else SkyCoord(position[0] * u.deg, position[1] * u.deg, frame="icrs")
+        )
+        self._offsets = (0.0, 0.0) if offsets is None else offsets
+        self.pointing_offset = (20.0, 2.0) if pointing_offset is None else pointing_offset
         self.move_accuracy = (1, 1) if move_accuracy is None else move_accuracy
-        self.speed = speed     # telescope speed in deg/sec
+        self.speed = speed  # telescope speed in deg/sec
         self.focus = focus
-        self.filters = ['clear', 'B', 'V', 'R'] if filters is None else filters
+        self.filters = ["clear", "B", "V", "R"] if filters is None else filters
         self.filter_name = filter_name
-        self.drift = (0., 0.) if drift is None else drift     # arcsec/sec in RA/Dec
+        self.drift = (0.0, 0.0) if drift is None else drift  # arcsec/sec in RA/Dec
         self.focal_length = focal_length
 
         # private stuff
-        self._drift = (0., 0.)
+        self._drift = (0.0, 0.0)
         self._dest_coords = None
 
         # locks
@@ -100,9 +114,7 @@ class SimTelescope(Object):
 
         # return position
         with self._pos_lock:
-            return SkyCoord(ra=self._position.ra + dra,
-                            dec=self._position.dec + ddec,
-                            frame='icrs')
+            return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
     def move_ra_dec(self, coords: SkyCoord) -> None:
         """Move telescope to given RA/Dec position.
@@ -115,12 +127,12 @@ class SimTelescope(Object):
         self._change_motion_status(MotionStatus.SLEWING)
 
         # calculate random RA/Dec offsets
-        acc = self.move_accuracy / 3600.
+        acc = self.move_accuracy / 3600.0
         ra = random.gauss(coords.ra.degree, acc / np.cos(np.radians(coords.dec.degree))) * u.deg
         dec = random.gauss(coords.dec.degree, acc) * u.deg
 
         # set coordinates
-        self._dest_coords = SkyCoord(ra=ra, dec=dec, frame='icrs')
+        self._dest_coords = SkyCoord(ra=ra, dec=dec, frame="icrs")
 
     def set_offsets(self, dra: float, ddec: float) -> None:
         """Move RA/Dec offsets.
@@ -131,7 +143,7 @@ class SimTelescope(Object):
         """
 
         # calculate random RA/Dec offsets
-        acc = self.move_accuracy / 3600.
+        acc = self.move_accuracy / 3600.0
         ra, dec = random.gauss(dra, acc), random.gauss(ddec, acc)
 
         # set offsets
@@ -146,12 +158,13 @@ class SimTelescope(Object):
             # do we have destination coordinates?
             if self._dest_coords is not None:
                 # calculate moving vector
-                vra = (self._dest_coords.ra.degree - self._position.ra.degree) * \
-                      np.cos(np.radians(self._position.dec.degree))
+                vra = (self._dest_coords.ra.degree - self._position.ra.degree) * np.cos(
+                    np.radians(self._position.dec.degree)
+                )
                 vdec = self._dest_coords.dec.degree - self._position.dec.degree
 
                 # get direction
-                length = np.sqrt(vra**2 + vdec**2)
+                length = np.sqrt(vra ** 2 + vdec ** 2)
 
                 # do we reach target?
                 if length < self.speed:
@@ -163,8 +176,10 @@ class SimTelescope(Object):
                         self._dest_coords = None
 
                         # set some random drift around the pointing error
-                        self._drift = (random.gauss(self.pointing_offset[0], self.pointing_offset[0] / 10.),
-                                       random.gauss(self.pointing_offset[1], self.pointing_offset[1] / 10.))
+                        self._drift = (
+                            random.gauss(self.pointing_offset[0], self.pointing_offset[0] / 10.0),
+                            random.gauss(self.pointing_offset[1], self.pointing_offset[1] / 10.0),
+                        )
 
                 else:
                     # norm vector and get movement
@@ -174,15 +189,15 @@ class SimTelescope(Object):
                     # apply it
                     with self._pos_lock:
                         self._change_motion_status(MotionStatus.SLEWING)
-                        self._position = SkyCoord(ra=self._position.ra + dra,
-                                                  dec=self._position.dec + ddec,
-                                                  frame='icrs')
+                        self._position = SkyCoord(
+                            ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs"
+                        )
 
             else:
                 # no movement, just drift
                 # calculate constant drift
-                drift_ra = random.gauss(self.drift[0], self.drift[0] / 10.)
-                drift_dec = random.gauss(self.drift[1], self.drift[1] / 10.)
+                drift_ra = random.gauss(self.drift[0], self.drift[0] / 10.0)
+                drift_dec = random.gauss(self.drift[1], self.drift[1] / 10.0)
 
                 # and apply it
                 with self._pos_lock:
@@ -192,4 +207,4 @@ class SimTelescope(Object):
             await asyncio.sleep(1)
 
 
-__all__ = ['SimTelescope']
+__all__ = ["SimTelescope"]

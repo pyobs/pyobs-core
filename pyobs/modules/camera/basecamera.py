@@ -25,6 +25,7 @@ class CameraException(Exception):
 
 class ExposureInfo(NamedTuple):
     """Info about a running exposure."""
+
     start: datetime.datetime
     exposure_time: float
 
@@ -36,12 +37,19 @@ async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) 
 
 class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType, metaclass=ABCMeta):
     """Base class for all camera modules."""
-    __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, centre: Optional[Tuple[float, float]] = None,
-                 rotation: float = 0., flip: bool = False,
-                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz',
-                 fits_namespaces: Optional[List[str]] = None, **kwargs: Any):
+    __module__ = "pyobs.modules.camera"
+
+    def __init__(
+        self,
+        fits_headers: Optional[Dict[str, Any]] = None,
+        centre: Optional[Tuple[float, float]] = None,
+        rotation: float = 0.0,
+        flip: bool = False,
+        filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz",
+        fits_namespaces: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
         """Creates a new BaseCamera.
 
         Args:
@@ -53,16 +61,22 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
         Module.__init__(self, **kwargs)
-        ImageFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, centre=centre,
-                                      rotation=rotation, filenames=filenames)
+        ImageFitsHeaderMixin.__init__(
+            self,
+            fits_namespaces=fits_namespaces,
+            fits_headers=fits_headers,
+            centre=centre,
+            rotation=rotation,
+            filenames=filenames,
+        )
 
         # check
         if self.comm is None:
-            log.warning('No comm module given, will not be able to signal new images!')
+            log.warning("No comm module given, will not be able to signal new images!")
 
         # store
         self._flip = flip
-        self._exposure_time: float = 0.
+        self._exposure_time: float = 0.0
         self._image_type = ImageType.OBJECT
 
         # init camera
@@ -81,7 +95,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             await self.comm.register_event(NewImageEvent)
             await self.comm.register_event(ExposureStatusChangedEvent)
 
-    async def set_exposure_time(self, exposure_time: float,  **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -90,7 +104,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Raises:
             ValueError: If exposure time could not be set.
         """
-        log.info('Setting exposure time to %.5fs...', exposure_time)
+        log.info("Setting exposure time to %.5fs...", exposure_time)
         self._exposure_time = exposure_time
 
     async def get_exposure_time(self, **kwargs: Any) -> float:
@@ -107,7 +121,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Args:
             image_type: New image type.
         """
-        log.info('Setting image type to %s...', image_type)
+        log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
 
     async def get_image_type(self, **kwargs: Any) -> ImageType:
@@ -149,7 +163,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # if we're not exposing, there is nothing left
         if self._exposure is None:
-            return 0.
+            return 0.0
 
         # calculate difference between start of exposure and now, and return in ms
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
@@ -165,18 +179,18 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # if we're not exposing, there is no progress
         if self._exposure is None:
-            return 0.
+            return 0.0
 
         # calculate difference between start of exposure and now
         diff = datetime.datetime.utcnow() - self._exposure[0]
 
         # zero exposure time?
-        if self._exposure.exposure_time == 0. or self._camera_status == ExposureStatus.READOUT:
-            return 100.
+        if self._exposure.exposure_time == 0.0 or self._camera_status == ExposureStatus.READOUT:
+            return 100.0
         else:
             # return max of 100
-            percentage = diff.total_seconds() / self._exposure[1] * 100.
-            return min(percentage, 100.)
+            percentage = diff.total_seconds() / self._exposure[1] * 100.0
+            return min(percentage, 100.0)
 
     @abstractmethod
     async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
@@ -195,8 +209,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         ...
 
-    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) \
-            -> Tuple[Optional[Image], Optional[str]]:
+    async def __expose(
+        self, exposure_time: float, image_type: ImageType, broadcast: bool
+    ) -> Tuple[Optional[Image], Optional[str]]:
         """Wrapper for a single exposure.
 
         Args:
@@ -242,10 +257,10 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             image.data = np.ascontiguousarray(flipped)
 
         # add HDU name
-        image.header['EXTNAME'] = 'SCI'
+        image.header["EXTNAME"] = "SCI"
 
         # add image type
-        image.header['IMAGETYP'] = image_type.value
+        image.header["IMAGETYP"] = image_type.value
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, header_futures_before)
@@ -259,19 +274,19 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # upload file
         try:
-            log.info('Uploading image to file server...')
+            log.info("Uploading image to file server...")
             await self.vfs.write_image(filename, image)
         except FileNotFoundError:
-            raise ValueError('Could not upload image.')
+            raise ValueError("Could not upload image.")
 
         # broadcast image path
         if broadcast and self.comm:
-            log.info('Broadcasting image ID...')
+            log.info("Broadcasting image ID...")
             await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # return image and unique
         self._exposure = None
-        log.info('Finished image %s.', filename)
+        log.info("Finished image %s.", filename)
         return image, filename
 
     @timeout(calc_expose_timeout)
@@ -287,16 +302,16 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # are we exposing?
         if self._camera_status != ExposureStatus.IDLE:
-            raise CameraException('Cannot start new exposure because camera is not idle.')
+            raise CameraException("Cannot start new exposure because camera is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
         image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
         if image is None:
-            raise ValueError('Could not take image.')
+            raise ValueError("Could not take image.")
         else:
             if filename is None:
-                raise ValueError('Image has not been saved, so cannot be retrieved by filename.')
+                raise ValueError("Image has not been saved, so cannot be retrieved by filename.")
 
         # return filename
         await self._change_exposure_status(ExposureStatus.IDLE)
@@ -318,7 +333,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
 
         # set abort event
-        log.info('Aborting current image and sequence...')
+        log.info("Aborting current image and sequence...")
         self.expose_abort.set()
 
         # do camera-specific abort
@@ -341,56 +356,56 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
 
         # get image area in unbinned coordinates
-        img_left = hdr['XORGSUBF']
-        img_top = hdr['YORGSUBF']
-        img_width = hdr['NAXIS1'] * hdr['XBINNING']
-        img_height = hdr['NAXIS2'] * hdr['YBINNING']
+        img_left = hdr["XORGSUBF"]
+        img_top = hdr["YORGSUBF"]
+        img_width = hdr["NAXIS1"] * hdr["XBINNING"]
+        img_height = hdr["NAXIS2"] * hdr["YBINNING"]
 
         # get intersection
         is_left = max(left, img_left)
-        is_right = min(left+width, img_left+img_width)
+        is_right = min(left + width, img_left + img_width)
         is_top = max(top, img_top)
-        is_bottom = min(top+height, img_top+img_height)
+        is_bottom = min(top + height, img_top + img_height)
 
         # for simplicity we allow prescan/overscan only in one dimension
-        if (left < is_left or left+width > is_right) and (top < is_top or top+height > is_bottom):
-            log.warning('BIASSEC/TRIMSEC can only be calculated with a prescan/overscan on one axis only.')
+        if (left < is_left or left + width > is_right) and (top < is_top or top + height > is_bottom):
+            log.warning("BIASSEC/TRIMSEC can only be calculated with a prescan/overscan on one axis only.")
             return
 
         # comments
-        c1 = 'Bias overscan area [x1:x2,y1:y2] (binned)'
-        c2 = 'Image area [x1:x2,y1:y2] (binned)'
+        c1 = "Bias overscan area [x1:x2,y1:y2] (binned)"
+        c2 = "Image area [x1:x2,y1:y2] (binned)"
 
         # rectangle empty?
         if is_right <= is_left or is_bottom <= is_top:
             # easy case, all is BIASSEC, no TRIMSEC at all
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], hdr['NAXIS2']), c1)
+            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], hdr["NAXIS2"]), c1)
             return
 
         # we got a TRIMSEC, calculate its binned and windowd coordinates
-        is_left_binned = np.floor((is_left - hdr['XORGSUBF']) / hdr['XBINNING']) + 1
-        is_right_binned = np.ceil((is_right - hdr['XORGSUBF']) / hdr['XBINNING'])
-        is_top_binned = np.floor((is_top - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
-        is_bottom_binned = np.ceil((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING'])
+        is_left_binned = np.floor((is_left - hdr["XORGSUBF"]) / hdr["XBINNING"]) + 1
+        is_right_binned = np.ceil((is_right - hdr["XORGSUBF"]) / hdr["XBINNING"])
+        is_top_binned = np.floor((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"]) + 1
+        is_bottom_binned = np.ceil((is_bottom - hdr["YORGSUBF"]) / hdr["YBINNING"])
 
         # set it
-        hdr['TRIMSEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
-        hdr['DATASEC'] = ('[%d:%d,%d:%d]' % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
+        hdr["TRIMSEC"] = ("[%d:%d,%d:%d]" % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
+        hdr["DATASEC"] = ("[%d:%d,%d:%d]" % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
 
         # now get BIASSEC -- whatever we do, we only take the last (!) one
         # which axis?
-        if img_left+img_width > left+width:
-            left_binned = np.floor((is_right - hdr['XORGSUBF']) / hdr['XBINNING']) + 1
-            hdr['BIASSEC'] = ('[%d:%d,1:%d]' % (left_binned, hdr['NAXIS1'], hdr['NAXIS2']), c1)
+        if img_left + img_width > left + width:
+            left_binned = np.floor((is_right - hdr["XORGSUBF"]) / hdr["XBINNING"]) + 1
+            hdr["BIASSEC"] = ("[%d:%d,1:%d]" % (left_binned, hdr["NAXIS1"], hdr["NAXIS2"]), c1)
         elif img_left < left:
-            right_binned = np.ceil((is_left - hdr['XORGSUBF']) / hdr['XBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (right_binned, hdr['NAXIS2']), c1)
-        elif img_top+img_height > top+height:
-            top_binned = np.floor((is_bottom - hdr['YORGSUBF']) / hdr['YBINNING']) + 1
-            hdr['BIASSEC'] = ('[1:%d,%d:%d]' % (hdr['NAXIS1'], top_binned, hdr['NAXIS2']), c1)
+            right_binned = np.ceil((is_left - hdr["XORGSUBF"]) / hdr["XBINNING"])
+            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (right_binned, hdr["NAXIS2"]), c1)
+        elif img_top + img_height > top + height:
+            top_binned = np.floor((is_bottom - hdr["YORGSUBF"]) / hdr["YBINNING"]) + 1
+            hdr["BIASSEC"] = ("[1:%d,%d:%d]" % (hdr["NAXIS1"], top_binned, hdr["NAXIS2"]), c1)
         elif img_top < top:
-            bottom_binned = np.ceil((is_top - hdr['YORGSUBF']) / hdr['YBINNING'])
-            hdr['BIASSEC'] = ('[1:%d,1:%d]' % (hdr['NAXIS1'], bottom_binned), c1)
+            bottom_binned = np.ceil((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"])
+            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], bottom_binned), c1)
 
     async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
@@ -399,9 +414,11 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             List of available binnings as (x, y) tuples.
         """
 
-        warnings.warn('The default implementation for list_binnings() in BaseCamera will be removed in future versions',
-                      DeprecationWarning)
+        warnings.warn(
+            "The default implementation for list_binnings() in BaseCamera will be removed in future versions",
+            DeprecationWarning,
+        )
         return [(1, 1), (2, 2), (3, 3)]
 
 
-__all__ = ['BaseCamera', 'CameraException']
+__all__ = ["BaseCamera", "CameraException"]

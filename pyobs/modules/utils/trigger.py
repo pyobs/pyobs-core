@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 
 class Trigger(Module, IAutonomous):
     """A module that can call another module's methods when a specific event occurs."""
-    __module__ = 'pyobs.modules.utils'
+
+    __module__ = "pyobs.modules.utils"
 
     def __init__(self, triggers: List[Dict[str, Any]], **kwargs: Any):
         """Initialize a new trigger module.
@@ -30,15 +31,15 @@ class Trigger(Module, IAutonomous):
         self._triggers = triggers
         for trigger in self._triggers:
             # get class and store it
-            kls = get_class_from_string(trigger['event'])
-            trigger['event'] = kls
+            kls = get_class_from_string(trigger["event"])
+            trigger["event"] = kls
 
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
 
         # get a list of all events
-        events = list(set([t['event'] for t in self._triggers]))
+        events = list(set([t["event"] for t in self._triggers]))
 
         # start
         self._running = True
@@ -74,26 +75,27 @@ class Trigger(Module, IAutonomous):
         # loop all triggers
         for trigger in self._triggers:
             # does it handle the event?
-            if trigger['event'] == event.__class__:
-                log.info('Received a %s event and calling %s.%s now.',
-                         str(type(event)), trigger['module'], trigger['method'])
+            if trigger["event"] == event.__class__:
+                log.info(
+                    "Received a %s event and calling %s.%s now.", str(type(event)), trigger["module"], trigger["method"]
+                )
 
                 # get proxy
                 try:
-                    proxy = await self.comm.proxy(trigger['module'])
+                    proxy = await self.comm.proxy(trigger["module"])
 
                     # call it
-                    await proxy.execute(trigger['method'])
+                    await proxy.execute(trigger["method"])
 
                 except ValueError:
-                    log.exception('Could not execute command on proxy %s.', trigger['module'])
+                    log.exception("Could not execute command on proxy %s.", trigger["module"])
                     continue
 
                 except Exception as e:
-                    log.error('Error on calling %s.%s: %s', trigger['module'], trigger['method'], e)
+                    log.error("Error on calling %s.%s: %s", trigger["module"], trigger["method"], e)
                     continue
 
         return True
 
 
-__all__ = ['Trigger']
+__all__ = ["Trigger"]

@@ -4,6 +4,7 @@ from astropy.time import Time
 from typing import Union, Optional, TYPE_CHECKING, Dict, Any
 
 from pyobs.object import create_object, Object
+
 if TYPE_CHECKING:
     from pyobs.utils.simulation.telescope import SimTelescope
     from pyobs.utils.simulation.camera import SimCamera
@@ -11,12 +12,16 @@ if TYPE_CHECKING:
 
 class SimWorld(Object):
     """A simulated world."""
-    __module__ = 'pyobs.utils.simulation'
 
-    def __init__(self, time: Optional[Union[Time, str]] = None,
-                 telescope: Optional[Union['SimTelescope', Dict[str, Any]]] = None,
-                 camera: Optional[Union['SimCamera', Dict[str, Any]]] = None,
-                 **kwargs: Any):
+    __module__ = "pyobs.utils.simulation"
+
+    def __init__(
+        self,
+        time: Optional[Union[Time, str]] = None,
+        telescope: Optional[Union["SimTelescope", Dict[str, Any]]] = None,
+        camera: Optional[Union["SimCamera", Dict[str, Any]]] = None,
+        **kwargs: Any,
+    ):
         """Initializes a new simulated world.
 
         Args:
@@ -29,6 +34,7 @@ class SimWorld(Object):
         """
         from .camera import SimCamera
         from .telescope import SimTelescope
+
         Object.__init__(self, **kwargs)
 
         # get start time
@@ -48,7 +54,7 @@ class SimWorld(Object):
         elif isinstance(telescope, dict):
             self.telescope = create_object(telescope, world=self)
         else:
-            raise ValueError('Invalid telescope.')
+            raise ValueError("Invalid telescope.")
 
         # get camera
         if camera is None:
@@ -58,18 +64,18 @@ class SimWorld(Object):
         elif isinstance(camera, dict):
             self.camera = create_object(camera, world=self)
         else:
-            raise ValueError('Invalid camera.')
+            raise ValueError("Invalid camera.")
 
     async def open(self) -> None:
         """Open module."""
         await Object.open(self)
 
         # open telescope
-        if hasattr(self.telescope, 'open'):
+        if hasattr(self.telescope, "open"):
             await self.telescope.open()
 
         # open camera
-        if hasattr(self.telescope, 'open'):
+        if hasattr(self.telescope, "open"):
             await self.camera.open()
 
     async def close(self) -> None:
@@ -77,11 +83,11 @@ class SimWorld(Object):
         await Object.close(self)
 
         # close telescope
-        if hasattr(self.telescope, 'close'):
+        if hasattr(self.telescope, "close"):
             await self.telescope.close()
 
         # close camera
-        if hasattr(self.camera, 'close'):
+        if hasattr(self.camera, "close"):
             await self.camera.close()
 
     @property
@@ -93,8 +99,8 @@ class SimWorld(Object):
     def sun_alt(self) -> float:
         """Returns current solar altitude."""
         if self.observer is None:
-            raise ValueError('No observer given.')
+            raise ValueError("No observer given.")
         return float(self.observer.sun_altaz(self.time).alt.degree)
 
 
-__all__ = ['SimWorld']
+__all__ = ["SimWorld"]

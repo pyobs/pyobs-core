@@ -3,8 +3,16 @@ class PID:
     Discrete PID control
     """
 
-    def __init__(self, p: float = 2.0, i: float = 0.0, d: float = 1.0, derivator: float = 0, integrator: float = 0,
-                 integrator_max: float = 500., integrator_min: float = -500.):
+    def __init__(
+        self,
+        p: float = 2.0,
+        i: float = 0.0,
+        d: float = 1.0,
+        derivator: float = 0,
+        integrator: float = 0,
+        integrator_max: float = 500.0,
+        integrator_min: float = -500.0,
+    ):
         # public variables
         self.Kp = p
         self.Ki = i
@@ -52,4 +60,4 @@ class PID:
         return self._error
 
 
-__all__ = ['PID']
+__all__ = ["PID"]

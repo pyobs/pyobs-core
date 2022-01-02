@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 
 class ScienceFrameAutoGuiding(BaseGuiding):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
-    __module__ = 'pyobs.modules.guiding'
+
+    __module__ = "pyobs.modules.guiding"
 
     def __init__(self, **kwargs: Any):
         """Initializes a new science frame auto guiding system."""
@@ -29,7 +30,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         await BaseGuiding.open(self)
 
         # subscribe to channel with new images
-        log.info('Subscribing to new image events...')
+        log.info("Subscribing to new image events...")
         await self.comm.register_event(NewImageEvent, self.add_image)
 
     def set_exposure_time(self, exposure_time: float, **kwargs: Any):
@@ -51,18 +52,18 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         # did it come from correct camera and are we enabled?
         if sender != self._camera or not self._enabled or not isinstance(event, NewImageEvent):
             return False
-        log.info('Received new image.')
+        log.info("Received new image.")
 
         # download image
         image = await self.vfs.read_image(event.filename)
 
         # we only accept OBJECT images
-        if image.header['IMAGETYP'] != 'object':
+        if image.header["IMAGETYP"] != "object":
             return False
 
         # do we have a filename in here already?
         if not self._next_image.empty():
-            log.warning('Last image still being processed by auto-guiding, skipping new one.')
+            log.warning("Last image still being processed by auto-guiding, skipping new one.")
             return False
 
         # store it
@@ -84,4 +85,4 @@ class ScienceFrameAutoGuiding(BaseGuiding):
             await asyncio.sleep(1)
 
 
-__all__ = ['ScienceFrameAutoGuiding']
+__all__ = ["ScienceFrameAutoGuiding"]

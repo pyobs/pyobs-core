@@ -11,10 +11,17 @@ log = logging.getLogger(__name__)
 
 class StarExpTimeEstimator(ExpTimeEstimator):
     """Estimate exposure time from a star."""
-    __module__ = 'pyobs.images.processors.exptime'
 
-    def __init__(self, source_detection: Union[Dict[str, Any], SourceDetection], edge: float = 0.1, bias: float = 0.,
-                 saturated: float = 0.7, **kwargs: Any):
+    __module__ = "pyobs.images.processors.exptime"
+
+    def __init__(
+        self,
+        source_detection: Union[Dict[str, Any], SourceDetection],
+        edge: float = 0.1,
+        bias: float = 0.0,
+        saturated: float = 0.7,
+        **kwargs: Any,
+    ):
         """Create new exp time estimator from single star.
 
         Args:
@@ -47,15 +54,15 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         # do photometry and get copy of catalog
         catalog = (await source_detection(image)).catalog
         if catalog is None:
-            log.info('No catalog found in image.')
+            log.info("No catalog found in image.")
             return image
 
         # sort catalog by peak flux
-        catalog.sort('peak')
+        catalog.sort("peak")
 
         # saturation level
-        if 'DET-SATU' in image.header and 'DET-GAIN' in image.header:
-            saturation = image.header['DET-SATU'] / image.header['DET-GAIN']
+        if "DET-SATU" in image.header and "DET-GAIN" in image.header:
+            saturation = image.header["DET-SATU"] / image.header["DET-GAIN"]
         else:
             saturation = 50000
 
@@ -63,20 +70,20 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         max_peak = saturation * self._saturated
 
         # filter out all stars that are saturated
-        catalog = catalog[catalog['peak'] <= max_peak]
+        catalog = catalog[catalog["peak"] <= max_peak]
 
         # get brightest star, get its peak flux and store its coordinates
         star = catalog[0]
-        peak = star['peak']
-        log.info('Found peak of %.2f at %.1fx%.1f.', star['peak'], star['x'], star['y'])
-        self.coordinates = (star['x'], star['y'])
+        peak = star["peak"]
+        log.info("Found peak of %.2f at %.1fx%.1f.", star["peak"], star["x"], star["y"])
+        self.coordinates = (star["x"], star["y"])
 
         # get exposure time of image
-        exp_time = image.header['EXPTIME']
+        exp_time = image.header["EXPTIME"]
 
         # calculate new exposure time and return it
         self.exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
         return image
 
 
-__all__ = ['StarExpTimeEstimator']
+__all__ = ["StarExpTimeEstimator"]

@@ -15,7 +15,8 @@ log = logging.getLogger(__name__)
 
 class DummySpectrograph(BaseSpectrograph):
     """A dummy spectrograph for testing."""
-    __module__ = 'pyobs.modules.camera'
+
+    __module__ = "pyobs.modules.camera"
 
     def __init__(self, **kwargs: Any):
         """Creates a new dummy cammera.
@@ -40,8 +41,8 @@ class DummySpectrograph(BaseSpectrograph):
         """
 
         # do exposure
-        log.info('Starting exposure...')
-        exposure_time = 1.
+        log.info("Starting exposure...")
+        exposure_time = 1.0
         date_obs = datetime.utcnow()
         self._exposing = True
         steps = 10
@@ -49,7 +50,7 @@ class DummySpectrograph(BaseSpectrograph):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise ValueError('Exposure was aborted.')
+                raise ValueError("Exposure was aborted.")
             time.sleep(exposure_time / steps)
         self._exposing = False
 
@@ -65,12 +66,12 @@ class DummySpectrograph(BaseSpectrograph):
         hdu = fits.PrimaryHDU(y)
 
         # add headers
-        hdu.header['DATE-OBS'] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        hdu.header['CRVAL1'] = 5000
-        hdu.header['CDELT1'] = 1
+        hdu.header["DATE-OBS"] = date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        hdu.header["CRVAL1"] = 5000
+        hdu.header["CDELT1"] = 1
 
         # finished
-        log.info('Exposure finished.')
+        log.info("Exposure finished.")
         return fits.HDUList([hdu])
 
     def _abort_exposure(self) -> None:
@@ -87,7 +88,7 @@ class DummySpectrograph(BaseSpectrograph):
         Returns:
             Progress of the current exposure in percent.
         """
-        return 1.
+        return 1.0
 
 
-__all__ = ['DummySpectrograph']
+__all__ = ["DummySpectrograph"]

@@ -18,13 +18,20 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module,
-                    metaclass=ABCMeta):
+class BaseTelescope(
+    WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, ITelescope, IFitsHeaderBefore, Module, metaclass=ABCMeta
+):
     """Base class for telescopes."""
-    __module__ = 'pyobs.modules.telescope'
 
-    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None, min_altitude: float = 10,
-                 wait_for_dome: Optional[str] = None, **kwargs: Any):
+    __module__ = "pyobs.modules.telescope"
+
+    def __init__(
+        self,
+        fits_headers: Optional[Dict[str, Any]] = None,
+        min_altitude: float = 10,
+        wait_for_dome: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """Initialize a new base telescope.
 
         Args:
@@ -51,10 +58,12 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # init mixins
         WeatherAwareMixin.__init__(self, **kwargs)
         MotionStatusMixin.__init__(self, **kwargs)
-        WaitForMotionMixin.__init__(self,
-                                    wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
-                                    wait_for_timeout=60000,
-                                    wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING])
+        WaitForMotionMixin.__init__(
+            self,
+            wait_for_modules=None if wait_for_dome is None else [wait_for_dome],
+            wait_for_timeout=60000,
+            wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING],
+        )
 
     async def open(self) -> None:
         """Open module."""
@@ -96,7 +105,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # check observer
         if self.observer is None:
-            raise ValueError('No observer given.')
+            raise ValueError("No observer given.")
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -104,20 +113,24 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:
-            raise ValueError('Destination altitude below limit.')
+            raise ValueError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
             # log and event
             await self._change_motion_status(MotionStatus.SLEWING)
-            log.info("Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
-                     ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True), ra,
-                     ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True), dec)
+            log.info(
+                "Moving telescope to RA=%s (%.5f°), Dec=%s (%.5f°)...",
+                ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True),
+                ra,
+                ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True),
+                dec,
+            )
             await self.comm.send_event(MoveRaDecEvent(ra=ra, dec=dec))
 
             # track telescope
             await self._move_radec(ra, dec, abort_event=self._abort_move)
-            log.info('Reached destination')
+            log.info("Reached destination")
 
             # move dome, if exists
             await self._wait_for_motion(self._abort_move)
@@ -127,7 +140,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
             # update headers now
             asyncio.create_task(self._update_celestial_headers())
-            log.info('Finished moving telescope.')
+            log.info("Finished moving telescope.")
 
     @abstractmethod
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
@@ -162,7 +175,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # check altitude
         if alt < self._min_altitude:
-            raise ValueError('Destination altitude below limit.')
+            raise ValueError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
@@ -173,7 +186,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
             # move telescope
             await self._move_altaz(alt, az, abort_event=self._abort_move)
-            log.info('Reached destination')
+            log.info("Reached destination")
 
             # move dome, if exists
             await self._wait_for_motion(self._abort_move)
@@ -183,10 +196,11 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
             # update headers now
             asyncio.create_task(self._update_celestial_headers())
-            log.info('Finished moving telescope.')
+            log.info("Finished moving telescope.")
 
-    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
-            -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(
+        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+    ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -207,29 +221,29 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
 
         except Exception as e:
-            log.warning('Could not fetch telescope position: %s', e)
+            log.warning("Could not fetch telescope position: %s", e)
             coords_ra_dec, coords_alt_az = None, None
 
         # set coordinate headers
         if coords_ra_dec is not None:
-            hdr['TEL-RA'] = (float(coords_ra_dec.ra.degree), 'Right ascension of telescope [degrees]')
-            hdr['TEL-DEC'] = (float(coords_ra_dec.dec.degree), 'Declination of telescope [degrees]')
+            hdr["TEL-RA"] = (float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
+            hdr["TEL-DEC"] = (float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
         if coords_alt_az is not None:
-            hdr['TEL-ALT'] = (float(coords_alt_az.alt.degree), 'Telescope altitude [degrees]')
-            hdr['TEL-AZ'] = (float(coords_alt_az.az.degree), 'Telescope azimuth [degrees]')
-            hdr['TEL-ZD'] = (90. - hdr['TEL-ALT'][0], 'Telescope zenith distance [degrees]')
-            hdr['AIRMASS'] = (float(coords_alt_az.secz.value), 'Airmass of observation start')
+            hdr["TEL-ALT"] = (float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
+            hdr["TEL-AZ"] = (float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
+            hdr["TEL-ZD"] = (90.0 - hdr["TEL-ALT"][0], "Telescope zenith distance [degrees]")
+            hdr["AIRMASS"] = (float(coords_alt_az.secz.value), "Airmass of observation start")
 
         # convert to sexagesimal
         if coords_ra_dec is not None:
-            hdr['RA'] = (str(coords_ra_dec.ra.to_string(sep=':', unit=u.hour, pad=True)), 'Right ascension of object')
-            hdr['DEC'] = (str(coords_ra_dec.dec.to_string(sep=':', unit=u.deg, pad=True)), 'Declination of object')
+            hdr["RA"] = (str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object")
+            hdr["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
 
         # site location
         if self.observer is not None:
-            hdr['LATITUDE'] = (float(self.observer.location.lat.degree), 'Latitude of telescope [deg N]')
-            hdr['LONGITUD'] = (float(self.observer.location.lon.degree), 'Longitude of telescope [deg E]')
-            hdr['HEIGHT'] = (float(self.observer.location.height.value), 'Altitude of telescope [m]')
+            hdr["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
+            hdr["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
+            hdr["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
 
         # add static fits headers
         for key, value in self._fits_headers.items():
@@ -270,7 +284,7 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
         # get telescope alt/az
         try:
             alt, az = await self.get_altaz()
-            tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame='altaz')
+            tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame="altaz")
         except:
             alt, az, tel_altaz = None, None, None
 
@@ -285,12 +299,12 @@ class BaseTelescope(WeatherAwareMixin, MotionStatusMixin, WaitForMotionMixin, IT
 
         # store it
         self._celestial_headers = {
-            'MOONALT': (float(moon_altaz.alt.degree), 'Lunar altitude'),
-            'MOONFRAC': (float(moon_frac), 'Fraction of the moon illuminated'),
-            'MOONDIST': (None if moon_dist is None else float(moon_dist.degree), 'Lunar distance from target'),
-            'SUNALT': (float(sun_altaz.alt.degree), 'Solar altitude'),
-            'SUNDIST': (None if sun_dist is None else float(sun_dist.degree), 'Solar Distance from Target')
+            "MOONALT": (float(moon_altaz.alt.degree), "Lunar altitude"),
+            "MOONFRAC": (float(moon_frac), "Fraction of the moon illuminated"),
+            "MOONDIST": (None if moon_dist is None else float(moon_dist.degree), "Lunar distance from target"),
+            "SUNALT": (float(sun_altaz.alt.degree), "Solar altitude"),
+            "SUNDIST": (None if sun_dist is None else float(sun_dist.degree), "Solar Distance from Target"),
         }
 
 
-__all__ = ['BaseTelescope']
+__all__ = ["BaseTelescope"]

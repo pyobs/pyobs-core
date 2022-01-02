@@ -5,7 +5,8 @@ from pyobs.images import Image
 
 class FocusSeries:
     """Base class for focus series helper classes."""
-    __module__ = 'pyobs.utils.focusseries'
+
+    __module__ = "pyobs.utils.focusseries"
 
     def reset(self) -> None:
         """Reset focus series."""
@@ -28,4 +29,4 @@ class FocusSeries:
         raise NotImplementedError
 
 
-__all__ = ['FocusSeries']
+__all__ = ["FocusSeries"]

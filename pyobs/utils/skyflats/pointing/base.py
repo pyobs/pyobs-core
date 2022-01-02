@@ -5,7 +5,8 @@ from pyobs.utils.parallel import Future
 
 class SkyFlatsBasePointing(Object):
     """Base class for flat poinings."""
-    __module__ = 'pyobs.utils.skyflats.pointing'
+
+    __module__ = "pyobs.utils.skyflats.pointing"
 
     async def __call__(self, telescope: ITelescope) -> None:
         """Move telescope.
@@ -23,4 +24,4 @@ class SkyFlatsBasePointing(Object):
         pass
 
 
-__all__ = ['SkyFlatsBasePointing']
+__all__ = ["SkyFlatsBasePointing"]

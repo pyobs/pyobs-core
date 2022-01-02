@@ -7,7 +7,8 @@ from .interface import Interface
 class IOffsetsRaDec(Interface, metaclass=ABCMeta):
     """The module supports RA/Dec offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IRaDec`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
@@ -32,4 +33,4 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IOffsetsRaDec']
+__all__ = ["IOffsetsRaDec"]

@@ -27,4 +27,4 @@ class ImageProcessor(Object, metaclass=ABCMeta):
         pass
 
 
-__all__ = ['ImageProcessor']
+__all__ = ["ImageProcessor"]

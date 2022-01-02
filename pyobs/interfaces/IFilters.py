@@ -6,7 +6,8 @@ from .IMotion import IMotion
 
 class IFilters(IMotion, metaclass=ABCMeta):
     """The module can change filters in a device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def list_filters(self, **kwargs: Any) -> List[str]:
@@ -39,4 +40,4 @@ class IFilters(IMotion, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IFilters']
+__all__ = ["IFilters"]

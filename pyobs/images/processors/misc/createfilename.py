@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 
 class CreateFilename(ImageProcessor):
     """Formats the filename for an image and stores it in FNAME."""
-    __module__ = 'pyobs.images.processors.misc'
+
+    __module__ = "pyobs.images.processors.misc"
 
     def __init__(self, pattern: str, **kwargs: Any):
         """Init an image processor that adds a filename to an image.
@@ -23,7 +24,7 @@ class CreateFilename(ImageProcessor):
 
         # default filename patterns
         if pattern is None:
-            pattern = '{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits'
+            pattern = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits"
         self._formatter = FilenameFormatter(pattern)
 
     async def __call__(self, image: Image) -> Image:
@@ -42,5 +43,4 @@ class CreateFilename(ImageProcessor):
         return img
 
 
-__all__ = ['CreateFilename']
-
+__all__ = ["CreateFilename"]

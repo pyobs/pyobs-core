@@ -14,11 +14,17 @@ log = logging.getLogger(__name__)
 
 class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
     """Base class for guiding and acquisition modules."""
-    __module__ = 'pyobs.modules.pointing'
 
-    def __init__(self, camera: Union[str, ICamera], telescope: Union[str, ITelescope],
-                 pipeline: List[Union[Dict[str, Any], ImageProcessor]], apply: Union[Dict[str, Any], ApplyOffsets],
-                 **kwargs: Any):
+    __module__ = "pyobs.modules.pointing"
+
+    def __init__(
+        self,
+        camera: Union[str, ICamera],
+        telescope: Union[str, ITelescope],
+        pipeline: List[Union[Dict[str, Any], ImageProcessor]],
+        apply: Union[Dict[str, Any], ApplyOffsets],
+        **kwargs: Any,
+    ):
         """Initializes a new base pointing.
 
         Args:
@@ -46,13 +52,13 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
         try:
             await self.proxy(self._telescope, ITelescope)
         except ValueError:
-            log.warning('Given telescope does not exist or is not of correct type at the moment.')
+            log.warning("Given telescope does not exist or is not of correct type at the moment.")
 
         # check camera
         try:
             await self.proxy(self._camera, ICamera)
         except ValueError:
-            log.warning('Given camera does not exist or is not of correct type at the moment.')
+            log.warning("Given camera does not exist or is not of correct type at the moment.")
 
 
-__all__ = ['BasePointing']
+__all__ = ["BasePointing"]

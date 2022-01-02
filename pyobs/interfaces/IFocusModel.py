@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IFocusModel(Interface, metaclass=ABCMeta):
     """The module provides a model for the telescope focus, e.g. based on temperatures."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_optimal_focus(self, **kwargs: Any) -> float:
@@ -19,4 +20,4 @@ class IFocusModel(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IFocusModel']
+__all__ = ["IFocusModel"]

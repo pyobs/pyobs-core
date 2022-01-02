@@ -12,8 +12,9 @@ from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 log = logging.getLogger(__name__)
 
 
-async def get_coords(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) \
-        -> Tuple[float, float]:
+async def get_coords(
+    obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]
+) -> Tuple[float, float]:
     """Gets coordinates from object
 
     Args:
@@ -29,7 +30,7 @@ async def get_coords(obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Unio
     elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
         return await obj.get_radec()
     else:
-        raise ValueError('Unknown mode.')
+        raise ValueError("Unknown mode.")
 
 
 def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> SkyCoord:
@@ -44,18 +45,26 @@ def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IPointingAltAz, 
     """
 
     if mode == IPointingAltAz:
-        return SkyCoord(alt=coord[0] * u.deg, az=coord[1] * u.deg, frame='altaz')
+        return SkyCoord(alt=coord[0] * u.deg, az=coord[1] * u.deg, frame="altaz")
     else:
-        return SkyCoord(ra=coord[0] * u.deg, dec=coord[1] * u.deg, frame='icrs')
+        return SkyCoord(ra=coord[0] * u.deg, dec=coord[1] * u.deg, frame="icrs")
 
 
 class FollowMixin:
     """Mixin for a device that should follow the motion of another."""
-    __module__ = 'pyobs.mixins'
 
-    def __init__(self, device: Optional[str], mode: Type[Union[IPointingAltAz, IPointingRaDec]],
-                 interval: float = 10, tolerance: float = 1, only_follow_when_ready: bool = True,
-                 *args: Any, **kwargs: Any):
+    __module__ = "pyobs.mixins"
+
+    def __init__(
+        self,
+        device: Optional[str],
+        mode: Type[Union[IPointingAltAz, IPointingRaDec]],
+        interval: float = 10,
+        tolerance: float = 1,
+        only_follow_when_ready: bool = True,
+        *args: Any,
+        **kwargs: Any,
+    ):
         """Initializes the mixin.
 
         Args:
@@ -79,12 +88,12 @@ class FollowMixin:
         # add thread function only, if device is given
         if self.__follow_device is not None:
             if not isinstance(self, Module):
-                raise ValueError('This is not a module.')
+                raise ValueError("This is not a module.")
             self.add_background_task(this.__update_follow)
 
         # check
         if not isinstance(self, self.__follow_mode):
-            raise ValueError('This module is not of given mode %s.' % mode)
+            raise ValueError("This module is not of given mode %s." % mode)
 
     @property
     def is_following(self) -> bool:
@@ -97,7 +106,7 @@ class FollowMixin:
         # store self for later
         this = self
         if not isinstance(self, Module):
-            raise ValueError('Not a module.')
+            raise ValueError("Not a module.")
         module = self
 
         # wait a little
@@ -117,7 +126,7 @@ class FollowMixin:
                 device = await module.proxy(this.__follow_device, this.__follow_mode)
             except ValueError:
                 # cannot follow, wait a little longer
-                log.warning('Cannot follow module, since it is of wrong type.')
+                log.warning("Cannot follow module, since it is of wrong type.")
                 await asyncio.sleep(this.__follow_interval * 10)
                 continue
 
@@ -131,9 +140,9 @@ class FollowMixin:
                 connected = True
             except (ValueError, RemoteException):
                 if connected:
-                    log.warning('Could not fetch coordinates.')
+                    log.warning("Could not fetch coordinates.")
                 connected = False
-                await asyncio.sleep(this.__follow_interval * 10.)
+                await asyncio.sleep(this.__follow_interval * 10.0)
                 continue
 
             # is separation larger than tolerance?
@@ -144,10 +153,10 @@ class FollowMixin:
                 elif this.__follow_mode == IPointingRaDec and isinstance(self, IPointingRaDec):
                     asyncio.create_task(self.move_radec(*xy_coords))
                 else:
-                    raise ValueError('invalid follow mode.')
+                    raise ValueError("invalid follow mode.")
 
             # sleep a little
             await asyncio.sleep(this.__follow_interval)
 
 
-__all__ = ['FollowMixin']
+__all__ = ["FollowMixin"]

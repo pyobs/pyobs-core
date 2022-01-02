@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
-    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = 'info', **kwargs: Any):
+    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = "info", **kwargs: Any):
         """Initializes a pyobs application.
 
         Args:
@@ -35,7 +35,7 @@ class Application:
         self._config = config
 
         # formatter for logging, and list of logging handlers
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
         handlers = []
 
         # create stdout logging handler
@@ -46,7 +46,7 @@ class Application:
         # create file logging handler, if log file is given
         if log_file is not None:
             # in Windows, append a FileHandler, otherwise we use a WatchedFileHandler, which works well with logrotate
-            if platform.system() == 'Windows':
+            if platform.system() == "Windows":
                 file_handler = logging.FileHandler(log_file)
             else:
                 file_handler = logging.handlers.WatchedFileHandler(log_file)
@@ -58,10 +58,10 @@ class Application:
         # basic setup
         logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))
         logging.captureWarnings(True)
-        warnings.simplefilter('always', DeprecationWarning)
+        warnings.simplefilter("always", DeprecationWarning)
 
         # disable tornado logger
-        logging.getLogger('tornado.access').disabled = True
+        logging.getLogger("tornado.access").disabled = True
 
         # set pyobs logger
         global log
@@ -71,12 +71,12 @@ class Application:
         self._hack_threading()
 
         # load config
-        log.info('Loading configuration from {0:s}...'.format(self._config))
+        log.info("Loading configuration from {0:s}...".format(self._config))
         with StringIO(pre_process_yaml(self._config)) as f:
             cfg: Dict[str, Any] = yaml.safe_load(f)
 
         # create module and open it
-        log.info('Creating module...')
+        log.info("Creating module...")
         self._module = get_object(cfg, Module)
 
     def run(self) -> None:
@@ -109,7 +109,7 @@ class Application:
         loop.stop()
 
         # reset signal handlers
-        log.info(f'Got signal: {sig!s}, shutting down.')
+        log.info(f"Got signal: {sig!s}, shutting down.")
         loop.remove_signal_handler(signal.SIGTERM)
         loop.add_signal_handler(signal.SIGINT, lambda: None)
 
@@ -119,28 +119,28 @@ class Application:
         # everything in a try/except/finally, so that we can shut down gracefully
         try:
             # open module
-            log.info('Opening module...')
+            log.info("Opening module...")
             await self._module.open()
-            log.info('Started successfully.')
+            log.info("Started successfully.")
 
             # run module
             await self._module.main()
 
         except:
             # some exception was thrown
-            log.exception('Something went wrong.')
+            log.exception("Something went wrong.")
 
         finally:
             # shutting down
-            log.info('Shutting down...')
+            log.info("Shutting down...")
 
             # close module
             if self._module is not None:
-                log.info('Closing module...')
+                log.info("Closing module...")
                 await self._module.close()
 
             # finished
-            log.info('Finished shutting down.')
+            log.info("Finished shutting down.")
 
     def _hack_threading(self) -> None:
         """Bad hack to set thread name on OS level."""
@@ -158,8 +158,8 @@ class Application:
             threading.Thread._bootstrap = _thread_name_hack  # type: ignore
 
         except ImportError:
-            logger = logging.getLogger('pyobs')
-            logger.warning('prctl module is not installed. You will not be able to see thread names')
+            logger = logging.getLogger("pyobs")
+            logger.warning("prctl module is not installed. You will not be able to see thread names")
 
             def set_thread_name(name: str) -> None:
                 pass
@@ -189,4 +189,4 @@ class GuiApplication(Application):
         self._qapp.exec()
 
 
-__all__ = ['Application', 'GuiApplication']
+__all__ = ["Application", "GuiApplication"]

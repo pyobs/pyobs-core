@@ -37,7 +37,7 @@ class DataCache(object):
     """Data cache for proxy server."""
 
     """Type for cache entries."""
-    Entry = namedtuple('Entry', 'time name data')
+    Entry = namedtuple("Entry", "time name data")
 
     def __init__(self, size: int = 20):
         """Init cache.
@@ -102,7 +102,7 @@ class DataCache(object):
                 cache = sorted(self._cache.values(), key=lambda x: x.time, reverse=True)
 
                 # delete all elements except for the latest N
-                for c in cache[self._size:]:
+                for c in cache[self._size :]:
                     del self._cache[c.name]
 
     def __delitem__(self, name: str) -> None:
@@ -114,4 +114,4 @@ class DataCache(object):
         del self._cache[name]
 
 
-__all__ = ['DataCache']
+__all__ = ["DataCache"]

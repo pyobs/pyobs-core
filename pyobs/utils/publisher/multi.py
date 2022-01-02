@@ -34,4 +34,4 @@ class MultiPublisher(Publisher):
             await p(**kwargs)
 
 
-__all__ = ['MultiPublisher']
+__all__ = ["MultiPublisher"]

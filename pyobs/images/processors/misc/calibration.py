@@ -18,7 +18,8 @@ log = logging.getLogger(__name__)
 
 class Calibration(ImageProcessor):
     """Calibrate an image."""
-    __module__ = 'pyobs.images.processors.misc'
+
+    __module__ = "pyobs.images.processors.misc"
 
     """Cache for calibration frames."""
     calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
@@ -54,49 +55,58 @@ class Calibration(ImageProcessor):
             dark = await self._find_master(image, ImageType.DARK)
             flat = await self._find_master(image, ImageType.SKYFLAT)
         except ValueError as e:
-            log.error('Could not find calibration frames: ' + str(e))
+            log.error("Could not find calibration frames: " + str(e))
             return image
 
         # calibrate image
-        c = await asyncio.get_running_loop().run_in_executor(None, partial(
-            ccdproc.ccd_process,
-            image.to_ccddata(),
-            oscan=image.header['BIASSEC'] if 'BIASSEC' in image.header else None,
-            trim=image.header['TRIMSEC'] if 'TRIMSEC' in image.header else None,
-            error=True,
-            master_bias=bias.to_ccddata() if bias is not None else None,
-            dark_frame=dark.to_ccddata() if dark is not None else None,
-            master_flat=flat.to_ccddata() if flat is not None else None,
-            bad_pixel_mask=None,
-            gain=image.header['DET-GAIN'] * u.electron / u.adu,
-            readnoise=image.header['DET-RON'] * u.electron,
-            dark_exposure=dark.header['EXPTIME'] * u.second if dark is not None else None,
-            data_exposure=image.header['EXPTIME'] * u.second,
-            dark_scale=True,
-            gain_corrected=False
-        ))
+        c = await asyncio.get_running_loop().run_in_executor(
+            None,
+            partial(
+                ccdproc.ccd_process,
+                image.to_ccddata(),
+                oscan=image.header["BIASSEC"] if "BIASSEC" in image.header else None,
+                trim=image.header["TRIMSEC"] if "TRIMSEC" in image.header else None,
+                error=True,
+                master_bias=bias.to_ccddata() if bias is not None else None,
+                dark_frame=dark.to_ccddata() if dark is not None else None,
+                master_flat=flat.to_ccddata() if flat is not None else None,
+                bad_pixel_mask=None,
+                gain=image.header["DET-GAIN"] * u.electron / u.adu,
+                readnoise=image.header["DET-RON"] * u.electron,
+                dark_exposure=dark.header["EXPTIME"] * u.second if dark is not None else None,
+                data_exposure=image.header["EXPTIME"] * u.second,
+                dark_scale=True,
+                gain_corrected=False,
+            ),
+        )
 
         # to image
         calibrated = Image.from_ccddata(c)
-        calibrated.header['BUNIT'] = ('electron', 'Unit of pixel values')
+        calibrated.header["BUNIT"] = ("electron", "Unit of pixel values")
 
         # set raw filename
-        if 'ORIGNAME' in image.header:
-            calibrated.header['L1RAW'] = image.header['ORIGNAME'].replace('.fits', '')
+        if "ORIGNAME" in image.header:
+            calibrated.header["L1RAW"] = image.header["ORIGNAME"].replace(".fits", "")
 
         # add calibration frames
         if bias is not None:
-            calibrated.header['L1BIAS'] = (bias.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                           'Name of BIAS frame')
+            calibrated.header["L1BIAS"] = (
+                bias.header["FNAME"].replace(".fits.fz", "").replace(".fits", ""),
+                "Name of BIAS frame",
+            )
         if dark is not None:
-            calibrated.header['L1DARK'] = (dark.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                           'Name of DARK frame')
+            calibrated.header["L1DARK"] = (
+                dark.header["FNAME"].replace(".fits.fz", "").replace(".fits", ""),
+                "Name of DARK frame",
+            )
         if flat is not None:
-            calibrated.header['L1FLAT'] = (flat.header['FNAME'].replace('.fits.fz', '').replace('.fits', ''),
-                                           'Name of FLAT frame')
+            calibrated.header["L1FLAT"] = (
+                flat.header["FNAME"].replace(".fits.fz", "").replace(".fits", ""),
+                "Name of FLAT frame",
+            )
 
         # set RLEVEL
-        calibrated.header['RLEVEL'] = (1, 'Reduction level')
+        calibrated.header["RLEVEL"] = (1, "Reduction level")
 
         # finished
         return calibrated
@@ -116,14 +126,14 @@ class Calibration(ImageProcessor):
 
         # get mode
         try:
-            instrument = image.header['INSTRUME']
-            binning = '{0}x{0}'.format(image.header['XBINNING'])
-            filter_name = cast(str, image.header['FILTER']) if 'FILTER' in image.header else None
-            time = Time(image.header['DATE-OBS'])
+            instrument = image.header["INSTRUME"]
+            binning = "{0}x{0}".format(image.header["XBINNING"])
+            filter_name = cast(str, image.header["FILTER"]) if "FILTER" in image.header else None
+            time = Time(image.header["DATE-OBS"])
             mode = image_type, instrument, binning, filter_name
         except KeyError:
             # could not fetch header items
-            raise ValueError('Could not fetch items from image header.')
+            raise ValueError("Could not fetch items from image header.")
 
         # is in cache?
         for m, item in Calibration.calib_cache:
@@ -131,13 +141,19 @@ class Calibration(ImageProcessor):
                 return item
 
         # try to download one
-        master = await Pipeline.find_master(self._archive, image_type, time, instrument, binning,
-                                            None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
-                                            max_days=30)
+        master = await Pipeline.find_master(
+            self._archive,
+            image_type,
+            time,
+            instrument,
+            binning,
+            None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
+            max_days=30,
+        )
 
         # nothing?
         if master is None:
-            raise ValueError('No master frame found.')
+            raise ValueError("No master frame found.")
 
         # store it in cache
         Calibration.calib_cache.append((mode, master))
@@ -150,4 +166,4 @@ class Calibration(ImageProcessor):
         return master
 
 
-__all__ = ['Calibration']
+__all__ = ["Calibration"]

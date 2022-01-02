@@ -7,7 +7,8 @@ from pyobs.utils.enums import ImageFormat
 
 class IImageFormat(Interface, metaclass=ABCMeta):
     """The module supports different image formats (e.g. INT16, FLOAT32), mainly used by cameras."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
@@ -40,4 +41,4 @@ class IImageFormat(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IImageFormat']
+__all__ = ["IImageFormat"]

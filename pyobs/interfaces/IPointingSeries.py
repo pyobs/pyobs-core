@@ -7,7 +7,8 @@ from .interface import Interface
 class IPointingSeries(Interface, metaclass=ABCMeta):
     """The module provides the interface for a device that initializes and finalizes a pointing series and adds points
     to it."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def start_pointing_series(self, **kwargs: Any) -> str:
@@ -29,4 +30,4 @@ class IPointingSeries(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IPointingSeries']
+__all__ = ["IPointingSeries"]

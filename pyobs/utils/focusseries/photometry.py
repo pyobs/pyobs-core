@@ -14,9 +14,10 @@ log = logging.getLogger(__name__)
 
 class PhotometryFocusSeries(FocusSeries):
     """Focus series based on source detection."""
-    __module__ = 'pyobs.utils.focusseries'
 
-    def __init__(self, source_detection: SourceDetection, radius_column: str = 'radius', **kwargs: Any):
+    __module__ = "pyobs.utils.focusseries"
+
+    def __init__(self, source_detection: SourceDetection, radius_column: str = "radius", **kwargs: Any):
         """Initialize a new projection focus series.
 
         Args:
@@ -46,19 +47,19 @@ class PhotometryFocusSeries(FocusSeries):
         sources = image.catalog
         if sources is None:
             return
-        sources = sources[sources['ellipticity'] < 0.1]
-        sources = sources[sources['peak'] > 1000]
-        sources = sources[sources['radius'] > 0]
+        sources = sources[sources["ellipticity"] < 0.1]
+        sources = sources[sources["peak"] > 1000]
+        sources = sources[sources["radius"] > 0]
 
         # calculate median radius
-        radius = np.median(sources['radius'])
-        radius_err = np.std(sources['radius'])
+        radius = np.median(sources["radius"])
+        radius_err = np.std(sources["radius"])
 
         # log it
-        log.info('Found median radius of %.1f+-%.1f.', radius, radius_err)
+        log.info("Found median radius of %.1f+-%.1f.", radius, radius_err)
 
         # add to list
-        self._data.append({'focus': float(image.header['TEL-FOCU']), 'r': radius, 'rerr': radius_err})
+        self._data.append({"focus": float(image.header["TEL-FOCU"]), "r": radius, "rerr": radius_err})
 
     def fit_focus(self) -> Tuple[float, float]:
         """Fit focus from analysed images
@@ -68,15 +69,15 @@ class PhotometryFocusSeries(FocusSeries):
         """
 
         # get data
-        focus = [d['focus'] for d in self._data]
-        r = [d['r'] for d in self._data]
-        rerr = [d['rerr'] for d in self._data]
+        focus = [d["focus"] for d in self._data]
+        r = [d["r"] for d in self._data]
+        rerr = [d["rerr"] for d in self._data]
 
         # fit focus
         try:
             foc, err = fit_hyperbola(focus, r, rerr)
         except (RuntimeError, RuntimeWarning):
-            raise ValueError('Could not find best focus.')
+            raise ValueError("Could not find best focus.")
 
         # get min and max foci
         min_focus = np.min(focus)
@@ -88,4 +89,4 @@ class PhotometryFocusSeries(FocusSeries):
         return float(foc), float(err)
 
 
-__all__ = ['PhotometryFocusSeries']
+__all__ = ["PhotometryFocusSeries"]

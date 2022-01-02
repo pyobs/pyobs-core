@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 
 class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, Module, metaclass=ABCMeta):
     """Base class for roofs."""
-    __module__ = 'pyobs.modules.roof'
+
+    __module__ = "pyobs.modules.roof"
 
     def __init__(self, **kwargs: Any):
         """Initialize a new base roof."""
@@ -30,8 +31,9 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
 
-    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
-            -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(
+        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+    ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -41,8 +43,10 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
             Dictionary containing FITS headers.
         """
         return {
-            'ROOF-OPN': (await self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
-                         'True for open, false for closed roof')
+            "ROOF-OPN": (
+                await self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
+                "True for open, false for closed roof",
+            )
         }
 
     async def is_ready(self, **kwargs: Any) -> bool:
@@ -53,8 +57,13 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """
 
         # check that motion is not in one of the states listed below
-        return await self.get_motion_status() not in [MotionStatus.PARKED, MotionStatus.INITIALIZING,
-                                                      MotionStatus.PARKING, MotionStatus.ERROR, MotionStatus.UNKNOWN]
+        return await self.get_motion_status() not in [
+            MotionStatus.PARKED,
+            MotionStatus.INITIALIZING,
+            MotionStatus.PARKING,
+            MotionStatus.ERROR,
+            MotionStatus.UNKNOWN,
+        ]
 
 
-__all__ = ['BaseRoof']
+__all__ = ["BaseRoof"]

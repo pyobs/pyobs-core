@@ -36,7 +36,7 @@ class DummyComm(Comm):
     @property
     def name(self) -> str:
         """Name of this client, which is unknown."""
-        return 'module'
+        return "module"
 
 
-__all__ = ['DummyComm']
+__all__ = ["DummyComm"]

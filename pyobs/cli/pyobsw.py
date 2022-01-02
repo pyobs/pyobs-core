@@ -12,5 +12,5 @@ def main():
     run(app_class=GuiApplication, **args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -30,8 +30,7 @@ class HttpFileCache(Module):
 
         # define web server
         self._app = web.Application()
-        self._app.add_routes([web.get('/{filename}', self.download_handler),
-                              web.post('/', self.upload_handler)])
+        self._app.add_routes([web.get("/{filename}", self.download_handler), web.post("/", self.upload_handler)])
         self._runner = web.AppRunner(self._app)
         self._site: Optional[web.TCPSite] = None
 
@@ -40,9 +39,9 @@ class HttpFileCache(Module):
         await Module.open(self)
 
         # start listening
-        log.info('Starting HTTP file cache on port %d...', self._port)
+        log.info("Starting HTTP file cache on port %d...", self._port)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, '0.0.0.0', self._port)
+        self._site = web.TCPSite(self._runner, "0.0.0.0", self._port)
         await self._site.start()
         self._is_listening = True
 
@@ -69,7 +68,7 @@ class HttpFileCache(Module):
         """
 
         # get filename
-        filename = request.match_info['filename']
+        filename = request.match_info["filename"]
 
         # get data
         if filename not in self._cache:
@@ -77,7 +76,7 @@ class HttpFileCache(Module):
         data = self._cache[filename]
 
         # send it
-        log.info(f'Serving file {filename}.')
+        log.info(f"Serving file {filename}.")
         return web.Response(body=data)
 
     async def upload_handler(self, request: web.Request) -> web.Response:
@@ -96,7 +95,7 @@ class HttpFileCache(Module):
         data: Optional[bytes] = None
         async for field in reader:
             # we expect a file called 'file'
-            if field.name == 'file':
+            if field.name == "file":
                 filename = field.filename
                 data = await field.read()
                 break
@@ -106,11 +105,11 @@ class HttpFileCache(Module):
             raise web.HTTPNotFound()
 
         # store it
-        log.info(f'Storing file {filename}.')
+        log.info(f"Storing file {filename}.")
         self._cache[filename] = data
 
         # return filename
         return web.Response(body=filename)
 
 
-__all__ = ['HttpFileCache']
+__all__ = ["HttpFileCache"]

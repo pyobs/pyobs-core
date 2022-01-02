@@ -6,15 +6,17 @@ from typing import TYPE_CHECKING, Any, Type, List, Dict
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_bound_arguments_to_simple
+
 if TYPE_CHECKING:
     from pyobs.comm import Comm
 
 
 class Proxy:
     """A proxy for remote pyobs modules."""
-    __module__ = 'pyobs.comm'
 
-    def __init__(self, comm: 'Comm', client: str, interfaces: List[Type[Interface]]):
+    __module__ = "pyobs.comm"
+
+    def __init__(self, comm: "Comm", client: str, interfaces: List[Type[Interface]]):
         """Creates a new proxy.
 
         Args:
@@ -135,10 +137,10 @@ class Proxy:
             Wrapper.
         """
 
-        async def inner(this: 'Proxy', *args: Any, **kwargs: Any) -> Any:
+        async def inner(this: "Proxy", *args: Any, **kwargs: Any) -> Any:
             return await this.execute(method, *args, **kwargs)
 
         return inner
 
 
-__all__ = ['Proxy']
+__all__ = ["Proxy"]

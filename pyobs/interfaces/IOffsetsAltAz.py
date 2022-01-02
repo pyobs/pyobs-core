@@ -7,7 +7,8 @@ from .interface import Interface
 class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     """The module supports Alt/Az offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IAltAz`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_offsets_altaz(self, dalt: float, daz: float, **kwargs: Any) -> None:
@@ -32,4 +33,4 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IOffsetsAltAz']
+__all__ = ["IOffsetsAltAz"]

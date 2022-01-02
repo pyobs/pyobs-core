@@ -48,20 +48,20 @@ class ExpTimeEval:
         if isinstance(functions, str):
             # single function
             self._functions[None, None] = p.parse(functions)
-            log.info('Found a single flatfield function for all binnings and filters.')
+            log.info("Found a single flatfield function for all binnings and filters.")
 
         else:
             # check, whether keys are binnings or filters
-            is_binning = [re.match('[0-9]+x[0-9]+', k) is not None for k in functions.keys()]
+            is_binning = [re.match("[0-9]+x[0-9]+", k) is not None for k in functions.keys()]
             if any(is_binning) and not all(is_binning):
-                raise ValueError('Inconsistent configuration: first layer is neither all binnings nor all filters. ')
+                raise ValueError("Inconsistent configuration: first layer is neither all binnings nor all filters. ")
 
             # if all entries in is_binning are True, first layer is binnings
             if all(is_binning):
                 # 1st level is binnings, is next level strings or another dict?
                 is_str = [isinstance(f, str) for f in functions.values()]
                 if any(is_str) and not all(is_str):
-                    raise ValueError('Inconsistent configuration: second layer is neither all str nor all dicts.')
+                    raise ValueError("Inconsistent configuration: second layer is neither all str nor all dicts.")
 
                 # filters or not?
                 if all(is_str):
@@ -76,13 +76,13 @@ class ExpTimeEval:
                             for f, func in tmp.items():
                                 self._functions[self._bin(b), f] = p.parse(func)
                         else:
-                            raise ValueError('Inconsistent configuration.')
+                            raise ValueError("Inconsistent configuration.")
 
             else:
                 # 1st level is filters, second level must be strings!
                 is_str = [isinstance(f, str) for f in functions.values()]
                 if not all(is_str):
-                    raise ValueError('Inconsistent configuration: second level must be functions.')
+                    raise ValueError("Inconsistent configuration: second level must be functions.")
 
                 # parse
                 self._functions = {(None, f): p.parse(func) for f, func in functions.items()}
@@ -90,7 +90,7 @@ class ExpTimeEval:
     @staticmethod
     def _bin(binning: str) -> Tuple[int, int]:
         """Split binning"""
-        s = binning.split('x')
+        s = binning.split("x")
         return int(s[0]), int(s[1])
 
     def _keys(self, i: int) -> List[Any]:
@@ -109,8 +109,9 @@ class ExpTimeEval:
         """Return list of filters."""
         return self._keys(1)
 
-    def __call__(self, solalt: float, binning: Optional[Tuple[int, int]] = None, filter_name: Optional[str] = None) \
-            -> float:
+    def __call__(
+        self, solalt: float, binning: Optional[Tuple[int, int]] = None, filter_name: Optional[str] = None
+    ) -> float:
         """Estimate exposure time for given filter
 
         Args:
@@ -130,10 +131,10 @@ class ExpTimeEval:
             filter_name = None
 
         # get function and evaluate it
-        exptime = float(self._functions[binning if got_binnings else None, filter_name].evaluate({'h': solalt}))
+        exptime = float(self._functions[binning if got_binnings else None, filter_name].evaluate({"h": solalt}))
 
         # need to scale with exp time?
-        return exptime / (binning[0]*binning[1]) if not got_binnings and binning is not None else exptime
+        return exptime / (binning[0] * binning[1]) if not got_binnings and binning is not None else exptime
 
     def init(self, time: Time) -> None:
         """Initialize object with the given time.
@@ -151,10 +152,11 @@ class ExpTimeEval:
 
         # get m, b for calculating sun_alt=m*time+b
         self._b = sun_now.alt.degree
-        self._m = (sun_10min.alt.degree - self._b) / (10. * 60.)
+        self._m = (sun_10min.alt.degree - self._b) / (10.0 * 60.0)
 
-    def exp_time(self, time_offset: float, binning: Optional[Tuple[int, int]] = None,
-                 filter_name: Optional[str] = None) -> float:
+    def exp_time(
+        self, time_offset: float, binning: Optional[Tuple[int, int]] = None, filter_name: Optional[str] = None
+    ) -> float:
         """Estimates exposure time for a given filter and binning at a given time offset from the start time (see init).
 
         Args:
@@ -166,11 +168,17 @@ class ExpTimeEval:
             Estimated exposure time
         """
         if self._m is None or self._b is None:
-            raise ValueError('m or b not set.')
+            raise ValueError("m or b not set.")
         return self(self._m * time_offset + self._b, binning=binning, filter_name=filter_name)
 
-    def duration(self, count: int, start_time: float = 0, readout: float = 0,
-                 binning: Optional[Tuple[int, int]] = None, filter_name: Optional[str] = None) -> float:
+    def duration(
+        self,
+        count: int,
+        start_time: float = 0,
+        readout: float = 0,
+        binning: Optional[Tuple[int, int]] = None,
+        filter_name: Optional[str] = None,
+    ) -> float:
         """Estimates the duration for a given amount of flats in the given filter and binning, starting at the given
         start time.
 

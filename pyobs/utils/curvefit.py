@@ -29,8 +29,9 @@ def fit_hyperbola(x_arr: List[float], y_arr: List[float], y_err: List[float]) ->
     p0 = [a, b, c]
 
     # fit
-    coeffs, cov = curve_fit(lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa ** 2 + 1.),
-                            x_arr, y_arr, sigma=y_err, p0=p0)
+    coeffs, cov = curve_fit(
+        lambda xx, aa, bb, cc: bb * np.sqrt((xx - cc) ** 2 / aa ** 2 + 1.0), x_arr, y_arr, sigma=y_err, p0=p0
+    )
 
     # return result
     return coeffs[2], cov[2][2]

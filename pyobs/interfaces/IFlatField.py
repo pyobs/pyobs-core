@@ -6,7 +6,8 @@ from .IAbortable import IAbortable
 
 class IFlatField(IAbortable, metaclass=ABCMeta):
     """The module performs flat-fielding."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
@@ -21,4 +22,4 @@ class IFlatField(IAbortable, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IFlatField']
+__all__ = ["IFlatField"]

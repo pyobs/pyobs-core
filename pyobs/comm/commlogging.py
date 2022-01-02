@@ -3,6 +3,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from pyobs.events import LogEvent
+
 if TYPE_CHECKING:
     from pyobs.comm import Comm
 
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
 class CommLoggingHandler(logging.Handler):
     """A logging handler that sends all messages through a Comm module."""
 
-    def __init__(self, comm: 'Comm'):
+    def __init__(self, comm: "Comm"):
         """Create a new logging handler.
 
         Args:
@@ -25,9 +26,10 @@ class CommLoggingHandler(logging.Handler):
         Args:
             rec: Log record to send.
         """
-        entry = LogEvent(rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName,  rec.lineno,
-                         rec.msg % rec.args)
+        entry = LogEvent(
+            rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, rec.msg % rec.args
+        )
         self._comm.log_message(entry)
 
 
-__all__ = ['CommLoggingHandler']
+__all__ = ["CommLoggingHandler"]

@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 
 class ProjectedOffsets(Offsets):
     """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
-    __module__ = 'pyobs.images.processors.offsets'
+
+    __module__ = "pyobs.images.processors.offsets"
 
     def __init__(self, **kwargs: Any):
         """Initializes a new auto guiding system."""
@@ -29,7 +30,7 @@ class ProjectedOffsets(Offsets):
 
     async def reset(self) -> None:
         """Resets guiding."""
-        log.info('Reset auto-guiding.')
+        log.info("Reset auto-guiding.")
         self._ref_image = None
 
     async def __call__(self, image: Image) -> Image:
@@ -47,21 +48,21 @@ class ProjectedOffsets(Offsets):
 
         # no reference image?
         if self._ref_image is None:
-            log.info('Initialising auto-guiding with new image...')
+            log.info("Initialising auto-guiding with new image...")
             self._ref_image = self._process(image)
             self._init_pid()
             self.offset = (0, 0)
             return image
 
         # process it
-        log.info('Perform auto-guiding on new image...')
+        log.info("Perform auto-guiding on new image...")
         sum_x, sum_y = self._process(image)
 
         # find peaks
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
         if dx is None or dy is None:
-            log.error('Could not correlate peaks.')
+            log.error("Could not correlate peaks.")
             return image
 
         # set it
@@ -83,15 +84,15 @@ class ProjectedOffsets(Offsets):
 
         # no data?
         if data is None:
-            raise ValueError('Image contains no data.')
+            raise ValueError("Image contains no data.")
 
         # trimsec
-        if 'TRIMSEC' in hdr:
-            m = re.match(r'\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]', hdr['TRIMSEC'])
+        if "TRIMSEC" in hdr:
+            m = re.match(r"\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]", hdr["TRIMSEC"])
             if m is None:
-                raise ValueError('Invalid trimsec.')
+                raise ValueError("Invalid trimsec.")
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
-            data = data[y0 - 1:y1, x0 - 1:x1]
+            data = data[y0 - 1 : y1, x0 - 1 : x1]
 
         # collapse
         sum_x = np.nansum(data, 0)
@@ -105,7 +106,7 @@ class ProjectedOffsets(Offsets):
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2. * sigma ** 2))
+        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
 
     @staticmethod
     def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
@@ -123,12 +124,12 @@ class ProjectedOffsets(Offsets):
 
         # cut window
         x = np.linspace(centre - fit_width, centre + fit_width, 2 * fit_width + 1)
-        y = corr[i_max - fit_width:i_max + fit_width + 1]
+        y = corr[i_max - fit_width : i_max + fit_width + 1]
 
         # moment calculation for initial guesses
         total = float(y.sum())
         m = (x * y).sum() / total
-        m2 = (x * x * y).sum() / total - m**2
+        m2 = (x * x * y).sum() / total - m ** 2
 
         # initial guess
         guesses = [np.max(y), m, m2]
@@ -162,10 +163,10 @@ class ProjectedOffsets(Offsets):
         w2 = float(len(x)) / sbin
         for i in range(sbin):
             # sort data in range
-            bindata = list(reversed(sorted(data[int(w1):int(w2)])))
+            bindata = list(reversed(sorted(data[int(w1) : int(w2)])))
             # calculate median and set wavelength
-            bins[i] = np.median(bindata[int(-frac * len(bindata)):-1])
-            binxs[i] = np.mean(x[int(w1):int(w2)])
+            bins[i] = np.median(bindata[int(-frac * len(bindata)) : -1])
+            binxs[i] = np.mean(x[int(w1) : int(w2)])
             # reset ranges
             w1 = w2
             w2 += float(len(x)) / sbin
@@ -182,4 +183,4 @@ class ProjectedOffsets(Offsets):
         return data - cont
 
 
-__all__ = ['ProjectedOffsets']
+__all__ = ["ProjectedOffsets"]

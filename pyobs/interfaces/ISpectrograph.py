@@ -7,7 +7,8 @@ from pyobs.utils.enums import ExposureStatus
 
 class ISpectrograph(IAbortable, metaclass=ABCMeta):
     """The module controls a camera."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
@@ -49,4 +50,4 @@ class ISpectrograph(IAbortable, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['ISpectrograph']
+__all__ = ["ISpectrograph"]

@@ -2,7 +2,7 @@
 Modules for performing flatfields.
 TODO: write doc
 """
-__title__ = 'Flatfielding'
+__title__ = "Flatfielding"
 
 from .flatfield import FlatField
 from .pointing import FlatFieldPointing

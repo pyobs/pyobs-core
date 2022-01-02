@@ -14,9 +14,10 @@ log = logging.getLogger(__name__)
 
 class AutoGuiding(BaseGuiding):
     """An auto-guiding system."""
-    __module__ = 'pyobs.modules.guiding'
 
-    def __init__(self, exposure_time: float = 1., **kwargs: Any):
+    __module__ = "pyobs.modules.guiding"
+
+    def __init__(self, exposure_time: float = 1.0, **kwargs: Any):
         """Initializes a new auto guiding system.
 
         Args:
@@ -38,7 +39,7 @@ class AutoGuiding(BaseGuiding):
         Args:
             exposure_time: Exposure time in secs.
         """
-        log.info('Setting exposure time to %ds...', exposure_time)
+        log.info("Setting exposure time to %ds...", exposure_time)
         self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
@@ -62,10 +63,10 @@ class AutoGuiding(BaseGuiding):
                 # take image
                 if isinstance(camera, IExposureTime):
                     # set exposure time
-                    log.info('Taking image with an exposure time of %.2fs...', self._exposure_time)
+                    log.info("Taking image with an exposure time of %.2fs...", self._exposure_time)
                     await camera.set_exposure_time(self._exposure_time)
                 else:
-                    log.info('Taking image...')
+                    log.info("Taking image...")
                 if isinstance(camera, IImageType):
                     await camera.set_image_type(ImageType.OBJECT)
                 filename = await camera.grab_image(broadcast=False)
@@ -74,9 +75,9 @@ class AutoGuiding(BaseGuiding):
                 image = await self.vfs.read_image(filename)
 
                 # process it
-                log.info('Processing image...')
+                log.info("Processing image...")
                 processed_image = await self._process_image(image)
-                log.info('Done.')
+                log.info("Done.")
 
                 # new exposure time?
                 if processed_image is not None and processed_image.has_meta(ExpTime):
@@ -86,8 +87,8 @@ class AutoGuiding(BaseGuiding):
                 await asyncio.sleep(self._min_interval)
 
             except Exception as e:
-                log.error('An error occurred: ', e)
+                log.error("An error occurred: ", e)
                 await asyncio.sleep(5)
 
 
-__all__ = ['AutoGuiding']
+__all__ = ["AutoGuiding"]

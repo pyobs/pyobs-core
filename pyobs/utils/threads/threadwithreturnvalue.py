@@ -22,7 +22,7 @@ class ThreadWithReturnValue(Thread):
 
     def join(self, timeout: Optional[float] = None) -> Any:
         if timeout is None:
-            log.warning('Joining thread with timeout of 0s. Is this correct?')
+            log.warning("Joining thread with timeout of 0s. Is this correct?")
         # join thread
         Thread.join(self, timeout=timeout)
         # raise exception, if one was raised
@@ -32,4 +32,4 @@ class ThreadWithReturnValue(Thread):
         return self._return
 
 
-__all__ = ['ThreadWithReturnValue']
+__all__ = ["ThreadWithReturnValue"]

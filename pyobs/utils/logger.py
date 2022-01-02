@@ -13,7 +13,7 @@ class DuplicateFilter(logging.Filter):
 
     def __init__(self, *args: Any, **kwargs: Any):
         logging.Filter.__init__(self, *args, **kwargs)
-        self.last_log = ''
+        self.last_log = ""
 
     def filter(self, record: Any) -> bool:
         if record.getMessage() != getattr(self, "last_log", None):
@@ -22,4 +22,4 @@ class DuplicateFilter(logging.Filter):
         return False
 
 
-__all__ = ['DuplicateFilter']
+__all__ = ["DuplicateFilter"]

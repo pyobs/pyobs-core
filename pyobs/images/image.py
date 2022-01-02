@@ -12,17 +12,25 @@ from numpy.typing import NDArray
 
 from pyobs.utils.fits import FilenameFormatter
 
-MetaClass = TypeVar('MetaClass')
+MetaClass = TypeVar("MetaClass")
 
 
 class Image:
     """Image class."""
-    __module__ = 'pyobs.images'
 
-    def __init__(self, data: Optional[NDArray[Any]] = None, header: Optional[fits.Header] = None,
-                 mask: Optional[NDArray[Any]] = None, uncertainty: Optional[NDArray[Any]] = None,
-                 catalog: Optional[Table] = None, meta: Optional[Dict[Any, Any]] = None,
-                 *args: Any, **kwargs: Any):
+    __module__ = "pyobs.images"
+
+    def __init__(
+        self,
+        data: Optional[NDArray[Any]] = None,
+        header: Optional[fits.Header] = None,
+        mask: Optional[NDArray[Any]] = None,
+        uncertainty: Optional[NDArray[Any]] = None,
+        catalog: Optional[Table] = None,
+        meta: Optional[Dict[Any, Any]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ):
         """Init a new image.
 
         Args:
@@ -44,8 +52,8 @@ class Image:
 
         # add basic header stuff
         if data is not None:
-            self.header['NAXIS1'] = data.shape[1]
-            self.header['NAXIS2'] = data.shape[0]
+            self.header["NAXIS1"] = data.shape[1]
+            self.header["NAXIS2"] = data.shape[0]
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Image:
@@ -99,14 +107,16 @@ class Image:
         """
 
         # create image and assign data
-        image = Image(data=data.data.astype(np.float32),
-                      header=data.header,
-                      mask=None if data.mask is None else data.mask,
-                      uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32))
+        image = Image(
+            data=data.data.astype(np.float32),
+            header=data.header,
+            mask=None if data.mask is None else data.mask,
+            uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32),
+        )
         return image
 
     @classmethod
-    def _from_hdu_list(cls, data: fits.HDUList) -> 'Image':
+    def _from_hdu_list(cls, data: fits.HDUList) -> "Image":
         """Load Image from HDU list.
 
         Args:
@@ -121,30 +131,34 @@ class Image:
 
         # find HDU with image data
         for hdu in data:
-            if isinstance(hdu, fits.PrimaryHDU) and hdu.header['NAXIS'] > 0 or \
-                    isinstance(hdu, fits.ImageHDU) and hdu.name == 'SCI' or \
-                    isinstance(hdu, fits.CompImageHDU):
+            if (
+                isinstance(hdu, fits.PrimaryHDU)
+                and hdu.header["NAXIS"] > 0
+                or isinstance(hdu, fits.ImageHDU)
+                and hdu.name == "SCI"
+                or isinstance(hdu, fits.CompImageHDU)
+            ):
                 # found image HDU
                 image_hdu = hdu
                 break
         else:
-            raise ValueError('Could not find HDU with main image.')
+            raise ValueError("Could not find HDU with main image.")
 
         # get data
         image.data = image_hdu.data
         image.header = image_hdu.header
 
         # mask
-        if 'MASK' in data:
-            image.mask = data['MASK'].data
+        if "MASK" in data:
+            image.mask = data["MASK"].data
 
         # uncertainties
-        if 'UNCERT' in data:
-            image.uncertainty = data['UNCERT'].data
+        if "UNCERT" in data:
+            image.uncertainty = data["UNCERT"].data
 
         # catalog
-        if 'CAT' in data:
-            image.catalog = Table(data['CAT'].data)
+        if "CAT" in data:
+            image.catalog = Table(data["CAT"].data)
 
         # finished
         return image
@@ -152,7 +166,7 @@ class Image:
     @property
     def unit(self) -> str:
         """Returns units of pixels in image."""
-        return str(self.header['BUNIT']).lower() if 'BUNIT' in self.header else 'adu'
+        return str(self.header["BUNIT"]).lower() if "BUNIT" in self.header else "adu"
 
     def __deepcopy__(self) -> Image:
         """Returns a shallow copy of this image."""
@@ -160,14 +174,20 @@ class Image:
 
     def copy(self) -> Image:
         """Returns a copy of this image."""
-        return Image(data=self.data, header=self.header, mask=self.mask, uncertainty=self.uncertainty,
-                     catalog=self.catalog, meta=self.meta)
+        return Image(
+            data=self.data,
+            header=self.header,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
+            catalog=self.catalog,
+            meta=self.meta,
+        )
 
-    def __truediv__(self, other: 'Image') -> 'Image':
+    def __truediv__(self, other: "Image") -> "Image":
         """Divides this image by other."""
         img = self.copy()
         if img.data is None or other.data is None:
-            raise ValueError('One image in division is None.')
+            raise ValueError("One image in division is None.")
         img.data /= other.data
         return img
 
@@ -188,19 +208,19 @@ class Image:
         # catalog?
         if self.catalog is not None:
             hdu = table_to_hdu(self.catalog)
-            hdu.name = 'CAT'
+            hdu.name = "CAT"
             hdu_list.append(hdu)
 
         # mask?
         if self.mask is not None:
             hdu = ImageHDU(self.mask.astype(np.uint8))
-            hdu.name = 'MASK'
+            hdu.name = "MASK"
             hdu_list.append(hdu)
 
         # errors?
         if self.uncertainty is not None:
             hdu = ImageHDU(self.uncertainty.data)
-            hdu.name = 'UNCERT'
+            hdu.name = "UNCERT"
             hdu_list.append(hdu)
 
         # write it
@@ -222,24 +242,26 @@ class Image:
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
-        return CCDData(data=self.data,
-                       meta=self.header,
-                       mask=None if self.mask is None else self.mask,
-                       uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
-                       unit='adu')
+        return CCDData(
+            data=self.data,
+            meta=self.header,
+            mask=None if self.mask is None else self.mask,
+            uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
+            unit="adu",
+        )
 
     def format_filename(self, formatter: FilenameFormatter) -> str:
         """Format filename with given formatter."""
-        self.header['FNAME'] = formatter(self.header)
-        return str(self.header['FNAME'])
+        self.header["FNAME"] = formatter(self.header)
+        return str(self.header["FNAME"])
 
     @property
     def pixel_scale(self) -> Optional[float]:
         """Returns pixel scale in arcsec/pixel."""
-        if 'CD1_1' in self.header:
-            return abs(float(self.header['CD1_1'])) * 3600.
-        elif 'CDELT1' in self.header:
-            return abs(float(self.header['CDELT1'])) * 3600.
+        if "CD1_1" in self.header:
+            return abs(float(self.header["CD1_1"])) * 3600.0
+        elif "CDELT1" in self.header:
+            return abs(float(self.header["CDELT1"])) * 3600.0
         else:
             return None
 
@@ -256,7 +278,7 @@ class Image:
         # copy data
         data: NDArray[Any] = np.copy(self.data)  # type: ignore
         if data is None:
-            raise ValueError('No data in image.')
+            raise ValueError("No data in image.")
 
         # no vmin/vmax?
         if vmin is None or vmax is None:
@@ -264,7 +286,7 @@ class Image:
             vmin = flattened[int(0.05 * len(flattened))]
             vmax = flattened[int(0.95 * len(flattened))]
             if vmin is None or vmax is None:
-                raise ValueError('Could not determine vmin/vmax.')
+                raise ValueError("Could not determine vmin/vmax.")
 
         # Clip data to brightness limits
         data[data > vmax] = vmax
@@ -280,9 +302,9 @@ class Image:
         data = data[::-1, :]
 
         # create image from data array
-        image = PIL.Image.fromarray(data, 'L')
+        image = PIL.Image.fromarray(data, "L")
         with io.BytesIO() as bio:
-            image.save(bio, format='jpeg')
+            image.save(bio, format="jpeg")
             return bio.getvalue()
 
     def set_meta(self, meta: Any) -> None:
@@ -314,11 +336,11 @@ class Image:
         """
         # return default?
         if meta_class not in self.meta:
-            raise ValueError('Meta value not found.')
+            raise ValueError("Meta value not found.")
 
         # correct type?
         if not isinstance(self.meta[meta_class], meta_class):
-            raise ValueError('Stored meta information is of wrong type.')
+            raise ValueError("Stored meta information is of wrong type.")
 
         # return it
         return cast(MetaClass, self.meta[meta_class])
@@ -332,4 +354,4 @@ class Image:
             return default
 
 
-__all__ = ['Image']
+__all__ = ["Image"]

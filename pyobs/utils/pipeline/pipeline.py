@@ -28,8 +28,9 @@ class Pipeline(Object, PipelineMixin):
         PipelineMixin.__init__(self, steps)
 
     @staticmethod
-    def _combine_calib_images(images: List[Image], bias: Optional[Image] = None, normalize: bool = False,
-                              method: str = 'average') -> Image:
+    def _combine_calib_images(
+        images: List[Image], bias: Optional[Image] = None, normalize: bool = False, method: str = "average"
+    ) -> Image:
         """Combine a list of given images.
 
         Args:
@@ -50,34 +51,40 @@ class Pipeline(Object, PipelineMixin):
 
         # normalize?
         if normalize:
-            data = [d.divide(np.median(d.data), handle_meta='first_found') for d in data]
+            data = [d.divide(np.median(d.data), handle_meta="first_found") for d in data]
 
         # combine image
-        combined = ccdproc.combine(data, method=method,
-                                   sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-                                   mem_limit=350e6, unit='adu',
-                                   combine_uncertainty_function=np.ma.std)
+        combined = ccdproc.combine(
+            data,
+            method=method,
+            sigma_clip=True,
+            sigma_clip_low_thresh=5,
+            sigma_clip_high_thresh=5,
+            mem_limit=350e6,
+            unit="adu",
+            combine_uncertainty_function=np.ma.std,
+        )
 
         # normalize?
         if normalize:
-            combined = combined.divide(np.median(combined.data), handle_meta='first_found')
+            combined = combined.divide(np.median(combined.data), handle_meta="first_found")
 
         # to Image and copy header
         image = Image.from_ccddata(combined)
 
         # add history
         for i, src in enumerate(images, 1):
-            basename = src.header['FNAME'].replace('.fits.fz', '').replace('.fits', '')
-            image.header['L1AVG%03d' % i] = (basename, 'Image used for average')
-        image.header['RLEVEL'] = (1, 'Reduction level')
+            basename = src.header["FNAME"].replace(".fits.fz", "").replace(".fits", "")
+            image.header["L1AVG%03d" % i] = (basename, "Image used for average")
+        image.header["RLEVEL"] = (1, "Reduction level")
 
         # finished
         return image
 
     async def _combine_calib_images_async(self, images: List[Image], **kwargs: Any) -> Image:
-        return await asyncio.get_running_loop().run_in_executor(None, partial(
-            self._combine_calib_images, images, **kwargs
-        ))
+        return await asyncio.get_running_loop().run_in_executor(
+            None, partial(self._combine_calib_images, images, **kwargs)
+        )
 
     async def create_master_bias(self, images: List[Image]) -> Image:
         """Create master bias frame.
@@ -112,7 +119,7 @@ class Pipeline(Object, PipelineMixin):
         Returns:
             Master flat frame.
         """
-        return await self._combine_calib_images_async(images, bias=bias, normalize=True, method='median')
+        return await self._combine_calib_images_async(images, bias=bias, normalize=True, method="median")
 
     async def calibrate(self, image: Image) -> Image:
         """Calibrate a single science frame.
@@ -131,8 +138,15 @@ class Pipeline(Object, PipelineMixin):
         return await self.run_pipeline(calibrated)
 
     @staticmethod
-    async def find_master(archive: Archive, image_type: ImageType, time: Time, instrument: str,
-                          binning: str, filter_name: Optional[str] = None, max_days: float = 30.) -> Optional[Image]:
+    async def find_master(
+        archive: Archive,
+        image_type: ImageType,
+        time: Time,
+        instrument: str,
+        binning: str,
+        filter_name: Optional[str] = None,
+        max_days: float = 30.0,
+    ) -> Optional[Image]:
         """Find and download master calibration frame.
 
         Args:
@@ -149,25 +163,36 @@ class Pipeline(Object, PipelineMixin):
         """
 
         # find reduced frames from +- N days
-        log.info('Searching for %s %s master calibration frames%s from instrument %s.',
-                 binning, image_type.value, '' if filter_name is None else ' in ' + filter_name, instrument)
-        infos = await archive.list_frames(start=time - max_days * u.day, end=time + max_days * u.day,
-                                          instrument=instrument, image_type=image_type, binning=binning,
-                                          filter_name=filter_name, rlevel=1)
+        log.info(
+            "Searching for %s %s master calibration frames%s from instrument %s.",
+            binning,
+            image_type.value,
+            "" if filter_name is None else " in " + filter_name,
+            instrument,
+        )
+        infos = await archive.list_frames(
+            start=time - max_days * u.day,
+            end=time + max_days * u.day,
+            instrument=instrument,
+            image_type=image_type,
+            binning=binning,
+            filter_name=filter_name,
+            rlevel=1,
+        )
 
         # found none?
         if len(infos) == 0:
-            log.warning('Could not find any matching %s calibration frames.', image_type.value)
+            log.warning("Could not find any matching %s calibration frames.", image_type.value)
             return None
 
         # sort by diff to time and take first
         s = sorted(infos, key=lambda i: abs((i.dateobs - time).sec))
         info = s[0]
-        log.info('Found %s frame %s.', image_type.name, info.filename)
+        log.info("Found %s frame %s.", image_type.name, info.filename)
 
         # download it
         data = await archive.download_frames([info])
         return data[0]
 
 
-__all__ = ['Pipeline']
+__all__ = ["Pipeline"]

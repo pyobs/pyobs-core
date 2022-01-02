@@ -21,6 +21,7 @@ from .rpc import RPC
 from .xmppclient import XmppClient
 from ...interfaces import Interface
 from ...utils.parallel import Future
+
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
@@ -28,8 +29,8 @@ log = logging.getLogger(__name__)
 
 
 class EventStanza(ElementBase):  # type: ignore
-    name = 'event'
-    namespace = 'pyobs:event'
+    name = "event"
+    namespace = "pyobs:event"
 
 
 class XmppComm(Comm):
@@ -82,11 +83,21 @@ class XmppComm(Comm):
     parameter must be True, and False otherwise. Cryptic error messages will follow, if one does not set this properly.
 
     """
-    __module__ = 'pyobs.comm.sleekxmpp'
 
-    def __init__(self, jid: Optional[str] = None, user: Optional[str] = None, domain: Optional[str] = None,
-                 resource: str = 'pyobs', password: str = '', server: Optional[str] = None,
-                 use_tls: bool = False, *args: Any, **kwargs: Any):
+    __module__ = "pyobs.comm.sleekxmpp"
+
+    def __init__(
+        self,
+        jid: Optional[str] = None,
+        user: Optional[str] = None,
+        domain: Optional[str] = None,
+        resource: str = "pyobs",
+        password: str = "",
+        server: Optional[str] = None,
+        use_tls: bool = False,
+        *args: Any,
+        **kwargs: Any,
+    ):
         """Create a new XMPP Comm module.
 
         Either a fill JID needs to be provided, or a set of user/domian/resource, from which a JID is built.
@@ -118,13 +129,13 @@ class XmppComm(Comm):
         # build jid
         if jid:
             # resource given in jid?
-            if '/' not in jid:
-                jid += '/' + resource
+            if "/" not in jid:
+                jid += "/" + resource
 
             # get user/domain/resource and write it back to config
-            m = re.match(r'([\w_\-\.]+)@([\w_\-\.]+)\/([\w_\-\.]+)', jid)
+            m = re.match(r"([\w_\-\.]+)@([\w_\-\.]+)\/([\w_\-\.]+)", jid)
             if not m:
-                log.error('Invalid JID format.')
+                log.error("Invalid JID format.")
                 raise ValueError()
             self._user = m.group(1)
             self._domain = m.group(2)
@@ -134,15 +145,15 @@ class XmppComm(Comm):
             self._jid = jid
 
         else:
-            self._jid = '%s@%s/%s' % (self._user, self._domain, self._resource)
+            self._jid = "%s@%s/%s" % (self._user, self._domain, self._resource)
 
         # create client
         self._xmpp = XmppClient(self._jid, password)
-        self._xmpp.add_event_handler('pubsub_publish', self._handle_event)
+        self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
-    def _set_module(self, module: 'Module') -> None:
+    def _set_module(self, module: "Module") -> None:
         """Called, when the module connected to this Comm changes.
 
         Args:
@@ -152,11 +163,11 @@ class XmppComm(Comm):
         # add features
         if module is not None:
             for i in module.interfaces:
-                self._xmpp['xep_0030'].add_feature('pyobs:interface:%s' % i.__name__)
+                self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
 
         # update RPC
         if self._rpc is None:
-            raise ValueError('No RPC.')
+            raise ValueError("No RPC.")
         self._rpc.set_handler(module)
 
     async def open(self) -> None:
@@ -174,7 +185,7 @@ class XmppComm(Comm):
         self._rpc = RPC(self._xmpp, self._loop, self.module)
 
         # server given?
-        server = () if self._server is None else tuple(self._server.split(':'))
+        server = () if self._server is None else tuple(self._server.split(":"))
 
         # connect
         self._xmpp.ssl_version = ssl.PROTOCOL_TLSv1_2
@@ -184,7 +195,7 @@ class XmppComm(Comm):
 
             # wait for connected
             if not self._xmpp.wait_connect():
-                raise ValueError('Could not connect to XMPP server.')
+                raise ValueError("Could not connect to XMPP server.")
             self._connected = True
 
             # subscribe to events
@@ -192,7 +203,7 @@ class XmppComm(Comm):
 
         else:
             # TODO: catch exceptions in open() methods
-            raise ValueError('Could not connect to XMPP server.')
+            raise ValueError("Could not connect to XMPP server.")
 
     async def close(self) -> None:
         """Close connection."""
@@ -214,7 +225,7 @@ class XmppComm(Comm):
         Args:
             event: XMPP event.
         """
-        print('Authorization at server failed.')
+        print("Authorization at server failed.")
 
     def _get_full_client_name(self, name: str) -> str:
         """Builds full JID from a given username.
@@ -225,7 +236,7 @@ class XmppComm(Comm):
         Returns:
             Full JID for given user.
         """
-        return name if '@' in name else '%s@%s/%s' % (name, self._domain, self._resource)
+        return name if "@" in name else "%s@%s/%s" % (name, self._domain, self._resource)
 
     async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """Returns list of interfaces for given client.
@@ -241,8 +252,8 @@ class XmppComm(Comm):
         """
 
         # full JID given?
-        if '@' not in client:
-            client = '%s@%s/%s' % (client, self._domain, self._resource)
+        if "@" not in client:
+            client = "%s@%s/%s" % (client, self._domain, self._resource)
 
         # get interfaces
         if client not in self._interface_cache:
@@ -268,8 +279,8 @@ class XmppComm(Comm):
         """
 
         # full JID given?
-        if '@' not in client:
-            client = '%s@%s/%s' % (client, self._domain, self._resource)
+        if "@" not in client:
+            client = "%s@%s/%s" % (client, self._domain, self._resource)
 
         # update interface cache and get interface names
         interfaces = await self.get_interfaces(client)
@@ -290,7 +301,7 @@ class XmppComm(Comm):
             Passes through return from method call.
         """
         if self._rpc is None:
-            raise ValueError('No RPC.')
+            raise ValueError("No RPC.")
         return await self._rpc.call(self._get_full_client_name(client), method, signature, *args)
 
     def _got_online(self, msg: Any) -> None:
@@ -301,7 +312,7 @@ class XmppComm(Comm):
         """
 
         # append to list
-        jid = msg['from'].full
+        jid = msg["from"].full
         if jid not in self._online_clients:
             self._online_clients.append(jid)
 
@@ -310,7 +321,7 @@ class XmppComm(Comm):
             del self._interface_cache[jid]
 
         # send event
-        self._send_event_to_module(ModuleOpenedEvent(), msg['from'].username)
+        self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
@@ -320,7 +331,7 @@ class XmppComm(Comm):
         """
 
         # remove from list
-        jid = msg['from'].full
+        jid = msg["from"].full
         self._online_clients.remove(jid)
 
         # clear interface cache
@@ -328,7 +339,7 @@ class XmppComm(Comm):
             del self._interface_cache[jid]
 
         # send event
-        self._send_event_to_module(ModuleClosedEvent(), msg['from'].username)
+        self._send_event_to_module(ModuleClosedEvent(), msg["from"].username)
 
     @property
     def clients(self) -> List[str]:
@@ -337,7 +348,7 @@ class XmppComm(Comm):
         Returns:
             (list) List of currently connected clients.
         """
-        return [c[:c.find('@')] for c in self._online_clients]
+        return [c[: c.find("@")] for c in self._online_clients]
 
     @property
     def client(self) -> XmppClient:
@@ -363,8 +374,12 @@ class XmppComm(Comm):
 
         # set xml and send event
         stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
-        self._xmpp['xep_0163'].publish(stanza, node='pyobs:event:%s' % event.__class__.__name__, block=False,
-                                       callback=functools.partial(self._send_event_callback, event=event))
+        self._xmpp["xep_0163"].publish(
+            stanza,
+            node="pyobs:event:%s" % event.__class__.__name__,
+            block=False,
+            callback=functools.partial(self._send_event_callback, event=event),
+        )
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
@@ -374,10 +389,11 @@ class XmppComm(Comm):
             iq: Response package.
             event: Sent event.
         """
-        log.debug('%s successfully sent.', event.__class__.__name__)
+        log.debug("%s successfully sent.", event.__class__.__name__)
 
-    async def register_event(self, event_class: Type[Event],
-                             handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None) -> None:
+    async def register_event(
+        self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+    ) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
 
@@ -415,26 +431,28 @@ class XmppComm(Comm):
             List of event classes.
         """
         import pyobs.events
+
         event_classes: List[Type[Event]] = []
         for cls in inspect.getmembers(pyobs.events, inspect.isclass):
             if issubclass(cls[1], event):
                 event_classes.append(cls[1])
         return event_classes
 
-    def _register_events(self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None) \
-            -> None:
+    def _register_events(
+        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None
+    ) -> None:
         # loop events
         for ev in events:
             # register event at XMPP
-            self._xmpp['xep_0030'].add_feature('pyobs:event:%s' % ev.__name__)
+            self._xmpp["xep_0030"].add_feature("pyobs:event:%s" % ev.__name__)
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self._xmpp['xep_0163'].add_interest('pyobs:event:%s' % ev.__name__)
+                self._xmpp["xep_0163"].add_interest("pyobs:event:%s" % ev.__name__)
 
         # update caps and send presence
-        self._xmpp['xep_0115'].update_caps()
+        self._xmpp["xep_0115"].update_caps()
         self._xmpp.send_presence()
 
     def _handle_event(self, msg: Any) -> None:
@@ -446,16 +464,16 @@ class XmppComm(Comm):
 
         # get body, unescape it, parse it
         # node = msg['pubsub_event'][items']['node']
-        body = json.loads(xml.sax.saxutils.unescape(msg['pubsub_event']['items']['item']['payload'].text))
+        body = json.loads(xml.sax.saxutils.unescape(msg["pubsub_event"]["items"]["item"]["payload"].text))
 
         # do we have a <delay> element?
-        delay = msg.findall('{urn:sleekxmpp:delay}delay')
+        delay = msg.findall("{urn:sleekxmpp:delay}delay")
         if len(delay) > 0:
             # ignore this message
             return
 
         # did we send this?
-        if msg['from'] == self._xmpp.boundjid.bare:
+        if msg["from"] == self._xmpp.boundjid.bare:
             return
 
         # create event and check timestamp
@@ -468,7 +486,7 @@ class XmppComm(Comm):
             return
 
         # send it to module
-        self._send_event_to_module(event, msg['from'].username)
+        self._send_event_to_module(event, msg["from"].username)
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:
         """Send an event to all connected modules.
@@ -488,4 +506,4 @@ class XmppComm(Comm):
                     handler(event, from_client)
 
 
-__all__ = ['XmppComm']
+__all__ = ["XmppComm"]

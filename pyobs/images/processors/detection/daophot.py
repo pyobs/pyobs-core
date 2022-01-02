@@ -10,11 +10,18 @@ log = logging.getLogger(__name__)
 
 class DaophotSourceDetection(SourceDetection):
     """Detect source using Daophot."""
-    __module__ = 'pyobs.images.processors.detection'
 
-    def __init__(self, fwhm: float = 3., threshold: float = 4., bkg_sigma: float = 3.,
-                 bkg_box_size: Tuple[int, int] = (50, 50), bkg_filter_size: Tuple[int, int] = (3, 3),
-                 **kwargs: Any):
+    __module__ = "pyobs.images.processors.detection"
+
+    def __init__(
+        self,
+        fwhm: float = 3.0,
+        threshold: float = 4.0,
+        bkg_sigma: float = 3.0,
+        bkg_box_size: Tuple[int, int] = (50, 50),
+        bkg_filter_size: Tuple[int, int] = (3, 3),
+        **kwargs: Any,
+    ):
         """Initializes a wrapper for photutils. See its documentation for details.
 
         Args:
@@ -47,15 +54,21 @@ class DaophotSourceDetection(SourceDetection):
 
         # get data
         if image.data is None:
-            log.warning('No data found in image.')
+            log.warning("No data found in image.")
             return image
         data = image.data.astype(float).copy()
 
         # estimate background
         sigma_clip = SigmaClip(sigma=self.bkg_sigma)
         bkg_estimator = MedianBackground()
-        bkg = Background2D(data, self.bkg_box_size, filter_size=self.bkg_filter_size,
-                           sigma_clip=sigma_clip, bkg_estimator=bkg_estimator, mask=image.mask)
+        bkg = Background2D(
+            data,
+            self.bkg_box_size,
+            filter_size=self.bkg_filter_size,
+            sigma_clip=sigma_clip,
+            bkg_estimator=bkg_estimator,
+            mask=image.mask,
+        )
         data -= bkg.background
 
         # do statistics
@@ -67,15 +80,15 @@ class DaophotSourceDetection(SourceDetection):
         sources = await loop.run_in_executor(None, daofind, data - median)
 
         # rename columns
-        sources.rename_column('xcentroid', 'x')
-        sources.rename_column('ycentroid', 'y')
+        sources.rename_column("xcentroid", "x")
+        sources.rename_column("ycentroid", "y")
 
         # match fits conventions
-        sources['x'] += 1
-        sources['y'] += 1
+        sources["x"] += 1
+        sources["y"] += 1
 
         # pick columns for catalog
-        cat = sources['x', 'y', 'flux', 'peak']
+        cat = sources["x", "y", "flux", "peak"]
 
         # copy image, set catalog and return it
         img = image.copy()
@@ -83,4 +96,4 @@ class DaophotSourceDetection(SourceDetection):
         return img
 
 
-__all__ = ['DaophotSourceDetection']
+__all__ = ["DaophotSourceDetection"]

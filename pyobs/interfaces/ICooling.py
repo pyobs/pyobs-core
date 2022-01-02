@@ -6,7 +6,8 @@ from .ITemperatures import ITemperatures
 
 class ICooling(ITemperatures, metaclass=ABCMeta):
     """The module can control the cooling of a device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
@@ -34,4 +35,4 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['ICooling']
+__all__ = ["ICooling"]

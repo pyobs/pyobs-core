@@ -15,8 +15,8 @@ class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
 
         # main menu
         menu_main = self.menuBar()
-        menu_file = menu_main.addMenu('&File')
-        menu_file.addAction('E&xit', self.close)
+        menu_file = menu_main.addMenu("&File")
+        menu_file.addAction("E&xit", self.close)
 
         # add QPlainTextEdit
         self.log = QtWidgets.QTextBrowser(self)
@@ -28,7 +28,7 @@ class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
         self.log.setFont(font)
 
         # create log handler
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s')
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
         logging.root.addHandler(self)
         self.setFormatter(formatter)
 
@@ -37,9 +37,9 @@ class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
         log_entry = self.format(record)
 
         # colors?
-        if '[ERROR]' in log_entry:
+        if "[ERROR]" in log_entry:
             log_entry = '<font color="red">%s</font>' % log_entry
-        elif '[WARNING]' in log_entry:
+        elif "[WARNING]" in log_entry:
             log_entry = '<font color="orange">%s</font>' % log_entry
 
         # append to log

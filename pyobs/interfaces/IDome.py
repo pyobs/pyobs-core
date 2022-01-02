@@ -6,8 +6,9 @@ from .IPointingAltAz import IPointingAltAz
 
 class IDome(IRoof, IPointingAltAz, metaclass=ABCMeta):
     """The module controls a dome, i.e. a :class:`~pyobs.interfaces.IRoof` with a rotating roof."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
     pass
 
 
-__all__ = ['IDome']
+__all__ = ["IDome"]

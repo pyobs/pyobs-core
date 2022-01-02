@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IModule(Interface, metaclass=ABCMeta):
     """The module is actually a module. Implemented by all modules."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_label(self, **kwargs: Any) -> str:
@@ -19,4 +20,4 @@ class IModule(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IModule']
+__all__ = ["IModule"]

@@ -4,12 +4,13 @@ from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from pyobs.object import Object
 from pyobs.utils.time import Time
+
 if TYPE_CHECKING:
     from pyobs.robotic.taskarchive import TaskArchive
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, tasks: 'TaskArchive', **kwargs: Any):
+    def __init__(self, tasks: "TaskArchive", **kwargs: Any):
         Object.__init__(self, **kwargs)
         self.task_archive = tasks
 
@@ -84,4 +85,4 @@ class Task(Object, metaclass=ABCMeta):
         return {}
 
 
-__all__ = ['Task']
+__all__ = ["Task"]

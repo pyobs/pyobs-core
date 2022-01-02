@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IPointingHGS(Interface, metaclass=ABCMeta):
     """The module can move to Mu/Psi coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def move_hgs_lon_lat(self, lon: float, lat: float, **kwargs: Any) -> None:
@@ -31,4 +32,4 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IPointingHGS']
+__all__ = ["IPointingHGS"]

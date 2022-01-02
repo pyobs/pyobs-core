@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IScriptRunner(Interface, metaclass=ABCMeta):
     """The module can execute a script."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def run_script(self, script: str, **kwargs: Any) -> None:
@@ -18,4 +19,4 @@ class IScriptRunner(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IScriptRunner']
+__all__ = ["IScriptRunner"]

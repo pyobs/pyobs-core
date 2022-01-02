@@ -6,4 +6,4 @@ class OnSkyDistance:
         self.distance = distance
 
 
-__all__ = ['OnSkyDistance']
+__all__ = ["OnSkyDistance"]

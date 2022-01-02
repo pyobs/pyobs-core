@@ -6,7 +6,8 @@ from pyobs.images.processor import ImageProcessor
 
 class SourceDetection(ImageProcessor, metaclass=ABCMeta):
     """Base class for source detection."""
-    __module__ = 'pyobs.images.processors.detection'
+
+    __module__ = "pyobs.images.processors.detection"
 
     @abstractmethod
     async def __call__(self, image: Image) -> Image:
@@ -21,4 +22,4 @@ class SourceDetection(ImageProcessor, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['SourceDetection']
+__all__ = ["SourceDetection"]

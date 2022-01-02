@@ -1,7 +1,7 @@
 """
 TODO: write doc
 """
-__title__ = 'Time'
+__title__ = "Time"
 
 import datetime
 from typing import cast
@@ -14,6 +14,7 @@ from astroplan import Observer
 
 class Time(astropy.time.Time):  # type: ignore
     """Hashable Time class."""
+
     _now_offset = astropy.time.TimeDelta(0 * u.second)
 
     def __hash__(self) -> int:
@@ -26,7 +27,7 @@ class Time(astropy.time.Time):  # type: ignore
         cls._now_offset = delta
 
     @classmethod
-    def now(cls) -> 'Time':
+    def now(cls) -> "Time":
         """
         Creates a new object corresponding to the instant in time this
         method is called.
@@ -43,7 +44,7 @@ class Time(astropy.time.Time):  # type: ignore
         """
         # call `utcnow` immediately to be sure it's ASAP
         dtnow = datetime.datetime.utcnow()
-        return cast(Time, Time(val=dtnow, format='datetime', scale='utc') + Time._now_offset)
+        return cast(Time, Time(val=dtnow, format="datetime", scale="utc") + Time._now_offset)
 
     def night_obs(self, observer: Observer) -> datetime.date:
         """Returns the night for this time, i.e. the date of the start of the current night.
@@ -68,4 +69,4 @@ class Time(astropy.time.Time):  # type: ignore
         return loc_dt.date()
 
 
-__all__ = ['Time']
+__all__ = ["Time"]

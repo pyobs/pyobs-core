@@ -16,22 +16,29 @@ log = logging.getLogger(__name__)
 
 class FlatField(Module, IFlatField, IBinning, IFilters):
     """Module for auto-focusing a telescope."""
-    __module__ = 'pyobs.modules.flatfield'
+
+    __module__ = "pyobs.modules.flatfield"
 
     class Twilight(Enum):
-        DUSK = 'dusk'
-        DAWN = 'dawn'
+        DUSK = "dusk"
+        DAWN = "dawn"
 
     class State(Enum):
-        INIT = 'init'
-        WAITING = 'waiting'
-        TESTING = 'testing'
-        RUNNING = 'running'
-        FINISHED = 'finished'
+        INIT = "init"
+        WAITING = "waiting"
+        TESTING = "testing"
+        RUNNING = "running"
+        FINISHED = "finished"
 
-    def __init__(self, telescope: Union[str, ITelescope], camera: Union[str, ICamera],
-                 flat_fielder: Optional[Union[Dict[str, Any], FlatFielder]],
-                 filters: Optional[Union[str, IFilters]] = None, log_file: Optional[str] = None, **kwargs: Any):
+    def __init__(
+        self,
+        telescope: Union[str, ITelescope],
+        camera: Union[str, ICamera],
+        flat_fielder: Optional[Union[Dict[str, Any], FlatFielder]],
+        filters: Optional[Union[str, IFilters]] = None,
+        log_file: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """Initialize a new flat fielder.
 
         Args:
@@ -64,10 +71,10 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         if self._filter_wheel is not None:
             # check filters
             if not self._flat_fielder.has_filters:
-                raise ValueError('Filter wheel module given in config, but no filters in functions.')
+                raise ValueError("Filter wheel module given in config, but no filters in functions.")
 
             # add it
-            #self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
+            # self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
 
     async def open(self) -> None:
         """Open module"""
@@ -79,7 +86,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             await self.proxy(self._camera, ICamera)
             await self.proxy(self._filter_wheel, IFilters)
         except ValueError:
-            log.warning('Either telescope, camera or filters do not exist or are not of correct type at the moment.')
+            log.warning("Either telescope, camera or filters do not exist or are not of correct type at the moment.")
 
             # subscribe to events
             if self.comm:
@@ -91,13 +98,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         await Module.close(self)
         self._abort.set()
 
-    async def callback(self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str,
-                       binning: Tuple[int, int]) -> None:
+    async def callback(
+        self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str, binning: Tuple[int, int]
+    ) -> None:
         """Callback for flat-field class to call with statistics."""
         # write log
         if self._publisher is not None:
-            await self._publisher(datetime=datetime, solalt=solalt, exptime=exptime, counts=counts,
-                                  filter=filter_name, binning=binning[0])
+            await self._publisher(
+                datetime=datetime, solalt=solalt, exptime=exptime, counts=counts, filter=filter_name, binning=binning[0]
+            )
 
     async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
@@ -154,7 +163,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             Name of currently set filter.
         """
-        return '' if self._filter is None else self._filter
+        return "" if self._filter is None else self._filter
 
     @timeout(3600)
     async def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
@@ -169,26 +178,26 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # check
         if self._running:
-            raise ValueError('Already running.')
+            raise ValueError("Already running.")
         self._running = True
 
         try:
             # start
-            log.info('Performing flat fielding...')
+            log.info("Performing flat fielding...")
             self._abort = asyncio.Event()
 
             # get telescope
-            log.info('Getting proxy for telescope...')
+            log.info("Getting proxy for telescope...")
             telescope = await self.proxy(self._telescope, ITelescope)
 
             # get camera
-            log.info('Getting proxy for camera...')
+            log.info("Getting proxy for camera...")
             camera = await self.proxy(self._camera, ICamera)
 
             # get filter wheel
             filters: Optional[IFilters] = None
             if self._filter_wheel is not None:
-                log.info('Getting proxy for filter wheel...')
+                log.info("Getting proxy for filter wheel...")
                 filters = await self.proxy(self._filter_wheel, IFilters)
 
             # reset
@@ -199,20 +208,21 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             while state != FlatFielder.State.FINISHED:
                 # can we run?
                 if not await telescope.is_ready():
-                    log.error('Telescope not in valid state, aborting...')
+                    log.error("Telescope not in valid state, aborting...")
                     return self._flat_fielder.image_count, self._flat_fielder.total_exptime
                 if self._abort.is_set():
-                    log.warning('Aborting flat-fielding...')
+                    log.warning("Aborting flat-fielding...")
                     return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
                 # do step
-                state = await self._flat_fielder(telescope, camera, count=count, binning=self._binning,
-                                                 filters=filters, filter_name=self._filter)
+                state = await self._flat_fielder(
+                    telescope, camera, count=count, binning=self._binning, filters=filters, filter_name=self._filter
+                )
 
             # stop telescope
-            log.info('Stopping telescope...')
+            log.info("Stopping telescope...")
             await telescope.stop_motion()
-            log.info('Flat-fielding finished.')
+            log.info("Flat-fielding finished.")
 
             # return number of taken images
             return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)
@@ -246,4 +256,4 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return True
 
 
-__all__ = ['FlatField']
+__all__ = ["FlatField"]

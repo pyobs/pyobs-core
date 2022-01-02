@@ -44,11 +44,11 @@ class AstrometryOffsets(Offsets):
         wcs = WCS(img.header)
 
         # get x/y coordinates from CRVAL1/2, i.e. from center with good WCS
-        center = SkyCoord(img.header['CRVAL1'] * u.deg, img.header['CRVAL2'] * u.deg, frame='icrs')
+        center = SkyCoord(img.header["CRVAL1"] * u.deg, img.header["CRVAL2"] * u.deg, frame="icrs")
         x_center, y_center = wcs.world_to_pixel(center)
 
         # get x/y coordinates from TEL-RA/-DEC, i.e. from where the telescope thought it's pointing
-        tel = SkyCoord(img.header['TEL-RA'] * u.deg, img.header['TEL-DEC'] * u.deg, frame='icrs')
+        tel = SkyCoord(img.header["TEL-RA"] * u.deg, img.header["TEL-DEC"] * u.deg, frame="icrs")
         x_tel, y_tel = wcs.world_to_pixel(tel)
 
         # calculate offsets as difference between both

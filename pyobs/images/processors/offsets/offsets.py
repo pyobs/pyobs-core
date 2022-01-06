@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 
 class Offsets(ImageProcessor, metaclass=ABCMeta):
     """Base class for determining offsets."""
-    __module__ = 'pyobs.images.processors.offsets'
+
+    __module__ = "pyobs.images.processors.offsets"
 
     @abstractmethod
     async def __call__(self, image: Image) -> Image:
@@ -41,8 +42,8 @@ class Offsets(ImageProcessor, metaclass=ABCMeta):
         """
 
         # get central position and offset
-        center = image.header['CRPIX1'], image.header['CRPIX2']
-        offsets = image.meta['offsets']
+        center = image.header["CRPIX1"], image.header["CRPIX2"]
+        offsets = image.meta["offsets"]
 
         # get WCS
         wcs = WCS(image.header)
@@ -55,4 +56,4 @@ class Offsets(ImageProcessor, metaclass=ABCMeta):
         return float(center_coord.separation(offset_coord).value)
 
 
-__all__ = ['Offsets']
+__all__ = ["Offsets"]

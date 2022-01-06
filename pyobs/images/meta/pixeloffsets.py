@@ -4,4 +4,4 @@ class PixelOffsets:
         self.dy = dy
 
 
-__all__ = ['PixelOffsets']
+__all__ = ["PixelOffsets"]

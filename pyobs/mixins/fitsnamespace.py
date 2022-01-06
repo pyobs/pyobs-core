@@ -7,13 +7,15 @@ log = logging.getLogger(__name__)
 
 class FitsNamespaceMixin:
     """Mixin for IFitsHeaderProvider modules that filters FITS headers by namespace."""
-    __module__ = 'pyobs.mixins'
+
+    __module__ = "pyobs.mixins"
 
     def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, **kwargs: Any):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
-    def _filter_fits_namespace(self, hdr: Dict[str, Tuple[Any, str]], sender: str,
-                               namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
+    def _filter_fits_namespace(
+        self, hdr: Dict[str, Tuple[Any, str]], sender: str, namespaces: Optional[List[str]] = None
+    ) -> Dict[str, Tuple[Any, str]]:
         """Filter FITS header keywords by given namespaces. If no namespaces are given, let all through. Always
         let keywords with this module's name as namespace pass.
 
@@ -72,7 +74,7 @@ class FitsNamespaceMixin:
             # take only keywords from list
             keywords.extend(self.__namespaces[name])
         else:
-            log.error('Unknown namespace format: %s', self.__namespaces[name])
+            log.error("Unknown namespace format: %s", self.__namespaces[name])
 
 
-__all__ = ['FitsNamespaceMixin']
+__all__ = ["FitsNamespaceMixin"]

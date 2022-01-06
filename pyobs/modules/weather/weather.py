@@ -16,21 +16,22 @@ log = logging.getLogger(__name__)
 
 
 FITS_HEADERS = {
-    WeatherSensors.TEMPERATURE: ('WS-TEMP', 'Ambient temperature average during exposure, C', float),
-    WeatherSensors.HUMIDITY: ('WS-HUMID', 'Ambient rel. humidity average, %', float),
-    WeatherSensors.PRESSURE: ('WS-PRESS', 'Average atmospheric pressure, hPa', float),
-    WeatherSensors.WINDDIR: ('WS-AZ', 'Average wind direction, not corrected for overlap, deg', float),
-    WeatherSensors.WINDSPEED: ('WS-WIND', 'Ambient average wind speed, km/h', float),
-    WeatherSensors.RAIN: ('WS-PREC', 'Ambient precipitation [0/1]', bool),
-    WeatherSensors.SKYTEMP: ('WS-SKY', 'Average sky temperature, C', float),
-    WeatherSensors.DEWPOINT: ('WS-TDEW', 'Ambient dewpoint average during expsoure, C', float),
-    WeatherSensors.PARTICLES: ('WS-DUST', 'Average particle count during exposure, ppcm', float)
+    WeatherSensors.TEMPERATURE: ("WS-TEMP", "Ambient temperature average during exposure, C", float),
+    WeatherSensors.HUMIDITY: ("WS-HUMID", "Ambient rel. humidity average, %", float),
+    WeatherSensors.PRESSURE: ("WS-PRESS", "Average atmospheric pressure, hPa", float),
+    WeatherSensors.WINDDIR: ("WS-AZ", "Average wind direction, not corrected for overlap, deg", float),
+    WeatherSensors.WINDSPEED: ("WS-WIND", "Ambient average wind speed, km/h", float),
+    WeatherSensors.RAIN: ("WS-PREC", "Ambient precipitation [0/1]", bool),
+    WeatherSensors.SKYTEMP: ("WS-SKY", "Average sky temperature, C", float),
+    WeatherSensors.DEWPOINT: ("WS-TDEW", "Ambient dewpoint average during expsoure, C", float),
+    WeatherSensors.PARTICLES: ("WS-DUST", "Average particle count during exposure, ppcm", float),
 }
 
 
 class Weather(Module, IWeather, IFitsHeaderBefore):
     """Connection to pyobs-weather."""
-    __module__ = 'pyobs.modules.weather'
+
+    __module__ = "pyobs.modules.weather"
 
     def __init__(self, url: str, system_init_time: int = 300, **kwargs: Any):
         """Initialize a new pyobs-weather connector.
@@ -96,24 +97,24 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
             try:
                 # fetch status
-                url = urllib.parse.urljoin(self._url, 'api/current/')
+                url = urllib.parse.urljoin(self._url, "api/current/")
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=5) as response:
                         if response.status != 200:
-                            raise ValueError('Could not connect to weather station.')
+                            raise ValueError("Could not connect to weather station.")
                         status = await response.json()
 
                 # to json
-                if 'good' not in status:
-                    raise ValueError('Good parameter not found in response from weather station.')
+                if "good" not in status:
+                    raise ValueError("Good parameter not found in response from weather station.")
 
                 # store it
-                is_good = status['good']
+                is_good = status["good"]
                 self._status = status
 
             except Exception as e:
                 # on error, we're always bad
-                log.error('Request failed: %s', e)
+                log.error("Request failed: %s", e)
                 is_good = False
                 error = True
 
@@ -123,11 +124,11 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 if self._active:
                     # did it change to good or bad?
                     if is_good:
-                        log.info('Weather is now good.')
+                        log.info("Weather is now good.")
                         eta = Time.now() + self._system_init_time * u.second
                         await self.comm.send_event(GoodWeatherEvent(eta=eta))
                     else:
-                        log.info('Weather is now bad.')
+                        log.info("Weather is now bad.")
                         await self.comm.send_event(BadWeatherEvent())
 
                 # store new state
@@ -171,22 +172,23 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # do request
-        url = urllib.parse.urljoin(self._url, 'api/stations/%s/%s/' % (station, sensor.value))
+        url = urllib.parse.urljoin(self._url, "api/stations/%s/%s/" % (station, sensor.value))
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=5) as response:
                 if response.status != 200:
-                    raise ValueError('Could not connect to weather station.')
+                    raise ValueError("Could not connect to weather station.")
                 status = await response.json()
 
         # to json
-        if 'time' not in status or 'value' not in status:
-            raise ValueError('Time and/or value parameters not found in response from weather station.')
+        if "time" not in status or "value" not in status:
+            raise ValueError("Time and/or value parameters not found in response from weather station.")
 
         # return time and value
-        return status['time'], status['value']
+        return status["time"], status["value"]
 
-    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
-            -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(
+        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+    ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -200,10 +202,10 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         status = dict(self._status)
 
         # got sensors?
-        if 'sensors' not in status:
-            log.error('No sensor data found in status.')
+        if "sensors" not in status:
+            log.error("No sensor data found in status.")
             return {}
-        sensors = status['sensors']
+        sensors = status["sensors"]
 
         # loop sensor types
         header = {}
@@ -211,9 +213,9 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             # got a value for this type?
             if sensor_type.value in sensors:
                 # get value
-                if 'value' not in sensors[sensor_type.value]:
+                if "value" not in sensors[sensor_type.value]:
                     continue
-                value = sensors[sensor_type.value]['value']
+                value = sensors[sensor_type.value]["value"]
 
                 # get header keyword, comment and data type
                 key, comment, dtype = FITS_HEADERS[sensor_type]
@@ -225,4 +227,4 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         return header
 
 
-__all__ = ['Weather']
+__all__ = ["Weather"]

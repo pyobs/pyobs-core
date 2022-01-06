@@ -20,7 +20,7 @@ class RollingTimeAverage(object):
         self._values.append((now, value))
 
         # clean up
-        self._values = [(time, value) for time, value in self._values if (now-time).total_seconds() < self._interval]
+        self._values = [(time, value) for time, value in self._values if (now - time).total_seconds() < self._interval]
 
     def average(self, min_interval: Optional[float] = None) -> Optional[float]:
         # got values?
@@ -41,4 +41,4 @@ class RollingTimeAverage(object):
         return float(np.mean(values))
 
 
-__all__ = ['RollingTimeAverage']
+__all__ = ["RollingTimeAverage"]

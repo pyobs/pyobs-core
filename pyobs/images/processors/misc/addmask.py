@@ -13,7 +13,8 @@ log = logging.getLogger(__name__)
 
 class AddMask(ImageProcessor):
     """Add mask to image."""
-    __module__ = 'pyobs.images.processors.misc'
+
+    __module__ = "pyobs.images.processors.misc"
 
     def __init__(self, masks: Dict[str, Dict[str, Union[NDArray[Any], str]]], **kwargs: Any):
         """Init an image processor that adds a mask to an image.
@@ -33,7 +34,7 @@ class AddMask(ImageProcessor):
                 elif isinstance(mask, str):
                     self._masks[instrument][binning] = fits.getdata(mask)
                 else:
-                    raise ValueError('Unknown mask format.')
+                    raise ValueError("Unknown mask format.")
 
     async def __call__(self, image: Image) -> Image:
         """Add mask to image.
@@ -49,16 +50,15 @@ class AddMask(ImageProcessor):
         img = image.copy()
 
         # add mask
-        instrument = image.header['INSTRUME']
-        binning = '%dx%s' % (image.header['XBINNING'], image.header['YBINNING'])
+        instrument = image.header["INSTRUME"]
+        binning = "%dx%s" % (image.header["XBINNING"], image.header["YBINNING"])
         if binning in self._masks:
             img.mask = self._masks[instrument][binning].copy()
         else:
-            log.warning('No mask found for binning of frame.')
+            log.warning("No mask found for binning of frame.")
 
         # finished
         return img
 
 
-__all__ = ['AddMask']
-
+__all__ = ["AddMask"]

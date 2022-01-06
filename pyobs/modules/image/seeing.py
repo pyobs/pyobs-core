@@ -14,11 +14,17 @@ log = logging.getLogger(__name__)
 
 class Seeing(Module):
     """Measures seeing on reduced images with a catalog."""
-    __module__ = 'pyobs.modules.image'
 
-    def __init__(self, sources: Optional[Union[str, List[str]]] = None,
-                 publisher: Optional[Union[Publisher, Dict[str, Any]]] = None,
-                 max_ellipticity: float = 0.2, correct_for_airmass: bool = True, **kwargs: Any):
+    __module__ = "pyobs.modules.image"
+
+    def __init__(
+        self,
+        sources: Optional[Union[str, List[str]]] = None,
+        publisher: Optional[Union[Publisher, Dict[str, Any]]] = None,
+        max_ellipticity: float = 0.2,
+        correct_for_airmass: bool = True,
+        **kwargs: Any,
+    ):
         """Creates a new seeing estimator.
 
         Args:
@@ -40,7 +46,7 @@ class Seeing(Module):
         await Module.open(self)
 
         # subscribe to channel with new images
-        log.info('Subscribing to new image events...')
+        log.info("Subscribing to new image events...")
         await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
@@ -61,15 +67,15 @@ class Seeing(Module):
             return False
 
         # put into queue
-        log.info('Received new image event from %s.', sender)
+        log.info("Received new image event from %s.", sender)
 
         # download image
         try:
-            log.info('Downloading file %s...', event.filename)
+            log.info("Downloading file %s...", event.filename)
             image = await self.vfs.read_image(event.filename)
 
         except FileNotFoundError:
-            log.error('Could not download image.')
+            log.error("Could not download image.")
             return False
 
         # get catalog
@@ -79,14 +85,14 @@ class Seeing(Module):
             return False
 
         # filter by ellipticity
-        cat = cat[cat['ellipticity'] < self._max_ellipticity]
+        cat = cat[cat["ellipticity"] < self._max_ellipticity]
 
         # get WCS and pixel size
         wcs = WCS(image.header)
-        pix_size = abs(proj_plane_pixel_scales(wcs)[0] * 3600.)
+        pix_size = abs(proj_plane_pixel_scales(wcs)[0] * 3600.0)
 
         # calculate seeing
-        seeing = np.mean(cat['fwhm']) * pix_size
+        seeing = np.mean(cat["fwhm"]) * pix_size
 
         # correct for airmass?
         if self._correct_for_airmass:
@@ -94,8 +100,8 @@ class Seeing(Module):
             # S = S0 * a^0.6
             # see https://www.astro.auth.gr/~seeing-gr/seeing_gr_files/theory/node17.html
             # need airmass
-            if 'AIRMASS' in image.header:
-                seeing /= image.header['AIRMASS']**0.6
+            if "AIRMASS" in image.header:
+                seeing /= image.header["AIRMASS"] ** 0.6
             else:
                 # could not correct
                 return False
@@ -106,4 +112,4 @@ class Seeing(Module):
         return True
 
 
-__all__ = ['Seeing']
+__all__ = ["Seeing"]

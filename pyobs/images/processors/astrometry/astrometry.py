@@ -6,7 +6,8 @@ from pyobs.images.processor import ImageProcessor
 
 class Astrometry(ImageProcessor, metaclass=ABCMeta):
     """Base class for astrometry processors"""
-    __module__ = 'pyobs.images.processors.astrometry'
+
+    __module__ = "pyobs.images.processors.astrometry"
 
     @abstractmethod
     async def __call__(self, image: Image) -> Image:
@@ -21,4 +22,4 @@ class Astrometry(ImageProcessor, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['Astrometry']
+__all__ = ["Astrometry"]

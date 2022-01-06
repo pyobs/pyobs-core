@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IExposureTime(Interface, metaclass=ABCMeta):
     """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
@@ -39,4 +40,4 @@ class IExposureTime(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IExposureTime']
+__all__ = ["IExposureTime"]

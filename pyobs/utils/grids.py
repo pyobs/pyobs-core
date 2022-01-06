@@ -18,7 +18,7 @@ class SphericalGrid:
             Lat/lon grid.
         """
         grid = []
-        for lon in np.linspace(0, 360. - 360. / n_lon, n_lon):
+        for lon in np.linspace(0, 360.0 - 360.0 / n_lon, n_lon):
             for lat in np.linspace(-90, 90, n_lat):
                 grid.append((lon, lat))
         return grid
@@ -45,7 +45,7 @@ class SphericalGrid:
         grid = []
 
         # conversion radians -> degrees
-        r2d = 180. / np.pi
+        r2d = 180.0 / np.pi
 
         # loop latitudinal
         for m in range(0, m_phi):
@@ -57,13 +57,13 @@ class SphericalGrid:
                 lon = 2 * np.pi * n / m_varphi
 
                 # append to grid
-                grid.append((lon * r2d, lat * r2d - 90.))
+                grid.append((lon * r2d, lat * r2d - 90.0))
 
         # finished
         return grid
 
     @staticmethod
-    def convert_to_cartesian(grid: List[Tuple[float, float]], radius: float = 1.) -> List[Tuple[float, float, float]]:
+    def convert_to_cartesian(grid: List[Tuple[float, float]], radius: float = 1.0) -> List[Tuple[float, float, float]]:
         """Convert a grid to cartesian coordinates.
 
         Params:
@@ -75,12 +75,17 @@ class SphericalGrid:
         """
 
         # conversion radians -> degrees
-        r2d = 180. / np.pi
+        r2d = 180.0 / np.pi
 
         # calculate x/y/z coordinates, assuming r=1
-        return [(radius * np.cos(lat / r2d) * np.cos(lon / r2d),
-                 radius * np.cos(lat / r2d) * np.sin(lon / r2d),
-                 radius * np.sin(lat / r2d)) for lon, lat in grid]
+        return [
+            (
+                radius * np.cos(lat / r2d) * np.cos(lon / r2d),
+                radius * np.cos(lat / r2d) * np.sin(lon / r2d),
+                radius * np.sin(lat / r2d),
+            )
+            for lon, lat in grid
+        ]
 
     @staticmethod
     def plot_cartesian(grid: List[Tuple[float, float, float]]) -> None:
@@ -90,6 +95,6 @@ class SphericalGrid:
             grid: Cartesian grid to plot.
         """
         fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
+        ax = fig.add_subplot(projection="3d")
         x, y, z = list(zip(*grid))
         ax.scatter(x, z, y)

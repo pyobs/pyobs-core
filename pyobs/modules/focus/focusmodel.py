@@ -5,6 +5,7 @@ from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
 import numpy.typing as npt
+
 if TYPE_CHECKING:
     import lmfit
 
@@ -54,15 +55,27 @@ class FocusModel(Module, IFocusModel):
 
     Only this way it is possible to automatically re-calculate the model.
     """
-    __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Optional[str] = None, weather: Optional[str] = None, interval: int = 300,
-                 temperatures: Optional[Dict[str, Dict[str, float]]] = None, model: Optional[str] = None,
-                 coefficients: Optional[Dict[str, float]] = None, update: bool = False,
-                 log_file: Optional[str] = None, min_measurements: int = 10, enabled: bool = True,
-                 temp_sensor: str = 'average.temp', default_filter: Optional[str] = None,
-                 filter_offsets: Optional[Dict[str, float]] = None,
-                 filter_wheel: Optional[str] = None, **kwargs: Any):
+    __module__ = "pyobs.modules.focus"
+
+    def __init__(
+        self,
+        focuser: Optional[str] = None,
+        weather: Optional[str] = None,
+        interval: int = 300,
+        temperatures: Optional[Dict[str, Dict[str, float]]] = None,
+        model: Optional[str] = None,
+        coefficients: Optional[Dict[str, float]] = None,
+        update: bool = False,
+        log_file: Optional[str] = None,
+        min_measurements: int = 10,
+        enabled: bool = True,
+        temp_sensor: str = "average.temp",
+        default_filter: Optional[str] = None,
+        filter_offsets: Optional[Dict[str, float]] = None,
+        filter_wheel: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """Initialize a focus model.
 
         Args:
@@ -84,7 +97,8 @@ class FocusModel(Module, IFocusModel):
 
         # check import
         import lmfit
-        log.info(f'Found lmfit {lmfit.__version__}.')
+
+        log.info(f"Found lmfit {lmfit.__version__}.")
 
         # add thread func
         if interval is not None and interval > 0:
@@ -100,27 +114,27 @@ class FocusModel(Module, IFocusModel):
         self._update_model = update
         self._min_measurements = min_measurements
         self._enabled = enabled
-        self._temp_station, sensor = temp_sensor.split('.')
+        self._temp_station, sensor = temp_sensor.split(".")
         self._temp_sensor = WeatherSensors(sensor)
         self._default_filter = default_filter
         self._filter_offsets = filter_offsets
         self._filter_wheel = filter_wheel
-        log.info('Going to fetch temperature from sensor %s at station %s.', self._temp_sensor, self._temp_station)
+        log.info("Going to fetch temperature from sensor %s at station %s.", self._temp_sensor, self._temp_station)
 
         # model
         parser = Parser()
-        log.info('Parsing model: %s', model)
+        log.info("Parsing model: %s", model)
         self._model = parser.parse(model)
 
         # coefficients
         if self._coefficients is not None and len(self._coefficients) > 0:
-            log.info('Found coefficients: %s', ', '.join(['%s=%.3f' % (k, v) for k, v in self._coefficients.items()]))
+            log.info("Found coefficients: %s", ", ".join(["%s=%.3f" % (k, v) for k, v in self._coefficients.items()]))
 
         # variables
         variables = self._model.variables()
         for c in self._coefficients.keys():
             variables.remove(c)
-        log.info('Found variables: %s', ', '.join(variables))
+        log.info("Found variables: %s", ", ".join(variables))
 
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
@@ -153,7 +167,7 @@ class FocusModel(Module, IFocusModel):
             try:
                 focuser = await self.proxy(self._focuser, IFocuser)
             except ValueError:
-                log.warning('Could not connect to focuser.')
+                log.warning("Could not connect to focuser.")
                 await asyncio.sleep(10)
                 continue
 
@@ -162,7 +176,7 @@ class FocusModel(Module, IFocusModel):
             if status is False:
                 # log
                 if self._focuser_ready:
-                    log.info('Focuser not ready, waiting for it...')
+                    log.info("Focuser not ready, waiting for it...")
                     self._focuser_ready = False
 
                 # sleep a little and continue
@@ -171,7 +185,7 @@ class FocusModel(Module, IFocusModel):
 
             # came from not ready state?
             if not self._focuser_ready:
-                log.info('Focuser ready now, starting focus tracking...')
+                log.info("Focuser ready now, starting focus tracking...")
                 self._focuser_ready = True
 
             # now set focus
@@ -184,7 +198,7 @@ class FocusModel(Module, IFocusModel):
                 continue
 
             # sleep interval
-            log.info('Going to sleep for %d seconds...', self._interval)
+            log.info("Going to sleep for %d seconds...", self._interval)
             await asyncio.sleep(self._interval)
 
     async def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
@@ -204,7 +218,7 @@ class FocusModel(Module, IFocusModel):
         values = await self._get_values()
 
         # evaluate model
-        log.info('Evaluating model...')
+        log.info("Evaluating model...")
         focus = self._model.evaluate({**values, **self._coefficients})
 
         # focus offset?
@@ -220,14 +234,14 @@ class FocusModel(Module, IFocusModel):
 
                 # add offset
                 offset = self._filter_offsets[filter_name]
-                log.info('Adding filter offset of %.2f for filter %s...', offset, filter_name)
+                log.info("Adding filter offset of %.2f for filter %s...", offset, filter_name)
                 focus += offset
 
             except (ValueError, KeyError):
-                log.error('Could not determine filter offset.')
+                log.error("Could not determine filter offset.")
 
         # set focus
-        log.info('Found optimal focus of %.4f.', focus)
+        log.info("Found optimal focus of %.4f.", focus)
         return float(focus)
 
     async def get_optimal_focus(self, **kwargs: Any) -> float:
@@ -252,50 +266,51 @@ class FocusModel(Module, IFocusModel):
         variables = {}
 
         # do we need a weather proxy?
-        if 'temp' in self._model.variables():
-            log.info('Fetching temperature from weather module...')
+        if "temp" in self._model.variables():
+            log.info("Fetching temperature from weather module...")
 
             # get weather proxy
             try:
                 weather = await self.proxy(self._weather, IWeather)
             except ValueError:
-                raise ValueError('Could not connect to weather module.')
+                raise ValueError("Could not connect to weather module.")
 
             # get value
             time, val = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
             if val is None:
-                raise ValueError('Received invalid temperature from weather station.')
+                raise ValueError("Received invalid temperature from weather station.")
 
             # get temperature
-            variables['temp'] = val
-            log.info('Got temperature of %.2f.', variables['temp'])
+            variables["temp"] = val
+            log.info("Got temperature of %.2f.", variables["temp"])
 
         # loop other temperatures
         module_temps = {}
         for var, cfg in self._temperatures.items():
             # need to fetch temperatures from module?
-            if cfg['module'] not in module_temps:
-                log.info('Fetching temperatures from module %s...', cfg['module'])
+            if cfg["module"] not in module_temps:
+                log.info("Fetching temperatures from module %s...", cfg["module"])
 
                 # get proxy
-                proxy = await self.proxy(cfg['module'], ITemperatures)
+                proxy = await self.proxy(cfg["module"], ITemperatures)
 
                 # get temperatures
-                module_temps[cfg['module']] = await proxy.get_temperatures()
+                module_temps[cfg["module"]] = await proxy.get_temperatures()
 
                 # log
-                vals = ', '.join(['%s=%.2f' % (k, v) for k, v in module_temps[cfg['module']].items()])
-                log.info('Received temperatures: %s', vals)
+                vals = ", ".join(["%s=%.2f" % (k, v) for k, v in module_temps[cfg["module"]].items()])
+                log.info("Received temperatures: %s", vals)
 
             # store, what we need
-            if cfg['sensor'] not in module_temps[cfg['module']]:
-                raise ValueError('Temperature for sensor %s not in data from module %s.' %
-                                 (cfg['sensor'], cfg['module']))
-            variables[var] = module_temps[cfg['module']][cfg['sensor']]
+            if cfg["sensor"] not in module_temps[cfg["module"]]:
+                raise ValueError(
+                    "Temperature for sensor %s not in data from module %s." % (cfg["sensor"], cfg["module"])
+                )
+            variables[var] = module_temps[cfg["module"]][cfg["sensor"]]
 
         # log
-        vals = ', '.join(['%s=%.2f' % (k, v) for k, v in variables.items()])
-        log.info('Found values for model: %s', vals)
+        vals = ", ".join(["%s=%.2f" % (k, v) for k, v in variables.items()])
+        log.info("Found values for model: %s", vals)
         return variables
 
     async def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:
@@ -315,9 +330,9 @@ class FocusModel(Module, IFocusModel):
         focus = await self._get_optimal_focus(filter_name=filter_name)
 
         # set it
-        log.info('Setting optimal focus...')
+        log.info("Setting optimal focus...")
         await focuser.set_focus(focus)
-        log.info('Done.')
+        log.info("Done.")
 
     @timeout(60)
     async def set_optimal_focus(self, **kwargs: Any) -> None:
@@ -336,28 +351,28 @@ class FocusModel(Module, IFocusModel):
             sender: The name of the sender.
         """
         if not isinstance(event, FocusFoundEvent):
-            raise ValueError('Not a focus event.')
-        log.info('Received new focus of %.4f +- %.4f.', event.focus, event.error)
+            raise ValueError("Not a focus event.")
+        log.info("Received new focus of %.4f +- %.4f.", event.focus, event.error)
 
         # collect values for model
         values = await self._get_values()
 
         # add focus and datetime
-        values['focus'] = event.focus
-        values['error'] = event.error
-        values['datetime'] = Time.now().isot
-        values['filter'] = event.filter_name
+        values["focus"] = event.focus
+        values["error"] = event.error
+        values["datetime"] = Time.now().isot
+        values["filter"] = event.filter_name
 
         # write log
         if self._publisher is not None:
             await self._publisher(**values)
 
         # finally, calculate new model
-        log.info('Re-calculating model...')
+        log.info("Re-calculating model...")
         await self._calc_focus_model()
 
         # finished
-        log.info('Done.')
+        log.info("Done.")
         return True
 
     async def _calc_focus_model(self) -> None:
@@ -373,46 +388,47 @@ class FocusModel(Module, IFocusModel):
 
         # enough measurements?
         if len(data) < self._min_measurements:
-            log.warning('Not enough measurements found for re-calculating model (%d<%d).',
-                        len(data), self._min_measurements)
+            log.warning(
+                "Not enough measurements found for re-calculating model (%d<%d).", len(data), self._min_measurements
+            )
             return
 
         # build parameters
         params = lmfit.Parameters()
         for c in self._coefficients.keys():
-            params.add(c, 0.)
+            params.add(c, 0.0)
 
         # if we want to fit filter offsets, add them to params
         if self._filter_offsets is not None:
             # get unique list of filters and add them
-            for f in data['filter'].unique():
-                params.add('off_' + f, 0.)
+            for f in data["filter"].unique():
+                params.add("off_" + f, 0.0)
 
         # fit
-        log.info('Fitting coefficients...')
+        log.info("Fitting coefficients...")
         out = lmfit.minimize(self._residuals, params, args=(data,))
-        if not hasattr(out, 'params'):
-            raise ValueError('No params returned from fit.')
-        out_params = getattr(out, 'params')
+        if not hasattr(out, "params"):
+            raise ValueError("No params returned from fit.")
+        out_params = getattr(out, "params")
 
         # print results
-        log.info('Found best coefficients:')
+        log.info("Found best coefficients:")
         for p in out_params:
-            if not p.startswith('off_'):
+            if not p.startswith("off_"):
                 if out_params[p].stderr is not None:
-                    log.info('  %-5s = %10.5f +- %8.5f', p, out_params[p].value, out_params[p].stderr)
+                    log.info("  %-5s = %10.5f +- %8.5f", p, out_params[p].value, out_params[p].stderr)
                 else:
-                    log.info('  %-5s = %10.5f', p, out_params[p].value)
+                    log.info("  %-5s = %10.5f", p, out_params[p].value)
         if self._filter_offsets is not None:
-            log.info('Found filter offsets:')
+            log.info("Found filter offsets:")
             for p in out_params:
-                if p.startswith('off_'):
+                if p.startswith("off_"):
                     if out_params[p].stderr is not None:
-                        log.info('  %-10s = %10.5f +- %8.5f', p[4:], out_params[p].value, out_params[p].stderr)
+                        log.info("  %-10s = %10.5f +- %8.5f", p[4:], out_params[p].value, out_params[p].stderr)
                     else:
-                        log.info('  %-10s = %10.5f', p[4:], out_params[p].value)
+                        log.info("  %-10s = %10.5f", p[4:], out_params[p].value)
 
-        log.info('Reduced chi squared: %.3f', out.redchi)
+        log.info("Reduced chi squared: %.3f", out.redchi)
 
         # store new coefficients and filter offsets
         if self._update_model:
@@ -422,10 +438,10 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = d
             else:
                 # need to separate
-                self._coefficients = {k: v for k, v in d.items() if not k.startswith('off_')}
-                self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith('off_')}
+                self._coefficients = {k: v for k, v in d.items() if not k.startswith("off_")}
+                self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith("off_")}
 
-    def _residuals(self, x: 'lmfit.Parameters', data: pd.DataFrame) -> npt.NDArray[float]:
+    def _residuals(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[float]:
         """Fit method for model
 
         Args:
@@ -449,20 +465,20 @@ class FocusModel(Module, IFocusModel):
                 if self._filter_offsets:
                     # evaluate and add offset
                     mod = self._model.evaluate({**x.valuesdict(), **row})
-                    if row['filter'] != self._default_filter:
-                        mod += x['off_' + row['filter']]
+                    if row["filter"] != self._default_filter:
+                        mod += x["off_" + row["filter"]]
 
                 else:
                     # no filter offsets, so ignore this row if, if wrong filter
-                    if row['filter'] == self._default_filter:
+                    if row["filter"] == self._default_filter:
                         mod = self._model.evaluate({**x.valuesdict(), **row})
                     else:
                         continue
 
             # add it
             model.append(mod)
-            focus.append(row['focus'])
-            error.append(row['error'])
+            focus.append(row["focus"])
+            error.append(row["error"])
 
         # return residuals
         return cast(npt.NDArray[float], (np.array(focus) - np.array(model)) / np.array(error))
@@ -481,12 +497,12 @@ class FocusModel(Module, IFocusModel):
 
         # log and change
         try:
-            log.info('Detected filter change to %s, adjusting focus...', event.filter)
+            log.info("Detected filter change to %s, adjusting focus...", event.filter)
             await self._set_optimal_focus(event.filter)
             return True
         except ValueError:
-            log.error('Could not set focus.')
+            log.error("Could not set focus.")
             return False
 
 
-__all__ = ['FocusModel']
+__all__ = ["FocusModel"]

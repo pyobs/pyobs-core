@@ -12,12 +12,16 @@ from urllib3 import Retry
 # some more:
 # https://github.com/psf/requests/issues/2214
 import urllib3
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def requests_retry_session(retries: int = 3, backoff_factor: float = 0.3,
-                           status_forcelist: Iterable[int] = (500, 502, 504),
-                           session: Optional[requests.Session] = None) -> requests.Session:
+def requests_retry_session(
+    retries: int = 3,
+    backoff_factor: float = 0.3,
+    status_forcelist: Iterable[int] = (500, 502, 504),
+    session: Optional[requests.Session] = None,
+) -> requests.Session:
     session = session or requests.Session()
     retry = Retry(
         total=retries,
@@ -27,6 +31,6 @@ def requests_retry_session(retries: int = 3, backoff_factor: float = 0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
     return session

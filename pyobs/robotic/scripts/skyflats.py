@@ -15,11 +15,22 @@ log = logging.getLogger(__name__)
 class SkyFlats(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
-    def __init__(self, roof: typing.Union[str, IRoof], telescope: typing.Union[str, ITelescope],
-                 flatfield: typing.Union[str, IFlatField], functions: dict,
-                 priorities: typing.Union[dict, SkyflatPriorities], min_exptime: float = 0.5, max_exptime: float = 5,
-                 timespan: float = 7200, filter_change: float = 30, count: int = 20, readout: dict = None,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        roof: typing.Union[str, IRoof],
+        telescope: typing.Union[str, ITelescope],
+        flatfield: typing.Union[str, IFlatField],
+        functions: dict,
+        priorities: typing.Union[dict, SkyflatPriorities],
+        min_exptime: float = 0.5,
+        max_exptime: float = 5,
+        timespan: float = 7200,
+        filter_change: float = 30,
+        count: int = 20,
+        readout: dict = None,
+        *args,
+        **kwargs,
+    ):
         """Init a new SkyFlats script.
 
         Args:
@@ -49,10 +60,17 @@ class SkyFlats(Script):
         priorities = get_object(priorities, SkyflatPriorities)
 
         # create scheduler
-        self._scheduler = Scheduler(functions, priorities, self.observer,
-                                    min_exptime=min_exptime, max_exptime=max_exptime,
-                                    timespan=timespan, filter_change=filter_change, count=count,
-                                    readout=readout)
+        self._scheduler = Scheduler(
+            functions,
+            priorities,
+            self.observer,
+            min_exptime=min_exptime,
+            max_exptime=max_exptime,
+            timespan=timespan,
+            filter_change=filter_change,
+            count=count,
+            readout=readout,
+        )
 
     async def can_run(self) -> bool:
         """Whether this config can currently run.
@@ -87,13 +105,13 @@ class SkyFlats(Script):
         flatfield = await self.comm.proxy(self._flatfield, IFlatField)
 
         # schedule
-        log.info('Scheduling flat-fields...')
+        log.info("Scheduling flat-fields...")
         await self._scheduler(Time.now())
 
         # log schedule
-        log.info('Found schedule:')
+        log.info("Found schedule:")
         for sched in self._scheduler:
-            log.info('- %s', sched)
+            log.info("- %s", sched)
 
         # total exposure time in ms
         self.exptime_done = 0
@@ -102,19 +120,19 @@ class SkyFlats(Script):
         item: SchedulerItem
         for item in self._scheduler:
             # do flat fields
-            log.info('Performing flat-fields in %s %dx%d...', item.filter_name, *item.binning)
+            log.info("Performing flat-fields in %s %dx%d...", item.filter_name, *item.binning)
             if isinstance(flatfield, IBinning):
                 await flatfield.set_binning(*item.binning)
             if isinstance(flatfield, IFilters):
                 await flatfield.set_filter(item.filter_name)
             done, exp_time = await typing.cast(flatfield, IFlatField).flat_field(self._count)
-            log.info('Finished flat-fields.')
+            log.info("Finished flat-fields.")
 
             # increase exposure time
             self.exptime_done += exp_time
 
         # finished
-        log.info('Finished all scheduled flat-fields.')
+        log.info("Finished all scheduled flat-fields.")
 
 
-__all__ = ['SkyFlats']
+__all__ = ["SkyFlats"]

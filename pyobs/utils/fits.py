@@ -1,7 +1,7 @@
 """
 TODO: write doc
 """
-__title__ = 'FITS utilities'
+__title__ = "FITS utilities"
 
 import logging
 import re
@@ -16,7 +16,7 @@ from pyobs.utils.time import Time
 log = logging.getLogger(__name__)
 
 
-def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> NDArray[Any]:
+def fitssec(hdu: Any, keyword: str = "TRIMSEC") -> NDArray[Any]:
     """Trim an image to TRIMSEC or BIASSEC.
 
     Args:
@@ -36,9 +36,9 @@ def fitssec(hdu: Any, keyword: str = 'TRIMSEC') -> NDArray[Any]:
     sec = hdu.header[keyword]
 
     # split values
-    s = sec[1:-1].split(',')
-    x = s[0].split(':')
-    y = s[1].split(':')
+    s = sec[1:-1].split(",")
+    x = s[0].split(":")
+    y = s[1].split(":")
     x0 = int(x[0]) - 1
     x1 = int(x[1])
     y0 = int(y[0]) - 1
@@ -61,12 +61,12 @@ class FilenameFormatter:
 
         # define functions
         self.funcs: Dict[str, Callable[..., str]] = {
-            'lower': self._format_lower,
-            'time': self._format_time,
-            'date': self._format_date,
-            'filter': self._format_filter,
-            'string': self._format_string,
-            'type': self._format_type
+            "lower": self._format_lower,
+            "time": self._format_time,
+            "date": self._format_date,
+            "filter": self._format_filter,
+            "string": self._format_string,
+            "type": self._format_type,
         }
 
     def _value(self, hdr: fits.Header, key: str) -> Any:
@@ -110,7 +110,7 @@ class FilenameFormatter:
         for f in self.format:
             try:
                 # find all placeholders in format
-                placeholders = re.findall('\{[\w\d_-]+(?:\|[\w\d_-]+\:?(?:[\w\d_-]+)*)?\}', f)
+                placeholders = re.findall("\{[\w\d_-]+(?:\|[\w\d_-]+\:?(?:[\w\d_-]+)*)?\}", f)
                 if len(placeholders) == 0:
                     return f
 
@@ -130,7 +130,7 @@ class FilenameFormatter:
                 pass
 
         # still here?
-        raise KeyError('No valid format found.')
+        raise KeyError("No valid format found.")
 
     def _format_placeholder(self, placeholder: str, hdr: fits.Header) -> str:
         """Format a given placeholder.
@@ -152,12 +152,12 @@ class FilenameFormatter:
         params = []
 
         # do we have a pipe in here?
-        if '|' in key:
-            key, method = key.split('|')
+        if "|" in key:
+            key, method = key.split("|")
 
         # parameters for method?
-        if method is not None and ':' in method:
-            method, *params = method.split(':')
+        if method is not None and ":" in method:
+            method, *params = method.split(":")
 
         # if no method is given, just replace
         if method is None:
@@ -173,31 +173,31 @@ class FilenameFormatter:
     def _format_lower(self, hdr: fits.Header, key: str) -> str:
         """Sets a given string to lowercase.
 
-       Args:
-           hdr: FITS header to take values from.
-           key: The name of the FITS header key to use.
+        Args:
+            hdr: FITS header to take values from.
+            key: The name of the FITS header key to use.
 
-       Returns:
-           Formatted string.
-       """
+        Returns:
+            Formatted string.
+        """
         return str(self._value(hdr, key)).lower()
 
-    def _format_time(self, hdr: fits.Header, key: str, delimiter: str = '-') -> str:
+    def _format_time(self, hdr: fits.Header, key: str, delimiter: str = "-") -> str:
         """Formats time using the given delimiter.
 
-       Args:
-           hdr: FITS header to take values from.
-           key: The name of the FITS header key to use.
-           delimiter: Delimiter for time formatting.
+        Args:
+            hdr: FITS header to take values from.
+            key: The name of the FITS header key to use.
+            delimiter: Delimiter for time formatting.
 
-       Returns:
-           Formatted string.
-       """
-        fmt = '%H' + delimiter + '%M' + delimiter + '%S'
+        Returns:
+            Formatted string.
+        """
+        fmt = "%H" + delimiter + "%M" + delimiter + "%S"
         date_obs = Time(self._value(hdr, key))
         return str(date_obs.datetime.strftime(fmt))
 
-    def _format_date(self, hdr: fits.Header, key: str, delimiter: str = '-') -> str:
+    def _format_date(self, hdr: fits.Header, key: str, delimiter: str = "-") -> str:
         """Formats date using the given delimiter.
 
         Args:
@@ -208,11 +208,11 @@ class FilenameFormatter:
         Returns:
             Formatted string.
         """
-        fmt = '%Y' + delimiter + '%m' + delimiter + '%d'
+        fmt = "%Y" + delimiter + "%m" + delimiter + "%d"
         date_obs = Time(self._value(hdr, key))
         return str(date_obs.datetime.strftime(fmt))
 
-    def _format_filter(self, hdr: fits.Header, key: str, image_type: str = 'IMAGETYP', prefix: str = '-') -> str:
+    def _format_filter(self, hdr: fits.Header, key: str, image_type: str = "IMAGETYP", prefix: str = "-") -> str:
         """Formats a filter, prefixed by a given separator, only if the image type requires it.
 
         Args:
@@ -225,10 +225,10 @@ class FilenameFormatter:
             Formatted string.
         """
         it = hdr[image_type].lower()
-        if it in ['light', 'object', 'flat', 'skyflat']:
+        if it in ["light", "object", "flat", "skyflat"]:
             return str(prefix + self._value(hdr, key))
         else:
-            return ''
+            return ""
 
     def _format_string(self, hdr: fits.Header, key: str, fmt: str) -> str:
         """Formats a string using Python string substitution.
@@ -241,7 +241,7 @@ class FilenameFormatter:
         Returns:
             Formatted string.
         """
-        fmt = '%' + fmt
+        fmt = "%" + fmt
         return str(fmt % self._value(hdr, key))
 
     def _format_type(self, hdr: fits.Header, key: str) -> str:
@@ -254,18 +254,19 @@ class FilenameFormatter:
         Returns:
             Formatted string.
         """
-        if self._value(hdr, key) == 'bias':
-            return 'b'
-        elif self._value(hdr, key) == 'skyflat':
-            return 'f'
-        elif self._value(hdr, key) == 'dark':
-            return 'd'
+        if self._value(hdr, key) == "bias":
+            return "b"
+        elif self._value(hdr, key) == "skyflat":
+            return "f"
+        elif self._value(hdr, key) == "dark":
+            return "d"
         else:
-            return 'e'
+            return "e"
 
 
-def format_filename(hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional[Dict[str, Any]] = None) \
-        -> Optional[str]:
+def format_filename(
+    hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
     """Formats a filename given a format template and a FITS header.
 
     Args:
@@ -284,4 +285,4 @@ def format_filename(hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional
     return ff(hdr)
 
 
-__all__ = ['format_filename', 'FilenameFormatter', 'fitssec']
+__all__ = ["format_filename", "FilenameFormatter", "fitssec"]

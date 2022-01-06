@@ -6,7 +6,8 @@ from .IImageGrabber import IImageGrabber
 
 class IVideo(IImageGrabber, metaclass=ABCMeta):
     """The module controls a video streaming device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_video(self, **kwargs: Any) -> str:
@@ -18,4 +19,4 @@ class IVideo(IImageGrabber, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IVideo']
+__all__ = ["IVideo"]

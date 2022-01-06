@@ -52,4 +52,4 @@ class SkyOffsets:
             return self.coord0.transform_to(frame), self.coord1.transform_to(frame)
 
 
-__all__ = ['SkyOffsets']
+__all__ = ["SkyOffsets"]

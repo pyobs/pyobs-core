@@ -1,7 +1,7 @@
 """
 TODO: write doc
 """
-__title__ = 'Enumerations'
+__title__ = "Enumerations"
 
 from enum import Enum
 
@@ -15,10 +15,11 @@ class ExposureStatus(Enum):
         READOUT: Camera is currently reading out.
         ERROR: Camera is in error state.
     """
-    IDLE = 'idle'
-    EXPOSING = 'exposing'
-    READOUT = 'readout'
-    ERROR = 'error'
+
+    IDLE = "idle"
+    EXPOSING = "exposing"
+    READOUT = "readout"
+    ERROR = "error"
 
 
 class ImageType(Enum):
@@ -32,12 +33,13 @@ class ImageType(Enum):
         FOCUS: Exposure from a focus-series.
         ACQUISITION: Exposure from an acquisition
     """
-    BIAS = 'bias'
-    DARK = 'dark'
-    OBJECT = 'object'
-    SKYFLAT = 'skyflat'
-    FOCUS = 'focus'
-    ACQUISITION = 'acquisition'
+
+    BIAS = "bias"
+    DARK = "dark"
+    OBJECT = "object"
+    SKYFLAT = "skyflat"
+    FOCUS = "focus"
+    ACQUISITION = "acquisition"
 
 
 class ImageFormat(Enum):
@@ -50,11 +52,12 @@ class ImageFormat(Enum):
         FLOAT64: 64 bit float (i.e. double).
         RGB24: RGB format with 8 bit for each colour.
     """
-    INT8 = 'int8'
-    INT16 = 'int16'
-    FLOAT32 = 'float32'
-    FLOAT64 = 'float64'
-    RGB24 = 'rgb24'
+
+    INT8 = "int8"
+    INT16 = "int16"
+    FLOAT32 = "float32"
+    FLOAT64 = "float64"
+    RGB24 = "rgb24"
 
 
 class MotionStatus(Enum):
@@ -73,16 +76,16 @@ class MotionStatus(Enum):
         TRACKING: The device is moving as commanded.
     """
 
-    ABORTING = 'aborting'
-    ERROR = 'error'
-    IDLE = 'idle'
-    INITIALIZING = 'initializing'
-    PARKING = 'parking'
-    PARKED = 'parked'
-    POSITIONED = 'positioned'
-    SLEWING = 'slewing'
-    TRACKING = 'tracking'
-    UNKNOWN = 'unknown'
+    ABORTING = "aborting"
+    ERROR = "error"
+    IDLE = "idle"
+    INITIALIZING = "initializing"
+    PARKING = "parking"
+    PARKED = "parked"
+    POSITIONED = "positioned"
+    SLEWING = "slewing"
+    TRACKING = "tracking"
+    UNKNOWN = "unknown"
 
 
 class WeatherSensors(Enum):
@@ -101,16 +104,17 @@ class WeatherSensors(Enum):
         PARTICLES: Number of particles per m³.
 
     """
-    TIME = 'time'
-    TEMPERATURE = 'temp'
-    HUMIDITY = 'humid'
-    PRESSURE = 'press'
-    WINDDIR = 'winddir'
-    WINDSPEED = 'windspeed'
-    RAIN = 'rain'
-    SKYTEMP = 'skytemp'
-    DEWPOINT = 'dewpoint'
-    PARTICLES = 'particles'
+
+    TIME = "time"
+    TEMPERATURE = "temp"
+    HUMIDITY = "humid"
+    PRESSURE = "press"
+    WINDDIR = "winddir"
+    WINDSPEED = "windspeed"
+    RAIN = "rain"
+    SKYTEMP = "skytemp"
+    DEWPOINT = "dewpoint"
+    PARTICLES = "particles"
 
 
-__all__ = ['ExposureStatus', 'ImageType', 'ImageFormat', 'MotionStatus', 'WeatherSensors']
+__all__ = ["ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors"]

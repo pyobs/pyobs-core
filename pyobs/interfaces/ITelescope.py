@@ -7,8 +7,9 @@ from .IMotion import IMotion
 
 class ITelescope(IMotion, IPointingAltAz, IPointingRaDec, metaclass=ABCMeta):
     """The module controls a telescope."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
     pass
 
 
-__all__ = ['ITelescope']
+__all__ = ["ITelescope"]

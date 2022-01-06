@@ -2,7 +2,7 @@
 Modules for image operations.
 TODO: write doc
 """
-__title__ = 'Image operations'
+__title__ = "Image operations"
 
 from .imagewatcher import ImageWatcher
 from .imagewriter import ImageWriter

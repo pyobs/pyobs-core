@@ -17,7 +17,8 @@ log = logging.getLogger(__name__)
 
 class VirtualFileSystem(object):
     """Base for a virtual file system."""
-    __module__ = 'pyobs.vfs'
+
+    __module__ = "pyobs.vfs"
 
     def __init__(self, roots: Optional[Dict[str, Any]] = None, **kwargs: Any):
         """Create a new VFS.
@@ -28,10 +29,7 @@ class VirtualFileSystem(object):
 
         # if no root for 'pyobs' is given, add one
         self._roots: Dict[str, Any] = {
-            'pyobs': {
-                'class': 'pyobs.vfs.LocalFile',
-                'root': os.path.expanduser('~/.pyobs/')
-            }
+            "pyobs": {"class": "pyobs.vfs.LocalFile", "root": os.path.expanduser("~/.pyobs/")}
         }
         if roots is not None:
             self._roots.update(roots)
@@ -48,17 +46,17 @@ class VirtualFileSystem(object):
         """
 
         # remove leading slash
-        if path.startswith('/'):
+        if path.startswith("/"):
             path = path[1:]
 
         # no more slash left?
-        if '/' not in path:
-            raise ValueError('No valid path with a root.')
+        if "/" not in path:
+            raise ValueError("No valid path with a root.")
 
         # get position of first slash and split
-        pos = path.index('/')
+        pos = path.index("/")
         root = path[:pos]
-        filename = path[pos + 1:]
+        filename = path[pos + 1 :]
 
         # return it
         return root, filename
@@ -78,10 +76,11 @@ class VirtualFileSystem(object):
 
         # does root exist?
         if root not in self._roots:
-            raise ValueError('Could not find root {0} for file.'.format(root))
+            raise ValueError("Could not find root {0} for file.".format(root))
 
         # create file object
         from pyobs.object import get_object
+
         fd = get_object(self._roots[root], object_class=VFSFile, name=filename, mode=mode)
 
         # return it
@@ -97,7 +96,7 @@ class VirtualFileSystem(object):
         Returns:
             A PrimaryHDU containing the FITS file.
         """
-        async with self.open_file(filename, 'rb') as f:
+        async with self.open_file(filename, "rb") as f:
             data = await f.read()
             return fits.HDUList.fromstring(data)
 
@@ -110,7 +109,7 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        async with self.open_file(filename, 'wb') as f:
+        async with self.open_file(filename, "wb") as f:
             with io.BytesIO() as bio:
                 hdulist.writeto(bio, *args, **kwargs)
                 await f.write(bio.getvalue())
@@ -124,7 +123,7 @@ class VirtualFileSystem(object):
         Returns:
             An image object
         """
-        async with self.open_file(filename, 'rb') as f:
+        async with self.open_file(filename, "rb") as f:
             data = await f.read()
             return Image.from_bytes(data)
 
@@ -137,7 +136,7 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        async with self.open_file(filename, 'wb') as f:
+        async with self.open_file(filename, "wb") as f:
             with io.BytesIO() as bio:
                 image.writeto(bio, *args, **kwargs)
                 await f.write(bio.getvalue())
@@ -154,7 +153,7 @@ class VirtualFileSystem(object):
 
         try:
             # open file
-            async with self.open_file(filename, 'r') as f:
+            async with self.open_file(filename, "r") as f:
                 data = await f.read()
                 return pd.read_csv(io.StringIO(data), *args, **kwargs)
 
@@ -170,7 +169,7 @@ class VirtualFileSystem(object):
             df: DataFrame to write.
         """
 
-        async with self.open_file(filename, 'w') as f:
+        async with self.open_file(filename, "w") as f:
             # create a StringIO as temporary write target
             with io.StringIO() as sio:
                 # write table to sio
@@ -190,7 +189,7 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        async with self.open_file(filename, 'r') as f:
+        async with self.open_file(filename, "r") as f:
             # read YAML
             data = await f.read()
             return yaml.safe_load(io.StringIO(data))
@@ -204,7 +203,7 @@ class VirtualFileSystem(object):
         """
 
         # open file
-        async with self.open_file(filename, 'w') as f:
+        async with self.open_file(filename, "w") as f:
             # create StringIO as temp storage
             with io.StringIO() as sio:
                 # dump to StringIO
@@ -225,16 +224,17 @@ class VirtualFileSystem(object):
         """
 
         # split root
-        if not path.endswith('/'):
-            path += '/'
+        if not path.endswith("/"):
+            path += "/"
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
         from pyobs.object import get_class_from_string
-        klass = get_class_from_string(self._roots[root]['class'])
+
+        klass = get_class_from_string(self._roots[root]["class"])
 
         # get find method
-        find = getattr(klass, 'find')
+        find = getattr(klass, "find")
 
         # and call it
         return find(path, pattern, **self._roots[root])
@@ -250,19 +250,20 @@ class VirtualFileSystem(object):
         """
 
         # split root
-        if not path.endswith('/'):
-            path += '/'
+        if not path.endswith("/"):
+            path += "/"
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
         from pyobs.object import get_class_from_string
-        klass = get_class_from_string(self._roots[root]['class'])
+
+        klass = get_class_from_string(self._roots[root]["class"])
 
         # get exists method
-        exists = getattr(klass, 'exists')
+        exists = getattr(klass, "exists")
 
         # and call it
         return exists(path, **self._roots[root])
 
 
-__all__ = ['VirtualFileSystem', 'VFSFile']
+__all__ = ["VirtualFileSystem", "VFSFile"]

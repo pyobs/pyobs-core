@@ -6,11 +6,11 @@ from .IAbortable import IAbortable
 
 class IAutoFocus(IAbortable, metaclass=ABCMeta):
     """The module can perform an auto-focus."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) \
-            -> Tuple[float, float]:
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -42,4 +42,4 @@ class IAutoFocus(IAbortable, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IAutoFocus']
+__all__ = ["IAutoFocus"]

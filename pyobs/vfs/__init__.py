@@ -53,7 +53,7 @@ Currently supported are these types of file access:
 The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
 
 """
-__title__ = 'Virtual File System'
+__title__ = "Virtual File System"
 
 from .vfs import VirtualFileSystem
 from .file import VFSFile
@@ -65,4 +65,4 @@ from .tempfile import TempFile
 from .archivefile import ArchiveFile
 
 
-__all__ = ['VirtualFileSystem', 'VFSFile', 'LocalFile', 'HttpFile', 'MemoryFile', 'SSHFile', 'TempFile', 'ArchiveFile']
+__all__ = ["VirtualFileSystem", "VFSFile", "LocalFile", "HttpFile", "MemoryFile", "SSHFile", "TempFile", "ArchiveFile"]

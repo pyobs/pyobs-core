@@ -3,4 +3,4 @@ class ExpTime:
         self.exptime = exptime
 
 
-__all__ = ['ExpTime']
+__all__ = ["ExpTime"]

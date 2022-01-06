@@ -6,7 +6,8 @@ from .IMotion import IMotion
 
 class IFocuser(IMotion, metaclass=ABCMeta):
     """The module is a focusing device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -51,4 +52,4 @@ class IFocuser(IMotion, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IFocuser']
+__all__ = ["IFocuser"]

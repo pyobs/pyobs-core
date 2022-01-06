@@ -9,7 +9,8 @@ log = logging.getLogger(__name__)
 
 class DummyAutoGuiding(Module, IAutoGuiding):
     """An auto-guiding system."""
-    __module__ = 'pyobs.modules.guiding'
+
+    __module__ = "pyobs.modules.guiding"
 
     def __init__(self, **kwargs: Any):
         Module.__init__(self, **kwargs)
@@ -19,15 +20,15 @@ class DummyAutoGuiding(Module, IAutoGuiding):
         pass
 
     async def start(self, **kwargs: Any) -> None:
-        log.info('Start guiding.')
+        log.info("Start guiding.")
         self._running = True
 
     async def stop(self, **kwargs: Any) -> None:
-        log.info('Stop guiding.')
+        log.info("Stop guiding.")
         self._running = False
 
     async def is_running(self, **kwargs: Any) -> bool:
         return self._running
 
 
-__all__ = ['DummyAutoGuiding']
+__all__ = ["DummyAutoGuiding"]

@@ -7,7 +7,8 @@ from pyobs.utils.enums import ImageType
 
 class IImageType(Interface, metaclass=ABCMeta):
     """The module supports different image types (e.g. object, bias, dark, etc), mainly used by cameras."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
@@ -28,4 +29,4 @@ class IImageType(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IImageType']
+__all__ = ["IImageType"]

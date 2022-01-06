@@ -7,7 +7,8 @@ from .interface import Interface
 class ILatLon(Interface, metaclass=ABCMeta):
     """The module can move to general Lat/Lon coordinates, which have to be async defined by the module itself.
     Usually combined with :class:`~pyobs.interfaces.ITelescope`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def move_latlon(self, lat: float, lon: float, **kwargs: Any) -> None:
@@ -32,4 +33,4 @@ class ILatLon(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['ILatLon']
+__all__ = ["ILatLon"]

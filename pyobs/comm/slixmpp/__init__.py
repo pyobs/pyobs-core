@@ -1,3 +1,3 @@
 from .xmppcomm import XmppComm
 
-__all__ = ['XmppComm']
+__all__ = ["XmppComm"]

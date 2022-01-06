@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IRunning(Interface, metaclass=ABCMeta):
     """The module can be running."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def is_running(self, **kwargs: Any) -> bool:
@@ -14,4 +15,4 @@ class IRunning(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IRunning']
+__all__ = ["IRunning"]

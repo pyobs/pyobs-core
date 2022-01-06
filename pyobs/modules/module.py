@@ -13,7 +13,7 @@ from pyobs.version import version, version_tuple
 log = logging.getLogger(__name__)
 
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> Callable[[F], F]:
@@ -29,7 +29,7 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
             nonlocal func_timeout, func
 
             # init to 0 second
-            to = 0.
+            to = 0.0
 
             # do we have a timeout?
             if func_timeout is not None:
@@ -37,14 +37,14 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
                 if callable(func_timeout):
                     # this is a method, does it have a timeout on it's own? then use it
                     try:
-                        if hasattr(func_timeout, 'timeout'):
+                        if hasattr(func_timeout, "timeout"):
                             # call timeout method, only works if this has the same parameters
-                            to = await getattr(func_timeout, 'timeout')(obj, *args, **kwargs)
+                            to = await getattr(func_timeout, "timeout")(obj, *args, **kwargs)
                         else:
                             # call method directly
                             to = await func_timeout(obj, *args, **kwargs)
                     except:
-                        log.exception('Could not call timeout method.')
+                        log.exception("Could not call timeout method.")
 
                 elif isinstance(func_timeout, str):
                     # this is a string with a function, so evaluate it
@@ -59,14 +59,14 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
                     try:
                         to = float(func_timeout)
                     except ValueError:
-                        log.exception('Could not convert timeout to float.')
-                        to = 0.
+                        log.exception("Could not convert timeout to float.")
+                        to = 0.0
 
             # return it
             return to
 
         # decorate method
-        setattr(func, 'timeout', _timeout)
+        setattr(func, "timeout", _timeout)
         return func
 
     return timeout_decorator
@@ -74,7 +74,8 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
 
 class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
-    __module__ = 'pyobs.modules'
+
+    __module__ = "pyobs.modules"
 
     def __init__(self, name: Optional[str] = None, label: Optional[str] = None, **kwargs: Any):
         """
@@ -115,7 +116,7 @@ class Module(Object, IModule, IConfig):
 
         # close comm
         if self.comm is not None:
-            log.info('Closing connection to server...')
+            log.info("Closing connection to server...")
             await self.comm.close()
 
     async def main(self) -> None:
@@ -128,11 +129,11 @@ class Module(Object, IModule, IConfig):
 
     def name(self, **kwargs: Any) -> str:
         """Returns name of module."""
-        return '' if self._device_name is None else self._device_name
+        return "" if self._device_name is None else self._device_name
 
     async def get_label(self, **kwargs: Any) -> str:
         """Returns label of module."""
-        return '' if self._label is None else self._label
+        return "" if self._label is None else self._label
 
     async def get_version(self, **kwargs: Any) -> str:
         """Returns pyobs version of module."""
@@ -149,17 +150,15 @@ class Module(Object, IModule, IConfig):
         my_version = version()
 
         # log it
-        log.warning(f'Other module {sender} found, running on pyobs {module_version}.')
+        log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
 
         # check minor and major version, ignore patch level
         v1, v2 = version_tuple(my_version), version_tuple(module_version)
-        if v1[:2] != v2[:2]:
-            if v1 > v2:
-                log.error(f'Found module "{sender}" with older pyobs version {module_version} (<{my_version}), '
-                          f'please update it.')
-            else:
-                log.error(f'Found module "{sender}" with newer pyobs version {module_version} (>{my_version}), '
-                          f'please update this module.')
+        if v1[:2] != v2[:2] and v1 > v2:
+            log.error(
+                f'Found module "{sender}" with newer pyobs version {module_version} (>{my_version}), '
+                f"please update pyobs for this module."
+            )
 
         # okay
         return True
@@ -236,12 +235,12 @@ class Module(Object, IModule, IConfig):
         # get additional args and kwargs and delete from ba
         func_args = []
         func_kwargs = {}
-        if 'args' in ba.arguments:
-            func_args = ba.arguments['args']
-            del ba.arguments['args']
-        if 'kwargs' in ba.arguments:
-            func_kwargs = ba.arguments['kwargs']
-            del ba.arguments['kwargs']
+        if "args" in ba.arguments:
+            func_args = ba.arguments["args"]
+            del ba.arguments["args"]
+        if "kwargs" in ba.arguments:
+            func_kwargs = ba.arguments["kwargs"]
+            del ba.arguments["kwargs"]
 
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)
@@ -262,21 +261,23 @@ class Module(Object, IModule, IConfig):
                 continue
 
             # get signature
-            sig = inspect.signature(getattr(cls, '__init__'))
+            sig = inspect.signature(getattr(cls, "__init__"))
             for name in sig.parameters:
                 # ignore self, args, kwargs
-                if name in ['self', 'args', 'kwargs']:
+                if name in ["self", "args", "kwargs"]:
                     continue
 
                 # check for getter and setter
-                caps[name] = (hasattr(self, '_get_config_' + name),
-                              hasattr(self, '_set_config_' + name),
-                              hasattr(self, '_get_config_options_' + name))
+                caps[name] = (
+                    hasattr(self, "_get_config_" + name),
+                    hasattr(self, "_set_config_" + name),
+                    hasattr(self, "_get_config_options_" + name),
+                )
 
         # finished
         return caps
 
-    def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
+    async def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
         third is for a list of possible options..
 
@@ -285,7 +286,7 @@ class Module(Object, IModule, IConfig):
         """
         return self._config_caps
 
-    def get_config_value(self, name: str, **kwargs: Any) -> Any:
+    async def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
         Args:
@@ -300,15 +301,15 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError('Invalid parameter %s' % name)
+            raise ValueError("Invalid parameter %s" % name)
         if not self._config_caps[name][0]:
-            raise ValueError('Parameter %s is not remotely accessible.')
+            raise ValueError("Parameter %s is not remotely accessible.")
 
         # get getter method and call it
-        getter = getattr(self, '_get_config_' + name)
+        getter = getattr(self, "_get_config_" + name)
         return getter()
 
-    def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
+    async def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
         """Returns possible values for config item with given name.
 
         Args:
@@ -323,15 +324,15 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError('Invalid parameter %s' % name)
+            raise ValueError("Invalid parameter %s" % name)
         if not self._config_caps[name][2]:
-            raise ValueError('Parameter %s has no list of possible values.')
+            raise ValueError("Parameter %s has no list of possible values.")
 
         # get getter method and call it
-        options = getattr(self, '_get_config_options_' + name)
+        options = getattr(self, "_get_config_options_" + name)
         return cast(List[str], options())
 
-    def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
+    async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:
@@ -344,28 +345,32 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError('Invalid parameter %s' % name)
+            raise ValueError("Invalid parameter %s" % name)
         if not self._config_caps[name][1]:
-            raise ValueError('Parameter %s is not remotely settable.')
+            raise ValueError("Parameter %s is not remotely settable.")
 
         # get setter and call it
-        setter = getattr(self, '_set_config_' + name)
+        setter = getattr(self, "_set_config_" + name)
         setter(value)
 
 
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""
-    __module__ = 'pyobs.modules'
 
-    def __init__(self, modules: Dict[str, Union[Module, Dict[str, Any]]],
-                 shared: Optional[Dict[str, Union[object, Dict[str, Any]]]] = None,
-                 **kwargs: Any):
+    __module__ = "pyobs.modules"
+
+    def __init__(
+        self,
+        modules: Dict[str, Union[Module, Dict[str, Any]]],
+        shared: Optional[Dict[str, Union[object, Dict[str, Any]]]] = None,
+        **kwargs: Any,
+    ):
         """
         Args:
             modules: Dictionary with modules.
             shared: Shared objects between modules.
         """
-        Module.__init__(self, name='multi', **kwargs)
+        Module.__init__(self, name="multi", **kwargs)
 
         # create shared objects
         self._shared: Dict[str, Module] = {}
@@ -398,4 +403,4 @@ class MultiModule(Module):
         return self._modules[name]
 
 
-__all__ = ['Module', 'MultiModule', 'timeout']
+__all__ = ["Module", "MultiModule", "timeout"]

@@ -10,7 +10,8 @@ log = logging.getLogger(__name__)
 
 class MotionStatusMixin:
     """Mixin for IMotion devices for handling status."""
-    __module__ = 'pyobs.mixins'
+
+    __module__ = "pyobs.mixins"
 
     def __init__(self, motion_status_interfaces: Optional[List[str]] = None, **kwargs: Any):
         """Initializes the mixin.
@@ -70,9 +71,10 @@ class MotionStatusMixin:
         if changed:
             this = self
             if not isinstance(self, Module):
-                raise ValueError('This is not a module.')
-            await self.comm.send_event(MotionStatusChangedEvent(status=this.__motion_status,
-                                                                interfaces=this.__motion_status_single))
+                raise ValueError("This is not a module.")
+            await self.comm.send_event(
+                MotionStatusChangedEvent(status=this.__motion_status, interfaces=this.__motion_status_single)
+            )
 
     def _combine_motion_status(self) -> MotionStatus:
         """Method for combining motion statuses for individual interfaces into the global one. Can be overriden."""
@@ -83,8 +85,13 @@ class MotionStatusMixin:
 
         # if any interface is of state ERROR, UNKNOWN, INITIALIZING, PARKING, SLEWING
         # we use that as global status (in that order)
-        for status in [MotionStatus.ERROR, MotionStatus.UNKNOWN,
-                       MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.SLEWING]:
+        for status in [
+            MotionStatus.ERROR,
+            MotionStatus.UNKNOWN,
+            MotionStatus.INITIALIZING,
+            MotionStatus.PARKING,
+            MotionStatus.SLEWING,
+        ]:
             if status in self.__motion_status_single.values():
                 return status
 
@@ -113,4 +120,4 @@ class MotionStatusMixin:
                 raise KeyError
 
 
-__all__ = ['MotionStatusMixin']
+__all__ = ["MotionStatusMixin"]

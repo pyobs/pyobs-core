@@ -12,10 +12,12 @@ log = logging.getLogger(__name__)
 
 class FlatFieldPointing(Module, IRunnable):
     """Module for pointing a telescope."""
-    __module__ = 'pyobs.modules.flatfield'
 
-    def __init__(self, telescope: Union[str, ITelescope], pointing: Union[Dict[str, Any], SkyFlatsBasePointing],
-                 **kwargs: Any):
+    __module__ = "pyobs.modules.flatfield"
+
+    def __init__(
+        self, telescope: Union[str, ITelescope], pointing: Union[Dict[str, Any], SkyFlatsBasePointing], **kwargs: Any
+    ):
         """Initialize a new flat field pointing.
 
         Args:
@@ -33,7 +35,7 @@ class FlatFieldPointing(Module, IRunnable):
         """Move telescope to pointing."""
 
         # get telescope
-        log.info('Getting proxy for telescope...')
+        log.info("Getting proxy for telescope...")
         telescope = await self.proxy(self._telescope, ITelescope)
 
         # pointing
@@ -41,11 +43,11 @@ class FlatFieldPointing(Module, IRunnable):
 
         # point
         await pointing(telescope)
-        log.info('Finished pointing telescope.')
+        log.info("Finished pointing telescope.")
 
     def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         pass
 
 
-__all__ = ['FlatFieldPointing']
+__all__ = ["FlatFieldPointing"]

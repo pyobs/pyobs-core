@@ -8,7 +8,8 @@ from pyobs.utils.enums import MotionStatus
 
 class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def init(self, **kwargs: Any) -> None:
@@ -50,4 +51,4 @@ class IMotion(IReady, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IMotion']
+__all__ = ["IMotion"]

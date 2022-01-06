@@ -11,10 +11,12 @@ log = logging.getLogger(__name__)
 
 class ImageWriter(Module):
     """Writes new images to disk."""
-    __module__ = 'pyobs.modules.image'
 
-    def __init__(self, filename: str = '/archive/{FNAME}', sources: Optional[Union[str, List[str]]] = None,
-                 **kwargs: Any):
+    __module__ = "pyobs.modules.image"
+
+    def __init__(
+        self, filename: str = "/archive/{FNAME}", sources: Optional[Union[str, List[str]]] = None, **kwargs: Any
+    ):
         """Creates a new image writer.
 
         Args:
@@ -37,7 +39,7 @@ class ImageWriter(Module):
 
         # subscribe to channel with new images
         if self.comm is not None:
-            log.info('Subscribing to new image events...')
+            log.info("Subscribing to new image events...")
             await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
@@ -58,7 +60,7 @@ class ImageWriter(Module):
             return False
 
         # queue file
-        log.info('Received new image event from %s.', sender)
+        log.info("Received new image event from %s.", sender)
         self._queue.put_nowait(event.filename)
         return True
 
@@ -72,25 +74,25 @@ class ImageWriter(Module):
 
             try:
                 # download image
-                log.info('Downloading file %s...', filename)
+                log.info("Downloading file %s...", filename)
                 img = await self.vfs.read_image(filename)
             except FileNotFoundError:
-                log.error('Could not download image.')
+                log.error("Could not download image.")
                 continue
 
             # output filename
             try:
                 output = format_filename(img.header, self._filename)
             except KeyError as e:
-                log.error('Could not format filename: %s', e)
+                log.error("Could not format filename: %s", e)
                 continue
 
             try:
                 # open output
-                log.info('Storing image as %s...',  output)
+                log.info("Storing image as %s...", output)
                 await self.vfs.write_image(output, img)
             except Exception:
-                log.error('Could not store image.')
+                log.error("Could not store image.")
 
 
-__all__ = ['ImageWriter']
+__all__ = ["ImageWriter"]

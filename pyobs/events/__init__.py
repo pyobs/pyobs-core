@@ -1,7 +1,7 @@
 """
 TODO: write doc
 """
-__title__ = 'Events'
+__title__ = "Events"
 
 from .badweather import BadWeatherEvent
 from .exposurestatuschanged import ExposureStatusChangedEvent

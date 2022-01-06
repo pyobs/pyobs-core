@@ -7,7 +7,7 @@ from pyobs.robotic import TaskArchive
 log = logging.getLogger(__name__)
 
 
-ProxyClass = TypeVar('ProxyClass')
+ProxyClass = TypeVar("ProxyClass")
 
 
 class Script(Object):
@@ -21,7 +21,7 @@ class Script(Object):
         Object.__init__(self, **kwargs)
 
         # store
-        self.exptime_done: float = 0.
+        self.exptime_done: float = 0.0
         self.configuration = configuration
         self.task_archive = task_archive
 
@@ -49,4 +49,4 @@ class Script(Object):
         return {}
 
 
-__all__ = ['Script']
+__all__ = ["Script"]

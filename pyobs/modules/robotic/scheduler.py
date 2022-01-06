@@ -22,11 +22,19 @@ log = logging.getLogger(__name__)
 
 class Scheduler(Module, IStartStop, IRunnable):
     """Scheduler."""
-    __module__ = 'pyobs.modules.robotic'
 
-    def __init__(self, tasks: Union[dict, TaskArchive], schedule_range: int = 24, safety_time: int = 60,
-                 twilight: str = 'astronomical', trigger_on_task_started: bool = False,
-                 trigger_on_task_finished: bool = False, **kwargs: Any):
+    __module__ = "pyobs.modules.robotic"
+
+    def __init__(
+        self,
+        tasks: Union[dict, TaskArchive],
+        schedule_range: int = 24,
+        safety_time: int = 60,
+        twilight: str = "astronomical",
+        trigger_on_task_started: bool = False,
+        trigger_on_task_finished: bool = False,
+        **kwargs: Any,
+    ):
         """Initialize a new scheduler.
 
         Args:
@@ -105,10 +113,12 @@ class Scheduler(Module, IStartStop, IRunnable):
             t = await self._task_archive.last_changed()
             if last_change is None or last_change < t:
                 # get schedulable blocks and sort them
-                log.info('Found update in schedulable block, downloading them...')
-                blocks = sorted(await self._task_archive.get_schedulable_blocks(),
-                                key=lambda x: json.dumps(x.configuration, sort_keys=True))
-                log.info('Downloaded %d schedulable block(s).', len(blocks))
+                log.info("Found update in schedulable block, downloading them...")
+                blocks = sorted(
+                    await self._task_archive.get_schedulable_blocks(),
+                    key=lambda x: json.dumps(x.configuration, sort_keys=True),
+                )
+                log.info("Downloaded %d schedulable block(s).", len(blocks))
 
                 # compare new and old lists
                 removed, added = Scheduler._compare_block_lists(self._blocks, blocks)
@@ -119,17 +129,21 @@ class Scheduler(Module, IStartStop, IRunnable):
                 # no changes?
                 if len(removed) == 0 and len(added) == 0:
                     # no need to re-schedule
-                    log.info('No change in list of blocks detected.')
+                    log.info("No change in list of blocks detected.")
                     self._need_update = False
 
                 # has only the current block been removed?
-                log.info('Removed: %d, added: %d', len(removed), len(added))
+                log.info("Removed: %d, added: %d", len(removed), len(added))
                 if len(removed) == 1:
-                    log.info('Found 1 removed block with ID %d. Last task ID was %s, current is %s.',
-                             removed[0].target.name, str(self._last_task_id), str(self._current_task_id))
+                    log.info(
+                        "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
+                        removed[0].target.name,
+                        str(self._last_task_id),
+                        str(self._current_task_id),
+                    )
                 if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._last_task_id:
                     # no need to re-schedule
-                    log.info('Only one removed block detected, which is the one currently running.')
+                    log.info("Only one removed block detected, which is the one currently running.")
                     self._need_update = False
 
                 # store blocks
@@ -137,7 +151,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
                 # schedule update
                 if self._need_update:
-                    log.info('Triggering scheduler run...')
+                    log.info("Triggering scheduler run...")
 
                 # remember now
                 last_change = Time.now()
@@ -147,8 +161,9 @@ class Scheduler(Module, IStartStop, IRunnable):
             await asyncio.sleep(5)
 
     @staticmethod
-    def _compare_block_lists(blocks1: List[ObservingBlock], blocks2: List[ObservingBlock]) \
-            -> Tuple[List[ObservingBlock], List[ObservingBlock]]:
+    def _compare_block_lists(
+        blocks1: List[ObservingBlock], blocks2: List[ObservingBlock]
+    ) -> Tuple[List[ObservingBlock], List[ObservingBlock]]:
         """Compares two lists of ObservingBlocks and returns two lists, containing those that are missing in list 1
         and list 2, respectively.
 
@@ -200,19 +215,19 @@ class Scheduler(Module, IStartStop, IRunnable):
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
-        if self._twilight == 'astronomical':
+        if self._twilight == "astronomical":
             constraints = [AtNightConstraint.twilight_astronomical()]
-        elif self._twilight == 'nautical':
+        elif self._twilight == "nautical":
             constraints = [AtNightConstraint.twilight_nautical()]
         else:
-            raise ValueError('Unknown twilight type.')
+            raise ValueError("Unknown twilight type.")
 
         # make shallow copies of all blocks and loop them
         copied_blocks = [copy.copy(block) for block in self._blocks]
         for block in copied_blocks:
             # astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
             # 1000 - priority
-            block.priority = 1000. - block.priority
+            block.priority = 1000.0 - block.priority
             if block.priority < 0:
                 block.priority = 0
 
@@ -231,35 +246,35 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get running scheduled block, if any
         if self._current_task_id is None:
-            log.info('No running block found.')
+            log.info("No running block found.")
             running_task = None
         else:
             # get running task from archive
-            log.info('Trying to find running block in current schedule...')
+            log.info("Trying to find running block in current schedule...")
             now = Time.now()
             tasks = await self._task_archive.get_pending_tasks(now, now, include_running=True)
             if self._current_task_id in tasks:
                 running_task = tasks[self._current_task_id]
             else:
-                log.info('Running block not found in last schedule.')
+                log.info("Running block not found in last schedule.")
                 running_task = None
 
         # if start is before end time of currently running block, change that
         if running_task is not None:
-            log.info('Found running block that ends at %s.', running_task.end)
+            log.info("Found running block that ends at %s.", running_task.end)
 
             # get block end plus some safety
-            block_end = running_task.end + 10. * u.second
+            block_end = running_task.end + 10.0 * u.second
             if start < block_end:
                 start = block_end
-                log.info('Start time would be within currently running block, shifting to %s.', start.isot)
+                log.info("Start time would be within currently running block, shifting to %s.", start.isot)
 
         # calculate end time
         end = start + TimeDelta(self._schedule_range * u.hour)
 
         # remove currently running block and filter by start time
         blocks = []
-        for b in filter(lambda x: x.configuration['request']['id'] != self._current_task_id, copied_blocks):
+        for b in filter(lambda x: x.configuration["request"]["id"] != self._current_task_id, copied_blocks):
             time_constraint_found = False
             # loop all constraints
             for c in b.constraints:
@@ -280,17 +295,17 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # if need new update, skip here
         if self._need_update:
-            log.info('Not running scheduler, since update was requested.')
+            log.info("Not running scheduler, since update was requested.")
             return
 
         # no blocks found?
         if len(blocks) == 0:
-            log.info('No blocks left for scheduling.')
+            log.info("No blocks left for scheduling.")
             await self._task_archive.update_schedule([], start)
             return
 
         # log it
-        log.info('Calculating schedule for %d schedulable block(s) starting at %s...', len(blocks), start)
+        log.info("Calculating schedule for %d schedulable block(s) starting at %s...", len(blocks), start)
 
         # we don't need any transitions
         transitioner = Transitioner()
@@ -305,21 +320,23 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # if need new update, skip here
         if self._need_update:
-            log.info('Not using scheduler results, since update was requested.')
+            log.info("Not using scheduler results, since update was requested.")
             return
 
         # update
         await self._task_archive.update_schedule(schedule.scheduled_blocks, start)
         if len(schedule.scheduled_blocks) > 0:
-            log.info('Finished calculating schedule for %d block(s):', len(schedule.scheduled_blocks))
+            log.info("Finished calculating schedule for %d block(s):", len(schedule.scheduled_blocks))
             for i, block in enumerate(schedule.scheduled_blocks, 1):
-                log.info('  #%d: %s to %s (%.1f)',
-                         block.configuration['request']['id'],
-                         block.start_time.strftime('%H:%M:%S'),
-                         block.end_time.strftime('%H:%M:%S'),
-                         block.priority)
+                log.info(
+                    "  #%d: %s to %s (%.1f)",
+                    block.configuration["request"]["id"],
+                    block.start_time.strftime("%H:%M:%S"),
+                    block.end_time.strftime("%H:%M:%S"),
+                    block.priority,
+                )
         else:
-            log.info('Finished calculating schedule for 0 blocks.')
+            log.info("Finished calculating schedule for 0 blocks.")
 
     async def run(self, **kwargs: Any):
         """Trigger a re-schedule."""
@@ -343,7 +360,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         if self._trigger_on_task_started:
             # get ETA in minutes
             eta = (event.eta - Time.now()).sec / 60
-            log.info('Received task started event with ETA of %.0f minutes, triggering new scheduler run...', eta)
+            log.info("Received task started event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
             # set it
             self._need_update = True
@@ -367,7 +384,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # trigger?
         if self._trigger_on_task_finished:
             # get ETA in minutes
-            log.info('Received task finished event, triggering new scheduler run...')
+            log.info("Received task finished event, triggering new scheduler run...")
 
             # set it
             self._need_update = True
@@ -387,7 +404,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get ETA in minutes
         eta = (event.eta - Time.now()).sec / 60
-        log.info('Received good weather event with ETA of %.0f minutes, triggering new scheduler run...', eta)
+        log.info("Received good weather event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
         # set it
         self._need_update = True
@@ -398,4 +415,4 @@ class Scheduler(Module, IStartStop, IRunnable):
         pass
 
 
-__all__ = ['Scheduler']
+__all__ = ["Scheduler"]

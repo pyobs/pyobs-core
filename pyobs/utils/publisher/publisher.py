@@ -15,4 +15,4 @@ class Publisher(Object, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['Publisher']
+__all__ = ["Publisher"]

@@ -1,7 +1,7 @@
 """
 TODO: write docs
 """
-__title__ = 'Sky flat priorities'
+__title__ = "Sky flat priorities"
 
 from .base import SkyflatPriorities
 from .archive import ArchiveSkyflatPriorities

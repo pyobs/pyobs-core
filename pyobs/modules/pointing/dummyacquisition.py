@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 
 class DummyAcquisition(Module, IAcquisition):
     """Dummy class for telescope acquisition."""
-    __module__ = 'pyobs.modules.acquisition'
+
+    __module__ = "pyobs.modules.acquisition"
 
     def __init__(self, **kwargs: Any):
         """Create a new dummy acquisition."""
@@ -46,10 +47,10 @@ class DummyAcquisition(Module, IAcquisition):
 
     async def _acquire(self) -> Dict[str, Any]:
         """Actually acquire target."""
-        log.info('Acquiring target.')
+        log.info("Acquiring target.")
         await asyncio.sleep(5)
-        log.info('Finished.')
+        log.info("Finished.")
         return {}
 
 
-__all__ = ['DummyAcquisition']
+__all__ = ["DummyAcquisition"]

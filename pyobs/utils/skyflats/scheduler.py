@@ -1,4 +1,4 @@
-from __future__ import  annotations
+from __future__ import annotations
 
 import logging
 from typing import Dict, Union, Tuple, Optional, List
@@ -33,18 +33,33 @@ class SchedulerItem:
 
     def __repr__(self):
         """Nice string representation for item"""
-        return '%d - %d (%s %dx%d): %.2f' % (self.start, self.end, self.filter_name,
-                                             self.binning[0], self.binning[1], self.priority)
+        return "%d - %d (%s %dx%d): %.2f" % (
+            self.start,
+            self.end,
+            self.filter_name,
+            self.binning[0],
+            self.binning[1],
+            self.priority,
+        )
 
 
 class Scheduler:
     """Scheduler for taking flat fields"""
-    __module__ = 'pyobs.utils.skyflats'
 
-    def __init__(self, functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
-                 priorities: SkyflatPriorities, observer: Observer, min_exptime: float = 0.5,
-                 max_exptime: float = 5, timespan: float = 7200, filter_change: float = 30, count: int = 20,
-                 readout: Optional[Dict[str, float]] = None):
+    __module__ = "pyobs.utils.skyflats"
+
+    def __init__(
+        self,
+        functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
+        priorities: SkyflatPriorities,
+        observer: Observer,
+        min_exptime: float = 0.5,
+        max_exptime: float = 5,
+        timespan: float = 7200,
+        filter_change: float = 30,
+        count: int = 20,
+        readout: Optional[Dict[str, float]] = None,
+    ):
         """Initializes a new scheduler for taking flat fields
 
         Args:
@@ -111,8 +126,9 @@ class Scheduler:
         """Return schedule item."""
         return self._schedules[item]
 
-    def _find_slot(self, schedules: List[SchedulerItem], filter_name: str, binning: Tuple[int, int],
-                   priority: float) -> None:
+    def _find_slot(
+        self, schedules: List[SchedulerItem], filter_name: str, binning: Tuple[int, int], priority: float
+    ) -> None:
         """Find a possible slot for a given filter/binning in the given schedule
 
         Args:
@@ -122,8 +138,8 @@ class Scheduler:
         """
 
         # get readout time
-        sbin = '%dx%d' % binning
-        readout = self._readout[sbin] if sbin in self._readout else 0.
+        sbin = "%dx%d" % binning
+        readout = self._readout[sbin] if sbin in self._readout else 0.0
 
         # find first possible start time
         time = 0
@@ -134,8 +150,9 @@ class Scheduler:
             # are we in allowed limit?
             if self._min_exptime <= exp_time_start <= self._max_exptime:
                 # seems to fit, get duration
-                duration = self._eval.duration(self._count, start_time=time, readout=readout,
-                                               binning=binning, filter_name=filter_name)
+                duration = self._eval.duration(
+                    self._count, start_time=time, readout=readout, binning=binning, filter_name=filter_name
+                )
 
                 # add time for filter change
                 duration += self._filter_change
@@ -180,4 +197,4 @@ class Scheduler:
         return False
 
 
-__all__ = ['SchedulerItem', 'Scheduler']
+__all__ = ["SchedulerItem", "Scheduler"]

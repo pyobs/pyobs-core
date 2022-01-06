@@ -40,4 +40,4 @@ from .proxy import Proxy
 from .exceptions import *
 
 
-__all__ = ['Comm', 'Proxy', 'RemoteException', 'InvocationException', 'AuthorizationException', 'TimeoutException']
+__all__ = ["Comm", "Proxy", "RemoteException", "InvocationException", "AuthorizationException", "TimeoutException"]

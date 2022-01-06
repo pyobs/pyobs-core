@@ -6,7 +6,8 @@ from pyobs.images.processor import ImageProcessor
 
 class Photometry(ImageProcessor, metaclass=ABCMeta):
     """Base class for photometry processors."""
-    __module__ = 'pyobs.images.processors.photometry'
+
+    __module__ = "pyobs.images.processors.photometry"
 
     @abstractmethod
     async def __call__(self, image: Image) -> Image:
@@ -21,4 +22,4 @@ class Photometry(ImageProcessor, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['Photometry']
+__all__ = ["Photometry"]

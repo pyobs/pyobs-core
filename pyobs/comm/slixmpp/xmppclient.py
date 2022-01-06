@@ -28,7 +28,7 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
 
         # stuff
         self._connect_event = threading.Event()
-        self._logs_node = 'logs'
+        self._logs_node = "logs"
         self._auth_event = threading.Event()
         self._auth_success = False
 
@@ -36,22 +36,22 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         self.auto_authorize = True
 
         # register plugins
-        self.register_plugin('xep_0009', module=XEP_0009)  # RPC
-        self.register_plugin('xep_0009_timeout', module=XEP_0009_timeout)  # RPC timeout
-        self.register_plugin('xep_0030')  # Service Discovery
-        self.register_plugin('xep_0045')  # Multi-User Chat
-        self.register_plugin('xep_0060')  # PubSub
-        self.register_plugin('xep_0115')  # Entity Capabilities
-        self.register_plugin('xep_0163')  # Personal Eventing Protocol
-        self.register_plugin('xep_0199')  # XMPP Ping
+        self.register_plugin("xep_0009", module=XEP_0009)  # RPC
+        self.register_plugin("xep_0009_timeout", module=XEP_0009_timeout)  # RPC timeout
+        self.register_plugin("xep_0030")  # Service Discovery
+        self.register_plugin("xep_0045")  # Multi-User Chat
+        self.register_plugin("xep_0060")  # PubSub
+        self.register_plugin("xep_0115")  # Entity Capabilities
+        self.register_plugin("xep_0163")  # Personal Eventing Protocol
+        self.register_plugin("xep_0199")  # XMPP Ping
 
         # enable keep alive pings
-        self['xep_0199'].enable_keepalive()
+        self["xep_0199"].enable_keepalive()
 
         # handle session_start and message events
         self.add_event_handler("session_start", self.session_start)
-        self.add_event_handler('auth_success', lambda ev: self._auth(True))
-        self.add_event_handler('failed_auth', lambda ev: self._auth(False))
+        self.add_event_handler("auth_success", lambda ev: self._auth(True))
+        self.add_event_handler("failed_auth", lambda ev: self._auth(False))
 
     def wait_connect(self) -> bool:
         """Wait for client to connect.
@@ -63,7 +63,7 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         # wait for auth and check
         self._auth_event.wait()
         if not self._auth_success:
-            log.error('Invalid credentials for connecting to XMPP server.')
+            log.error("Invalid credentials for connecting to XMPP server.")
             return False
 
         # wait for final connect
@@ -78,7 +78,7 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         Args:
             event: The event sent at session start.
         """
-        log.info('Connected to server.')
+        log.info("Connected to server.")
 
         # send presence and get roster
         self.send_presence()
@@ -98,4 +98,4 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
         self._auth_event.set()
 
 
-__all__ = ['XmppClient']
+__all__ = ["XmppClient"]

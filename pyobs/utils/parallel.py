@@ -9,14 +9,14 @@ from typing import TypeVar, Optional, List, Any, cast, Union
 from pyobs.utils.types import cast_response_to_real
 
 
-async def event_wait(evt: asyncio.Event, timeout: float = 1.) -> bool:
+async def event_wait(evt: asyncio.Event, timeout: float = 1.0) -> bool:
     # suppress TimeoutError because we'll return False in case of timeout
     with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(evt.wait(), timeout)
     return evt.is_set()
 
 
-async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.) -> bool:
+async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
     # suppress TimeoutError because we'll return False in case of timeout
     try:
         await asyncio.wait_for(lock.acquire(), timeout)
@@ -72,7 +72,7 @@ class Future(asyncio.Future):
                 # got an additional timeout?
                 if self.timeout is not None and self.timeout > 10:
                     # we already waited 10s, so subtract it
-                    self._wait_for_time(self.timeout - 10.)
+                    self._wait_for_time(self.timeout - 10.0)
 
         # not done? yield!
         if not self.done():
@@ -98,4 +98,4 @@ class Future(asyncio.Future):
         return [await fut for fut in futures if fut is not None]
 
 
-__all__ = ['Future', 'event_wait', 'acquire_lock']
+__all__ = ["Future", "event_wait", "acquire_lock"]

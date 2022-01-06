@@ -6,7 +6,8 @@ from .IRunning import IRunning
 
 class IAcquisition(IRunning, metaclass=ABCMeta):
     """The module can acquire a target, usually by accessing a telescope and a camera."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
@@ -24,4 +25,4 @@ class IAcquisition(IRunning, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IAcquisition']
+__all__ = ["IAcquisition"]

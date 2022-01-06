@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IWindow(Interface, metaclass=ABCMeta):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
@@ -42,4 +43,4 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IWindow']
+__all__ = ["IWindow"]

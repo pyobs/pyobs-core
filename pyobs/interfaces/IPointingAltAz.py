@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IPointingAltAz(Interface, metaclass=ABCMeta):
     """The module can move to Alt/Az coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
@@ -31,4 +32,4 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IPointingAltAz']
+__all__ = ["IPointingAltAz"]

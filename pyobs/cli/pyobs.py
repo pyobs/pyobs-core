@@ -10,17 +10,23 @@ def init_cli():
     parser = argparse.ArgumentParser()
 
     # config
-    parser.add_argument('config', type=str, help='Configuration file', nargs='?', default=os.environ.get('CONFIG'))
+    parser.add_argument("config", type=str, help="Configuration file", nargs="?", default=os.environ.get("CONFIG"))
 
     # logging
-    parser.add_argument('--log-level', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
-                        default=os.environ.get('PYOBS_LOG_LEVEL', 'info'))
-    parser.add_argument('-l', '--log-file', type=str, help='file to write log into',
-                        default=os.environ.get('PYOBS_LOG_FILE'))
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["critical", "error", "warning", "info", "debug"],
+        default=os.environ.get("PYOBS_LOG_LEVEL", "info"),
+    )
+    parser.add_argument(
+        "-l", "--log-file", type=str, help="file to write log into", default=os.environ.get("PYOBS_LOG_FILE")
+    )
 
     # debug stuff
-    parser.add_argument('--debug-time', type=str, help='Fake time at start for pyobs to use',
-                        default=os.environ.get('PYOBS_DEBUG_TIME'))
+    parser.add_argument(
+        "--debug-time", type=str, help="Fake time at start for pyobs to use", default=os.environ.get("PYOBS_DEBUG_TIME")
+    )
 
     # return it
     return parser
@@ -61,9 +67,8 @@ def start_daemon(app_class, pid_file=None, **kwargs: Any) -> None:
 
     # This launches the daemon in its context
     with daemon.DaemonContext(
-            working_directory=run_dir,
-            umask=0o002,
-            pidfile=pidfile.TimeoutPIDLockFile(pid_file)) as context:
+        working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
+    ) as context:
         run(app_class, **kwargs)
 
 
@@ -84,17 +89,17 @@ def main() -> None:
 
     # init argument parsing and add PID/Daemon stuff
     parser = init_cli()
-    parser.add_argument('-p', '--pid-file', type=str, default=os.environ.get('PIDFILE'))
+    parser.add_argument("-p", "--pid-file", type=str, default=os.environ.get("PIDFILE"))
 
     # parse it
     args = parse_cli(parser)
 
     # run app
-    if args['pid_file']:
+    if args["pid_file"]:
         start_daemon(app_class=Application, **args)
     else:
         run(app_class=Application, **args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -17,16 +17,22 @@ log = logging.getLogger(__name__)
 
 class ExposureInfo(NamedTuple):
     """Info about a running exposure."""
+
     start: datetime.datetime
 
 
 class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass=ABCMeta):
     """Base class for all spectrograph modules."""
-    __module__ = 'pyobs.modules.camera'
 
-    def __init__(self, fits_headers: Optional[Dict[str, Any]] = None,
-                 filenames: str = '/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits.gz',
-                 fits_namespaces: Optional[List[str]] = None, **kwargs: Any):
+    __module__ = "pyobs.modules.camera"
+
+    def __init__(
+        self,
+        fits_headers: Optional[Dict[str, Any]] = None,
+        filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits.gz",
+        fits_namespaces: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
         """Creates a new BaseCamera.
 
         Args:
@@ -36,8 +42,9 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
         Module.__init__(self, **kwargs)
-        SpectrumFitsHeaderMixin.__init__(self, fits_namespaces=fits_namespaces, fits_headers=fits_headers,
-                                         filenames=filenames)
+        SpectrumFitsHeaderMixin.__init__(
+            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames
+        )
 
         # init camera
         self._exposure: Optional[ExposureInfo] = None
@@ -49,7 +56,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
         # check
         if self.comm is None:
-            log.warning('No comm module given, will not be able to signal new images!')
+            log.warning("No comm module given, will not be able to signal new images!")
 
     @abstractmethod
     async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
@@ -98,7 +105,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         header_futures_after = await self.request_fits_headers(before=False)
 
         # add HDU name
-        hdulist[0].header['EXTNAME'] = 'SCI'
+        hdulist[0].header["EXTNAME"] = "SCI"
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(hdulist[0], header_futures_before)
@@ -114,19 +121,19 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
         # upload file
         try:
-            log.info('Uploading spectrum to file server...')
+            log.info("Uploading spectrum to file server...")
             await self.vfs.write_fits(filename, hdulist)
         except FileNotFoundError:
-            raise ValueError('Could not upload spectrum.')
+            raise ValueError("Could not upload spectrum.")
 
         # broadcast image path
         if broadcast and self.comm:
-            log.info('Broadcasting spectrum ID...')
+            log.info("Broadcasting spectrum ID...")
             await self.comm.send_event(NewSpectrumEvent(filename))
 
         # return spectrum and unique
         self._exposure = None
-        log.info('Finished spectrum %s.', filename)
+        log.info("Finished spectrum %s.", filename)
         return hdulist, filename
 
     @timeout(10)
@@ -142,16 +149,16 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
         # are we exposing?
         if self._spectrograph_status != ExposureStatus.IDLE:
-            raise ValueError('Cannot start new exposure because spectrograph is not idle.')
+            raise ValueError("Cannot start new exposure because spectrograph is not idle.")
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
         hdu, filename = await self.__expose(broadcast)
         if hdu is None:
-            raise ValueError('Could not take spectrum.')
+            raise ValueError("Could not take spectrum.")
         else:
             if filename is None:
-                raise ValueError('Spectrum has not been saved, so cannot be retrieved by filename.')
+                raise ValueError("Spectrum has not been saved, so cannot be retrieved by filename.")
 
         # return filename
         await self._change_exposure_status(ExposureStatus.IDLE)
@@ -188,4 +195,4 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         pass
 
 
-__all__ = ['BaseSpectrograph']
+__all__ = ["BaseSpectrograph"]

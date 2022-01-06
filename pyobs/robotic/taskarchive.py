@@ -50,8 +50,9 @@ class TaskArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_pending_tasks(self, start_before: Time, end_after: Time, include_running: bool = True) \
-            -> Dict[str, Task]:
+    async def get_pending_tasks(
+        self, start_before: Time, end_after: Time, include_running: bool = True
+    ) -> Dict[str, Task]:
         """Fetch pending tasks from portal.
 
         Args:
@@ -93,4 +94,4 @@ class TaskArchive(Object, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['TaskArchive']
+__all__ = ["TaskArchive"]

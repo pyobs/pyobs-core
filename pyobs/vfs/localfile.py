@@ -7,9 +7,10 @@ from .file import VFSFile
 
 class LocalFile(VFSFile):
     """Wraps a local file with the virtual file system."""
-    __module__ = 'pyobs.vfs'
 
-    def __init__(self, name: str, mode: str = 'r', root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
+    __module__ = "pyobs.vfs"
+
+    def __init__(self, name: str, mode: str = "r", root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
         """Open a local file.
 
         Args:
@@ -21,11 +22,11 @@ class LocalFile(VFSFile):
 
         # no root given?
         if root is None:
-            raise ValueError('No root directory given.')
+            raise ValueError("No root directory given.")
 
         # filename is not allowed to start with a / or contain ..
-        if name.startswith('/') or '..' in name:
-            raise ValueError('Only files within root directory are allowed.')
+        if name.startswith("/") or ".." in name:
+            raise ValueError("Only files within root directory are allowed.")
 
         # build filename
         self.filename = name
@@ -37,7 +38,7 @@ class LocalFile(VFSFile):
             if mkdir:
                 os.makedirs(path)
             else:
-                raise ValueError('Cannot write into sub-directory with disabled mkdir option.')
+                raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
 
         # file object
         self.fd: IO[Any] = open(full_path, mode)
@@ -57,7 +58,7 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
-    def find(path: str, pattern: str, root: str = '', *args: Any, **kwargs: Any) -> Iterator[str]:
+    def find(path: str, pattern: str, root: str = "", *args: Any, **kwargs: Any) -> Iterator[str]:
         """Find files by pattern matching.
 
         Args:
@@ -78,7 +79,7 @@ class LocalFile(VFSFile):
                 yield os.path.relpath(os.path.join(cur, filename), root)
 
     @staticmethod
-    def exists(path: str, root: str = '', *args: Any, **kwargs: Any) -> bool:
+    def exists(path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:
@@ -96,4 +97,4 @@ class LocalFile(VFSFile):
         return os.path.exists(full_path)
 
 
-__all__ = ['LocalFile']
+__all__ = ["LocalFile"]

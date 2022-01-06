@@ -51,4 +51,4 @@ a :class:`~pyobs.modules.MultiModule` can contain multiple module descriptions.
 
 from .module import Module, MultiModule, timeout
 
-__all__ = ['Module', 'MultiModule', 'timeout']
+__all__ = ["Module", "MultiModule", "timeout"]

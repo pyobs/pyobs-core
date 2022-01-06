@@ -47,8 +47,8 @@ class CsvPublisher(Publisher):
 
         except FileNotFoundError:
             # file not found, so start new with row
-            log.warning('No previous CSV file found, creating new one...')
+            log.warning("No previous CSV file found, creating new one...")
             return pd.DataFrame()
 
 
-__all__ = ['CsvPublisher']
+__all__ = ["CsvPublisher"]

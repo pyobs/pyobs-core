@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IConfig(Interface, metaclass=ABCMeta):
     """The module allows access to some of its configuration options."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
@@ -62,4 +63,4 @@ class IConfig(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IConfig']
+__all__ = ["IConfig"]

@@ -7,7 +7,8 @@ from pyobs.utils.enums import WeatherSensors
 
 class IWeather(IStartStop, metaclass=ABCMeta):
     """The module acts as a weather station."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
@@ -43,4 +44,4 @@ class IWeather(IStartStop, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IWeather']
+__all__ = ["IWeather"]

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "0.15.1"
+version = "0.15.2"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -46,6 +46,8 @@ types-tornado = "^5.1.1"
 mypy = "^0.920"
 pytest = "^6.2.5"
 pytest-asyncio = "^0.16.0"
+black = "^21.12b0"
+pre-commit = "^2.16.0"
 
 [tool.poetry.scripts]
 pyobs = 'pyobs.cli.pyobs:main'
@@ -55,3 +57,7 @@ pyobsw = 'pyobs.cli.pyobsw:main'
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py39']

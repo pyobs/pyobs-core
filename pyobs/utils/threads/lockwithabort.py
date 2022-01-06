@@ -14,6 +14,7 @@ class AcquireLockFailed(Exception):
 
 class LockWithAbort(object):
     """Tries to acquire a lock. If unsuccessful, it sets the event and tries again."""
+
     def __init__(self, lock: asyncio.Lock, event: asyncio.Event):
         self.lock = lock
         self.event = event
@@ -29,7 +30,7 @@ class LockWithAbort(object):
             self.event.set()
 
             # try to acquire again with a timeout
-            self.acquired = await acquire_lock(self.lock, 10.)
+            self.acquired = await acquire_lock(self.lock, 10.0)
 
             # still not successful?
             if not self.acquired:
@@ -46,4 +47,4 @@ class LockWithAbort(object):
             self.acquired = False
 
 
-__all__ = ['LockWithAbort', 'AcquireLockFailed']
+__all__ = ["LockWithAbort", "AcquireLockFailed"]

@@ -12,9 +12,10 @@ log = logging.getLogger(__name__)
 
 class ExpTimeEstimator(ImageProcessor, metaclass=ABCMeta):
     """Estimate exposure time."""
-    __module__ = 'pyobs.images.processors.exptime'
 
-    def __init__(self, min_exp_time: float = 0., max_exp_time: Optional[float] = None, **kwargs: Any):
+    __module__ = "pyobs.images.processors.exptime"
+
+    def __init__(self, min_exp_time: float = 0.0, max_exp_time: Optional[float] = None, **kwargs: Any):
         """Init new exposure time estimator."""
         ImageProcessor.__init__(self, **kwargs)
         self._min_exp_time = min_exp_time
@@ -47,4 +48,4 @@ class ExpTimeEstimator(ImageProcessor, metaclass=ABCMeta):
         image.set_meta(ExpTime(exp_time))
 
 
-__all__ = ['ExpTimeEstimator']
+__all__ = ["ExpTimeEstimator"]

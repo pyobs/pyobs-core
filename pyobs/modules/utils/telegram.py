@@ -17,17 +17,18 @@ log = logging.getLogger(__name__)
 
 
 class TelegramUserState(Enum):
-    IDLE = 0,
-    AUTH = 1,
-    EXEC_MODULE = 2,
-    EXEC_METHOD = 3,
-    EXEC_PARAMS = 4,
+    IDLE = (0,)
+    AUTH = (1,)
+    EXEC_MODULE = (2,)
+    EXEC_METHOD = (3,)
+    EXEC_PARAMS = (4,)
     LOG_LEVEL = 5
 
 
 class Telegram(Module):
     """A telegram bot."""
-    __module__ = 'pyobs.modules.utils'
+
+    __module__ = "pyobs.modules.utils"
 
     def __init__(self, token: str, password: str, allow_new_users: bool = True, **kwargs: Any):
         """Initialize a new bot.
@@ -50,8 +51,9 @@ class Telegram(Module):
         self._loop = None
 
         # get log levels
-        self._log_levels = {logging.getLevelName(x): x for x in range(1, 101)
-                            if not logging.getLevelName(x).startswith('Level')}
+        self._log_levels = {
+            logging.getLevelName(x): x for x in range(1, 101) if not logging.getLevelName(x).startswith("Level")
+        }
 
         # thread
         self.add_background_task(self._log_sender_thread)
@@ -59,6 +61,7 @@ class Telegram(Module):
     async def open(self) -> None:
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
+
         await Module.open(self)
         self._loop = asyncio.get_running_loop()
 
@@ -67,10 +70,10 @@ class Telegram(Module):
         dispatcher = self._updater.dispatcher  # type: ignore
 
         # add command handler
-        dispatcher.add_handler(CommandHandler('start', self._command_start))
-        dispatcher.add_handler(CommandHandler('exec', self._command_exec))
-        dispatcher.add_handler(CommandHandler('modules', self._command_modules))
-        dispatcher.add_handler(CommandHandler('loglevel', self._command_loglevel))
+        dispatcher.add_handler(CommandHandler("start", self._command_start))
+        dispatcher.add_handler(CommandHandler("exec", self._command_exec))
+        dispatcher.add_handler(CommandHandler("modules", self._command_modules))
+        dispatcher.add_handler(CommandHandler("loglevel", self._command_loglevel))
 
         # add text handler
         echo_handler = MessageHandler(Filters.text & (~Filters.command), self._process_message)
@@ -81,9 +84,9 @@ class Telegram(Module):
 
         # load storage file
         try:
-            dispatcher.bot_data['storage'] = await self.vfs.read_yaml('/pyobs/telegram.yaml')
+            dispatcher.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
         except FileNotFoundError:
-            dispatcher.bot_data['storage'] = {}
+            dispatcher.bot_data["storage"] = {}
 
         # start polling
         self._updater.start_polling(poll_interval=0.1)
@@ -105,7 +108,7 @@ class Telegram(Module):
         Args:
             context: Telegram context.
         """
-        await self.vfs.write_yaml('/pyobs/telegram.yaml', context.bot_data['storage'])
+        await self.vfs.write_yaml("/pyobs/telegram.yaml", context.bot_data["storage"])
 
     @staticmethod
     def _is_user_authorized(context: CallbackContext, user_id: int) -> bool:
@@ -118,8 +121,8 @@ class Telegram(Module):
         Returns:
             Whether user is known and authorized to give commands.
         """
-        s = context.bot_data['storage']
-        return 'users' in s and user_id in s['users']
+        s = context.bot_data["storage"]
+        return "users" in s and user_id in s["users"]
 
     def _store_user(self, context: CallbackContext, user_id: int, name: str) -> None:
         """Store new user in auth database.
@@ -131,13 +134,10 @@ class Telegram(Module):
         """
 
         # add user
-        s = context.bot_data['storage']
-        if 'users' not in s:
-            s['users'] = {}
-        s['users'][user_id] = {
-            'name': name,
-            'loglevel': None
-        }
+        s = context.bot_data["storage"]
+        if "users" not in s:
+            s["users"] = {}
+        s["users"][user_id] = {"name": name, "loglevel": None}
         asyncio.run_coroutine_threadsafe(self._save_storage(context), self._loop)
 
     def _command_start(self, update: Update, context: CallbackContext) -> None:
@@ -149,26 +149,25 @@ class Telegram(Module):
         """
 
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # is user already known?
         if self._is_user_authorized(context, update.message.from_user.id):
             # welcome him back
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text='Welcome back %s!' % update.message.from_user.first_name)
+            context.bot.send_message(
+                chat_id=update.effective_chat.id, text="Welcome back %s!" % update.message.from_user.first_name
+            )
 
         else:
             # do we allow for new users?
             if self._allow_new_users:
                 # go to AUTH state
-                context.bot.send_message(chat_id=update.effective_chat.id,
-                                         text="Password?")
-                context.user_data['state'] = TelegramUserState.AUTH
+                context.bot.send_message(chat_id=update.effective_chat.id, text="Password?")
+                context.user_data["state"] = TelegramUserState.AUTH
 
             else:
                 # show message
-                context.bot.send_message(chat_id=update.effective_chat.id,
-                                         text="No new users allowed in the system.")
+                context.bot.send_message(chat_id=update.effective_chat.id, text="No new users allowed in the system.")
 
     def _command_exec(self, update: Update, context: CallbackContext) -> None:
         """Handle /exec command.
@@ -179,31 +178,32 @@ class Telegram(Module):
         """
 
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # create buttons for all modules
-        keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self.comm.clients] + \
-                   [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
+        keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self.comm.clients] + [
+            [InlineKeyboardButton("Cancel", callback_data="cancel")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text('Please choose module:', reply_markup=reply_markup)
+        update.message.reply_text("Please choose module:", reply_markup=reply_markup)
 
         # go to EXEC_MODULE state
-        context.user_data['state'] = TelegramUserState.EXEC_MODULE
+        context.user_data["state"] = TelegramUserState.EXEC_MODULE
 
     @staticmethod
     def _reset_state(context: CallbackContext) -> None:
         """Reset state."""
         if context.user_data is None:
-            raise ValueError('No user data in context.')
-        context.user_data['state'] = TelegramUserState.IDLE
-        context.user_data['method'] = None
-        context.user_data['params'] = []
-        context.user_data['exec_query'] = None
+            raise ValueError("No user data in context.")
+        context.user_data["state"] = TelegramUserState.IDLE
+        context.user_data["method"] = None
+        context.user_data["params"] = []
+        context.user_data["exec_query"] = None
 
     def _handle_buttons(self, update: Update, context: CallbackContext) -> None:
         """Handle click on buttons.
@@ -222,14 +222,14 @@ class Telegram(Module):
             context: Telegram context.
         """
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # get query
         query = update.callback_query
 
         # not logged in?
         if not self._is_user_authorized(context, query.from_user.id):
-            query.edit_message_text(text='Not logged in, use /start.')
+            query.edit_message_text(text="Not logged in, use /start.")
             return
 
         # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -237,57 +237,57 @@ class Telegram(Module):
         query.answer()
 
         # cancel?
-        if query.data == 'cancel':
+        if query.data == "cancel":
             # reset state
             self._reset_state(context)
 
             # remove markup
-            query.edit_message_text('Canceled.')
+            query.edit_message_text("Canceled.")
 
         # what state are we in?
-        if context.user_data['state'] == TelegramUserState.EXEC_MODULE:
+        if context.user_data["state"] == TelegramUserState.EXEC_MODULE:
             # get proxy for selected module
             proxy = await self.proxy(query.data)
 
             # show buttons for all modules
-            keyboard = [[InlineKeyboardButton(m, callback_data='%s.%s' % (query.data, m))]
-                        for m in proxy.method_names] + \
-                       [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
+            keyboard = [
+                [InlineKeyboardButton(m, callback_data="%s.%s" % (query.data, m))] for m in proxy.method_names
+            ] + [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            query.edit_message_text(text='Chose method in %s:' % query.data)
+            query.edit_message_text(text="Chose method in %s:" % query.data)
             query.edit_message_reply_markup(reply_markup)
 
             # change to EXEC_MEHOD state
-            context.user_data['state'] = TelegramUserState.EXEC_METHOD
+            context.user_data["state"] = TelegramUserState.EXEC_METHOD
 
-        elif context.user_data['state'] == TelegramUserState.EXEC_METHOD:
+        elif context.user_data["state"] == TelegramUserState.EXEC_METHOD:
             # init command
-            context.user_data['method'] = query.data
-            context.user_data['params'] = []
-            context.user_data['exec_query_message'] = update.callback_query.message.message_id
-            context.user_data['exec_query_chat'] = update.callback_query.message.chat_id
+            context.user_data["method"] = query.data
+            context.user_data["params"] = []
+            context.user_data["exec_query_message"] = update.callback_query.message.message_id
+            context.user_data["exec_query_chat"] = update.callback_query.message.chat_id
 
             # show buttons for all methods
-            keyboard = [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
+            keyboard = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            query.edit_message_text(text='Executing %s...' % query.data)
+            query.edit_message_text(text="Executing %s..." % query.data)
             query.edit_message_reply_markup(reply_markup)
 
             # go to EXEC_PARAMS state
-            context.user_data['state'] = TelegramUserState.EXEC_PARAMS
+            context.user_data["state"] = TelegramUserState.EXEC_PARAMS
 
             # see whether this command runs without parameters
             self._handle_params(update, context)
 
-        elif context.user_data['state'] == TelegramUserState.LOG_LEVEL:
+        elif context.user_data["state"] == TelegramUserState.LOG_LEVEL:
             # set log level
-            s = context.bot_data['storage']
-            s['users'][query.from_user.id]['loglevel'] = query.data
+            s = context.bot_data["storage"]
+            s["users"][query.from_user.id]["loglevel"] = query.data
             await self._save_storage(context)
 
             # change to IDLE state
-            query.edit_message_text(text='Changed log level to %s.' % query.data)
-            context.user_data['state'] = TelegramUserState.IDLE
+            query.edit_message_text(text="Changed log level to %s." % query.data)
+            context.user_data["state"] = TelegramUserState.IDLE
 
     def _handle_params(self, update: Update, context: CallbackContext) -> None:
         """Handle input of params when in EXEC_PARAMS state.
@@ -307,57 +307,65 @@ class Telegram(Module):
         """
 
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # wrong state?
-        if context.user_data['state'] != TelegramUserState.EXEC_PARAMS:
+        if context.user_data["state"] != TelegramUserState.EXEC_PARAMS:
             return
 
         # get proxy and method signature
-        module, method = context.user_data['method'].split('.')
+        module, method = context.user_data["method"].split(".")
         proxy = await self.proxy(module)
         signature = proxy.signature(method)
 
         # get list of parameters
-        params = [(name, param) for name, param in signature.parameters.items()
-                  if name not in ['self', 'args', 'kwargs']]
+        params = [
+            (name, param) for name, param in signature.parameters.items() if name not in ["self", "args", "kwargs"]
+        ]
 
         # append param, if new one was received
         if update.message is not None:
             # get type of new parameter
-            param_type = params[len(context.user_data['params'])][1].annotation
+            param_type = params[len(context.user_data["params"])][1].annotation
 
             # cast it
             value = param_type(update.message.text)
 
             # append it
-            context.user_data['params'].append(value)
+            context.user_data["params"].append(value)
 
         # got enough params?
-        nparams = len(context.user_data['params'])
+        nparams = len(context.user_data["params"])
         if nparams >= len(params):
             # ID for command?
-            if 'ncalls' not in context.user_data:
-                context.user_data['ncalls'] = 0
-            context.user_data['ncalls'] += 1
-            call_id = context.user_data['ncalls']
+            if "ncalls" not in context.user_data:
+                context.user_data["ncalls"] = 0
+            context.user_data["ncalls"] += 1
+            call_id = context.user_data["ncalls"]
 
             # remove cancel button, and show command
-            msg = 'Executing %s...' % context.user_data['method']
-            context.bot.edit_message_text(text=msg,
-                                          message_id=context.user_data['exec_query_message'],
-                                          chat_id=context.user_data['exec_query_chat'])
+            msg = "Executing %s..." % context.user_data["method"]
+            context.bot.edit_message_text(
+                text=msg,
+                message_id=context.user_data["exec_query_message"],
+                chat_id=context.user_data["exec_query_chat"],
+            )
 
             # send message
-            command = context.user_data['method'] + '(' + \
-                      ', '.join(['"%s"' % p if isinstance(p, str) else str(p)
-                                 for p in context.user_data['params']]) + \
-                      ')'
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Executing #%d:\n%s' % (call_id, command))
+            command = (
+                context.user_data["method"]
+                + "("
+                + ", ".join(['"%s"' % p if isinstance(p, str) else str(p) for p in context.user_data["params"]])
+                + ")"
+            )
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Executing #%d:\n%s" % (call_id, command))
 
             # start call
-            asyncio.create_task(self._call_method(context, update.effective_chat.id, call_id,
-                                                  context.user_data['method'], context.user_data['params']))
+            asyncio.create_task(
+                self._call_method(
+                    context, update.effective_chat.id, call_id, context.user_data["method"], context.user_data["params"]
+                )
+            )
 
             # reset
             self._reset_state(context)
@@ -367,18 +375,19 @@ class Telegram(Module):
             next_param: Parameter = params[nparams][1]
 
             # format it
-            message = 'Value for ' + next_param.name
+            message = "Value for " + next_param.name
             if next_param.annotation is not None:
-                message += ': ' + next_param.annotation.__name__
+                message += ": " + next_param.annotation.__name__
             if next_param.default != Parameter.empty:
-                message += ' = ' + str(next_param.default)
-            message += '?'
+                message += " = " + str(next_param.default)
+            message += "?"
 
             # send it
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
-    async def _call_method(self, context: CallbackContext, chat_id: int, call_id: int, method: str,
-                           params: List[Any]) -> None:
+    async def _call_method(
+        self, context: CallbackContext, chat_id: int, call_id: int, method: str, params: List[Any]
+    ) -> None:
         """
 
         Args:
@@ -389,7 +398,7 @@ class Telegram(Module):
             params: List of parameters.
         """
         # get proxy
-        module, method_name = method.split('.')
+        module, method_name = method.split(".")
         proxy = await self.proxy(module)
 
         # call it
@@ -398,14 +407,14 @@ class Telegram(Module):
 
         # set message
         if response is None:
-            message = 'Finished #%d.' % call_id
+            message = "Finished #%d." % call_id
 
         else:
             # format message
             with io.StringIO() as sio:
                 # format response
                 pprint(response, stream=sio, indent=2)
-                message = 'Finished #%d:\n%s' % (call_id, sio.getvalue())
+                message = "Finished #%d:\n%s" % (call_id, sio.getvalue())
 
         # send reply
         context.bot.send_message(chat_id=chat_id, text=message)
@@ -419,21 +428,21 @@ class Telegram(Module):
         """
 
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # what state is user in?
-        if context.user_data['state'] == TelegramUserState.AUTH:
+        if context.user_data["state"] == TelegramUserState.AUTH:
             # AUTH, so we expect a password. Is it valid?
             if update.message.text == self._password:
                 # Yes, successful AUTH
-                context.bot.send_message(chat_id=update.effective_chat.id, text='AUTH successful.')
-                context.user_data['state'] = TelegramUserState.IDLE
+                context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH successful.")
+                context.user_data["state"] = TelegramUserState.IDLE
                 self._store_user(context, update.message.from_user.id, update.message.from_user.first_name)
 
             else:
-                context.bot.send_message(chat_id=update.effective_chat.id, text='AUTH failed, try again.')
+                context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH failed, try again.")
 
-        elif context.user_data['state'] == TelegramUserState.EXEC_PARAMS:
+        elif context.user_data["state"] == TelegramUserState.EXEC_PARAMS:
             # we're expecting params, so handle them
             self._handle_params(update, context)
 
@@ -447,11 +456,11 @@ class Telegram(Module):
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # list all modules
-        message = 'Available modules:\n' + '\n'.join(['- ' + c for c in self.comm.clients])
+        message = "Available modules:\n" + "\n".join(["- " + c for c in self.comm.clients])
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     def _command_loglevel(self, update: Update, context: CallbackContext) -> None:
@@ -463,26 +472,28 @@ class Telegram(Module):
         """
 
         if context.user_data is None:
-            raise ValueError('No user data in context.')
+            raise ValueError("No user data in context.")
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Not logged in, use /start.')
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # set state
-        context.user_data['state'] = TelegramUserState.LOG_LEVEL
+        context.user_data["state"] = TelegramUserState.LOG_LEVEL
 
         # get current level
-        s = context.bot_data['storage']
-        current_level = s['users'][update.message.from_user.id]['loglevel']
+        s = context.bot_data["storage"]
+        current_level = s["users"][update.message.from_user.id]["loglevel"]
 
         # create buttons for all log levels
-        keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in self._log_levels.keys()] + \
-                   [[InlineKeyboardButton('Cancel', callback_data='cancel')]]
+        keyboard = [[InlineKeyboardButton(level, callback_data=level)] for level in self._log_levels.keys()] + [
+            [InlineKeyboardButton("Cancel", callback_data="cancel")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text('Current log level: %s\nPlease choose new log level:' % current_level,
-                                  reply_markup=reply_markup)
+        update.message.reply_text(
+            "Current log level: %s\nPlease choose new log level:" % current_level, reply_markup=reply_markup
+        )
 
     async def _process_log_entry(self, entry: Event, sender: str) -> bool:
         """Process a new log entry.
@@ -498,17 +509,17 @@ class Telegram(Module):
         level = self._log_levels[entry.level]
 
         # build log message
-        message = '(%s) %s: %s' % (entry.level, sender, entry.message)
+        message = "(%s) %s: %s" % (entry.level, sender, entry.message)
 
         # get storage
         if self._updater is None:
-            raise ValueError('No update initialised.')
-        s = self._updater.dispatcher.bot_data['storage']  # type: ignore
+            raise ValueError("No update initialised.")
+        s = self._updater.dispatcher.bot_data["storage"]  # type: ignore
 
         # loop users
-        for user_id, user in s['users'].items():
+        for user_id, user in s["users"].items():
             # get user log level
-            user_level = self._log_levels[user['loglevel']] if user['loglevel'] in self._log_levels else 100
+            user_level = self._log_levels[user["loglevel"]] if user["loglevel"] in self._log_levels else 100
 
             # is it larger than the log entry level?
             if level >= user_level:
@@ -528,9 +539,8 @@ class Telegram(Module):
             # send message
             try:
                 if self._updater is None:
-                    raise ValueError('No update initialised.')
-                await loop.run_in_executor(None, partial(self._updater.bot.send_message,
-                                                         chat_id=user_id, text=message))
+                    raise ValueError("No update initialised.")
+                await loop.run_in_executor(None, partial(self._updater.bot.send_message, chat_id=user_id, text=message))
 
             except Exception:
                 # something went wrong, sleep a little and queue message again
@@ -538,4 +548,4 @@ class Telegram(Module):
                 await self._message_queue.put((user_id, message))
 
 
-__all__ = ['Telegram']
+__all__ = ["Telegram"]

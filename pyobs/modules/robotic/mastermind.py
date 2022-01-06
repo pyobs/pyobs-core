@@ -19,10 +19,12 @@ log = logging.getLogger(__name__)
 
 class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     """Mastermind for a full robotic mode."""
-    __module__ = 'pyobs.modules.robotic'
 
-    def __init__(self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300,
-                 **kwargs: Any):
+    __module__ = "pyobs.modules.robotic"
+
+    def __init__(
+        self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300, **kwargs: Any
+    ):
         """Initialize a new auto focus system.
 
         Args:
@@ -62,12 +64,12 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     async def start(self, **kwargs: Any):
         """Starts a service."""
-        log.info('Starting robotic system...')
+        log.info("Starting robotic system...")
         self._running = True
 
     async def stop(self, **kwargs: Any):
         """Stops a service."""
-        log.info('Stopping robotic system...')
+        log.info("Stopping robotic system...")
         self._running = False
 
     async def is_running(self, **kwargs: Any) -> bool:
@@ -105,8 +107,11 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 if late_start > self._allowed_late_start * u.second:
                     # only warn once
                     if first_late_start_warning:
-                        log.warning('Time since start of window (%.1f) too long (>%.1f), skipping task...',
-                                    late_start.to_value('second'), self._allowed_late_start)
+                        log.warning(
+                            "Time since start of window (%.1f) too long (>%.1f), skipping task...",
+                            late_start.to_value("second"),
+                            self._allowed_late_start,
+                        )
                     first_late_start_warning = False
 
                     # sleep a little and skip
@@ -126,18 +131,19 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
             # run task in thread
-            log.info('Running task %s...', self._task.name)
+            log.info("Running task %s...", self._task.name)
             await self._task_archive.run_task(self._task)
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
 
             # finish
-            log.info('Finished task %s.', self._task.name)
+            log.info("Finished task %s.", self._task.name)
             self._task = None
 
-    async def get_fits_header_before(self, namespaces: Optional[List[str]] = None, **kwargs: Any) \
-            -> Dict[str, Tuple[Any, str]]:
+    async def get_fits_header_before(
+        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+    ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -150,11 +156,11 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # inside an observation?
         if self._task is not None:
             hdr = self._task.get_fits_headers()
-            hdr['TASK'] = self._task.name, 'Name of task'
-            hdr['REQNUM'] = str(self._task.id), 'Unique ID of task'
+            hdr["TASK"] = self._task.name, "Name of task"
+            hdr["REQNUM"] = str(self._task.id), "Unique ID of task"
             return hdr
         else:
             return {}
 
 
-__all__ = ['Mastermind']
+__all__ = ["Mastermind"]

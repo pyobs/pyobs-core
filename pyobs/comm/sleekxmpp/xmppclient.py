@@ -29,7 +29,7 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
 
         # stuff
         self._connect_event = threading.Event()
-        self._logs_node = 'logs'
+        self._logs_node = "logs"
         self._auth_event = threading.Event()
         self._auth_success = False
 
@@ -37,22 +37,22 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
         self.auto_authorize = True
 
         # register plugins
-        self.register_plugin('xep_0009', module=XEP_0009)  # RPC
-        self.register_plugin('xep_0009_timeout', module=XEP_0009_timeout)  # RPC timeout
-        self.register_plugin('xep_0030')  # Service Discovery
-        self.register_plugin('xep_0045')  # Multi-User Chat
-        self.register_plugin('xep_0060')  # PubSub
-        self.register_plugin('xep_0115')  # Entity Capabilities
-        self.register_plugin('xep_0163')  # Personal Eventing Protocol
-        self.register_plugin('xep_0199')  # XMPP Ping
+        self.register_plugin("xep_0009", module=XEP_0009)  # RPC
+        self.register_plugin("xep_0009_timeout", module=XEP_0009_timeout)  # RPC timeout
+        self.register_plugin("xep_0030")  # Service Discovery
+        self.register_plugin("xep_0045")  # Multi-User Chat
+        self.register_plugin("xep_0060")  # PubSub
+        self.register_plugin("xep_0115")  # Entity Capabilities
+        self.register_plugin("xep_0163")  # Personal Eventing Protocol
+        self.register_plugin("xep_0199")  # XMPP Ping
 
         # enable keep alive pings
-        self['xep_0199'].enable_keepalive(300, 30)
+        self["xep_0199"].enable_keepalive(300, 30)
 
         # handle session_start and message events
         self.add_event_handler("session_start", self.session_start)
-        self.add_event_handler('auth_success', lambda ev: self._auth(True))
-        self.add_event_handler('failed_auth', lambda ev: self._auth(False))
+        self.add_event_handler("auth_success", lambda ev: self._auth(True))
+        self.add_event_handler("failed_auth", lambda ev: self._auth(False))
 
     def get_interfaces(self, jid: str) -> List[str]:
         """Return list of interfaces for the given JID.
@@ -69,16 +69,16 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
 
         # request features
         try:
-            info = self['xep_0030'].get_info(jid=jid, cached=False)
+            info = self["xep_0030"].get_info(jid=jid, cached=False)
         except sleekxmpp.exceptions.IqError:
             raise IndexError()
 
         # extract pyobs interfaces
         try:
             if isinstance(info, sleekxmpp.stanza.iq.Iq):
-                info = info['disco_info']
-            prefix = 'pyobs:interface:'
-            return [i[len(prefix):] for i in info['features'] if i.startswith(prefix)]
+                info = info["disco_info"]
+            prefix = "pyobs:interface:"
+            return [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
         except TypeError:
             raise IndexError()
 
@@ -92,7 +92,7 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
         # wait for auth and check
         self._auth_event.wait()
         if not self._auth_success:
-            log.error('Invalid credentials for connecting to XMPP server.')
+            log.error("Invalid credentials for connecting to XMPP server.")
             return False
 
         # wait for final connect
@@ -107,7 +107,7 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
         Args:
             event: The event sent at session start.
         """
-        log.info('Connected to server.')
+        log.info("Connected to server.")
 
         # send presence and get roster
         self.send_presence()
@@ -127,4 +127,4 @@ class XmppClient(sleekxmpp.ClientXMPP):  # type: ignore
         self._auth_event.set()
 
 
-__all__ = ['XmppClient']
+__all__ = ["XmppClient"]

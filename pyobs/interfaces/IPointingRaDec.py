@@ -6,7 +6,8 @@ from .interface import Interface
 
 class IPointingRaDec(Interface, metaclass=ABCMeta):
     """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
@@ -31,4 +32,4 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IPointingRaDec']
+__all__ = ["IPointingRaDec"]

@@ -7,8 +7,7 @@ from numpy.typing import NDArray
 from pyobs.comm import RemoteException
 from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
-from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, \
-    IImageGrabber
+from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IImageGrabber
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
@@ -20,11 +19,20 @@ log = logging.getLogger(__name__)
 
 class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     """Module for auto-focusing a telescope."""
-    __module__ = 'pyobs.modules.focus'
 
-    def __init__(self, focuser: Union[str, IFocuser], camera: Union[str, IImageGrabber], series: FocusSeries,
-                 offset: bool = False, filters: Optional[Union[str, IFilters]] = None,
-                 filter_name: Optional[str] = None, binning: Optional[int] = None, **kwargs: Any):
+    __module__ = "pyobs.modules.focus"
+
+    def __init__(
+        self,
+        focuser: Union[str, IFocuser],
+        camera: Union[str, IImageGrabber],
+        series: FocusSeries,
+        offset: bool = False,
+        filters: Optional[Union[str, IFilters]] = None,
+        filter_name: Optional[str] = None,
+        binning: Optional[int] = None,
+        **kwargs: Any,
+    ):
         """Initialize a new auto focus system.
 
         Args:
@@ -61,7 +69,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             await self.proxy(self._focuser, IFocuser)
             await self.proxy(self._camera, IImageGrabber)
         except ValueError:
-            log.warning('Either camera or focuser do not exist or are not of correct type at the moment.')
+            log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
     @timeout(600)
     async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
@@ -82,37 +90,37 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         Raises:
             FileNotFoundException: If image could not be downloaded.
         """
-        log.info('Performing auto-focus...')
+        log.info("Performing auto-focus...")
 
         # get focuser
-        log.info('Getting proxy for focuser...')
+        log.info("Getting proxy for focuser...")
         focuser = await self.proxy(self._focuser, IFocuser)
 
         # get camera
-        log.info('Getting proxy for camera...')
+        log.info("Getting proxy for camera...")
         camera = await self.proxy(self._camera, IImageGrabber)
 
         # do camera settings
         await self._do_camera_settings(camera)
 
         # get filter wheel and current filter
-        filter_name = 'unknown'
+        filter_name = "unknown"
         try:
             filter_wheel = await self.proxy(self._filters, IFilters)
             filter_name = await filter_wheel.get_filter()
         except ValueError:
-            log.warning('Filter module is not of type IFilters. Could not get filter.')
+            log.warning("Filter module is not of type IFilters. Could not get filter.")
 
         # get focus as first guess
         try:
             if self._offset:
-                guess = 0.
-                log.info('Using focus offset of 0mm as initial guess.')
+                guess = 0.0
+                log.info("Using focus offset of 0mm as initial guess.")
             else:
                 guess = await focuser.get_focus()
-                log.info('Using current focus of %.2fmm as initial guess.', guess)
+                log.info("Using current focus of %.2fmm as initial guess.", guess)
         except RemoteException:
-            raise ValueError('Could not fetch current focus value.')
+            raise ValueError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
         focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
@@ -125,10 +133,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._abort = threading.Event()
 
         # loop focus values
-        log.info('Starting focus series...')
+        log.info("Starting focus series...")
         for foc in focus_values:
             # set focus
-            log.info('Changing focus to %.2fmm...', foc)
+            log.info("Changing focus to %.2fmm...", foc)
             if self._abort.is_set():
                 raise InterruptedError()
             try:
@@ -138,10 +146,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     await focuser.set_focus(float(foc))
 
             except RemoteException:
-                raise ValueError('Could not set new focus value.')
+                raise ValueError("Could not set new focus value.")
 
             # do exposure
-            log.info('Taking picture...')
+            log.info("Taking picture...")
             if self._abort.is_set():
                 raise InterruptedError()
             try:
@@ -151,20 +159,20 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     await camera.set_image_type(ImageType.FOCUS)
                 filename = await camera.grab_image()
             except RemoteException:
-                log.error('Could not take image.')
+                log.error("Could not take image.")
                 continue
 
             # download image
-            log.info('Downloading image...')
+            log.info("Downloading image...")
             image = await self.vfs.read_image(filename)
 
             # analyse
-            log.info('Analysing picture...')
+            log.info("Analysing picture...")
             try:
                 self._series.analyse_image(image)
             except:
                 # do nothing..
-                log.error('Could not analyse image.')
+                log.error("Could not analyse image.")
                 continue
 
         # fit focus
@@ -174,29 +182,29 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # did focus series fail?
         if focus is None or focus[0] is None or np.isnan(focus[0]):
-            log.warning('Focus series failed.')
+            log.warning("Focus series failed.")
 
             # reset to initial values
             if self._offset:
-                log.info('Resetting focus offset to 0.', guess)
+                log.info("Resetting focus offset to 0.", guess)
                 await focuser.set_focus_offset(0)
             else:
-                log.info('Resetting focus to initial guess of %.3f mm.', guess)
+                log.info("Resetting focus to initial guess of %.3f mm.", guess)
                 await focuser.set_focus(guess)
 
             # raise error
-            raise ValueError('Could not find best focus.')
+            raise ValueError("Could not find best focus.")
 
         # "absolute" will be the absolute focus value, i.e. focus+offset
         absolute: Optional[float] = None
 
         # log and set focus
         if self._offset:
-            log.info('Setting new focus offset of (%.3f+-%.3f) mm.', focus[0], focus[1])
+            log.info("Setting new focus offset of (%.3f+-%.3f) mm.", focus[0], focus[1])
             absolute = focus[0] + await focuser.get_focus()
             await focuser.set_focus_offset(focus[0])
         else:
-            log.info('Setting new focus value of (%.3f+-%.3f) mm.', focus[0], focus[1])
+            log.info("Setting new focus value of (%.3f+-%.3f) mm.", focus[0], focus[1])
             absolute = focus[0] + await focuser.get_focus_offset()
             await focuser.set_focus(focus[0])
 
@@ -222,4 +230,4 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._abort.set()
 
 
-__all__ = ['AutoFocusSeries']
+__all__ = ["AutoFocusSeries"]

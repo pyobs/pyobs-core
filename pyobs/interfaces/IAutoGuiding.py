@@ -6,7 +6,8 @@ from .IStartStop import IStartStop
 
 class IAutoGuiding(IStartStop, metaclass=ABCMeta):
     """The module can perform auto-guiding."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
@@ -18,4 +19,4 @@ class IAutoGuiding(IStartStop, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['IAutoGuiding']
+__all__ = ["IAutoGuiding"]

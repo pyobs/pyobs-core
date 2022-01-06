@@ -17,10 +17,11 @@ log = logging.getLogger(__name__)
 
 class LatestJsonHandler(tornado.web.RequestHandler):
     """Latest data as JSON."""
+
     @tornado.gen.coroutine
     def get(self):
         # set header
-        self.set_header('content-type', 'application/json')
+        self.set_header("content-type", "application/json")
 
         # no data?
         data = self.application.data
@@ -31,17 +32,18 @@ class LatestJsonHandler(tornado.web.RequestHandler):
         # convert last row to dict
         row = data.iloc[-1].to_dict()
 
-        self.set_header('content-type', 'application/json')
+        self.set_header("content-type", "application/json")
         self.write(json.dumps(row))
         self.finish()
 
 
 class HistoryCsvHandler(tornado.web.RequestHandler):
     """History as CSV."""
+
     @tornado.gen.coroutine
     def get(self):
         # set header
-        self.set_header('content-type', 'text/csv')
+        self.set_header("content-type", "text/csv")
 
         # write data
         with io.StringIO() as sio:
@@ -64,10 +66,9 @@ class HttpPublisher(Publisher, tornado.web.Application):
         self.add_background_task(self._http, False)
 
         # init tornado web server
-        tornado.web.Application.__init__(self, [
-            (r"/latest.json", LatestJsonHandler),
-            (r"/history.csv", HistoryCsvHandler)
-        ])
+        tornado.web.Application.__init__(
+            self, [(r"/latest.json", LatestJsonHandler), (r"/history.csv", HistoryCsvHandler)]
+        )
 
         # store stuff
         self._io_loop = None
@@ -97,7 +98,7 @@ class HttpPublisher(Publisher, tornado.web.Application):
         self._io_loop.make_current()
 
         # start listening
-        log.info('Starting HTTP server on port %d.', self._port)
+        log.info("Starting HTTP server on port %d.", self._port)
         self.listen(self._port)
 
         # start the io loop
@@ -118,7 +119,7 @@ class HttpPublisher(Publisher, tornado.web.Application):
 
             # truncate
             if len(self.data) > self._keep:
-                self._data = self._data.iloc[-self._keep:]
+                self._data = self._data.iloc[-self._keep :]
 
 
-__all__ = ['HttpPublisher']
+__all__ = ["HttpPublisher"]

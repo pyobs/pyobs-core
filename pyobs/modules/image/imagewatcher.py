@@ -17,7 +17,8 @@ class ImageWatcher(Module):
     Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
     the file is deleted.
     """
-    __module__ = 'pyobs.modules.image'
+
+    __module__ = "pyobs.modules.image"
 
     def __init__(self, watchpath: Optional[str] = None, destinations: Optional[List[str]] = None, **kwargs: Any):
         """Create a new image watcher.
@@ -41,7 +42,7 @@ class ImageWatcher(Module):
 
         # filename patterns
         if not destinations:
-            raise ValueError('No filename patterns given for the destinations.')
+            raise ValueError("No filename patterns given for the destinations.")
         self._destinations = destinations
 
     async def open(self) -> None:
@@ -63,10 +64,10 @@ class ImageWatcher(Module):
 
         # start watching directory
         if self._watchpath:
-            log.info('Start watching directory %s for changes...', self._watchpath)
+            log.info("Start watching directory %s for changes...", self._watchpath)
             wm = pyinotify.WatchManager()
             wm.add_watch(self._watchpath, pyinotify.IN_CLOSE_WRITE)
-            self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self)) #, name='observer')
+            self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self))  # , name='observer')
             self._notifier.start()
 
     async def close(self) -> None:
@@ -75,7 +76,7 @@ class ImageWatcher(Module):
 
         # stop watching
         if self._notifier:
-            log.info('Stop watching directory...')
+            log.info("Stop watching directory...")
             self._notifier.stop()
 
     def add_image(self, filename: str) -> None:
@@ -86,7 +87,7 @@ class ImageWatcher(Module):
         """
 
         # log file
-        log.info('Adding new image %s...', filename)
+        log.info("Adding new image %s...", filename)
         self._queue.put_nowait(filename)
 
     async def _clear_queue(self) -> None:
@@ -101,14 +102,14 @@ class ImageWatcher(Module):
 
         # first, add all files from directory to queue
         await self._clear_queue()
-        for filename in sorted(glob.glob(os.path.join(self._watchpath, '*'))):
+        for filename in sorted(glob.glob(os.path.join(self._watchpath, "*"))):
             self.add_image(filename)
 
         # run forever
         while True:
             # get next filename
             filename = await self._queue.get()
-            log.info('Working on file %s...', filename)
+            log.info("Working on file %s...", filename)
 
             # better safe than sorry
             try:
@@ -120,16 +121,16 @@ class ImageWatcher(Module):
                 for pattern in self._destinations:
 
                     # create filename
-                    out_filename = format_filename(fits_file['SCI'].header, pattern)
+                    out_filename = format_filename(fits_file["SCI"].header, pattern)
                     if out_filename is None:
-                        raise ValueError('Could not create name for file.')
+                        raise ValueError("Could not create name for file.")
 
                     # store it
-                    log.info('Storing file as %s...', out_filename)
+                    log.info("Storing file as %s...", out_filename)
                     try:
                         await self.vfs.write_fits(out_filename, fits_file)
                     except:
-                        log.exception('Error while copying file, skipping for now.')
+                        log.exception("Error while copying file, skipping for now.")
                         success = False
 
                 # no success_
@@ -137,11 +138,11 @@ class ImageWatcher(Module):
                     continue
 
                 # close and delete files
-                log.info('Removing file from watch directory...')
+                log.info("Removing file from watch directory...")
                 os.remove(filename)
 
             except:
-                log.exception('Something went wrong.')
+                log.exception("Something went wrong.")
 
 
-__all__ = ['ImageWatcher']
+__all__ = ["ImageWatcher"]

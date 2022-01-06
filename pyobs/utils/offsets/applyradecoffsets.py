@@ -13,7 +13,8 @@ log = logging.getLogger(__name__)
 
 class ApplyRaDecOffsets(ApplyOffsets):
     """Apply offsets from a given image to a given telescope."""
-    __module__ = 'pyobs.utils.offsets'
+
+    __module__ = "pyobs.utils.offsets"
 
     def __init__(self, min_offset: float = 0.5, max_offset: float = 30, **kwargs: Any):
         """Initializes a new ApplyRaDecOffsets.
@@ -43,14 +44,14 @@ class ApplyRaDecOffsets(ApplyOffsets):
         # telescope must be of type IRaDecOffsets
         tel = telescope
         if not isinstance(telescope, IOffsetsRaDec):
-            log.error('Given telescope cannot handle RA/Dec offsets.')
+            log.error("Given telescope cannot handle RA/Dec offsets.")
             return False
 
         # get RA/Dec coordinates of center and center+offsets
         try:
             radec_center, radec_target = self._get_radec_center_target(image, location)
         except ValueError:
-            log.error('Could not get offsets from image meta.')
+            log.error("Could not get offsets from image meta.")
             return False
 
         # get offset
@@ -61,21 +62,21 @@ class ApplyRaDecOffsets(ApplyOffsets):
         cur_dra, cur_ddec = await telescope.get_offsets_radec()
 
         # log it
-        await self._log_offset(tel, 'dra', cur_dra, dra.degree, 'ddec', cur_ddec, ddec.degree)
+        await self._log_offset(tel, "dra", cur_dra, dra.degree, "ddec", cur_ddec, ddec.degree)
 
         # too large or too small?
-        diff = np.sqrt(dra.arcsec**2. + ddec.arcsec**2)
+        diff = np.sqrt(dra.arcsec ** 2.0 + ddec.arcsec ** 2)
         if diff < self._min_offset:
-            log.warning('Shift too small, skipping auto-guiding for now...')
+            log.warning("Shift too small, skipping auto-guiding for now...")
             return False
         if diff > self._max_offset:
-            log.warning('Shift too large, skipping auto-guiding for now...')
+            log.warning("Shift too large, skipping auto-guiding for now...")
             return False
 
         # move offset
-        log.info('Offsetting telescope...')
+        log.info("Offsetting telescope...")
         await telescope.set_offsets_radec(float(cur_dra + dra.degree), float(cur_ddec + ddec.degree))
         return True
 
 
-__all__ = ['ApplyRaDecOffsets']
+__all__ = ["ApplyRaDecOffsets"]

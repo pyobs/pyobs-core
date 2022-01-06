@@ -10,13 +10,22 @@ from .file import VFSFile
 class SSHFile(VFSFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
 
+    __module__ = "pyobs.vfs"
 
-
-    __module__ = 'pyobs.vfs'
-
-    def __init__(self, name: str, mode: str = 'r', bufsize: int = -1, hostname: Optional[str] = None, port: int = 22,
-                 username: Optional[str] = None, password: Optional[str] = None, keyfile: Optional[str] = None,
-                 root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
+    def __init__(
+        self,
+        name: str,
+        mode: str = "r",
+        bufsize: int = -1,
+        hostname: Optional[str] = None,
+        port: int = 22,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        keyfile: Optional[str] = None,
+        root: Optional[str] = None,
+        mkdir: bool = True,
+        **kwargs: Any,
+    ):
         """Open/create a file over a SSH connection.
 
         Args:
@@ -34,11 +43,11 @@ class SSHFile(VFSFile):
 
         # no root given?
         if root is None:
-            raise ValueError('No root directory given.')
+            raise ValueError("No root directory given.")
 
         # filename is not allowed to start with a / or contain ..
-        if name.startswith('/') or '..' in name:
-            raise ValueError('Only files within root directory are allowed.')
+        if name.startswith("/") or ".." in name:
+            raise ValueError("Only files within root directory are allowed.")
 
         # build filename
         self.filename = name
@@ -46,7 +55,7 @@ class SSHFile(VFSFile):
 
         # check
         if hostname is None:
-            raise ValueError('No hostname given.')
+            raise ValueError("No hostname given.")
 
         # connect
         self._ssh = paramiko.SSHClient()
@@ -62,7 +71,7 @@ class SSHFile(VFSFile):
             if mkdir:
                 self._sftp.mkdir(path)
             else:
-                raise ValueError('Cannot write into sub-directory with disabled mkdir option.')
+                raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
 
         # open file
         self._fd = self._sftp.file(full_path, mode)
@@ -79,4 +88,4 @@ class SSHFile(VFSFile):
         self._fd.write(s)
 
 
-__all__ = ['SSHFile']
+__all__ = ["SSHFile"]

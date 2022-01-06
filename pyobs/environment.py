@@ -24,11 +24,12 @@ class Environment:
             elevation: 1798.
     """
 
-    def __init__(self, timezone: str = 'utc', location: Union[Dict[str, Any], EarthLocation] = None,
-                 *args: Any, **kwargs: Any):
+    def __init__(
+        self, timezone: str = "utc", location: Union[Dict[str, Any], EarthLocation] = None, *args: Any, **kwargs: Any
+    ):
         # get timezone
         self._timezone = pytz.timezone(timezone)
-        log.info('Using timezone %s.', timezone)
+        log.info("Using timezone %s.", timezone)
 
         # get location
         self._location: Optional[EarthLocation] = None
@@ -38,18 +39,27 @@ class Environment:
                 self._location = location
             elif isinstance(location, dict):
                 # dictionary?
-                if 'longitude' in location and location['longitude'] is not None and \
-                        'latitude' in location and location['latitude'] is not None and \
-                        'elevation' in location and location['elevation'] is not None:
-                    self._location = EarthLocation(location['longitude'], location['latitude'], location['elevation'])
+                if (
+                    "longitude" in location
+                    and location["longitude"] is not None
+                    and "latitude" in location
+                    and location["latitude"] is not None
+                    and "elevation" in location
+                    and location["elevation"] is not None
+                ):
+                    self._location = EarthLocation(location["longitude"], location["latitude"], location["elevation"])
                 else:
-                    log.error('Location must be provided as dict of longitude/latitude/elevation values.')
+                    log.error("Location must be provided as dict of longitude/latitude/elevation values.")
             else:
                 # nothing
-                log.error('Could not initialize location.')
+                log.error("Could not initialize location.")
         if self._location is not None:
-            log.info('Setting location to longitude=%s, latitude=%s, and elevation=%s.',
-                     self._location.lon, self._location.lat, self._location.height)
+            log.info(
+                "Setting location to longitude=%s, latitude=%s, and elevation=%s.",
+                self._location.lon,
+                self._location.lat,
+                self._location.height,
+            )
 
     @property
     def timezone(self) -> datetime.tzinfo:
@@ -100,7 +110,7 @@ class Environment:
 
         # get local datetime
         if not isinstance(time, datetime.datetime):
-            raise ValueError('Invalid time')
+            raise ValueError("Invalid time")
         utc_dt = pytz.utc.localize(time)
         loc_dt = utc_dt.astimezone(self._timezone)
 
@@ -122,13 +132,13 @@ class Environment:
 
         # no location
         if not isinstance(self._location, EarthLocation):
-            raise ValueError('No location given.')
+            raise ValueError("No location given.")
 
         # convert to Time
         if not isinstance(time, Time):
             time = Time(time)
         # return LST
-        return time.sidereal_time('mean', longitude=self._location.lon)
+        return time.sidereal_time("mean", longitude=self._location.lon)
 
     @functools.lru_cache()
     def zenith_position(self, lst: Longitude) -> SkyCoord:
@@ -141,7 +151,7 @@ class Environment:
             SkyCoord with current zenith position.
         """
         if not isinstance(self._location, EarthLocation):
-            raise ValueError('No location given.')
+            raise ValueError("No location given.")
         return SkyCoord(lst, self._location.lat, frame=ICRS)
 
     def now(self) -> Time:
@@ -197,4 +207,4 @@ class Environment:
             return get_sun(time)
 
 
-__all__ = ['Environment']
+__all__ = ["Environment"]

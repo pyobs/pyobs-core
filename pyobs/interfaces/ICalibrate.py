@@ -6,7 +6,8 @@ from .interface import Interface
 
 class ICalibrate(Interface, metaclass=ABCMeta):
     """The module can calibrate a device."""
-    __module__ = 'pyobs.interfaces'
+
+    __module__ = "pyobs.interfaces"
 
     @abstractmethod
     async def calibrate(self, **kwargs: Any) -> None:
@@ -14,4 +15,4 @@ class ICalibrate(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ['ICalibrate']
+__all__ = ["ICalibrate"]

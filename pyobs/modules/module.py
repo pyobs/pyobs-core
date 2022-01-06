@@ -277,7 +277,7 @@ class Module(Object, IModule, IConfig):
         # finished
         return caps
 
-    def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
+    async def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
         third is for a list of possible options..
 
@@ -286,7 +286,7 @@ class Module(Object, IModule, IConfig):
         """
         return self._config_caps
 
-    def get_config_value(self, name: str, **kwargs: Any) -> Any:
+    async def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
         Args:
@@ -309,7 +309,7 @@ class Module(Object, IModule, IConfig):
         getter = getattr(self, "_get_config_" + name)
         return getter()
 
-    def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
+    async def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
         """Returns possible values for config item with given name.
 
         Args:
@@ -332,7 +332,7 @@ class Module(Object, IModule, IConfig):
         options = getattr(self, "_get_config_options_" + name)
         return cast(List[str], options())
 
-    def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
+    async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:

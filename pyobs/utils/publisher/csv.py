@@ -28,7 +28,7 @@ class CsvPublisher(Publisher):
         """
 
         # load data
-        csv = self.data()
+        csv = await self.data()
 
         # create new row from kwargs and append it
         row = pd.DataFrame(kwargs, index=[0])

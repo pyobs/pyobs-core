@@ -510,7 +510,7 @@ class FlatFielder(Object):
         filename = await camera.grab_image()
 
         # analyse image
-        if self._analyse_image(filename):
+        if await self._analyse_image(filename):
             # increase count and quite here, if finished
             self._exptime_done += self._exptime
             self._exposures_done += 1

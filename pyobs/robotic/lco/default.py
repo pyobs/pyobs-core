@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import time
+
 import numpy as np
 from typing import Union, Optional, Any, Tuple, cast, Dict, List
 
@@ -159,12 +161,12 @@ class LcoDefaultScript(Script):
 
         # got a target?
         target = self.configuration["target"]
-        track = Future[None](empty=True)
+        track: Union[Future, asyncio.Task[Any]] = Future(empty=True)
         if self.image_type == ImageType.OBJECT:
             if telescope is None:
                 raise ValueError("No telescope given.")
             log.info("Moving to target %s...", target["name"])
-            track = await telescope.move_radec(target["ra"], target["dec"])
+            track = asyncio.create_task(telescope.move_radec(target["ra"], target["dec"]))
 
         # acquisition?
         if (
@@ -233,10 +235,10 @@ class LcoDefaultScript(Script):
                 log.info('Using readout mode "%s"...' % readout_mode["name"])
 
                 # set filter
-                set_filter = Future[None](empty=True)
+                set_filter: Union[Future, asyncio.Task[Any]] = Future(empty=True)
                 if "optical_elements" in ic and "filter" in ic["optical_elements"] and filters is not None:
                     log.info("Setting filter to %s...", ic["optical_elements"]["filter"])
-                    set_filter = await filters.set_filter(ic["optical_elements"]["filter"])
+                    set_filter = asyncio.create_task(filters.set_filter(ic["optical_elements"]["filter"]))
 
                 # wait for tracking and filter
                 await Future.wait_all([track, set_filter])

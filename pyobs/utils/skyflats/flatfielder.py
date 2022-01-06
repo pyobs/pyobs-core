@@ -163,13 +163,13 @@ class FlatFielder(Object):
         # return current state
         return self._state
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Reset flat fielder"""
         self._state = FlatFielder.State.INIT
         self._exposures_done = 0
         self._exptime_done = 0
         if self._pointing is not None:
-            self._pointing.reset()
+            await self._pointing.reset()
 
     @property
     def has_filters(self) -> bool:
@@ -529,7 +529,7 @@ class FlatFielder(Object):
                     solalt=sun.alt.degree,
                     exptime=self._exptime,
                     counts=self._target_count,
-                    filter=self._cur_filter,
+                    filter_name=self._cur_filter,
                     binning=self._cur_binning,
                 )
 

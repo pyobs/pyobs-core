@@ -125,7 +125,7 @@ class SkyFlats(Script):
                 await flatfield.set_binning(*item.binning)
             if isinstance(flatfield, IFilters):
                 await flatfield.set_filter(item.filter_name)
-            done, exp_time = await typing.cast(flatfield, IFlatField).flat_field(self._count)
+            done, exp_time = await flatfield.flat_field(self._count)
             log.info("Finished flat-fields.")
 
             # increase exposure time

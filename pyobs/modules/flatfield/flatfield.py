@@ -201,7 +201,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                 filters = await self.proxy(self._filter_wheel, IFilters)
 
             # reset
-            self._flat_fielder.reset()
+            await self._flat_fielder.reset()
 
             # run until state is finished or we aborted
             state = None

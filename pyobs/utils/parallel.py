@@ -3,6 +3,7 @@ import contextlib
 import time
 import asyncio
 import inspect
+from asyncio import Task
 from collections import Coroutine
 from typing import TypeVar, Optional, List, Any, cast, Union
 
@@ -94,7 +95,7 @@ class Future(asyncio.Future):
             return result
 
     @staticmethod
-    async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any]]]]) -> List[Any]:
+    async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any], Task[Any]]]]) -> List[Any]:
         return [await fut for fut in futures if fut is not None]
 
 

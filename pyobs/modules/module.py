@@ -3,12 +3,13 @@ import inspect
 import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
+import packaging.version
 
 from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
-from pyobs.version import version, version_tuple
+from pyobs.version import version
 
 log = logging.getLogger(__name__)
 
@@ -147,16 +148,15 @@ class Module(Object, IModule, IConfig):
         # get proxy and version
         proxy = await self.proxy(sender, IModule)
         module_version = await proxy.get_version()
-        my_version = version()
 
         # log it
         log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
 
-        # check minor and major version, ignore patch level
-        v1, v2 = version_tuple(my_version), version_tuple(module_version)
-        if v1[:2] != v2[:2] and v1 > v2:
+        # check version
+        v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
+        if v1 < v2:
             log.error(
-                f'Found module "{sender}" with newer pyobs version {module_version} (>{my_version}), '
+                f'Found module "{sender}" with newer pyobs version {module_version} (>{version()}), '
                 f"please update pyobs for this module."
             )
 

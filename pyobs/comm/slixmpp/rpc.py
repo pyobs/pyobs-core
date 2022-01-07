@@ -1,10 +1,8 @@
-import asyncio
 import copy
 import inspect
 import logging
 from threading import RLock
 from typing import Dict, Optional, Any, Callable, Tuple
-
 import slixmpp
 import slixmpp.exceptions
 
@@ -139,18 +137,14 @@ class RPC(object):
 
         except InvocationException as ie:
             # could not invoke method
-            fault = {"code": 500, "string": ie.get_message()}
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
         except Exception as e:
             # something else went wrong
             log.warning("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
-            fault = dict()
-            fault["code"] = 500
-            fault["string"] = str(e)
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:
         """Received a response for a method call.

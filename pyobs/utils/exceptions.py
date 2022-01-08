@@ -4,7 +4,7 @@ from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
 import time
 
 
-class PyObsException:
+class PyObsException(Exception):
     """Base class for all exceptions"""
 
     def __init__(self, message: Optional[str] = None):
@@ -16,9 +16,8 @@ class _Meta(type):
 
     def __call__(cls, *args: Any, **kwargs: Any) -> PyObsException:
         """Called when you call MyNewClass()"""
-        obj: PyObsException = type.__call__(cls, *args, **kwargs)
-        handle_exception(obj)
-        return obj
+        exception: PyObsException = type.__call__(cls, *args, **kwargs)
+        return handle_exception(exception)
 
 
 #######################################
@@ -57,10 +56,8 @@ class RemoteException(PyObsException, metaclass=_Meta):
 class SevereException(PyObsException):
     """Severe exception that is raised after multiple raised other exceptions."""
 
-    def __init__(
-        self, message: Optional[str] = None, module: Optional[str] = None, exception: Optional[PyObsException] = None
-    ):
-        PyObsException.__init__(self, message)
+    def __init__(self, module: Optional[str] = None, exception: Optional[PyObsException] = None):
+        PyObsException.__init__(self, "A severe error has occurred.")
         self.module = module
         self.exception = exception
 
@@ -73,32 +70,38 @@ class LoggedException(NamedTuple):
 class ExceptionHandler(NamedTuple):
     exc_type: Type[PyObsException]
     limit: int
+    callback: Callable[[PyObsException, Optional[str]], None]
     timespan: Optional[float] = None
     module: Optional[str] = None
-    callback: Optional[Callable[[Type[PyObsException], Optional[str]], None]] = None
-    throw: bool = True
+    throw: bool = False
 
 
 #######################################
 
 
-local_exceptions: Dict[Type[PyObsException], List[LoggedException]] = {}
-remote_exceptions: Dict[Tuple[Type[PyObsException], str], List[LoggedException]] = {}
-handlers: List[ExceptionHandler] = []
+_local_exceptions: Dict[Type[PyObsException], List[LoggedException]] = {}
+_remote_exceptions: Dict[Tuple[Type[PyObsException], str], List[LoggedException]] = {}
+_handlers: List[ExceptionHandler] = []
+
+
+def clear() -> None:
+    _local_exceptions.clear()
+    _remote_exceptions.clear()
+    _handlers.clear()
 
 
 def register_exception(
     exc_type: Type[PyObsException],
     limit: int,
+    callback: Callable[[PyObsException, Optional[str]], None],
     timespan: Optional[float] = None,
     module: Optional[str] = None,
-    callback: Optional[Callable[[Type[PyObsException], Optional[str]], None]] = None,
-    throw: bool = True,
+    throw: bool = False,
 ) -> None:
-    handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
+    _handlers.append(ExceptionHandler(exc_type, limit, callback, timespan, module, throw))
 
 
-def handle_exception(exception: PyObsException) -> None:
+def handle_exception(exception: PyObsException) -> PyObsException:
     # get module and store exception
     module = exception.module if isinstance(exception, RemoteException) else None
 
@@ -110,7 +113,18 @@ def handle_exception(exception: PyObsException) -> None:
         _store_exception(getattr(exception, "exception"), module)
 
     # now check, whether something is severe
-    _check_severity()
+    triggered_handlers = _check_severity()
+
+    # call all handlers
+    for h in triggered_handlers:
+        h.callback(exception, h.module)
+
+    # if we got any handlers triggered and throw is set on any, escalate to a SevereException
+    if len(triggered_handlers) > 0 and any([h.throw for h in triggered_handlers]):
+        return SevereException(exception=exception, module=module)
+
+    # else just return exception itself
+    return exception
 
 
 def _store_exception(exception: PyObsException, module: Optional[str]) -> None:
@@ -126,30 +140,37 @@ def _store_exception(exception: PyObsException, module: Optional[str]) -> None:
         # store it
         if module is None:
             # add to local exceptions
-            if e not in local_exceptions:
-                local_exceptions[e] = []
-            local_exceptions[e].append(le)
+            if e not in _local_exceptions:
+                _local_exceptions[e] = []
+            _local_exceptions[e].append(le)
 
         else:
             # add to remote exceptions
-            if (e, module) not in remote_exceptions:
-                remote_exceptions[e, module] = []
-            remote_exceptions[e, module].append(le)
+            if (e, module) not in _remote_exceptions:
+                _remote_exceptions[e, module] = []
+            _remote_exceptions[e, module].append(le)
 
 
-def _check_severity() -> None:
-    # loop all handlers
-    for h in handlers:
+def _check_severity() -> List[ExceptionHandler]:
+    """Checks all handlers against all raised exceptions and returns a list of triggered exception handlers.
+
+    Returns:
+        List of triggered handlers.
+    """
+
+    # loop all _handlers
+    triggered: List[ExceptionHandler] = []
+    for h in _handlers:
         # get all exceptions that this handler deals with
         exceptions = []
         if h.module is None:
             # add local exceptions
-            if h.exc_type in local_exceptions:
-                exceptions.extend(local_exceptions[h.exc_type])
+            if h.exc_type in _local_exceptions:
+                exceptions.extend(_local_exceptions[h.exc_type])
         else:
             # add remote exceptions
-            if (h.exc_type, h.module) in remote_exceptions:
-                exceptions.extend(remote_exceptions[h.exc_type, h.module])
+            if (h.exc_type, h.module) in _remote_exceptions:
+                exceptions.extend(_remote_exceptions[h.exc_type, h.module])
 
         # got a timespan?
         if h.timespan is None:
@@ -163,24 +184,11 @@ def _check_severity() -> None:
 
         # more than limit?
         if count >= h.limit:
-            # callback?
-            if h.callback is not None:
-                h.callback(h.exc_type, h.module)
+            # add to list
+            triggered.append(h)
+
+    # return full list
+    return triggered
 
 
 #######################################
-
-
-def cb(exc: Type[PyObsException], module: Optional[str] = None) -> None:
-    print("callback", module, exc)
-
-
-register_exception(MotionError, limit=3, timespan=2, callback=cb)
-
-RemoteException(message="Hello world", module="telescope", exception=CannotInitError())
-CannotParkError()
-time.sleep(1)
-CannotInitError()
-
-# import pprint
-# pprint.pprint(local_exceptions)

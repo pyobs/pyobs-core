@@ -10,6 +10,12 @@ class PyObsError(Exception):
     def __init__(self, message: Optional[str] = None):
         self.message = message
 
+    def __str__(self) -> str:
+        msg = str(type(self))
+        if self.message is not None:
+            msg += f": {self.message}"
+        return msg
+
 
 class _Meta(type):
     """Metaclass for defining exceptions."""
@@ -43,13 +49,31 @@ class CannotMoveError(MotionError, metaclass=_Meta):
 
 
 class RemoteError(PyObsError, metaclass=_Meta):
-    """Remote exception encapsulating basic exception from other module"""
+    """Exception for anything related to the communication between modules."""
 
-    def __init__(self, exception: PyObsError, module: str, message: Optional[str] = None):
+    def __init__(self, module: str, message: Optional[str] = None):
         PyObsError.__init__(self, message)
         self.module = module
+
+
+class InvocationError(RemoteError, metaclass=_Meta):
+    """Remote exception encapsulating basic exception from other module"""
+
+    def __init__(self, module: str, exception: PyObsError):
+        RemoteError.__init__(self, module, None)
+        self.module = module
+
         # never encapsulate a SevereError
         self.exception = exception.exception if isinstance(exception, SevereError) else exception
+
+    def __str__(self) -> str:
+        msg = f"InvocationError ({str(type(self))}): "
+        if self.exception.message is not None:
+            msg += f": {self.exception.message}"
+        return msg
+
+
+#######################################
 
 
 class SevereError(PyObsError):
@@ -103,7 +127,7 @@ def register_exception(
 
 def handle_exception(exception: PyObsError) -> PyObsError:
     # get module and store exception
-    module = exception.module if isinstance(exception, RemoteError) else None
+    module = exception.module if isinstance(exception, InvocationError) else None
 
     # store exception itself
     _store_exception(exception, module)

@@ -110,11 +110,11 @@ def test_remote() -> None:
     exc.MotionError()
     exc.MotionError()
 
-    # one RemoteError should trigger MotionError
+    # one InvocationError should trigger MotionError
     with pytest.raises(exc.SevereError) as exc_info:
-        raise exc.RemoteError(module="test", exception=exc.MotionError())
+        raise exc.InvocationError(module="test", exception=exc.MotionError())
     assert isinstance(exc_info.value, exc.SevereError)
-    assert isinstance(exc_info.value.exception, exc.RemoteError)
+    assert isinstance(exc_info.value.exception, exc.InvocationError)
     assert isinstance(exc_info.value.exception.exception, exc.MotionError)
 
 
@@ -127,12 +127,12 @@ def test_remote_module() -> None:
     exc.MotionError()
 
     # same with other remote errors with other module
-    exc.RemoteError(module="wrong", exception=exc.MotionError())
-    exc.RemoteError(module="wrong", exception=exc.MotionError())
+    exc.InvocationError(module="wrong", exception=exc.MotionError())
+    exc.InvocationError(module="wrong", exception=exc.MotionError())
 
     # but with correct module, it should
     with pytest.raises(exc.SevereError) as exc_info:
-        raise exc.RemoteError(module="test", exception=exc.MotionError())
+        raise exc.InvocationError(module="test", exception=exc.MotionError())
     assert isinstance(exc_info.value, exc.SevereError)
-    assert isinstance(exc_info.value.exception, exc.RemoteError)
+    assert isinstance(exc_info.value.exception, exc.InvocationError)
     assert isinstance(exc_info.value.exception.exception, exc.MotionError)

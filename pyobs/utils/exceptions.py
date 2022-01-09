@@ -4,7 +4,7 @@ from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
 import time
 
 
-class PyObsException(Exception):
+class PyObsError(Exception):
     """Base class for all exceptions"""
 
     def __init__(self, message: Optional[str] = None):
@@ -14,16 +14,16 @@ class PyObsException(Exception):
 class _Meta(type):
     """Metaclass for defining exceptions."""
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> PyObsException:
+    def __call__(cls, *args: Any, **kwargs: Any) -> PyObsError:
         """Called when you call MyNewClass()"""
-        exception: PyObsException = type.__call__(cls, *args, **kwargs)
+        exception: PyObsError = type.__call__(cls, *args, **kwargs)
         return handle_exception(exception)
 
 
 #######################################
 
 
-class MotionError(PyObsException, metaclass=_Meta):
+class MotionError(PyObsError, metaclass=_Meta):
     pass
 
 
@@ -42,45 +42,45 @@ class CannotMoveError(MotionError, metaclass=_Meta):
 #######################################
 
 
-class RemoteException(PyObsException, metaclass=_Meta):
+class RemoteError(PyObsError, metaclass=_Meta):
     """Remote exception encapsulating basic exception from other module"""
 
-    def __init__(
-        self, message: Optional[str] = None, module: Optional[str] = None, exception: Optional[PyObsException] = None
-    ):
-        PyObsException.__init__(self, message)
+    def __init__(self, exception: PyObsError, module: str, message: Optional[str] = None):
+        PyObsError.__init__(self, message)
         self.module = module
-        self.exception = exception
+        # never encapsulate a SevereError
+        self.exception = exception.exception if isinstance(exception, SevereError) else exception
 
 
-class SevereException(PyObsException):
+class SevereError(PyObsError):
     """Severe exception that is raised after multiple raised other exceptions."""
 
-    def __init__(self, module: Optional[str] = None, exception: Optional[PyObsException] = None):
-        PyObsException.__init__(self, "A severe error has occurred.")
+    def __init__(self, exception: PyObsError, module: Optional[str] = None):
+        PyObsError.__init__(self, "A severe error has occurred.")
         self.module = module
-        self.exception = exception
+        # never encapsulate a SevereError
+        self.exception = exception.exception if isinstance(exception, SevereError) else exception
 
 
 class LoggedException(NamedTuple):
     time: float
-    exception: PyObsException
+    exception: PyObsError
 
 
 class ExceptionHandler(NamedTuple):
-    exc_type: Type[PyObsException]
+    exc_type: Type[PyObsError]
     limit: int
-    callback: Callable[[PyObsException, Optional[str]], None]
     timespan: Optional[float] = None
     module: Optional[str] = None
+    callback: Optional[Callable[[PyObsError, Optional[str]], None]] = None
     throw: bool = False
 
 
 #######################################
 
 
-_local_exceptions: Dict[Type[PyObsException], List[LoggedException]] = {}
-_remote_exceptions: Dict[Tuple[Type[PyObsException], str], List[LoggedException]] = {}
+_local_exceptions: Dict[Type[PyObsError], List[LoggedException]] = {}
+_remote_exceptions: Dict[Tuple[Type[PyObsError], str], List[LoggedException]] = {}
 _handlers: List[ExceptionHandler] = []
 
 
@@ -91,19 +91,19 @@ def clear() -> None:
 
 
 def register_exception(
-    exc_type: Type[PyObsException],
+    exc_type: Type[PyObsError],
     limit: int,
-    callback: Callable[[PyObsException, Optional[str]], None],
     timespan: Optional[float] = None,
     module: Optional[str] = None,
+    callback: Optional[Callable[[PyObsError, Optional[str]], None]] = None,
     throw: bool = False,
 ) -> None:
-    _handlers.append(ExceptionHandler(exc_type, limit, callback, timespan, module, throw))
+    _handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
 
 
-def handle_exception(exception: PyObsException) -> PyObsException:
+def handle_exception(exception: PyObsError) -> PyObsError:
     # get module and store exception
-    module = exception.module if isinstance(exception, RemoteException) else None
+    module = exception.module if isinstance(exception, RemoteError) else None
 
     # store exception itself
     _store_exception(exception, module)
@@ -117,21 +117,22 @@ def handle_exception(exception: PyObsException) -> PyObsException:
 
     # call all handlers
     for h in triggered_handlers:
-        h.callback(exception, h.module)
+        if h.callback is not None:
+            h.callback(exception, h.module)
 
-    # if we got any handlers triggered and throw is set on any, escalate to a SevereException
+    # if we got any handlers triggered and throw is set on any, escalate to a SevereError
     if len(triggered_handlers) > 0 and any([h.throw for h in triggered_handlers]):
-        return SevereException(exception=exception, module=module)
+        return SevereError(exception=exception, module=module)
 
     # else just return exception itself
     return exception
 
 
-def _store_exception(exception: PyObsException, module: Optional[str]) -> None:
+def _store_exception(exception: PyObsError, module: Optional[str]) -> None:
     # get all classes from mro
     for e in type(exception).__mro__:
         # only pyobs exceptions
-        if not issubclass(e, PyObsException):
+        if not issubclass(e, PyObsError):
             continue
 
         # log

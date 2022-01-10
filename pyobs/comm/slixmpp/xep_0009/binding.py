@@ -25,7 +25,8 @@ def fault2xml(code: int, message: str) -> ET.Element:
 def xml2fault(params: ET.Element) -> Dict[str, Any]:
     vals = []
     for value in params.findall("{%s}value" % _namespace):
-        vals.append(_xml2py(value))
+        vals.append(_xml2py(value)[0])
+    print(vals)
     fault = dict()
     fault["code"] = vals[0]["faultCode"]
     fault["string"] = vals[0]["faultString"]

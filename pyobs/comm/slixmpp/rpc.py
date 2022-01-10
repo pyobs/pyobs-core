@@ -10,6 +10,7 @@ from pyobs.modules import Module
 from pyobs.comm.exceptions import *
 from pyobs.utils.parallel import Future
 from pyobs.comm.slixmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
+import pyobs.utils.exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -139,11 +140,13 @@ class RPC(object):
             # could not invoke method
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
-        except Exception as e:
+        except exc.PyObsError as e:
             # something else went wrong
             log.warning("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
+            print("SENDING FAULT:", e)
+            print(repr(e))
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:
@@ -197,6 +200,7 @@ class RPC(object):
         # get message
         iq.enable("rpc_query")
         fault = xml2fault(iq["rpc_query"]["method_response"]["fault"])
+        print("RECEIVED FAULT:", fault)
 
         # get future
         pid = iq["id"]
@@ -204,9 +208,20 @@ class RPC(object):
             future = self._futures[pid]
             del self._futures[pid]
 
+        # get exception and error
+        s: str = fault["string"]
+        exception_name = s[1 : s.index(">")]
+        exception_message = s[s.index(">") + 1 :].strip()
+        exception = getattr(exc, exception_name)(message=exception_message)
+
+        # sender
+        sender = iq["from"].node
+
         # set error
         if not future.done():
-            future.set_exception(InvocationException(fault["string"]))
+            print(exception)
+            print(sender)
+            future.set_exception(exc.InvocationError(module=sender, exception=exception))
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.

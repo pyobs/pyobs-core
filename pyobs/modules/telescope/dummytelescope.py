@@ -2,7 +2,6 @@ import asyncio
 import logging
 import threading
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
-
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -14,6 +13,7 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+import pyobs.utils.exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -230,6 +230,7 @@ class DummyTelescope(
         Raises:
             ValueError: If offset could not be set.
         """
+        raise exc.CannotMoveError("Cannot set offsets.")
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)

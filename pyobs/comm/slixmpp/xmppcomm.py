@@ -9,7 +9,6 @@ import re
 import time
 from collections import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
-
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -20,7 +19,7 @@ from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
-from pyobs.utils.parallel import Future
+from pyobs.utils import exceptions as exc
 from .rpc import RPC
 from .xmppclient import XmppClient
 
@@ -331,10 +330,19 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
+
+        # prepare
         if self._rpc is None:
             raise ValueError("No RPC.")
         jid = self._get_full_client_name(client)
-        return await self._rpc.call(jid, method, signature, *args)
+
+        # call
+        try:
+            return await self._rpc.call(jid, method, signature, *args)
+        except slixmpp.exceptions.IqError:
+            raise exc.RemoteError(client, f"Could not call {method} on {client}.")
+        except slixmpp.exceptions.IqTimeout:
+            raise exc.RemoteTimeoutError(client, f"Call to {method} on {client} timed out.")
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
@@ -548,7 +556,11 @@ class XmppComm(Comm):
         Args:
             method: Method to call.
             *args: Parameters for method.
-            **kwargs: Parameters for method.
+            **kwargs: Parameters for method.        except slixmpp.exceptions.IqError:
+            raise RemoteException("Could not send command.")
+        except slixmpp.exceptions.IqTimeout:
+            raise exc()
+
 
         Returns:
             Return value from method.

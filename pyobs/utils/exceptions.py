@@ -56,6 +56,10 @@ class RemoteError(PyObsError, metaclass=_Meta):
         self.module = module
 
 
+class RemoteTimeoutError(RemoteError, metaclass=_Meta):
+    pass
+
+
 class InvocationError(RemoteError, metaclass=_Meta):
     """Remote exception encapsulating basic exception from other module"""
 

@@ -78,12 +78,7 @@ class RPC(object):
         self._futures[pid] = future
 
         # send request
-        try:
-            await iq.send()
-        except slixmpp.exceptions.IqError:
-            raise RemoteException("Could not send command.")
-        except slixmpp.exceptions.IqTimeout:
-            raise TimeoutException()
+        await iq.send()
 
         # don't wait for response, just return future
         return await future
@@ -142,7 +137,7 @@ class RPC(object):
 
         except exc.PyObsError as e:
             # something else went wrong
-            log.warning("Error during call to %s: %s", pmethod, str(e), exc_info=True)
+            log.error("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
@@ -235,20 +230,21 @@ class RPC(object):
             callback = self._futures[pid]
             del self._futures[pid]
 
+        # sender
+        sender = iq["from"].node
+
         # set error
         e = {
-            "item-not-found": RemoteException("No remote handler available for %s at %s!" % (pmethod, iq["from"])),
-            "forbidden": AuthorizationException(
-                "Forbidden to invoke remote handler for %s at %s!" % (pmethod, iq["from"])
+            "item-not-found": exc.RemoteError(sender, f"No remote handler available for {pmethod} at {iq['from']}'!"),
+            "forbidden": exc.RemoteError(sender, f"Forbidden to invoke remote handler for {pmethod} at {iq['from']}!"),
+            "undefined-condition": exc.RemoteError(
+                sender, f"An unexpected problem occured trying to invoke {pmethod} at {iq['from']}!"
             ),
-            "undefined-condition": RemoteException(
-                "An unexpected problem occured trying to invoke %s at %s!" % (pmethod, iq["from"])
-            ),
-            "service-unavailable": RemoteException("The service at %s is unavailable." % iq["from"]),
-            "remote-server-not-found": RemoteException("Could not find remote server for %s." % iq["from"]),
+            "service-unavailable": exc.RemoteError(sender, f"The service at {iq['from']} is unavailable."),
+            "remote-server-not-found": exc.RemoteError(sender, f"Could not find remote server for {iq['from']}."),
         }[condition]
         if e is None:
-            RemoteException("An unexpected exception occurred at %s!" % iq["from"])
+            exc.RemoteError(sender, f"An unexpected exception occurred at {iq['from']}!")
         callback.set_exception(e)
 
 

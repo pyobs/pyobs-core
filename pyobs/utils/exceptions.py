@@ -67,7 +67,7 @@ class InvocationError(RemoteError, metaclass=_Meta):
         self.exception = exception.exception if isinstance(exception, SevereError) else exception
 
     def __str__(self) -> str:
-        msg = f"InvocationError ({self.exception.__class__.__name__}): "
+        msg = f"InvocationError ({self.exception.__class__.__name__})"
         if self.exception.message is not None:
             msg += f": {self.exception.message}"
         return msg

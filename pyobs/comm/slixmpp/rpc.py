@@ -145,8 +145,6 @@ class RPC(object):
             log.warning("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
-            print("SENDING FAULT:", e)
-            print(repr(e))
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:
@@ -200,7 +198,6 @@ class RPC(object):
         # get message
         iq.enable("rpc_query")
         fault = xml2fault(iq["rpc_query"]["method_response"]["fault"])
-        print("RECEIVED FAULT:", fault)
 
         # get future
         pid = iq["id"]
@@ -219,8 +216,6 @@ class RPC(object):
 
         # set error
         if not future.done():
-            print(exception)
-            print(sender)
             future.set_exception(exc.InvocationError(module=sender, exception=exception))
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:

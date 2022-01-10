@@ -84,8 +84,6 @@ class BaseTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
         ...
 
@@ -99,8 +97,6 @@ class BaseTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
 
         # do nothing, if initializing, parking or parked
@@ -109,7 +105,7 @@ class BaseTelescope(
 
         # check observer
         if self.observer is None:
-            raise exc.ConfigError("No observer given.")
+            raise ValueError("No observer given.")
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -117,7 +113,7 @@ class BaseTelescope(
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:
-            raise exc.CoordinateError("Destination altitude below limit.")
+            raise ValueError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
@@ -157,8 +153,6 @@ class BaseTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
         ...
 
@@ -172,8 +166,6 @@ class BaseTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
 
         # do nothing, if initializing, parking or parked
@@ -182,7 +174,7 @@ class BaseTelescope(
 
         # check altitude
         if alt < self._min_altitude:
-            raise exc.CoordinateError("Destination altitude below limit.")
+            raise ValueError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):

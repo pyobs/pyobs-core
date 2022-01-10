@@ -68,8 +68,6 @@ class DummyTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
 
         # start slewing
@@ -85,8 +83,6 @@ class DummyTelescope(
 
         Raises:
             CannotMoveException: If telescope cannot be moved.
-            ConfigError: If anything is wrong with the config.
-            CoordinateError: If coordinates are invalid.
         """
 
         # alt/az coordinates to ra/dec
@@ -130,14 +126,13 @@ class DummyTelescope(
             focus: New focus value.
 
         Raises:
-            ParameterError: If given value is invalid.
             CannotMoveException: If telescope cannot be moved.
             AbortedError: If movement was aborted.
         """
 
         # check
         if focus < 0 or focus > 100:
-            raise exc.ParameterError("Invalid focus value.")
+            raise ValueError("Invalid focus value.")
 
         # acquire lock
         async with LockWithAbort(self._lock_focus, self._abort_focus):
@@ -179,13 +174,12 @@ class DummyTelescope(
             filter_name: Name of filter to set.
 
         Raises:
-            ParameterError: If an invalid filter was given.
             CannotMoveException: If filter wheel cannot be moved.
         """
 
         # valid filter?
         if filter_name not in self._telescope.filters:
-            raise exc.ParameterError("Invalid filter name.")
+            raise ValueError("Invalid filter name.")
 
         # log and send event
         if filter_name != self._telescope.filter_name:
@@ -238,7 +232,6 @@ class DummyTelescope(
             ddec: Dec offset in degrees.
 
         Raises:
-            ParameterError: If an invalid offset was given.
             CannotMoveException: If telescope cannot be moved.
         """
 
@@ -272,7 +265,7 @@ class DummyTelescope(
             alt_az = self.observer.altaz(Time.now(), self._telescope.position)
             return float(alt_az.alt.degree), float(alt_az.az.degree)
         else:
-            raise exc.ConfigError("No observer given.")
+            raise ValueError("No observer given.")
 
     async def get_fits_header_before(
         self, namespaces: Optional[List[str]] = None, **kwargs: Any

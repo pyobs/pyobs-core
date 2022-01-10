@@ -29,18 +29,6 @@ class _Meta(type):
 #######################################
 
 
-class ConfigError(PyObsError, metaclass=_Meta):
-    pass
-
-
-class ParameterError(PyObsError, metaclass=_Meta):
-    pass
-
-
-class CoordinateError(ParameterError, metaclass=_Meta):
-    pass
-
-
 class AbortedError(PyObsError, metaclass=_Meta):
     pass
 
@@ -79,17 +67,21 @@ class RemoteTimeoutError(RemoteError, metaclass=_Meta):
 class InvocationError(RemoteError, metaclass=_Meta):
     """Remote exception encapsulating basic exception from other module"""
 
-    def __init__(self, module: str, exception: PyObsError):
+    def __init__(self, module: str, exception: Exception):
         RemoteError.__init__(self, module, None)
         self.module = module
+        a = ValueError()
 
         # never encapsulate a SevereError
         self.exception = exception.exception if isinstance(exception, SevereError) else exception
 
     def __str__(self) -> str:
         msg = f"InvocationError ({self.exception.__class__.__name__})"
-        if self.exception.message is not None:
-            msg += f": {self.exception.message}"
+        if hasattr(self.exception, "message"):
+            if self.exception.message is not None:
+                msg += f": {self.exception.message}"
+        else:
+            msg += f": {str(self.exception)}"
         return msg
 
 

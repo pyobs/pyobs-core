@@ -11,9 +11,9 @@ from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
-from pyobs.utils.parallel import event_wait
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +83,9 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On any error.
+            CannotMoveException: If telescope cannot be moved.
+            ConfigError: If anything is wrong with the config.
+            CoordinateError: If coordinates are invalid.
         """
         ...
 
@@ -96,7 +98,9 @@ class BaseTelescope(
             dec: Dec in deg to track.
 
         Raises:
-            ValueError: If device could not track.
+            CannotMoveException: If telescope cannot be moved.
+            ConfigError: If anything is wrong with the config.
+            CoordinateError: If coordinates are invalid.
         """
 
         # do nothing, if initializing, parking or parked
@@ -105,7 +109,7 @@ class BaseTelescope(
 
         # check observer
         if self.observer is None:
-            raise ValueError("No observer given.")
+            raise exc.ConfigError("No observer given.")
 
         # to alt/az
         ra_dec = SkyCoord(ra * u.deg, dec * u.deg, frame=ICRS)
@@ -113,7 +117,7 @@ class BaseTelescope(
 
         # check altitude
         if alt_az.alt.degree < self._min_altitude:
-            raise ValueError("Destination altitude below limit.")
+            raise exc.CoordinateError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):
@@ -152,7 +156,9 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On error.
+            CannotMoveException: If telescope cannot be moved.
+            ConfigError: If anything is wrong with the config.
+            CoordinateError: If coordinates are invalid.
         """
         ...
 
@@ -175,7 +181,7 @@ class BaseTelescope(
 
         # check altitude
         if alt < self._min_altitude:
-            raise ValueError("Destination altitude below limit.")
+            raise exc.CoordinateError("Destination altitude below limit.")
 
         # acquire lock
         async with LockWithAbort(self._lock_moving, self._abort_move):

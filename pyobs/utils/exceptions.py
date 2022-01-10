@@ -29,6 +29,14 @@ class _Meta(type):
 #######################################
 
 
+class ConfigError(PyObsError, metaclass=_Meta):
+    pass
+
+
+class CoordinateError(PyObsError, metaclass=_Meta):
+    pass
+
+
 class MotionError(PyObsError, metaclass=_Meta):
     pass
 

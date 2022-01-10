@@ -19,7 +19,8 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
             ddec: Dec offset in degrees.
 
         Raises:
-            ValueError: If offset could not be set.
+            ValueError: If an invalid offset was given.
+            CannotMoveException: If telescope cannot be moved.
         """
         ...
 

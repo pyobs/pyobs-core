@@ -33,7 +33,15 @@ class ConfigError(PyObsError, metaclass=_Meta):
     pass
 
 
-class CoordinateError(PyObsError, metaclass=_Meta):
+class ParameterError(PyObsError, metaclass=_Meta):
+    pass
+
+
+class CoordinateError(ParameterError, metaclass=_Meta):
+    pass
+
+
+class AbortedError(PyObsError, metaclass=_Meta):
     pass
 
 

@@ -171,8 +171,9 @@ class BaseTelescope(
             az: Az in deg to move to.
 
         Raises:
-            Exception: On error.
-            AcquireLockFailed: If current motion could not be aborted.
+            CannotMoveException: If telescope cannot be moved.
+            ConfigError: If anything is wrong with the config.
+            CoordinateError: If coordinates are invalid.
         """
 
         # do nothing, if initializing, parking or parked

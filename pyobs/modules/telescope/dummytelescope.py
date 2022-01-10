@@ -12,6 +12,7 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -129,13 +130,14 @@ class DummyTelescope(
             focus: New focus value.
 
         Raises:
-            ValueError: If given value is invalid.
+            ParameterError: If given value is invalid.
             CannotMoveException: If telescope cannot be moved.
+            AbortedError: If movement was aborted.
         """
 
         # check
         if focus < 0 or focus > 100:
-            raise ValueError("Invalid focus value.")
+            raise exc.ParameterError("Invalid focus value.")
 
         # acquire lock
         async with LockWithAbort(self._lock_focus, self._abort_focus):
@@ -146,7 +148,7 @@ class DummyTelescope(
             for i in range(300):
                 # abort?
                 if self._abort_focus.is_set():
-                    raise InterruptedError("Setting focus was interrupted.")
+                    raise exc.AbortedError("Setting focus was interrupted.")
 
                 # move focus and sleep a little
                 self._telescope.focus = ifoc + i * dfoc
@@ -177,13 +179,13 @@ class DummyTelescope(
             filter_name: Name of filter to set.
 
         Raises:
-            ValueError: If an invalid filter was given.
+            ParameterError: If an invalid filter was given.
             CannotMoveException: If filter wheel cannot be moved.
         """
 
         # valid filter?
         if filter_name not in self._telescope.filters:
-            raise ValueError("Invalid filter name.")
+            raise exc.ParameterError("Invalid filter name.")
 
         # log and send event
         if filter_name != self._telescope.filter_name:
@@ -236,7 +238,7 @@ class DummyTelescope(
             ddec: Dec offset in degrees.
 
         Raises:
-            ValueError: If an invalid offset was given.
+            ParameterError: If an invalid offset was given.
             CannotMoveException: If telescope cannot be moved.
         """
 
@@ -270,7 +272,7 @@ class DummyTelescope(
             alt_az = self.observer.altaz(Time.now(), self._telescope.position)
             return float(alt_az.alt.degree), float(alt_az.az.degree)
         else:
-            raise ValueError("No observer given.")
+            raise exc.ConfigError("No observer given.")
 
     async def get_fits_header_before(
         self, namespaces: Optional[List[str]] = None, **kwargs: Any

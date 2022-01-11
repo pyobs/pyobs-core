@@ -206,7 +206,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             The actual image.
 
         Raises:
-            ValueError: If exposure was not successful.
+            GrabImageError: If exposure was not successful.
+            AbortedError: If exposure was aborted.
         """
         ...
 
@@ -223,6 +224,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
+            AbortedError: If exposure was aborted.
         """
 
         # request fits headers
@@ -237,10 +239,16 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.data is None:
                 raise exc.GrabImageError("Could not take image.")
-        except:
-            # exposure was not successful (aborted?), so reset everything
+
+        except exc.PyObsError:
+            # exposure was not successful (aborted?), so reset everything and re-raise
             self._exposure = None
             raise
+
+        except Exception as e:
+            # exposure was not successful (aborted?), so reset everything and wrap exception
+            self._exposure = None
+            raise exc.GrabImageError(str(e))
 
         # request fits headers again
         header_futures_after = await self.request_fits_headers(before=False)
@@ -300,6 +308,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
+            AbortedError: If exposure was aborted.
         """
 
         # are we exposing?

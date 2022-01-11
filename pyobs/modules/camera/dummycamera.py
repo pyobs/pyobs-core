@@ -8,7 +8,7 @@ from pyobs.interfaces import IWindow, IBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
-from pyobs.utils.parallel import event_wait
+from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -116,7 +116,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             The actual image.
 
         Raises:
-            ValueError: If exposure was not successful.
+            GrabImageError: If exposure was not successful.
+            AbortedError: If exposure was aborted.
         """
 
         # start exposure
@@ -134,7 +135,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise ValueError("Exposure was aborted.")
+                raise exc.AbortedError("Exposure was aborted.")
             await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 

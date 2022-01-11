@@ -187,6 +187,10 @@ def _store_exception(exception: PyObsError, module: Optional[str]) -> None:
         if not issubclass(e, PyObsError):
             continue
 
+        # is it handled by any handler?
+        if not any([e == h.exc_type for h in _handlers]):
+            continue
+
         # log
         le = LoggedException(time=time.time(), exception=exception)
 

@@ -11,7 +11,7 @@ from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IIma
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
-from pyobs.utils.enums import ImageType, ModuleState
+from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
 from pyobs.utils import exceptions as exc
 
@@ -60,9 +60,13 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # register exceptions
         if isinstance(camera, str):
-            exc.register_exception(exc.RemoteError, 3, timespan=600, module=camera, callback=self._error_callback)
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=camera, callback=self._default_remote_error_callback
+            )
         if isinstance(focuser, str):
-            exc.register_exception(exc.RemoteError, 3, timespan=600, module=focuser, callback=self._error_callback)
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=focuser, callback=self._default_remote_error_callback
+            )
 
     async def open(self) -> None:
         """Open module"""
@@ -235,17 +239,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
-
-    async def _error_callback(self, exception: exc.PyObsError) -> None:
-        """Called on severe errors.
-
-        Args:
-            exception: Exception that caused severe error.
-        """
-
-        if isinstance(exception, exc.RemoteError):
-            log.critical(f"Servere error in {exception.module} module: {exception}")
-            await self.set_state(ModuleState.ERROR)
 
 
 __all__ = ["AutoFocusSeries"]

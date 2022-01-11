@@ -382,6 +382,17 @@ class Module(Object, IModule, IConfig):
         self._state = ModuleState.READY
         return True
 
+    async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
+        """Called on severe errors.
+
+        Args:
+            exception: Exception that caused severe error.
+        """
+
+        if isinstance(exception, exc.RemoteError):
+            log.critical(f"Servere error in {exception.module} module: {exception}")
+            await self.set_state(ModuleState.ERROR)
+
 
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""

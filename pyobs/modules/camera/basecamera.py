@@ -87,6 +87,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # multi-threading
         self.expose_abort = asyncio.Event()
 
+        # register exception
+        exc.register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
+
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)

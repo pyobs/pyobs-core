@@ -8,6 +8,7 @@ from pyobs.object import get_object
 from pyobs.utils.offsets import ApplyOffsets
 from pyobs.modules import Module
 from pyobs.images import ImageProcessor
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +44,16 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
 
         # apply offsets
         self._apply = get_object(apply, ApplyOffsets)
+
+        # register exceptions
+        if isinstance(camera, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=camera, callback=self._default_remote_error_callback
+            )
+        if isinstance(telescope, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=telescope, callback=self._default_remote_error_callback
+            )
 
     async def open(self) -> None:
         """Open module."""

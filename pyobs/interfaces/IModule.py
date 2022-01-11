@@ -1,7 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from .interface import Interface
+from pyobs.utils.enums import ModuleState
 
 
 class IModule(Interface, metaclass=ABCMeta):
@@ -17,6 +18,16 @@ class IModule(Interface, metaclass=ABCMeta):
     @abstractmethod
     async def get_version(self, **kwargs: Any) -> str:
         """Returns pyobs version of module."""
+        ...
+
+    @abstractmethod
+    async def get_state(self, **kwargs: Any) -> ModuleState:
+        """Returns current state of module."""
+        ...
+
+    @abstractmethod
+    async def reset_error(self, **kwargs: Any) -> bool:
+        """Reset error of module, if any."""
         ...
 
 

@@ -8,8 +8,10 @@ import packaging.version
 from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
+from pyobs.utils.enums import ModuleState
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
 from pyobs.version import version
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +99,10 @@ class Module(Object, IModule, IConfig):
         # name and label
         self._device_name = name if name is not None else self.comm.name
         self._label = label if label is not None else self._device_name
+
+        # state
+        # TODO: Think of a good way to handle OPENING, CLOSING, etc
+        self._state = ModuleState.READY
 
     async def open(self) -> None:
         # open comm
@@ -221,6 +227,12 @@ class Module(Object, IModule, IConfig):
         Raises:
             KeyError: If method does not exist.
         """
+
+        # is module in error state?
+        if self._state == ModuleState.ERROR:
+            # if called method is not from IModule, raise error
+            if not hasattr(IModule, method):
+                raise exc.ModuleError("Module is in error state, please reset it.")
 
         # get method and signature (may raise KeyError)
         func, signature = self.methods[method]
@@ -352,6 +364,23 @@ class Module(Object, IModule, IConfig):
         # get setter and call it
         setter = getattr(self, "_set_config_" + name)
         setter(value)
+
+    async def set_state(self, state: ModuleState) -> None:
+        """Set state of module.
+
+        Args:
+            state: New state to set.
+        """
+        self._state = state
+
+    async def get_state(self, **kwargs: Any) -> ModuleState:
+        """Returns current state of module."""
+        return self._state
+
+    async def reset_error(self, **kwargs: Any) -> bool:
+        """Reset error of module, if any. Should be overwritten by derived class to handle error resolution."""
+        self._state = ModuleState.READY
+        return True
 
 
 class MultiModule(Module):

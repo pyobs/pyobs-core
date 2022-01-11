@@ -66,7 +66,7 @@ class BaseTelescope(
         )
 
         # register exception
-        exc.register_exception(exc.MoveError, 3, timespan=600, callback=self._default_remote_error_callback)
+        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def open(self) -> None:
         """Open module."""

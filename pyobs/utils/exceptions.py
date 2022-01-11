@@ -161,14 +161,20 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     # now check, whether something is severe
     triggered_handlers = _check_severity()
 
-    # call all handlers
-    for h in triggered_handlers:
+    # filter triggered handlers by those that actually handle the exception
+    handlers = list(filter(lambda h: isinstance(exception, h.exc_type), triggered_handlers))
+
+    # check all handlers
+    for h in handlers:
+        # do we have a callback? then call it!
         if h.callback is not None:
             asyncio.create_task(h.callback(exception))
 
     # if we got any handlers triggered and throw is set on any, escalate to a SevereError
-    if len(triggered_handlers) > 0 and any([h.throw for h in triggered_handlers]):
+    if len(handlers) > 0 and any([h.throw for h in handlers]):
         return SevereError(exception=exception, module=module)
+
+    # TODO: clean up old exceptions
 
     # else just return exception itself
     return exception

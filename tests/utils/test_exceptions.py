@@ -18,7 +18,7 @@ def test_log() -> None:
 
 
 def test_register() -> None:
-    def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyObsError) -> None:
         pass
 
     exc.register_exception(exc.MotionError, 5, callback=cb)
@@ -33,7 +33,7 @@ def test_empty() -> None:
 def test_callback() -> None:
     event = asyncio.Event()
 
-    def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyObsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 
@@ -56,7 +56,7 @@ def test_callback() -> None:
 def test_raise() -> None:
     event = asyncio.Event()
 
-    def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyObsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 
@@ -78,7 +78,7 @@ def test_raise() -> None:
 async def test_timespan() -> None:
     event = asyncio.Event()
 
-    def cb(exception: PyObsError) -> None:
+    async def cb(exception: PyObsError) -> None:
         assert isinstance(exception, exc.MotionError)
         event.set()
 

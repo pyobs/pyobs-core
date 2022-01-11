@@ -37,15 +37,19 @@ class MotionError(PyObsError, metaclass=_Meta):
     pass
 
 
-class CannotInitError(MotionError, metaclass=_Meta):
+class InitError(MotionError, metaclass=_Meta):
     pass
 
 
-class CannotParkError(MotionError, metaclass=_Meta):
+class ParkError(MotionError, metaclass=_Meta):
     pass
 
 
-class CannotMoveError(MotionError, metaclass=_Meta):
+class MoveError(MotionError, metaclass=_Meta):
+    pass
+
+
+class GrabImageError(PyObsError, metaclass=_Meta):
     pass
 
 
@@ -108,7 +112,7 @@ class ExceptionHandler(NamedTuple):
     limit: int
     timespan: Optional[float] = None
     module: Optional[str] = None
-    callback: Optional[Callable[[PyObsError, Optional[str]], None]] = None
+    callback: Optional[Callable[[PyObsError], None]] = None
     throw: bool = False
 
 
@@ -131,7 +135,7 @@ def register_exception(
     limit: int,
     timespan: Optional[float] = None,
     module: Optional[str] = None,
-    callback: Optional[Callable[[PyObsError, Optional[str]], None]] = None,
+    callback: Optional[Callable[[PyObsError], None]] = None,
     throw: bool = False,
 ) -> None:
     _handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
@@ -154,7 +158,7 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     # call all handlers
     for h in triggered_handlers:
         if h.callback is not None:
-            h.callback(exception, h.module)
+            h.callback(exception)
 
     # if we got any handlers triggered and throw is set on any, escalate to a SevereError
     if len(triggered_handlers) > 0 and any([h.throw for h in triggered_handlers]):

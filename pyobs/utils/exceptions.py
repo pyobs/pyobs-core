@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+from collections import Coroutine
 from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
 import time
 
@@ -27,6 +29,10 @@ class _Meta(type):
 
 
 #######################################
+
+
+class ModuleError(PyObsError, metaclass=_Meta):
+    pass
 
 
 class AbortedError(PyObsError, metaclass=_Meta):
@@ -112,7 +118,7 @@ class ExceptionHandler(NamedTuple):
     limit: int
     timespan: Optional[float] = None
     module: Optional[str] = None
-    callback: Optional[Callable[[PyObsError], None]] = None
+    callback: Optional[Callable[[PyObsError], Coroutine[Any, Any, None]]] = None
     throw: bool = False
 
 
@@ -135,7 +141,7 @@ def register_exception(
     limit: int,
     timespan: Optional[float] = None,
     module: Optional[str] = None,
-    callback: Optional[Callable[[PyObsError], None]] = None,
+    callback: Optional[Callable[[PyObsError], Coroutine[Any, Any, None]]] = None,
     throw: bool = False,
 ) -> None:
     _handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
@@ -158,7 +164,7 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     # call all handlers
     for h in triggered_handlers:
         if h.callback is not None:
-            h.callback(exception)
+            asyncio.create_task(h.callback(exception))
 
     # if we got any handlers triggered and throw is set on any, escalate to a SevereError
     if len(triggered_handlers) > 0 and any([h.throw for h in triggered_handlers]):

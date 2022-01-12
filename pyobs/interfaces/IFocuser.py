@@ -18,7 +18,7 @@ class IFocuser(IMotion, metaclass=ABCMeta):
 
         Raises:
             MoveError: If telescope cannot be moved.
-            AbortedError: If movement was aborted.
+            InterruptedError: If movement was aborted.
         """
         ...
 

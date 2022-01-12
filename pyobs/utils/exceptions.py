@@ -35,10 +35,6 @@ class ModuleError(PyObsError, metaclass=_Meta):
     pass
 
 
-class AbortedError(PyObsError, metaclass=_Meta):
-    pass
-
-
 class MotionError(PyObsError, metaclass=_Meta):
     pass
 

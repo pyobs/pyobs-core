@@ -158,12 +158,12 @@ class Module(Object, IModule, IConfig):
         # log it
         log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
 
-        # check version
+        # check version, only compare major and minor, ignore patch level
         v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
-        if v1 < v2:
-            log.error(
-                f'Found module "{sender}" with newer pyobs version {module_version} (>{version()}), '
-                f"please update pyobs for this module."
+        if v1.major != v2.major or v1.minor != v2.minor:
+            log.critical(
+                f'Found module "{sender}" with different pyobs version {module_version} (≠{version()}), '
+                f"please update pyobs."
             )
 
         # okay

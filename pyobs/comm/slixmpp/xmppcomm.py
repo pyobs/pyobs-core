@@ -262,6 +262,8 @@ class XmppComm(Comm):
         if client not in self._interface_cache:
             # get it
             interface_names = await self._get_interfaces(client)
+            if len(interface_names) == 0:
+                return []
             self._interface_cache[client] = self._interface_names_to_classes(interface_names)
 
         # convert to classes
@@ -274,17 +276,14 @@ class XmppComm(Comm):
             jid: JID to get interfaces for.
 
         Returns:
-            List of interface names
-
-        Raises:
-            IndexError: If client cannot be found.
+            List of interface names or empty list, if an error occurred.
         """
 
         # request features
         try:
             info = await self._safe_send(self._xmpp["xep_0030"].get_info, jid=jid, cached=False)
-        except slixmpp.exceptions.IqError:
-            raise IndexError()
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            return []
 
         # extract pyobs interfaces
         if info is None:

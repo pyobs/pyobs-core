@@ -396,6 +396,10 @@ class Module(Object, IModule, IConfig):
             log.critical(f"Servere error in {exception.module} module: {exception}")
             await self.set_state(ModuleState.ERROR)
 
+        else:
+            log.critical(f"Severe error: {exception}")
+            await self.set_state(ModuleState.ERROR)
+
 
 class MultiModule(Module):
     """Wrapper for running multiple modules in a single process."""

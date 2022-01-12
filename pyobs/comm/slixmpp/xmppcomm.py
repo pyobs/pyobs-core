@@ -119,7 +119,7 @@ class XmppComm(Comm):
         self._connected = False
         self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._online_clients: List[str] = []
-        self._interface_cache: Dict[str, List[Type[Interface]]] = {}
+        self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -260,14 +260,16 @@ class XmppComm(Comm):
 
         # does it exist?
         if client not in self._interface_cache:
+            # create future
+            self._interface_cache[client] = asyncio.get_running_loop().create_future()
+
             # get it
             interface_names = await self._get_interfaces(client)
-            if len(interface_names) == 0:
-                return []
-            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
+            self._interface_cache[client].set_result(self._interface_names_to_classes(interface_names))
 
         # convert to classes
-        return self._interface_cache[client]
+        await self._interface_cache[client]
+        return self._interface_cache[client].result()
 
     async def _get_interfaces(self, jid: str) -> List[str]:
         """Return list of interfaces for the given JID.

@@ -136,8 +136,9 @@ class RPC(object):
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
         except exc.PyObsError as e:
-            # something else went wrong
-            log.error("Error during call to %s: %s", pmethod, str(e), exc_info=True)
+            # something else went wrong, but only log if not a ModuleError
+            if not isinstance(e, exc.ModuleError):
+                log.error("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))

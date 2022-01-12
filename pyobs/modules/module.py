@@ -153,7 +153,10 @@ class Module(Object, IModule, IConfig):
 
         # get proxy and version
         proxy = await self.proxy(sender, IModule)
-        module_version = await proxy.get_version()
+        try:
+            module_version = await proxy.get_version()
+        except exc.RemoteError:
+            return True
 
         # log it
         log.debug(f"Other module {sender} found, running on pyobs {module_version}.")

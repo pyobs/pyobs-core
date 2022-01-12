@@ -18,7 +18,7 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
             az: Az in deg to move to.
 
         Raises:
-            ValueError: If device could not move.
+            MoveError: If device could not be moved.
         """
         ...
 

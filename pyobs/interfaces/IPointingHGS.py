@@ -18,7 +18,7 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
             lat: Latitude in deg to track.
 
         Raises:
-            ValueError: If device could not move.
+            MoveError: If device could not be moved.
         """
         ...
 

@@ -18,7 +18,7 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
             dec: Dec in deg to track.
 
         Raises:
-            ValueError: If device could not track.
+            MoveError: If device could not be moved.
         """
         ...
 

@@ -17,8 +17,7 @@ class IFocuser(IMotion, metaclass=ABCMeta):
             focus: New focus value.
 
         Raises:
-            ValueError: If given value is invalid.
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
             AbortedError: If movement was aborted.
         """
         ...

@@ -115,7 +115,6 @@ class XmppComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         # variables
-        self._rpc: Optional[RPC] = None
         self._connected = False
         self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._online_clients: List[str] = []
@@ -157,6 +156,9 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
+        # create RPC handler
+        self._rpc = RPC(self._xmpp, self.module)
+
     def _set_module(self, module: "Module") -> None:
         """Called, when the module connected to this Comm changes.
 
@@ -180,9 +182,6 @@ class XmppComm(Comm):
         Returns:
             Whether opening was successful.
         """
-
-        # create RPC handler
-        self._rpc = RPC(self._xmpp, self.module)
 
         # server given?
         server = () if self._server is None else tuple(self._server.split(":"))

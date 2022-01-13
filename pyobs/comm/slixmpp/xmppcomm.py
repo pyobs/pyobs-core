@@ -257,20 +257,10 @@ class XmppComm(Comm):
         if "@" not in client:
             client = "%s@%s/%s" % (client, self._domain, self._resource)
 
-        # does it exist?
-        if client not in self._interface_cache:
-            # create future
-            self._interface_cache[client] = asyncio.get_running_loop().create_future()
+        # return them from cache
+        return await self._interface_cache[client]
 
-            # get it
-            interface_names = await self._get_interfaces(client)
-            self._interface_cache[client].set_result(self._interface_names_to_classes(interface_names))
-
-        # convert to classes
-        await self._interface_cache[client]
-        return self._interface_cache[client].result()
-
-    async def _get_interfaces(self, jid: str) -> List[str]:
+    async def _get_interfaces(self, jid: str, attempts: int = 3) -> List[str]:
         """Return list of interfaces for the given JID.
 
         Args:
@@ -286,16 +276,28 @@ class XmppComm(Comm):
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             return []
 
-        # extract pyobs interfaces
+        # extract pyobs interface names
         if info is None:
             return []
         try:
             if isinstance(info, slixmpp.stanza.iq.Iq):
                 info = info["disco_info"]
             prefix = "pyobs:interface:"
-            return [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
+            interface_names = [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
         except TypeError:
             raise IndexError()
+
+        # IModule not in list?
+        if "IModule" not in interface_names:
+            # try again or quit?
+            if attempts == 0:
+                return []
+            else:
+                await asyncio.sleep(5)
+                interface_names = await self._get_interfaces(jid, attempts - 1)
+
+        # finished
+        return interface_names
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
@@ -351,17 +353,33 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # append to list
+        # get jid, ignore event if it's myself
         jid = msg["from"].full
-        if jid not in self._online_clients:
-            self._online_clients.append(jid)
+        if jid == self._jid:
+            return
 
         # clear interface cache, just in case there is something there
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
+        # create future for interfaces
+        self._interface_cache[jid] = asyncio.get_running_loop().create_future()
+
         # request interfaces
-        a = await self.get_interfaces(jid)
+        interface_names = await self._get_interfaces(jid)
+
+        # if no interfaces are implemented (not even IModule), quit here
+        if len(interface_names) == 0:
+            module = jid[: jid.index["@"]]
+            log.error(f"Module {module} does not seem to implement IModule, ignoring.")
+            return
+
+        # store interfaces
+        self._interface_cache[jid].set_result(self._interface_names_to_classes(interface_names))
+
+        # append to list
+        if jid not in self._online_clients:
+            self._online_clients.append(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
@@ -484,7 +502,7 @@ class XmppComm(Comm):
         return event_classes
 
     async def _register_events(
-        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None
+        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
     ) -> None:
         # loop events
         for ev in events:
@@ -549,7 +567,7 @@ class XmppComm(Comm):
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
 
-    async def _safe_send(self, method: Callable[[...], Coroutine], *args: Any, **kwargs: Any):
+    async def _safe_send(self, method: Callable[[Any], Coroutine[Any, Any, None]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.
 
         Args:

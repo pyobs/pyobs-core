@@ -126,8 +126,7 @@ class DummyTelescope(
             focus: New focus value.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
-            AbortedError: If movement was aborted.
+            MoveError: If telescope cannot be moved.
         """
 
         # check
@@ -143,7 +142,7 @@ class DummyTelescope(
             for i in range(300):
                 # abort?
                 if self._abort_focus.is_set():
-                    raise exc.AbortedError("Setting focus was interrupted.")
+                    raise InterruptedError("Setting focus was interrupted.")
 
                 # move focus and sleep a little
                 self._telescope.focus = ifoc + i * dfoc

@@ -117,7 +117,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
 
         Raises:
             GrabImageError: If exposure was not successful.
-            AbortedError: If exposure was aborted.
         """
 
         # start exposure
@@ -135,7 +134,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
             if abort_event.is_set() or not self._exposing:
                 self._exposing = False
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise exc.AbortedError("Exposure was aborted.")
+                raise InterruptedError("Exposure was aborted.")
             await asyncio.sleep(exposure_time / steps)
         self._exposing = False
 

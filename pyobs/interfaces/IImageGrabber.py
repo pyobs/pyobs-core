@@ -21,7 +21,6 @@ class IImageGrabber(Interface, metaclass=ABCMeta):
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
-            AbortedError: If exposure was aborted.
         """
         ...
 

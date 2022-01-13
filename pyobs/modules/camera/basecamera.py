@@ -210,7 +210,6 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Raises:
             GrabImageError: If exposure was not successful.
-            AbortedError: If exposure was aborted.
         """
         ...
 
@@ -227,7 +226,6 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
-            AbortedError: If exposure was aborted.
         """
 
         # request fits headers
@@ -311,7 +309,6 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Raises:
             GrabImageError: If there was a problem grabbing the image.
-            AbortedError: If exposure was aborted.
         """
 
         # are we exposing?

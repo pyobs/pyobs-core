@@ -3,6 +3,7 @@ from abc import ABCMeta
 from typing import List, Dict, Tuple, Any, Optional
 
 from pyobs.interfaces import IDome
+from pyobs.utils import exceptions as exc
 from .baseroof import BaseRoof
 
 
@@ -17,6 +18,9 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
     def __init__(self, **kwargs: Any):
         """Initialize a new base dome."""
         BaseRoof.__init__(self, **kwargs)
+
+        # register exception
+        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def get_fits_header_before(
         self, namespaces: Optional[List[str]] = None, **kwargs: Any

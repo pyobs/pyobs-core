@@ -157,7 +157,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
         # create RPC handler
-        self._rpc = RPC(self._xmpp, self.module)
+        self._rpc = RPC(self._xmpp, None)
 
     def _set_module(self, module: "Module") -> None:
         """Called, when the module connected to this Comm changes.
@@ -360,9 +360,8 @@ class XmppComm(Comm):
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
-        # interfaces, first wait a little for the client to connect properly
-        await asyncio.sleep(2)
-        await self.get_interfaces(jid)
+        # request interfaces
+        a = await self.get_interfaces(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)

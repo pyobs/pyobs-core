@@ -108,8 +108,8 @@ class Module(Object, IModule, IConfig):
         # open comm
         if self.comm is not None:
             # open it and connect module
-            await self.comm.open()
             self.comm.module = self
+            await self.comm.open()
 
             # react to connecting modules
             await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)

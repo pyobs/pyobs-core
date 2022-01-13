@@ -1,9 +1,7 @@
 import copy
 import inspect
 import logging
-from threading import RLock
 from typing import Dict, Optional, Any, Callable, Tuple
-import slixmpp
 import slixmpp.exceptions
 
 from pyobs.modules import Module
@@ -28,7 +26,6 @@ class RPC(object):
 
         # store
         self._client = client
-        self._lock = RLock()
         self._futures: Dict[str, Future] = {}
         self._handler = handler
         self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
@@ -102,13 +99,12 @@ class RPC(object):
                 # raise ValueError('No handler specified.')
 
             # get method
-            with self._lock:
-                try:
-                    method, signature = self._methods[pmethod]
-                except KeyError:
-                    log.error("No handler available for %s!", pmethod)
-                    self._client.plugin["xep_0009"].item_not_found(iq).send()
-                    return
+            try:
+                method, signature = self._methods[pmethod]
+            except KeyError:
+                log.error("No handler available for %s!", pmethod)
+                self._client.plugin["xep_0009"].item_not_found(iq).send()
+                return
 
             # bind parameters
             ba = signature.bind(*params)
@@ -160,11 +156,10 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            if pid not in self._futures:
-                return
-            future = self._futures[pid]
-            del self._futures[pid]
+        if pid not in self._futures:
+            return
+        future = self._futures[pid]
+        del self._futures[pid]
 
         # set result of future, if it's not set already (probably with an exception)
         if not future.done():
@@ -197,9 +192,8 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            future = self._futures[pid]
-            del self._futures[pid]
+        future = self._futures[pid]
+        del self._futures[pid]
 
         # get exception and error
         s: str = fault["string"]
@@ -227,9 +221,8 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            callback = self._futures[pid]
-            del self._futures[pid]
+        callback = self._futures[pid]
+        del self._futures[pid]
 
         # sender
         sender = iq["from"].node

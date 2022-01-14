@@ -30,5 +30,10 @@ class IModule(Interface, metaclass=ABCMeta):
         """Reset error of module, if any."""
         ...
 
+    @abstractmethod
+    async def get_error_string(self, **kwargs: Any) -> str:
+        """Returns description of error, if any."""
+        ...
+
 
 __all__ = ["IModule"]

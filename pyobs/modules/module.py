@@ -101,8 +101,8 @@ class Module(Object, IModule, IConfig):
         self._label = label if label is not None else self._device_name
 
         # state
-        # TODO: Think of a good way to handle OPENING, CLOSING, etc
         self._state = ModuleState.READY
+        self._error_string = ""
 
     async def open(self) -> None:
         # open comm
@@ -383,6 +383,7 @@ class Module(Object, IModule, IConfig):
     async def reset_error(self, **kwargs: Any) -> bool:
         """Reset error of module, if any. Should be overwritten by derived class to handle error resolution."""
         self._state = ModuleState.READY
+        self._error_string = ""
         return True
 
     async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
@@ -392,13 +393,19 @@ class Module(Object, IModule, IConfig):
             exception: Exception that caused severe error.
         """
 
+        # set error string
         if isinstance(exception, exc.RemoteError):
-            log.critical(f"Servere error in {exception.module} module: {exception}")
-            await self.set_state(ModuleState.ERROR)
-
+            self._error_string = f"Servere error in {exception.module} module: {exception}"
         else:
-            log.critical(f"Severe error: {exception}")
-            await self.set_state(ModuleState.ERROR)
+            self._error_string = f"Severe error: {exception}"
+
+        # log it and set state
+        log.critical(self._error_string)
+        await self.set_state(ModuleState.ERROR)
+
+    async def get_error_string(self, **kwargs: Any) -> str:
+        """Returns description of error, if any."""
+        return self._error_string
 
 
 class MultiModule(Module):

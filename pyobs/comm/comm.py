@@ -161,7 +161,10 @@ class Comm:
 
         elif isinstance(name_or_object, str):
             # get proxy
-            proxy = await self._get_client(name_or_object)
+            try:
+                proxy = await self._get_client(name_or_object)
+            except KeyError:
+                raise ValueError(f"Could not get proxy for {name_or_object}.")
 
             # check it
             if proxy is None:

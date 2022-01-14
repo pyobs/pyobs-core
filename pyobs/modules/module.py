@@ -383,7 +383,7 @@ class Module(Object, IModule, IConfig):
     async def reset_error(self, **kwargs: Any) -> bool:
         """Reset error of module, if any. Should be overwritten by derived class to handle error resolution."""
         self._state = ModuleState.READY
-        self._error_string = ""
+        self.set_error_string()
         return True
 
     async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
@@ -395,13 +395,18 @@ class Module(Object, IModule, IConfig):
 
         # set error string
         if isinstance(exception, exc.RemoteError):
-            self._error_string = f"Servere error in {exception.module} module: {exception}"
+            error = f"Servere error in {exception.module} module: {exception}"
         else:
-            self._error_string = f"Severe error: {exception}"
+            error = f"Severe error: {exception}"
+        self.set_error_string(error)
 
         # log it and set state
-        log.critical(self._error_string)
+        log.critical(error)
         await self.set_state(ModuleState.ERROR)
+
+    def set_error_string(self, error: str = "") -> None:
+        """Set error string."""
+        self._error_string = error
 
     async def get_error_string(self, **kwargs: Any) -> str:
         """Returns description of error, if any."""

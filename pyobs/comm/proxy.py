@@ -4,8 +4,8 @@ import types
 from typing import TYPE_CHECKING, Any, Type, List, Dict
 
 from pyobs.interfaces import Interface
-from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_bound_arguments_to_simple
+from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.comm import Comm
@@ -99,7 +99,10 @@ class Proxy:
         args = tuple([self] + list(args))
 
         # get method signature and bind it
-        signature = inspect.signature(self._methods[method][0])
+        try:
+            signature = inspect.signature(self._methods[method][0])
+        except KeyError:
+            raise exc.RemoteError(self.name, f"Module {self.name} has no method {method}.")
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
 

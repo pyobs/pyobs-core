@@ -10,18 +10,16 @@ class ModuleState(Enum):
     """Enumerator for module states.
 
     Attributes:
-        CLOSED: Module is still closed.
-        OPENING: Module is opening.
+        CLOSED: Module is closed.
         READY: Module is ready.
-        CLOSING: Module is closing.
         ERROR: Module has an error.
+        LOCAL: Module is in local mode and cannot be used remotely.
     """
 
     CLOSED = "closed"
-    OPENING = "opening"
     READY = "ready"
-    CLOSING = "closing"
     ERROR = "error"
+    LOCAL = "local"
 
 
 class ExposureStatus(Enum):

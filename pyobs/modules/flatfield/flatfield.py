@@ -10,6 +10,7 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.skyflats import FlatFielder
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +76,20 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
             # add it
             # self.__class__ = type('FlatFieldFilter', (FlatField, IFilters), {})
+
+        # register exceptions
+        if isinstance(camera, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=camera, callback=self._default_remote_error_callback
+            )
+        if isinstance(telescope, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=telescope, callback=self._default_remote_error_callback
+            )
+        if isinstance(filters, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=filters, callback=self._default_remote_error_callback
+            )
 
     async def open(self) -> None:
         """Open module"""

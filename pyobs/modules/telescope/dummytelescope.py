@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import threading
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
-
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -14,6 +12,7 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -43,9 +42,9 @@ class DummyTelescope(
         # automatically send status updates
         self._telescope.status_callback = self._change_motion_status
 
-        # some multi-threading stuff
-        self._lock_focus = threading.Lock()
-        self._abort_focus = threading.Event()
+        # stuff
+        self._lock_focus = asyncio.Lock()
+        self._abort_focus = asyncio.Event()
 
     async def open(self) -> None:
         """Open module."""
@@ -59,7 +58,7 @@ class DummyTelescope(
         # init status
         await self._change_motion_status(MotionStatus.IDLE)
 
-    async def _move_radec(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -68,13 +67,13 @@ class DummyTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On any error.
+            CannotMoveException: If telescope cannot be moved.
         """
 
         # start slewing
         await self.__move(ra, dec, abort_event)
 
-    async def _move_altaz(self, alt: float, az: float, abort_event: threading.Event) -> None:
+    async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
 
         Args:
@@ -83,7 +82,7 @@ class DummyTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On error.
+            CannotMoveException: If telescope cannot be moved.
         """
 
         # alt/az coordinates to ra/dec
@@ -95,16 +94,13 @@ class DummyTelescope(
         # start slewing
         await self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
-    async def __move(self, ra: float, dec: float, abort_event: threading.Event) -> None:
+    async def __move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Simulate move.
 
         Args:
             ra: RA in deg to track.
             dec: Dec in deg to track.
             abort_event: Event that gets triggered when movement should be aborted.
-
-        Raises:
-            Exception: On any error.
         """
 
         # simulate slew
@@ -130,12 +126,15 @@ class DummyTelescope(
             focus: New focus value.
 
         Raises:
-            InterruptedError: If focus was interrupted.
-            AcquireLockFailed: If current motion could not be aborted.
+            MoveError: If telescope cannot be moved.
         """
 
+        # check
+        if focus < 0 or focus > 100:
+            raise ValueError("Invalid focus value.")
+
         # acquire lock
-        with LockWithAbort(self._lock_focus, self._abort_focus):
+        async with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f..." % focus)
             await self._change_motion_status(MotionStatus.SLEWING, interface="IFocuser")
             ifoc = self._telescope.focus * 1.0
@@ -174,8 +173,12 @@ class DummyTelescope(
             filter_name: Name of filter to set.
 
         Raises:
-            ValueError: If binning could not be set.
+            CannotMoveException: If filter wheel cannot be moved.
         """
+
+        # valid filter?
+        if filter_name not in self._telescope.filters:
+            raise ValueError("Invalid filter name.")
 
         # log and send event
         if filter_name != self._telescope.filter_name:
@@ -195,7 +198,7 @@ class DummyTelescope(
         """Initialize telescope.
 
         Raises:
-            ValueError: If telescope could not be initialized.
+            CannotInitError: If device could not be initialized.
         """
 
         # INIT, wait a little, then IDLE
@@ -210,7 +213,7 @@ class DummyTelescope(
         """Park telescope.
 
         Raises:
-            ValueError: If telescope could not be parked.
+            CannotParkError: If telescope could not be parked.
         """
 
         # PARK, wait a little, then PARKED
@@ -228,8 +231,9 @@ class DummyTelescope(
             ddec: Dec offset in degrees.
 
         Raises:
-            ValueError: If offset could not be set.
+            CannotMoveException: If telescope cannot be moved.
         """
+
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)

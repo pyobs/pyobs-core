@@ -17,7 +17,8 @@ class IFocuser(IMotion, metaclass=ABCMeta):
             focus: New focus value.
 
         Raises:
-            InterruptedError: If focus was interrupted.
+            MoveError: If telescope cannot be moved.
+            InterruptedError: If movement was aborted.
         """
         ...
 
@@ -29,7 +30,8 @@ class IFocuser(IMotion, metaclass=ABCMeta):
             offset: New focus offset.
 
         Raises:
-            InterruptedError: If focus was interrupted.
+            ValueError: If given value is invalid.
+            CannotMoveException: If telescope cannot be moved.
         """
         ...
 

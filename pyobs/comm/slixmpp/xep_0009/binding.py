@@ -2,6 +2,7 @@
 # Copyright (C) 2011 Nathanael C. Fritz, Dann Martens (TOMOTON).
 # This file is part of Slixmpp.
 # See the file LICENSE for copying permission.
+from typing import Any, Dict, List, Optional
 from slixmpp.xmlstream import ET
 import base64
 import logging
@@ -12,26 +13,26 @@ log = logging.getLogger(__name__)
 _namespace = "jabber:iq:rpc"
 
 
-def fault2xml(fault):
-    value = dict()
-    value["faultCode"] = fault["code"]
-    value["faultString"] = fault["string"]
+def fault2xml(code: int, message: str) -> ET.Element:
+    value: Dict[str, Any] = dict()
+    value["faultCode"] = code
+    value["faultString"] = message
     fault = ET.Element("fault", {"xmlns": _namespace})
     fault.append(_py2xml((value,)))
     return fault
 
 
-def xml2fault(params):
+def xml2fault(params: ET.Element) -> Dict[str, Any]:
     vals = []
     for value in params.findall("{%s}value" % _namespace):
-        vals.append(_xml2py(value))
+        vals.append(_xml2py(value)[0])
     fault = dict()
     fault["code"] = vals[0]["faultCode"]
     fault["string"] = vals[0]["faultString"]
     return fault
 
 
-def py2xml(*args):
+def py2xml(*args: Any) -> ET.Element:
     params = ET.Element("{%s}params" % _namespace)
     for x in args:
         param = ET.Element("{%s}param" % _namespace)
@@ -40,7 +41,7 @@ def py2xml(*args):
     return params
 
 
-def _py2xml(*args):
+def _py2xml(*args: Any) -> ET.Element:
     for x in args:
         val = ET.Element("{%s}value" % _namespace)
         if x is None:
@@ -90,15 +91,15 @@ def _py2xml(*args):
         return val
 
 
-def xml2py(params):
+def xml2py(params: ET.Element) -> List[Any]:
     namespace = "jabber:iq:rpc"
-    vals = []
+    vals: List[Any] = []
     for param in params.findall("{%s}param" % namespace):
         vals.append(_xml2py(param.find("{%s}value" % namespace)))
     return vals
 
 
-def _xml2py(value):
+def _xml2py(value: ET) -> Any:
     namespace = "jabber:iq:rpc"
     find_value = value.find
     if find_value("{%s}nil" % namespace) is not None:
@@ -134,22 +135,22 @@ def _xml2py(value):
 
 
 class rpcbase64(object):
-    def __init__(self, data):
+    def __init__(self, data: bytes):
         # base 64 encoded string
         self.data = data
 
-    def decode(self):
+    def decode(self) -> bytes:
         return base64.b64decode(self.data)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.decode().decode()
 
-    def encoded(self):
+    def encoded(self) -> str:
         return self.data.decode()
 
 
 class rpctime(object):
-    def __init__(self, data=None):
+    def __init__(self, data: Optional[Any] = None):
         # assume string data is in iso format YYYYMMDDTHH:MM:SS
         if type(data) is str:
             self.timestamp = time.strptime(data, "%Y%m%dT%H:%M:%S")
@@ -160,9 +161,9 @@ class rpctime(object):
         else:
             raise ValueError()
 
-    def iso8601(self):
+    def iso8601(self) -> str:
         # return a iso8601 string
         return time.strftime("%Y%m%dT%H:%M:%S", self.timestamp)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.iso8601()

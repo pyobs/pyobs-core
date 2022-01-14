@@ -15,6 +15,7 @@ from pyobs.modules import Module
 from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IExposureTime, IImageType
 from pyobs.modules import timeout
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # multi-threading
         self.expose_abort = asyncio.Event()
+
+        # register exception
+        exc.register_exception(exc.GrabImageError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def open(self) -> None:
         """Open module."""
@@ -205,13 +209,11 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             The actual image.
 
         Raises:
-            ValueError: If exposure was not successful.
+            GrabImageError: If exposure was not successful.
         """
         ...
 
-    async def __expose(
-        self, exposure_time: float, image_type: ImageType, broadcast: bool
-    ) -> Tuple[Optional[Image], Optional[str]]:
+    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) -> Tuple[Image, str]:
         """Wrapper for a single exposure.
 
         Args:
@@ -223,7 +225,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             Tuple of the image itself and its filename.
 
         Raises:
-            ValueError: If exposure was not successful.
+            GrabImageError: If there was a problem grabbing the image.
         """
 
         # request fits headers
@@ -237,12 +239,17 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.data is None:
-                self._exposure = None
-                return None, None
-        except:
-            # exposure was not successful (aborted?), so reset everything
+                raise exc.GrabImageError("Could not take image.")
+
+        except exc.PyObsError:
+            # exposure was not successful (aborted?), so reset everything and re-raise
             self._exposure = None
             raise
+
+        except Exception as e:
+            # exposure was not successful (aborted?), so reset everything and wrap exception
+            self._exposure = None
+            raise exc.GrabImageError(str(e))
 
         # request fits headers again
         header_futures_after = await self.request_fits_headers(before=False)
@@ -253,7 +260,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             is_3d = len(image.data.shape) == 3
 
             # flip image and make contiguous again
-            flipped: NDArray[Any] = np.flip(image.data, axis=1 if is_3d else 0)  # type: ignore
+            flipped: NDArray[Any] = np.flip(image.data, axis=1 if is_3d else 0)
             image.data = np.ascontiguousarray(flipped)
 
         # add HDU name
@@ -270,7 +277,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # don't want to save?
         if filename is None:
-            return image, None
+            self._exposure = None
+            raise exc.GrabImageError("No filename given.")
 
         # upload file
         try:
@@ -298,6 +306,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Returns:
             Name of image that was taken.
+
+        Raises:
+            GrabImageError: If there was a problem grabbing the image.
         """
 
         # are we exposing?
@@ -306,15 +317,19 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         await self._change_exposure_status(ExposureStatus.EXPOSING)
 
         # expose
-        image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
+        try:
+            image, filename = await self.__expose(self._exposure_time, self._image_type, broadcast)
+        finally:
+            await self._change_exposure_status(ExposureStatus.IDLE)
+
+        # check
         if image is None:
-            raise ValueError("Could not take image.")
+            raise exc.GrabImageError("Could not take image.")
         else:
             if filename is None:
                 raise ValueError("Image has not been saved, so cannot be retrieved by filename.")
 
         # return filename
-        await self._change_exposure_status(ExposureStatus.IDLE)
         return filename
 
     async def _abort_exposure(self) -> None:

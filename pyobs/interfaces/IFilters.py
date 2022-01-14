@@ -26,7 +26,8 @@ class IFilters(IMotion, metaclass=ABCMeta):
             filter_name: Name of filter to set.
 
         Raises:
-            ValueError: If binning could not be set.
+            ValueError: If an invalid filter was given.
+            CannotMoveException: If filter wheel cannot be moved.
         """
         ...
 

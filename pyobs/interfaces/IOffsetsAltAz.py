@@ -19,7 +19,7 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
             daz: Azimuth offset in degrees.
 
         Raises:
-            ValueError: If offset could not be set.
+            MoveError: If device could not be moved.
         """
         ...
 

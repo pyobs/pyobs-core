@@ -13,6 +13,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +57,16 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # init camera settings mixin
         CameraSettingsMixin.__init__(self, filters=filters, filter_name=filter_name, binning=binning, **kwargs)
+
+        # register exceptions
+        if isinstance(camera, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=camera, callback=self._default_remote_error_callback
+            )
+        if isinstance(focuser, str):
+            exc.register_exception(
+                exc.RemoteError, 3, timespan=600, module=focuser, callback=self._default_remote_error_callback
+            )
 
     async def open(self) -> None:
         """Open module"""

@@ -1,5 +1,11 @@
 ## Changelog
 
+### v0.16.0 (2022-01-14)
+* Added new exceptions.
+* Use those new exceptions to keep track of errors over time and raise SevereErrors.
+* Add new state to module, so that a severe error can put a module into an error state.
+* Added get_state() and get_error_string() methods to modules.
+
 ### v0.15.0 (2021-12-29)
 * Added Comm implementation for SliXMPP (which should now be default) and moved old comm.xmpp to comm.sleekcmpp.
 * Using asyncio throughout the project, all method and event handlers are async now, as well as open/close methods.

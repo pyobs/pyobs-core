@@ -6,6 +6,22 @@ __title__ = "Enumerations"
 from enum import Enum
 
 
+class ModuleState(Enum):
+    """Enumerator for module states.
+
+    Attributes:
+        CLOSED: Module is closed.
+        READY: Module is ready.
+        ERROR: Module has an error.
+        LOCAL: Module is in local mode and cannot be used remotely.
+    """
+
+    CLOSED = "closed"
+    READY = "ready"
+    ERROR = "error"
+    LOCAL = "local"
+
+
 class ExposureStatus(Enum):
     """Enumerator for camera status.
 
@@ -117,4 +133,4 @@ class WeatherSensors(Enum):
     PARTICLES = "particles"
 
 
-__all__ = ["ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors"]
+__all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors"]

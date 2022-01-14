@@ -11,9 +11,9 @@ from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
-from pyobs.utils.parallel import event_wait
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +65,9 @@ class BaseTelescope(
             wait_for_states=[MotionStatus.POSITIONED, MotionStatus.TRACKING],
         )
 
+        # register exception
+        exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
+
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -83,7 +86,7 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On any error.
+            CannotMoveException: If telescope cannot be moved.
         """
         ...
 
@@ -96,7 +99,7 @@ class BaseTelescope(
             dec: Dec in deg to track.
 
         Raises:
-            ValueError: If device could not track.
+            CannotMoveException: If telescope cannot be moved.
         """
 
         # do nothing, if initializing, parking or parked
@@ -152,7 +155,7 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            Exception: On error.
+            CannotMoveException: If telescope cannot be moved.
         """
         ...
 
@@ -165,8 +168,7 @@ class BaseTelescope(
             az: Az in deg to move to.
 
         Raises:
-            Exception: On error.
-            AcquireLockFailed: If current motion could not be aborted.
+            CannotMoveException: If telescope cannot be moved.
         """
 
         # do nothing, if initializing, parking or parked

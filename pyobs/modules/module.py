@@ -3,12 +3,15 @@ import inspect
 import logging
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
+import packaging.version
 
 from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
+from pyobs.utils.enums import ModuleState
 from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
-from pyobs.version import version, version_tuple
+from pyobs.version import version
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -97,12 +100,16 @@ class Module(Object, IModule, IConfig):
         self._device_name = name if name is not None else self.comm.name
         self._label = label if label is not None else self._device_name
 
+        # state
+        self._state = ModuleState.READY
+        self._error_string = ""
+
     async def open(self) -> None:
         # open comm
         if self.comm is not None:
             # open it and connect module
-            await self.comm.open()
             self.comm.module = self
+            await self.comm.open()
 
             # react to connecting modules
             await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)
@@ -146,18 +153,20 @@ class Module(Object, IModule, IConfig):
 
         # get proxy and version
         proxy = await self.proxy(sender, IModule)
-        module_version = await proxy.get_version()
-        my_version = version()
+        try:
+            module_version = await proxy.get_version()
+        except exc.RemoteError:
+            return True
 
         # log it
         log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
 
-        # check minor and major version, ignore patch level
-        v1, v2 = version_tuple(my_version), version_tuple(module_version)
-        if v1[:2] != v2[:2] and v1 > v2:
-            log.error(
-                f'Found module "{sender}" with newer pyobs version {module_version} (>{my_version}), '
-                f"please update pyobs for this module."
+        # check version, only compare major and minor, ignore patch level
+        v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
+        if v1.major != v2.major or v1.minor != v2.minor:
+            log.critical(
+                f'Found module "{sender}" with different pyobs version {module_version} (≠{version()}), '
+                f"please update pyobs."
             )
 
         # okay
@@ -221,6 +230,12 @@ class Module(Object, IModule, IConfig):
         Raises:
             KeyError: If method does not exist.
         """
+
+        # is module in error state?
+        if self._state == ModuleState.ERROR:
+            # if called method is not from IModule, raise error
+            if not hasattr(IModule, method):
+                raise exc.ModuleError("Module is in error state, please reset it.")
 
         # get method and signature (may raise KeyError)
         func, signature = self.methods[method]
@@ -352,6 +367,50 @@ class Module(Object, IModule, IConfig):
         # get setter and call it
         setter = getattr(self, "_set_config_" + name)
         setter(value)
+
+    async def set_state(self, state: ModuleState) -> None:
+        """Set state of module.
+
+        Args:
+            state: New state to set.
+        """
+        self._state = state
+
+    async def get_state(self, **kwargs: Any) -> ModuleState:
+        """Returns current state of module."""
+        return self._state
+
+    async def reset_error(self, **kwargs: Any) -> bool:
+        """Reset error of module, if any. Should be overwritten by derived class to handle error resolution."""
+        self._state = ModuleState.READY
+        self.set_error_string()
+        return True
+
+    async def _default_remote_error_callback(self, exception: exc.PyObsError) -> None:
+        """Called on severe errors.
+
+        Args:
+            exception: Exception that caused severe error.
+        """
+
+        # set error string
+        if isinstance(exception, exc.RemoteError):
+            error = f"Servere error in {exception.module} module: {exception}"
+        else:
+            error = f"Severe error: {exception}"
+        self.set_error_string(error)
+
+        # log it and set state
+        log.critical(error)
+        await self.set_state(ModuleState.ERROR)
+
+    def set_error_string(self, error: str = "") -> None:
+        """Set error string."""
+        self._error_string = error
+
+    async def get_error_string(self, **kwargs: Any) -> str:
+        """Returns description of error, if any."""
+        return self._error_string
 
 
 class MultiModule(Module):

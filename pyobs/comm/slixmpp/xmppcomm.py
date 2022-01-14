@@ -9,7 +9,6 @@ import re
 import time
 from collections import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
-
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -20,7 +19,7 @@ from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
-from pyobs.utils.parallel import Future
+from pyobs.utils import exceptions as exc
 from .rpc import RPC
 from .xmppclient import XmppClient
 
@@ -116,11 +115,10 @@ class XmppComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         # variables
-        self._rpc: Optional[RPC] = None
         self._connected = False
         self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._online_clients: List[str] = []
-        self._interface_cache: Dict[str, List[Type[Interface]]] = {}
+        self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
         self._user = user
         self._domain = domain
         self._resource = resource
@@ -158,6 +156,9 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
 
+        # create RPC handler
+        self._rpc = RPC(self._xmpp, None)
+
     def _set_module(self, module: "Module") -> None:
         """Called, when the module connected to this Comm changes.
 
@@ -181,9 +182,6 @@ class XmppComm(Comm):
         Returns:
             Whether opening was successful.
         """
-
-        # create RPC handler
-        self._rpc = RPC(self._xmpp, self.module)
 
         # server given?
         server = () if self._server is None else tuple(self._server.split(":"))
@@ -259,44 +257,47 @@ class XmppComm(Comm):
         if "@" not in client:
             client = "%s@%s/%s" % (client, self._domain, self._resource)
 
-        # does it exist?
-        if client not in self._interface_cache:
-            # get it
-            interface_names = await self._get_interfaces(client)
-            self._interface_cache[client] = self._interface_names_to_classes(interface_names)
+        # return them from cache
+        return await self._interface_cache[client]
 
-        # convert to classes
-        return self._interface_cache[client]
-
-    async def _get_interfaces(self, jid: str) -> List[str]:
+    async def _get_interfaces(self, jid: str, attempts: int = 3) -> List[str]:
         """Return list of interfaces for the given JID.
 
         Args:
             jid: JID to get interfaces for.
 
         Returns:
-            List of interface names
-
-        Raises:
-            IndexError: If client cannot be found.
+            List of interface names or empty list, if an error occurred.
         """
 
         # request features
         try:
             info = await self._safe_send(self._xmpp["xep_0030"].get_info, jid=jid, cached=False)
-        except slixmpp.exceptions.IqError:
-            raise IndexError()
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            return []
 
-        # extract pyobs interfaces
+        # extract pyobs interface names
         if info is None:
             return []
         try:
             if isinstance(info, slixmpp.stanza.iq.Iq):
                 info = info["disco_info"]
             prefix = "pyobs:interface:"
-            return [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
+            interface_names = [i[len(prefix) :] for i in info["features"] if i.startswith(prefix)]
         except TypeError:
             raise IndexError()
+
+        # IModule not in list?
+        if "IModule" not in interface_names:
+            # try again or quit?
+            if attempts == 0:
+                return []
+            else:
+                await asyncio.sleep(5)
+                interface_names = await self._get_interfaces(jid, attempts - 1)
+
+        # finished
+        return interface_names
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
@@ -331,10 +332,19 @@ class XmppComm(Comm):
         Returns:
             Passes through return from method call.
         """
+
+        # prepare
         if self._rpc is None:
             raise ValueError("No RPC.")
         jid = self._get_full_client_name(client)
-        return await self._rpc.call(jid, method, signature, *args)
+
+        # call
+        try:
+            return await self._rpc.call(jid, method, signature, *args)
+        except slixmpp.exceptions.IqError:
+            raise exc.RemoteError(client, f"Could not call {method} on {client}.")
+        except slixmpp.exceptions.IqTimeout:
+            raise exc.RemoteTimeoutError(client, f"Call to {method} on {client} timed out.")
 
     async def _got_online(self, msg: Any) -> None:
         """If a new client connects, add it to list.
@@ -343,18 +353,33 @@ class XmppComm(Comm):
             msg: XMPP message.
         """
 
-        # append to list
+        # get jid, ignore event if it's myself
         jid = msg["from"].full
-        if jid not in self._online_clients:
-            self._online_clients.append(jid)
+        if jid == self._jid:
+            return
 
         # clear interface cache, just in case there is something there
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
-        # interfaces, first wait a little for the client to connect properly
-        await asyncio.sleep(2)
-        await self.get_interfaces(jid)
+        # create future for interfaces
+        self._interface_cache[jid] = asyncio.get_running_loop().create_future()
+
+        # request interfaces
+        interface_names = await self._get_interfaces(jid)
+
+        # if no interfaces are implemented (not even IModule), quit here
+        if len(interface_names) == 0:
+            module = jid[: jid.index["@"]]
+            log.error(f"Module {module} does not seem to implement IModule, ignoring.")
+            return
+
+        # store interfaces
+        self._interface_cache[jid].set_result(self._interface_names_to_classes(interface_names))
+
+        # append to list
+        if jid not in self._online_clients:
+            self._online_clients.append(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
@@ -477,7 +502,7 @@ class XmppComm(Comm):
         return event_classes
 
     async def _register_events(
-        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], bool]] = None
+        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
     ) -> None:
         # loop events
         for ev in events:
@@ -542,13 +567,17 @@ class XmppComm(Comm):
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
 
-    async def _safe_send(self, method: Callable[[...], Coroutine], *args: Any, **kwargs: Any):
+    async def _safe_send(self, method: Callable[[Any], Coroutine[Any, Any, None]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.
 
         Args:
             method: Method to call.
             *args: Parameters for method.
-            **kwargs: Parameters for method.
+            **kwargs: Parameters for method.        except slixmpp.exceptions.IqError:
+            raise RemoteException("Could not send command.")
+        except slixmpp.exceptions.IqTimeout:
+            raise exc()
+
 
         Returns:
             Return value from method.

@@ -1,17 +1,14 @@
-import asyncio
 import copy
 import inspect
 import logging
-from threading import RLock
 from typing import Dict, Optional, Any, Callable, Tuple
-
-import slixmpp
 import slixmpp.exceptions
 
 from pyobs.modules import Module
 from pyobs.comm.exceptions import *
 from pyobs.utils.parallel import Future
 from pyobs.comm.slixmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
+import pyobs.utils.exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +26,6 @@ class RPC(object):
 
         # store
         self._client = client
-        self._lock = RLock()
         self._futures: Dict[str, Future] = {}
         self._handler = handler
         self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
@@ -79,12 +75,7 @@ class RPC(object):
         self._futures[pid] = future
 
         # send request
-        try:
-            await iq.send()
-        except slixmpp.exceptions.IqError:
-            raise RemoteException("Could not send command.")
-        except slixmpp.exceptions.IqTimeout:
-            raise TimeoutException()
+        await iq.send()
 
         # don't wait for response, just return future
         return await future
@@ -108,13 +99,12 @@ class RPC(object):
                 # raise ValueError('No handler specified.')
 
             # get method
-            with self._lock:
-                try:
-                    method, signature = self._methods[pmethod]
-                except KeyError:
-                    log.error("No handler available for %s!", pmethod)
-                    self._client.plugin["xep_0009"].item_not_found(iq).send()
-                    return
+            try:
+                method, signature = self._methods[pmethod]
+            except KeyError:
+                log.error("No handler available for %s!", pmethod)
+                self._client.plugin["xep_0009"].item_not_found(iq).send()
+                return
 
             # bind parameters
             ba = signature.bind(*params)
@@ -139,18 +129,15 @@ class RPC(object):
 
         except InvocationException as ie:
             # could not invoke method
-            fault = {"code": 500, "string": ie.get_message()}
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
-        except Exception as e:
-            # something else went wrong
-            log.warning("Error during call to %s: %s", pmethod, str(e), exc_info=True)
+        except exc.PyObsError as e:
+            # something else went wrong, but only log if not a ModuleError
+            if not isinstance(e, exc.ModuleError):
+                log.error("Error during call to %s: %s", pmethod, str(e), exc_info=True)
 
             # send response
-            fault = dict()
-            fault["code"] = 500
-            fault["string"] = str(e)
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(fault))
+            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:
         """Received a response for a method call.
@@ -169,11 +156,10 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            if pid not in self._futures:
-                return
-            future = self._futures[pid]
-            del self._futures[pid]
+        if pid not in self._futures:
+            return
+        future = self._futures[pid]
+        del self._futures[pid]
 
         # set result of future, if it's not set already (probably with an exception)
         if not future.done():
@@ -206,13 +192,21 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            future = self._futures[pid]
-            del self._futures[pid]
+        future = self._futures[pid]
+        del self._futures[pid]
+
+        # get exception and error
+        s: str = fault["string"]
+        exception_name = s[1 : s.index(">")]
+        exception_message = s[s.index(">") + 1 :].strip()
+        exception = getattr(exc, exception_name)(message=exception_message)
+
+        # sender
+        sender = iq["from"].node
 
         # set error
         if not future.done():
-            future.set_exception(InvocationException(fault["string"]))
+            future.set_exception(exc.InvocationError(module=sender, exception=exception))
 
     async def _on_jabber_rpc_error(self, iq: Any) -> None:
         """Method invocation failes.
@@ -227,24 +221,24 @@ class RPC(object):
 
         # get future
         pid = iq["id"]
-        with self._lock:
-            callback = self._futures[pid]
-            del self._futures[pid]
+        callback = self._futures[pid]
+        del self._futures[pid]
+
+        # sender
+        sender = iq["from"].node
 
         # set error
         e = {
-            "item-not-found": RemoteException("No remote handler available for %s at %s!" % (pmethod, iq["from"])),
-            "forbidden": AuthorizationException(
-                "Forbidden to invoke remote handler for %s at %s!" % (pmethod, iq["from"])
+            "item-not-found": exc.RemoteError(sender, f"No remote handler available for {pmethod} at {iq['from']}'!"),
+            "forbidden": exc.RemoteError(sender, f"Forbidden to invoke remote handler for {pmethod} at {iq['from']}!"),
+            "undefined-condition": exc.RemoteError(
+                sender, f"An unexpected problem occured trying to invoke {pmethod} at {iq['from']}!"
             ),
-            "undefined-condition": RemoteException(
-                "An unexpected problem occured trying to invoke %s at %s!" % (pmethod, iq["from"])
-            ),
-            "service-unavailable": RemoteException("The service at %s is unavailable." % iq["from"]),
-            "remote-server-not-found": RemoteException("Could not find remote server for %s." % iq["from"]),
+            "service-unavailable": exc.RemoteError(sender, f"The service at {iq['from']} is unavailable."),
+            "remote-server-not-found": exc.RemoteError(sender, f"Could not find remote server for {iq['from']}."),
         }[condition]
         if e is None:
-            RemoteException("An unexpected exception occurred at %s!" % iq["from"])
+            exc.RemoteError(sender, f"An unexpected exception occurred at {iq['from']}!")
         callback.set_exception(e)
 
 

@@ -1072,6 +1072,14 @@ python-versions = ">=3.5"
 numpy = "*"
 
 [[package]]
+name = "single-source"
+version = "0.2.0"
+description = "Access to the project version in Python code for PEP 621-style projects"
+category = "main"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1352,7 +1360,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "edf9fe03917ecb1301d6686b7889cfdef43b01bb01d20fd49c7b4ae0630fc1ac"
+content-hash = "4fd43cf220bf602f3ec6ceab4259198e7e15a0e5617e7afa23a02159eca63735"
 
 [metadata.files]
 aiodns = [
@@ -2370,6 +2378,10 @@ sep = [
     {file = "sep-1.2.0-cp39-cp39-win32.whl", hash = "sha256:6445b78e863f9ac3f15f9b3abe2d6f535af2467fdfba8a840727652945082fc7"},
     {file = "sep-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:acbc55ad941a8b9f3b02f89ae893853caef5ae1885b0917480268405f403e033"},
     {file = "sep-1.2.0.tar.gz", hash = "sha256:fb9915b0a5db761619f4cba6f18b989ebce2c7070b59291775c7905325d3f70b"},
+]
+single-source = [
+    {file = "single-source-0.2.0.tar.gz", hash = "sha256:f40f94c7f2e72c854b9c0c6f7d6b545d74ada9ebd454f9f07f8fb743b22bccf5"},
+    {file = "single_source-0.2.0-py3-none-any.whl", hash = "sha256:82c55b00515a30c8f7c262b986a399ca023911ebb6a86f0953d4c50448c36b16"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

@@ -18,6 +18,9 @@ class IImageGrabber(Interface, metaclass=ABCMeta):
 
         Returns:
             Name of image that was taken.
+
+        Raises:
+            GrabImageError: If there was a problem grabbing the image.
         """
         ...
 

@@ -16,7 +16,7 @@ class IMotion(IReady, metaclass=ABCMeta):
         """Initialize device.
 
         Raises:
-            ValueError: If device could not be initialized.
+            CannotInitError: If device could not be initialized.
         """
         ...
 
@@ -25,7 +25,7 @@ class IMotion(IReady, metaclass=ABCMeta):
         """Park device.
 
         Raises:
-            ValueError: If device could not be parked.
+            CannotParkError: If device could not be parked.
         """
         ...
 

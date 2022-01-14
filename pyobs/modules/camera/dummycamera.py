@@ -160,7 +160,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         log.info("Exposure finished.")
         return image
 
-    def _abort_exposure(self) -> None:
+    async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Returns:

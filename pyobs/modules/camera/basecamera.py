@@ -234,6 +234,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # open the shutter?
         open_shutter = image_type not in [ImageType.BIAS, ImageType.DARK]
 
+        # reset abort event
+        self.expose_abort.clear()
+
         # do the exposure
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:

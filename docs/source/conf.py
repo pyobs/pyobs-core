@@ -47,7 +47,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
-    #'sphinx_autodoc_typehints'
+    # "sphinx_autodoc_typehints",
 ]
 
 intersphinx_mapping = {"http://docs.python.org/3": None}
@@ -104,6 +104,7 @@ nitpick_ignore = [
     ("py:class", "pandas.core.frame.DataFrame"),
     ("py:class", "astropy.io.fits.hdu.image.PrimaryHDU"),
     ("py:class", "numpy.ndarray"),
+    ("py:class", "numpy.dtype"),
     ("py:class", "astropy.io.fits.header.Header"),
     ("py:class", "astropy.time.core.Time"),
     ("py:class", "inspect.Signature"),
@@ -112,6 +113,8 @@ nitpick_ignore = [
     ("py:class", "astropy.coordinates.sky_coordinate.SkyCoord"),
     ("py:class", "threading.Event"),
     ("py:class", "enum.Enum"),
+    ("py:class", "pyobs.object.ObjectClass"),
+    ("py:class", "pyobs.object.ProxyType"),
 ]
 
 # -- Options for HTML output -------------------------------------------------

@@ -250,6 +250,12 @@ def create_utils_rst():
         [pyobs.utils.skyflats, pyobs.utils.skyflats.pointing, pyobs.utils.skyflats.priorities],
         classes=True,
     )
+    write_module_rst(
+        "source/api/utils/parallel.rst",
+        pyobs.utils.parallel,
+        classes=True,
+        class_kwargs=dict(members=True, undoc_members=True),
+    )
 
     # write index file
     write_index_file("source/api/utils/", title="Utilities (pyobs.utils)", header_level=1)

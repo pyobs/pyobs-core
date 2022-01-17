@@ -90,8 +90,8 @@ There are four basic commands:
 :pyobsd status:
     Gives an overview of detected configuration files and started modules.
 
-Parameters
-**********
+CLI Parameters
+**************
 The command accepts the following optional parameters:
 
 :-h/--help:

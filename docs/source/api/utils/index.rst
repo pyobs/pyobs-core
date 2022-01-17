@@ -10,6 +10,7 @@ Utilities (pyobs.utils)
    exceptions
    fits
    focusseries
+   parallel
    simulation
    skyflats
    time

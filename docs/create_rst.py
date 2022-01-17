@@ -5,6 +5,7 @@ import inspect
 import os
 
 import pyobs
+import pyobs.vfs
 from pyobs.modules import Module
 
 

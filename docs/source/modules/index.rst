@@ -5,7 +5,6 @@ Core modules (pyobs.modules)
    :maxdepth: 2
    :caption: Contents:
 
-   pyobs.modules.acquisition
    pyobs.modules.camera
    pyobs.modules.flatfield
    pyobs.modules.focus

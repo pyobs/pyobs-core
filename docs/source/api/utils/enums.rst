@@ -24,6 +24,13 @@ ImageType
    :members:
    :undoc-members:
 
+ModuleState
+~~~~~~~~~~~
+
+.. autoclass:: pyobs.utils.enums.ModuleState
+   :members:
+   :undoc-members:
+
 MotionStatus
 ~~~~~~~~~~~~
 

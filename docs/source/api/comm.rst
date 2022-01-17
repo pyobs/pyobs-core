@@ -14,7 +14,12 @@ Proxy
 .. autoclass:: pyobs.comm.Proxy
     :members:
 
-XmppComm
-^^^^^^^^
-.. autoclass:: pyobs.comm.xmpp.XmppComm
+SliXMPP XmppComm
+^^^^^^^^^^^^^^^^
+.. autoclass:: pyobs.comm.slixmpp.XmppComm
+    :members:
+
+SleekXMPP XmppComm
+^^^^^^^^^^^^^^^^^^
+.. autoclass:: pyobs.comm.sleekxmpp.XmppComm
     :members:

@@ -85,7 +85,7 @@ class XmppComm(Comm):
 
     """
 
-    __module__ = "pyobs.comm.sleekxmpp"
+    __module__ = "pyobs.comm.slixmpp"
 
     def __init__(
         self,

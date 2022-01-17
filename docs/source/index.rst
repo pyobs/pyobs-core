@@ -31,6 +31,7 @@ API Reference
 
    api/index
    modules/index
+   addmod/index
 
 
 Project details

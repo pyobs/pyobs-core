@@ -237,6 +237,12 @@ def create_utils_rst():
     write_module_rst("source/api/utils/time.rst", pyobs.utils.time, classes=True)
     write_module_rst("source/api/utils/archive.rst", pyobs.utils.archive, classes=True)
     write_module_rst("source/api/utils/fits.rst", pyobs.utils.fits, classes=True)
+    write_module_rst(
+        "source/api/utils/exceptions.rst",
+        pyobs.utils.exceptions,
+        classes=True,
+        class_kwargs=dict(members=True, undoc_members=True),
+    )
     write_module_rst("source/api/utils/focusseries.rst", pyobs.utils.focusseries, classes=True)
     write_module_rst("source/api/utils/simulation.rst", pyobs.utils.simulation, classes=True)
     write_module_rst(

@@ -7,6 +7,7 @@ Utilities (pyobs.utils)
 
    archive
    enums
+   exceptions
    fits
    focusseries
    simulation

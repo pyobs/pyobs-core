@@ -92,29 +92,24 @@ pygments_style = "sphinx"
 
 # Be a little nitpicky
 nitpicky = True
+nitpick_ignore_regex = [
+    (r"py:.*", r"numpy.*"),
+    (r"py:.*", r"datetime.*"),
+    (r"py:.*", r"aiohttp.*"),
+    (r"py:.*", r"astropy.*"),
+    (r"py:.*", r"astroplan.*"),
+    (r"py:.*", r"pandas.*"),
+    (r"py:.*", r"collections.*"),
+    (r"py:.*", r"enum.*"),
+    (r"py:.*", r"inspect.*"),
+]
 nitpick_ignore = [
-    ("py:class", "astropy.coordinates.earth.EarthLocation"),
     ("py:exc", "IndexError"),
     ("py:exc", "FileNotFoundException"),
-    ("py:class", "datetime.tzinfo"),
-    ("py:class", "datetime.date"),
-    ("py:class", "EarthLocation"),
     ("py:class", "ObjectClass"),
-    ("py:class", "astroplan.observer.Observer"),
-    ("py:class", "pandas.core.frame.DataFrame"),
-    ("py:class", "astropy.io.fits.hdu.image.PrimaryHDU"),
-    ("py:class", "numpy.ndarray"),
-    ("py:class", "numpy.dtype"),
-    ("py:class", "astropy.io.fits.header.Header"),
-    ("py:class", "astropy.time.core.Time"),
-    ("py:class", "inspect.Signature"),
-    ("py:class", "datetime.datetime"),
-    ("py:class", "astropy.coordinates.angles.Longitude"),
-    ("py:class", "astropy.coordinates.sky_coordinate.SkyCoord"),
-    ("py:class", "threading.Event"),
-    ("py:class", "enum.Enum"),
     ("py:class", "pyobs.object.ObjectClass"),
     ("py:class", "pyobs.object.ProxyType"),
+    ("py:class", "pyobs.comm.comm.ProxyType"),
 ]
 
 # -- Options for HTML output -------------------------------------------------

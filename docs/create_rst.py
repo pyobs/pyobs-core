@@ -77,12 +77,20 @@ def write_class_rst(filename, cls, **kwargs):
 
 
 def write_class(
-    rst, cls, title=True, members=False, inheritance=False, undoc_members=False, private=False, header_level=1
+    rst,
+    cls,
+    title=True,
+    members=False,
+    inheritance=False,
+    undoc_members=False,
+    private=False,
+    header_level=1,
+    autotype: str = "autoclass",
 ):
     name, module = cls.__name__, cls.__module__
     if title:
         write_title(rst, name, header_level)
-    rst.write(".. autoclass:: %s.%s\n" % (module, name))
+    rst.write(".. %s:: %s.%s\n" % (autotype, module, name))
     if members:
         rst.write("   :members:\n")
     if inheritance:
@@ -241,7 +249,7 @@ def create_utils_rst():
         "source/api/utils/exceptions.rst",
         pyobs.utils.exceptions,
         classes=True,
-        class_kwargs=dict(members=True, undoc_members=True),
+        class_kwargs=dict(members=True, undoc_members=True, autotype="autoexception"),
     )
     write_module_rst("source/api/utils/focusseries.rst", pyobs.utils.focusseries, classes=True)
     write_module_rst("source/api/utils/simulation.rst", pyobs.utils.simulation, classes=True)

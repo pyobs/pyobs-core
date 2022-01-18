@@ -1,0 +1,48 @@
+Virtual File System (pyobs.vfs)
+-------------------------------
+
+.. automodule:: pyobs.vfs
+
+VirtualFileSystem
+~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pyobs.vfs.VirtualFileSystem
+
+File Access Classes
+~~~~~~~~~~~~~~~~~~~
+
+ArchiveFile
+^^^^^^^^^^^
+
+.. autoclass:: pyobs.vfs.ArchiveFile
+
+HttpFile
+^^^^^^^^
+
+.. autoclass:: pyobs.vfs.HttpFile
+
+LocalFile
+^^^^^^^^^
+
+.. autoclass:: pyobs.vfs.LocalFile
+
+MemoryFile
+^^^^^^^^^^
+
+.. autoclass:: pyobs.vfs.MemoryFile
+
+SSHFile
+^^^^^^^
+
+.. autoclass:: pyobs.vfs.SSHFile
+
+TempFile
+^^^^^^^^
+
+.. autoclass:: pyobs.vfs.TempFile
+
+VFSFile
+^^^^^^^
+
+.. autoclass:: pyobs.vfs.VFSFile
+

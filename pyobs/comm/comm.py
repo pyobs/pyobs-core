@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import inspect
 import logging
@@ -27,6 +28,7 @@ class Comm:
 
     def __init__(self, cache_proxies: bool = True):
         """Creates a comm module."""
+        from pyobs.modules import Module
 
         self._proxies: Dict[str, Proxy] = {}
         self._module: Optional[Module] = None
@@ -38,17 +40,13 @@ class Comm:
         handler.setLevel(logging.INFO)
         logging.getLogger().addHandler(handler)
 
-        # logging thread
-        self._closing = asyncio.Event()
-        self._logging_task: Optional[asyncio.Task] = None
-
     @property
-    def module(self) -> Optional["Module"]:
+    def module(self) -> Optional[Module]:
         """The module that this Comm object is attached to."""
         return self._module
 
     @module.setter
-    def module(self, module: "Module") -> None:
+    def module(self, module: Module) -> None:
         """The module that this Comm object is attached to."""
         # if we have a _set_module method, call it
         self._set_module(module)
@@ -56,25 +54,14 @@ class Comm:
         # store module
         self._module = module
 
-    def _set_module(self, module: "Module") -> None:
+    def _set_module(self, module: Module) -> None:
         ...
 
     async def open(self) -> None:
         """Open module."""
 
-        # start logging thread
-        self._logging_task = asyncio.create_task(self._logging())
-
         # some events
         await self.register_event(ModuleClosedEvent, self._client_disconnected)
-
-    async def close(self) -> None:
-        """Close module."""
-
-        # close thread
-        self._closing.set()
-        if self._logging_task:
-            self._logging_task.cancel()
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.
@@ -92,7 +79,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    async def _get_client(self, client: str) -> Optional[Union["Module", Proxy]]:
+    async def _get_client(self, client: str) -> Optional[Union[Module, Proxy]]:
         """Get a proxy to the given client.
 
         Args:
@@ -161,7 +148,10 @@ class Comm:
 
         elif isinstance(name_or_object, str):
             # get proxy
-            proxy = await self._get_client(name_or_object)
+            try:
+                proxy = await self._get_client(name_or_object)
+            except KeyError:
+                raise ValueError(f"Could not get proxy for {name_or_object}.")
 
             # check it
             if proxy is None:
@@ -305,7 +295,7 @@ class Comm:
     async def _logging(self) -> None:
         """Background thread for handling the logging."""
         # run until closing
-        while not self._closing.is_set():
+        while True:
             # get item (maybe wait for it) and send it
             entry = await self._log_queue.get()
             await self.send_event(entry)

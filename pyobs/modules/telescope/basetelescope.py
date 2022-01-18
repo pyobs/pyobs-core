@@ -86,7 +86,7 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
         ...
 
@@ -99,7 +99,7 @@ class BaseTelescope(
             dec: Dec in deg to track.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
 
         # do nothing, if initializing, parking or parked
@@ -155,7 +155,7 @@ class BaseTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
         ...
 
@@ -168,7 +168,7 @@ class BaseTelescope(
             az: Az in deg to move to.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
 
         # do nothing, if initializing, parking or parked

@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+"""
+TODO: Write docs
+"""
+__title__ = "Exceptions"
+
 import asyncio
 from collections import Coroutine
 from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable

@@ -2,7 +2,12 @@
 :class:`~pyobs.object.Object` is the base for almost all classes in *pyobs*. It adds some convenience methods
 and helper methods for creating other Objects.
 
-:func:`~pyobs.object.get_object` is a convenience function for creating objects from dictionaries.
+There are a few convenience functions:
+
+    - :func:`~pyobs.object.create_object` creates objects from dictionaries.
+    - :func:`~pyobs.object.get_object` is a wrapper around :func:`pyobs.object.create_object` that can do further checks.
+    - :func:`~pyobs.object.get_safe_object` is a wrapper around :func:`~pyobs.object.get_object` that never raises
+      exceptions.
 """
 
 from __future__ import annotations
@@ -20,7 +25,6 @@ from astropy.coordinates import EarthLocation
 
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
-from pyobs.utils.parallel import event_wait
 
 if TYPE_CHECKING:
     from pyobs.vfs import VirtualFileSystem
@@ -30,6 +34,9 @@ log = logging.getLogger(__name__)
 
 """Class of an Object."""
 ObjectClass = TypeVar("ObjectClass")
+
+
+"""Class of a proxy."""
 ProxyType = TypeVar("ProxyType")
 
 
@@ -108,7 +115,16 @@ def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: Non
 def get_safe_object(
     config_or_object: Union[Dict[str, Any], Any], object_class: Optional[Type[ObjectClass]] = None, **kwargs: Any
 ) -> Optional[Union[ObjectClass, Any]]:
-    """Calls get_object in a safe way and returns None, if an exceptions thrown."""
+    """Calls get_object in a safe way and returns None, if an exceptions thrown.
+
+    Args:
+        config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
+            is given, a new object is created.
+        object_class: Class to check object against.
+
+    Returns:
+        (New) object (created from config) that optionally passed class check or None.
+    """
     try:
         return get_object(config_or_object, object_class, **kwargs)
     except Exception:
@@ -116,6 +132,15 @@ def get_safe_object(
 
 
 def get_class_from_string(class_name: str) -> Type[Any]:
+    """Get class from a given string.
+
+    Args:
+        class_name: Name of class as string.
+
+    Returns:
+        Actual class.
+    """
+
     parts = class_name.split(".")
     module_name = ".".join(parts[:-1])
     cls: Type[Any] = __import__(module_name)
@@ -125,6 +150,17 @@ def get_class_from_string(class_name: str) -> Type[Any]:
 
 
 def create_object(config: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+    """Create object from dict config.
+
+    Args:
+        config: Config to create object from
+        *args: Parameters to be passed to object.
+        **kwargs: Parameters to be passed to object.
+
+    Returns:
+        Created object.
+    """
+
     # get class name
     class_name = config["class"]
 
@@ -160,7 +196,7 @@ class Object:
         This class provides a :class:`~pyobs.vfs.VirtualFileSystem`, a timezone and a location. From the latter two, an
         observer object is automatically created.
 
-        Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_thread_func`
+        Object also adds support for easily adding threads using the :meth:`~pyobs.object.Object.add_background_task`
         method as well as a watchdog thread that automatically restarts threads, if requested.
 
         Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,

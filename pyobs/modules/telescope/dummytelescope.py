@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import logging
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
@@ -12,7 +13,6 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -28,8 +28,12 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: Optional["SimWorld"] = None, **kwargs: Any):
-        """Creates a new dummy telescope."""
+    def __init__(self, world: Optional[SimWorld] = None, **kwargs: Any):
+        """Creates a new dummy telescope.
+
+        Args:
+            world: Optional SimWorld object.
+        """
         BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=["ITelescope", "IFocuser", "IFilters"])
         FitsNamespaceMixin.__init__(self, **kwargs)
 
@@ -67,7 +71,7 @@ class DummyTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
 
         # start slewing
@@ -82,7 +86,7 @@ class DummyTelescope(
             abort_event: Event that gets triggered when movement should be aborted.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
 
         # alt/az coordinates to ra/dec
@@ -173,7 +177,7 @@ class DummyTelescope(
             filter_name: Name of filter to set.
 
         Raises:
-            CannotMoveException: If filter wheel cannot be moved.
+            MoveError: If filter wheel cannot be moved.
         """
 
         # valid filter?
@@ -198,7 +202,7 @@ class DummyTelescope(
         """Initialize telescope.
 
         Raises:
-            CannotInitError: If device could not be initialized.
+            InitError: If device could not be initialized.
         """
 
         # INIT, wait a little, then IDLE
@@ -213,7 +217,7 @@ class DummyTelescope(
         """Park telescope.
 
         Raises:
-            CannotParkError: If telescope could not be parked.
+            ParkError: If telescope could not be parked.
         """
 
         # PARK, wait a little, then PARKED
@@ -231,7 +235,7 @@ class DummyTelescope(
             ddec: Dec offset in degrees.
 
         Raises:
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
 
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)

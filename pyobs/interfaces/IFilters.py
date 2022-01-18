@@ -27,7 +27,7 @@ class IFilters(IMotion, metaclass=ABCMeta):
 
         Raises:
             ValueError: If an invalid filter was given.
-            CannotMoveException: If filter wheel cannot be moved.
+            MoveError: If filter wheel cannot be moved.
         """
         ...
 

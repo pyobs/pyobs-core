@@ -31,7 +31,7 @@ class IFocuser(IMotion, metaclass=ABCMeta):
 
         Raises:
             ValueError: If given value is invalid.
-            CannotMoveException: If telescope cannot be moved.
+            MoveError: If telescope cannot be moved.
         """
         ...
 

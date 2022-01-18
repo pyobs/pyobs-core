@@ -46,7 +46,7 @@ of a module that does nothing more than logging a given message continuously in 
                 self.closing.wait(self._interval)
 
 The constructor just calls the constructor of :class:`~pyobs.modules.Module` and calls a method
-:meth:`~pyobs.object.Object.add_thread_func`, which takes a method that is run in an extra thread. In this case,
+:meth:`~pyobs.object.Object.add_background_task`, which takes a method that is run in an extra thread. In this case,
 it is the method ``thread_func()``, that does some logging in a loop until the program quits.
 
 The class method default_config() defines the default configuration for the module, and open() and close()
@@ -72,9 +72,9 @@ Location of observatory
 -----------------------
 
 There is some functionality that is required in many modules, including those concerning the environment,
-especially the location of the telescope and the local time. For this, the :class:`~pyobs.application.Application` class
-has support for an additional module of type :class:`~pyobs.environment.Environment`, which can be
-defined in the application's configuration at top-level like this::
+especially the location of the telescope and the local time. For this, there is support for an additional object
+of type :class:`~pyobs.environment.Environment`, which can be defined in the application's configuration
+at top-level like this::
 
     timezone: Africa/Johannesburg
     location:

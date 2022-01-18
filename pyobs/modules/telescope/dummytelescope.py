@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import logging
 from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
@@ -12,7 +13,6 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -28,8 +28,12 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: Optional["SimWorld"] = None, **kwargs: Any):
-        """Creates a new dummy telescope."""
+    def __init__(self, world: Optional[SimWorld] = None, **kwargs: Any):
+        """Creates a new dummy telescope.
+
+        Args:
+            world: Optional SimWorld object.
+        """
         BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=["ITelescope", "IFocuser", "IFilters"])
         FitsNamespaceMixin.__init__(self, **kwargs)
 

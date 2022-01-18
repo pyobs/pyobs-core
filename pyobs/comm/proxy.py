@@ -16,7 +16,7 @@ class Proxy:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, comm: "Comm", client: str, interfaces: List[Type[Interface]]):
+    def __init__(self, comm: Comm, client: str, interfaces: List[Type[Interface]]):
         """Creates a new proxy.
 
         Args:
@@ -140,7 +140,7 @@ class Proxy:
             Wrapper.
         """
 
-        async def inner(this: "Proxy", *args: Any, **kwargs: Any) -> Any:
+        async def inner(this: Proxy, *args: Any, **kwargs: Any) -> Any:
             return await this.execute(method, *args, **kwargs)
 
         return inner

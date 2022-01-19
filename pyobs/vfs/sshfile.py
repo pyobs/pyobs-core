@@ -1,5 +1,6 @@
+import fnmatch
 import os
-from typing import Optional, Any, AnyStr
+from typing import Optional, Any, AnyStr, List
 
 import paramiko
 import paramiko.sftp
@@ -86,6 +87,43 @@ class SSHFile(VFSFile):
 
     async def write(self, s: AnyStr) -> None:
         self._fd.write(s)
+
+    @staticmethod
+    def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
+        """Find files by pattern matching.
+
+        Args:
+            path: Path to search in.
+            pattern: Pattern to search for.
+
+        Returns:
+            List of found files.
+        """
+
+        # connect
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(
+            kwargs["hostname"],
+            port=kwargs["port"] if "port" in kwargs else 22,
+            username=kwargs["username"],
+            password=kwargs["password"] if "password" in kwargs else None,
+            key_filename=kwargs["keyfile"] if "keyfile" in kwargs else None,
+        )
+        sftp = ssh.open_sftp()
+
+        # list files in path
+        files = sftp.listdir(os.path.join(kwargs["root"], path))
+        print(files)
+
+        # filter by pattern
+        files = list(filter(lambda f: fnmatch.fnmatch(f, pattern), files))
+        print(files)
+
+        # disconnect and return list
+        sftp.close()
+        ssh.close()
+        return files
 
 
 __all__ = ["SSHFile"]

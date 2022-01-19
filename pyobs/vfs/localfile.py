@@ -1,6 +1,6 @@
 import fnmatch
 import os
-from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast
+from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast, List
 
 from .file import VFSFile
 
@@ -58,25 +58,31 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
-    def find(path: str, pattern: str, root: str = "", *args: Any, **kwargs: Any) -> Iterator[str]:
+    def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 
         Args:
             path: Path to search in.
             pattern: Pattern to search for.
-            root: VFS root.
 
         Returns:
             List of found files.
         """
 
+        # get root from kwargs
+        if 'root' not in kwargs:
+            raise ValueError('No root directory given.')
+        root = kwargs['root']
+
         # build full path
         full_path = os.path.join(root, path)
 
         # loop directories
+        files = []
         for cur, dirnames, filenames in os.walk(full_path):
             for filename in fnmatch.filter(filenames, pattern):
-                yield os.path.relpath(os.path.join(cur, filename), root)
+                files += [os.path.relpath(os.path.join(cur, filename), root)]
+        return files
 
     @staticmethod
     def exists(path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:

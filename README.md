@@ -1,6 +1,11 @@
 pyobs
 =====
 
+Homepage
+--------
+
+http://www.pyobs.org/
+
 Quick start
 -----------
 
@@ -24,10 +29,6 @@ And run it:
    
     pyobs test.yaml
 
-
-Documentation
--------------
-See http://pyobs.github.io/.
 
 
 Contributors

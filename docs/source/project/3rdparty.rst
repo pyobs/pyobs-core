@@ -1,5 +1,5 @@
 3rd party packages
-^^^^^^^^^^^^^^^^^^
+##################
 
 *pyobs* requires Python 3.7 or later and depends on a couple of amazing external packages (in alphabetical order):
 

@@ -1,5 +1,5 @@
 License
-^^^^^^^
+#######
 
 *pyobs* is licensed under the MIT License.
 

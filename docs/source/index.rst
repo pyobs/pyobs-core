@@ -50,6 +50,7 @@ Project details
 .. toctree::
    :maxdepth: 1
 
+   project/changelog
    Team <https://www.pyobs.org/team/>
    project/license
    project/3rdparty

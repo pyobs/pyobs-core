@@ -1,10 +1,14 @@
 pyobs
 =====
 
-Homepage
---------
+<p style="text-align: center">
+  <a href="https://www.pyobs.org/">
+    <img src="https://github.com/pyobs/pyobs-core/blob/master/docs/source/_static/pyobs.png?raw=True" 
+         style="width: 50%; max-width: 500px"/><br/>
+    http://www.pyobs.org/
+  </a>
+</p>
 
-http://www.pyobs.org/
 
 Quick start
 -----------

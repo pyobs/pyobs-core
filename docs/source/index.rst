@@ -50,7 +50,7 @@ Project details
 .. toctree::
    :maxdepth: 1
 
-   project/credits
+   Team <https://www.pyobs.org/team/>
    project/license
    project/3rdparty
 

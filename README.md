@@ -1,7 +1,7 @@
 pyobs
 =====
 
-<div style="text-align: center">
+<div style="text-align: center;">
   <a href="https://www.pyobs.org/">
     <img src="https://github.com/pyobs/pyobs-core/blob/master/docs/source/_static/pyobs.png?raw=True" 
          style="width: 50%; max-width: 500px"/><br/>

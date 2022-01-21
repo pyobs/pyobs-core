@@ -114,11 +114,9 @@ class SSHFile(VFSFile):
 
         # list files in path
         files = sftp.listdir(os.path.join(kwargs["root"], path))
-        print(files)
 
         # filter by pattern
         files = list(filter(lambda f: fnmatch.fnmatch(f, pattern), files))
-        print(files)
 
         # disconnect and return list
         sftp.close()

@@ -1,13 +1,12 @@
-import asyncio
 import io
 import logging
 import os
-from functools import partial
-from typing import Optional, Dict, Any, Tuple, cast, IO
+from typing import Optional, Dict, Any, Tuple, List, Callable
 import yaml
 from astropy.io import fits
 import pandas as pd
 
+from pyobs.object import get_class_from_string
 from pyobs.images import Image
 from .file import VFSFile
 
@@ -212,7 +211,19 @@ class VirtualFileSystem(object):
                 # write file from StringIO
                 await f.write(sio.getvalue())
 
-    def find(self, path: str, pattern: str):
+    def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
+        # split root
+        if not path.endswith("/"):
+            path += "/"
+        root, path = VirtualFileSystem.split_root(path)
+
+        # get root class
+        klass = get_class_from_string(self._roots[root]["class"])
+
+        # get find method
+        return getattr(klass, "find")
+
+    def find(self, path: str, pattern: str) -> List[str]:
         """Find a file in the given path.
 
         Args:
@@ -223,21 +234,28 @@ class VirtualFileSystem(object):
             List of found files.
         """
 
-        # split root
-        if not path.endswith("/"):
-            path += "/"
-        root, path = VirtualFileSystem.split_root(path)
-
-        # get root class
-        from pyobs.object import get_class_from_string
-
-        klass = get_class_from_string(self._roots[root]["class"])
-
-        # get find method
-        find = getattr(klass, "find")
+        # get method
+        find, root, path = self._get_method(path, "find")
 
         # and call it
         return find(path, pattern, **self._roots[root])
+
+    def listdir(self, path: str) -> List[str]:
+        """Find a file in the given path.
+
+        Args:
+            path: Path to search in.
+            pattern: Pattern to search for.
+
+        Returns:
+            List of found files.
+        """
+
+        # get method
+        listdir, root, path = self._get_method(path, "listdir")
+
+        # and call it
+        return listdir(path, **self._roots[root])
 
     def exists(self, path: str) -> bool:
         """Checks, whether a given path or file exists.
@@ -249,18 +267,8 @@ class VirtualFileSystem(object):
             Whether it exists or not
         """
 
-        # split root
-        if not path.endswith("/"):
-            path += "/"
-        root, path = VirtualFileSystem.split_root(path)
-
-        # get root class
-        from pyobs.object import get_class_from_string
-
-        klass = get_class_from_string(self._roots[root]["class"])
-
-        # get exists method
-        exists = getattr(klass, "exists")
+        # get method
+        exists, root, path = self._get_method(path, "exists")
 
         # and call it
         return exists(path, **self._roots[root])

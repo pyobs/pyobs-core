@@ -1,3 +1,4 @@
+import fnmatch
 from abc import ABCMeta, abstractmethod
 from typing import Any, AnyStr, List
 
@@ -26,18 +27,35 @@ class VFSFile(metaclass=ABCMeta):
         await self.close()
 
     @staticmethod
-    def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
+    def listdir(path: str, **kwargs: Any) -> List[str]:
+        """Returns content of given path.
+
+        Args:
+            path: Path to list.
+            kwargs: Parameters for specific file implementation (same as __init__).
+
+        Returns:
+            List of files in path.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def find(cls, path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 
         Args:
             path: Path to search in.
             pattern: Pattern to search for.
-            kwargs: Parameters for specific file implementation (same as __init__).
 
         Returns:
             List of found files.
         """
-        raise NotImplementedError()
+
+        # list files in dir
+        files = cls.listdir(path, **kwargs)
+
+        # filter by pattern
+        return list(filter(lambda f: fnmatch.fnmatch(f, pattern), files))
 
 
 __all__ = ["VFSFile"]

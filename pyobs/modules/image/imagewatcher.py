@@ -20,25 +20,35 @@ class ImageWatcher(Module):
 
     __module__ = "pyobs.modules.image"
 
-    def __init__(self, watchpath: Optional[str] = None, destinations: Optional[List[str]] = None, **kwargs: Any):
+    def __init__(
+        self,
+        watchpath: str,
+        destinations: Optional[List[str]] = None,
+        poll: bool = False,
+        poll_interval: int = 5,
+        **kwargs: Any,
+    ):
         """Create a new image watcher.
 
         Args:
             watchpath: Path to watch.
             destinations: Filename patterns for destinations.
+            poll: If True, watchpath is polled instead of watched by inotify.
+            poll_interval: Interval for polling, if poll is True.
         """
         Module.__init__(self, **kwargs)
 
-        # test import
-        import pyinotify
-
         # add thread func
         self.add_background_task(self._worker)
+        if poll:
+            self.add_background_task(self._poller)
 
         # variables
         self._watchpath = watchpath
-        self._notifier = None
+        self._notifier: Optional[Any] = None
         self._queue = asyncio.Queue[str]()
+        self._poll = poll
+        self._poll_interval = poll_interval
 
         # filename patterns
         if not destinations:
@@ -48,12 +58,18 @@ class ImageWatcher(Module):
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
+
+        # only open inotify if no polling
+        if not self._poll:
+            self._init_inotify()
+
+    def _init_inotify(self) -> None:
         import pyinotify
 
-        class EventHandler(pyinotify.ProcessEvent):
+        class EventHandler(pyinotify.ProcessEvent):  # type: ignore
             """Event handler for file watcher."""
 
-            def __init__(self, main, *args: Any, **kwargs: Any) -> None:
+            def __init__(self, main: Any, *args: Any, **kwargs: Any) -> None:
                 """Create event handler."""
                 pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
                 self.main = main
@@ -89,6 +105,23 @@ class ImageWatcher(Module):
         # log file
         log.info("Adding new image %s...", filename)
         self._queue.put_nowait(filename)
+
+    async def _poller(self) -> None:
+        # init list
+        files = await self.vfs.listdir(self._watchpath)
+
+        # run forever
+        while True:
+            # get new list
+            new_files = await self.vfs.listdir(self._watchpath)
+
+            # find all new files and add them
+            for f in new_files:
+                if f not in files:
+                    self.add_image(f)
+
+            # store new list
+            files = new_files
 
     async def _clear_queue(self) -> None:
         """Clear the queue with new files."""

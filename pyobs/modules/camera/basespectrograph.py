@@ -43,7 +43,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         """
         Module.__init__(self, **kwargs)
         SpectrumFitsHeaderMixin.__init__(
-            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames
+            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames, **kwargs
         )
 
         # init camera

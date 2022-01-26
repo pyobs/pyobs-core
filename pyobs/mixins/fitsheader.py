@@ -28,6 +28,7 @@ class FitsHeaderMixin:
         fits_namespaces: Optional[List[str]] = None,
         fits_headers: Optional[Dict[str, Any]] = None,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
+        frame_number: bool = True,
         **kwargs: Any,
     ):
         """Initialise the mixin.
@@ -36,6 +37,7 @@ class FitsHeaderMixin:
             fits_namespaces: List of namespaces for FITS headers that this camera should request.
             fits_headers: Additional FITS headers.
             filename: Filename pattern for FITS images.
+            frame_number: Whether to add frame number to FITS file header.
         """
         module = cast(Module, self)
 
@@ -48,7 +50,8 @@ class FitsHeaderMixin:
 
         # night exposure number
         self._fitsheadermixin_cache = "/pyobs/modules/%s/cache.yaml" % module.name()
-        self._fitsheadermixin_frame_num = 0
+        self._fitsheadermixin_enable_frame_number = frame_number
+        self._fitsheadermixin_frame_number = 0
 
     async def request_fits_headers(self, before: bool = True) -> Dict[str, Coroutine]:
         """Request FITS headers from other modules.
@@ -132,7 +135,8 @@ class FitsHeaderMixin:
 
         # add more fits headers
         self._fitsheadermixin_add_fits_headers(image)
-        await self._fitsheadermixin_add_framenum(image)
+        if self._fitsheadermixin_enable_frame_number:
+            await self._fitsheadermixin_add_framenum(image)
 
     def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FITS header keywords to the given FITS header.
@@ -190,7 +194,7 @@ class FitsHeaderMixin:
         night = hdr["DAY-OBS"]
 
         # increase night exp
-        self._fitsheadermixin_frame_num += 1
+        self._fitsheadermixin_frame_number += 1
 
         # do we have a cache?
         if self._fitsheadermixin_cache is not None:
@@ -201,11 +205,11 @@ class FitsHeaderMixin:
 
                 # get new number
                 if cache is not None and "framenum" in cache:
-                    self._fitsheadermixin_frame_num = cache["framenum"] + 1
+                    self._fitsheadermixin_frame_number = cache["framenum"] + 1
 
                 # if nights differ, reset count
                 if cache is not None and "night" in cache and night != cache["night"]:
-                    self._fitsheadermixin_frame_num = 1
+                    self._fitsheadermixin_frame_number = 1
 
             except (FileNotFoundError, ValueError):
                 pass
@@ -213,13 +217,13 @@ class FitsHeaderMixin:
             # write file
             try:
                 await module.vfs.write_yaml(
-                    self._fitsheadermixin_cache, {"night": night, "framenum": self._fitsheadermixin_frame_num}
+                    self._fitsheadermixin_cache, {"night": night, "framenum": self._fitsheadermixin_frame_number}
                 )
             except (FileNotFoundError, ValueError):
                 log.warning("Could not write camera cache file.")
 
         # set it
-        hdr["FRAMENUM"] = self._fitsheadermixin_frame_num
+        hdr["FRAMENUM"] = self._fitsheadermixin_frame_number
 
     def format_filename(self, image: Union[Image, fits.PrimaryHDU]) -> Optional[str]:
         """Format filename according to given pattern and store in header of image.

@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 import asyncio
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Tuple
 from astropy.io import fits
 
 from pyobs.modules import Module
@@ -26,6 +26,7 @@ class ImageWatcher(Module):
         destinations: Optional[List[str]] = None,
         poll: bool = False,
         poll_interval: int = 5,
+        wait_time: int = 10,
         **kwargs: Any,
     ):
         """Create a new image watcher.
@@ -34,7 +35,8 @@ class ImageWatcher(Module):
             watchpath: Path to watch.
             destinations: Filename patterns for destinations.
             poll: If True, watchpath is polled instead of watched by inotify.
-            poll_interval: Interval for polling, if poll is True.
+            poll_interval: Interval for polling in seconds, if poll is True.
+            wait_time: Time in seconds between adding file to list and processing it.
         """
         Module.__init__(self, **kwargs)
 
@@ -46,9 +48,10 @@ class ImageWatcher(Module):
         # variables
         self._watchpath = watchpath
         self._notifier: Optional[Any] = None
-        self._queue = asyncio.Queue[str]()
+        self._queue = asyncio.Queue[Tuple[str, asyncio.Future[None]]]()
         self._poll = poll
         self._poll_interval = poll_interval
+        self._wait_time = wait_time
 
         # filename patterns
         if not destinations:
@@ -104,7 +107,7 @@ class ImageWatcher(Module):
 
         # log file
         log.info("Adding new image %s...", filename)
-        self._queue.put_nowait(filename)
+        self._queue.put_nowait((filename, asyncio.sleep(self._wait_time)))
 
     async def _poller(self) -> None:
         # init list
@@ -141,7 +144,10 @@ class ImageWatcher(Module):
         # run forever
         while True:
             # get next filename
-            filename = await self._queue.get()
+            filename, future = await self._queue.get()
+
+            # waiting for future, which is the wait time for new files
+            await future
             log.info("Working on file %s...", filename)
 
             # better safe than sorry

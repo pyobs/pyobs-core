@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 import asyncio
+from pathlib import PurePosixPath
 from typing import Any, Optional, List, Tuple
 from astropy.io import fits
 
@@ -74,9 +75,10 @@ class ImageWatcher(Module):
 
     async def _watch_poll(self) -> None:
         # init list
-        files = await self.vfs.listdir(self._watchpath)
+        files = set(await self.vfs.listdir(self._watchpath))
 
         # run forever
+        path = PurePosixPath(self._watchpath)
         while True:
             # get new list
             new_files = await self.vfs.listdir(self._watchpath)
@@ -84,10 +86,19 @@ class ImageWatcher(Module):
             # find all new files and add them
             for f in new_files:
                 if f not in files:
-                    self.add_image(f)
+                    print(str(path / f))
+                    self.add_image(str(path / f))
 
             # store new list
-            files = new_files
+            files = set(new_files)
+
+    async def open(self) -> None:
+        """Open image watcher."""
+        await Module.open(self)
+
+        # add all files from directory to queue
+        for filename in await self.vfs.listdir(self._watchpath):
+            self.add_image(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:
         """Close image watcher."""
@@ -109,20 +120,8 @@ class ImageWatcher(Module):
         log.info("Adding new image %s...", filename)
         self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
 
-    async def _clear_queue(self) -> None:
-        """Clear the queue with new files."""
-
-        # clear queue
-        while not self._queue.empty():
-            await self._queue.get()
-
     async def _worker(self) -> None:
         """Worker thread."""
-
-        # first, add all files from directory to queue
-        await self._clear_queue()
-        for filename in sorted(glob.glob(os.path.join(self._watchpath, "*"))):
-            self.add_image(filename)
 
         # run forever
         while True:
@@ -135,22 +134,32 @@ class ImageWatcher(Module):
 
             # better safe than sorry
             try:
-                # open file
-                fits_file = fits.open(filename)
+                # get file data
+                async with self.vfs.open_file(filename, "rb") as fd:
+                    data = await fd.read()
 
                 # loop archive and upload
                 success = True
                 for pattern in self._destinations:
+                    # if it contains {placeholders}, we assume it's a FITS file and format filename
+                    if "{" in pattern and "}" in pattern:
+                        # load fits file
+                        fits_file = fits.HDUList.fromstring(data)
 
-                    # create filename
-                    out_filename = format_filename(fits_file["SCI"].header, pattern)
-                    if out_filename is None:
-                        raise ValueError("Could not create name for file.")
+                        # format filename
+                        out_filename = format_filename(fits_file["SCI"].header, pattern)
+                        if out_filename is None:
+                            raise ValueError("Could not create name for file.")
+
+                    else:
+                        # no formatting, so just add filename to destination
+                        out_filename = os.path.join(pattern, os.path.basename(filename))
 
                     # store it
                     log.info("Storing file as %s...", out_filename)
                     try:
-                        await self.vfs.write_fits(out_filename, fits_file)
+                        async with self.vfs.open_file(out_filename, "wb") as fd:
+                            await fd.write(data)
                     except:
                         log.exception("Error while copying file, skipping for now.")
                         success = False
@@ -161,7 +170,8 @@ class ImageWatcher(Module):
 
                 # close and delete files
                 log.info("Removing file from watch directory...")
-                os.remove(filename)
+                if not await self.vfs.remove(filename):
+                    log.warning("Could not delete %s.", filename)
 
             except:
                 log.exception("Something went wrong.")

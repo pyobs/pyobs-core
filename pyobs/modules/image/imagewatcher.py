@@ -3,14 +3,23 @@ import glob
 import logging
 import os
 import asyncio
+from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Optional, List, Tuple
+from typing import Any, Optional, List, Tuple, AnyStr
 from astropy.io import fits
 
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class CurrentFile:
+    filename: str
+    data: AnyStr
+    out_filename: Optional[str] = None
+    hdu_list: Optional[fits.HDUList] = None
 
 
 class ImageWatcher(Module):
@@ -58,6 +67,7 @@ class ImageWatcher(Module):
         self._poll_interval = poll_interval
         self._wait_time = wait_time
         self._pattern = pattern
+        self.current_file: Optional[CurrentFile] = None
 
         # filename patterns
         if not destinations:
@@ -152,14 +162,20 @@ class ImageWatcher(Module):
                 async with self.vfs.open_file(filename, "rb") as fd:
                     data = await fd.read()
 
+                # try to load as fits file
+                try:
+                    fits_file = fits.HDUList.fromstring(data)
+                except:
+                    fits_file = None
+
+                # fill current file
+                self.current_file = CurrentFile(filename=filename, data=data, hdu_list=fits_file)
+
                 # loop archive and upload
                 success = True
                 for pattern in self._destinations:
                     # if it contains {placeholders}, we assume it's a FITS file and format filename
-                    if "{" in pattern and "}" in pattern:
-                        # load fits file
-                        fits_file = fits.HDUList.fromstring(data)
-
+                    if "{" in pattern and "}" in pattern and fits_file is not None:
                         # format filename
                         out_filename = format_filename(fits_file["SCI"].header, pattern)
                         if out_filename is None:
@@ -171,11 +187,17 @@ class ImageWatcher(Module):
 
                     # store it
                     log.info("Storing file as %s...", out_filename)
+                    self.current_file.out_filename = out_filename
                     try:
                         async with self.vfs.open_file(out_filename, "wb") as fd:
                             await fd.write(data)
                     except:
                         log.exception("Error while copying file, skipping for now.")
+                        success = False
+                        break
+
+                    # do extra processing
+                    if not await self.process_extra(filename):
                         success = False
                         break
 
@@ -188,8 +210,32 @@ class ImageWatcher(Module):
                 if not await self.vfs.remove(filename):
                     log.warning("Could not delete %s.", filename)
 
+                # cleanup extra
+                await self.cleanup_extra(filename)
+
             except:
                 log.exception("Something went wrong.")
+
+    async def process_extra(self, filename: str) -> bool:
+        """Can be overwritten by derived classes to do extra processing on files.
+        All information are stored in self.current_file and can be checked against the given filename.
+
+        Args:
+            filename: Input name of original file.
+
+        Returns:
+            Whether processing was successful
+        """
+        return True
+
+    async def cleanup_extra(self, filename: str) -> None:
+        """Can be overwritten by derived classes to do clean up after successful copying.
+        All information are stored in self.current_file and can be checked against the given filename.
+
+        Args:
+            filename: Input name of original file.
+        """
+        ...
 
 
 __all__ = ["ImageWatcher"]

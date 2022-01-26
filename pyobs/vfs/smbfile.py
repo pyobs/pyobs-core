@@ -64,7 +64,7 @@ class SMBFile(VFSFile):
 
         # build filename
         self.filename = name
-        self._full_path = PureWindowsPath(rf"\\{hostname}\{share}\\") / name
+        self._full_path = PureWindowsPath(rf"\\{hostname}\{share}\\") / root / name
 
         # need to create directory?
         path = str(self._full_path.parent)
@@ -77,7 +77,9 @@ class SMBFile(VFSFile):
                 raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
 
         # open file
-        self._fd = smbclient.open_file(str(self._full_path), mode=mode)
+        self._fd = smbclient.open_file(
+            str(self._full_path), mode=mode, username=self._username, password=self._password
+        )
 
     async def close(self) -> None:
         """Close file."""
@@ -105,10 +107,13 @@ class SMBFile(VFSFile):
         # get settings
         hostname = kwargs["hostname"]
         share = kwargs["share"]
+        username = kwargs["username"]
+        password = kwargs["password"]
+        root = kwargs["root"]
 
         # get path and return list
-        network = PureWindowsPath(rf"\\{hostname}\{share}\\") / path
-        return smbclient.listdir(str(network))
+        network = PureWindowsPath(rf"\\{hostname}\{share}\\") / root / path
+        return smbclient.listdir(str(network), username=username, password=password)
 
 
 __all__ = ["SMBFile"]

@@ -213,8 +213,6 @@ class VirtualFileSystem(object):
 
     def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
         # split root
-        if not path.endswith("/"):
-            path += "/"
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
@@ -272,6 +270,22 @@ class VirtualFileSystem(object):
 
         # and call it
         return await exists(path, **self._roots[root])
+
+    async def remove(self, path: str) -> bool:
+        """Removes file with given path.
+
+        Args:
+            path: Path to delete.
+
+        Returns:
+            Success of deletion.
+        """
+
+        # get method
+        remove, root, path = self._get_method(path, "remove")
+
+        # and call it
+        return await remove(path, **self._roots[root])
 
 
 __all__ = ["VirtualFileSystem", "VFSFile"]

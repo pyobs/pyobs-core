@@ -57,13 +57,24 @@ class VFSFile(metaclass=ABCMeta):
         # filter by pattern
         return list(filter(lambda f: fnmatch.fnmatch(f, pattern), files))
 
+    @staticmethod
+    async def remove(path: str, *args: Any, **kwargs: Any) -> bool:
+        """Remove file at given path.
+
+        Args:
+            path: Path of file to delete.
+
+        Returns:
+            Success or not.
+        """
+        raise NotImplementedError()
+
     @classmethod
-    async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
+    async def exists(cls, path: str, *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:
             path: Path to check.
-            root: VFS root.
 
         Returns:
             Whether it exists or not

@@ -1,5 +1,7 @@
+import asyncio
 import fnmatch
 import os
+from pathlib import PurePosixPath
 from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast, List
 
 from .file import VFSFile
@@ -58,7 +60,7 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
-    def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
+    async def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 
         Args:
@@ -83,6 +85,28 @@ class LocalFile(VFSFile):
             for filename in fnmatch.filter(filenames, pattern):
                 files += [os.path.relpath(os.path.join(cur, filename), root)]
         return files
+
+    @staticmethod
+    async def remove(path: str, *args: Any, **kwargs: Any) -> bool:
+        """Remove file at given path.
+
+        Args:
+            path: Path of file to delete.
+
+        Returns:
+            Success or not.
+        """
+
+        # get root from kwargs
+        root = kwargs["root"]
+
+        # build full path and remove
+        full_path = os.path.join(root, path)
+        try:
+            os.remove(full_path)
+            return True
+        except (FileNotFoundError, IsADirectoryError):
+            return False
 
     @classmethod
     async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:

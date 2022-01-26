@@ -171,7 +171,7 @@ class ImageWatcher(Module):
                         log.exception("Error while copying file, skipping for now.")
                         success = False
 
-                # no success_
+                # no success?
                 if not success:
                     continue
 

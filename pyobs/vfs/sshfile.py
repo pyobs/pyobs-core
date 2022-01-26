@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Optional, Any, AnyStr, List
 import paramiko
@@ -87,7 +88,7 @@ class SSHFile(VFSFile):
         self._fd.write(s)
 
     @staticmethod
-    def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> List[str]:
         """Returns content of given path.
 
         Args:
@@ -111,7 +112,8 @@ class SSHFile(VFSFile):
         sftp = ssh.open_sftp()
 
         # list files in path
-        files = sftp.listdir(os.path.join(kwargs["root"], path))
+        loop = asyncio.get_running_loop()
+        files = await loop.run_in_executor(None, sftp.listdir, os.path.join(kwargs["root"], path))
 
         # disconnect and return list
         sftp.close()

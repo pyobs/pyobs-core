@@ -223,7 +223,7 @@ class VirtualFileSystem(object):
         # get find method
         return getattr(klass, method), root, path
 
-    def find(self, path: str, pattern: str) -> List[str]:
+    async def find(self, path: str, pattern: str) -> List[str]:
         """Find a file in the given path.
 
         Args:
@@ -238,9 +238,9 @@ class VirtualFileSystem(object):
         find, root, path = self._get_method(path, "find")
 
         # and call it
-        return find(path, pattern, **self._roots[root])
+        return await find(path, pattern, **self._roots[root])
 
-    def listdir(self, path: str) -> List[str]:
+    async def listdir(self, path: str) -> List[str]:
         """Find a file in the given path.
 
         Args:
@@ -255,9 +255,9 @@ class VirtualFileSystem(object):
         listdir, root, path = self._get_method(path, "listdir")
 
         # and call it
-        return listdir(path, **self._roots[root])
+        return await listdir(path, **self._roots[root])
 
-    def exists(self, path: str) -> bool:
+    async def exists(self, path: str) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:
@@ -271,7 +271,7 @@ class VirtualFileSystem(object):
         exists, root, path = self._get_method(path, "exists")
 
         # and call it
-        return exists(path, **self._roots[root])
+        return await exists(path, **self._roots[root])
 
 
 __all__ = ["VirtualFileSystem", "VFSFile"]

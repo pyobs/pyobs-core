@@ -1,5 +1,7 @@
+import asyncio
 import fnmatch
 import os
+from functools import partial
 from pathlib import PureWindowsPath
 from typing import Optional, Any, AnyStr, List
 
@@ -92,7 +94,7 @@ class SMBFile(VFSFile):
         self._fd.write(s)
 
     @staticmethod
-    def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> List[str]:
         """Returns content of given path.
 
         Args:
@@ -113,7 +115,10 @@ class SMBFile(VFSFile):
 
         # get path and return list
         network = PureWindowsPath(rf"\\{hostname}\{share}\\") / root / path
-        return smbclient.listdir(str(network), username=username, password=password)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, partial(smbclient.listdir, str(network), username=username, password=password)
+        )
 
 
 __all__ = ["SMBFile"]

@@ -70,9 +70,9 @@ class LocalFile(VFSFile):
         """
 
         # get root from kwargs
-        if 'root' not in kwargs:
-            raise ValueError('No root directory given.')
-        root = kwargs['root']
+        if "root" not in kwargs:
+            raise ValueError("No root directory given.")
+        root = kwargs["root"]
 
         # build full path
         full_path = os.path.join(root, path)
@@ -84,8 +84,8 @@ class LocalFile(VFSFile):
                 files += [os.path.relpath(os.path.join(cur, filename), root)]
         return files
 
-    @staticmethod
-    def exists(path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
+    @classmethod
+    async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:

@@ -27,7 +27,7 @@ class VFSFile(metaclass=ABCMeta):
         await self.close()
 
     @staticmethod
-    def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> List[str]:
         """Returns content of given path.
 
         Args:
@@ -40,7 +40,7 @@ class VFSFile(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @classmethod
-    def find(cls, path: str, pattern: str, **kwargs: Any) -> List[str]:
+    async def find(cls, path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 
         Args:
@@ -52,10 +52,23 @@ class VFSFile(metaclass=ABCMeta):
         """
 
         # list files in dir
-        files = cls.listdir(path, **kwargs)
+        files = await cls.listdir(path, **kwargs)
 
         # filter by pattern
         return list(filter(lambda f: fnmatch.fnmatch(f, pattern), files))
+
+    @classmethod
+    async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
+        """Checks, whether a given path or file exists.
+
+        Args:
+            path: Path to check.
+            root: VFS root.
+
+        Returns:
+            Whether it exists or not
+        """
+        raise NotImplementedError()
 
 
 __all__ = ["VFSFile"]

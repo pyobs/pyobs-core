@@ -60,6 +60,26 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
+    async def listdir(path: str, **kwargs: Any) -> List[str]:
+        """Returns content of given path.
+
+        Args:
+            path: Path to list.
+            kwargs: Parameters for specific file implementation (same as __init__).
+
+        Returns:
+            List of files in path.
+        """
+
+        # get settings
+        root = kwargs["root"]
+
+        # get path and return list
+        full_path = PurePosixPath(root) / path
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, os.listdir, str(full_path))
+
+    @staticmethod
     async def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 

@@ -43,7 +43,9 @@ class ImageWatcher(Module):
         # add thread func
         self.add_background_task(self._worker)
         if poll:
-            self.add_background_task(self._poller)
+            self.add_background_task(self._watch_poll)
+        else:
+            self.add_background_task(self._watch_inotify)
 
         # variables
         self._watchpath = watchpath
@@ -58,36 +60,34 @@ class ImageWatcher(Module):
             raise ValueError("No filename patterns given for the destinations.")
         self._destinations = destinations
 
-    async def open(self) -> None:
-        """Open module."""
-        await Module.open(self)
+    async def _watch_inotify(self) -> None:
+        from asyncinotify import Inotify, Mask  # type: ignore
 
-        # only open inotify if no polling
-        if not self._poll:
-            self._init_inotify()
+        # Context manager to close the inotify handle after use
+        with Inotify() as inotify:
+            # add watch
+            inotify.add_watch(self._watchpath, Mask.CLOSE_WRITE)
 
-    def _init_inotify(self) -> None:
-        import pyinotify
+            # iterate events forever
+            async for event in inotify:
+                self.add_image(str(event.path))
 
-        class EventHandler(pyinotify.ProcessEvent):  # type: ignore
-            """Event handler for file watcher."""
+    async def _watch_poll(self) -> None:
+        # init list
+        files = await self.vfs.listdir(self._watchpath)
 
-            def __init__(self, main: Any, *args: Any, **kwargs: Any) -> None:
-                """Create event handler."""
-                pyinotify.ProcessEvent.__init__(self, *args, **kwargs)
-                self.main = main
+        # run forever
+        while True:
+            # get new list
+            new_files = await self.vfs.listdir(self._watchpath)
 
-            def process_IN_CLOSE_WRITE(self, event: Any) -> None:
-                """React to IN_CLOSE_WRITE events."""
-                self.main.add_image(event.pathname)
+            # find all new files and add them
+            for f in new_files:
+                if f not in files:
+                    self.add_image(f)
 
-        # start watching directory
-        if self._watchpath:
-            log.info("Start watching directory %s for changes...", self._watchpath)
-            wm = pyinotify.WatchManager()
-            wm.add_watch(self._watchpath, pyinotify.IN_CLOSE_WRITE)
-            self._notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=EventHandler(self))  # , name='observer')
-            self._notifier.start()
+            # store new list
+            files = new_files
 
     async def close(self) -> None:
         """Close image watcher."""
@@ -107,24 +107,7 @@ class ImageWatcher(Module):
 
         # log file
         log.info("Adding new image %s...", filename)
-        self._queue.put_nowait((filename, asyncio.sleep(self._wait_time)))
-
-    async def _poller(self) -> None:
-        # init list
-        files = await self.vfs.listdir(self._watchpath)
-
-        # run forever
-        while True:
-            # get new list
-            new_files = await self.vfs.listdir(self._watchpath)
-
-            # find all new files and add them
-            for f in new_files:
-                if f not in files:
-                    self.add_image(f)
-
-            # store new list
-            files = new_files
+        self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
 
     async def _clear_queue(self) -> None:
         """Clear the queue with new files."""

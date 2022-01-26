@@ -1,3 +1,4 @@
+import fnmatch
 import glob
 import logging
 import os
@@ -28,6 +29,7 @@ class ImageWatcher(Module):
         poll: bool = False,
         poll_interval: int = 5,
         wait_time: int = 10,
+        pattern: str = "*",
         **kwargs: Any,
     ):
         """Create a new image watcher.
@@ -55,6 +57,7 @@ class ImageWatcher(Module):
         self._poll = poll
         self._poll_interval = poll_interval
         self._wait_time = wait_time
+        self._pattern = pattern
 
         # filename patterns
         if not destinations:
@@ -123,7 +126,11 @@ class ImageWatcher(Module):
             filename (str): Local filename of new file.
         """
 
-        # log file
+        # check pattern
+        if not fnmatch.fnmatch(filename, self._pattern):
+            return
+
+        # log and add file
         log.info("Adding new file %s...", filename)
         self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
 

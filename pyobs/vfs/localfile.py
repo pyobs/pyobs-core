@@ -60,6 +60,24 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
+    async def local_path(path: str, **kwargs: Any) -> str:
+        """Returns local path of given path.
+
+        Args:
+            path: Path to list.
+            kwargs: Parameters for specific file implementation (same as __init__).
+
+        Returns:
+            Local path.
+        """
+
+        # get settings
+        root = kwargs["root"]
+
+        # return path
+        return os.path.join(root, path)
+
+    @staticmethod
     async def listdir(path: str, **kwargs: Any) -> List[str]:
         """Returns content of given path.
 

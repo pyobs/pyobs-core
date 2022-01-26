@@ -1,7 +1,7 @@
 import io
 import logging
 import os
-from typing import Optional, Dict, Any, Tuple, List, Callable
+from typing import Optional, Dict, Any, Tuple, List, Callable, Type
 import yaml
 from astropy.io import fits
 import pandas as pd
@@ -211,12 +211,40 @@ class VirtualFileSystem(object):
                 # write file from StringIO
                 await f.write(sio.getvalue())
 
-    def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
+    async def local_path(self, path: str) -> str:
+        """Returns a local filename, but only, if path leads to a LocalFile.
+
+        Args:
+            path: Path to get local path for.
+
+        Returns:
+            Local path.
+
+        Raises:
+            ValueError if path does not lead to LocalFile.
+        """
+        from .localfile import LocalFile
+
+        # get class
+        klass, root, path = self._get_class(path)
+
+        # local file?
+        if not issubclass(klass, LocalFile):
+            raise ValueError(f"Given path {path} is not a local path.")
+
+        # get local path
+        return await klass.local_path(path, **self._roots[root])
+
+    def _get_class(self, path: str) -> Tuple[Type[VFSFile], str, str]:
         # split root
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
-        klass = get_class_from_string(self._roots[root]["class"])
+        return get_class_from_string(self._roots[root]["class"]), root, path
+
+    def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
+        # split root
+        klass, root, path = self._get_class(path)
 
         # get find method
         return getattr(klass, method), root, path

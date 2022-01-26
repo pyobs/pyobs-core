@@ -170,6 +170,7 @@ class ImageWatcher(Module):
                     except:
                         log.exception("Error while copying file, skipping for now.")
                         success = False
+                        break
 
                 # no success?
                 if not success:

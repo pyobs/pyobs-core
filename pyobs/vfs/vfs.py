@@ -221,7 +221,7 @@ class VirtualFileSystem(object):
         klass = get_class_from_string(self._roots[root]["class"])
 
         # get find method
-        return getattr(klass, "find")
+        return getattr(klass, method), root, path
 
     def find(self, path: str, pattern: str) -> List[str]:
         """Find a file in the given path.

@@ -13,9 +13,9 @@ log = logging.getLogger(__name__)
 
 
 class ImageWatcher(Module):
-    """Watch for new images and write them to all given destinations.
+    """Watch for new files and write them to all given destinations.
 
-    Watches a path for new images and stores them in all given destinations. Only if all operations were successful,
+    Watches a path for new files and stores them in all given destinations. Only if all operations were successful,
     the file is deleted.
     """
 
@@ -64,14 +64,21 @@ class ImageWatcher(Module):
     async def _watch_inotify(self) -> None:
         from asyncinotify import Inotify, Mask  # type: ignore
 
+        # get local directory
+        local = await self.vfs.local_path(self._watchpath)
+
         # Context manager to close the inotify handle after use
         with Inotify() as inotify:
-            # add watch
-            inotify.add_watch(self._watchpath, Mask.CLOSE_WRITE)
+            # add watch on local directory
+            inotify.add_watch(local, Mask.CLOSE_WRITE)
 
             # iterate events forever
             async for event in inotify:
-                self.add_image(str(event.path))
+                # get filename by replacing local with watchpath
+                filename = str(event.path).replace(local, self._watchpath)
+
+                # add file
+                self.add_file(filename)
 
     async def _watch_poll(self) -> None:
         # init list
@@ -87,7 +94,7 @@ class ImageWatcher(Module):
             for f in new_files:
                 if f not in files:
                     print(str(path / f))
-                    self.add_image(str(path / f))
+                    self.add_file(str(path / f))
 
             # store new list
             files = set(new_files)
@@ -98,7 +105,7 @@ class ImageWatcher(Module):
 
         # add all files from directory to queue
         for filename in await self.vfs.listdir(self._watchpath):
-            self.add_image(os.path.join(self._watchpath, filename))
+            self.add_file(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:
         """Close image watcher."""
@@ -109,15 +116,15 @@ class ImageWatcher(Module):
             log.info("Stop watching directory...")
             self._notifier.stop()
 
-    def add_image(self, filename: str) -> None:
-        """Add an image to the image database.
+    def add_file(self, filename: str) -> None:
+        """Add a file to the file queue.
 
         Args:
-            filename (str): Local filename of new image.
+            filename (str): Local filename of new file.
         """
 
         # log file
-        log.info("Adding new image %s...", filename)
+        log.info("Adding new file %s...", filename)
         self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
 
     async def _worker(self) -> None:

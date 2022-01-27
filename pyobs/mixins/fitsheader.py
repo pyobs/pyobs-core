@@ -29,6 +29,7 @@ class FitsHeaderMixin:
         fits_headers: Optional[Dict[str, Any]] = None,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
         frame_number: bool = True,
+        night_obs: bool = False,
         **kwargs: Any,
     ):
         """Initialise the mixin.
@@ -38,6 +39,7 @@ class FitsHeaderMixin:
             fits_headers: Additional FITS headers.
             filename: Filename pattern for FITS images.
             frame_number: Whether to add frame number to FITS file header.
+            night_obs: If True, DAY-OBS will contain the night of observation, not the calendar day.
         """
         module = cast(Module, self)
 
@@ -47,6 +49,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_fits_headers = fits_headers if fits_headers is not None else {}
         if "OBSERVER" not in self._fitsheadermixin_fits_headers:
             self._fitsheadermixin_fits_headers["OBSERVER"] = ["pyobs", "Name of observer"]
+        self._fitsheadermixin_night_obs = night_obs
 
         # night exposure number
         self._fitsheadermixin_cache = "/pyobs/modules/%s/cache.yaml" % module.name()
@@ -177,7 +180,10 @@ class FitsHeaderMixin:
                 hdr["LST"] = (lst.to_string(unit=u.hour, sep=":"), "Local sidereal time")
 
         # date of night this observation is in
-        hdr["DAY-OBS"] = (date_obs.night_obs(module.observer).strftime("%Y-%m-%d"), "Night of observation")
+        if self._fitsheadermixin_night_obs:
+            hdr["DAY-OBS"] = (date_obs.night_obs(module.observer).strftime("%Y-%m-%d"), "Night of observation")
+        else:
+            hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
 
     async def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
         """Add FRAMENUM keyword to header

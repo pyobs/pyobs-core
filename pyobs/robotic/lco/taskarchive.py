@@ -330,7 +330,7 @@ class LcoTaskArchive(TaskArchive):
             self._last_changed = data["last_change_time"]
             return self._last_changed
 
-        except TimeoutError:
+        except (TimeoutError, aiohttp.ClientConnectorError):
             # in case of errors, return last time
             return self._last_changed
 
@@ -346,7 +346,7 @@ class LcoTaskArchive(TaskArchive):
             self._last_changed = data["last_schedule_time"]
             return self._last_changed
 
-        except TimeoutError:
+        except (TimeoutError, aiohttp.ClientConnectorError):
             # in case of errors, return last time
             return self._last_scheduled
 

@@ -1,6 +1,8 @@
+import asyncio
 import fnmatch
 import os
-from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast
+from pathlib import PurePosixPath
+from typing import Any, Optional, Iterator, BinaryIO, IO, AnyStr, cast, List
 
 from .file import VFSFile
 
@@ -58,28 +60,94 @@ class LocalFile(VFSFile):
         self.fd.write(s)
 
     @staticmethod
-    def find(path: str, pattern: str, root: str = "", *args: Any, **kwargs: Any) -> Iterator[str]:
+    async def local_path(path: str, **kwargs: Any) -> str:
+        """Returns local path of given path.
+
+        Args:
+            path: Path to list.
+            kwargs: Parameters for specific file implementation (same as __init__).
+
+        Returns:
+            Local path.
+        """
+
+        # get settings
+        root = kwargs["root"]
+
+        # return path
+        return os.path.join(root, path)
+
+    @staticmethod
+    async def listdir(path: str, **kwargs: Any) -> List[str]:
+        """Returns content of given path.
+
+        Args:
+            path: Path to list.
+            kwargs: Parameters for specific file implementation (same as __init__).
+
+        Returns:
+            List of files in path.
+        """
+
+        # get settings
+        root = kwargs["root"]
+
+        # get path and return list
+        full_path = PurePosixPath(root) / path
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, os.listdir, str(full_path))
+
+    @staticmethod
+    async def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
         """Find files by pattern matching.
 
         Args:
             path: Path to search in.
             pattern: Pattern to search for.
-            root: VFS root.
 
         Returns:
             List of found files.
         """
 
+        # get root from kwargs
+        if "root" not in kwargs:
+            raise ValueError("No root directory given.")
+        root = kwargs["root"]
+
         # build full path
         full_path = os.path.join(root, path)
 
         # loop directories
+        files = []
         for cur, dirnames, filenames in os.walk(full_path):
             for filename in fnmatch.filter(filenames, pattern):
-                yield os.path.relpath(os.path.join(cur, filename), root)
+                files += [os.path.relpath(os.path.join(cur, filename), root)]
+        return files
 
     @staticmethod
-    def exists(path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
+    async def remove(path: str, *args: Any, **kwargs: Any) -> bool:
+        """Remove file at given path.
+
+        Args:
+            path: Path of file to delete.
+
+        Returns:
+            Success or not.
+        """
+
+        # get root from kwargs
+        root = kwargs["root"]
+
+        # build full path and remove
+        full_path = os.path.join(root, path)
+        try:
+            os.remove(full_path)
+            return True
+        except (FileNotFoundError, IsADirectoryError):
+            return False
+
+    @classmethod
+    async def exists(cls, path: str, root: str = "", *args: Any, **kwargs: Any) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:

@@ -43,7 +43,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         """
         Module.__init__(self, **kwargs)
         SpectrumFitsHeaderMixin.__init__(
-            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames
+            self, fits_namespaces=fits_namespaces, fits_headers=fits_headers, filenames=filenames, **kwargs
         )
 
         # init camera
@@ -119,6 +119,24 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         if filename is None:
             return hdulist, None
 
+        # store spectrum
+        await self.store_spectrum(hdulist, filename, broadcast)
+
+        # return spectrum and unique
+        self._exposure = None
+        log.info("Finished spectrum %s.", filename)
+        return hdulist, filename
+
+    async def store_spectrum(self, hdulist: fits.HDUList, filename: str, broadcast: bool) -> None:
+        """Store spectrum at given destination.
+        Can be overwritten by derived classes to custom store a file. In those cases, this version should be called!
+
+        Args:
+            hdulist: HDU list with spectrum.
+            filename: Name to store file with.
+            broadcast: Whether to broadcast new spectrum.
+        """
+
         # upload file
         try:
             log.info("Uploading spectrum to file server...")
@@ -130,11 +148,6 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         if broadcast and self.comm:
             log.info("Broadcasting spectrum ID...")
             await self.comm.send_event(NewSpectrumEvent(filename))
-
-        # return spectrum and unique
-        self._exposure = None
-        log.info("Finished spectrum %s.", filename)
-        return hdulist, filename
 
     @timeout(10)
     async def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:

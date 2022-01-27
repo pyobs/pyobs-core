@@ -1,25 +1,28 @@
-## Changelog
-
-### v0.16.0 (2022-01-14)
+v0.16.0 (2022-01-14)
+********************
 * Added new exceptions.
 * Use those new exceptions to keep track of errors over time and raise SevereErrors.
 * Add new state to module, so that a severe error can put a module into an error state.
 * Added get_state() and get_error_string() methods to modules.
 
-### v0.15.0 (2021-12-29)
+v0.15.0 (2021-12-29)
+********************
 * Added Comm implementation for SliXMPP (which should now be default) and moved old comm.xmpp to comm.sleekcmpp.
 * Using asyncio throughout the project, all method and event handlers are async now, as well as open/close methods.
 * Got rid of multi-threading as best as possible.
 * VFS now also uses asyncio.
 
-### v0.14.2
+v0.14.2
+*******
 * Fixed a bug with Poetry
 
-### v0.14.1
+v0.14.1
+*******
 * Added possibility to use class hierarchy for events, i.e. subscribe to a class and receive all derived events.
 * Change to Poetry as build system
 
-### v0.14 (2021-11-03)
+v0.14 (2021-11-03)
+******************
 * Guiding modules accept a pipeline now, so more image processors than just Offsets can run.
 * Renamed ICameraBinning, ICameraExposureTime and ICameraWindow and removed the "Camera" part.
 * Added meta attribute (temporary storage, not I/O persistent) to Image.
@@ -48,7 +51,8 @@
 * And a lot more cleanup and re-organization.
 
 
-### v0.13 (2021-04-30)
+v0.13 (2021-04-30)
+******************
 * Added a Telegram bot module.
 * Added a module for a Kiosk mode, in which pictures are published on a webpage.
 * Added new IImageFormats interface for cameras that support multiple ones (e.g. grayscale and color).
@@ -61,8 +65,8 @@
 * Added lots of documentation, which included setting `__module__` for many classes.
 
 
-### v0.12 (2021-01-01)
-
+v0.12 (2021-01-01)
+******************
 * Changed PyObsModule to Module.
 * Removed possibility for network configs.
 * Added MultiModule, which allows for multiple modules in one process.
@@ -84,8 +88,8 @@
 * Moved ImageType enumerator from ICamera to utils.enums.
 
 
-### v0.11 (2020-10-18)
-
+v0.11 (2020-10-18)
+******************
 * Major changes to robotic system based on LCO portal.
 * Setting filter/window/binning in acquisition.
 * Added WaitForMotion and Follow mixins.
@@ -95,8 +99,8 @@
 * New interface for Lat/Lon telescopes, e.g. solar telescopes.
 
 
-### v0.10 (2020-05-05)
-
+v0.10 (2020-05-05)
+******************
 * Re-factored acquisition modules and added one based on astrometry.
 * Added combine_binnings parameter to FlatFielder, which triggers, whether to use one function for all binnings or not
 * Added get_current_weather() to IWeather
@@ -106,13 +110,13 @@
 * Some new mixins
 
 
-### v0.9 (2020-03-06)
-
+v0.9 (2020-03-06)
+*****************
 * working on robotic system based on LCO portal
 
 
-### v0.8 (2019-11-17)
-
+v0.8 (2019-11-17)
+*****************
 * Added module for bright star acquisition.
 * Added and changed some FITS header keywords.
 * Added module for flat-fielding.

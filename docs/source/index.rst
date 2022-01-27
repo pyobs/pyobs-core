@@ -34,13 +34,24 @@ API Reference
    addmod/index
 
 
+Affiliated projects
+-------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   pyobs-weather <https://docs.pyobs.org/projects/pyobs-weather/en/latest/>
+   pyobs-archive <https://docs.pyobs.org/projects/pyobs-archive/en/latest/>
+
+
 Project details
 ---------------
 
 .. toctree::
    :maxdepth: 1
 
-   project/credits
+   project/changelog
+   Team <https://www.pyobs.org/team/>
    project/license
    project/3rdparty
 

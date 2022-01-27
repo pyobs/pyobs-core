@@ -1,6 +1,9 @@
 pyobs
 =====
 
+http://www.pyobs.org/
+
+
 Quick start
 -----------
 
@@ -23,15 +26,3 @@ Create a test configuration test.yaml:
 And run it:
    
     pyobs test.yaml
-
-
-Documentation
--------------
-See http://pyobs.github.io/.
-
-
-Contributors
-------------
-- Tim-Oliver Husser (thusser@uni-goettingen.de)
-- Frederick V. Hessman
-- Karl Royen

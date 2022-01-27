@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "0.16.1"
+version = "0.16.2"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -26,12 +26,12 @@ tornado = "^6.1"
 python-telegram-bot = "^13.8"
 typing-extensions = "^4.0"
 sep = [{ version = "^1.2", platform = "linux" }]
-pyinotify = [{ version = "^0.9", platform = "linux" }]
 python-daemon = [{ version = "^2.3", platform = "linux" }]
 astroquery = "^0.4.4"
 slixmpp = "^1.7.1"
 aiohttp = "^3.8.1"
 single-source = "^0.2.0"
+asyncinotify = [{ version = "^2.0.2", platform = "linux" }]
 
 [tool.poetry.dev-dependencies]
 types-cryptography = "^3.3.7"

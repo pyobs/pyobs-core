@@ -27,7 +27,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self,
         focuser: Union[str, IFocuser],
         camera: Union[str, IImageGrabber],
-        series: FocusSeries,
+        series: Union[Dict[str, Any], FocusSeries],
         offset: bool = False,
         filters: Optional[Union[str, IFilters]] = None,
         filter_name: Optional[str] = None,

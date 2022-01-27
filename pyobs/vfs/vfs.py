@@ -1,13 +1,12 @@
-import asyncio
 import io
 import logging
 import os
-from functools import partial
-from typing import Optional, Dict, Any, Tuple, cast, IO
+from typing import Optional, Dict, Any, Tuple, List, Callable, Type
 import yaml
 from astropy.io import fits
 import pandas as pd
 
+from pyobs.object import get_class_from_string
 from pyobs.images import Image
 from .file import VFSFile
 
@@ -212,7 +211,45 @@ class VirtualFileSystem(object):
                 # write file from StringIO
                 await f.write(sio.getvalue())
 
-    def find(self, path: str, pattern: str):
+    async def local_path(self, path: str) -> str:
+        """Returns a local filename, but only, if path leads to a LocalFile.
+
+        Args:
+            path: Path to get local path for.
+
+        Returns:
+            Local path.
+
+        Raises:
+            ValueError if path does not lead to LocalFile.
+        """
+        from .localfile import LocalFile
+
+        # get class
+        klass, root, path = self._get_class(path)
+
+        # local file?
+        if not issubclass(klass, LocalFile):
+            raise ValueError(f"Given path {path} is not a local path.")
+
+        # get local path
+        return await klass.local_path(path, **self._roots[root])
+
+    def _get_class(self, path: str) -> Tuple[Type[VFSFile], str, str]:
+        # split root
+        root, path = VirtualFileSystem.split_root(path)
+
+        # get root class
+        return get_class_from_string(self._roots[root]["class"]), root, path
+
+    def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
+        # split root
+        klass, root, path = self._get_class(path)
+
+        # get find method
+        return getattr(klass, method), root, path
+
+    async def find(self, path: str, pattern: str) -> List[str]:
         """Find a file in the given path.
 
         Args:
@@ -223,23 +260,30 @@ class VirtualFileSystem(object):
             List of found files.
         """
 
-        # split root
-        if not path.endswith("/"):
-            path += "/"
-        root, path = VirtualFileSystem.split_root(path)
-
-        # get root class
-        from pyobs.object import get_class_from_string
-
-        klass = get_class_from_string(self._roots[root]["class"])
-
-        # get find method
-        find = getattr(klass, "find")
+        # get method
+        find, root, path = self._get_method(path, "find")
 
         # and call it
-        return find(path, pattern, **self._roots[root])
+        return await find(path, pattern, **self._roots[root])
 
-    def exists(self, path: str) -> bool:
+    async def listdir(self, path: str) -> List[str]:
+        """Find a file in the given path.
+
+        Args:
+            path: Path to search in.
+            pattern: Pattern to search for.
+
+        Returns:
+            List of found files.
+        """
+
+        # get method
+        listdir, root, path = self._get_method(path, "listdir")
+
+        # and call it
+        return await listdir(path, **self._roots[root])
+
+    async def exists(self, path: str) -> bool:
         """Checks, whether a given path or file exists.
 
         Args:
@@ -249,21 +293,27 @@ class VirtualFileSystem(object):
             Whether it exists or not
         """
 
-        # split root
-        if not path.endswith("/"):
-            path += "/"
-        root, path = VirtualFileSystem.split_root(path)
-
-        # get root class
-        from pyobs.object import get_class_from_string
-
-        klass = get_class_from_string(self._roots[root]["class"])
-
-        # get exists method
-        exists = getattr(klass, "exists")
+        # get method
+        exists, root, path = self._get_method(path, "exists")
 
         # and call it
-        return exists(path, **self._roots[root])
+        return await exists(path, **self._roots[root])
+
+    async def remove(self, path: str) -> bool:
+        """Removes file with given path.
+
+        Args:
+            path: Path to delete.
+
+        Returns:
+            Success of deletion.
+        """
+
+        # get method
+        remove, root, path = self._get_method(path, "remove")
+
+        # and call it
+        return await remove(path, **self._roots[root])
 
 
 __all__ = ["VirtualFileSystem", "VFSFile"]

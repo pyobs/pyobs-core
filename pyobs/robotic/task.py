@@ -6,13 +6,13 @@ from pyobs.object import Object
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic.taskarchive import TaskArchive
+    from pyobs.robotic.schedule import Schedule
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, tasks: "TaskArchive", **kwargs: Any):
+    def __init__(self, schedule: "Schedule", **kwargs: Any):
         Object.__init__(self, **kwargs)
-        self.task_archive = tasks
+        self.schedule = schedule
 
     @property
     @abstractmethod

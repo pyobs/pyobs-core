@@ -50,7 +50,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._obs = None
         self._exp = None
 
-    async def open(self):
+    async def open(self) -> None:
         """Open module."""
         await Module.open(self)
 
@@ -62,12 +62,12 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # start
         self._running = True
 
-    async def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         log.info("Starting robotic system...")
         self._running = True
 
-    async def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         log.info("Stopping robotic system...")
         self._running = False
@@ -76,7 +76,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         """Whether a service is running."""
         return self._running
 
-    async def _run_thread(self):
+    async def _run_thread(self) -> None:
         # wait a little
         await asyncio.sleep(1)
 

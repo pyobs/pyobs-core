@@ -40,7 +40,7 @@ class TaskArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def update_schedule(self, blocks: List[Task], start_time: Time) -> None:
+    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:

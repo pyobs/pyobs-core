@@ -4,3 +4,4 @@ from .default import LcoDefaultScript
 from .autofocus import LcoAutoFocusScript
 from .script import LcoScript
 from .taskschedule import LcoTaskSchedule
+from .taskrunner import LcoTaskRunner

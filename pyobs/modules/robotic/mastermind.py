@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import threading
-from typing import Union, List, Dict, Tuple, Any, Optional
+from typing import Union, List, Dict, Tuple, Any, Optional, cast
 import astropy.units as u
 
 from pyobs.modules import Module
@@ -9,7 +9,7 @@ from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic.taskarchive import TaskArchive
+from pyobs.robotic.schedule import Schedule
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 
@@ -23,12 +23,16 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     __module__ = "pyobs.modules.robotic"
 
     def __init__(
-        self, tasks: Union[TaskArchive, dict], allowed_late_start: int = 300, allowed_overrun: int = 300, **kwargs: Any
+        self,
+        schedule: Union[Schedule, Dict[str, Any]],
+        allowed_late_start: int = 300,
+        allowed_overrun: int = 300,
+        **kwargs: Any,
     ):
         """Initialize a new auto focus system.
 
         Args:
-            tasks: Task archive to use
+            schedule: Object that can return schedule.
             allowed_late_start: Allowed seconds to start late.
             allowed_overrun: Allowed time for a task to exceed it's window in seconds
         """
@@ -42,8 +46,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # add thread func
         self.add_background_task(self._run_thread, True)
 
-        # get task archive
-        self._task_archive = self.add_child_object(tasks, TaskArchive)
+        # get schedule
+        self._schedule = self.add_child_object(schedule, Schedule)
 
         # observation name and exposure number
         self._task = None
@@ -95,7 +99,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            task: Task = self._task_archive.get_task(now)
+            task: Optional[Task] = self._schedule.get_task(now)
             if task is None or not await task.can_run():
                 # no task found
                 await asyncio.sleep(10)
@@ -121,8 +125,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # reset warning
             first_late_start_warning = True
 
-            # set it
-            self._task = task
+            # task is definitely not None here
+            self._task = cast(Task, task)
 
             # ETA
             eta = now + self._task.duration * u.second
@@ -132,7 +136,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
-            await self._task_archive.run_task(self._task)
+            await self._schedule.run_task(self._task)
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))

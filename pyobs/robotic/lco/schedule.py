@@ -24,10 +24,9 @@ class LcoSchedule(Schedule):
         url: str,
         site: str,
         token: str,
-        portal_enclosure: Optional[str] = None,
-        portal_telescope: Optional[str] = None,
-        portal_instrument: Optional[str] = None,
-        portal_instrument_type: Optional[str] = None,
+        enclosure: Optional[str] = None,
+        telescope: Optional[str] = None,
+        instrument: Optional[str] = None,
         period: int = 24,
         scripts: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
@@ -52,9 +51,9 @@ class LcoSchedule(Schedule):
         # store stuff
         self._url = url
         self._site = site
-        self._portal_enclosure = portal_enclosure
-        self._portal_telescope = portal_telescope
-        self._portal_instrument = portal_instrument
+        self._enclosure = enclosure
+        self._telescope = telescope
+        self._instrument = instrument
         self._period = TimeDelta(period * u.hour)
         self.instruments: Dict[str, Any] = {}
         self._last_schedule_time: Optional[Time] = None
@@ -302,8 +301,8 @@ class LcoSchedule(Schedule):
         # define parameters
         params = {
             "site": self._site,
-            "enclosure": self._portal_enclosure,
-            "telescope": self._portal_telescope,
+            "enclosure": self._enclosure,
+            "telescope": self._telescope,
             "start": now.isot,
             "end": (now + self._period).isot,
         }
@@ -339,16 +338,16 @@ class LcoSchedule(Schedule):
             observations.append(
                 {
                     "site": self._site,
-                    "enclosure": self._portal_enclosure,
-                    "telescope": self._portal_telescope,
+                    "enclosure": self._enclosure,
+                    "telescope": self._telescope,
                     "start": block.start_time.isot,
                     "end": block.end_time.isot,
                     "request": request["id"],
                     "configuration_statuses": [
                         {
                             "configuration": request["configurations"][0]["id"],
-                            "instrument_name": self._portal_instrument,
-                            "guide_camera_name": self._portal_instrument,
+                            "instrument_name": self._instrument,
+                            "guide_camera_name": self._instrument,
                         }
                     ],
                 }

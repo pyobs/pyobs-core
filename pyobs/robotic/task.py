@@ -1,16 +1,15 @@
 from abc import ABCMeta, abstractmethod
-from asyncio import Event
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from pyobs.object import Object
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic.schedule import Schedule
+    from pyobs.robotic.taskschedule import TaskSchedule
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, schedule: "Schedule", **kwargs: Any):
+    def __init__(self, schedule: "TaskSchedule", **kwargs: Any):
         Object.__init__(self, **kwargs)
         self.schedule = schedule
 

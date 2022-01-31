@@ -15,7 +15,7 @@ from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, Schedule
+from pyobs.robotic import TaskArchive, TaskSchedule
 
 
 log = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class Scheduler(Module, IStartStop, IRunnable):
     def __init__(
         self,
         tasks: Union[Dict[str, Any], TaskArchive],
-        schedule: Union[Dict[str, Any], Schedule],
+        schedule: Union[Dict[str, Any], TaskSchedule],
         schedule_range: int = 24,
         safety_time: int = 60,
         twilight: str = "astronomical",
@@ -53,7 +53,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive)
-        self._schedule = self.add_child_object(schedule, Schedule)
+        self._schedule = self.add_child_object(schedule, TaskSchedule)
 
         # store
         self._schedule_range = schedule_range
@@ -218,7 +218,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             await asyncio.sleep(1)
 
     async def _prepare_schedule(self) -> Tuple[List[ObservingBlock], Time, Time, List[Any]]:
-        """Schedule blocks."""
+        """TaskSchedule blocks."""
 
         # only global constraint is the night
         if self._twilight == "astronomical":

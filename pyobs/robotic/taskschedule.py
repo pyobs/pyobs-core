@@ -7,7 +7,7 @@ from .task import Task
 from pyobs.object import Object
 
 
-class Schedule(Object, metaclass=ABCMeta):
+class TaskSchedule(Object, metaclass=ABCMeta):
     def __init__(self, **kwargs: Any):
         Object.__init__(self, **kwargs)
 
@@ -78,4 +78,4 @@ class Schedule(Object, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["Schedule"]
+__all__ = ["TaskSchedule"]

@@ -9,14 +9,14 @@ import astropy.units as u
 
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
-from pyobs.robotic.schedule import Schedule
+from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
 from .task import LcoTask
 
 log = logging.getLogger(__name__)
 
 
-class LcoSchedule(Schedule):
+class LcoTaskSchedule(TaskSchedule):
     """Scheduler for using the LCO portal"""
 
     def __init__(
@@ -43,7 +43,7 @@ class LcoSchedule(Schedule):
             period: Period to schedule in hours
             scripts: External scripts
         """
-        Schedule.__init__(self, **kwargs)
+        TaskSchedule.__init__(self, **kwargs)
 
         # portal
         self._portal = Portal(url, token)
@@ -387,4 +387,4 @@ class LcoSchedule(Schedule):
                 log.warning("Error from portal: " + str(err["non_field_errors"]))
 
 
-__all__ = ["LcoSchedule"]
+__all__ = ["LcoTaskSchedule"]

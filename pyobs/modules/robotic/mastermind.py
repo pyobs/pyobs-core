@@ -9,7 +9,7 @@ from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic.schedule import Schedule
+from pyobs.robotic.schedule import TaskSchedule
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 
@@ -24,7 +24,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     def __init__(
         self,
-        schedule: Union[Schedule, Dict[str, Any]],
+        schedule: Union[TaskSchedule, Dict[str, Any]],
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
         **kwargs: Any,
@@ -47,7 +47,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self.add_background_task(self._run_thread, True)
 
         # get schedule
-        self._schedule = self.add_child_object(schedule, Schedule)
+        self._schedule = self.add_child_object(schedule, TaskSchedule)
 
         # observation name and exposure number
         self._task = None

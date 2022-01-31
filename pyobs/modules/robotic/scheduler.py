@@ -3,7 +3,7 @@ import copy
 import json
 import logging
 import multiprocessing as mp
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Tuple, Any, Optional, Dict
 from astroplan import AtNightConstraint, Transitioner, Schedule, TimeConstraint, ObservingBlock, PriorityScheduler
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -27,7 +27,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     def __init__(
         self,
-        tasks: Union[dict, TaskArchive],
+        tasks: Union[Dict[str, Any], TaskArchive],
         schedule_range: int = 24,
         safety_time: int = 60,
         twilight: str = "astronomical",
@@ -63,7 +63,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._trigger_on_task_finished = trigger_on_task_finished
 
         # time to start next schedule from
-        self._schedule_start = None
+        self._schedule_start: Optional[Time] = None
 
         # ID of currently running task, and current (or last if finished) block
         self._current_task_id = None
@@ -76,7 +76,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self.add_background_task(self._schedule_thread)
         self.add_background_task(self._update_thread)
 
-    async def open(self):
+    async def open(self) -> None:
         """Open module."""
         await Module.open(self)
 
@@ -86,7 +86,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
-    async def start(self, **kwargs: Any):
+    async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""
         self._running = True
 
@@ -190,7 +190,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         unique2 = [names2[n] for n in additional2]
         return unique1, unique2
 
-    async def _schedule_thread(self):
+    async def _schedule_thread(self) -> None:
         # run forever
         while True:
             # need update?
@@ -207,11 +207,11 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    def _schedule_process(self):
+    def _schedule_process(self) -> None:
         """This is run in a new process and starts a new loop running the _schedule method."""
         asyncio.run(self._schedule())
 
-    async def _schedule(self):
+    async def _schedule(self) -> None:
         """Actually do the scheduling, usually run in a separate process."""
 
         # only global constraint is the night
@@ -338,7 +338,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         else:
             log.info("Finished calculating schedule for 0 blocks.")
 
-    async def run(self, **kwargs: Any):
+    async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""
         self._need_update = True
 

@@ -73,8 +73,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._blocks: List[ObservingBlock] = []
 
         # update thread
-        self.add_background_task(self._schedule_thread)
-        self.add_background_task(self._update_thread)
+        self.add_background_task(self._schedule_worker)
+        self.add_background_task(self._update_worker)
 
     async def open(self) -> None:
         """Open module."""
@@ -90,7 +90,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         """Start scheduler."""
         self._running = True
 
-    async def stop(self, **kwargs: Any):
+    async def stop(self, **kwargs: Any) -> None:
         """Stop scheduler."""
         self._running = False
 
@@ -98,7 +98,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         """Whether scheduler is running."""
         return self._running
 
-    async def _update_thread(self):
+    async def _update_worker(self) -> None:
         # time of last change in blocks
         last_change = None
 
@@ -190,7 +190,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         unique2 = [names2[n] for n in additional2]
         return unique1, unique2
 
-    async def _schedule_thread(self) -> None:
+    async def _schedule_worker(self) -> None:
         # run forever
         while True:
             # need update?
@@ -198,21 +198,24 @@ class Scheduler(Module, IStartStop, IRunnable):
                 # reset need for update
                 self._need_update = False
 
-                # run scheduler in separate process and wait for it
-                p = mp.Process(target=self._schedule_process)
-                p.start()
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, p.join)
+                try:
+                    # prepare scheduler
+                    blocks, start, end, constraints = await self._prepare_schedule()
+
+                    # schedule
+                    scheduled_blocks = await self._schedule(blocks, start, end, constraints)
+
+                    # finish schedule
+                    await self._finish_schedule(scheduled_blocks, start)
+
+                except ValueError as e:
+                    log.warning(str(e))
 
             # sleep a little
             await asyncio.sleep(1)
 
-    def _schedule_process(self) -> None:
-        """This is run in a new process and starts a new loop running the _schedule method."""
-        asyncio.run(self._schedule())
-
-    async def _schedule(self) -> None:
-        """Actually do the scheduling, usually run in a separate process."""
+    async def _prepare_schedule(self) -> Tuple[List[ObservingBlock], Time, Time, List[Any]]:
+        """Schedule blocks."""
 
         # only global constraint is the night
         if self._twilight == "astronomical":
@@ -273,7 +276,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         end = start + TimeDelta(self._schedule_range * u.hour)
 
         # remove currently running block and filter by start time
-        blocks = []
+        blocks: List[ObservingBlock] = []
         for b in filter(lambda x: x.configuration["request"]["id"] != self._current_task_id, copied_blocks):
             time_constraint_found = False
             # loop all constraints
@@ -295,14 +298,63 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # if need new update, skip here
         if self._need_update:
-            log.info("Not running scheduler, since update was requested.")
-            return
+            raise ValueError("Not running scheduler, since update was requested.")
 
         # no blocks found?
         if len(blocks) == 0:
-            log.info("No blocks left for scheduling.")
             await self._task_archive.update_schedule([], start)
+            raise ValueError("No blocks left for scheduling.")
+
+        # return all
+        return blocks, start, end, constraints
+
+    async def _schedule(
+        self, blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any]
+    ) -> List[ObservingBlock]:
+
+        # run actual scheduler in separate process and wait for it
+        qout: mp.Queue = mp.Queue()
+        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, qout))
+        p.start()
+
+        # wait for process to finish
+        # note that the process only finishes, when the queue is empty! so we have to poll the queue first
+        # and then the process.
+        loop = asyncio.get_running_loop()
+        scheduled_blocks: List[ObservingBlock] = await loop.run_in_executor(None, qout.get, True)
+        await loop.run_in_executor(None, p.join)
+        return scheduled_blocks
+
+    async def _finish_schedule(self, scheduled_blocks: List[ObservingBlock], start: Time) -> None:
+        # if need new update, skip here
+        if self._need_update:
+            log.info("Not using scheduler results, since update was requested.")
             return
+
+        # update
+        await self._task_archive.update_schedule(scheduled_blocks, start)
+        if len(scheduled_blocks) > 0:
+            log.info("Finished calculating schedule for %d block(s):", len(scheduled_blocks))
+            for i, block in enumerate(scheduled_blocks, 1):
+                log.info(
+                    "  #%d: %s to %s (%.1f)",
+                    block.configuration["request"]["id"],
+                    block.start_time.strftime("%H:%M:%S"),
+                    block.end_time.strftime("%H:%M:%S"),
+                    block.priority,
+                )
+        else:
+            log.info("Finished calculating schedule for 0 blocks.")
+
+    def _schedule_process(
+        self,
+        blocks: List[ObservingBlock],
+        start: Time,
+        end: Time,
+        constraints: List[Any],
+        scheduled_blocks: mp.Queue,
+    ) -> None:
+        """Actually do the scheduling, usually run in a separate process."""
 
         # log it
         log.info("Calculating schedule for %d schedulable block(s) starting at %s...", len(blocks), start)
@@ -315,28 +367,10 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # run scheduler
         time_range = Schedule(start, end)
-        loop = asyncio.get_running_loop()
-        schedule = await loop.run_in_executor(None, scheduler, blocks, time_range)
+        schedule = scheduler(blocks, time_range)
 
-        # if need new update, skip here
-        if self._need_update:
-            log.info("Not using scheduler results, since update was requested.")
-            return
-
-        # update
-        await self._task_archive.update_schedule(schedule.scheduled_blocks, start)
-        if len(schedule.scheduled_blocks) > 0:
-            log.info("Finished calculating schedule for %d block(s):", len(schedule.scheduled_blocks))
-            for i, block in enumerate(schedule.scheduled_blocks, 1):
-                log.info(
-                    "  #%d: %s to %s (%.1f)",
-                    block.configuration["request"]["id"],
-                    block.start_time.strftime("%H:%M:%S"),
-                    block.end_time.strftime("%H:%M:%S"),
-                    block.priority,
-                )
-        else:
-            log.info("Finished calculating schedule for 0 blocks.")
+        # put scheduled blocks in queue
+        scheduled_blocks.put(schedule.scheduled_blocks)
 
     async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""

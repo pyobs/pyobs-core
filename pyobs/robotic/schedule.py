@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Any, List, Dict
+from typing import Optional, Any, List, Dict, Type
 from astroplan import ObservingBlock
 
 from pyobs.utils.time import Time
@@ -31,6 +31,9 @@ class Schedule(Object, metaclass=ABCMeta):
             start_time: Start time for schedule.
         """
         ...
+
+    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
+        return self.get_object(klass, tasks=self, **kwargs)
 
     @abstractmethod
     def get_task(self, time: Time) -> Optional[Task]:

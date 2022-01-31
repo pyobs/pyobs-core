@@ -2,7 +2,6 @@ import asyncio
 from urllib.parse import urljoin
 import logging
 from typing import List, Dict, Optional, Any, cast
-
 import aiohttp as aiohttp
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
@@ -10,8 +9,8 @@ import astropy.units as u
 
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
+from pyobs.robotic.schedule import Schedule
 from .portal import Portal
-from ..schedule import Schedule
 from .task import LcoTask
 
 log = logging.getLogger(__name__)
@@ -25,19 +24,12 @@ class LcoSchedule(Schedule):
         url: str,
         site: str,
         token: str,
-        telescope: Optional[str] = None,
-        camera: Optional[str] = None,
-        filters: Optional[str] = None,
-        roof: Optional[str] = None,
-        autoguider: Optional[str] = None,
-        update: bool = True,
-        scripts: Optional[Dict[str, Any]] = None,
         portal_enclosure: Optional[str] = None,
         portal_telescope: Optional[str] = None,
         portal_instrument: Optional[str] = None,
         portal_instrument_type: Optional[str] = None,
         period: int = 24,
-        proxies: Optional[List[str]] = None,
+        scripts: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ):
         """Creates a new LCO scheduler.
@@ -46,19 +38,11 @@ class LcoSchedule(Schedule):
             url: URL to portal
             site: Site filter for fetching requests
             token: Authorization token for portal
-            telescope: Telescope to use
-            camera: Camera to use
-            filters: Filter wheel to use
-            roof: Roof to use
-            autoguider: Autoguider to use
-            update: Whether to update scheduler in background
-            scripts: External scripts
             portal_enclosure: Enclosure for new schedules.
             portal_telescope: Telescope for new schedules.
             portal_instrument: Instrument for new schedules.
-            portal_instrument_type: Instrument type to schedule.
             period: Period to schedule in hours
-            proxies: Proxies for requests.
+            scripts: External scripts
         """
         Schedule.__init__(self, **kwargs)
 
@@ -71,18 +55,10 @@ class LcoSchedule(Schedule):
         self._portal_enclosure = portal_enclosure
         self._portal_telescope = portal_telescope
         self._portal_instrument = portal_instrument
-        self._portal_instrument_type = portal_instrument_type
         self._period = TimeDelta(period * u.hour)
-        self.telescope = telescope
-        self.camera = camera
-        self.filters = filters
-        self.roof = roof
-        self.autoguider = autoguider
         self.instruments: Dict[str, Any] = {}
-        self._update = update
         self._last_schedule_time: Optional[Time] = None
-        self.scripts = scripts
-        self._proxies = {} if proxies is None else proxies
+        self._scripts = scripts
 
         # buffers in case of errors
         self._last_scheduled: Optional[Time] = None
@@ -102,8 +78,7 @@ class LcoSchedule(Schedule):
         await self._init_from_portal()
 
         # start update thread
-        if self._update:
-            asyncio.create_task(self._update_schedule())
+        asyncio.create_task(self._update_schedule())
 
     async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
@@ -239,7 +214,7 @@ class LcoSchedule(Schedule):
                     sched["end"] = Time(sched["end"])
 
                     # create task
-                    task = self._create_task(LcoTask, config=sched, scripts=self.scripts)
+                    task = self._create_task(LcoTask, config=sched, scripts=self._scripts)
                     tasks[sched["request"]["id"]] = task
 
                 # finished
@@ -397,7 +372,7 @@ class LcoSchedule(Schedule):
         url = urljoin(self._url, "/api/observations/")
         headers = {"Authorization": "Token " + self._token, "Content-Type": "application/json; charset=utf8"}
 
-        # submit obervations
+        # submit observations
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=observations, headers=headers, timeout=10) as response:
                 if response.status != 200:
@@ -408,9 +383,9 @@ class LcoSchedule(Schedule):
         log.info("%d observations created.", data["num_created"])
 
         # errors?
-        if "errors" in data and len(data["errors"] > 0):
+        if "errors" in data and len(data["errors"]) > 0:
             for err in data["errors"].values():
-                log.warning("Error from portal: %s", err["non_field_errors"])
+                log.warning("Error from portal: " + str(err["non_field_errors"]))
 
 
-__all__ = ["LcoTaskArchive"]
+__all__ = ["LcoSchedule"]

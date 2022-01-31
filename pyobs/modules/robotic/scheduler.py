@@ -4,7 +4,8 @@ import json
 import logging
 import multiprocessing as mp
 from typing import Union, List, Tuple, Any, Optional, Dict
-from astroplan import AtNightConstraint, Transitioner, Schedule, TimeConstraint, ObservingBlock, PriorityScheduler
+import astroplan
+from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -14,7 +15,7 @@ from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive
+from pyobs.robotic import TaskArchive, Schedule
 
 
 log = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class Scheduler(Module, IStartStop, IRunnable):
     def __init__(
         self,
         tasks: Union[Dict[str, Any], TaskArchive],
+        schedule: Union[Dict[str, Any], Schedule],
         schedule_range: int = 24,
         safety_time: int = 60,
         twilight: str = "astronomical",
@@ -51,6 +53,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive)
+        self._schedule = self.add_child_object(schedule, Schedule)
 
         # store
         self._schedule_range = schedule_range
@@ -121,7 +124,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 log.info("Downloaded %d schedulable block(s).", len(blocks))
 
                 # compare new and old lists
-                removed, added = Scheduler._compare_block_lists(self._blocks, blocks)
+                removed, added = self._compare_block_lists(self._blocks, blocks)
 
                 # schedule update
                 self._need_update = True
@@ -203,7 +206,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     blocks, start, end, constraints = await self._prepare_schedule()
 
                     # schedule
-                    scheduled_blocks = await self._schedule(blocks, start, end, constraints)
+                    scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
 
                     # finish schedule
                     await self._finish_schedule(scheduled_blocks, start)
@@ -219,9 +222,9 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # only global constraint is the night
         if self._twilight == "astronomical":
-            constraints = [AtNightConstraint.twilight_astronomical()]
+            constraints = [astroplan.AtNightConstraint.twilight_astronomical()]
         elif self._twilight == "nautical":
-            constraints = [AtNightConstraint.twilight_nautical()]
+            constraints = [astroplan.AtNightConstraint.twilight_nautical()]
         else:
             raise ValueError("Unknown twilight type.")
 
@@ -236,7 +239,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
             # it also doesn't match the requested observing windows exactly, so we make them a little smaller.
             for constraint in block.constraints:
-                if isinstance(constraint, TimeConstraint):
+                if isinstance(constraint, astroplan.TimeConstraint):
                     constraint.min += 30 * u.second
                     constraint.max -= 30 * u.second
 
@@ -255,7 +258,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             # get running task from archive
             log.info("Trying to find running block in current schedule...")
             now = Time.now()
-            tasks = await self._task_archive.get_pending_tasks(now, now, include_running=True)
+            tasks = await self._schedule.get_schedule(now, now, include_running=True)
             if self._current_task_id in tasks:
                 running_task = tasks[self._current_task_id]
             else:
@@ -281,7 +284,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             time_constraint_found = False
             # loop all constraints
             for c in b.constraints:
-                if isinstance(c, TimeConstraint):
+                if isinstance(c, astroplan.TimeConstraint):
                     # we found a time constraint
                     time_constraint_found = True
 
@@ -302,13 +305,13 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # no blocks found?
         if len(blocks) == 0:
-            await self._task_archive.update_schedule([], start)
+            await self._schedule.update_schedule([], start)
             raise ValueError("No blocks left for scheduling.")
 
         # return all
         return blocks, start, end, constraints
 
-    async def _schedule(
+    async def _schedule_blocks(
         self, blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any]
     ) -> List[ObservingBlock]:
 
@@ -332,7 +335,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return
 
         # update
-        await self._task_archive.update_schedule(scheduled_blocks, start)
+        await self._schedule.update_schedule(scheduled_blocks, start)
         if len(scheduled_blocks) > 0:
             log.info("Finished calculating schedule for %d block(s):", len(scheduled_blocks))
             for i, block in enumerate(scheduled_blocks, 1):
@@ -360,13 +363,13 @@ class Scheduler(Module, IStartStop, IRunnable):
         log.info("Calculating schedule for %d schedulable block(s) starting at %s...", len(blocks), start)
 
         # we don't need any transitions
-        transitioner = Transitioner()
+        transitioner = astroplan.Transitioner()
 
         # create scheduler
-        scheduler = PriorityScheduler(constraints, self.observer, transitioner=transitioner)
+        scheduler = astroplan.PriorityScheduler(constraints, self.observer, transitioner=transitioner)
 
         # run scheduler
-        time_range = Schedule(start, end)
+        time_range = astroplan.Schedule(start, end)
         schedule = scheduler(blocks, time_range)
 
         # put scheduled blocks in queue

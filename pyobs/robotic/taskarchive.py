@@ -17,9 +17,6 @@ class TaskArchive(Object, metaclass=ABCMeta):
     async def close(self) -> None:
         pass
 
-    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
-        return self.get_object(klass, tasks=self, **kwargs)
-
     @abstractmethod
     async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""

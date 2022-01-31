@@ -1,8 +1,13 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Any, TYPE_CHECKING, Optional
 
 from pyobs.object import Object
 from .task import Task
+
+if TYPE_CHECKING:
+    from .taskschedule import TaskSchedule
+    from .taskarchive import TaskArchive
 
 
 class TaskRunner(Object, metaclass=ABCMeta):
@@ -16,11 +21,15 @@ class TaskRunner(Object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def run_task(self, task: Task) -> bool:
+    async def run_task(
+        self, task: Task, task_schedule: Optional[TaskSchedule] = None, task_archive: Optional[TaskArchive] = None
+    ) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
+            task_schedule: Schedule.
+            task_archive: Archive.
 
         Returns:
             Success or not

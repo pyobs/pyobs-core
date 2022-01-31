@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
@@ -6,10 +7,12 @@ from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.taskschedule import TaskSchedule
+    from pyobs.robotic.taskrunner import TaskRunner
+    from pyobs.robotic.taskarchive import TaskArchive
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, schedule: "TaskSchedule", **kwargs: Any):
+    def __init__(self, schedule: TaskSchedule, **kwargs: Any):
         Object.__init__(self, **kwargs)
         self.schedule = schedule
 
@@ -63,7 +66,12 @@ class Task(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run a task"""
         ...
 

@@ -33,7 +33,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
-        return self.get_object(klass, tasks=self, **kwargs)
+        return self.get_object(klass, Task, tasks=self, **kwargs)
 
     @abstractmethod
     def get_task(self, time: Time) -> Optional[Task]:

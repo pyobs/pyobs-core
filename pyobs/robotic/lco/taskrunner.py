@@ -3,7 +3,8 @@ from typing import Dict, Optional, Any
 
 from pyobs.robotic.task import Task
 from pyobs.robotic.taskrunner import TaskRunner
-
+from robotic import TaskSchedule, TaskArchive
+from robotic.lco import LcoTaskSchedule
 
 log = logging.getLogger(__name__)
 
@@ -33,21 +34,26 @@ class LcoTaskRunner(TaskRunner):
         # store stuff
         self._scripts = scripts
 
-    async def run_task(self, task: Task) -> bool:
+    async def run_task(
+        self, task: Task, task_schedule: Optional[TaskSchedule] = None, task_archive: Optional[TaskArchive] = None
+    ) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
+            task_schedule: Schedule.
+            task_archive: Archive.
 
         Returns:
             Success or not
         """
 
         # run task
-        await task.run()
+        await task.run(task_runner=self, task_schedule=task_schedule, task_archive=task_archive)
 
         # force update tasks
-        await self._update_now(force=True)
+        if isinstance(task_schedule, LcoTaskSchedule):
+            await task_schedule.update_now(force=True)
 
         # finish
         return True

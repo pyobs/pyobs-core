@@ -106,14 +106,14 @@ class LcoTaskSchedule(TaskSchedule):
         while True:
             # do actual update
             try:
-                await self._update_now()
+                await self.update_now()
             except:
                 log.exception("An exception occurred.")
 
             # sleep a little
             await asyncio.sleep(10)
 
-    async def _update_now(self, force: bool = False) -> None:
+    async def update_now(self, force: bool = False) -> None:
         """Update list of requests.
 
         Args:
@@ -237,25 +237,6 @@ class LcoTaskSchedule(TaskSchedule):
 
         # nothing found
         return None
-
-    async def run_task(self, task: Task) -> bool:
-        """Run a task.
-
-        Args:
-            task: Task to run
-
-        Returns:
-            Success or not
-        """
-
-        # run task
-        await task.run()
-
-        # force update tasks
-        await self._update_now(force=True)
-
-        # finish
-        return True
 
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         """Send report to LCO portal

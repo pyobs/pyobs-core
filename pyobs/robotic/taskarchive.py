@@ -1,9 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Optional, Any, Type, List
+from typing import Optional, Any, List
 from astroplan import ObservingBlock
 
 from pyobs.utils.time import Time
-from .task import Task
 from pyobs.object import Object
 
 

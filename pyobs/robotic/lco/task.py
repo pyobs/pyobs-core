@@ -6,6 +6,7 @@ from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
+from robotic import TaskRunner, TaskSchedule, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -201,7 +202,12 @@ class LcoTask(Task):
         # no config found that could run
         return False
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run a task"""
         from pyobs.robotic.lco import LcoTaskSchedule
 
@@ -228,7 +234,9 @@ class LcoTask(Task):
             # run config
             log.info("Running config...")
             self.cur_script = script
-            status = await self._run_script(script)
+            status = await self._run_script(
+                script, task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive
+            )
             self.cur_script = None
 
             # send status
@@ -239,7 +247,13 @@ class LcoTask(Task):
         # finished task
         log.info("Finished task.")
 
-    async def _run_script(self, script: Script) -> Union[ConfigStatus, None]:
+    async def _run_script(
+        self,
+        script: Script,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> Union[ConfigStatus, None]:
         """Run a config
 
         Args:
@@ -255,7 +269,7 @@ class LcoTask(Task):
         try:
             # run it
             log.info("Running task %d: %s...", self.id, self.config["name"])
-            await script.run()
+            await script.run(task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive)
 
             # finished config
             config_status.finish(state="COMPLETED", time_completed=script.exptime_done)

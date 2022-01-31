@@ -1,13 +1,11 @@
 import logging
-import typing
-
+from typing import Dict, Any, Optional, Union
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
-from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.time import Time
-
+from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 
@@ -17,19 +15,18 @@ class SkyFlats(Script):
 
     def __init__(
         self,
-        roof: typing.Union[str, IRoof],
-        telescope: typing.Union[str, ITelescope],
-        flatfield: typing.Union[str, IFlatField],
-        functions: dict,
-        priorities: typing.Union[dict, SkyflatPriorities],
+        roof: Union[str, IRoof],
+        telescope: Union[str, ITelescope],
+        flatfield: Union[str, IFlatField],
+        functions: Dict[str, Any],
+        priorities: Union[Dict[str, Any], SkyflatPriorities],
         min_exptime: float = 0.5,
         max_exptime: float = 5,
         timespan: float = 7200,
         filter_change: float = 30,
         count: int = 20,
-        readout: dict = None,
-        *args,
-        **kwargs,
+        readout: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ):
         """Init a new SkyFlats script.
 
@@ -46,7 +43,7 @@ class SkyFlats(Script):
             count: Number of flats to schedule
             readout: Dictionary with readout times (in sec) per binning (as BxB).
         """
-        Script.__init__(self, *args, **kwargs)
+        Script.__init__(self, **kwargs)
 
         # store modules
         self._roof = roof
@@ -57,12 +54,12 @@ class SkyFlats(Script):
         self._count = count
 
         # get archive and priorities
-        priorities = get_object(priorities, SkyflatPriorities)
+        prio = self.get_object(priorities, SkyflatPriorities)
 
         # create scheduler
         self._scheduler = Scheduler(
             functions,
-            priorities,
+            prio,
             self.observer,
             min_exptime=min_exptime,
             max_exptime=max_exptime,
@@ -94,7 +91,12 @@ class SkyFlats(Script):
         # seems alright
         return True
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run script.
 
         Raises:

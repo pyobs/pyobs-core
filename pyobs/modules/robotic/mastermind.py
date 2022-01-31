@@ -1,18 +1,15 @@
 import asyncio
 import logging
-import threading
 from typing import Union, List, Dict, Tuple, Any, Optional, cast
 import astropy.units as u
 
 from pyobs.modules import Module
-from pyobs.object import get_object
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic.schedule import TaskSchedule
 from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
-
+from pyobs.robotic import TaskRunner, TaskSchedule
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +22,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     def __init__(
         self,
         schedule: Union[TaskSchedule, Dict[str, Any]],
+        runner: Union[TaskRunner, Dict[str, Any]],
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
         **kwargs: Any,
@@ -46,8 +44,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # add thread func
         self.add_background_task(self._run_thread, True)
 
-        # get schedule
-        self._schedule = self.add_child_object(schedule, TaskSchedule)
+        # get schedule and runner
+        self._task_schedule = self.add_child_object(schedule, TaskSchedule)
+        self._task_runner = self.add_child_object(runner, TaskRunner)
 
         # observation name and exposure number
         self._task = None
@@ -99,7 +98,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            task: Optional[Task] = self._schedule.get_task(now)
+            task: Optional[Task] = self._task_schedule.get_task(now)
             if task is None or not await task.can_run():
                 # no task found
                 await asyncio.sleep(10)
@@ -136,7 +135,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
-            await self._schedule.run_task(self._task)
+            await self._task_runner.run_task(
+                self._task,
+            )
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))

@@ -535,7 +535,7 @@ class LcoTaskArchive(TaskArchive):
         log.info("%d observations created.", data["num_created"])
 
         # errors?
-        if "errors" in data:
+        if "errors" in data and len(data["errors"] > 0):
             for err in data["errors"].values():
                 log.warning("Error from portal: %s", err["non_field_errors"])
 

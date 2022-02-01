@@ -40,9 +40,7 @@ class LcoScript(Script):
             raise ValueError('No script found for script type "%s".' % config_type)
 
         # create script handler
-        return self.get_object(
-            self.scripts[config_type], Script, configuration=config, task_schedule=self.task_schedule
-        )
+        return self.get_object(self.scripts[config_type], Script, configuration=config)
 
     async def can_run(self) -> bool:
         """Checks, whether this task could run now.

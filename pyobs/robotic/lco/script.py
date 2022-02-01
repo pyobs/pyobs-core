@@ -2,8 +2,7 @@ import logging
 from typing import Dict, Any, Optional
 
 from pyobs.robotic.scripts import Script
-from pyobs.robotic import TaskRunner
-from robotic import TaskSchedule, TaskArchive
+from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 

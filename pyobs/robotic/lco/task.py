@@ -170,7 +170,6 @@ class LcoTask(Task):
             self.scripts[config_type],
             Script,
             configuration=config,
-            schedule=self.schedule,
             comm=self.comm,
             observer=self.observer,
         )

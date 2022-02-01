@@ -28,7 +28,6 @@ class LcoTaskSchedule(TaskSchedule):
         telescope: Optional[str] = None,
         instrument: Optional[str] = None,
         period: int = 24,
-        scripts: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ):
         """Creates a new LCO scheduler.
@@ -41,7 +40,6 @@ class LcoTaskSchedule(TaskSchedule):
             portal_telescope: Telescope for new schedules.
             portal_instrument: Instrument for new schedules.
             period: Period to schedule in hours
-            scripts: External scripts
         """
         TaskSchedule.__init__(self, **kwargs)
 
@@ -57,7 +55,6 @@ class LcoTaskSchedule(TaskSchedule):
         self._period = TimeDelta(period * u.hour)
         self.instruments: Dict[str, Any] = {}
         self._last_schedule_time: Optional[Time] = None
-        self._scripts = scripts
 
         # buffers in case of errors
         self._last_scheduled: Optional[Time] = None
@@ -214,7 +211,7 @@ class LcoTaskSchedule(TaskSchedule):
                     sched["end"] = Time(sched["end"])
 
                     # create task
-                    task = self._create_task(LcoTask, config=sched, scripts=self._scripts)
+                    task = self._create_task(LcoTask, config=sched)
                     tasks[sched["request"]["id"]] = task
 
                 # finished

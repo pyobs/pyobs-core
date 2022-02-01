@@ -99,7 +99,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # find task that we want to run now
             task: Optional[Task] = self._task_schedule.get_task(now)
-            if task is None or not await task.can_run():
+            if task is None or not await self._task_runner.can_run(task):
                 # no task found
                 await asyncio.sleep(10)
                 continue
@@ -135,9 +135,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
-            await self._task_runner.run_task(
-                self._task,
-            )
+            await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))

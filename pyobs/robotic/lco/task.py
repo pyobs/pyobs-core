@@ -6,7 +6,7 @@ from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
-from robotic import TaskRunner, TaskSchedule, TaskArchive
+from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
 
 log = logging.getLogger(__name__)
 

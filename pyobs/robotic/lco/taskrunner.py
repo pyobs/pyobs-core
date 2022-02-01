@@ -3,8 +3,8 @@ from typing import Dict, Optional, Any
 
 from pyobs.robotic.task import Task
 from pyobs.robotic.taskrunner import TaskRunner
-from robotic import TaskSchedule, TaskArchive
-from robotic.lco import LcoTaskSchedule
+from pyobs.robotic import TaskSchedule, TaskArchive
+from pyobs.robotic.lco import LcoTaskSchedule
 
 log = logging.getLogger(__name__)
 

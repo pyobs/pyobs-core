@@ -54,10 +54,6 @@ class LcoTaskArchive(TaskArchive):
         # task list
         self._tasks: Dict[str, LcoTask] = {}
 
-    async def open(self) -> None:
-        """Open scheduler."""
-        await TaskArchive.open(self)
-
     async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
 

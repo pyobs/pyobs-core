@@ -10,12 +10,6 @@ class TaskArchive(Object, metaclass=ABCMeta):
     def __init__(self, **kwargs: Any):
         Object.__init__(self, **kwargs)
 
-    async def open(self) -> None:
-        pass
-
-    async def close(self) -> None:
-        pass
-
     @abstractmethod
     async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""

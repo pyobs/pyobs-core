@@ -72,6 +72,7 @@ class LcoTaskSchedule(TaskSchedule):
 
     async def open(self) -> None:
         """Open scheduler."""
+        await TaskSchedule.open(self)
 
         # get stuff from portal
         await self._init_from_portal()

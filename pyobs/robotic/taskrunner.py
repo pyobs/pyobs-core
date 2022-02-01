@@ -26,12 +26,6 @@ class TaskRunner(Object, metaclass=ABCMeta):
         # store stuff
         self.scripts = scripts
 
-    async def open(self) -> None:
-        pass
-
-    async def close(self) -> None:
-        pass
-
     async def can_run(self, task: Task) -> bool:
         """Checks, whether this task could run now.
 

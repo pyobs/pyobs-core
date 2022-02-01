@@ -48,18 +48,6 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def run_task(self, task: Task) -> bool:
-        """Run a task.
-
-        Args:
-            task: Task to run
-
-        Returns:
-            Success or not
-        """
-        ...
-
-    @abstractmethod
     async def get_schedule(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
         """Fetch schedule from portal.
 

@@ -206,7 +206,7 @@ class LcoDefaultScript(Script):
         from pyobs.robotic.lco import LcoTaskSchedule
 
         if not isinstance(task_schedule, LcoTaskSchedule):
-            raise ValueError("Task archive is not for LCO observation portal.")
+            raise ValueError("Task schedule is not for LCO observation portal.")
 
         # get instrument info
         instrument_type = self.configuration["instrument_type"].lower()

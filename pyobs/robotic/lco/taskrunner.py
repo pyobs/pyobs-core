@@ -12,28 +12,6 @@ log = logging.getLogger(__name__)
 class LcoTaskRunner(TaskRunner):
     """Scheduler for using the LCO portal"""
 
-    def __init__(
-        self,
-        scripts: Optional[Dict[str, Any]] = None,
-        **kwargs: Any,
-    ):
-        """Creates a new LCO scheduler.
-
-        Args:
-            url: URL to portal
-            site: Site filter for fetching requests
-            token: Authorization token for portal
-            portal_enclosure: Enclosure for new schedules.
-            portal_telescope: Telescope for new schedules.
-            portal_instrument: Instrument for new schedules.
-            period: Period to schedule in hours
-            scripts: External scripts
-        """
-        TaskRunner.__init__(self, **kwargs)
-
-        # store stuff
-        self._scripts = scripts
-
     async def run_task(
         self, task: Task, task_schedule: Optional[TaskSchedule] = None, task_archive: Optional[TaskArchive] = None
     ) -> bool:
@@ -49,7 +27,7 @@ class LcoTaskRunner(TaskRunner):
         """
 
         # run task
-        await task.run(task_runner=self, task_schedule=task_schedule, task_archive=task_archive)
+        await task.run(task_runner=self, task_schedule=task_schedule, task_archive=task_archive, scripts=self.scripts)
 
         # force update tasks
         if isinstance(task_schedule, LcoTaskSchedule):

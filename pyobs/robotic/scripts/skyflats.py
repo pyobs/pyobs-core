@@ -1,11 +1,15 @@
+from __future__ import annotations
 import logging
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, TYPE_CHECKING
+
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.time import Time
-from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
+
+if TYPE_CHECKING:
+    from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 

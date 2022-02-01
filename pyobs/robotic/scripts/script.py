@@ -1,8 +1,11 @@
+from __future__ import annotations
 import logging
-from typing import Any, TypeVar, Optional, List, Dict
+from typing import Any, TypeVar, Optional, List, Dict, TYPE_CHECKING
 
 from pyobs.object import Object
-from pyobs.robotic import TaskSchedule, TaskRunner, TaskArchive
+
+if TYPE_CHECKING:
+    from pyobs.robotic import TaskSchedule, TaskRunner, TaskArchive
 
 log = logging.getLogger(__name__)
 

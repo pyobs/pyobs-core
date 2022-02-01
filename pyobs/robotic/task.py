@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from pyobs.object import Object
+from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
@@ -12,10 +13,6 @@ if TYPE_CHECKING:
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, schedule: TaskSchedule, **kwargs: Any):
-        Object.__init__(self, **kwargs)
-        self.schedule = schedule
-
     @property
     @abstractmethod
     def id(self) -> Any:
@@ -47,7 +44,7 @@ class Task(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def can_run(self) -> bool:
+    async def can_run(self, scripts: Optional[Dict[str, Script]] = None) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -71,6 +68,7 @@ class Task(Object, metaclass=ABCMeta):
         task_runner: TaskRunner,
         task_schedule: Optional[TaskSchedule] = None,
         task_archive: Optional[TaskArchive] = None,
+        scripts: Optional[Dict[str, Script]] = None,
     ) -> None:
         """Run a task"""
         ...

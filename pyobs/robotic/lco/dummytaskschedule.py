@@ -102,7 +102,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         cfg["end"] = Time.now() + TimeDelta(5.0 * u.minute)
 
         # create task
-        self._task: Optional[LcoTask] = self._create_task(LcoTask, config=cfg, scripts=self._scripts)
+        self._task: Optional[LcoTask] = self._create_task(LcoTask, config=cfg)
 
     async def _init_from_portal(self) -> None:
         pass

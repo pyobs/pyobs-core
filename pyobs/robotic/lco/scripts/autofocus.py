@@ -2,9 +2,11 @@ import logging
 from typing import Union, Tuple, Optional, Any
 
 from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus
+from pyobs.robotic import TaskRunner
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
+from pyobs.robotic import TaskSchedule, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -106,7 +108,12 @@ class LcoAutoFocusScript(Script):
         # seems alright
         return True
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run script.
 
         Raises:

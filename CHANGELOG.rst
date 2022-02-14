@@ -1,3 +1,7 @@
+v0.17.0 (2022-02-14)
+********************
+* Restructuring robotic system.
+
 v0.16.0 (2022-01-14)
 ********************
 * Added new exceptions.

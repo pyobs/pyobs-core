@@ -48,7 +48,12 @@ class TaskRunner(Object, metaclass=ABCMeta):
         Returns:
             Success or not
         """
-        ...
+
+        # run task
+        await task.run(task_runner=self, task_schedule=task_schedule, task_archive=task_archive, scripts=self.scripts)
+
+        # finish
+        return True
 
 
 __all__ = ["TaskRunner"]

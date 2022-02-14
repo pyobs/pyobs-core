@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections import Awaitable
 from typing import Union, Tuple, Type, Optional, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -149,14 +150,22 @@ class FollowMixin:
             if my_coords.separation(other_coords).degree > this.__follow_tolerance:
                 # move to other
                 if this.__follow_mode == IPointingAltAz and isinstance(self, IPointingAltAz):
-                    asyncio.create_task(self.move_altaz(*xy_coords))
+                    asyncio.create_task(this.__follow__move(self.move_altaz(*xy_coords)))
                 elif this.__follow_mode == IPointingRaDec and isinstance(self, IPointingRaDec):
-                    asyncio.create_task(self.move_radec(*xy_coords))
+                    asyncio.create_task(this.__follow__move(self.move_radec(*xy_coords)))
                 else:
                     raise ValueError("invalid follow mode.")
 
             # sleep a little
             await asyncio.sleep(this.__follow_interval)
+
+    @staticmethod
+    async def __follow__move(awaitable: Awaitable[None]) -> None:
+        try:
+            await awaitable
+        except InterruptedError:
+            # ignore interrupts, since probably it was this module who interrupted
+            pass
 
 
 __all__ = ["FollowMixin"]

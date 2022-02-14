@@ -305,7 +305,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # no blocks found?
         if len(blocks) == 0:
-            await self._schedule.update_schedule([], start)
+            await self._schedule.set_schedule([], start)
             raise ValueError("No blocks left for scheduling.")
 
         # return all
@@ -335,7 +335,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return
 
         # update
-        await self._schedule.update_schedule(scheduled_blocks, start)
+        await self._schedule.set_schedule(scheduled_blocks, start)
         if len(scheduled_blocks) > 0:
             log.info("Finished calculating schedule for %d block(s):", len(scheduled_blocks))
             for i, block in enumerate(scheduled_blocks, 1):

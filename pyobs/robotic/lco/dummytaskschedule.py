@@ -127,7 +127,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         pass
 
-    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         pass
 
 

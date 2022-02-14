@@ -257,7 +257,7 @@ class LcoTaskSchedule(TaskSchedule):
         except TimeoutError:
             log.error("Request timed out.")
 
-    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:

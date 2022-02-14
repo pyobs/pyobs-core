@@ -12,13 +12,8 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         Object.__init__(self, **kwargs)
 
     @abstractmethod
-    async def last_scheduled(self) -> Optional[Time]:
-        """Returns time of last scheduler run."""
-        ...
-
-    @abstractmethod
-    async def update_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
-        """Update the list of scheduled blocks.
+    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+        """Set the list of scheduled blocks.
 
         Args:
             blocks: Scheduled blocks.
@@ -26,19 +21,9 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         """
         ...
 
-    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
-        return self.get_object(klass, Task, tasks=self, **kwargs)
-
     @abstractmethod
-    def get_task(self, time: Time) -> Optional[Task]:
-        """Returns the active task at the given time.
-
-        Args:
-            time: Time to return task for.
-
-        Returns:
-            Task at the given time.
-        """
+    async def last_scheduled(self) -> Optional[Time]:
+        """Returns time of last scheduler run."""
         ...
 
     @abstractmethod
@@ -58,6 +43,21 @@ class TaskSchedule(Object, metaclass=ABCMeta):
             ValueError: If something goes wrong.
         """
         ...
+
+    @abstractmethod
+    def get_task(self, time: Time) -> Optional[Task]:
+        """Returns the active task at the given time.
+
+        Args:
+            time: Time to return task for.
+
+        Returns:
+            Task at the given time.
+        """
+        ...
+
+    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
+        return self.get_object(klass, Task, tasks=self, **kwargs)
 
 
 __all__ = ["TaskSchedule"]

@@ -34,6 +34,7 @@ class Comm:
         self._module: Optional[Module] = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
+        self._logging_task: Optional[asyncio.Task] = None
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
@@ -60,8 +61,19 @@ class Comm:
     async def open(self) -> None:
         """Open module."""
 
+        # start logging thread
+        self._logging_task = asyncio.create_task(self._logging())
+
         # some events
         await self.register_event(ModuleClosedEvent, self._client_disconnected)
+
+    async def close(self) -> None:
+        """Close module."""
+
+        # close thread
+        if self._logging_task:
+            self._logging_task.cancel()
+        self._logging_task = None
 
     def _get_full_client_name(self, name: str) -> str:
         """Returns full name for given client.
@@ -297,8 +309,11 @@ class Comm:
         # run until closing
         while True:
             # get item (maybe wait for it) and send it
-            entry = await self._log_queue.get()
-            await self.send_event(entry)
+            try:
+                entry = await self._log_queue.get()
+                await self.send_event(entry)
+            except:
+                pass
 
     def log_message(self, entry: LogEvent) -> None:
         """Send a log message to other clients.

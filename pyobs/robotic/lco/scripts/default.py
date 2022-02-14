@@ -21,7 +21,7 @@ from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
-
+from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -149,7 +149,12 @@ class LcoDefaultScript(Script):
         # seems alright
         return True
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run script.
 
         Raises:
@@ -198,14 +203,14 @@ class LcoDefaultScript(Script):
         self.exptime_done = 0.0
 
         # task archive must be LCO
-        from pyobs.robotic.lco import LcoTaskArchive
+        from pyobs.robotic.lco import LcoTaskSchedule
 
-        if not isinstance(self.task_archive, LcoTaskArchive):
-            raise ValueError("Task archive is not for LCO observation portal.")
+        if not isinstance(task_schedule, LcoTaskSchedule):
+            raise ValueError("Task schedule is not for LCO observation portal.")
 
         # get instrument info
         instrument_type = self.configuration["instrument_type"].lower()
-        instrument = self.task_archive.instruments[instrument_type]
+        instrument = task_schedule.instruments[instrument_type]
 
         # setting repeat duration depending on config type
         repeat_duration = None

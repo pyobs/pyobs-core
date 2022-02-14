@@ -1,8 +1,11 @@
+from __future__ import annotations
 import logging
-from typing import Any, TypeVar, Optional, List, Dict
+from typing import Any, TypeVar, Optional, List, Dict, TYPE_CHECKING
 
 from pyobs.object import Object
-from pyobs.robotic import TaskArchive
+
+if TYPE_CHECKING:
+    from pyobs.robotic import TaskSchedule, TaskRunner, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -11,7 +14,7 @@ ProxyClass = TypeVar("ProxyClass")
 
 
 class Script(Object):
-    def __init__(self, configuration: Any, task_archive: TaskArchive, **kwargs: Any):
+    def __init__(self, configuration: Any, **kwargs: Any):
         """Init Script.
 
         Args:
@@ -23,13 +26,17 @@ class Script(Object):
         # store
         self.exptime_done: float = 0.0
         self.configuration = configuration
-        self.task_archive = task_archive
 
     async def can_run(self) -> bool:
         """Whether this config can currently run."""
         raise NotImplementedError
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run script.
 
         Raises:

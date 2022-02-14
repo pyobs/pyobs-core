@@ -1,9 +1,8 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
-
+from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class LcoScript(Script):
             raise ValueError('No script found for script type "%s".' % config_type)
 
         # create script handler
-        return self.get_object(self.scripts[config_type], Script, configuration=config, task_archive=self.task_archive)
+        return self.get_object(self.scripts[config_type], Script, configuration=config)
 
     async def can_run(self) -> bool:
         """Checks, whether this task could run now.
@@ -56,7 +55,12 @@ class LcoScript(Script):
         # if any runner can run, we proceed
         return await runner.can_run()
 
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+    ) -> None:
         """Run script.
 
         Raises:
@@ -67,7 +71,7 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # run it
-        await runner.run()
+        await runner.run(task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive)
 
 
 __all__ = ["LcoScript"]

@@ -121,7 +121,7 @@ class LocalFile(VFSFile):
         files = []
         for cur, dirnames, filenames in os.walk(full_path):
             for filename in fnmatch.filter(filenames, pattern):
-                files += [os.path.relpath(os.path.join(cur, filename), root)]
+                files += [os.path.relpath(os.path.join(cur, filename), full_path)]
         return files
 
     @staticmethod

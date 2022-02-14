@@ -1,19 +1,18 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from asyncio import Event
 from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
 
 from pyobs.object import Object
+from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
+    from pyobs.robotic.taskschedule import TaskSchedule
+    from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
 
 
 class Task(Object, metaclass=ABCMeta):
-    def __init__(self, tasks: "TaskArchive", **kwargs: Any):
-        Object.__init__(self, **kwargs)
-        self.task_archive = tasks
-
     @property
     @abstractmethod
     def id(self) -> Any:
@@ -45,7 +44,7 @@ class Task(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def can_run(self) -> bool:
+    async def can_run(self, scripts: Optional[Dict[str, Script]] = None) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -64,7 +63,13 @@ class Task(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def run(self) -> None:
+    async def run(
+        self,
+        task_runner: TaskRunner,
+        task_schedule: Optional[TaskSchedule] = None,
+        task_archive: Optional[TaskArchive] = None,
+        scripts: Optional[Dict[str, Script]] = None,
+    ) -> None:
         """Run a task"""
         ...
 

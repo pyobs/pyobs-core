@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
 from typing import Any, TYPE_CHECKING, Optional, Dict
 
 from pyobs.object import Object
@@ -10,7 +9,7 @@ if TYPE_CHECKING:
     from .taskarchive import TaskArchive
 
 
-class TaskRunner(Object, metaclass=ABCMeta):
+class TaskRunner(Object):
     def __init__(
         self,
         scripts: Optional[Dict[str, Any]] = None,
@@ -34,7 +33,6 @@ class TaskRunner(Object, metaclass=ABCMeta):
         """
         return await task.can_run(self.scripts)
 
-    @abstractmethod
     async def run_task(
         self, task: Task, task_schedule: Optional[TaskSchedule] = None, task_archive: Optional[TaskArchive] = None
     ) -> bool:

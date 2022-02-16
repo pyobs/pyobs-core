@@ -353,7 +353,7 @@ class LcoTaskSchedule(TaskSchedule):
         # submit observations
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=observations, headers=headers, timeout=10) as response:
-                if response.status != 200:
+                if response.status != 201:
                     log.error("Could not submit observations: %s", await response.text())
                 data = await response.json()
 

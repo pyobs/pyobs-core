@@ -4,7 +4,6 @@ import threading
 import numpy as np
 from numpy.typing import NDArray
 
-from pyobs.comm import RemoteException
 from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
 from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IImageGrabber
@@ -130,7 +129,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             else:
                 guess = await focuser.get_focus()
                 log.info("Using current focus of %.2fmm as initial guess.", guess)
-        except RemoteException:
+        except exc.RemoteError:
             raise ValueError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
@@ -156,7 +155,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 else:
                     await focuser.set_focus(float(foc))
 
-            except RemoteException:
+            except exc.RemoteError:
                 raise ValueError("Could not set new focus value.")
 
             # do exposure
@@ -169,7 +168,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 if isinstance(camera, IImageType):
                     await camera.set_image_type(ImageType.FOCUS)
                 filename = await camera.grab_image()
-            except RemoteException:
+            except exc.RemoteError:
                 log.error("Could not take image.")
                 continue
 

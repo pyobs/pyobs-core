@@ -37,7 +37,6 @@ There is currently one one implementation of the Comm interface:
 
 from .comm import Comm
 from .proxy import Proxy
-from .exceptions import *
 
 
-__all__ = ["Comm", "Proxy", "RemoteException", "InvocationException", "AuthorizationException", "TimeoutException"]
+__all__ = ["Comm", "Proxy"]

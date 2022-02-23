@@ -9,7 +9,7 @@ import astropy.units as u
 
 from pyobs.interfaces import IAcquisition, ITelescope
 from pyobs.modules import Module
-from pyobs.comm import InvocationException
+from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
 from pyobs.utils.time import Time
 
@@ -157,7 +157,7 @@ class PointingSeries(Module, IAutonomous):
                 if acq is not None:
                     await self._process_acquisition(**acq)
 
-            except (ValueError, InvocationException):
+            except (ValueError, exc.RemoteError):
                 log.info("Could not acquire target.")
                 continue
 

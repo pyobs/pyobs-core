@@ -127,9 +127,9 @@ class RPC(object):
             # send response
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()
 
-        except InvocationException as ie:
-            # could not invoke method
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
+        # except InvocationException as ie:
+        #    # could not invoke method
+        #    self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
         except exc.PyObsError as e:
             # something else went wrong, but only log if not a ModuleError
@@ -191,15 +191,23 @@ class RPC(object):
         fault = xml2fault(iq["rpc_query"]["method_response"]["fault"])
 
         # get future
-        pid = iq["id"]
-        future = self._futures[pid]
-        del self._futures[pid]
+        jid = iq["id"]
+        future = self._futures[jid]
+        del self._futures[jid]
 
         # get exception and error
         s: str = fault["string"]
         exception_name = s[1 : s.index(">")]
         exception_message = s[s.index(">") + 1 :].strip()
-        exception = getattr(exc, exception_name)(message=exception_message)
+
+        # get class of exception
+        exception_class = getattr(exc, exception_name)
+
+        # and instantiate it
+        if issubclass(exception_class, exc.RemoteError):
+            exception = exception_class(message=exception_message, module=jid.node)
+        else:
+            exception = exception_class(message=exception_message)
 
         # sender
         sender = iq["from"].node

@@ -7,7 +7,6 @@ from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits
 
-from pyobs.comm import TimeoutException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.modules import Module

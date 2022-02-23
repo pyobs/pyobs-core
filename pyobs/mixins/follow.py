@@ -5,7 +5,7 @@ from typing import Union, Tuple, Type, Optional, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.comm.exceptions import RemoteException
+from pyobs.utils import exceptions as exc
 from pyobs.modules import Module
 from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
 
@@ -139,7 +139,7 @@ class FollowMixin:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)
                 connected = True
-            except (ValueError, RemoteException):
+            except (ValueError, exc.RemoteError):
                 if connected:
                     log.warning("Could not fetch coordinates.")
                 connected = False

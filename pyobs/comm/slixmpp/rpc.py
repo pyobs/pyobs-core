@@ -127,9 +127,9 @@ class RPC(object):
             # send response
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()
 
-        except InvocationException as ie:
-            # could not invoke method
-            self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
+        # except InvocationException as ie:
+        #    # could not invoke method
+        #    self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
 
         except exc.PyObsError as e:
             # something else went wrong, but only log if not a ModuleError

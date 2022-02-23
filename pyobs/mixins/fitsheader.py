@@ -7,12 +7,12 @@ from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits
 
-from pyobs.comm import TimeoutException, InvocationException, RemoteException
+from pyobs.comm import TimeoutException
 from pyobs.images import Image
 from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.modules import Module
 from pyobs.utils.fits import format_filename
-from pyobs.utils.parallel import Future
+from pyobs.utils import exceptions as exc
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -101,14 +101,8 @@ class FitsHeaderMixin:
             log.info("Fetching FITS headers from %s...", client)
             try:
                 headers = await future
-            except TimeoutException:
-                log.warning("Fetching FITS headers from %s timed out.", client)
-                continue
-            except InvocationException as e:
-                log.warning("Could not fetch FITS headers from %s: %s.", client, e.get_message())
-                continue
-            except RemoteException as e:
-                log.warning("Could not fetch FITS headers from %s: %s.", client, e.get_message())
+            except exc.RemoteError as e:
+                log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
                 continue
 
             # add them to fits file

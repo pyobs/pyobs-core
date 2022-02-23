@@ -5,7 +5,6 @@ from typing import Dict, Optional, Any, Callable, Tuple
 import slixmpp.exceptions
 
 from pyobs.modules import Module
-from pyobs.comm.exceptions import *
 from pyobs.utils.parallel import Future
 from pyobs.comm.slixmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 import pyobs.utils.exceptions as exc

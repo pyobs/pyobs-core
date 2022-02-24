@@ -62,7 +62,7 @@ class ProjectedOffsets(Offsets):
         dx = self._correlate(sum_x, self._ref_image[0])
         dy = self._correlate(sum_y, self._ref_image[1])
         if dx is None or dy is None:
-            log.error("Could not correlate peaks.")
+            log.warning("Could not correlate peaks.")
             return image
 
         # set it

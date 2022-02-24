@@ -174,6 +174,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         # exposure time too large?
         if self._max_exposure_time is not None and image.header["EXPTIME"] > self._max_exposure_time:
             log.warning("Exposure time too large, skipping auto-guiding for now...")
+            self._loop_closed = False
             return None
 
         # remember header
@@ -187,13 +188,16 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
             telescope = await self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.error("Given telescope does not exist or is not of correct type.")
+            self._loop_closed = False
             return image
 
         # apply offsets
         if await self._apply(image, telescope, self.location):
+            self._loop_closed = True
             log.info("Finished image.")
         else:
             log.warning("Could not apply offsets.")
+            self._loop_closed = False
 
         # return image, in case we added important data
         return image

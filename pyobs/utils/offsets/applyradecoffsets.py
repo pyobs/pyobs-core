@@ -51,7 +51,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         try:
             radec_center, radec_target = self._get_radec_center_target(image, location)
         except ValueError:
-            log.error("Could not get offsets from image meta.")
+            log.warning("Could not get offsets from image meta.")
             return False
 
         # get offset

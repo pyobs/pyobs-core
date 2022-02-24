@@ -24,7 +24,15 @@ class Calibration(ImageProcessor):
     """Cache for calibration frames."""
     calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
 
-    def __init__(self, archive: Union[Dict[str, Any], Archive], max_cache_size: int = 20, **kwargs: Any):
+    def __init__(
+        self,
+        archive: Union[Dict[str, Any], Archive],
+        max_cache_size: int = 20,
+        max_days_bias: Optional[float] = None,
+        max_days_dark: Optional[float] = None,
+        max_days_flat: Optional[float] = None,
+        **kwargs: Any,
+    ):
         """Init a new image calibration pipeline step.
 
         Args:
@@ -34,6 +42,9 @@ class Calibration(ImageProcessor):
 
         # store
         self._max_cache_size = max_cache_size
+        self._max_days_bias = max_days_bias
+        self._max_days_dark = max_days_dark
+        self._max_days_flat = max_days_flat
 
         # get archive
         self._archive = get_object(archive, Archive)
@@ -51,9 +62,9 @@ class Calibration(ImageProcessor):
 
         # get calibration masters
         try:
-            bias = await self._find_master(image, ImageType.BIAS)
-            dark = await self._find_master(image, ImageType.DARK)
-            flat = await self._find_master(image, ImageType.SKYFLAT)
+            bias = await self._find_master(image, ImageType.BIAS, max_days=self._max_days_bias)
+            dark = await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
+            flat = await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
         except ValueError as e:
             log.error("Could not find calibration frames: " + str(e))
             return image
@@ -111,7 +122,9 @@ class Calibration(ImageProcessor):
         # finished
         return calibrated
 
-    async def _find_master(self, image: Image, image_type: ImageType) -> Optional[Image]:
+    async def _find_master(
+        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
+    ) -> Optional[Image]:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -148,7 +161,7 @@ class Calibration(ImageProcessor):
             instrument,
             binning,
             None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
-            max_days=30,
+            max_days=max_days,
         )
 
         # nothing?

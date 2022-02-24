@@ -145,7 +145,7 @@ class Pipeline(Object, PipelineMixin):
         instrument: str,
         binning: str,
         filter_name: Optional[str] = None,
-        max_days: float = 30.0,
+        max_days: Optional[float] = 30.0,
     ) -> Optional[Image]:
         """Find and download master calibration frame.
 
@@ -171,8 +171,8 @@ class Pipeline(Object, PipelineMixin):
             instrument,
         )
         infos = await archive.list_frames(
-            start=time - max_days * u.day,
-            end=time + max_days * u.day,
+            start=None if max_days is None else time - max_days * u.day,
+            end=None if max_days is None else time + max_days * u.day,
             instrument=instrument,
             image_type=image_type,
             binning=binning,

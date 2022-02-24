@@ -221,7 +221,7 @@ class PyobsArchive(Archive):
                 with io.BytesIO() as bio:
                     # write it
                     img.writeto(bio)
-                    data.add_field(f"file{i}", bio.getbuffer(), filename=filename)
+                    data.add_field(f"file{i}", bio.getvalue(), filename=filename)
 
             # post it
             async with session.post(url, data=data, timeout=10, headers=self._headers) as response:

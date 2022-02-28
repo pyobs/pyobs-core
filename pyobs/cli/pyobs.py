@@ -2,6 +2,8 @@ import argparse
 import os
 from typing import Type, Any
 
+from pyobs import version
+
 
 def init_cli():
     # init argument parsing
@@ -18,6 +20,9 @@ def init_cli():
 
     # debug stuff
     parser.add_argument("--debug-time", type=str, help="Fake time at start for pyobs to use")
+
+    # version
+    parser.add_argument("-v", "--version", action="version", version=version())
 
     # return it
     return parser

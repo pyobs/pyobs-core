@@ -15,7 +15,9 @@ def init_cli():
     parser.add_argument("config", type=str, help="Configuration file")
 
     # logging
-    parser.add_argument("--log-level", type=str, choices=["critical", "error", "warning", "info", "debug"])
+    parser.add_argument(
+        "--log-level", type=str, choices=["critical", "error", "warning", "info", "debug"], default="info"
+    )
     parser.add_argument("-l", "--log-file", type=str, help="file to write log into")
 
     # debug stuff

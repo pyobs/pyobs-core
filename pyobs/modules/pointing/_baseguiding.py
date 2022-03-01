@@ -196,7 +196,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
             self._loop_closed = True
             log.info("Finished image.")
         else:
-            log.warning("Could not apply offsets.")
+            log.info("Could not apply offsets.")
             self._loop_closed = False
 
         # return image, in case we added important data

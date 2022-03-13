@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
 
-from pyobs.interfaces import IWindow, IBinning, ICooling
+from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
@@ -24,7 +24,7 @@ class CoolingStatus(NamedTuple):
     temperatures: Dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
-class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
+class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
     """A dummy camera for testing."""
 
     __module__ = "pyobs.modules.camera"
@@ -62,6 +62,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
         # init camera
         self._cooling = CoolingStatus()
         self._exposing = True
+        self._gain = 10.0
 
         # simulator
         self._sim_images = sorted(glob.glob(self._sim["images"])) if self._sim["images"] else None
@@ -260,6 +261,25 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling):
     def _get_config_readout_time(self) -> float:
         """Returns readout time."""
         return self._readout_time
+
+    async def set_gain(self, gain: float, **kwargs: Any) -> None:
+        """Set the camera gain.
+
+        Args:
+            gain: New camera gain.
+
+        Raises:
+            ValueError: If gain could not be set.
+        """
+        self._gain = gain
+
+    async def get_gain(self, **kwargs: Any) -> float:
+        """Returns the camera binning.
+
+        Returns:
+            Current gain.
+        """
+        return self._gain
 
 
 __all__ = ["DummyCamera"]

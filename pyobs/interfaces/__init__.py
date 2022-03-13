@@ -29,6 +29,7 @@ from .IFitsHeaderBefore import IFitsHeaderBefore
 from .IFlatField import IFlatField
 from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
+from .IGain import IGain
 from .IImageFormat import IImageFormat
 from .IImageGrabber import IImageGrabber
 from .IImageType import IImageType

@@ -28,7 +28,7 @@ class FitsHeaderMixin:
         fits_headers: Optional[Dict[str, Any]] = None,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
         frame_number: bool = True,
-        night_obs: bool = False,
+        night_obs: bool = True,
         **kwargs: Any,
     ):
         """Initialise the mixin.

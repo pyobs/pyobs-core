@@ -271,6 +271,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         Raises:
             ValueError: If gain could not be set.
         """
+        log.info("Setting gain to %.2f...", gain)
         self._gain = gain
 
     async def get_gain(self, **kwargs: Any) -> float:

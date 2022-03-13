@@ -224,6 +224,7 @@ class LcoDefaultScript(Script):
         # config iterations
         config_finished = False
         ic_durations = []
+        image_no = 1
         while not config_finished:
             # ic start time
             ic_start_time = time.time()
@@ -260,24 +261,26 @@ class LcoDefaultScript(Script):
 
                 # loop images
                 for exp in range(ic["exposure_count"]):
-                    # do exposures
+                    # prepare log entry
+                    # add total image number and number within IC
+                    msg = f"Exposing {self.configuration['type']} image #{image_no} ({exp + 1}/{ic['exposure_count']})"
+
+                    # set exposure time
                     if isinstance(camera, IExposureTime):
-                        log.info(
-                            "Exposing %s image %d/%d for %.2fs...",
-                            self.configuration["type"],
-                            exp + 1,
-                            ic["exposure_count"],
-                            ic["exposure_time"],
-                        )
                         await camera.set_exposure_time(ic["exposure_time"])
-                    else:
-                        log.info(
-                            "Exposing %s image %d/%d...", self.configuration["type"], exp + 1, ic["exposure_count"]
-                        )
+                        msg += f" for {ic['exposure_time']:2f}s"
+
+                    # set image type
                     if isinstance(camera, IImageType):
                         await camera.set_image_type(self.image_type)
+
+                    # log it
+                    log.info(f"{msg}...")
+
+                    # grab image
                     await cast(ICamera, camera).grab_image()
                     self.exptime_done += ic["exposure_time"]
+                    image_no += 1
 
             # store duration for all ICs
             ic_durations.append(time.time() - ic_start_time)

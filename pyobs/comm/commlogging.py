@@ -20,15 +20,21 @@ class CommLoggingHandler(logging.Handler):
         logging.Handler.__init__(self)
         self._comm = comm
 
+        # get formatter
+        self._formatter = logging.Formatter()
+
     def emit(self, rec: Any) -> None:
         """Send a new log entry to the comm module.
 
         Args:
             rec: Log record to send.
         """
-        entry = LogEvent(
-            rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, rec.msg % rec.args
-        )
+
+        # format message
+        msg = self._formatter.format(rec)
+
+        # create and send event
+        entry = LogEvent(rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg)
         self._comm.log_message(entry)
 
 

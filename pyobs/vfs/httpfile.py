@@ -26,6 +26,7 @@ class HttpFile(VFSFile):
         username: Optional[str] = None,
         password: Optional[str] = None,
         verify_tls: bool = False,
+        timeout: int = 30,
         **kwargs: Any,
     ):
         """Creates a new HTTP file.
@@ -38,11 +39,13 @@ class HttpFile(VFSFile):
             username: Username for accessing the HTTP server.
             password: Password for accessing the HTTP server.
             verify_tls: Whether to verify TLS certificates.
+            timeout: Timeout in seconds for uploading/downloading files.
         """
 
         # init
         io.RawIOBase.__init__(self)
         self._verify_tls = verify_tls
+        self._timeout = timeout
 
         # auth
         self._auth = None
@@ -84,7 +87,7 @@ class HttpFile(VFSFile):
 
         # do request
         async with aiohttp.ClientSession() as session:
-            async with session.get(self.url, auth=self._auth, timeout=10) as response:
+            async with session.get(self.url, auth=self._auth, timeout=self._timeout) as response:
                 # check response
                 if response.status == 200:
                     # get data and return it
@@ -154,7 +157,7 @@ class HttpFile(VFSFile):
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
             data.add_field("file", self._buffer, filename=self.filename)
-            async with session.post(self._upload_path, auth=self._auth, data=data, timeout=10) as response:
+            async with session.post(self._upload_path, auth=self._auth, data=data, timeout=self._timeout) as response:
                 if response.status == 401:
                     log.error("Wrong credentials for uploading file.")
                     raise FileNotFoundError

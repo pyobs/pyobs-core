@@ -368,13 +368,16 @@ class Module(Object, IModule, IConfig):
         setter = getattr(self, "_set_config_" + name)
         setter(value)
 
-    async def set_state(self, state: ModuleState) -> None:
+    async def set_state(self, state: ModuleState, error_string: Optional[str] = None) -> None:
         """Set state of module.
 
         Args:
             state: New state to set.
+            error_string: If given, set error string.
         """
         self._state = state
+        if error_string is not None:
+            self.set_error_string(error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""

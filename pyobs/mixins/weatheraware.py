@@ -22,6 +22,8 @@ class WeatherAwareMixin:
     def __init__(self, weather: Optional[Union[str, IWeather]] = None, **kwargs: Any):
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
+        self.__last_park_attempt: Optional[float] = None
+        self.__setting_bad_weather = False
         this = self
         if isinstance(self, Module):
             self.add_background_task(this.__weather_check, True)
@@ -48,18 +50,34 @@ class WeatherAwareMixin:
         if not isinstance(event, BadWeatherEvent):
             raise ValueError("Wrong event type.")
 
-        # weather is bad
-        self.__is_weather_good = False
+        # park
+        asyncio.create_task(self.__set_bad_weather())
+        return True
 
-        # do we need to park?
-        if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-            if await self.get_motion_status() != MotionStatus.PARKED:
-                log.warning("Received bad weather event, shutting down.")
-                await self.park()
-            return True
-        else:
-            log.error("This is not a MotionStatusMixin/IMotion.")
-            return False
+    async def __set_bad_weather(self) -> None:
+        # already setting?
+        if self.__setting_bad_weather:
+            return
+        self.__setting_bad_weather = True
+
+        # did weather change?
+        if self.__is_weather_good is True:
+            # weather is bad now
+            self.__is_weather_good = False
+
+            # do we need to park?
+            if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
+                motion_status = await self.get_motion_status()
+                if motion_status == MotionStatus.ERROR:
+                    log.error("Telescope is in error mode, cannot park.")
+                elif motion_status != MotionStatus.PARKED:
+                    log.warning("Weather is bad, shutting down.")
+                    await self.park()
+            else:
+                log.error("This is not a MotionStatusMixin/IMotion.")
+
+        # finished
+        self.__setting_bad_weather = False
 
     async def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Change status of weather.
@@ -85,12 +103,6 @@ class WeatherAwareMixin:
         if isinstance(self, Module):
             module = self
 
-            # wait a little
-            await asyncio.sleep(10)
-
-            # time of last park attempt
-            last_park_attempt = None
-
             # run until closing
             while True:
                 # got a weather module?
@@ -111,26 +123,8 @@ class WeatherAwareMixin:
                         this.__is_weather_good = False
 
                 # if not good, park now
-                if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-                    if this.__is_weather_good is False and await self.get_motion_status() not in [
-                        MotionStatus.PARKED,
-                        MotionStatus.PARKING,
-                    ]:
-                        try:
-                            asyncio.create_task(self.park())
-                            log.info("Weather seems to be bad, shutting down.")
-                        except:
-                            # only log, if last attempt is more than 60s ago
-                            # this is useful, so that we don't get log messages every 10 seconds but only the first one
-                            # in a series
-                            if last_park_attempt is None or time.time() - last_park_attempt > 60:
-                                log.error("Could not park on bad weather.")
-
-                        # store attempt time
-                        last_park_attempt = time.time()
-
-                else:
-                    raise ValueError("This is not a MotionStatusMixin/IMotion.")
+                if this.__is_weather_good is False:
+                    asyncio.create_task(this.__set_bad_weather())
 
                 # sleep a little
                 await asyncio.sleep(10)

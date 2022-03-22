@@ -17,13 +17,14 @@ class AstrometryDotNet(Astrometry):
 
     __module__ = "pyobs.images.processors.astrometry"
 
-    def __init__(self, url: str, source_count: int = 50, radius: float = 3.0, **kwargs: Any):
+    def __init__(self, url: str, source_count: int = 50, radius: float = 3.0, timeout: int = 10, **kwargs: Any):
         """Init new astronomy.net processor.
 
         Args:
             url: URL to service.
             source_count: Number of sources to send.
             radius: Radius to search in.
+            timeout: Timeout in seconds for call to astrometry web service.
         """
         Astrometry.__init__(self, **kwargs)
 
@@ -31,6 +32,7 @@ class AstrometryDotNet(Astrometry):
         self.url = url
         self.source_count = source_count
         self.radius = radius
+        self.timeout = timeout
 
     async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
@@ -96,7 +98,7 @@ class AstrometryDotNet(Astrometry):
 
         # send it
         async with aiohttp.ClientSession() as session:
-            async with session.post(self.url, json=data, timeout=10) as response:
+            async with session.post(self.url, json=data, timeout=self.timeout) as response:
                 status_code = response.status
                 json = await response.json()
 

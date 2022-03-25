@@ -38,11 +38,12 @@ class ProjectionFocusSeries(FocusSeries):
         """Reset focus series."""
         self._data = []
 
-    def analyse_image(self, image: Image) -> None:
+    def analyse_image(self, image: Image, focus_value: float) -> None:
         """Analyse given image.
 
         Args:
             image: Image to analyse
+            focus_value: Value to fit along, e.g. focus value or its offset
         """
 
         # clean data
@@ -94,7 +95,7 @@ class ProjectionFocusSeries(FocusSeries):
         # add to list
         self._data.append(
             {
-                "focus": float(image.header["TEL-FOCU"]),
+                "focus": focus_value,
                 "x": float(xfit.params["fwhm"].value),
                 "xerr": float(xfit.params["fwhm"].stderr),
                 "y": float(yfit.params["fwhm"].value),

@@ -135,9 +135,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # define array of focus values to iterate
         focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
 
-        # define set_focus method
-        set_focus = focuser.set_focus_offset if self._offset else focuser.set_focus
-
         # reset
         self._series.reset()
         self._abort = threading.Event()

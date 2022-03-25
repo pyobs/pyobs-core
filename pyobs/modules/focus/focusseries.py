@@ -135,9 +135,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # define array of focus values to iterate
         focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
 
-        # define set_focus method
-        set_focus = focuser.set_focus_offset if self._offset else focuser.set_focus
-
         # reset
         self._series.reset()
         self._abort = threading.Event()
@@ -146,7 +143,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         log.info("Starting focus series...")
         for foc in focus_values:
             # set focus
-            log.info("Changing focus to %.2fmm...", foc)
+            if self._offset:
+                log.info("Changing focus offset to %.2fmm...", foc)
+            else:
+                log.info("Changing focus to %.2fmm...", foc)
             if self._abort.is_set():
                 raise InterruptedError()
             try:
@@ -179,7 +179,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             # analyse
             log.info("Analysing picture...")
             try:
-                self._series.analyse_image(image)
+                self._series.analyse_image(image, foc)
             except:
                 # do nothing..
                 log.error("Could not analyse image.")
@@ -204,9 +204,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # raise error
             raise ValueError("Could not find best focus.")
-
-        # "absolute" will be the absolute focus value, i.e. focus+offset
-        absolute: Optional[float] = None
 
         # log and set focus
         if self._offset:

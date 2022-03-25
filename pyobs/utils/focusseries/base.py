@@ -12,11 +12,12 @@ class FocusSeries:
         """Reset focus series."""
         raise NotImplementedError
 
-    def analyse_image(self, image: Image) -> None:
+    def analyse_image(self, image: Image, focus_value: float) -> None:
         """Analyse given image.
 
         Args:
             image: Image to analyse
+            focus_value: Value to fit along, e.g. focus value or its offset
         """
         raise NotImplementedError
 

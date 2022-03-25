@@ -205,9 +205,6 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             # raise error
             raise ValueError("Could not find best focus.")
 
-        # "absolute" will be the absolute focus value, i.e. focus+offset
-        absolute: Optional[float] = None
-
         # log and set focus
         if self._offset:
             log.info("Setting new focus offset of (%.3f+-%.3f) mm.", focus[0], focus[1])

@@ -146,7 +146,10 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         log.info("Starting focus series...")
         for foc in focus_values:
             # set focus
-            log.info("Changing focus to %.2fmm...", foc)
+            if self._offset:
+                log.info("Changing focus offset to %.2fmm...", foc)
+            else:
+                log.info("Changing focus to %.2fmm...", foc)
             if self._abort.is_set():
                 raise InterruptedError()
             try:

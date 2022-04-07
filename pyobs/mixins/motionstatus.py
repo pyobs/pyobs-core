@@ -70,6 +70,14 @@ class MotionStatusMixin:
         # send event
         if changed:
             this = self
+
+            # log it
+            if interface is None:
+                log.info("Changed motion status to %s.", status)
+            else:
+                log.info("Changed motion status of %s to %s.", interface, status)
+
+            # send event
             if not isinstance(self, Module):
                 raise ValueError("This is not a module.")
             await self.comm.send_event(

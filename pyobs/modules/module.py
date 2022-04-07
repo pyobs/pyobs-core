@@ -375,6 +375,12 @@ class Module(Object, IModule, IConfig):
             state: New state to set.
             error_string: If given, set error string.
         """
+
+        # log?
+        if state != self._state:
+            log.info("Set module state to %s.", state)
+
+        # set it
         self._state = state
         if error_string is not None:
             self.set_error_string(error_string)

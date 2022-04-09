@@ -47,17 +47,14 @@ class ApplyAltAzOffsets(ApplyOffsets):
             log.error("Given telescope cannot handle Alt/Az offsets.")
             return False
 
-        # check offsets in meta
-        if "offsets" not in image.meta:
-            log.warning("No offsets found in image meta information.")
-            return False
-
-        # get RA/Dec coordinates of center and center+offsets and convert to Alt/Az
+        # get RA/Dec coordinates of center and center+offsets
         try:
             radec_center, radec_target = self._get_radec_center_target(image, location)
         except ValueError:
-            log.error("Could not get offsets from image meta.")
+            log.warning("Could not get offsets from image meta.")
             return False
+
+        # convert to Alt/Az
         frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
         altaz_center = radec_center.transform_to(frame)
         altaz_target = radec_target.transform_to(frame)

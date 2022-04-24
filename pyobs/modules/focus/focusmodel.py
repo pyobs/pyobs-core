@@ -139,9 +139,8 @@ class FocusModel(Module, IFocusModel):
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
 
-        # update model now?
-        if update:
-            self._calc_focus_model()
+        # update model now
+        self._calc_focus_model()
 
     async def open(self) -> None:
         """Open module."""

@@ -428,7 +428,8 @@ class FocusModel(Module, IFocusModel):
                     else:
                         log.info("  %-10s = %10.5f", p[4:], out_params[p].value)
 
-        log.info("Reduced chi squared: %.3f", out.redchi)
+        rms = np.sqrt(np.mean(out.residual ** 2))
+        log.info("Reduced chi squared: %.3f, RMS: %.3f", out.redchi, rms)
 
         # store new coefficients and filter offsets
         if self._update_model:

@@ -124,14 +124,14 @@ class FocusModel(Module, IFocusModel):
         # model
         parser = Parser()
         log.info("Parsing model: %s", model)
-        self._model = parser.parse(model)
+        self._temp_model = parser.parse(model)
 
         # coefficients
         if self._coefficients is not None and len(self._coefficients) > 0:
             log.info("Found coefficients: %s", ", ".join(["%s=%.3f" % (k, v) for k, v in self._coefficients.items()]))
 
         # variables
-        variables = self._model.variables()
+        variables = self._temp_model.variables()
         for c in self._coefficients.keys():
             variables.remove(c)
         log.info("Found variables: %s", ", ".join(variables))
@@ -219,7 +219,7 @@ class FocusModel(Module, IFocusModel):
 
         # evaluate model
         log.info("Evaluating model...")
-        focus = self._model.evaluate({**values, **self._coefficients})
+        focus = self._temp_model.evaluate({**values, **self._coefficients})
 
         # focus offset?
         if self._filter_offsets is not None and self._filter_wheel is not None:
@@ -266,7 +266,7 @@ class FocusModel(Module, IFocusModel):
         variables = {}
 
         # do we need a weather proxy?
-        if "temp" in self._model.variables():
+        if "temp" in self._temp_model.variables():
             log.info("Fetching temperature from weather module...")
 
             # get weather proxy
@@ -428,8 +428,14 @@ class FocusModel(Module, IFocusModel):
                     else:
                         log.info("  %-10s = %10.5f", p[4:], out_params[p].value)
 
-        rms = np.sqrt(np.mean(out.residual ** 2))
-        log.info("Reduced chi squared: %.3f, RMS: %.3f", out.redchi, rms)
+        # evaluate model
+        best_fit = self._model(out_params, data)
+        real_focus = data["focus"]
+
+        # calculate RMS and reduced chi square
+        rms = np.sqrt(np.mean((best_fit - real_focus) ** 2))
+        redchi = np.sum((best_fit - real_focus) ** 2) / out.nfree
+        log.info("Reduced chi squared: %.3f, RMS: %.3f", redchi, rms)
 
         # store new coefficients and filter offsets
         if self._update_model:
@@ -442,6 +448,36 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith("off_")}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith("off_")}
 
+    def _model(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[float]:
+        # calc model
+        model = []
+        for _, row in data.iterrows():
+            # how do we fit?
+            if self._default_filter is None:
+                # just fit it
+                mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+
+            else:
+                # do we want to fit filter offsets?
+                if self._filter_offsets:
+                    # evaluate and add offset
+                    mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+                    if row["filter"] != self._default_filter:
+                        mod += x["off_" + row["filter"]]
+
+                else:
+                    # no filter offsets, so ignore this row if, if wrong filter
+                    if row["filter"] == self._default_filter:
+                        mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+                    else:
+                        continue
+
+            # add it
+            model.append(mod)
+
+        # finished
+        return np.array(model)
+
     def _residuals(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[float]:
         """Fit method for model
 
@@ -453,36 +489,13 @@ class FocusModel(Module, IFocusModel):
 
         """
 
-        # calc model
-        focus, model, error = [], [], []
-        for _, row in data.iterrows():
-            # how do we fit?
-            if self._default_filter is None:
-                # just fit it
-                mod = self._model.evaluate({**x.valuesdict(), **row})
-
-            else:
-                # do we want to fit filter offsets?
-                if self._filter_offsets:
-                    # evaluate and add offset
-                    mod = self._model.evaluate({**x.valuesdict(), **row})
-                    if row["filter"] != self._default_filter:
-                        mod += x["off_" + row["filter"]]
-
-                else:
-                    # no filter offsets, so ignore this row if, if wrong filter
-                    if row["filter"] == self._default_filter:
-                        mod = self._model.evaluate({**x.valuesdict(), **row})
-                    else:
-                        continue
-
-            # add it
-            model.append(mod)
-            focus.append(row["focus"])
-            error.append(row["error"])
+        # get model and fitted focus/error
+        model = self._model(x, data)
+        focus = data["focus"]
+        error = data["error"]
 
         # return residuals
-        return cast(npt.NDArray[float], (np.array(focus) - np.array(model)) / np.array(error))
+        return cast(npt.NDArray[float], (focus - model) / error)
 
     async def _on_filter_changed(self, event: Event, sender: str) -> bool:
         """Receive FilterChangedEvent and set focus.

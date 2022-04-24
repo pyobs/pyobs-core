@@ -139,10 +139,6 @@ class FocusModel(Module, IFocusModel):
         # init log file
         self._publisher = None if log_file is None else CsvPublisher(log_file)
 
-        # update model now
-        if update:
-            await self._calc_focus_model()
-
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -151,6 +147,10 @@ class FocusModel(Module, IFocusModel):
         await self.comm.register_event(FocusFoundEvent, self._on_focus_found)
         if self._filter_offsets is not None and self._filter_wheel is not None:
             await self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
+
+        # update model now
+        if self._update_model:
+            await self._calc_focus_model()
 
     async def _update(self) -> None:
         # wait a little

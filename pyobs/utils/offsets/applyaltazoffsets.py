@@ -60,7 +60,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         altaz_target = radec_target.transform_to(frame)
 
         # get offset
-        dalt, daz = altaz_center.spherical_offsets_to(altaz_target)
+        daz, dalt = altaz_center.spherical_offsets_to(altaz_target)
         log.info('Transformed to Alt/Az shift of dAlt=%.2f", dAz=%.2f".', dalt.arcsec, daz.arcsec)
 
         # get current offset

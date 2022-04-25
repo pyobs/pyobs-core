@@ -51,7 +51,7 @@ class AddMask(ImageProcessor):
 
         # add mask
         instrument = image.header["INSTRUME"]
-        binning = "%dx%s" % (image.header["XBINNING"], image.header["YBINNING"])
+        binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
         if binning in self._masks:
             img.mask = self._masks[instrument][binning].copy()
         else:

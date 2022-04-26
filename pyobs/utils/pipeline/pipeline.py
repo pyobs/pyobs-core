@@ -65,10 +65,6 @@ class Pipeline(Object, PipelineMixin):
             combine_uncertainty_function=np.ma.std,
         )
 
-        # trim image
-        if "TRIMSEC" in combined.header:
-            combined = ccdproc.trim_image(combined, fits_section=combined.header["TRIMSEC"])
-
         # normalize?
         if normalize:
             combined = combined.divide(np.median(combined.data), handle_meta="first_found")

@@ -129,7 +129,6 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # get offset
             log.info("Analysing image...")
-            loop = asyncio.get_running_loop()
             image = await self.run_pipeline(image)
 
             # calculate distance from offset

@@ -1,8 +1,11 @@
 import logging
 from typing import Tuple, Any
 
+from astropy.coordinates import SkyCoord
+from astropy.wcs import WCS
+
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets
+from pyobs.images.meta import PixelOffsets, OnSkyDistance
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -49,8 +52,14 @@ class BrightestStarOffsets(Offsets):
         # calculate offset
         dx, dy = center_x - x, center_y - y
 
+        # get distance on sky
+        wcs = WCS(image.header)
+        coords1 = wcs.pixel_to_world(center_x, center_y)
+        coords2 = wcs.pixel_to_world(center_x + dx, center_y + dy)
+
         # set it and return image
         image.set_meta(PixelOffsets(dx, dy))
+        image.set_meta(OnSkyDistance(coords1.separation(coords2)))
         return image
 
 

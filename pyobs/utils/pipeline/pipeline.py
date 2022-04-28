@@ -44,6 +44,9 @@ class Pipeline(Object, PipelineMixin):
         # get CCDData objects
         data = [image.to_ccddata() for image in images]
 
+        # trim
+        data = [ccdproc.trim_image(d, d.header["TRIMSEC"]) for d in data if "TRIMSEC" in d.header]
+
         # subtract bias?
         if bias is not None:
             bias_data = bias.to_ccddata()

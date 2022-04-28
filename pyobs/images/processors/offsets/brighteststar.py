@@ -50,7 +50,7 @@ class BrightestStarOffsets(Offsets):
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
 
         # calculate offset
-        dx, dy = center_x - x, center_y - y
+        dx, dy = x - center_x, y - center_y
 
         # get distance on sky
         wcs = WCS(image.header)

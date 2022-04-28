@@ -224,7 +224,7 @@ class PyobsArchive(Archive):
                     data.add_field(f"file{i}", bio.getvalue(), filename=filename)
 
             # post it
-            async with session.post(url, data=data, timeout=10, headers=self._headers) as response:
+            async with session.post(url, data=data, timeout=30, headers=self._headers) as response:
                 # success, if status code is 200
                 if response.status != 200:
                     raise ValueError("Cannot write file, received status_code %d." % response.status)

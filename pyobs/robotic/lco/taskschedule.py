@@ -1,4 +1,5 @@
 import asyncio
+import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
 from typing import List, Dict, Optional, Any, cast
@@ -12,8 +13,13 @@ from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
 from .task import LcoTask
+from ...utils.logger import DuplicateFilter
 
 log = logging.getLogger(__name__)
+
+# logger for logging errors
+error_logger = logging.getLogger(__name__ + ":error")
+error_logger.addFilter(DuplicateFilter())
 
 
 class LcoTaskSchedule(TaskSchedule):
@@ -105,6 +111,12 @@ class LcoTaskSchedule(TaskSchedule):
             # do actual update
             try:
                 await self.update_now()
+                error_logger.info('Successfully updated schedule.')
+
+            except asyncio.exceptions.TimeoutError:
+                # do nothing
+                error_logger.error("Could retrieve schedule.")
+
             except:
                 log.exception("An exception occurred.")
 

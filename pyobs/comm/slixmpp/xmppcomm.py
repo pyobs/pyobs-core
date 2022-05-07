@@ -7,7 +7,7 @@ import json
 import logging
 import re
 import time
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
 import slixmpp
 import slixmpp.exceptions

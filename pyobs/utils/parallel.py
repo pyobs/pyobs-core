@@ -4,7 +4,7 @@ import time
 import asyncio
 import inspect
 from asyncio import Task
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import TypeVar, Optional, List, Any, cast, Union
 
 from pyobs.utils.types import cast_response_to_real

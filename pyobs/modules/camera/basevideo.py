@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from collections import Coroutine
+from collections.abc import Coroutine
 from datetime import datetime
 import io
 import logging

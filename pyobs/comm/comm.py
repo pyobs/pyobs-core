@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
 
 import pyobs.interfaces

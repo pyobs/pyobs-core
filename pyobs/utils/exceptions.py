@@ -6,7 +6,7 @@ TODO: Write docs
 __title__ = "Exceptions"
 
 import asyncio
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
 import time
 

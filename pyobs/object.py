@@ -16,7 +16,7 @@ import asyncio
 import copy
 import datetime
 import inspect
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Awaitable
 import logging
 import pytz

@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from collections import Coroutine
+from collections.abc import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits

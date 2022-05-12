@@ -17,7 +17,15 @@ class AstrometryDotNet(Astrometry):
 
     __module__ = "pyobs.images.processors.astrometry"
 
-    def __init__(self, url: str, source_count: int = 50, radius: float = 3.0, timeout: int = 10, **kwargs: Any):
+    def __init__(
+        self,
+        url: str,
+        source_count: int = 50,
+        radius: float = 3.0,
+        timeout: int = 10,
+        exceptions: bool = True,
+        **kwargs: Any,
+    ):
         """Init new astronomy.net processor.
 
         Args:
@@ -25,6 +33,7 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
             timeout: Timeout in seconds for call to astrometry web service.
+            exceptions: Raise exceptions on error.
         """
         Astrometry.__init__(self, **kwargs)
 
@@ -33,6 +42,7 @@ class AstrometryDotNet(Astrometry):
         self.source_count = source_count
         self.radius = radius
         self.timeout = timeout
+        self.exceptions = exceptions
 
     async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
@@ -109,11 +119,20 @@ class AstrometryDotNet(Astrometry):
             if "error" in json:
                 # "Could not find WCS file." is just an info, which means that WCS was not successful
                 if json["error"] == "Could not find WCS file.":
-                    log.info("Could not determine WCS.")
+                    if self.exceptions:
+                        raise ValueError("Could not determine WCS.")
+                    else:
+                        log.info("Could not determine WCS.")
                 else:
-                    log.warning("Received error from astrometry service: %s", json["error"])
+                    if self.exceptions:
+                        raise ValueError(f"Received error from astrometry service: {json['error']}")
+                    else:
+                        log.warning("Received error from astrometry service: %s", json["error"])
             else:
-                log.error("Could not connect to astrometry service.")
+                if self.exceptions:
+                    raise ValueError("Could not connect to astrometry service.")
+                else:
+                    log.error("Could not connect to astrometry service.")
             return img
 
         else:

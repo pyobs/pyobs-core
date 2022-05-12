@@ -8,27 +8,27 @@ from pyobs.utils.time import Time
 
 async def test_scheduler():
     # init observer and time
-    observer = Observer.at_site('SAAO')
-    now = Time('2019-11-21T17:10:00Z')
+    observer = Observer.at_site("SAAO")
+    now = Time("2019-11-21T17:10:00Z")
 
     # have some test functions
     functions = {
-        'B': ' exp(-1.22034 * (h + 3.16086))',
-        'V': ' exp(-1.27565 * (h + 3.48265))',
-        'R': ' exp(-1.39148 * (h + 3.63401))',
+        "B": " exp(-1.22034 * (h + 3.16086))",
+        "V": " exp(-1.27565 * (h + 3.48265))",
+        "R": " exp(-1.39148 * (h + 3.63401))",
     }
 
     # set constant priorities
-    priorities = ConstSkyflatPriorities({('B', (1, 1)): 1, ('V', (1, 1)): 2, ('R', (1, 1)): 3})
+    priorities = ConstSkyflatPriorities({("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
 
     # create scheduler
     scheduler = Scheduler(functions, priorities, observer)
     await scheduler(now)
 
     # test order
-    assert scheduler[0].filter_name == 'B'
-    assert scheduler[1].filter_name == 'V'
-    assert scheduler[2].filter_name == 'R'
+    assert scheduler[0].filter_name == "B"
+    assert scheduler[1].filter_name == "V"
+    assert scheduler[2].filter_name == "R"
 
     # test start/end times
     assert scheduler[0].start == 1160

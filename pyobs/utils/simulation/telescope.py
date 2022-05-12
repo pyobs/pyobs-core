@@ -164,7 +164,7 @@ class SimTelescope(Object):
                 vdec = self._dest_coords.dec.degree - self._position.dec.degree
 
                 # get direction
-                length = np.sqrt(vra ** 2 + vdec ** 2)
+                length = np.sqrt(vra**2 + vdec**2)
 
                 # do we reach target?
                 if length < self.speed:

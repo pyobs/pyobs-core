@@ -300,7 +300,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         x: NDArray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float
     ) -> NDArray[float]:
         """2D Gaussian function."""
-        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
+        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x**2) - (x[1] - y0) ** 2 / (2 * sigma_y**2))
 
     def _offsets_from_corr(self, corr: NDArray[float]) -> Tuple[float, float]:
         """Fit 2d correlation data with a 2d gaussian + constant offset.
@@ -344,7 +344,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # only use data points that clearly belong to peak to avoid border effects
         # mask_value_above_background = ydata > -1e5  # a + .1*b
-        mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (sigma_x ** 2 + sigma_y ** 2) / 2
+        mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (sigma_x**2 + sigma_y**2) / 2
         mask = mask_circle_around_peak
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]

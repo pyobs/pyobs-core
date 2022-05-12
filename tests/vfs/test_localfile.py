@@ -4,7 +4,7 @@ import pytest
 from pyobs.vfs import LocalFile
 
 
-'''
+"""
 def test_read_file():
     # create config
     root = os.path.dirname(__file__)
@@ -67,4 +67,4 @@ def test_create_dir(tmpdir):
     with pytest.raises(ValueError):
         with LocalFile('sub2/test.txt', 'w', root=root, mkdir=False) as f:
             f.write(b'This is a test')
-'''
+"""

@@ -65,7 +65,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         await self._log_offset(tel, "dra", cur_dra, dra.degree, "ddec", cur_ddec, ddec.degree)
 
         # too large or too small?
-        diff = np.sqrt(dra.arcsec ** 2.0 + ddec.arcsec ** 2)
+        diff = np.sqrt(dra.arcsec**2.0 + ddec.arcsec**2)
         if diff < self._min_offset:
             log.warning("Shift too small, skipping auto-guiding for now...")
             return False

@@ -111,7 +111,7 @@ class LcoTaskSchedule(TaskSchedule):
             # do actual update
             try:
                 await self.update_now()
-                error_logger.info('Successfully updated schedule.')
+                error_logger.info("Successfully updated schedule.")
 
             except asyncio.exceptions.TimeoutError:
                 # do nothing

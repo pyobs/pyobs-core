@@ -3,7 +3,7 @@ import requests
 from pyobs.vfs import HttpFile
 
 
-'''
+"""
 class Response:
     def __init__(self, status_code, content):
         self.status_code = status_code
@@ -46,4 +46,4 @@ def test_upload_download(monkeypatch):
     # read data
     with HttpFile('test.txt', 'r', upload=upload, download=download) as f:
         assert test == f.read()
-'''
+"""

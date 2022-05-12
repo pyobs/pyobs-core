@@ -42,12 +42,9 @@ class PipelineMixin:
             Image after pipeline run.
         """
 
-        # loop steps
+        # loop steps, just let any exception pass
         for step in self.__pipeline_steps:
-            try:
-                image = await step(image)
-            except Exception as e:
-                log.exception(f"Could not run pipeline step {step.__class__.__name__}: {e}")
+            image = await step(image)
 
         # finished
         return image

@@ -100,56 +100,28 @@ async def test_trimsec():
     await camera.open()
 
     # define full frame
-    full = {'left': 50, 'width': 100, 'top': 0, 'height': 100}
+    full = {"left": 50, "width": 100, "top": 0, "height": 100}
 
     # image covering the whole data area
-    hdr = fits.Header({
-        'NAXIS1': 100,
-        'NAXIS2': 100,
-        'XORGSUBF': 50,
-        'YORGSUBF': 0,
-        'XBINNING': 1,
-        'YBINNING': 1
-    })
+    hdr = fits.Header({"NAXIS1": 100, "NAXIS2": 100, "XORGSUBF": 50, "YORGSUBF": 0, "XBINNING": 1, "YBINNING": 1})
     camera.set_biassec_trimsec(hdr, **full)
-    assert 'BIASSEC' not in hdr
-    assert '[1:100,1:100]' == hdr['TRIMSEC']
+    assert "BIASSEC" not in hdr
+    assert "[1:100,1:100]" == hdr["TRIMSEC"]
 
     # image covering the whole bias area
-    hdr = fits.Header({
-        'NAXIS1': 50,
-        'NAXIS2': 100,
-        'XORGSUBF': 0,
-        'YORGSUBF': 0,
-        'XBINNING': 1,
-        'YBINNING': 1
-    })
+    hdr = fits.Header({"NAXIS1": 50, "NAXIS2": 100, "XORGSUBF": 0, "YORGSUBF": 0, "XBINNING": 1, "YBINNING": 1})
     camera.set_biassec_trimsec(hdr, **full)
-    assert '[1:50,1:100]' == hdr['BIASSEC']
-    assert 'TRIMSEC' not in hdr
+    assert "[1:50,1:100]" == hdr["BIASSEC"]
+    assert "TRIMSEC" not in hdr
 
     # half in both
-    hdr = fits.Header({
-        'NAXIS1': 50,
-        'NAXIS2': 100,
-        'XORGSUBF': 25,
-        'YORGSUBF': 0,
-        'XBINNING': 1,
-        'YBINNING': 1
-    })
+    hdr = fits.Header({"NAXIS1": 50, "NAXIS2": 100, "XORGSUBF": 25, "YORGSUBF": 0, "XBINNING": 1, "YBINNING": 1})
     camera.set_biassec_trimsec(hdr, **full)
-    assert '[1:25,1:100]' == hdr['BIASSEC']
-    assert '[26:50,1:100]' == hdr['TRIMSEC']
+    assert "[1:25,1:100]" == hdr["BIASSEC"]
+    assert "[26:50,1:100]" == hdr["TRIMSEC"]
 
     # same with binning
-    hdr = fits.Header({
-        'NAXIS1': 40,
-        'NAXIS2': 50,
-        'XORGSUBF': 10,
-        'YORGSUBF': 0,
-        'XBINNING': 2,
-        'YBINNING': 2
-    })
+    hdr = fits.Header({"NAXIS1": 40, "NAXIS2": 50, "XORGSUBF": 10, "YORGSUBF": 0, "XBINNING": 2, "YBINNING": 2})
     camera.set_biassec_trimsec(hdr, **full)
-    assert '[1:20,1:50]' == hdr['BIASSEC']
-    assert '[21:40,1:50]' == hdr['TRIMSEC']
+    assert "[1:20,1:50]" == hdr["BIASSEC"]
+    assert "[21:40,1:50]" == hdr["TRIMSEC"]

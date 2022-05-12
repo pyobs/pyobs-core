@@ -106,7 +106,7 @@ class ProjectedOffsets(Offsets):
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
+        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma**2))
 
     @staticmethod
     def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
@@ -129,7 +129,7 @@ class ProjectedOffsets(Offsets):
         # moment calculation for initial guesses
         total = float(y.sum())
         m = (x * y).sum() / total
-        m2 = (x * x * y).sum() / total - m ** 2
+        m2 = (x * x * y).sum() / total - m**2
 
         # initial guess
         guesses = [np.max(y), m, m2]

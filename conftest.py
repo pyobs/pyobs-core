@@ -30,8 +30,8 @@ def download_IERS() -> None:
     # IERS workaround...
     from astropy.utils import iers
     from astropy.utils.data import clear_download_cache
-    clear_download_cache()
-    #iers.conf.auto_download = False
-    #iers.conf.auto_max_age = None
-    iers.IERS_Auto.open()
 
+    clear_download_cache()
+    # iers.conf.auto_download = False
+    # iers.conf.auto_max_age = None
+    iers.IERS_Auto.open()

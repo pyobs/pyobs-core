@@ -2,7 +2,7 @@ import os
 
 from pyobs.vfs import TempFile
 
-'''
+"""
 def test_write_file():
     # create new temp file with name
     with TempFile(mode='w') as f:
@@ -25,4 +25,4 @@ def test_name():
     # test given name
     with TempFile(name='test.txt', mode='w') as f:
         assert f.filename == 'test.txt'
-'''
+"""

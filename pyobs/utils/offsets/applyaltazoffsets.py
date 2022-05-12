@@ -70,7 +70,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         await self._log_offset(tel, "dalt", cur_dalt, dalt.degree, "daz", cur_daz, daz.degree)
 
         # too large or too small?
-        diff = np.sqrt(dalt.arcsec ** 2.0 + daz.arcsec ** 2)
+        diff = np.sqrt(dalt.arcsec**2.0 + daz.arcsec**2)
         if diff < self._min_offset:
             log.warning("Shift too small, skipping auto-guiding for now...")
             return False

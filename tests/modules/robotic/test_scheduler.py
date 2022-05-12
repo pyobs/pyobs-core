@@ -11,8 +11,11 @@ def test_compare_block_lists():
     # create lists of blocks
     blocks = []
     for i in range(10):
-        blocks.append(ObservingBlock(FixedTarget(SkyCoord(0.*u.deg, 0.*u.deg, frame='icrs'), name=str(i)),
-                                     10*u.minute, 10))
+        blocks.append(
+            ObservingBlock(
+                FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=str(i)), 10 * u.minute, 10
+            )
+        )
 
     # create two lists from these with some overlap
     blocks1 = blocks[:7]

@@ -40,6 +40,14 @@ class ModuleError(PyObsError, metaclass=_Meta):
     pass
 
 
+class GeneralError(PyObsError, metaclass=_Meta):
+    pass
+
+
+class ImageError(PyObsError, metaclass=_Meta):
+    pass
+
+
 class MotionError(PyObsError, metaclass=_Meta):
     pass
 

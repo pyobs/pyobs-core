@@ -6,6 +6,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 
 from pyobs.images import Image
+import pyobs.utils.exceptions as exc
 from .astrometry import Astrometry
 
 
@@ -23,7 +24,6 @@ class AstrometryDotNet(Astrometry):
         source_count: int = 50,
         radius: float = 3.0,
         timeout: int = 10,
-        exceptions: bool = True,
         **kwargs: Any,
     ):
         """Init new astronomy.net processor.
@@ -33,7 +33,6 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
             timeout: Timeout in seconds for call to astrometry web service.
-            exceptions: Raise exceptions on error.
         """
         Astrometry.__init__(self, **kwargs)
 
@@ -42,7 +41,6 @@ class AstrometryDotNet(Astrometry):
         self.source_count = source_count
         self.radius = radius
         self.timeout = timeout
-        self.exceptions = exceptions
 
     async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
@@ -119,21 +117,11 @@ class AstrometryDotNet(Astrometry):
             if "error" in json:
                 # "Could not find WCS file." is just an info, which means that WCS was not successful
                 if json["error"] == "Could not find WCS file.":
-                    if self.exceptions:
-                        raise ValueError("Could not determine WCS.")
-                    else:
-                        log.info("Could not determine WCS.")
+                    raise exc.ImageError("Could not determine WCS.")
                 else:
-                    if self.exceptions:
-                        raise ValueError(f"Received error from astrometry service: {json['error']}")
-                    else:
-                        log.warning("Received error from astrometry service: %s", json["error"])
+                    raise exc.ImageError(f"Received error from astrometry service: {json['error']}")
             else:
-                if self.exceptions:
-                    raise ValueError("Could not connect to astrometry service.")
-                else:
-                    log.error("Could not connect to astrometry service.")
-            return img
+                raise exc.ImageError("Could not connect to astrometry service.")
 
         else:
             # copy keywords

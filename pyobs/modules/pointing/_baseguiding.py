@@ -26,6 +26,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         max_interval: float = 600,
         separation_reset: Optional[float] = None,
         pid: bool = False,
+        reset_at_focus: bool = True,
+        reset_at_filter: bool = True,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -36,6 +38,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
             max_interval: Maximum interval in sec between to consecutive images to guide.
             separation_reset: Min separation in arcsec between two consecutive images that triggers a reset.
             pid: Whether to use a PID for guiding.
+            reset_at_focus: Reset guiding, if focus changes.
+            reset_at_filter: Reset guiding, if filter changes.
         """
         BasePointing.__init__(self, **kwargs)
 
@@ -46,6 +50,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         self._max_interval = max_interval
         self._separation_reset = separation_reset
         self._pid = pid
+        self._reset_at_focus = reset_at_focus
+        self._reset_at_filter = reset_at_filter
         self._loop_closed = False
 
         # headers of last and of reference image
@@ -141,7 +147,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
 
         # check filter
         if (
-            "FILTER" in image.header
+            self._reset_at_filter
+            and "FILTER" in image.header
             and "FILTER" in self._ref_header
             and image.header["FILTER"] != self._ref_header["FILTER"]
         ):
@@ -165,11 +172,14 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
                 return None
 
             # check focus
-            if "TEL-FOCU" in image.header:
-                if abs(image.header["TEL-FOCU"] - self._last_header["TEL-FOCU"]) > 0.05:
-                    log.warning("Focus difference between current and last image is too large, resetting reference...")
-                    await self._reset_guiding(image=image)
-                    return None
+            if (
+                "TEL-FOCU" in image.header
+                and self._reset_at_focus
+                and abs(image.header["TEL-FOCU"] - self._last_header["TEL-FOCU"]) > 0.05
+            ):
+                log.warning("Focus difference between current and last image is too large, resetting reference...")
+                await self._reset_guiding(image=image)
+                return None
 
         # exposure time too large?
         if self._max_exposure_time is not None and image.header["EXPTIME"] > self._max_exposure_time:

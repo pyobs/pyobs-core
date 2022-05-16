@@ -106,7 +106,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         self._last_header = None if image is None else image.header
 
         # reset offset
-        self.reset_pipeline()
+        await self.reset_pipeline()
         if image is not None:
             # if image is given, process it
             loop = asyncio.get_running_loop()

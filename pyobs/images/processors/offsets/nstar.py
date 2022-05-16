@@ -1,6 +1,7 @@
 import logging
 from typing import Tuple, List, Union, Dict, Any, Optional
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from scipy import signal, optimize
 from astropy.nddata import NDData
@@ -9,6 +10,7 @@ import photutils
 
 from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
+from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -73,7 +75,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         """
 
         # no reference image?
-        if self.ref_boxes is None:
+        if len(self.ref_boxes) == 0:
             log.info("Initialising nstar auto-guiding with new image...")
             star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
             log.info(f"Choosing box size of {star_box_size} pixels.")
@@ -81,7 +83,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             # initialize reference image information
             try:
                 # get boxes
-                self.ref_boxes = self._boxes_from_ref(image, star_box_size)
+                self.ref_boxes = await self._boxes_from_ref(image, star_box_size)
 
                 # reset and finish
                 image.meta["offsets"] = (0, 0)
@@ -100,7 +102,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         log.info("Perform auto-guiding on new image...")
         offsets = self._calculate_offsets(image)
         if offsets[0] is not None:
-            image.meta["offsets"] = offsets
+            image.set_meta(PixelOffsets(offsets[0], offsets[1]))
         return image
 
     @staticmethod
@@ -170,9 +172,14 @@ class NStarOffsets(Offsets, PipelineMixin):
         # get shape
         width, height = image_shape
 
-        def min_distance_from_border(source) -> None:
+        def min_distance_from_border(source: pd.DataFrame) -> List[float]:
             # calculate the minimum distance of source to any image border (across x and y)
-            return min(width / 2 - np.abs(source["y"] - width / 2), height / 2 - np.abs(source["x"] - height / 2))
+            return [
+                min(x, y)
+                for x, y in zip(
+                    width / 2 - np.abs(source["y"] - width / 2), height / 2 - np.abs(source["x"] - height / 2)
+                )
+            ]
 
         sources.add_column(Column(name="min_dist", data=min_distance_from_border(sources)))
         sources.sort("min_dist")

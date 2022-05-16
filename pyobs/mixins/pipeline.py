@@ -27,10 +27,10 @@ class PipelineMixin:
         else:
             raise ValueError("This class is no Object.")
 
-    def reset_pipeline(self) -> None:
+    async def reset_pipeline(self) -> None:
         """Resets all previous state of the involved image processors."""
         for step in self.__pipeline_steps:
-            step.reset()
+            await step.reset()
 
     async def run_pipeline(self, image: Image) -> Image:
         """Run the pipeline on the given image.

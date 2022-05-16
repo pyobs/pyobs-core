@@ -54,12 +54,12 @@ class NStarOffsets(Offsets, PipelineMixin):
         self.min_sources = min_sources
         self.ref_boxes: List[Any] = []
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Resets guiding."""
         log.info("Reset auto-guiding.")
         self.ref_boxes = []
 
-    def __call__(self, image: Image) -> Image:
+    async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
 
         Args:
@@ -90,7 +90,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             except ValueError as e:
                 # didn't work
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
-                self.reset()
+                await self.reset()
                 if "offsets" in image.meta:
                     del image.meta["offsets"]
                 self.offset = None, None

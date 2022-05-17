@@ -254,11 +254,11 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         return self._cooling.temperatures
 
-    def _set_config_readout_time(self, readout_time: float) -> None:
+    async def _set_config_readout_time(self, readout_time: float) -> None:
         """Set readout time."""
         self._readout_time = readout_time
 
-    def _get_config_readout_time(self) -> float:
+    async def _get_config_readout_time(self) -> float:
         """Returns readout time."""
         return self._readout_time
 

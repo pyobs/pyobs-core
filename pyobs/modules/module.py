@@ -322,7 +322,7 @@ class Module(Object, IModule, IConfig):
 
         # get getter method and call it
         getter = getattr(self, "_get_config_" + name)
-        return getter()
+        return await getter()
 
     async def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
         """Returns possible values for config item with given name.
@@ -345,7 +345,7 @@ class Module(Object, IModule, IConfig):
 
         # get getter method and call it
         options = getattr(self, "_get_config_options_" + name)
-        return cast(List[str], options())
+        return cast(List[str], await options())
 
     async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
@@ -366,7 +366,7 @@ class Module(Object, IModule, IConfig):
 
         # get setter and call it
         setter = getattr(self, "_set_config_" + name)
-        setter(value)
+        await setter(value)
 
     async def set_state(self, state: ModuleState, error_string: Optional[str] = None) -> None:
         """Set state of module.

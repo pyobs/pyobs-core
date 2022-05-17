@@ -1,6 +1,11 @@
+v0.19.0 (2022-05-17)
+********************
+* Getter/setter methods in Module must be async.
+* Lots of bug fixes.
+
 v0.18.0 (2022-03-13)
 ********************
-* New IGain interface
+* New IGain interface.
 
 v0.17.0 (2022-02-14)
 ********************

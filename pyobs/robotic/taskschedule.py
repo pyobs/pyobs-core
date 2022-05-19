@@ -45,7 +45,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def get_task(self, time: Time) -> Optional[Task]:
+    async def get_task(self, time: Time) -> Optional[Task]:
         """Returns the active task at the given time.
 
         Args:

@@ -229,7 +229,7 @@ class LcoTaskSchedule(TaskSchedule):
                 # finished
                 return tasks
 
-    def get_task(self, time: Time) -> Optional[LcoTask]:
+    async def get_task(self, time: Time) -> Optional[LcoTask]:
         """Returns the active task at the given time.
 
         Args:

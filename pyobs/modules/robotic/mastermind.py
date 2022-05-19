@@ -98,7 +98,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            task: Optional[Task] = self._task_schedule.get_task(now)
+            task: Optional[Task] = await self._task_schedule.get_task(now)
             if task is None or not await self._task_runner.can_run(task):
                 # no task found
                 await asyncio.sleep(10)

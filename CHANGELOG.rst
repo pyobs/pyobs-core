@@ -1,6 +1,7 @@
 v0.19.0 (2022-05-17)
 ********************
 * Getter/setter methods in Module must be async.
+* get_task() in TaskScheduler is now async.
 * Lots of bug fixes.
 
 v0.18.0 (2022-03-13)

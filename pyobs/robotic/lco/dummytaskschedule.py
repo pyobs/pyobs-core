@@ -119,7 +119,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def get_schedule(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
         return {} if self._task is None else {"task": self._task}
 
-    def get_task(self, time: Time) -> Optional[LcoTask]:
+    async def get_task(self, time: Time) -> Optional[LcoTask]:
         task = self._task
         self._task = None
         return task

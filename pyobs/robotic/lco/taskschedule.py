@@ -113,9 +113,9 @@ class LcoTaskSchedule(TaskSchedule):
                 await self.update_now()
                 error_logger.info("Successfully updated schedule.")
 
-            except asyncio.exceptions.TimeoutError:
+            except asyncio.TimeoutError:
                 # do nothing
-                error_logger.error("Could retrieve schedule.")
+                error_logger.error("Could not retrieve schedule.")
 
             except:
                 log.exception("An exception occurred.")
@@ -266,8 +266,24 @@ class LcoTaskSchedule(TaskSchedule):
                     if response.status != 200:
                         log.error("Could not update configuration status: %s", await response.text())
 
-        except TimeoutError:
-            log.error("Request timed out.")
+        except asyncio.TimeoutError:
+            # schedule re-attempt for sending
+            asyncio.create_task(self._send_update_later(status_id, status))
+
+    async def _send_update_later(self, status_id: int, status: Dict[str, Any], delay: int = 300) -> None:
+        """Delay re-attempt to send report to LCO portal
+
+        Args:
+            status_id: id of config status
+            status: Status dictionary
+            delay: Delay in seconds
+        """
+
+        # sleep
+        await asyncio.sleep(delay)
+
+        # re-send
+        await self.send_update(status_id, update)
 
     async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.

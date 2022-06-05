@@ -203,6 +203,8 @@ class ImageWatcher(Module):
 
                 # no success?
                 if not success:
+                    # re-queue file and skip file for now
+                    self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
                     continue
 
                 # close and delete files

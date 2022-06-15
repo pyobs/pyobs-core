@@ -34,16 +34,30 @@ class AutoGuiding(BaseGuiding):
         self.add_background_task(self._auto_guiding)
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
-        """Set the exposure time for the auto-guider.
+        """Set the exposure time in seconds.
 
         Args:
-            exposure_time: Exposure time in secs.
+            exposure_time: Exposure time in seconds.
+
+        Raises:
+            ValueError: If exposure time could not be set.
         """
         log.info("Setting exposure time to %ds...", exposure_time)
         self._default_exposure_time = exposure_time
         self._exposure_time = None
         self._loop_closed = False
         await self._reset_guiding(enabled=self._enabled)
+
+    async def get_exposure_time(self, **kwargs: Any) -> float:
+        """Returns the exposure time in seconds.
+
+        Returns:
+            Exposure time in seconds.
+        """
+        return self._default_exposure_time
+
+    async def get_exposure_time_left(self, **kwargs: Any) -> float:
+        return 0.0
 
     async def _auto_guiding(self) -> None:
         # exposure time

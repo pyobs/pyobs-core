@@ -65,7 +65,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
-        log.info("Stopping autp-guiding...")
+        log.info("Stopping auto-guiding...")
         await self._reset_guiding(enabled=False)
 
     async def is_running(self, **kwargs: Any) -> bool:

@@ -1,10 +1,11 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict
 
+from .IAbortable import IAbortable
 from .IRunning import IRunning
 
 
-class IAcquisition(IRunning, metaclass=ABCMeta):
+class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
     """The module can acquire a target, usually by accessing a telescope and a camera."""
 
     __module__ = "pyobs.interfaces"

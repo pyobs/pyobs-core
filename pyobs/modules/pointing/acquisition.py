@@ -12,6 +12,7 @@ from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
+import pyobs.utils.exceptions as exc
 from ._base import BasePointing
 from ...interfaces import IExposureTime, IImageType, ITelescope, IImageGrabber, IOffsetsRaDec, IOffsetsAltAz, ICamera
 
@@ -52,6 +53,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._attempts = attempts
         self._tolerance = tolerance * u.arcsec
         self._max_offset = max_offset * u.arcsec
+        self._abort_event = asyncio.Event()
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
@@ -90,6 +92,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         try:
             self._is_running = True
+            self._abort_event = asyncio.Event()
             return await self._acquire(self._default_exposure_time)
         finally:
             self._is_running = False
@@ -110,6 +113,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # try given number of attempts
         for a in range(self._attempts):
+            # abort?
+            if self._abort_event.is_set():
+                raise exc.AbortedError()
+
             # set exposure time and image type and take image
             if isinstance(camera, IExposureTime):
                 log.info("Exposing image for %.1f seconds...", exposure_time)
@@ -180,7 +187,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 exposure_time = image.get_meta(ExpTime).exptime
 
         # could not acquire target
-        raise ValueError("Could not acquire target within given tolerance.")
+        raise exc.ImageError("Could not acquire target within given tolerance.")
+
+    async def abort(self, **kwargs: Any) -> None:
+        """Abort current actions."""
+        self._abort_event.set()
 
 
 __all__ = ["Acquisition"]

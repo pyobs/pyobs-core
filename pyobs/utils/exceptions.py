@@ -68,6 +68,10 @@ class GrabImageError(PyObsError, metaclass=_Meta):
     pass
 
 
+class AbortedError(PyObsError, metaclass=_Meta):
+    pass
+
+
 #######################################
 
 

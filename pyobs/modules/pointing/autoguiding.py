@@ -59,6 +59,11 @@ class AutoGuiding(BaseGuiding):
     async def get_exposure_time_left(self, **kwargs: Any) -> float:
         return 0.0
 
+    async def start(self, **kwargs: Any) -> None:
+        """Starts/resets auto-guiding."""
+        await BaseGuiding.start(self)
+        self._exposure_time = self._default_exposure_time
+
     async def _auto_guiding(self) -> None:
         # exposure time
         self._exposure_time = self._default_exposure_time

@@ -186,16 +186,15 @@ class XmppComm(Comm):
         # server given?
         server = () if self._server is None else tuple(self._server.split(":"))
 
-        # prepare session start callback
-        connected_event = asyncio.Event()
-        self._xmpp.add_event_handler("session_start", lambda _: connected_event.set())
-
         # connect
         self._xmpp.connect(address=server, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 
         # wait for connected
-        await connected_event.wait()
+        if not await self._xmpp.wait_connect():
+            if self.module is not None:
+                self.module.quit()
+            return
 
         # subscribe to events
         await self.register_event(LogEvent)
@@ -222,7 +221,7 @@ class XmppComm(Comm):
         return self._user
 
     def _failed_auth(self, event: Any) -> None:
-        """Authentification failed.
+        """Authentication failed.
 
         Args:
             event: XMPP event.

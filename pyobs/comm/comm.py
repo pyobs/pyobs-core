@@ -313,9 +313,9 @@ class Comm:
                 entry = await self._log_queue.get()
                 await self.send_event(entry)
             except asyncio.CancelledError:
-                break
+                return
             except:
-                log.exception("bla")
+                log.exception("Something went wrong")
                 pass
 
     def log_message(self, entry: LogEvent) -> None:

@@ -88,15 +88,30 @@ class Application:
             loop.add_signal_handler(sig, self._signal_handler, sig)
 
         # run main task forever
-        loop.create_task(self._main())
-        loop.run_forever()
+        main = loop.create_task(self._main())
+        # loop.run_forever()
+        # print("run forever ended")
+        # print(main.done())
+        try:
+            loop.run_until_complete(main)
+        except RuntimeError:
+            pass
+
+        print("main ended")
 
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks(loop=loop)
         for t in tasks:
-            t.cancel()
-        group = asyncio.gather(*tasks, return_exceptions=True)
-        loop.run_until_complete(group)
+            print(t)
+            # t.cancel()
+            try:
+                loop.run_until_complete(t)
+            except asyncio.CancelledError:
+                print("canceled")
+            print("done")
+
+        # group = asyncio.gather(*tasks, return_exceptions=True)
+        # loop.run_until_complete(group)
 
         # finished
         loop.close()
@@ -105,11 +120,13 @@ class Application:
         """React to signals and quit module."""
 
         # stop loop
-        loop = asyncio.get_running_loop()
-        loop.stop()
+        # loop = asyncio.get_running_loop()
+        # loop.stop()
+        self._module.quit()
 
         # reset signal handlers
         log.info(f"Got signal: {sig!s}, shutting down.")
+        loop = asyncio.get_running_loop()
         loop.remove_signal_handler(signal.SIGTERM)
         loop.add_signal_handler(signal.SIGINT, lambda: None)
 
@@ -124,7 +141,9 @@ class Application:
             log.info("Started successfully.")
 
             # run module
+            print("await self._module.main()")
             await self._module.main()
+            print("await self._module.main() finished")
 
         except:
             # some exception was thrown
@@ -137,10 +156,14 @@ class Application:
             # close module
             if self._module is not None:
                 log.info("Closing module...")
-                await self._module.close()
+                try:
+                    await self._module.close()
+                except:
+                    log.exception("hey")
 
             # finished
             log.info("Finished shutting down.")
+            print("end main")
 
     def _hack_threading(self) -> None:
         """Bad hack to set thread name on OS level."""

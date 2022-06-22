@@ -69,10 +69,13 @@ class Comm:
 
     async def close(self) -> None:
         """Close module."""
+        print("close comm")
 
         # close thread
         if self._logging_task:
+            print("cancel logging")
             self._logging_task.cancel()
+            print("done")
         self._logging_task = None
 
     def _get_full_client_name(self, name: str) -> str:
@@ -310,10 +313,17 @@ class Comm:
         while True:
             # get item (maybe wait for it) and send it
             try:
-                entry = await self._log_queue.get()
+                entry = self._log_queue.get_nowait()
                 await self.send_event(entry)
+
+            except asyncio.QueueEmpty:
+                # if queue is empty, sleep a little
+                await asyncio.sleep(1)
+
             except asyncio.CancelledError:
+                print("_logging cancelled")
                 return
+
             except:
                 log.exception("Something went wrong")
                 pass

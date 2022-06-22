@@ -209,8 +209,8 @@ class Module(Object, IModule, IConfig):
 
     def quit(self) -> None:
         """Quit module."""
-        # asyncio.get_event_loop().stop()
         self._closing.set()
+        asyncio.get_event_loop().stop()
 
     async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion

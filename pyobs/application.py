@@ -90,32 +90,34 @@ class Application:
 
         # run main task forever
         main = loop.create_task(self._main())
-        # loop.run_forever()
-        # print("run forever ended")
+        loop.run_forever()
+        print("run forever ended")
         # print(main.done())
         try:
             loop.run_until_complete(main)
         except RuntimeError:
-            pass
+            print("bla")
 
         print("main ended")
 
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks(loop=loop)
         for t in tasks:
-            print(t)
-            # t.cancel()
-            try:
-                loop.run_until_complete(t)
-            except asyncio.CancelledError:
-                print("canceled")
-            print("done")
+            print("cancel", t)
+            t.cancel()
+            # try:
+            #    loop.run_until_complete(t)
+            # except asyncio.CancelledError:
+            #    print("canceled")
+            # print("done")
 
-        # group = asyncio.gather(*tasks, return_exceptions=True)
-        # loop.run_until_complete(group)
+        group = asyncio.gather(*tasks, return_exceptions=True)
+        loop.run_until_complete(group)
 
         # finished
+        print("close loop")
         loop.close()
+        print("run done")
 
     def _signal_handler(self, sig) -> None:
         """React to signals and quit module."""

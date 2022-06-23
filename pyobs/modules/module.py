@@ -104,6 +104,9 @@ class Module(Object, IModule, IConfig):
         self._state = ModuleState.READY
         self._error_string = ""
 
+        # close
+        self._closing = asyncio.Event()
+
     async def open(self) -> None:
         # open comm
         if self.comm is not None:
@@ -126,13 +129,13 @@ class Module(Object, IModule, IConfig):
             log.info("Closing connection to server...")
             await self.comm.close()
 
+    @staticmethod
+    def new_event_loop() -> asyncio.AbstractEventLoop:
+        return asyncio.new_event_loop()
+
     async def main(self) -> None:
         """Main loop for application."""
-        while True:
-            try:
-                await asyncio.sleep(1)
-            except asyncio.CancelledError:
-                return
+        await self._closing.wait()
 
     def name(self, **kwargs: Any) -> str:
         """Returns name of module."""
@@ -210,6 +213,7 @@ class Module(Object, IModule, IConfig):
 
     def quit(self) -> None:
         """Quit module."""
+        self._closing.set()
         asyncio.get_event_loop().stop()
 
     async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:

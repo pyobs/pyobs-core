@@ -310,12 +310,18 @@ class Comm:
         while True:
             # get item (maybe wait for it) and send it
             try:
-                entry = await self._log_queue.get()
+                entry = self._log_queue.get_nowait()
                 await self.send_event(entry)
+
+            except asyncio.QueueEmpty:
+                # if queue is empty, sleep a little
+                await asyncio.sleep(1)
+
             except asyncio.CancelledError:
-                break
+                return
+
             except:
-                log.exception("bla")
+                log.exception("Something went wrong")
                 pass
 
     def log_message(self, entry: LogEvent) -> None:

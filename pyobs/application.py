@@ -8,9 +8,10 @@ from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
 from typing import Optional, Any, Dict
 
+import qasync
 import yaml
 
-from pyobs.object import get_object
+from pyobs.object import get_object, get_class_from_string
 from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
 
@@ -75,41 +76,53 @@ class Application:
         with StringIO(pre_process_yaml(self._config)) as f:
             cfg: Dict[str, Any] = yaml.safe_load(f)
 
+        # get module class
+        class_name = cfg["class"]
+        klass = get_class_from_string(class_name)
+
+        # create event loop
+        self._loop = klass.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+
         # create module and open it
-        log.info("Creating module...")
+        log.info(f"Creating module from class {klass.__name__}...")
         self._module = get_object(cfg, Module)
 
     def run(self) -> None:
         """Run app."""
 
         # signals
-        loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, self._signal_handler, sig)
+            self._loop.add_signal_handler(sig, self._signal_handler, sig)
 
         # run main task forever
-        loop.create_task(self._main())
-        loop.run_forever()
+        main = self._loop.create_task(self._main())
+        self._loop.run_forever()
+        self._loop.run_until_complete(main)
 
         # main finished, cancel all tasks
-        tasks = asyncio.all_tasks(loop=loop)
+        tasks = asyncio.all_tasks(loop=self._loop)
         for t in tasks:
+            log.debug(f"Task {t} still running, cancelling it...")
             t.cancel()
         group = asyncio.gather(*tasks, return_exceptions=True)
-        loop.run_until_complete(group)
+        self._loop.run_until_complete(group)
 
         # finished
-        loop.close()
+        log.info("Closing loop...")
+        self._loop.close()
 
     def _signal_handler(self, sig) -> None:
         """React to signals and quit module."""
 
         # stop loop
-        loop = asyncio.get_running_loop()
-        loop.stop()
+        # loop = asyncio.get_running_loop()
+        # loop.stop()
+        self._module.quit()
 
         # reset signal handlers
         log.info(f"Got signal: {sig!s}, shutting down.")
+        loop = asyncio.get_running_loop()
         loop.remove_signal_handler(signal.SIGTERM)
         loop.add_signal_handler(signal.SIGINT, lambda: None)
 
@@ -137,7 +150,10 @@ class Application:
             # close module
             if self._module is not None:
                 log.info("Closing module...")
-                await self._module.close()
+                try:
+                    await self._module.close()
+                except:
+                    log.exception("hey")
 
             # finished
             log.info("Finished shutting down.")

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections import Awaitable
+from collections.abc import Awaitable
 from typing import Union, Tuple, Type, Optional, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u

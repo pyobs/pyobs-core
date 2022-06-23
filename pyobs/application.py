@@ -11,7 +11,7 @@ from typing import Optional, Any, Dict
 import qasync
 import yaml
 
-from pyobs.object import get_object
+from pyobs.object import get_object, get_class_from_string
 from pyobs.modules import Module
 from pyobs.utils.config import pre_process_yaml
 
@@ -76,8 +76,16 @@ class Application:
         with StringIO(pre_process_yaml(self._config)) as f:
             cfg: Dict[str, Any] = yaml.safe_load(f)
 
+        # get module class
+        class_name = cfg["class"]
+        klass = get_class_from_string(class_name)
+
+        # create event loop
+        loop = klass.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         # create module and open it
-        log.info("Creating module...")
+        log.info(f"Creating module from class {klass.__name__}...")
         self._module = get_object(cfg, Module)
 
     def run(self) -> None:

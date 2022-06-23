@@ -129,6 +129,10 @@ class Module(Object, IModule, IConfig):
             log.info("Closing connection to server...")
             await self.comm.close()
 
+    @staticmethod
+    def new_event_loop() -> asyncio.AbstractEventLoop:
+        return asyncio.new_event_loop()
+
     async def main(self) -> None:
         """Main loop for application."""
         await self._closing.wait()

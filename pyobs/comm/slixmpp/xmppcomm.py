@@ -213,12 +213,7 @@ class XmppComm(Comm):
         await Comm.close(self)
 
         # disconnect from sleekxmpp server
-        print("xmpp.disconnect")
         await self._xmpp.disconnect()
-
-        # bug in asyncio or qasync?
-        # for some reason, cancelling a task does not abort the wait on a Queue.get
-        self._xmpp._run_out_filters.cancel()
 
     @property
     def name(self) -> Optional[str]:

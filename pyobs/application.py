@@ -99,33 +99,19 @@ class Application:
         # run main task forever
         main = loop.create_task(self._main())
         loop.run_forever()
-        print("run forever ended")
-        # print(main.done())
-        try:
-            loop.run_until_complete(main)
-        except RuntimeError:
-            print("bla")
-
-        print("main ended")
+        loop.run_until_complete(main)
 
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks(loop=loop)
         for t in tasks:
-            print("cancel", t)
+            log.debug(f"Task {t} still running, cancelling it...")
             t.cancel()
-            # try:
-            #    loop.run_until_complete(t)
-            # except asyncio.CancelledError:
-            #    print("canceled")
-            # print("done")
-
         group = asyncio.gather(*tasks, return_exceptions=True)
         loop.run_until_complete(group)
 
         # finished
-        print("close loop")
+        log.info("Closing loop...")
         loop.close()
-        print("run done")
 
     def _signal_handler(self, sig) -> None:
         """React to signals and quit module."""
@@ -152,9 +138,7 @@ class Application:
             log.info("Started successfully.")
 
             # run module
-            print("await self._module.main()")
             await self._module.main()
-            print("await self._module.main() finished")
 
         except:
             # some exception was thrown
@@ -174,7 +158,6 @@ class Application:
 
             # finished
             log.info("Finished shutting down.")
-            print("end main")
 
     def _hack_threading(self) -> None:
         """Bad hack to set thread name on OS level."""

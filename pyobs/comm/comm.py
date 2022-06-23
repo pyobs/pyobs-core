@@ -69,13 +69,10 @@ class Comm:
 
     async def close(self) -> None:
         """Close module."""
-        print("close comm")
 
         # close thread
         if self._logging_task:
-            print("cancel logging")
             self._logging_task.cancel()
-            print("done")
         self._logging_task = None
 
     def _get_full_client_name(self, name: str) -> str:
@@ -321,7 +318,6 @@ class Comm:
                 await asyncio.sleep(1)
 
             except asyncio.CancelledError:
-                print("_logging cancelled")
                 return
 
             except:

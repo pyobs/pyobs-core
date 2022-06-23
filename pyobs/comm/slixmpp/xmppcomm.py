@@ -120,6 +120,7 @@ class XmppComm(Comm):
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
         self._user = user
+        self._password = password
         self._domain = domain
         self._resource = resource
         self._server = server
@@ -127,6 +128,7 @@ class XmppComm(Comm):
         self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
+        self._module: Optional[Module] = None
 
         # build jid
         if jid:
@@ -149,32 +151,17 @@ class XmppComm(Comm):
         else:
             self._jid = "%s@%s/%s" % (self._user, self._domain, self._resource)
 
-        # create client
-        self._xmpp = XmppClient(self._jid, password)
-        # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
-        self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
-        self._xmpp.add_event_handler("got_online", self._got_online)
-        self._xmpp.add_event_handler("got_offline", self._got_offline)
+        #  client and RPC handler
+        self._xmpp: Optional[XmppClient] = None
+        self._rpc: Optional[RPC] = None
 
-        # create RPC handler
-        self._rpc = RPC(self._xmpp, None)
-
-    def _set_module(self, module: "Module") -> None:
+    def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
 
         Args:
             module: The module.
         """
-
-        # add features
-        if module is not None:
-            for i in module.interfaces:
-                self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
-
-        # update RPC
-        if self._rpc is None:
-            raise ValueError("No RPC.")
-        self._rpc.set_handler(module)
+        self._module = module
 
     async def open(self) -> None:
         """Open the connection to the XMPP server.
@@ -183,8 +170,24 @@ class XmppComm(Comm):
             Whether opening was successful.
         """
 
+        # create client
+        self._xmpp = XmppClient(self._jid, self._password)
+        # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
+        self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
+        self._xmpp.add_event_handler("got_online", self._got_online)
+        self._xmpp.add_event_handler("got_offline", self._got_offline)
+
         # server given?
         server = () if self._server is None else tuple(self._server.split(":"))
+
+        # add features
+        if self._module is not None:
+            for i in self._module.interfaces:
+                self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
+
+        # RPC
+        self._rpc = RPC(self._xmpp, None)
+        self._rpc.set_handler(self._module)
 
         # connect
         self._xmpp.connect(address=server, force_starttls=self._use_tls, disable_starttls=not self._use_tls)

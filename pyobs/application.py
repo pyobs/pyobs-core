@@ -81,8 +81,8 @@ class Application:
         klass = get_class_from_string(class_name)
 
         # create event loop
-        loop = klass.new_event_loop()
-        asyncio.set_event_loop(loop)
+        self._loop = klass.new_event_loop()
+        asyncio.set_event_loop(self._loop)
 
         # create module and open it
         log.info(f"Creating module from class {klass.__name__}...")
@@ -92,26 +92,25 @@ class Application:
         """Run app."""
 
         # signals
-        loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, self._signal_handler, sig)
+            self._loop.add_signal_handler(sig, self._signal_handler, sig)
 
         # run main task forever
-        main = loop.create_task(self._main())
-        loop.run_forever()
-        loop.run_until_complete(main)
+        main = self._loop.create_task(self._main())
+        self._loop.run_forever()
+        self._loop.run_until_complete(main)
 
         # main finished, cancel all tasks
-        tasks = asyncio.all_tasks(loop=loop)
+        tasks = asyncio.all_tasks(loop=self._loop)
         for t in tasks:
             log.debug(f"Task {t} still running, cancelling it...")
             t.cancel()
         group = asyncio.gather(*tasks, return_exceptions=True)
-        loop.run_until_complete(group)
+        self._loop.run_until_complete(group)
 
         # finished
         log.info("Closing loop...")
-        loop.close()
+        self._loop.close()
 
     def _signal_handler(self, sig) -> None:
         """React to signals and quit module."""

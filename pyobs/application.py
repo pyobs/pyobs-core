@@ -7,8 +7,6 @@ import threading
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
 from typing import Optional, Any, Dict
-
-import qasync
 import yaml
 
 from pyobs.object import get_object, get_class_from_string

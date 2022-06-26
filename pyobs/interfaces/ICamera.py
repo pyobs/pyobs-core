@@ -21,15 +21,6 @@ class ICamera(IAbortable, IImageGrabber, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def abort(self, **kwargs: Any) -> None:
-        """Aborts the current exposure and sequence.
-
-        Raises:
-            ValueError: If exposure could not be aborted.
-        """
-        ...
-
-    @abstractmethod
     async def get_exposure_progress(self, **kwargs: Any) -> float:
         """Returns the progress of the current exposure in percent.
 

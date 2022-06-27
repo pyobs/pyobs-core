@@ -134,7 +134,7 @@ class Kiosk(Module, IStartStop):
                 await camera.set_window(*full_frame)
 
             # do exposure
-            filename = await camera.grab_image(False)
+            filename = await camera.grab_data(False)
 
             # download image
             try:

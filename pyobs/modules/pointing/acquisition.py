@@ -14,7 +14,7 @@ from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
 import pyobs.utils.exceptions as exc
 from ._base import BasePointing
-from ...interfaces import IExposureTime, IImageType, ITelescope, IImageGrabber, IOffsetsRaDec, IOffsetsAltAz, ICamera
+from ...interfaces import IExposureTime, IImageType, ITelescope, IData, IOffsetsRaDec, IOffsetsAltAz, ICamera
 
 log = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # get camera
         log.info("Getting proxy for camera...")
-        camera = await self.proxy(self._camera, IImageGrabber)
+        camera = await self.proxy(self._camera, IData)
 
         # do camera settings
         await self._do_camera_settings(camera)
@@ -125,7 +125,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 log.info("Exposing image...")
             if isinstance(camera, IImageType):
                 await camera.set_image_type(ImageType.ACQUISITION)
-            filename = await camera.grab_image()
+            filename = await camera.grab_data()
 
             # download image
             log.info("Downloading image...")

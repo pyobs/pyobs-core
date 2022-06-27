@@ -275,7 +275,7 @@ class FlatFielder(Object):
             await camera.set_exposure_time(0.0)
         if isinstance(camera, IImageType):
             await camera.set_image_type(ImageType.BIAS)
-        filename = await cam.grab_image(broadcast=False)
+        filename = await cam.grab_data(broadcast=False)
 
         # download image
         bias = await self.vfs.read_image(filename)
@@ -372,7 +372,7 @@ class FlatFielder(Object):
             await camera.set_exposure_time(float(self._exptime))
         if isinstance(camera, IImageType):
             await camera.set_image_type(ImageType.SKYFLAT)
-        filename = await cam.grab_image(broadcast=False)
+        filename = await cam.grab_data(broadcast=False)
 
         # analyse image
         await self._analyse_image(filename)
@@ -507,7 +507,7 @@ class FlatFielder(Object):
             await camera.set_exposure_time(float(self._exptime))
         if isinstance(camera, IImageType):
             await camera.set_image_type(ImageType.SKYFLAT)
-        filename = await camera.grab_image()
+        filename = await camera.grab_data()
 
         # analyse image
         if await self._analyse_image(filename):

@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.interfaces import IExposureTime, IImageType, IImageGrabber
+from pyobs.interfaces import IExposureTime, IImageType, IData
 from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import event_wait
 
@@ -77,7 +77,7 @@ class AutoGuiding(BaseGuiding):
 
             try:
                 # get camera
-                camera = await self.proxy(self._camera, IImageGrabber)
+                camera = await self.proxy(self._camera, IData)
 
                 # take image
                 if isinstance(camera, IExposureTime):
@@ -88,7 +88,7 @@ class AutoGuiding(BaseGuiding):
                     log.info("Taking image...")
                 if isinstance(camera, IImageType):
                     await camera.set_image_type(ImageType.OBJECT)
-                filename = await camera.grab_image(broadcast=False)
+                filename = await camera.grab_data(broadcast=False)
 
                 # download image
                 image = await self.vfs.read_image(filename)

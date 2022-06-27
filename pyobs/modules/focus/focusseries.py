@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 
 from pyobs.interfaces import IAutoFocus
 from pyobs.events import FocusFoundEvent
-from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IImageGrabber
+from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
@@ -25,7 +25,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     def __init__(
         self,
         focuser: Union[str, IFocuser],
-        camera: Union[str, IImageGrabber],
+        camera: Union[str, IData],
         series: Union[Dict[str, Any], FocusSeries],
         offset: bool = False,
         filters: Optional[Union[str, IFilters]] = None,
@@ -77,7 +77,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # check focuser and camera
         try:
             await self.proxy(self._focuser, IFocuser)
-            await self.proxy(self._camera, IImageGrabber)
+            await self.proxy(self._camera, IData)
         except ValueError:
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
@@ -108,7 +108,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # get camera
         log.info("Getting proxy for camera...")
-        camera = await self.proxy(self._camera, IImageGrabber)
+        camera = await self.proxy(self._camera, IData)
 
         # do camera settings
         await self._do_camera_settings(camera)
@@ -167,7 +167,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     await camera.set_exposure_time(exposure_time)
                 if isinstance(camera, IImageType):
                     await camera.set_image_type(ImageType.FOCUS)
-                filename = await camera.grab_image()
+                filename = await camera.grab_data()
             except exc.RemoteError:
                 log.error("Could not take image.")
                 continue

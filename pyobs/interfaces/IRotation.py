@@ -19,10 +19,5 @@ class IRotation(IMotion, metaclass=ABCMeta):
         """Returns the current rotation angle."""
         ...
 
-    @abstractmethod
-    async def track(self, ra: float, dec: float, **kwargs: Any) -> None:
-        """Tracks the position angle of a rotator for an alt-az telescope."""
-        ...
-
 
 __all__ = ["IRotation"]

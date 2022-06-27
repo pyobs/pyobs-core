@@ -150,7 +150,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
             await self.comm.send_event(NewSpectrumEvent(filename))
 
     @timeout(10)
-    async def grab_spectrum(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs a spectrum and returns reference.
 
         Args:

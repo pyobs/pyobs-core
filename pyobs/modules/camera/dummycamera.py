@@ -235,7 +235,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             enabled=enabled, set_point=setpoint, power=self._cooling.power, temperatures=self._cooling.temperatures
         )
 
-    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:

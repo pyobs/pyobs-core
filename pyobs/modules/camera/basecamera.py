@@ -301,7 +301,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         return image, filename
 
     @timeout(calc_expose_timeout)
-    async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:
@@ -344,7 +344,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         pass
 
     async def abort(self, **kwargs: Any) -> None:
-        """Aborts the current exposure and sequence.
+        """Aborts the current exposure and sequence. Derived class must implement IAbortable for this!
 
         Returns:
             Success or not.

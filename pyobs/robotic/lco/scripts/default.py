@@ -278,7 +278,7 @@ class LcoDefaultScript(Script):
                     log.info(f"{msg}...")
 
                     # grab image
-                    await cast(ICamera, camera).grab_image()
+                    await cast(ICamera, camera).grab_data()
                     self.exptime_done += ic["exposure_time"]
                     image_no += 1
 

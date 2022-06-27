@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Union, cast, Optional, Any
 
-from pyobs.interfaces import IBinning, IWindow, IFilters, IImageGrabber
+from pyobs.interfaces import IBinning, IWindow, IFilters, IData
 from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class CameraSettingsMixin:
         self.__camerasettings_filter = filter_name
         self.__camerasettings_binning = binning
 
-    async def _do_camera_settings(self, camera: Union[Module, IImageGrabber, IFilters, IBinning, IWindow]) -> None:
+    async def _do_camera_settings(self, camera: Union[Module, IData, IFilters, IBinning, IWindow]) -> None:
         """Do camera settings for given camera."""
 
         # check type

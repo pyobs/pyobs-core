@@ -427,7 +427,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         return image, filename
 
     @timeout(calc_expose_timeout)
-    async def grab_image(self, broadcast: bool = True, **kwargs: Any) -> str:
+    async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
         """Grabs an image ans returns reference.
 
         Args:

@@ -22,6 +22,7 @@ from .ICamera import ICamera
 from .IConfig import IConfig
 from .ICooling import ICooling
 from .IDome import IDome
+from .IExposure import IExposure
 from .IExposureTime import IExposureTime
 from .IFilters import IFilters
 from .IFitsHeaderAfter import IFitsHeaderAfter
@@ -31,7 +32,7 @@ from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
 from .IGain import IGain
 from .IImageFormat import IImageFormat
-from .IImageGrabber import IImageGrabber
+from .IData import IData
 from .IImageType import IImageType
 from .IModule import IModule
 from .IMotion import IMotion

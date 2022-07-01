@@ -69,14 +69,15 @@ class Calibration(ImageProcessor):
             log.error("Could not find calibration frames: " + str(e))
             return image
 
+        # trim image
+        ccddata = Pipeline.trim_ccddata(image.to_ccddata())
+
         # calibrate image
         c = await asyncio.get_running_loop().run_in_executor(
             None,
             partial(
                 ccdproc.ccd_process,
-                image.to_ccddata(),
-                oscan=image.header["BIASSEC"] if "BIASSEC" in image.header else None,
-                trim=image.header["TRIMSEC"] if "TRIMSEC" in image.header else None,
+                ccddata,
                 error=True,
                 master_bias=bias.to_ccddata() if bias is not None else None,
                 dark_frame=dark.to_ccddata() if dark is not None else None,

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from functools import partial
 from typing import Union, List, Optional, Any, Dict
+import ccdproc
 import numpy as np
 import astropy.units as u
 
@@ -28,6 +29,22 @@ class Pipeline(Object, PipelineMixin):
         PipelineMixin.__init__(self, steps)
 
     @staticmethod
+    def trim_ccddata(ccddata: ccdproc.CCDData) -> ccdproc.CCDData:
+        if "TRIMSEC" in ccddata.header:
+            # trim image
+            ccddata = ccdproc.trim_image(ccddata, ccddata.header["TRIMSEC"])
+
+            # remove header(s)
+            del ccddata.header["TRIMSEC"]
+            if "DATASEC" in ccddata.header:
+                del ccddata.header["DATASEC"]
+            if "BIASSEC" in ccddata.header:
+                del ccddata.header["BIASSEC"]
+
+        # done
+        return ccddata
+
+    @staticmethod
     def _combine_calib_images(
         images: List[Image], bias: Optional[Image] = None, normalize: bool = False, method: str = "average"
     ) -> Image:
@@ -39,13 +56,12 @@ class Pipeline(Object, PipelineMixin):
             normalize: If True, images are normalized to median of 1 before and after combining them.
             method: Method for combining images.
         """
-        import ccdproc
 
         # get CCDData objects
         data = [image.to_ccddata() for image in images]
 
         # trim
-        data = [ccdproc.trim_image(d, d.header["TRIMSEC"]) for d in data if "TRIMSEC" in d.header]
+        data = [Pipeline.trim_ccddata(d) for d in data]
 
         # subtract bias?
         if bias is not None:

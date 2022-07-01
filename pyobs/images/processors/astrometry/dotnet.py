@@ -24,6 +24,7 @@ class AstrometryDotNet(Astrometry):
         source_count: int = 50,
         radius: float = 3.0,
         timeout: int = 10,
+        exceptions: bool = True,
         **kwargs: Any,
     ):
         """Init new astronomy.net processor.
@@ -33,6 +34,7 @@ class AstrometryDotNet(Astrometry):
             source_count: Number of sources to send.
             radius: Radius to search in.
             timeout: Timeout in seconds for call to astrometry web service.
+            exceptions: Whether to raise Exceptions.
         """
         Astrometry.__init__(self, **kwargs)
 
@@ -41,6 +43,7 @@ class AstrometryDotNet(Astrometry):
         self.source_count = source_count
         self.radius = radius
         self.timeout = timeout
+        self.exceptions = exceptions
 
     async def __call__(self, image: Image) -> Image:
         """Find astrometric solution on given image.
@@ -115,14 +118,19 @@ class AstrometryDotNet(Astrometry):
         if status_code != 200 or "error" in json:
             # set error
             img.header["WCSERR"] = 1
+            msg = "Could not connect to astrometry service."
             if "error" in json:
                 # "Could not find WCS file." is just an info, which means that WCS was not successful
                 if json["error"] == "Could not find WCS file.":
-                    raise exc.ImageError("Could not determine WCS.")
+                    msg = "Could not determine WCS."
                 else:
-                    raise exc.ImageError(f"Received error from astrometry service: {json['error']}")
+                    msg = f"Received error from astrometry service: {json['error']}"
+
+            # raise or warn?
+            if self.exceptions:
+                raise exc.ImageError(msg)
             else:
-                raise exc.ImageError("Could not connect to astrometry service.")
+                log.warning(msg)
 
         else:
             # copy keywords

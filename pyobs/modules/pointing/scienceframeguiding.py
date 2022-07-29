@@ -41,6 +41,22 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         """
         raise NotImplementedError
 
+    async def get_exposure_time(self, **kwargs: Any) -> float:
+        """Returns the exposure time in seconds.
+
+        Returns:
+            Exposure time in seconds.
+        """
+        raise NotImplementedError
+
+    async def get_exposure_time_left(self, **kwargs: Any) -> float:
+        """Returns the remaining exposure time on the current exposure in seconds.
+
+        Returns:
+            Remaining exposure time in seconds.
+        """
+        raise NotImplementedError
+
     async def add_image(self, event: Event, sender: str, **kwargs: Any) -> bool:
         """Processes an image asynchronously, returns immediately.
 

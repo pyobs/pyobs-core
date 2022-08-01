@@ -28,6 +28,9 @@ class Calibration(ImageProcessor):
         self,
         archive: Union[Dict[str, Any], Archive],
         max_cache_size: int = 20,
+        require_bias: bool = True,
+        require_dark: bool = True,
+        require_flat: bool = True,
         max_days_bias: Optional[float] = None,
         max_days_dark: Optional[float] = None,
         max_days_flat: Optional[float] = None,
@@ -45,6 +48,9 @@ class Calibration(ImageProcessor):
         self._max_days_bias = max_days_bias
         self._max_days_dark = max_days_dark
         self._max_days_flat = max_days_flat
+        self._require_bias = require_bias
+        self._require_dark = require_dark
+        self._require_flat = require_flat
 
         # get archive
         self._archive = get_object(archive, Archive)
@@ -62,9 +68,21 @@ class Calibration(ImageProcessor):
 
         # get calibration masters
         try:
-            bias = await self._find_master(image, ImageType.BIAS, max_days=self._max_days_bias)
-            dark = await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
-            flat = await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
+            bias = (
+                None
+                if not self._require_bias
+                else await self._find_master(image, ImageType.BIAS, max_days=self._max_days_bias)
+            )
+            dark = (
+                None
+                if not self._require_dark
+                else await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
+            )
+            flat = (
+                None
+                if not self._require_flat
+                else await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
+            )
         except ValueError as e:
             log.error("Could not find calibration frames: " + str(e))
             return image

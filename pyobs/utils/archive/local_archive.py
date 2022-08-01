@@ -23,8 +23,6 @@ class LocalArchive(Archive):
         self._root = Path(root)
         self._data = pd.DataFrame()
         self._update_root()
-        pd.set_option("display.max_columns", None)
-        print(self._data)
 
     def _update_root(self):
         """Update files in root directory."""

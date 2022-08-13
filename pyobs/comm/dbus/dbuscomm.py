@@ -118,11 +118,14 @@ class DbusComm(Comm):
     def _build_dbus_classes(self) -> None:
         # got a module?
         if self._module is not None:
+            # main module
+            main_klass = types.new_class(self._name, bases=(dbus_next.service.ServiceInterface,))
+
             # loop all interfaces features
             for i in self._module.interfaces:
                 # create class
                 klass_name = f"{self._name}_{i.__name__}"
-                interface = f"{self._domain}.{self._name}.{i.__name__}"
+                interface = f"{self._domain}.{self._name}.interfaces.{i.__name__}"
                 klass = types.new_class(klass_name, bases=(dbus_next.service.ServiceInterface,))
 
                 # loop all methods:
@@ -133,11 +136,14 @@ class DbusComm(Comm):
 
                     # set method
                     my_func = types.MethodType(self._dbus_function_wrapper(func_name, dbus_sig), self)
-                    setattr(klass, func_name, my_func)
+                    setattr(main_klass, func_name, my_func)
 
                 # initialize it
-                obj = klass(interface)
-                self._dbus_classes[interface] = obj
+                self._dbus_classes[interface] = klass(interface)
+
+            # initialize main class
+            interface = f"{self._domain}.{self._name}"
+            self._dbus_classes[interface] = main_klass(interface)
 
     def _tuple_to_list(self, sth: Any) -> Any:
         if isinstance(sth, tuple) or isinstance(sth, list):

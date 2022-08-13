@@ -49,16 +49,16 @@ class DbusComm(Comm):
         self._methods: Dict[str, Any] = {}
 
     async def open(self) -> None:
-        """Creates the dbus connection.
-
-        Returns:
-            Whether opening was successful.
-        """
+        """Creates the dbus connection."""
 
         # create client
         self._bus = await MessageBus().connect()
 
-        self._build_dbus_class()
+        # build and publish classes
+        self._build_dbus_classes()
+        for interface, obj in self._dbus_classes.items():
+            self._bus.export("/" + interface.replace(".", "/"), obj)
+            await self._bus.request_name(interface)
 
         # open Comm
         await Comm.open(self)
@@ -74,15 +74,17 @@ class DbusComm(Comm):
             self._bus.disconnect()
 
     def _annotation_to_dbus(self, annotation: Any) -> Any:
-        if hasattr(annotation, "__origin__") and annotation.__origin__ in [list, tuple]:
-            return "a" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)])
+        if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
+            return "a" + self._annotation_to_dbus(get_args(annotation)[0])
+        elif hasattr(annotation, "__origin__") and annotation.__origin__ == tuple:
+            return "(" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + ")"
         elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
             return "a{" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + "}"
         elif inspect.isclass(annotation) and issubclass(annotation, Enum):
             return "s"
         else:
             try:
-                return {int: "i", float: "d", str: "s", bool: "b"}[annotation]
+                return {int: "i", float: "d", str: "s", bool: "b", typing.Any: "s"}[annotation]
             except KeyError:
                 # TODO: Any return by IConfig, change that
                 print("a")
@@ -114,7 +116,7 @@ class DbusComm(Comm):
         # create new signature
         return inspect.Signature(parameters=new_params, return_annotation=return_annotation)
 
-    def _build_dbus_class(self) -> None:
+    def _build_dbus_classes(self) -> None:
         # got a module?
         if self._module is not None:
             # loop all interfaces features
@@ -127,26 +129,25 @@ class DbusComm(Comm):
                 # loop all methods:
                 for func_name, func in inspect.getmembers(i, predicate=inspect.isfunction):
                     # get signature
-                    print("--")
                     sig = inspect.signature(func)
-                    print(func_name, sig)
                     dbus_sig = self._build_dbus_signature(sig)
-                    print(dbus_sig)
-                    print("--")
 
                     # set method
                     my_func = types.MethodType(self._dbus_function_wrapper(func_name, dbus_sig), self)
                     setattr(klass, func_name, my_func)
 
                 # initialize it
-                # obj = klass(interface)
-                # self._dbus_classes[i.__name__] = obj
+                obj = klass(interface)
+                self._dbus_classes[interface] = obj
 
                 # store methods
-                # for func_name, _ in inspect.getmembers(i, predicate=inspect.isfunction):
-                #    self._methods[func_name] = getattr(obj, func_name)
+                for func_name, _ in inspect.getmembers(i, predicate=inspect.isfunction):
+                    self._methods[func_name] = getattr(obj, func_name)
 
-                print(klass)
+    def _tuple_to_list(self, sth: Any) -> Any:
+        if isinstance(sth, tuple) or isinstance(sth, list):
+            return [self._tuple_to_list(a) for a in sth]
+        return sth
 
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
@@ -159,9 +160,19 @@ class DbusComm(Comm):
         """
 
         async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
-            return await this.execute(method, *args, **kwargs)
+            # get method of module
+            func = getattr(self.module, method)
+
+            # call it
+            res = await func(*args, **kwargs)
+
+            # return result
+            return self._tuple_to_list(res)
 
         inner.__signature__ = sig
+        # TODO: Nicer way to do this?
+        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(inner, method, disabled=False)
+        # return dbus_next.service.method(name=method)(inner)
         return inner
 
     @property
@@ -180,6 +191,7 @@ class DbusComm(Comm):
         return True
 
     async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
+        print("execute", client, method)
         return None
 
 

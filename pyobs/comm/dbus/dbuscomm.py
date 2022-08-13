@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-import inspect
+import copy
 import logging
 import types
-from typing import Any, Optional, Type, List, Dict
+import inspect
+import typing
+from collections import OrderedDict
+from enum import Enum
+from typing import Any, Optional, Type, List, Dict, Tuple, get_args
 from dbus_next.aio import MessageBus
 import dbus_next.service
 
@@ -69,12 +73,46 @@ class DbusComm(Comm):
         if self._bus:
             self._bus.disconnect()
 
-    def _dbus_function_wrapper(self, method: str) -> Any:
-        @dbus_next.service.method(name=method)
-        async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
-            pass
+    def _annotation_to_dbus(self, annotation: Any) -> Any:
+        if hasattr(annotation, "__origin__") and annotation.__origin__ in [list, tuple]:
+            return "a" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)])
+        elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
+            return "a{" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + "}"
+        elif inspect.isclass(annotation) and issubclass(annotation, Enum):
+            return "s"
+        else:
+            try:
+                return {int: "i", float: "d", str: "s", bool: "b"}[annotation]
+            except KeyError:
+                # TODO: Any return by IConfig, change that
+                print("a")
 
-        return inner
+    def _build_dbus_signature(self, sig: inspect.Signature) -> inspect.Signature:
+        # build list of parameters
+        new_params: List[inspect.Parameter] = []
+        for name, param in sig.parameters.items():
+            # ignore kwargs
+            if name == "kwargs":
+                continue
+
+            # get new annotation
+            annotation = param.annotation if name == "self" else self._annotation_to_dbus(param.annotation)
+
+            # build new param
+            p = inspect.Parameter(
+                name,
+                kind=inspect.Parameter.POSITIONAL_ONLY if name == "self" else inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=annotation,
+            )
+
+            # store it
+            new_params.append(p)
+
+        # return type
+        return_annotation = None if sig.return_annotation is None else self._annotation_to_dbus(sig.return_annotation)
+
+        # create new signature
+        return inspect.Signature(parameters=new_params, return_annotation=return_annotation)
 
     def _build_dbus_class(self) -> None:
         # got a module?
@@ -88,19 +126,43 @@ class DbusComm(Comm):
 
                 # loop all methods:
                 for func_name, func in inspect.getmembers(i, predicate=inspect.isfunction):
+                    # get signature
+                    print("--")
+                    sig = inspect.signature(func)
+                    print(func_name, sig)
+                    dbus_sig = self._build_dbus_signature(sig)
+                    print(dbus_sig)
+                    print("--")
+
                     # set method
-                    my_func = types.MethodType(self._dbus_function_wrapper(func_name), self)
+                    my_func = types.MethodType(self._dbus_function_wrapper(func_name, dbus_sig), self)
                     setattr(klass, func_name, my_func)
 
                 # initialize it
-                obj = klass(interface)
-                self._dbus_classes[i.__name__] = obj
+                # obj = klass(interface)
+                # self._dbus_classes[i.__name__] = obj
 
                 # store methods
-                for func_name, _ in inspect.getmembers(i, predicate=inspect.isfunction):
-                    self._methods[func_name] = getattr(obj, func_name)
+                # for func_name, _ in inspect.getmembers(i, predicate=inspect.isfunction):
+                #    self._methods[func_name] = getattr(obj, func_name)
 
                 print(klass)
+
+    def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
+        """Function wrapper for dbus methods.
+
+        Args:
+            method: Name of method to wrap.
+
+        Returns:
+            Wrapper.
+        """
+
+        async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
+            return await this.execute(method, *args, **kwargs)
+
+        inner.__signature__ = sig
+        return inner
 
     @property
     def name(self) -> Optional[str]:

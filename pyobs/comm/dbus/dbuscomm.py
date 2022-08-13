@@ -74,19 +74,28 @@ class DbusComm(Comm):
 
     def _annotation_to_dbus(self, annotation: Any) -> Any:
         if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
+            # lists
             return "a" + self._annotation_to_dbus(get_args(annotation)[0])
         elif hasattr(annotation, "__origin__") and annotation.__origin__ == tuple:
+            # tuples
             return "(" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + ")"
         elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
+            # dicts
             return "a{" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + "}"
+        elif (
+            hasattr(annotation, "__origin__")
+            and annotation.__origin__ is typing.Union
+            and type(None) in get_args(annotation)
+        ):
+            # optional parameter
+            return "s"
         elif inspect.isclass(annotation) and issubclass(annotation, Enum):
             return "s"
         else:
             try:
                 return {int: "i", float: "d", str: "s", bool: "b", typing.Any: "s"}[annotation]
             except KeyError:
-                # TODO: Any return by IConfig, change that
-                print("a")
+                raise
 
     def _build_dbus_signature(self, sig: inspect.Signature) -> inspect.Signature:
         # build list of parameters

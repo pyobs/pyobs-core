@@ -46,7 +46,6 @@ class DbusComm(Comm):
         self._domain = domain
         self._bus: Optional[MessageBus] = None
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
-        self._methods: Dict[str, Any] = {}
 
     async def open(self) -> None:
         """Creates the dbus connection."""
@@ -139,10 +138,6 @@ class DbusComm(Comm):
                 # initialize it
                 obj = klass(interface)
                 self._dbus_classes[interface] = obj
-
-                # store methods
-                for func_name, _ in inspect.getmembers(i, predicate=inspect.isfunction):
-                    self._methods[func_name] = getattr(obj, func_name)
 
     def _tuple_to_list(self, sth: Any) -> Any:
         if isinstance(sth, tuple) or isinstance(sth, list):

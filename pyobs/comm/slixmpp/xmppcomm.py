@@ -116,7 +116,6 @@ class XmppComm(Comm):
 
         # variables
         self._connected = False
-        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
         self._user = user
@@ -456,53 +455,6 @@ class XmppComm(Comm):
         """
         log.debug("%s successfully sent.", event.__class__.__name__)
 
-    async def register_event(
-        self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
-    ) -> None:
-        """Register an event type. If a handler is given, we also receive those events, otherwise we just
-        send them.
-
-        Args:
-            event_class: Class of event to register.
-            handler: Event handler method.
-        """
-
-        # we also want to register all events derived from the given one
-        event_classes = self._get_derived_events(event_class)
-
-        # do we have a handler?
-        if handler:
-            # loop classes
-            for ev in event_classes:
-                # initialize list
-                if ev not in self._event_handlers:
-                    self._event_handlers[ev] = []
-                # avoid duplicates
-                if handler not in self._event_handlers[ev]:
-                    # add handler
-                    self._event_handlers[ev].append(handler)
-
-        # if event is not a local one, we also need to do some XMPP stuff
-        if not event_class.local:
-            await self._register_events(event_classes, handler)
-
-    def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
-        """Return list of given event itself and all events derived from it.
-
-        Args:
-            event: Event class to check.
-
-        Returns:
-            List of event classes.
-        """
-        import pyobs.events
-
-        event_classes: List[Type[Event]] = []
-        for cls in inspect.getmembers(pyobs.events, inspect.isclass):
-            if issubclass(cls[1], event):
-                event_classes.append(cls[1])
-        return event_classes
-
     async def _register_events(
         self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
     ) -> None:
@@ -552,22 +504,6 @@ class XmppComm(Comm):
 
         # send it to module
         self._send_event_to_module(event, msg["from"].username)
-
-    def _send_event_to_module(self, event: Event, from_client: str) -> None:
-        """Send an event to all connected modules.
-
-        Args:
-            event: Event to send.
-            from_client: Client that sent the event.
-        """
-
-        # send it
-        if event.__class__ in self._event_handlers:
-            for handler in self._event_handlers[event.__class__]:
-                # handle it
-                ret = handler(event, from_client)
-                if asyncio.iscoroutine(ret):
-                    asyncio.create_task(ret)
 
     async def _safe_send(self, method: Callable[[Any], Coroutine[Any, Any, None]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import re
 import types
 import inspect
 import typing
@@ -12,6 +13,7 @@ from dbus_next.aio import MessageBus
 import dbus_next.service
 
 from pyobs.comm import Comm
+from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
 
@@ -46,6 +48,8 @@ class DbusComm(Comm):
         self._domain = domain
         self._bus: Optional[MessageBus] = None
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
+        self._dbus_introspection: Optional[dbus_next.proxy_object.BaseProxyObject] = None
+        self._interfaces: Dict[str, List[Type[Interface]]] = {}
 
     async def open(self) -> None:
         """Creates the dbus connection."""
@@ -59,6 +63,13 @@ class DbusComm(Comm):
             self._bus.export("/" + interface.replace(".", "/"), obj)
             await self._bus.request_name(interface)
 
+        # get object for introspection
+        introspection = await self._bus.introspect("org.freedesktop.DBus", "/org/freedesktop/DBus")
+        obj = self._bus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
+        self._dbus_introspection = obj.get_interface("org.freedesktop.DBus")
+
+        await self._update_client_list()
+
         # open Comm
         await Comm.open(self)
 
@@ -71,6 +82,46 @@ class DbusComm(Comm):
         # disconnect from dbus
         if self._bus:
             self._bus.disconnect()
+
+    async def _register_events(
+        self,
+        events: List[Type[Event]],
+        handler: Optional[typing.Callable[[Event, str], typing.Coroutine[Any, Any, bool]]] = None,
+    ) -> None:
+        print("register event")
+
+    async def _update_client_list(self) -> None:
+        """Update list of clients."""
+
+        # get all interfaces containing "pyobs"
+        data = list(filter(lambda d: self._domain in d, await self._dbus_introspection.call_list_names()))
+        print(data)
+
+        # get all modules: first run regexp on all entries and then cut by length of prefix
+        prefix = self._domain + "."
+        r = re.compile(prefix + r"(\w+)$")
+        modules = list(map(lambda d: d[len(prefix) :], filter(r.match, data)))
+        print(modules)
+
+        # get interfaces
+        interfaces: Dict[str, List[Type[Interface]]] = {}
+        for m in modules:
+            prefix = f"{self._domain}.{m}.interfaces."
+            iface_names = list(map(lambda d: d[len(prefix) :], filter(lambda d: d.startswith(prefix), data)))
+            interfaces[m] = self._interface_names_to_classes(iface_names)
+
+        # loop newly connected modules except myself
+        for m in list(set(interfaces.keys()) - set(self._interfaces.keys()) - {self._name}):
+            # send event
+            self._send_event_to_module(ModuleOpenedEvent(), m)
+
+        # loop freshly disconnected modules except myself
+        for m in list(set(self._interfaces.keys()) - set(interfaces.keys() - {self._name})):
+            # send event
+            self._send_event_to_module(ModuleClosedEvent(), m)
+
+        # store interfaces
+        self._interfaces = interfaces
 
     def _annotation_to_dbus(self, annotation: Any) -> Any:
         if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
@@ -192,13 +243,13 @@ class DbusComm(Comm):
 
     @property
     def clients(self) -> List[str]:
-        return []
+        return list(self._interfaces.keys())
 
     async def get_interfaces(self, client: str) -> List[Type[Interface]]:
-        return []
+        return self._interfaces[client]
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
-        return True
+        return interface in self._interfaces[client]
 
     async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
         print("execute", client, method)

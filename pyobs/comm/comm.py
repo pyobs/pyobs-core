@@ -34,7 +34,8 @@ class Comm:
         self._module: Optional[Module] = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
-        self._logging_task: Optional[asyncio.Task] = None
+        self._logging_task: Optional[asyncio.Task[Any]] = None
+        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
@@ -340,6 +341,23 @@ class Comm:
         """
         pass
 
+    def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
+        """Return list of given event itself and all events derived from it.
+
+        Args:
+            event: Event class to check.
+
+        Returns:
+            List of event classes.
+        """
+        import pyobs.events
+
+        event_classes: List[Type[Event]] = []
+        for cls in inspect.getmembers(pyobs.events, inspect.isclass):
+            if issubclass(cls[1], event):
+                event_classes.append(cls[1])
+        return event_classes
+
     async def register_event(
         self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
     ) -> None:
@@ -350,7 +368,46 @@ class Comm:
             event_class: Class of event to register.
             handler: Event handler method.
         """
+
+        # we also want to register all events derived from the given one
+        event_classes = self._get_derived_events(event_class)
+
+        # do we have a handler?
+        if handler:
+            # loop classes
+            for ev in event_classes:
+                # initialize list
+                if ev not in self._event_handlers:
+                    self._event_handlers[ev] = []
+                # avoid duplicates
+                if handler not in self._event_handlers[ev]:
+                    # add handler
+                    self._event_handlers[ev].append(handler)
+
+        # if event is not a local one, we also need to do some XMPP stuff
+        if not event_class.local:
+            await self._register_events(event_classes, handler)
+
+    async def _register_events(
+        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+    ) -> None:
         pass
+
+    def _send_event_to_module(self, event: Event, from_client: str) -> None:
+        """Send an event to all connected modules.
+
+        Args:
+            event: Event to send.
+            from_client: Client that sent the event.
+        """
+
+        # send it
+        if event.__class__ in self._event_handlers:
+            for handler in self._event_handlers[event.__class__]:
+                # handle it
+                ret = handler(event, from_client)
+                if asyncio.iscoroutine(ret):
+                    asyncio.create_task(ret)
 
 
 __all__ = ["Comm"]

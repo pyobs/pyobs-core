@@ -291,7 +291,7 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
+    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:

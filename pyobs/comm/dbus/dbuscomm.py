@@ -243,17 +243,66 @@ class DbusComm(Comm):
 
     @property
     def clients(self) -> List[str]:
+        """Returns list of currently connected clients.
+
+        Returns:
+            (list) List of currently connected clients.
+        """
         return list(self._interfaces.keys())
 
     async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+        """Returns list of interfaces for given client.
+
+        Args:
+            client: Name of client.
+
+        Returns:
+            List of supported interfaces.
+
+        Raises:
+            IndexError: If client cannot be found.
+        """
         return self._interfaces[client]
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+        """Checks, whether the given client supports the given interface.
+
+        Args:
+            client: Client to check.
+            interface: Interface to check.
+
+        Returns:
+            Whether or not interface is supported.
+        """
         return interface in self._interfaces[client]
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
+    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+        """Execute a given method on a remote client.
+
+        Args:
+            client (str): ID of client.
+            method (str): Method to call.
+            signature: Method signature.
+            *args: List of parameters for given method.
+
+        Returns:
+            Passes through return from method call.
+        """
         print("execute", client, method)
-        return None
+
+        # get introspection, proxy and interface
+        iface = f"{self._domain}.{client}"
+        path = "/" + iface.replace(".", "/")
+        introspection = await self._bus.introspect(iface, path)
+        obj = self._bus.get_proxy_object(iface, path, introspection)
+        module = obj.get_interface(iface)
+
+        # get method and call it
+        # TODO: cast some types, like Enums
+        func = getattr(module, f"call_{method}")
+        res = await func(*args)
+        print(res)
+        return res
 
 
 __all__ = ["DbusComm"]

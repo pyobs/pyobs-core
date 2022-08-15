@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import logging
 import re
@@ -68,7 +69,11 @@ class DbusComm(Comm):
         obj = self._bus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
         self._dbus_introspection = obj.get_interface("org.freedesktop.DBus")
 
+        # get client list
         await self._update_client_list()
+
+        # update task
+        asyncio.create_task(self._update())
 
         # open Comm
         await Comm.open(self)
@@ -90,18 +95,23 @@ class DbusComm(Comm):
     ) -> None:
         print("register event")
 
+    async def _update(self) -> None:
+        """Periodic updates."""
+        while True:
+            await self._update_client_list()
+            await asyncio.sleep(5)
+
     async def _update_client_list(self) -> None:
         """Update list of clients."""
+        print("update")
 
         # get all interfaces containing "pyobs"
         data = list(filter(lambda d: self._domain in d, await self._dbus_introspection.call_list_names()))
-        print(data)
 
         # get all modules: first run regexp on all entries and then cut by length of prefix
         prefix = self._domain + "."
         r = re.compile(prefix + r"(\w+)$")
         modules = list(map(lambda d: d[len(prefix) :], filter(r.match, data)))
-        print(modules)
 
         # get interfaces
         interfaces: Dict[str, List[Type[Interface]]] = {}
@@ -221,21 +231,55 @@ class DbusComm(Comm):
         """
 
         async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
+            # get sender
+            sender = None
+            if "sender" in kwargs:
+                # get client list
+                await self._update_client_list()
+
+                # get owner of dbus bus
+                sender = await self._get_dbus_owner(kwargs["sender"])
+                del kwargs["sender"]
+
             # bind parameters
             ba = sig.bind(this, *args, **kwargs)
             ba.apply_defaults()
 
             # call method
-            return_value = await self.module.execute(method, *args)  # , sender=kwargs["sender"])
+            return_value = await self.module.execute(method, *args, sender=sender)
 
             # return result
             return self._tuple_to_list(return_value)
 
         inner.__signature__ = sig
         # TODO: Nicer way to do this?
-        # inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(inner, method, disabled=False)
-        # return inner
-        return dbus_next.service.method(name=method)(inner)
+        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
+            inner, method, disabled=False, sender_keyword="sender"
+        )
+        return inner
+        # return dbus_next.service.method(name=method)(inner)
+
+    async def _get_dbus_owner(self, bus: str) -> str:
+        """Gets the owning module name for a given bus.
+
+        Params:
+            bus: Name of bus to find owner for.
+
+        Returns:
+            Owning module.
+        """
+
+        # loop all clients, get their owner, and check against bus
+        print("owner:", bus)
+        for c in self.clients:
+            owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
+            print(c, owner)
+            if owner == bus:
+                print("found")
+                return c
+
+        # nothing found
+        raise ValueError("Owner not found.")
 
     @property
     def name(self) -> Optional[str]:
@@ -249,6 +293,8 @@ class DbusComm(Comm):
         Returns:
             (list) List of currently connected clients.
         """
+
+        # return names
         return list(self._interfaces.keys())
 
     async def get_interfaces(self, client: str) -> List[Type[Interface]]:
@@ -263,6 +309,8 @@ class DbusComm(Comm):
         Raises:
             IndexError: If client cannot be found.
         """
+
+        # return list
         return self._interfaces[client]
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
@@ -275,6 +323,8 @@ class DbusComm(Comm):
         Returns:
             Whether or not interface is supported.
         """
+
+        # does it exist?
         return interface in self._interfaces[client]
 
     async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:

@@ -221,20 +221,21 @@ class DbusComm(Comm):
         """
 
         async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
-            # get method of module
-            func = getattr(self.module, method)
+            # bind parameters
+            ba = sig.bind(this, *args, **kwargs)
+            ba.apply_defaults()
 
-            # call it
-            res = await func(*args, **kwargs)
+            # call method
+            return_value = await self.module.execute(method, *args)  # , sender=kwargs["sender"])
 
             # return result
-            return self._tuple_to_list(res)
+            return self._tuple_to_list(return_value)
 
         inner.__signature__ = sig
         # TODO: Nicer way to do this?
-        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(inner, method, disabled=False)
-        # return dbus_next.service.method(name=method)(inner)
-        return inner
+        # inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(inner, method, disabled=False)
+        # return inner
+        return dbus_next.service.method(name=method)(inner)
 
     @property
     def name(self) -> Optional[str]:
@@ -297,12 +298,20 @@ class DbusComm(Comm):
         obj = self._bus.get_proxy_object(iface, path, introspection)
         module = obj.get_interface(iface)
 
+        # cast parameters
+        params = self._py2dbus(args)
+
         # get method and call it
         # TODO: cast some types, like Enums
         func = getattr(module, f"call_{method}")
-        res = await func(*args)
+        print(func)
+        print(params)
+        res = await func(*params)
         print(res)
         return res
+
+    def _py2dbus(self, args: List[Any]) -> List[Any]:
+        return args
 
 
 __all__ = ["DbusComm"]

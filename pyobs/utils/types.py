@@ -4,7 +4,7 @@ from typing import Any, get_origin, get_args
 import xml.sax.saxutils
 
 
-def cast_bound_arguments_to_simple(bound_arguments: BoundArguments):
+def cast_bound_arguments_to_simple(bound_arguments: BoundArguments) -> None:
     """Cast the requested parameters, which are of simple types, to the types required by the method.
 
     Args:
@@ -12,13 +12,33 @@ def cast_bound_arguments_to_simple(bound_arguments: BoundArguments):
     """
     # loop all arguments
     for key, value in bound_arguments.arguments.items():
-        # special cases
-        if isinstance(value, str):
-            # escape strings
-            bound_arguments.arguments[key] = xml.sax.saxutils.escape(value)
-        elif isinstance(value, Enum):
-            # get value of enum
-            bound_arguments.arguments[key] = value.value
+        # cast
+        bound_arguments.arguments[key] = cast_value_to_simple(value)
+
+
+def cast_value_to_simple(value: Any) -> Any:
+    """Cast a response from a method to only simple types.
+
+    Args:
+        value: Response of method call.
+
+    Returns:
+        Same as input response, but with only simple types.
+    """
+
+    # tuple, enum or something else
+    if isinstance(value, tuple):
+        return tuple([cast_value_to_simple(r) for r in value])
+    elif isinstance(value, list):
+        return [cast_value_to_simple(r) for r in value]
+    elif isinstance(value, dict):
+        return {cast_value_to_simple(k): cast_value_to_simple(v) for k, v in value.items()}
+    elif isinstance(value, Enum):
+        return value.value
+    elif type(value) == str:
+        return xml.sax.saxutils.escape(value)
+    else:
+        return value
 
 
 def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Signature) -> None:
@@ -75,29 +95,8 @@ def _cast_value_to_real(value: Any, annotation: Any) -> Any:
         # just return it
         annk, annv = get_args(annotation)
         return {_cast_value_to_real(k, annk): _cast_value_to_real(v, annv) for k, v in value.items()}
+    elif annotation == str:
+        return xml.sax.saxutils.unescape(value)
     else:
         # type cast response
         return annotation(value)
-
-
-def cast_response_to_simple(response: Any) -> Any:
-    """Cast a response from a method to only simple types.
-
-    Args:
-        response: Response of method call.
-
-    Returns:
-        Same as input response, but with only simple types.
-    """
-
-    # tuple, enum or something else
-    if isinstance(response, tuple):
-        return tuple([cast_response_to_simple(r) for r in response])
-    elif isinstance(response, list):
-        return [cast_response_to_simple(r) for r in response]
-    elif isinstance(response, dict):
-        return {cast_response_to_simple(k): cast_response_to_simple(v) for k, v in response.items()}
-    elif isinstance(response, Enum):
-        return response.value
-    else:
-        return response

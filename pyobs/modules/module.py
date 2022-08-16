@@ -248,9 +248,6 @@ class Module(Object, IModule, IConfig):
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
 
-        # cast to types requested by method
-        cast_bound_arguments_to_real(ba, signature)
-
         # get additional args and kwargs and delete from ba
         func_args = []
         func_kwargs = {}
@@ -260,6 +257,9 @@ class Module(Object, IModule, IConfig):
         if "kwargs" in ba.arguments:
             func_kwargs = ba.arguments["kwargs"]
             del ba.arguments["kwargs"]
+
+        # cast to types requested by method
+        cast_bound_arguments_to_real(ba, signature)
 
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)

@@ -78,12 +78,25 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
 
 
 def _cast_value_to_real(value: Any, annotation: Any) -> Any:
-    print("cast_response_to_real", value, annotation)
+    print("cast_response_to_real", value, annotation, type(annotation), get_origin(annotation), str(annotation))
 
     # any annotations?
-    if value is None or annotation is None or annotation == Parameter.empty or annotation == Any or annotation == "Any":
+    if value is None or annotation is None or annotation == Parameter.empty:
         # no response or no annotation at all or Any
         return value
+    elif str(annotation) == "typing.Any" and type(value) == str:
+        # try to guess type
+        try:
+            # try to convert to float
+            f = float(value)
+            # int?
+            if f == int(f):
+                return int(f)
+            else:
+                return f
+        except ValueError:
+            # no float, return as string
+            return value
     elif (get_origin(annotation) == tuple) or isinstance(annotation, tuple):
         # parse tuple
         return tuple(_cast_value_to_real(v, a) for v, a in zip(value, get_args(annotation)))
@@ -92,7 +105,7 @@ def _cast_value_to_real(value: Any, annotation: Any) -> Any:
         typ = get_args(annotation)[0]
         return [_cast_value_to_real(v, typ) for v in value]
     elif (get_origin(annotation) == dict) or isinstance(annotation, dict):
-        # just return it
+        # parse dict
         annk, annv = get_args(annotation)
         return {_cast_value_to_real(k, annk): _cast_value_to_real(v, annv) for k, v in value.items()}
     elif annotation == str:

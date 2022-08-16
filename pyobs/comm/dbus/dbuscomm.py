@@ -4,6 +4,7 @@ import asyncio
 import copy
 import logging
 import re
+import sys
 import types
 import inspect
 import typing
@@ -20,6 +21,9 @@ from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_response_to_real
 
 log = logging.getLogger(__name__)
+
+
+NONE_VALUES = {str: "NONE", int: sys.maxsize, float: sys.maxsize, list: ["EMPTY"]}
 
 
 class DbusComm(Comm):
@@ -149,7 +153,8 @@ class DbusComm(Comm):
             and type(None) in get_args(annotation)
         ):
             # optional parameter
-            return "v"
+            typ = list(filter(lambda x: x is not None, typing.get_args(annotation)))[0]
+            return self._annotation_to_dbus(typ)
         elif inspect.isclass(annotation) and issubclass(annotation, Enum):
             return "s"
         else:
@@ -202,10 +207,9 @@ class DbusComm(Comm):
                 for func_name, func in inspect.getmembers(i, predicate=inspect.isfunction):
                     # get signature
                     sig = inspect.signature(func)
-                    dbus_sig = self._build_dbus_signature(sig)
 
                     # set method
-                    my_func = types.MethodType(self._dbus_function_wrapper(func_name, dbus_sig), self)
+                    my_func = types.MethodType(self._dbus_function_wrapper(func_name, sig), self)
                     setattr(main_klass, func_name, my_func)
 
                 # initialize it
@@ -218,7 +222,10 @@ class DbusComm(Comm):
     def _tuple_to_list(self, sth: Any) -> Any:
         if isinstance(sth, tuple) or isinstance(sth, list):
             return [self._tuple_to_list(a) for a in sth]
-        return sth
+        elif isinstance(sth, dict):
+            return {k: self._tuple_to_list(v) for k, v in sth.items()}
+        else:
+            return sth
 
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
@@ -241,17 +248,22 @@ class DbusComm(Comm):
                 sender = await self._get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
 
-            # bind parameters
-            ba = sig.bind(this, *args, **kwargs)
-            ba.apply_defaults()
+            # insert nones
+            print("before insert:", args)
+            args = DbusComm._insert_nones(args)
+            print("after insert:", args)
 
             # call method
             return_value = await self.module.execute(method, *args, sender=sender)
 
+            # replace Nones and convert tuples to lists
+            return_value = self._tuple_to_list(self._replace_nones(return_value, sig.return_annotation))
+            print("return_value:", return_value)
+
             # return result
             return self._tuple_to_list(return_value)
 
-        inner.__signature__ = sig
+        inner.__signature__ = self._build_dbus_signature(sig)
         # TODO: Nicer way to do this?
         inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
             inner, method, disabled=False, sender_keyword="sender"
@@ -346,12 +358,17 @@ class DbusComm(Comm):
         module = obj.get_interface(iface)
 
         # cast parameters
-        params = self._py2dbus(args)
+        params = []
+        for i, arg in enumerate(args, 1):
+            # get type of parameter and cast
+            annotation = list(signature.parameters.values())[i].annotation
+            params.append(DbusComm._replace_nones(arg, annotation))
+
+        print("params:", params)
 
         # get method and call it
         # TODO: cast some types, like Enums
         func = getattr(module, f"call_{method}")
-        print(params)
         res = await func(*params)
 
         # cast to pyobs
@@ -359,8 +376,72 @@ class DbusComm(Comm):
         print("result: ", result)
         return result
 
-    def _py2dbus(self, args: List[Any]) -> List[Any]:
-        return args
+    @staticmethod
+    def _replace_nones(value: Any, annotation: Any) -> Any:
+        """Replace Nones with values of same type.
+
+        Args:
+            value: value to check.
+            annotation: Annotation for value.
+
+        Returns:
+            Same as input value, but no Nones.
+        """
+        print("_replace_nones", value, annotation)
+        print("origin:", typing.get_origin(annotation))
+
+        if value is None and typing.get_origin(annotation) == typing.Union:
+            # get types that are not None
+            typs = list(filter(lambda x: x is not None, typing.get_args(annotation)))
+
+            # loop them
+            for typ in typs:
+                print("typ:", typ)
+                if typ in NONE_VALUES:
+                    print("replace it")
+                    return NONE_VALUES[typ]
+                elif typing.get_origin(typ) in NONE_VALUES:
+                    print("replace it")
+                    return NONE_VALUES[typing.get_origin(typ)]
+                else:
+                    return value
+
+        elif isinstance(value, tuple):
+            return tuple(DbusComm._replace_nones(v, a) for v, a in zip(value, get_args(annotation)))
+        elif isinstance(value, list):
+            typ = get_args(annotation)[0]
+            return [DbusComm._replace_nones(v, typ) for v in value]
+        elif isinstance(value, dict):
+            annk, annv = get_args(annotation)
+            return {DbusComm._replace_nones(k, annk): DbusComm._replace_nones(v, annv) for k, v in value.items()}
+        elif annotation == typing.Any:
+            print("ANY")
+            return str(value)
+        else:
+            return value
+
+    @staticmethod
+    def _insert_nones(value: Any) -> Any:
+        """Reinsert Nones with values of same type.
+
+        Args:
+            value: value to check.
+
+        Returns:
+            Same as input value, but no Nones.
+        """
+        print("_insert_nones", value)
+
+        if value in NONE_VALUES.values():
+            return None
+        elif isinstance(value, tuple):
+            return tuple([DbusComm._insert_nones(v) for v in value])
+        elif isinstance(value, list):
+            return [DbusComm._insert_nones(v) for v in value]
+        elif isinstance(value, dict):
+            return {DbusComm._insert_nones(k): DbusComm._insert_nones(v) for k, v in value.items()}
+        else:
+            return value
 
 
 __all__ = ["DbusComm"]

@@ -17,6 +17,7 @@ from pyobs.comm import Comm
 from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
+from pyobs.utils.types import cast_response_to_real
 
 log = logging.getLogger(__name__)
 
@@ -103,7 +104,6 @@ class DbusComm(Comm):
 
     async def _update_client_list(self) -> None:
         """Update list of clients."""
-        print("update")
 
         # get all interfaces containing "pyobs"
         data = list(filter(lambda d: self._domain in d, await self._dbus_introspection.call_list_names()))
@@ -149,7 +149,7 @@ class DbusComm(Comm):
             and type(None) in get_args(annotation)
         ):
             # optional parameter
-            return "s"
+            return "v"
         elif inspect.isclass(annotation) and issubclass(annotation, Enum):
             return "s"
         else:
@@ -270,12 +270,9 @@ class DbusComm(Comm):
         """
 
         # loop all clients, get their owner, and check against bus
-        print("owner:", bus)
         for c in self.clients:
             owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
-            print(c, owner)
             if owner == bus:
-                print("found")
                 return c
 
         # nothing found
@@ -339,7 +336,7 @@ class DbusComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        print("execute", client, method)
+        print("execute", client, method, args)
 
         # get introspection, proxy and interface
         iface = f"{self._domain}.{client}"
@@ -354,11 +351,13 @@ class DbusComm(Comm):
         # get method and call it
         # TODO: cast some types, like Enums
         func = getattr(module, f"call_{method}")
-        print(func)
         print(params)
         res = await func(*params)
-        print(res)
-        return res
+
+        # cast to pyobs
+        result = cast_response_to_real(res, signature)
+        print("result: ", result)
+        return result
 
     def _py2dbus(self, args: List[Any]) -> List[Any]:
         return args

@@ -1,6 +1,6 @@
 from inspect import BoundArguments, Signature, Parameter
 from enum import Enum
-from typing import Any, get_origin
+from typing import Any, get_origin, get_args
 import xml.sax.saxutils
 
 
@@ -21,31 +21,22 @@ def cast_bound_arguments_to_simple(bound_arguments: BoundArguments):
             bound_arguments.arguments[key] = value.value
 
 
-def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Signature):
+def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Signature) -> None:
     """Cast the requested parameters to simple types.
 
     Args:
         bound_arguments: Incoming parameters.
         signature: Signature of method.
     """
+    print("cast_bound_arguments_to_real", bound_arguments, signature)
+
     # loop all arguments
     for key, value in bound_arguments.arguments.items():
         # get type of parameter
         annotation = signature.parameters[key].annotation
 
-        # special cases
-        if value is None or annotation == Parameter.empty or annotation == Any:
-            # if value is None or no annotation is given, just copy it
-            bound_arguments.arguments[key] = value
-        elif annotation == Enum:
-            # cast to enum
-            bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
-        elif annotation == str:
-            # unescape strings
-            bound_arguments.arguments[key] = xml.sax.saxutils.unescape(value)
-        else:
-            # cast to type
-            bound_arguments.arguments[key] = annotation(value)
+        # cast
+        bound_arguments.arguments[key] = _cast_value_to_real(value, annotation)
 
 
 def cast_response_to_real(response: Any, signature: Signature) -> Any:
@@ -62,26 +53,31 @@ def cast_response_to_real(response: Any, signature: Signature) -> Any:
     # get return annotation
     annotation = signature.return_annotation
 
-    # TODO: For future Python versions (3.9?)
-    # - handle dicts and tuples
+    # cast
+    return _cast_value_to_real(response, annotation)
+
+
+def _cast_value_to_real(value: Any, annotation: Any) -> Any:
+    print("cast_response_to_real", value, annotation)
 
     # any annotations?
-    if response is None or annotation is None or annotation == Parameter.empty or annotation == Any:
+    if value is None or annotation is None or annotation == Parameter.empty or annotation == Any or annotation == "Any":
         # no response or no annotation at all or Any
-        return response
+        return value
     elif (get_origin(annotation) == tuple) or isinstance(annotation, tuple):
         # parse tuple
-        # return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
-        return response
+        return tuple(_cast_value_to_real(v, a) for v, a in zip(value, get_args(annotation)))
     elif (get_origin(annotation) == list) or isinstance(annotation, list):
         # parse list
-        return response
+        typ = get_args(annotation)[0]
+        return [_cast_value_to_real(v, typ) for v in value]
     elif (get_origin(annotation) == dict) or isinstance(annotation, dict):
         # just return it
-        return response
+        annk, annv = get_args(annotation)
+        return {_cast_value_to_real(k, annk): _cast_value_to_real(v, annv) for k, v in value.items()}
     else:
         # type cast response
-        return annotation(response)
+        return annotation(value)
 
 
 def cast_response_to_simple(response: Any) -> Any:
@@ -97,6 +93,10 @@ def cast_response_to_simple(response: Any) -> Any:
     # tuple, enum or something else
     if isinstance(response, tuple):
         return tuple([cast_response_to_simple(r) for r in response])
+    elif isinstance(response, list):
+        return [cast_response_to_simple(r) for r in response]
+    elif isinstance(response, dict):
+        return {cast_response_to_simple(k): cast_response_to_simple(v) for k, v in response.items()}
     elif isinstance(response, Enum):
         return response.value
     else:

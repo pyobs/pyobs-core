@@ -9,7 +9,7 @@ from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.enums import ModuleState
-from pyobs.utils.types import cast_value_to_simple, cast_bound_arguments_to_real
+from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
 from pyobs.utils import exceptions as exc
 
@@ -265,7 +265,7 @@ class Module(Object, IModule, IConfig):
         response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
-        return cast_value_to_simple(response)
+        return cast_response_to_simple(response, signature.return_annotation, self.comm.cast_to_simple)
 
     def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""

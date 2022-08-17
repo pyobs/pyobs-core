@@ -1,54 +1,119 @@
 from inspect import BoundArguments, Signature, Parameter
 from enum import Enum
-from typing import Any, get_origin, get_args
+from typing import Any, get_origin, get_args, Callable, Tuple, Optional, Type
 import xml.sax.saxutils
 
 
-def cast_bound_arguments_to_simple(bound_arguments: BoundArguments) -> None:
+def iterate_params(
+    value: Any,
+    annotation: Optional[Type[Any]] = None,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
+    """Iterate annotations and call a given method.
+
+    Args:
+        value: value to iterate.
+        annotation: Annotation for value.
+        method: Method to run on each value. Should take one value and annotation and return a bool indicating whether
+            iteration should stop here and a new value.
+
+    Returns:
+        Same structure as input, but converted by method.
+    """
+
+    # call provided method
+    if method:
+        stop_iter, value = method(value, annotation)
+        if stop_iter:
+            return value
+
+    # okay, iterate value
+    if isinstance(value, tuple):
+        # handle tuple
+        if annotation:
+            return tuple(iterate_params(v, a, method) for v, a in zip(value, get_args(annotation)))
+        else:
+            return tuple(iterate_params(v, None, method) for v in value)
+
+    elif isinstance(value, list):
+        # handle lists
+        if annotation:
+            typ = get_args(annotation)[0]
+            return [iterate_params(v, typ, method) for v in value]
+        else:
+            return [iterate_params(v, None, method) for v in value]
+
+    elif isinstance(value, dict):
+        # handle dict
+        if annotation:
+            annk, annv = get_args(annotation)
+            return {iterate_params(k, annk, method): iterate_params(v, annv, method) for k, v in value.items()}
+        else:
+            return {iterate_params(k, None, method): iterate_params(v, None, method) for k, v in value.items()}
+
+    else:
+        # just return it
+        return annotation(value) if annotation else value
+
+
+def cast_bound_arguments_to_simple(
+    bound_arguments: BoundArguments,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> None:
     """Cast the requested parameters, which are of simple types, to the types required by the method.
 
     Args:
         bound_arguments: Incoming parameters.
+        method: Method to run on each parameter.
     """
+
+    def cast_to_simple(v: Any, a: Optional[Any] = None) -> Tuple[bool, Any]:
+        # call provided method
+        if method:
+            stop_iter, v = method(v, a)
+            if stop_iter:
+                return True, v
+
+        if isinstance(v, Enum):
+            # get string name for Enums
+            return True, v.value
+        else:
+            # continue iteration
+            return False, v
+
     # loop all arguments
     for key, value in bound_arguments.arguments.items():
         # cast
-        bound_arguments.arguments[key] = cast_value_to_simple(value)
+        bound_arguments.arguments[key] = iterate_params(value, None, cast_to_simple)
 
 
-def cast_value_to_simple(value: Any) -> Any:
-    """Cast a response from a method to only simple types.
-
-    Args:
-        value: Response of method call.
-
-    Returns:
-        Same as input response, but with only simple types.
-    """
-
-    # tuple, enum or something else
-    if isinstance(value, tuple):
-        return tuple([cast_value_to_simple(r) for r in value])
-    elif isinstance(value, list):
-        return [cast_value_to_simple(r) for r in value]
-    elif isinstance(value, dict):
-        return {cast_value_to_simple(k): cast_value_to_simple(v) for k, v in value.items()}
-    elif isinstance(value, Enum):
-        return value.value
-    elif type(value) == str:
-        return xml.sax.saxutils.escape(value)
-    else:
-        return value
-
-
-def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Signature) -> None:
-    """Cast the requested parameters to simple types.
+def cast_bound_arguments_to_real(
+    bound_arguments: BoundArguments,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> None:
+    """Cast the requested parameters to real types.
 
     Args:
         bound_arguments: Incoming parameters.
-        signature: Signature of method.
+        method: Method to run on each parameter.
     """
-    print("cast_bound_arguments_to_real", bound_arguments, signature)
+
+    def cast_to_real(v: Any, a: Optional[Any] = None) -> Tuple[bool, Any]:
+        # call provided method
+        if method:
+            stop_iter, v = method(v, a)
+            if stop_iter:
+                return True, v
+
+        if a == Enum:
+            # get Enum from string
+            return True, a(v)
+        else:
+            # continue iteration
+            return False, v
+
+    # get signature
+    signature = bound_arguments.signature
 
     # loop all arguments
     for key, value in bound_arguments.arguments.items():
@@ -56,25 +121,76 @@ def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Sig
         annotation = signature.parameters[key].annotation
 
         # cast
-        bound_arguments.arguments[key] = _cast_value_to_real(value, annotation)
+        bound_arguments.arguments[key] = iterate_params(value, annotation, cast_to_real)
 
 
-def cast_response_to_real(response: Any, signature: Signature) -> Any:
+def cast_response_to_simple(
+    value: Any,
+    annotation: Optional[Type[Any]] = None,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
     """Cast a response from simple to the method's real types.
 
     Args:
-        response: Response of method call.
-        signature: Signature of method.
+        value: Response of method call.
+        annotation: Annotation for return value.
+        method: Method to call on each value.
 
     Returns:
         Same as input response, but with only simple types.
     """
 
-    # get return annotation
-    annotation = signature.return_annotation
+    def cast_to_simple(v: Any, a: Optional[Any] = None) -> Tuple[bool, Any]:
+        # call provided method
+        if method:
+            stop_iter, v = method(v, a)
+            if stop_iter:
+                return True, value
+
+        if isinstance(v, Enum):
+            # get string name for Enums
+            return True, v.value
+        else:
+            # continue iteration
+            return False, v
 
     # cast
-    return _cast_value_to_real(response, annotation)
+    a = iterate_params(value, annotation, cast_to_simple)
+    return a
+
+
+def cast_response_to_real(
+    value: Any,
+    annotation: Optional[Type[Any]] = None,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
+    """Cast a response from simple to the method's real types.
+
+    Args:
+        value: Response of method call.
+        annotation: Annotation of return value.
+        method: Method to call for each parameter.
+
+    Returns:
+        Same as input response, but with only simple types.
+    """
+
+    def cast_to_real(v: Any, a: Optional[Any] = None) -> Tuple[bool, Any]:
+        # call provided method
+        if method:
+            stop_iter, v = method(v, a)
+            if stop_iter:
+                return True, v
+
+        if a == Enum:
+            # get Enum from string
+            return True, a(v)
+        else:
+            # continue iteration
+            return False, v
+
+    # cast
+    return iterate_params(value, annotation, cast_to_real)
 
 
 def _cast_value_to_real(value: Any, annotation: Any) -> Any:

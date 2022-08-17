@@ -219,14 +219,6 @@ class DbusComm(Comm):
             interface = f"{self._domain}.{self._name}"
             self._dbus_classes[interface] = main_klass(interface)
 
-    def _tuple_to_list(self, sth: Any) -> Any:
-        if isinstance(sth, tuple) or isinstance(sth, list):
-            return [self._tuple_to_list(a) for a in sth]
-        elif isinstance(sth, dict):
-            return {k: self._tuple_to_list(v) for k, v in sth.items()}
-        else:
-            return sth
-
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
 
@@ -248,16 +240,8 @@ class DbusComm(Comm):
                 sender = await self._get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
 
-            # insert nones
-            print("before insert:", args)
-            args = DbusComm._insert_nones(args)
-            print("after insert:", args)
-
             # call method
             return_value = await self.module.execute(method, *args, sender=sender)
-
-            # replace Nones and convert tuples to lists
-            return_value = self._tuple_to_list(self._replace_nones(return_value, sig.return_annotation))
             print("return_value:", return_value)
 
             # return result
@@ -357,38 +341,26 @@ class DbusComm(Comm):
         obj = self._bus.get_proxy_object(iface, path, introspection)
         module = obj.get_interface(iface)
 
-        # cast parameters
-        params = []
-        for i, arg in enumerate(args, 1):
-            # get type of parameter and cast
-            annotation = list(signature.parameters.values())[i].annotation
-            params.append(DbusComm._replace_nones(arg, annotation))
-
-        print("params:", params)
-
         # get method and call it
         # TODO: cast some types, like Enums
         func = getattr(module, f"call_{method}")
-        res = await func(*params)
+        res = await func(*args)
 
         # cast to pyobs
-        result = cast_response_to_real(res, signature)
+        result = cast_response_to_real(res, signature.return_annotation, self.cast_to_real)
         print("result: ", result)
         return result
 
-    @staticmethod
-    def _replace_nones(value: Any, annotation: Any) -> Any:
-        """Replace Nones with values of same type.
+    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
-            value: value to check.
+            value: Value to be treated.
             annotation: Annotation for value.
 
         Returns:
-            Same as input value, but no Nones.
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
-        print("_replace_nones", value, annotation)
-        print("origin:", typing.get_origin(annotation))
 
         if value is None and typing.get_origin(annotation) == typing.Union:
             # get types that are not None
@@ -396,52 +368,36 @@ class DbusComm(Comm):
 
             # loop them
             for typ in typs:
-                print("typ:", typ)
                 if typ in NONE_VALUES:
-                    print("replace it")
-                    return NONE_VALUES[typ]
+                    return True, NONE_VALUES[typ]
                 elif typing.get_origin(typ) in NONE_VALUES:
-                    print("replace it")
-                    return NONE_VALUES[typing.get_origin(typ)]
+                    return True, NONE_VALUES[typing.get_origin(typ)]
                 else:
-                    return value
+                    return True, value
+            else:
+                return True, value
 
         elif isinstance(value, tuple):
-            return tuple(DbusComm._replace_nones(v, a) for v, a in zip(value, get_args(annotation)))
-        elif isinstance(value, list):
-            typ = get_args(annotation)[0]
-            return [DbusComm._replace_nones(v, typ) for v in value]
-        elif isinstance(value, dict):
-            annk, annv = get_args(annotation)
-            return {DbusComm._replace_nones(k, annk): DbusComm._replace_nones(v, annv) for k, v in value.items()}
-        elif annotation == typing.Any:
-            print("ANY")
-            return str(value)
-        else:
-            return value
+            return False, list(value)
 
-    @staticmethod
-    def _insert_nones(value: Any) -> Any:
-        """Reinsert Nones with values of same type.
+        else:
+            return False, value
+
+    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:
-            value: value to check.
+            value: Value to be treated.
+            annotation: Annotation for value.
 
         Returns:
-            Same as input value, but no Nones.
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
-        print("_insert_nones", value)
 
         if value in NONE_VALUES.values():
-            return None
-        elif isinstance(value, tuple):
-            return tuple([DbusComm._insert_nones(v) for v in value])
-        elif isinstance(value, list):
-            return [DbusComm._insert_nones(v) for v in value]
-        elif isinstance(value, dict):
-            return {DbusComm._insert_nones(k): DbusComm._insert_nones(v) for k, v in value.items()}
+            return True, None
         else:
-            return value
+            return False, value
 
 
 __all__ = ["DbusComm"]

@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from collections.abc import Coroutine
-from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING, Tuple
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -533,6 +533,38 @@ class XmppComm(Comm):
 
         # never should reach this
         raise slixmpp.exceptions.IqTimeout
+
+    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them to be sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+
+        if type(value) == str:
+            return True, xml.sax.saxutils.escape(value)
+        else:
+            return False, value
+
+    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them after being sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+
+        if type(value) == str:
+            return True, xml.sax.saxutils.unescape(value)
+        else:
+            return False, value
 
 
 __all__ = ["XmppComm"]

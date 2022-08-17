@@ -107,10 +107,9 @@ class Proxy:
         ba.apply_defaults()
 
         # cast to simple types
-        cast_bound_arguments_to_simple(ba)
+        cast_bound_arguments_to_simple(ba, method=self._comm.cast_to_simple)
 
         # do request and return future
-        print("call", method)
         return await self._comm.execute(self._client, method, signature, *ba.args[1:])
 
     def _create_methods(self) -> Dict[str, Any]:

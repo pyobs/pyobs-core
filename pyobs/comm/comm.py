@@ -3,7 +3,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Coroutine
-from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List
+from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List, Tuple
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
@@ -408,6 +408,30 @@ class Comm:
                 ret = handler(event, from_client)
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
+
+    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them to be sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+        pass
+
+    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them after being sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+        pass
 
 
 __all__ = ["Comm"]

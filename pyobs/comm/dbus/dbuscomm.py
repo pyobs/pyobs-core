@@ -45,8 +45,11 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         # create event
         ev = EventFactory.from_dict(d)
 
+        # get real sender
+        real_sender = await self._comm._get_dbus_owner(sender)
+
         # handle it
-        await self._comm.handle_event(ev, sender)
+        await self._comm.handle_event(ev, real_sender)
 
 
 class DbusComm(Comm):
@@ -277,7 +280,7 @@ class DbusComm(Comm):
         return inner
         # return dbus_next.service.method(name=method)(inner)
 
-    async def _get_dbus_owner(self, bus: str) -> str:
+    async def _get_dbus_owner(self, bus: str, attempts: int = 3) -> str:
         """Gets the owning module name for a given bus.
 
         Params:
@@ -298,7 +301,12 @@ class DbusComm(Comm):
                 return c
 
         # nothing found
-        raise ValueError("Owner not found.")
+        if attempts > 0:
+            await asyncio.sleep(0.5)
+            await self._update_client_list()
+            await self._get_dbus_owner(bus, attempts - 1)
+        else:
+            raise ValueError("Owner not found.")
 
     @property
     def name(self) -> Optional[str]:

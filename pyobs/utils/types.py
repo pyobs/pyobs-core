@@ -28,7 +28,11 @@ def iterate_params(
             return value
 
     # okay, iterate value
-    if isinstance(value, tuple):
+    if value is None or annotation is None or annotation == Parameter.empty:
+        # no response or no annotation at all or Any
+        return value
+
+    elif isinstance(value, tuple):
         # handle tuple
         if annotation:
             return tuple(iterate_params(v, a, method) for v, a in zip(value, get_args(annotation)))

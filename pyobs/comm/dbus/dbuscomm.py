@@ -46,7 +46,7 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         ev = EventFactory.from_dict(d)
 
         # get real sender
-        real_sender = await self._comm._get_dbus_owner(sender)
+        real_sender = await self._comm.get_dbus_owner(sender)
 
         # handle it
         await self._comm.handle_event(ev, real_sender)
@@ -266,7 +266,7 @@ class DbusComm(Comm):
             sender = None
             if "sender" in kwargs:
                 # get real sender
-                sender = await self._comm._get_dbus_owner(kwargs["sender"])
+                sender = await self.get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
 
             # call method
@@ -281,7 +281,7 @@ class DbusComm(Comm):
         return inner
         # return dbus_next.service.method(name=method)(inner)
 
-    async def _get_dbus_owner(self, bus: str, attempts: int = 3) -> str:
+    async def get_dbus_owner(self, bus: str, attempts: int = 3) -> str:
         """Gets the owning module name for a given bus.
 
         Params:

@@ -479,7 +479,7 @@ class DbusComm(Comm):
 
             # get method and call it
             func = getattr(module, f"call_handle_event")
-            await func(str(event.to_json()))
+            await func(json.dumps(event.to_json()))
 
     async def handle_event(self, event: Event, sender: str) -> None:
         # send it to module

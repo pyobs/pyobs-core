@@ -48,7 +48,7 @@ class DbusComm(Comm):
         # variables
         self._name = name
         self._domain = domain
-        self._bus: Optional[MessageBus] = None
+        self._dbus: Optional[MessageBus] = None
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
         self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
@@ -57,19 +57,19 @@ class DbusComm(Comm):
         """Creates the dbus connection."""
 
         # create client
-        self._bus = await MessageBus().connect()
-        if not self._bus:
+        self._dbus = await MessageBus().connect()
+        if not self._dbus:
             raise ValueError("Could not create DBUS connection.")
 
         # build and publish classes
         self._build_dbus_classes()
         for interface, obj in self._dbus_classes.items():
-            self._bus.export("/" + interface.replace(".", "/"), obj)
-            await self._bus.request_name(interface)
+            self._dbus.export("/" + interface.replace(".", "/"), obj)
+            await self._dbus.request_name(interface)
 
         # get object for introspection
-        introspection = await self._bus.introspect("org.freedesktop.DBus", "/org/freedesktop/DBus")
-        proxy_object = self._bus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
+        introspection = await self._dbus.introspect("org.freedesktop.DBus", "/org/freedesktop/DBus")
+        proxy_object = self._dbus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
         if not proxy_object:
             raise ValueError("Could not fetch proxy object for DBUS.")
         self._dbus_introspection = proxy_object.get_interface("org.freedesktop.DBus")
@@ -90,8 +90,8 @@ class DbusComm(Comm):
         await Comm.close(self)
 
         # disconnect from dbus
-        if self._bus:
-            self._bus.disconnect()
+        if self._dbus:
+            self._dbus.disconnect()
 
     async def _register_events(
         self,
@@ -114,7 +114,8 @@ class DbusComm(Comm):
             return
 
         # get all interfaces containing "pyobs"
-        data = list(filter(lambda d: self._domain in d, await self._dbus_introspection.call_list_names()))
+        x = await self._dbus_introspection.call_list_names()
+        data = list(filter(lambda d: self._domain in d, x))
 
         # get all modules: first run regexp on all entries and then cut by length of prefix
         prefix = self._domain + "."
@@ -241,11 +242,7 @@ class DbusComm(Comm):
             # get sender
             sender = None
             if "sender" in kwargs:
-                # get client list
-                await self._update_client_list()
-
-                # get owner of dbus bus
-                sender = await self._get_dbus_owner(kwargs["sender"])
+                sender = kwargs["sender"]
                 del kwargs["sender"]
 
             # call method
@@ -349,8 +346,8 @@ class DbusComm(Comm):
         # get introspection, proxy and interface
         iface = f"{self._domain}.{client}"
         path = "/" + iface.replace(".", "/")
-        introspection = await self._bus.introspect(iface, path)
-        obj = self._bus.get_proxy_object(iface, path, introspection)
+        introspection = await self._dbus.introspect(iface, path)
+        obj = self._dbus.get_proxy_object(iface, path, introspection)
         module = obj.get_interface(iface)
 
         # get method and call it
@@ -371,7 +368,11 @@ class DbusComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if value is None and typing.get_origin(annotation) == typing.Union:
+        if annotation == Any:
+            # cast Anys to string
+            return True, str(value)
+
+        elif value is None and typing.get_origin(annotation) == typing.Union:
             # get types that are not None
             typs = list(filter(lambda x: x is not None, typing.get_args(annotation)))
 
@@ -403,7 +404,15 @@ class DbusComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if value in NONE_VALUES.values():
+        if annotation == Any:
+            # try to guess type
+            try:
+                f = float(value)
+                i = int(f)
+                return True, i if f == i and "." not in value else f
+            except ValueError:
+                return True, value
+        elif value in NONE_VALUES.values():
             return True, None
         else:
             return False, value

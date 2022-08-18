@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import json
 import logging
 import re
 import sys
@@ -13,6 +14,7 @@ import dbus_next.service
 
 from pyobs.comm import Comm
 from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
+from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_response_to_real
 
@@ -20,6 +22,31 @@ log = logging.getLogger(__name__)
 
 
 NONE_VALUES = {str: "NONE", int: sys.maxsize, float: sys.maxsize, list: ["EMPTY"]}
+
+
+class ServiceInterface(dbus_next.service.ServiceInterface):
+    def __init__(self, interface: str, comm: DbusComm, pyobs_interfaces: List[str]):
+        dbus_next.service.ServiceInterface.__init__(self, interface)
+        self._interfaces = pyobs_interfaces
+        self._comm = comm
+
+    @dbus_next.service.method()
+    def get_interfaces(self) -> "as":
+        return self._interfaces
+
+    @dbus_next.service.method(sender_keyword="sender")
+    async def handle_event(self, event: "s", sender):
+        # convert event to dict
+        try:
+            d = json.loads(event.replace("'", '"'))
+        except json.decoder.JSONDecodeError:
+            return
+
+        # create event
+        ev = EventFactory.from_dict(d)
+
+        # handle it
+        await self._comm.handle_event(ev, sender)
 
 
 class DbusComm(Comm):
@@ -92,13 +119,6 @@ class DbusComm(Comm):
         # disconnect from dbus
         if self._dbus:
             self._dbus.disconnect()
-
-    async def _register_events(
-        self,
-        events: List[Type[Event]],
-        handler: Optional[typing.Callable[[Event, str], typing.Coroutine[Any, Any, bool]]] = None,
-    ) -> None:
-        print("register event")
 
     async def _update(self) -> None:
         """Periodic updates."""
@@ -199,7 +219,7 @@ class DbusComm(Comm):
         # got a module?
         if self._module is not None:
             # main module
-            main_klass = types.new_class(self._name, bases=(dbus_next.service.ServiceInterface,))
+            main_klass = types.new_class(self._name, bases=(ServiceInterface,))
 
             # loop all interfaces features
             for i in self._module.interfaces:
@@ -222,7 +242,7 @@ class DbusComm(Comm):
 
             # initialize main class
             interface = f"{self._domain}.{self._name}"
-            self._dbus_classes[interface] = main_klass(interface)
+            self._dbus_classes[interface] = main_klass(interface, self, [i.__name__ for i in self._module.interfaces])
 
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
@@ -416,6 +436,42 @@ class DbusComm(Comm):
             return True, None
         else:
             return False, value
+
+    async def send_event(self, event: Event) -> None:
+        """Send an event to other clients.
+
+        Args:
+            event (Event): Event to send
+        """
+
+        # check
+        if self._dbus is None:
+            raise ValueError("No connection.")
+
+        # loop all clients
+        for client in self.clients:
+            # skip myself
+            if client == self._name:
+                continue
+
+            # get introspection, proxy and interface
+            iface = f"{self._domain}.{client}"
+            path = "/" + iface.replace(".", "/")
+            try:
+                introspection = await self._dbus.introspect(iface, path)
+            except dbus_next.errors.DBusError:
+                # client offline?
+                continue
+            obj = self._dbus.get_proxy_object(iface, path, introspection)
+            module = obj.get_interface(iface)
+
+            # get method and call it
+            func = getattr(module, f"call_handle_event")
+            await func(str(event.to_json()))
+
+    async def handle_event(self, event: Event, sender: str) -> None:
+        # send it to module
+        self._send_event_to_module(event, sender)
 
 
 __all__ = ["DbusComm"]

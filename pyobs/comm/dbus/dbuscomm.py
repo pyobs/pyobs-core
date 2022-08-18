@@ -7,6 +7,8 @@ import sys
 import types
 import inspect
 import typing
+import uuid
+from collections import Coroutine
 from enum import Enum
 from typing import Any, Optional, Type, List, Dict, Tuple, get_args
 from dbus_next.aio import MessageBus
@@ -16,6 +18,7 @@ from pyobs.comm import Comm
 from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
+from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_response_to_real
 
 log = logging.getLogger(__name__)
@@ -30,10 +33,12 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         self._interfaces = pyobs_interfaces
         self._comm = comm
 
+    @typing.no_type_check_decorator
     @dbus_next.service.method()
     def get_interfaces(self) -> "as":
         return self._interfaces
 
+    @typing.no_type_check_decorator
     @dbus_next.service.method(sender_keyword="sender")
     async def handle_event(self, event: "s", sender):
         # convert event to dict
@@ -50,6 +55,11 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
         # handle it
         await self._comm.handle_event(ev, real_sender)
+
+    @typing.no_type_check_decorator
+    @dbus_next.service.method()
+    def set_timeout(self, uid: "s", timeout: "d"):
+        self._comm.set_timeout(uid, timeout)
 
 
 class DbusComm(Comm):
@@ -82,6 +92,7 @@ class DbusComm(Comm):
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
         self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
+        self._futures: Dict[str, Future] = {}
 
     async def open(self) -> None:
         """Creates the dbus connection."""
@@ -194,6 +205,8 @@ class DbusComm(Comm):
     def _build_dbus_signature(self, sig: inspect.Signature) -> inspect.Signature:
         # build list of parameters
         new_params: List[inspect.Parameter] = []
+
+        # real parameters
         for name, param in sig.parameters.items():
             # ignore kwargs
             if name == "kwargs":
@@ -211,6 +224,9 @@ class DbusComm(Comm):
 
             # store it
             new_params.append(p)
+
+        # add "s" at the end for uid
+        new_params.append(inspect.Parameter("uid", kind=inspect.Parameter.KEYWORD_ONLY, annotation="s"))
 
         # return type
         return_annotation = None if sig.return_annotation is None else self._annotation_to_dbus(sig.return_annotation)
@@ -268,6 +284,34 @@ class DbusComm(Comm):
                 # get real sender
                 sender = await self.get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
+
+            # get uid
+            uid = args[-1]
+            args = args[:-1]
+
+            # get method
+            func, signature, _ = self._module.methods[method]
+
+            # bind parameters
+            ba = signature.bind(*args)
+            ba.apply_defaults()
+
+            # do we have a timeout?
+            if hasattr(func, "timeout"):
+                timeout = await getattr(func, "timeout")(self._module, **ba.arguments)
+                if timeout:
+                    # yes, send it!
+                    print("TIMEOUT:", int(timeout))
+
+                    # get introspection, proxy and interface
+                    iface = f"{self._domain}.{sender}"
+                    print(iface)
+                    path = "/" + iface.replace(".", "/")
+                    introspection = await self._dbus.introspect(iface, path)
+                    obj = self._dbus.get_proxy_object(iface, path, introspection)
+                    module = obj.get_interface(iface)
+                    set_timeout = getattr(module, f"call_set_timeout")
+                    await set_timeout(uid, int(timeout))
 
             # call method
             return await self.module.execute(method, *args, sender=sender)
@@ -382,12 +426,24 @@ class DbusComm(Comm):
         obj = self._dbus.get_proxy_object(iface, path, introspection)
         module = obj.get_interface(iface)
 
-        # get method and call it
-        func = getattr(module, f"call_{method}")
-        res = await func(*args)
+        # create a future for this
+        uid = str(uuid.uuid4())
+        future = Future(signature=signature)
+        self._futures[uid] = future
 
-        # cast to pyobs
-        return cast_response_to_real(res, signature.return_annotation, self.cast_to_real)
+        # get method and call it in background
+        func = getattr(module, f"call_{method}")
+        asyncio.create_task(self._wait_for_method(func(*args, uid), uid))
+
+        # don't wait for response, just return future
+        return await future
+
+    async def _wait_for_method(self, func: typing.Awaitable[Any], uid: str) -> None:
+        # wait for result
+        result = await func
+
+        # set result
+        self._futures[uid].set_result(result)
 
     def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
@@ -484,6 +540,10 @@ class DbusComm(Comm):
     async def handle_event(self, event: Event, sender: str) -> None:
         # send it to module
         self._send_event_to_module(event, sender)
+
+    def set_timeout(self, uid: str, timeout: float) -> None:
+        print("SET TIMEOUT:", timeout)
+        self._futures[uid].set_timeout(timeout)
 
 
 __all__ = ["DbusComm"]

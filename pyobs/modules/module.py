@@ -92,7 +92,7 @@ class Module(Object, IModule, IConfig):
 
         # get list of client interfaces
         self._interfaces: List[Type[Interface]] = []
-        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature], Dict[Any, Any]] = {}
+        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
@@ -183,7 +183,7 @@ class Module(Object, IModule, IConfig):
         return self._interfaces
 
     @property
-    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature]]:
+    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]]:
         """List of methods."""
         return self._methods
 

@@ -56,8 +56,11 @@ def iterate_params(
             return {iterate_params(k, None, method): iterate_params(v, None, method) for k, v in value.items()}
 
     else:
-        # just return it
-        return annotation(value) if annotation else value
+        # just return it, maybe cast to annotation
+        try:
+            return annotation(value) if annotation else value
+        except TypeError:
+            return value
 
 
 def cast_bound_arguments_to_simple(

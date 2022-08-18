@@ -27,7 +27,7 @@ class RPC(object):
         self._client = client
         self._futures: Dict[str, Future] = {}
         self._handler = handler
-        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
+        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature], Dict[Any, Any]] = {}
 
         # set up callbacks
         client.add_event_handler("jabber_rpc_method_call", self._on_jabber_rpc_method_call)
@@ -99,7 +99,7 @@ class RPC(object):
 
             # get method
             try:
-                method, signature = self._methods[pmethod]
+                method, signature, _ = self._methods[pmethod]
             except KeyError:
                 log.error("No handler available for %s!", pmethod)
                 self._client.plugin["xep_0009"].item_not_found(iq).send()

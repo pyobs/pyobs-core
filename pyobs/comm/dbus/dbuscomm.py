@@ -1,14 +1,11 @@
 from __future__ import annotations
-
 import asyncio
-import copy
 import logging
 import re
 import sys
 import types
 import inspect
 import typing
-from collections import OrderedDict
 from enum import Enum
 from typing import Any, Optional, Type, List, Dict, Tuple, get_args
 from dbus_next.aio import MessageBus
@@ -17,7 +14,6 @@ import dbus_next.service
 from pyobs.comm import Comm
 from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
 from pyobs.interfaces import Interface
-from pyobs.utils.parallel import Future
 from pyobs.utils.types import cast_response_to_real
 
 log = logging.getLogger(__name__)
@@ -54,7 +50,7 @@ class DbusComm(Comm):
         self._domain = domain
         self._bus: Optional[MessageBus] = None
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
-        self._dbus_introspection: Optional[dbus_next.proxy_object.BaseProxyObject] = None
+        self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
 
     async def open(self) -> None:
@@ -62,6 +58,8 @@ class DbusComm(Comm):
 
         # create client
         self._bus = await MessageBus().connect()
+        if not self._bus:
+            raise ValueError("Could not create DBUS connection.")
 
         # build and publish classes
         self._build_dbus_classes()
@@ -71,8 +69,10 @@ class DbusComm(Comm):
 
         # get object for introspection
         introspection = await self._bus.introspect("org.freedesktop.DBus", "/org/freedesktop/DBus")
-        obj = self._bus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
-        self._dbus_introspection = obj.get_interface("org.freedesktop.DBus")
+        proxy_object = self._bus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
+        if not proxy_object:
+            raise ValueError("Could not fetch proxy object for DBUS.")
+        self._dbus_introspection = proxy_object.get_interface("org.freedesktop.DBus")
 
         # get client list
         await self._update_client_list()
@@ -108,6 +108,10 @@ class DbusComm(Comm):
 
     async def _update_client_list(self) -> None:
         """Update list of clients."""
+
+        # check
+        if self._dbus_introspection is None:
+            return
 
         # get all interfaces containing "pyobs"
         data = list(filter(lambda d: self._domain in d, await self._dbus_introspection.call_list_names()))
@@ -230,6 +234,10 @@ class DbusComm(Comm):
         """
 
         async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
+            # check
+            if self.module is None:
+                return
+
             # get sender
             sender = None
             if "sender" in kwargs:
@@ -241,12 +249,9 @@ class DbusComm(Comm):
                 del kwargs["sender"]
 
             # call method
-            return_value = await self.module.execute(method, *args, sender=sender)
-            print("return_value:", return_value)
+            return await self.module.execute(method, *args, sender=sender)
 
-            # return result
-            return self._tuple_to_list(return_value)
-
+        # set signature
         inner.__signature__ = self._build_dbus_signature(sig)
         # TODO: Nicer way to do this?
         inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
@@ -264,6 +269,10 @@ class DbusComm(Comm):
         Returns:
             Owning module.
         """
+
+        # check
+        if self._dbus_introspection is None:
+            raise ValueError("No connection.")
 
         # loop all clients, get their owner, and check against bus
         for c in self.clients:
@@ -332,7 +341,10 @@ class DbusComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        print("execute", client, method, args)
+
+        # check
+        if self._dbus is None:
+            raise ValueError("No connection.")
 
         # get introspection, proxy and interface
         iface = f"{self._domain}.{client}"
@@ -342,14 +354,11 @@ class DbusComm(Comm):
         module = obj.get_interface(iface)
 
         # get method and call it
-        # TODO: cast some types, like Enums
         func = getattr(module, f"call_{method}")
         res = await func(*args)
 
         # cast to pyobs
-        result = cast_response_to_real(res, signature.return_annotation, self.cast_to_real)
-        print("result: ", result)
-        return result
+        return cast_response_to_real(res, signature.return_annotation, self.cast_to_real)
 
     def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.

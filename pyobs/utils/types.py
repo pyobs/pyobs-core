@@ -161,7 +161,7 @@ def cast_response_to_simple(
         if method:
             stop_iter, v = method(v, a)
             if stop_iter:
-                return True, value
+                return True, v
 
         if isinstance(v, Enum):
             # get string name for Enums
@@ -171,8 +171,7 @@ def cast_response_to_simple(
             return False, v
 
     # cast
-    a = iterate_params(value, annotation, cast_to_simple)
-    return a
+    return iterate_params(value, annotation, cast_to_simple)
 
 
 def cast_response_to_real(

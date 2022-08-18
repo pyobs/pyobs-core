@@ -90,7 +90,7 @@ class Future(asyncio.Future):
         # all ok, return value
         if self.signature is not None:
             # cast response to real types
-            return cast_response_to_real(result, self.signature)
+            return cast_response_to_real(result, self.signature.return_annotation)
         else:
             return result
 

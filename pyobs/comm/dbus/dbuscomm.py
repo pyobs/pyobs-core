@@ -265,7 +265,8 @@ class DbusComm(Comm):
             # get sender
             sender = None
             if "sender" in kwargs:
-                sender = kwargs["sender"]
+                # get real sender
+                sender = await self._comm._get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
 
             # call method

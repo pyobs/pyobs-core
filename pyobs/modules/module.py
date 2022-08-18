@@ -1,6 +1,8 @@
+from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import typing
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
 import packaging.version
@@ -90,7 +92,7 @@ class Module(Object, IModule, IConfig):
 
         # get list of client interfaces
         self._interfaces: List[Type[Interface]] = []
-        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature]] = {}
+        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature], Dict[Any, Any]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
@@ -207,9 +209,10 @@ class Module(Object, IModule, IConfig):
                     # get method and signature
                     func = getattr(self, method_name)
                     signature = inspect.signature(func)
+                    type_hints = typing.get_type_hints(func)
 
                     # fill dict of name->(method, signature)
-                    self._methods[method_name] = (func, signature)
+                    self._methods[method_name] = (func, signature, type_hints)
 
     def quit(self) -> None:
         """Quit module."""
@@ -242,7 +245,7 @@ class Module(Object, IModule, IConfig):
                 raise exc.ModuleError("Module is in error state, please reset it.")
 
         # get method and signature (may raise KeyError)
-        func, signature = self.methods[method]
+        func, signature, type_hints = self._methods[method]
 
         # bind parameters
         ba = signature.bind(*args, **kwargs)
@@ -259,13 +262,13 @@ class Module(Object, IModule, IConfig):
             del ba.arguments["kwargs"]
 
         # cast to types requested by method
-        cast_bound_arguments_to_real(ba, signature)
+        cast_bound_arguments_to_real(ba, self.comm.cast_to_real)
 
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
-        return cast_response_to_simple(response, signature.return_annotation, self.comm.cast_to_simple)
+        return cast_response_to_simple(response, type_hints["return"], self.comm.cast_to_simple)
 
     def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""

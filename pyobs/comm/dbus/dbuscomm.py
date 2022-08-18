@@ -158,7 +158,7 @@ class DbusComm(Comm):
             self._send_event_to_module(ModuleOpenedEvent(), m)
 
         # loop freshly disconnected modules except myself
-        for m in list(set(self._interfaces.keys()) - set(interfaces.keys() - {self._name})):
+        for m in list(set(self._interfaces.keys()) - set(interfaces.keys()) - {self._name}):
             # send event
             self._send_event_to_module(ModuleClosedEvent(), m)
 
@@ -297,7 +297,10 @@ class DbusComm(Comm):
 
         # loop all clients, get their owner, and check against bus
         for c in self.clients:
-            owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
+            try:
+                owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
+            except dbus_next.errors.DBusError:
+                break
             if owner == bus:
                 return c
 
@@ -305,7 +308,7 @@ class DbusComm(Comm):
         if attempts > 0:
             await asyncio.sleep(0.5)
             await self._update_client_list()
-            await self._get_dbus_owner(bus, attempts - 1)
+            await self.get_dbus_owner(bus, attempts - 1)
         else:
             raise ValueError("Owner not found.")
 

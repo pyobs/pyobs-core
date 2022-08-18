@@ -88,10 +88,19 @@ def cast_bound_arguments_to_simple(
             # continue iteration
             return False, v
 
+    # get signature
+    signature = bound_arguments.signature
+
     # loop all arguments
     for key, value in bound_arguments.arguments.items():
+        if key in ["self", "args", "kwargs"]:
+            continue
+
+        # get type of parameter
+        annotation = signature.parameters[key].annotation
+
         # cast
-        bound_arguments.arguments[key] = iterate_params(value, None, cast_to_simple)
+        bound_arguments.arguments[key] = iterate_params(value, annotation, cast_to_simple)
 
 
 def cast_bound_arguments_to_real(

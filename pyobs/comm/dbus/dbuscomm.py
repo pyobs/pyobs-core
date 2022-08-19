@@ -6,11 +6,22 @@ import re
 import sys
 import types
 import inspect
-import typing
 import uuid
-from collections import Coroutine
 from enum import Enum
-from typing import Any, Optional, Type, List, Dict, Tuple, get_args
+from typing import (
+    Any,
+    Optional,
+    Type,
+    List,
+    Dict,
+    Tuple,
+    get_args,
+    Awaitable,
+    no_type_check_decorator,
+    Union,
+    get_origin,
+    Protocol,
+)
 from dbus_next.aio import MessageBus
 import dbus_next.service
 
@@ -19,7 +30,6 @@ from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
-from pyobs.utils.types import cast_response_to_real
 
 log = logging.getLogger(__name__)
 
@@ -33,12 +43,12 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         self._interfaces = pyobs_interfaces
         self._comm = comm
 
-    @typing.no_type_check_decorator
+    @no_type_check_decorator
     @dbus_next.service.method()
     def get_interfaces(self) -> "as":
         return self._interfaces
 
-    @typing.no_type_check_decorator
+    @no_type_check_decorator
     @dbus_next.service.method(sender_keyword="sender")
     async def handle_event(self, event: "s", sender):
         # convert event to dict
@@ -56,10 +66,15 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         # handle it
         await self._comm.handle_event(ev, real_sender)
 
-    @typing.no_type_check_decorator
+    @no_type_check_decorator
     @dbus_next.service.method()
     def set_timeout(self, uid: "s", timeout: "d"):
         self._comm.set_timeout(uid, timeout)
+
+
+class DbusMethod(Protocol):
+    def __call__(self, *args: Any) -> Any:
+        ...
 
 
 class DbusComm(Comm):
@@ -91,6 +106,7 @@ class DbusComm(Comm):
         self._dbus: Optional[MessageBus] = None
         self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
         self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
+        self._dbus_introspection_cache: Dict[str, dbus_next.introspection.Node] = {}
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
         self._futures: Dict[str, Future] = {}
 
@@ -187,18 +203,16 @@ class DbusComm(Comm):
             # dicts
             return "a{" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + "}"
         elif (
-            hasattr(annotation, "__origin__")
-            and annotation.__origin__ is typing.Union
-            and type(None) in get_args(annotation)
+            hasattr(annotation, "__origin__") and annotation.__origin__ is Union and type(None) in get_args(annotation)
         ):
             # optional parameter
-            typ = list(filter(lambda x: x is not None, typing.get_args(annotation)))[0]
+            typ = list(filter(lambda x: x is not None, get_args(annotation)))[0]
             return self._annotation_to_dbus(typ)
         elif inspect.isclass(annotation) and issubclass(annotation, Enum):
             return "s"
         else:
             try:
-                return {int: "i", float: "d", str: "s", bool: "b", typing.Any: "s"}[annotation]
+                return {int: "i", float: "d", str: "s", bool: "b", Any: "s"}[annotation]
             except KeyError:
                 raise
 
@@ -263,6 +277,35 @@ class DbusComm(Comm):
             interface = f"{self._domain}.{self._name}"
             self._dbus_classes[interface] = main_klass(interface, self, [i.__name__ for i in self._module.interfaces])
 
+    async def _get_dbus_introspection(self, client: str) -> Tuple[dbus_next.introspection.Node, str, str]:
+        # check
+        if self._dbus is None:
+            raise ValueError("No connection")
+
+        # get interface and path
+        interface = f"{self._domain}.{client}"
+        path = "/" + interface.replace(".", "/")
+
+        # get introspection and return it
+        if client not in self._dbus_introspection_cache:
+            self._dbus_introspection_cache[client] = await self._dbus.introspect(interface, path)
+        return self._dbus_introspection_cache[client], interface, path
+
+    async def _get_dbus_method(self, client: str, method: str) -> DbusMethod:
+        # check
+        if self._dbus is None:
+            raise ValueError("No connection")
+
+        # get introspection, interface and path
+        introspection, interface, path = await self._get_dbus_introspection(client)
+
+        # get object and module
+        obj = self._dbus.get_proxy_object(interface, path, introspection)
+        module = obj.get_interface(interface)
+
+        # get function
+        return getattr(module, f"call_{method}")
+
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
 
@@ -297,20 +340,14 @@ class DbusComm(Comm):
             ba.apply_defaults()
 
             # do we have a timeout?
-            if hasattr(func, "timeout"):
+            if hasattr(func, "timeout") and sender is not None:
                 timeout = await getattr(func, "timeout")(self._module, **ba.arguments)
                 if timeout:
                     # yes, send it!
                     print("TIMEOUT:", int(timeout))
 
                     # get introspection, proxy and interface
-                    iface = f"{self._domain}.{sender}"
-                    print(iface)
-                    path = "/" + iface.replace(".", "/")
-                    introspection = await self._dbus.introspect(iface, path)
-                    obj = self._dbus.get_proxy_object(iface, path, introspection)
-                    module = obj.get_interface(iface)
-                    set_timeout = getattr(module, f"call_set_timeout")
+                    set_timeout = await self._get_dbus_method(sender, "set_timeout")
                     await set_timeout(uid, int(timeout))
 
             # call method
@@ -352,7 +389,7 @@ class DbusComm(Comm):
         if attempts > 0:
             await asyncio.sleep(0.5)
             await self._update_client_list()
-            await self.get_dbus_owner(bus, attempts - 1)
+            return await self.get_dbus_owner(bus, attempts - 1)
         else:
             raise ValueError("Owner not found.")
 
@@ -419,26 +456,21 @@ class DbusComm(Comm):
         if self._dbus is None:
             raise ValueError("No connection.")
 
-        # get introspection, proxy and interface
-        iface = f"{self._domain}.{client}"
-        path = "/" + iface.replace(".", "/")
-        introspection = await self._dbus.introspect(iface, path)
-        obj = self._dbus.get_proxy_object(iface, path, introspection)
-        module = obj.get_interface(iface)
-
         # create a future for this
         uid = str(uuid.uuid4())
         future = Future(signature=signature)
         self._futures[uid] = future
 
+        # get method
+        func = await self._get_dbus_method(client, method)
+
         # get method and call it in background
-        func = getattr(module, f"call_{method}")
         asyncio.create_task(self._wait_for_method(func(*args, uid), uid))
 
         # don't wait for response, just return future
         return await future
 
-    async def _wait_for_method(self, func: typing.Awaitable[Any], uid: str) -> None:
+    async def _wait_for_method(self, func: Awaitable[Any], uid: str) -> None:
         # wait for result
         result = await func
 
@@ -460,16 +492,16 @@ class DbusComm(Comm):
             # cast Anys to string
             return True, str(value)
 
-        elif value is None and typing.get_origin(annotation) == typing.Union:
+        elif value is None and get_origin(annotation) == Union:
             # get types that are not None
-            typs = list(filter(lambda x: x is not None, typing.get_args(annotation)))
+            typs = list(filter(lambda x: x is not None, get_args(annotation)))
 
             # loop them
             for typ in typs:
                 if typ in NONE_VALUES:
                     return True, NONE_VALUES[typ]
-                elif typing.get_origin(typ) in NONE_VALUES:
-                    return True, NONE_VALUES[typing.get_origin(typ)]
+                elif get_origin(typ) in NONE_VALUES:
+                    return True, NONE_VALUES[get_origin(typ)]
                 else:
                     return True, value
             else:
@@ -522,19 +554,14 @@ class DbusComm(Comm):
             if client == self._name:
                 continue
 
-            # get introspection, proxy and interface
-            iface = f"{self._domain}.{client}"
-            path = "/" + iface.replace(".", "/")
+            # get function
             try:
-                introspection = await self._dbus.introspect(iface, path)
-            except dbus_next.errors.DBusError:
+                func = await self._get_dbus_method(client, "handle_event")
+            except ValueError:
                 # client offline?
                 continue
-            obj = self._dbus.get_proxy_object(iface, path, introspection)
-            module = obj.get_interface(iface)
 
-            # get method and call it
-            func = getattr(module, f"call_handle_event")
+            # call it
             await func(json.dumps(event.to_json()))
 
     async def handle_event(self, event: Event, sender: str) -> None:

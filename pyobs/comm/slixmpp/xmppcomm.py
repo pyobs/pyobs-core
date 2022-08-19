@@ -185,7 +185,7 @@ class XmppComm(Comm):
                 self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
 
         # RPC
-        self._rpc = RPC(self._xmpp, None)
+        self._rpc = RPC(self, self._xmpp, None)
         self._rpc.set_handler(self._module)
 
         # connect
@@ -321,13 +321,13 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
-            signature: Method signature.
+            annotation: Method annotation.
             *args: List of parameters for given method.
 
         Returns:
@@ -341,7 +341,7 @@ class XmppComm(Comm):
 
         # call
         try:
-            return await self._rpc.call(jid, method, signature, *args)
+            return await self._rpc.call(jid, method, annotation, *args)
         except slixmpp.exceptions.IqError:
             raise exc.RemoteError(client, f"Could not call {method} on {client}.")
         except slixmpp.exceptions.IqTimeout:
@@ -534,7 +534,7 @@ class XmppComm(Comm):
         # never should reach this
         raise slixmpp.exceptions.IqTimeout
 
-    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -550,7 +550,7 @@ class XmppComm(Comm):
         else:
             return False, value
 
-    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:

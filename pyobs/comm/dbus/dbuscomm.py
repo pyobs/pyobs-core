@@ -439,13 +439,13 @@ class DbusComm(Comm):
         # does it exist?
         return interface in self._interfaces[client]
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
-            signature: Method signature.
+            annotation: Method annotation.
             *args: List of parameters for given method.
 
         Returns:
@@ -458,7 +458,7 @@ class DbusComm(Comm):
 
         # create a future for this
         uid = str(uuid.uuid4())
-        future = Future(signature=signature)
+        future = Future(annotation=annotation, comm=self)
         self._futures[uid] = future
 
         # get method

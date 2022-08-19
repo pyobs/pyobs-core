@@ -291,13 +291,13 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
-            signature: Method signature.
+            annotation: Method annotation.
             *args: List of parameters for given method.
 
         Returns:
@@ -409,7 +409,7 @@ class Comm:
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
 
-    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -419,9 +419,21 @@ class Comm:
         Returns:
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
-        pass
+        return False, value
 
-    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them to be sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+        return False, value
+
+    def cast_to_real_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:
@@ -431,7 +443,19 @@ class Comm:
         Returns:
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
-        pass
+        return False, value
+
+    def cast_to_real_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them after being sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+        return False, value
 
 
 __all__ = ["Comm"]

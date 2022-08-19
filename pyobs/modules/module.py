@@ -262,13 +262,15 @@ class Module(Object, IModule, IConfig):
             del ba.arguments["kwargs"]
 
         # cast to types requested by method
-        cast_bound_arguments_to_real(ba, self.comm.cast_to_real)
+        cast_bound_arguments_to_real(ba, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
-        return cast_response_to_simple(response, type_hints["return"], self.comm.cast_to_simple)
+        return cast_response_to_simple(
+            response, type_hints["return"], self.comm.cast_to_simple_pre, self.comm.cast_to_simple_post
+        )
 
     def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""

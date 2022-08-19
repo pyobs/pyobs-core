@@ -1,7 +1,7 @@
 from __future__ import annotations
 import inspect
 import types
-from typing import TYPE_CHECKING, Any, Type, List, Dict
+from typing import TYPE_CHECKING, Any, Type, List, Dict, get_type_hints
 
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_bound_arguments_to_simple
@@ -98,19 +98,18 @@ class Proxy:
         # add 'self' to args
         args = tuple([self] + list(args))
 
-        # get method signature and bind it
-        try:
-            signature = inspect.signature(self._methods[method][0])
-        except KeyError:
-            raise exc.RemoteError(self.name, f"Module {self.name} has no method {method}.")
+        # get signature and annotation
+        _, signature, _, annotation = self._methods[method]
+
+        # bind signature
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
 
         # cast to simple types
-        cast_bound_arguments_to_simple(ba, method=self._comm.cast_to_simple)
+        cast_bound_arguments_to_simple(ba, pre=self._comm.cast_to_simple_pre, post=self._comm.cast_to_simple_post)
 
         # do request and return future
-        return await self._comm.execute(self._client, method, signature, *ba.args[1:])
+        return await self._comm.execute(self._client, method, annotation, *ba.args[1:])
 
     def _create_methods(self) -> Dict[str, Any]:
         """Create local methods for the remote client."""
@@ -123,9 +122,11 @@ class Proxy:
                 # set method
                 my_func = types.MethodType(self._remote_function_wrapper(func_name), self)
                 setattr(self, func_name, my_func)
+                annotation = get_type_hints(func)
+                signature = inspect.signature(func)
 
                 # store func
-                methods[func_name] = (func, getattr(self, func_name))
+                methods[func_name] = (func, signature, getattr(self, func_name), annotation)
 
         # return methods
         return methods

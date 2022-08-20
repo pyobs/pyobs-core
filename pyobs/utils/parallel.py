@@ -98,11 +98,10 @@ class Future(asyncio.Future):
         result = self.result()
 
         # all ok, return value
-        if self.annotation and self.comm.cast_to_real_pre and self.comm.cast_to_real_post:
+        if self.annotation and self.comm:
             result = cast_response_to_real(
                 result, self.annotation["return"], self.comm.cast_to_real_pre, self.comm.cast_to_real_post
             )
-        print(result)
         return result
 
     @staticmethod

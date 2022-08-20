@@ -343,9 +343,6 @@ class DbusComm(Comm):
             if hasattr(func, "timeout") and sender is not None:
                 timeout = await getattr(func, "timeout")(self._module, **ba.arguments)
                 if timeout:
-                    # yes, send it!
-                    print("TIMEOUT:", int(timeout))
-
                     # get introspection, proxy and interface
                     set_timeout = await self._get_dbus_method(sender, "set_timeout")
                     await set_timeout(uid, int(timeout))
@@ -565,11 +562,21 @@ class DbusComm(Comm):
             await func(json.dumps(event.to_json()))
 
     async def handle_event(self, event: Event, sender: str) -> None:
-        # send it to module
+        """Handle event localy, i.e. send it to module.
+
+        Args:
+            event: Event to handle.
+            sender: Sender of event.
+        """
         self._send_event_to_module(event, sender)
 
     def set_timeout(self, uid: str, timeout: float) -> None:
-        print("SET TIMEOUT:", timeout)
+        """Set timeout, usually received from other module.
+
+        Args:
+            uid: UID of remote call.
+            timeout: Timeout in seconds.
+        """
         self._futures[uid].set_timeout(timeout)
 
 

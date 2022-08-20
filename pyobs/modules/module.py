@@ -262,7 +262,7 @@ class Module(Object, IModule, IConfig):
             del ba.arguments["kwargs"]
 
         # cast to types requested by method
-        cast_bound_arguments_to_real(ba, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
+        cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)

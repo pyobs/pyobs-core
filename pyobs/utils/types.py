@@ -1,103 +1,236 @@
-from inspect import BoundArguments, Signature, Parameter
+import functools
+import inspect
+from inspect import BoundArguments, Parameter
 from enum import Enum
-from typing import Any, get_origin
-import xml.sax.saxutils
+from typing import Any, get_args, Callable, Tuple, Optional, Type, Dict
 
 
-def cast_bound_arguments_to_simple(bound_arguments: BoundArguments):
+def iterate_params(
+    value: Any,
+    type_hint: Optional[Type[Any]] = None,
+    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
+    """Iterate values and type_hints and call a given method.
+
+    Args:
+        value: value to iterate.
+        type_hint: type_hint for value.
+        method: Method to run on each value. Should take one value and type_hint and return a bool indicating whether
+            iteration should stop here and a new value.
+
+    Returns:
+        Same structure as input, but converted by method.
+    """
+
+    # call provided method
+    if method:
+        stop_iter, value = method(value, type_hint)
+        if stop_iter:
+            return value
+
+    # okay, iterate value
+    if value is None or type_hint is None or type_hint == Parameter.empty:
+        # no response or no type_hint at all or Any
+        return value
+
+    elif isinstance(value, tuple):
+        # handle tuple
+        if type_hint:
+            return tuple(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
+        else:
+            return tuple(iterate_params(v, None, method) for v in value)
+
+    elif isinstance(value, list):
+        # handle lists
+        if type_hint:
+            typ = get_args(type_hint)[0]
+            return [iterate_params(v, typ, method) for v in value]
+        else:
+            return [iterate_params(v, None, method) for v in value]
+
+    elif isinstance(value, dict):
+        # handle dict
+        if type_hint:
+            annk, annv = get_args(type_hint)
+            return {iterate_params(k, annk, method): iterate_params(v, annv, method) for k, v in value.items()}
+        else:
+            return {iterate_params(k, None, method): iterate_params(v, None, method) for k, v in value.items()}
+
+    else:
+        # just return it, maybe cast to type_hint
+        try:
+            return type_hint(value) if type_hint else value
+        except TypeError:
+            return value
+
+
+def cast_bound_arguments_to_simple(
+    bound_arguments: BoundArguments,
+    type_hints: Dict[str, Type[Any]],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> None:
     """Cast the requested parameters, which are of simple types, to the types required by the method.
 
     Args:
         bound_arguments: Incoming parameters.
+        type_hints: Type hints for parameters.
+        pre: Method to call for each parameter before automatic handling.
+        post: Method to call for each parameter after automatic handling.
     """
-    # loop all arguments
+
+    # loop all arguments and cast
+    cast_to_simple = functools.partial(__cast_to_simple, pre=pre, post=post)
     for key, value in bound_arguments.arguments.items():
-        # special cases
-        if isinstance(value, str):
-            # escape strings
-            bound_arguments.arguments[key] = xml.sax.saxutils.escape(value)
-        elif isinstance(value, Enum):
-            # get value of enum
-            bound_arguments.arguments[key] = value.value
+        if key in ["self", "args", "kwargs"]:
+            continue
+        bound_arguments.arguments[key] = iterate_params(value, type_hints[key], cast_to_simple)
 
 
-def cast_bound_arguments_to_real(bound_arguments: BoundArguments, signature: Signature):
-    """Cast the requested parameters to simple types.
+def cast_bound_arguments_to_real(
+    bound_arguments: BoundArguments,
+    type_hints: Dict[str, Type[Any]],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> None:
+    """Cast the requested parameters to real types.
 
     Args:
         bound_arguments: Incoming parameters.
-        signature: Signature of method.
+        type_hints: Type hints for parameters.
+        pre: Method to call for each parameter before automatic handling.
+        post: Method to call for each parameter after automatic handling.
     """
-    # loop all arguments
+
+    # loop all arguments and cast
+    cast_to_real = functools.partial(__cast_to_real, pre=pre, post=post)
     for key, value in bound_arguments.arguments.items():
-        # get type of parameter
-        annotation = signature.parameters[key].annotation
-
-        # special cases
-        if value is None or annotation == Parameter.empty or annotation == Any:
-            # if value is None or no annotation is given, just copy it
-            bound_arguments.arguments[key] = value
-        elif annotation == Enum:
-            # cast to enum
-            bound_arguments.arguments[key] = value if annotation == Parameter.empty else annotation(value)
-        elif annotation == str:
-            # unescape strings
-            bound_arguments.arguments[key] = xml.sax.saxutils.unescape(value)
-        else:
-            # cast to type
-            bound_arguments.arguments[key] = annotation(value)
+        bound_arguments.arguments[key] = iterate_params(value, type_hints[key], cast_to_real)
 
 
-def cast_response_to_real(response: Any, signature: Signature) -> Any:
+def cast_response_to_simple(
+    value: Any,
+    type_hint: Type[Any],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
     """Cast a response from simple to the method's real types.
 
     Args:
-        response: Response of method call.
-        signature: Signature of method.
+        value: Response of method call.
+        type_hint: type_hint for return value.
+        pre: Method to call for each parameter before automatic handling.
+        post: Method to call for each parameter after automatic handling.
 
     Returns:
         Same as input response, but with only simple types.
     """
 
-    # get return annotation
-    annotation = signature.return_annotation
-
-    # TODO: For future Python versions (3.9?)
-    # - handle dicts and tuples
-
-    # any annotations?
-    if response is None or annotation is None or annotation == Parameter.empty or annotation == Any:
-        # no response or no annotation at all or Any
-        return response
-    elif (get_origin(annotation) == tuple) or isinstance(annotation, tuple):
-        # parse tuple
-        # return tuple([None if res is None else annot(res) for res, annot in zip(response, annotation)])
-        return response
-    elif (get_origin(annotation) == list) or isinstance(annotation, list):
-        # parse list
-        return response
-    elif (get_origin(annotation) == dict) or isinstance(annotation, dict):
-        # just return it
-        return response
-    else:
-        # type cast response
-        return annotation(response)
+    # cast
+    cast_to_simple = functools.partial(__cast_to_simple, pre=pre, post=post)
+    return iterate_params(value, type_hint, cast_to_simple)
 
 
-def cast_response_to_simple(response: Any) -> Any:
-    """Cast a response from a method to only simple types.
+def cast_response_to_real(
+    value: Any,
+    type_hint: Type[Any],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Any:
+    """Cast a response from simple to the method's real types.
 
     Args:
-        response: Response of method call.
+        value: Response of method call.
+        type_hint: type_hint of return value.
+        pre: Method to call for each parameter before automatic handling.
+        post: Method to call for each parameter after automatic handling.
 
     Returns:
         Same as input response, but with only simple types.
     """
 
-    # tuple, enum or something else
-    if isinstance(response, tuple):
-        return tuple([cast_response_to_simple(r) for r in response])
-    elif isinstance(response, Enum):
-        return response.value
-    else:
-        return response
+    # cast
+    cast_to_real = functools.partial(__cast_to_real, pre=pre, post=post)
+    return iterate_params(value, type_hint, cast_to_real)
+
+
+def __cast_to_simple(
+    value: Any,
+    type_hint: Type[Any],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Tuple[bool, Any]:
+    """Default method for pre method that casts to simple types like str, int, etc.
+
+    Args:
+        value: Value to cast.
+        type_hint: Type hint for cast.
+        pre: Method to run before checking.
+        post: Method to run after checking.
+
+    Returns:
+        Tuple of a boolean indicating whether to stop evaluating value and new value.
+    """
+
+    # init
+    stop_iter = False
+
+    # call provided pre-method
+    if pre:
+        stop_iter, value = pre(value, type_hint)
+        if stop_iter:
+            return True, value
+
+    if inspect.isclass(type_hint) and issubclass(type_hint, Enum):
+        # get string name for Enums
+        stop_iter, value = True, value.value
+
+    # call provided post-method
+    if post:
+        stop_iter_post, value = post(value, type_hint)
+        if stop_iter_post:
+            return True, value
+
+    # stop iteration?
+    return stop_iter, value
+
+
+def __cast_to_real(
+    value: Any,
+    type_hint: Type[Any],
+    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+) -> Tuple[bool, Any]:
+    """Default method for pre method that casts to "real" Python types.
+
+    Args:
+        value: Value to cast.
+        type_hint: Type hint for cast.
+        pre: Method to run before checking.
+        post: Method to run after checking.
+
+    Returns:
+        Tuple of a boolean indicating whether to stop evaluating value and new value.
+    """
+
+    # init
+    stop_iter = False
+
+    # call provided pre-method
+    if pre:
+        stop_iter, value = pre(value, type_hint)
+        if stop_iter:
+            return True, value
+
+    if inspect.isclass(type_hint) and issubclass(type_hint, Enum):
+        # get Enum from string
+        stop_iter, value = True, type_hint(value)
+
+    # call provided post-method
+    if post:
+        stop_iter_post, value = post(value, type_hint)
+        if stop_iter_post:
+            return True, value
+
+    # stop iteration?
+    return stop_iter, value

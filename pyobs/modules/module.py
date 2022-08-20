@@ -1,6 +1,8 @@
+from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import typing
 from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
 from py_expression_eval import Parser
 import packaging.version
@@ -9,7 +11,7 @@ from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
 from pyobs.utils.enums import ModuleState
-from pyobs.utils.types import cast_response_to_simple, cast_bound_arguments_to_real
+from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
 from pyobs.utils import exceptions as exc
 
@@ -90,7 +92,7 @@ class Module(Object, IModule, IConfig):
 
         # get list of client interfaces
         self._interfaces: List[Type[Interface]] = []
-        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature]] = {}
+        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
@@ -181,7 +183,7 @@ class Module(Object, IModule, IConfig):
         return self._interfaces
 
     @property
-    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature]]:
+    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]]:
         """List of methods."""
         return self._methods
 
@@ -207,9 +209,10 @@ class Module(Object, IModule, IConfig):
                     # get method and signature
                     func = getattr(self, method_name)
                     signature = inspect.signature(func)
+                    type_hints = typing.get_type_hints(func)
 
                     # fill dict of name->(method, signature)
-                    self._methods[method_name] = (func, signature)
+                    self._methods[method_name] = (func, signature, type_hints)
 
     def quit(self) -> None:
         """Quit module."""
@@ -242,14 +245,11 @@ class Module(Object, IModule, IConfig):
                 raise exc.ModuleError("Module is in error state, please reset it.")
 
         # get method and signature (may raise KeyError)
-        func, signature = self.methods[method]
+        func, signature, type_hints = self._methods[method]
 
         # bind parameters
         ba = signature.bind(*args, **kwargs)
         ba.apply_defaults()
-
-        # cast to types requested by method
-        cast_bound_arguments_to_real(ba, signature)
 
         # get additional args and kwargs and delete from ba
         func_args = []
@@ -261,11 +261,16 @@ class Module(Object, IModule, IConfig):
             func_kwargs = ba.arguments["kwargs"]
             del ba.arguments["kwargs"]
 
+        # cast to types requested by method
+        cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
+
         # call method
         response = await func(*func_args, **ba.arguments, **func_kwargs)
 
         # finished
-        return cast_response_to_simple(response)
+        return cast_response_to_simple(
+            response, type_hints["return"], self.comm.cast_to_simple_pre, self.comm.cast_to_simple_post
+        )
 
     def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""

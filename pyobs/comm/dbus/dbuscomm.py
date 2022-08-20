@@ -80,7 +80,16 @@ class DbusMethod(Protocol):
 class DbusComm(Comm):
     """A Comm class using cbus.
 
-    This Comm class uses dbus for communication between modules.
+    This Comm class uses dbus for communication between modules and is therefore available on all (most) Linux
+    systems. The interface name for the bus is build as <domain>.<name> and this class will only find other modules
+    with the same domain, so it should be kept constant in a closed system. The name on the other hand should be
+    unique in the system.
+
+    A basic configuration looks like this::
+
+        comm:
+            class: pyobs.dbus.DbusComm
+            name: example
     """
 
     __module__ = "pyobs.comm.dbus"

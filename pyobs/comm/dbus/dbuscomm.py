@@ -477,7 +477,7 @@ class DbusComm(Comm):
         # set result
         self._futures[uid].set_result(result)
 
-    def cast_to_simple(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -513,7 +513,7 @@ class DbusComm(Comm):
         else:
             return False, value
 
-    def cast_to_real(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:

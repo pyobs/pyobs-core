@@ -31,9 +31,9 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
 class Future(asyncio.Future):
     def __init__(
         self,
-        annotation: Dict[str, Any],
-        comm: Comm,
         empty: bool = False,
+        annotation: Optional[Dict[str, Any]] = None,
+        comm: Optional[Comm] = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -98,9 +98,12 @@ class Future(asyncio.Future):
         result = self.result()
 
         # all ok, return value
-        return cast_response_to_real(
-            result, self.annotation["return"], self.comm.cast_to_real_pre, self.comm.cast_to_real_post
-        )
+        if self.annotation and self.comm.cast_to_real_pre and self.comm.cast_to_real_post:
+            result = cast_response_to_real(
+                result, self.annotation["return"], self.comm.cast_to_real_pre, self.comm.cast_to_real_post
+            )
+        print(result)
+        return result
 
     @staticmethod
     async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any], Task[Any]]]]) -> List[Any]:

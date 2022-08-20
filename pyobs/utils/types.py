@@ -155,64 +155,82 @@ def cast_response_to_real(
 
 
 def __cast_to_simple(
-    v: Any,
-    a: Type[Any],
+    value: Any,
+    type_hint: Type[Any],
     pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
     post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
 ) -> Tuple[bool, Any]:
+    """Default method for pre method that casts to simple types like str, int, etc.
+
+    Args:
+        value: Value to cast.
+        type_hint: Type hint for cast.
+        pre: Method to run before checking.
+        post: Method to run after checking.
+
+    Returns:
+        Tuple of a boolean indicating whether to stop evaluating value and new value.
+    """
+
+    # init
     stop_iter = False
-    print("cast_to_simple", v, a, type(a))
 
     # call provided pre-method
     if pre:
-        stop_iter, v = pre(v, a)
+        stop_iter, value = pre(value, type_hint)
         if stop_iter:
-            return True, v
+            return True, value
 
-    if inspect.isclass(a) and issubclass(a, Enum):
+    if inspect.isclass(type_hint) and issubclass(type_hint, Enum):
         # get string name for Enums
-        print("enum")
-        stop_iter, v = True, v.value
+        stop_iter, value = True, value.value
 
     # call provided post-method
     if post:
-        stop_iter_post, v = post(v, a)
+        stop_iter_post, value = post(value, type_hint)
         if stop_iter_post:
-            return True, v
+            return True, value
 
     # stop iteration?
-    print("new value:", stop_iter, v)
-    return stop_iter, v
+    return stop_iter, value
 
 
 def __cast_to_real(
-    v: Any,
-    a: Type[Any],
+    value: Any,
+    type_hint: Type[Any],
     pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
     post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
 ) -> Tuple[bool, Any]:
+    """Default method for pre method that casts to "real" Python types.
+
+    Args:
+        value: Value to cast.
+        type_hint: Type hint for cast.
+        pre: Method to run before checking.
+        post: Method to run after checking.
+
+    Returns:
+        Tuple of a boolean indicating whether to stop evaluating value and new value.
+    """
+
     # init
     stop_iter = False
-    print("cast_to_real", v, a, type(a))
 
     # call provided pre-method
     if pre:
-        stop_iter, v = pre(v, a)
+        stop_iter, value = pre(value, type_hint)
         if stop_iter:
-            return True, v
+            return True, value
 
-    if inspect.isclass(a) and issubclass(a, Enum):
+    if inspect.isclass(type_hint) and issubclass(type_hint, Enum):
         # get Enum from string
-        print("enum")
-        stop_iter, v = True, a(v)
-        print(v)
+        stop_iter, value = True, type_hint(value)
 
     # call provided post-method
     if post:
-        stop_iter_post, v = post(v, a)
+        stop_iter_post, value = post(value, type_hint)
         if stop_iter_post:
-            return True, v
+            return True, value
 
     # stop iteration?
-    print("new value:", stop_iter, v)
-    return stop_iter, v
+    return stop_iter, value

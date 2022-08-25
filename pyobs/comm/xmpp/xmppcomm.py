@@ -42,7 +42,7 @@ class XmppComm(Comm):
     like this::
 
         comm:
-            class: pyobs.sleekxmpp.XmppComm
+            class: pyobs.comm.xmpp.XmppComm
             jid:  someuser@example.com/pyobs
 
     Using this, *pyobs* tries to connect to example.com as user ``someuser`` with resource ``pyobs``. Since ``pyobs``
@@ -85,7 +85,7 @@ class XmppComm(Comm):
 
     """
 
-    __module__ = "pyobs.comm.slixmpp"
+    __module__ = "pyobs.comm.xmpp"
 
     def __init__(
         self,

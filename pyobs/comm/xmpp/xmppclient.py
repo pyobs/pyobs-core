@@ -5,8 +5,8 @@ import slixmpp.xmlstream
 from typing import Any, Optional
 from slixmpp.xmlstream import StanzaBase
 
-from pyobs.comm.slixmpp.xep_0009.rpc import XEP_0009
-from pyobs.comm.slixmpp.xep_0009_timeout import XEP_0009_timeout
+from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
+from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
 
 
 log = logging.getLogger(__name__)

@@ -35,7 +35,7 @@ Starting with the telescope, create a file ``telescope.yaml`` with the following
     class: pyobs.modules.telescope.DummyTelescope
 
     comm:
-        class: pyobs.comm.slixmpp.XmppComm
+        class: pyobs.comm.xmpp.XmppComm
         jid: telescope@localhost
         password: pyobs
 
@@ -69,7 +69,7 @@ Open a new terminal and activate the venv. Then create a new file ``camera.yaml`
     class: pyobs.modules.camera.DummyCamera
 
     comm:
-        class: pyobs.comm.slixmpp.XmppComm
+        class: pyobs.comm.xmpp.XmppComm
         jid: camera@localhost
         password: pyobs
 
@@ -87,7 +87,7 @@ new terminal and activate the venv. Then create a file callen ``gui.yaml``::
     class: pyobs_gui.GUI
 
     comm:
-        class: pyobs.comm.slixmpp.XmppComm
+        class: pyobs.comm.xmpp.XmppComm
         jid: gui@localhost
         password: pyobs
 
@@ -149,7 +149,7 @@ and have a shared object for the simulation. Shut down the two modules for teles
         camera:
             class: pyobs.modules.camera.DummyCamera
             comm:
-                class: pyobs.comm.slixmpp.XmppComm
+                class: pyobs.comm.xmpp.XmppComm
                 jid: camera@localhost
                 password: pyobs
             vfs:
@@ -162,7 +162,7 @@ and have a shared object for the simulation. Shut down the two modules for teles
         telescope:
             class: pyobs.modules.telescope.DummyTelescope
             comm:
-                class: pyobs.comm.slixmpp.XmppComm
+                class: pyobs.comm.xmpp.XmppComm
                 jid: telescope@localhost
                 password: pyobs
 

@@ -8,7 +8,7 @@ developing a new module that needs to communicate with other modules.
 In a configuration file, the Comm object is defined at top-level like this::
 
     comm:
-        class: pyobs.comm.slixmpp.XmppComm
+        class: pyobs.comm.xmpp.XmppComm
 
 Except for a single parameter defined in :class:`~pyobs.comm.Comm`'s constructor, all parameters are defined in
 derived classes.
@@ -27,7 +27,7 @@ an attribute ``comm`` for easy access.
 
 There is currently one one implementation of the Comm interface:
 
-* :class:`~pyobs.comm.slixmpp.XmppComm` uses the XMPP protocol for communication.
+* :class:`~pyobs.comm.xmpp.XmppComm` uses the XMPP protocol for communication.
 
 .. seealso::
 

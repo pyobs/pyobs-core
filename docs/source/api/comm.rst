@@ -14,12 +14,12 @@ Proxy
 .. autoclass:: pyobs.comm.Proxy
     :members:
 
-SliXMPP XmppComm
-^^^^^^^^^^^^^^^^
-.. autoclass:: pyobs.comm.slixmpp.XmppComm
+XmppComm (based on XMPP)
+^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: pyobs.comm.xmpp.XmppComm
     :members:
 
-SleekXMPP XmppComm
-^^^^^^^^^^^^^^^^^^
-.. autoclass:: pyobs.comm.sleekxmpp.XmppComm
+DbusComm (based on D-Bus)
+^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: pyobs.comm.dbus.DbusComm
     :members:

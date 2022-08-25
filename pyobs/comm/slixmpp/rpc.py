@@ -1,7 +1,8 @@
+from __future__ import annotations
 import copy
 import inspect
 import logging
-from typing import Dict, Optional, Any, Callable, Tuple
+from typing import Dict, Optional, Any, Callable, Tuple, TYPE_CHECKING
 import slixmpp.exceptions
 
 from pyobs.modules import Module
@@ -9,13 +10,17 @@ from pyobs.utils.parallel import Future
 from pyobs.comm.slixmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
 import pyobs.utils.exceptions as exc
 
+if TYPE_CHECKING:
+    from .xmppcomm import XmppComm
+
+
 log = logging.getLogger(__name__)
 
 
 class RPC(object):
     """RPC wrapper around XEP0009."""
 
-    def __init__(self, client: slixmpp.ClientXMPP, handler: Optional[Module] = None):
+    def __init__(self, comm: XmppComm, client: slixmpp.ClientXMPP, handler: Optional[Module] = None):
         """Create a new RPC wrapper.
 
         Args:
@@ -24,10 +29,11 @@ class RPC(object):
         """
 
         # store
+        self._comm = comm
         self._client = client
         self._futures: Dict[str, Future] = {}
         self._handler = handler
-        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature]] = {}
+        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature], Dict[Any, Any]] = {}
 
         # set up callbacks
         client.add_event_handler("jabber_rpc_method_call", self._on_jabber_rpc_method_call)
@@ -52,13 +58,13 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    async def call(self, target_jid: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+    async def call(self, target_jid: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Call a method on a remote host.
 
         Args:
             target_jid: Target JID to call method on.
             method: Name of method to call.
-            signature: Method signature.
+            annotation: Method annotation.
             *args: Parameters for method.
 
         Returns:
@@ -70,7 +76,7 @@ class RPC(object):
 
         # create a future for this
         pid = iq["id"]
-        future = Future(signature=signature)
+        future = Future(annotation=annotation, comm=self._comm)
         self._futures[pid] = future
 
         # send request
@@ -99,7 +105,7 @@ class RPC(object):
 
             # get method
             try:
-                method, signature = self._methods[pmethod]
+                method, signature, _ = self._methods[pmethod]
             except KeyError:
                 log.error("No handler available for %s!", pmethod)
                 self._client.plugin["xep_0009"].item_not_found(iq).send()

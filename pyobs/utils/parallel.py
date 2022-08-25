@@ -2,12 +2,14 @@ from __future__ import annotations
 import contextlib
 import time
 import asyncio
-import inspect
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import TypeVar, Optional, List, Any, cast, Union
+from typing import Optional, List, Any, Union, Dict, TYPE_CHECKING
 
 from pyobs.utils.types import cast_response_to_real
+
+if TYPE_CHECKING:
+    from pyobs.comm import Comm
 
 
 async def event_wait(evt: asyncio.Event, timeout: float = 1.0) -> bool:
@@ -27,12 +29,20 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
 
 
 class Future(asyncio.Future):
-    def __init__(self, empty: bool = False, signature: Optional[inspect.Signature] = None, *args: Any, **kwargs: Any):
+    def __init__(
+        self,
+        empty: bool = False,
+        annotation: Optional[Dict[str, Any]] = None,
+        comm: Optional[Comm] = None,
+        *args: Any,
+        **kwargs: Any,
+    ):
         asyncio.Future.__init__(self, *args, **kwargs)
 
         """Init new base future."""
         self.timeout: Optional[float] = None
-        self.signature: Optional[inspect.Signature] = signature
+        self.annotation = annotation
+        self.comm = comm
 
         # already set?
         if empty:
@@ -88,11 +98,11 @@ class Future(asyncio.Future):
         result = self.result()
 
         # all ok, return value
-        if self.signature is not None:
-            # cast response to real types
-            return cast_response_to_real(result, self.signature)
-        else:
-            return result
+        if self.annotation and self.comm:
+            result = cast_response_to_real(
+                result, self.annotation["return"], self.comm.cast_to_real_pre, self.comm.cast_to_real_post
+            )
+        return result
 
     @staticmethod
     async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any], Task[Any]]]]) -> List[Any]:

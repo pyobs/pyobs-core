@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "0.20.5"
+version = "0.21.0"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -31,6 +31,7 @@ slixmpp = "^1.7.1"
 aiohttp = "^3.8.1"
 single-source = "^0.2.0"
 asyncinotify = [{ version = "^2.0.2", platform = "linux" }]
+dbus-next = "^0.2.3"
 
 [tool.poetry.dev-dependencies]
 types-cryptography = "^3.3.7"

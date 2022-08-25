@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from collections.abc import Coroutine
-from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING, Tuple
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -116,7 +116,6 @@ class XmppComm(Comm):
 
         # variables
         self._connected = False
-        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._online_clients: List[str] = []
         self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
         self._user = user
@@ -186,7 +185,7 @@ class XmppComm(Comm):
                 self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
 
         # RPC
-        self._rpc = RPC(self._xmpp, None)
+        self._rpc = RPC(self, self._xmpp, None)
         self._rpc.set_handler(self._module)
 
         # connect
@@ -322,13 +321,13 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    async def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
-            signature: Method signature.
+            annotation: Method annotation.
             *args: List of parameters for given method.
 
         Returns:
@@ -342,7 +341,7 @@ class XmppComm(Comm):
 
         # call
         try:
-            return await self._rpc.call(jid, method, signature, *args)
+            return await self._rpc.call(jid, method, annotation, *args)
         except slixmpp.exceptions.IqError:
             raise exc.RemoteError(client, f"Could not call {method} on {client}.")
         except slixmpp.exceptions.IqTimeout:
@@ -456,53 +455,6 @@ class XmppComm(Comm):
         """
         log.debug("%s successfully sent.", event.__class__.__name__)
 
-    async def register_event(
-        self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
-    ) -> None:
-        """Register an event type. If a handler is given, we also receive those events, otherwise we just
-        send them.
-
-        Args:
-            event_class: Class of event to register.
-            handler: Event handler method.
-        """
-
-        # we also want to register all events derived from the given one
-        event_classes = self._get_derived_events(event_class)
-
-        # do we have a handler?
-        if handler:
-            # loop classes
-            for ev in event_classes:
-                # initialize list
-                if ev not in self._event_handlers:
-                    self._event_handlers[ev] = []
-                # avoid duplicates
-                if handler not in self._event_handlers[ev]:
-                    # add handler
-                    self._event_handlers[ev].append(handler)
-
-        # if event is not a local one, we also need to do some XMPP stuff
-        if not event_class.local:
-            await self._register_events(event_classes, handler)
-
-    def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
-        """Return list of given event itself and all events derived from it.
-
-        Args:
-            event: Event class to check.
-
-        Returns:
-            List of event classes.
-        """
-        import pyobs.events
-
-        event_classes: List[Type[Event]] = []
-        for cls in inspect.getmembers(pyobs.events, inspect.isclass):
-            if issubclass(cls[1], event):
-                event_classes.append(cls[1])
-        return event_classes
-
     async def _register_events(
         self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
     ) -> None:
@@ -553,22 +505,6 @@ class XmppComm(Comm):
         # send it to module
         self._send_event_to_module(event, msg["from"].username)
 
-    def _send_event_to_module(self, event: Event, from_client: str) -> None:
-        """Send an event to all connected modules.
-
-        Args:
-            event: Event to send.
-            from_client: Client that sent the event.
-        """
-
-        # send it
-        if event.__class__ in self._event_handlers:
-            for handler in self._event_handlers[event.__class__]:
-                # handle it
-                ret = handler(event, from_client)
-                if asyncio.iscoroutine(ret):
-                    asyncio.create_task(ret)
-
     async def _safe_send(self, method: Callable[[Any], Coroutine[Any, Any, None]], *args: Any, **kwargs: Any) -> Any:
         """Safely send an XMPP message.
 
@@ -597,6 +533,38 @@ class XmppComm(Comm):
 
         # never should reach this
         raise slixmpp.exceptions.IqTimeout
+
+    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them to be sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+
+        if type(value) == str:
+            return True, xml.sax.saxutils.escape(value)
+        else:
+            return False, value
+
+    def cast_to_real_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+        """Special treatment of single parameters when converting them after being sent via Comm.
+
+        Args:
+            value: Value to be treated.
+            annotation: Annotation for value.
+
+        Returns:
+            A tuple containing a tuple that indicates whether this value should be further processed and a new value.
+        """
+
+        if type(value) == str:
+            return True, xml.sax.saxutils.unescape(value)
+        else:
+            return False, value
 
 
 __all__ = ["XmppComm"]

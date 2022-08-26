@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import getopt
 import json
 import logging
 import re
@@ -24,6 +25,8 @@ from typing import (
 )
 from dbus_next.aio import MessageBus
 import dbus_next.service
+import dbussy
+from dbussy import DBUS
 
 from pyobs.comm import Comm
 from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
@@ -119,8 +122,13 @@ class DbusComm(Comm):
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
         self._futures: Dict[str, Future] = {}
 
+        self._conn = None
+
     async def open(self) -> None:
         """Creates the dbus connection."""
+
+        # connection
+        self._conn = await dbussy.Connection.bus_get_async(DBUS.BUS_SESSION, private=False)
 
         # create client
         self._dbus = await MessageBus().connect()
@@ -300,6 +308,30 @@ class DbusComm(Comm):
             self._dbus_introspection_cache[client] = await self._dbus.introspect(interface, path)
         return self._dbus_introspection_cache[client], interface, path
 
+    async def _get_dbus_introspection2(self, destination, object_path, interface_name, method_name):
+        message = dbussy.Message.new_method_call(
+            destination=destination, path=object_path, iface=DBUS.INTERFACE_INTROSPECTABLE, method="Introspect"
+        )
+        reply = await self._conn.send_await_reply(message)
+
+        introspection = dbussy.Introspection.parse(reply.expect_return_objects("s")[0])
+        interfaces = introspection.interfaces_by_name
+        if interface_name not in interfaces:
+            raise getopt.GetoptError(
+                "bus peer “%s” object “%s” does not understand interface “%s”"
+                % (destination, object_path, interface_name)
+            )
+        # end if
+        interface = interfaces[interface_name]
+        methods = interface.methods_by_name
+        if method_name not in methods:
+            raise getopt.GetoptError("interface “%s” does not implement method “%s”" % (interface_name, method_name))
+        # end if
+        method = methods[method_name]
+        signature = method.in_signature
+        expect_reply = method.expect_reply
+        return method, signature, expect_reply
+
     async def _get_dbus_method(self, client: str, method: str) -> DbusMethod:
         # check
         if self._dbus is None:
@@ -307,6 +339,11 @@ class DbusComm(Comm):
 
         # get introspection, interface and path
         introspection, interface, path = await self._get_dbus_introspection(client)
+
+        interface = f"{self._domain}.{client}"
+        path = "/" + interface.replace(".", "/")
+        a = await self._get_dbus_introspection2(interface, path, interface, method)
+        print(a)
 
         # get object and module
         obj = self._dbus.get_proxy_object(interface, path, introspection)

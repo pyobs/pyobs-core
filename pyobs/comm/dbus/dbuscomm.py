@@ -23,8 +23,8 @@ from typing import (
     get_origin,
     Protocol,
 )
-from dbus_next.aio import MessageBus
-import dbus_next.service
+
+import ravel
 import dbussy
 from dbussy import DBUS
 
@@ -40,20 +40,17 @@ log = logging.getLogger(__name__)
 NONE_VALUES = {str: "NONE", int: sys.maxsize, float: sys.maxsize, list: ["EMPTY"]}
 
 
-class ServiceInterface(dbus_next.service.ServiceInterface):
-    def __init__(self, interface: str, comm: DbusComm, pyobs_interfaces: List[str]):
-        dbus_next.service.ServiceInterface.__init__(self, interface)
+class ServiceInterface:
+    def __init__(self, comm: DbusComm, pyobs_interfaces: List[str]):
         self._interfaces = pyobs_interfaces
         self._comm = comm
 
-    @no_type_check_decorator
-    @dbus_next.service.method()
-    def get_interfaces(self) -> "as":
+    @ravel.method(name="get_interfaces", in_signature="", out_signature="as")
+    async def get_interfaces(self) -> List[str]:
         return self._interfaces
 
-    @no_type_check_decorator
-    @dbus_next.service.method(sender_keyword="sender")
-    async def handle_event(self, event: "s", sender):
+    @ravel.method(name="handle_event", in_signature="s", out_signature="")
+    async def handle_event(self, event: str, sender: str) -> None:
         # convert event to dict
         try:
             d = json.loads(event.replace("'", '"'))
@@ -69,9 +66,8 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         # handle it
         await self._comm.handle_event(ev, real_sender)
 
-    @no_type_check_decorator
-    @dbus_next.service.method()
-    def set_timeout(self, uid: "s", timeout: "d"):
+    @ravel.method(name="set_timeout", in_signature="sd", out_signature="")
+    def set_timeout(self, uid: str, timeout: int) -> None:
         self._comm.set_timeout(uid, timeout)
 
 
@@ -115,10 +111,10 @@ class DbusComm(Comm):
         # variables
         self._name = name
         self._domain = domain
-        self._dbus: Optional[MessageBus] = None
-        self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
-        self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
-        self._dbus_introspection_cache: Dict[str, dbus_next.introspection.Node] = {}
+        self._dbus = None
+        self._dbus_classes = {}
+        self._dbus_introspection = None
+        self._dbus_introspection_cache = {}
         self._interfaces: Dict[str, List[Type[Interface]]] = {}
         self._futures: Dict[str, Future] = {}
 
@@ -131,22 +127,18 @@ class DbusComm(Comm):
         self._conn = await dbussy.Connection.bus_get_async(DBUS.BUS_SESSION, private=False)
 
         # create client
-        self._dbus = await MessageBus().connect()
+        self._dbus = ravel.session_bus()
         if not self._dbus:
             raise ValueError("Could not create DBUS connection.")
+        self._dbus.attach_asyncio(asyncio.get_running_loop())
 
         # build and publish classes
         self._build_dbus_classes()
         for interface, obj in self._dbus_classes.items():
-            self._dbus.export("/" + interface.replace(".", "/"), obj)
-            await self._dbus.request_name(interface)
-
-        # get object for introspection
-        introspection = await self._dbus.introspect("org.freedesktop.DBus", "/org/freedesktop/DBus")
-        proxy_object = self._dbus.get_proxy_object("org.freedesktop.DBus", "/org/freedesktop/DBus", introspection)
-        if not proxy_object:
-            raise ValueError("Could not fetch proxy object for DBUS.")
-        self._dbus_introspection = proxy_object.get_interface("org.freedesktop.DBus")
+            # self._dbus.export("/" + interface.replace(".", "/"), obj)
+            # await self._dbus.request_name(interface)
+            self._dbus.request_name(bus_name=interface, flags=DBUS.NAME_FLAG_DO_NOT_QUEUE)
+            self._dbus.register(path="/" + interface.replace(".", "/"), fallback=True, interface=obj)
 
         # get client list
         await self._update_client_list()
@@ -162,10 +154,6 @@ class DbusComm(Comm):
 
         # close parent class
         await Comm.close(self)
-
-        # disconnect from dbus
-        if self._dbus:
-            self._dbus.disconnect()
 
     async def _update(self) -> None:
         """Periodic updates."""
@@ -233,37 +221,27 @@ class DbusComm(Comm):
             except KeyError:
                 raise
 
-    def _build_dbus_signature(self, sig: inspect.Signature) -> inspect.Signature:
+    def _build_dbus_signature(self, sig: inspect.Signature) -> Tuple[str, str]:
         # build list of parameters
-        new_params: List[inspect.Parameter] = []
+        in_signature = ""
 
         # real parameters
         for name, param in sig.parameters.items():
             # ignore kwargs
-            if name == "kwargs":
+            if name in ["self", "kwargs"]:
                 continue
 
             # get new annotation
-            annotation = param.annotation if name == "self" else self._annotation_to_dbus(param.annotation)
-
-            # build new param
-            p = inspect.Parameter(
-                name,
-                kind=inspect.Parameter.POSITIONAL_ONLY if name == "self" else inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                annotation=annotation,
-            )
-
-            # store it
-            new_params.append(p)
+            in_signature += self._annotation_to_dbus(param.annotation)
 
         # add "s" at the end for uid
-        new_params.append(inspect.Parameter("uid", kind=inspect.Parameter.KEYWORD_ONLY, annotation="s"))
+        in_signature += "s"
 
         # return type
-        return_annotation = None if sig.return_annotation is None else self._annotation_to_dbus(sig.return_annotation)
+        out_signature = "" if sig.return_annotation is None else self._annotation_to_dbus(sig.return_annotation)
 
         # create new signature
-        return inspect.Signature(parameters=new_params, return_annotation=return_annotation)
+        return in_signature, out_signature
 
     def _build_dbus_classes(self) -> None:
         # got a module?
@@ -276,7 +254,8 @@ class DbusComm(Comm):
                 # create class
                 klass_name = f"{self._name}_{i.__name__}"
                 interface = f"{self._domain}.{self._name}.interfaces.{i.__name__}"
-                klass = types.new_class(klass_name, bases=(dbus_next.service.ServiceInterface,))
+                klass = ravel.interface(ravel.INTERFACE.SERVER, name=interface)(types.new_class(klass_name))
+                self._dbus_classes[interface] = klass()
 
                 # loop all methods:
                 for func_name, func in inspect.getmembers(i, predicate=inspect.isfunction):
@@ -287,28 +266,12 @@ class DbusComm(Comm):
                     my_func = types.MethodType(self._dbus_function_wrapper(func_name, sig), self)
                     setattr(main_klass, func_name, my_func)
 
-                # initialize it
-                self._dbus_classes[interface] = klass(interface)
-
             # initialize main class
             interface = f"{self._domain}.{self._name}"
-            self._dbus_classes[interface] = main_klass(interface, self, [i.__name__ for i in self._module.interfaces])
+            main_klass_ravel = ravel.interface(ravel.INTERFACE.SERVER, name=interface)(main_klass)
+            self._dbus_classes[interface] = main_klass_ravel(self, [i.__name__ for i in self._module.interfaces])
 
-    async def _get_dbus_introspection(self, client: str) -> Tuple[dbus_next.introspection.Node, str, str]:
-        # check
-        if self._dbus is None:
-            raise ValueError("No connection")
-
-        # get interface and path
-        interface = f"{self._domain}.{client}"
-        path = "/" + interface.replace(".", "/")
-
-        # get introspection and return it
-        if client not in self._dbus_introspection_cache:
-            self._dbus_introspection_cache[client] = await self._dbus.introspect(interface, path)
-        return self._dbus_introspection_cache[client], interface, path
-
-    async def _get_dbus_introspection2(self, destination, object_path, interface_name, method_name):
+    async def _get_dbus_introspection(self, destination, object_path, interface_name):
         message = dbussy.Message.new_method_call(
             destination=destination, path=object_path, iface=DBUS.INTERFACE_INTROSPECTABLE, method="Introspect"
         )
@@ -323,34 +286,27 @@ class DbusComm(Comm):
             )
         # end if
         interface = interfaces[interface_name]
-        methods = interface.methods_by_name
-        if method_name not in methods:
-            raise getopt.GetoptError("interface “%s” does not implement method “%s”" % (interface_name, method_name))
-        # end if
-        method = methods[method_name]
-        signature = method.in_signature
-        expect_reply = method.expect_reply
-        return method, signature, expect_reply
+        return interface.methods_by_name
 
-    async def _get_dbus_method(self, client: str, method: str) -> DbusMethod:
+    async def _call_dbus_method(self, client: str, method: str, *args: Any) -> Any:
         # check
         if self._dbus is None:
             raise ValueError("No connection")
 
         # get introspection, interface and path
-        introspection, interface, path = await self._get_dbus_introspection(client)
-
         interface = f"{self._domain}.{client}"
         path = "/" + interface.replace(".", "/")
-        a = await self._get_dbus_introspection2(interface, path, interface, method)
-        print(a)
+        if client not in self._dbus_introspection_cache:
+            self._dbus_introspection_cache[client] = await self._get_dbus_introspection(interface, path, interface)
+        meth = self._dbus_introspection_cache[client][method]
 
-        # get object and module
-        obj = self._dbus.get_proxy_object(interface, path, introspection)
-        module = obj.get_interface(interface)
+        message = dbussy.Message.new_method_call(destination=interface, path=path, iface=interface, method=method)
+        sig = dbussy.parse_signature(meth.in_signature)
+        message.append_objects(sig, *args)
 
-        # get function
-        return getattr(module, f"call_{method}")
+        resp = await self._conn.send_await_reply(message)
+        print(resp.all_objects)
+        return resp.all_objects
 
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
@@ -363,6 +319,7 @@ class DbusComm(Comm):
         """
 
         async def inner(this: Any, *args: Any, **kwargs: Any) -> Any:
+            print("inner")
             # check
             if self.module is None:
                 return
@@ -371,7 +328,7 @@ class DbusComm(Comm):
             sender = None
             if "sender" in kwargs:
                 # get real sender
-                sender = await self.get_dbus_owner(kwargs["sender"])
+                # sender = await self.get_dbus_owner(kwargs["sender"])
                 del kwargs["sender"]
 
             # get uid
@@ -390,20 +347,15 @@ class DbusComm(Comm):
                 timeout = await getattr(func, "timeout")(self._module, **ba.arguments)
                 if timeout:
                     # get introspection, proxy and interface
-                    set_timeout = await self._get_dbus_method(sender, "set_timeout")
-                    await set_timeout(uid, int(timeout))
+                    await self._call_dbus_method(sender, "set_timeout", uid, int(timeout))
 
             # call method
             return await self.module.execute(method, *args, sender=sender)
 
         # set signature
-        inner.__signature__ = self._build_dbus_signature(sig)
-        # TODO: Nicer way to do this?
-        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
-            inner, method, disabled=False, sender_keyword="sender"
-        )
-        return inner
-        # return dbus_next.service.method(name=method)(inner)
+        in_signature, out_signature = self._build_dbus_signature(sig)
+        print(method, in_signature, out_signature)
+        return ravel.method(name=method, in_signature=in_signature, out_signature=out_signature)(inner)
 
     async def get_dbus_owner(self, bus: str, attempts: int = 3) -> str:
         """Gets the owning module name for a given bus.
@@ -420,13 +372,13 @@ class DbusComm(Comm):
             raise ValueError("No connection.")
 
         # loop all clients, get their owner, and check against bus
-        for c in self.clients:
-            try:
-                owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
-            except dbus_next.errors.DBusError:
-                break
-            if owner == bus:
-                return c
+        # for c in self.clients:
+        #    try:
+        #        owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
+        #    except dbus_next.errors.DBusError:
+        #        break
+        #    if owner == bus:
+        #        return c
 
         # nothing found
         if attempts > 0:
@@ -505,10 +457,11 @@ class DbusComm(Comm):
         self._futures[uid] = future
 
         # get method
-        func = await self._get_dbus_method(client, method)
+        # func = await self._get_dbus_method(client, method)
 
         # get method and call it in background
-        asyncio.create_task(self._wait_for_method(func(*args, uid), uid))
+        # asyncio.create_task(self._wait_for_method(func(*args, uid), uid))
+        asyncio.create_task(self._wait_for_method(self._call_dbus_method(client, method, *args), uid))
 
         # don't wait for response, just return future
         return await future
@@ -599,13 +552,10 @@ class DbusComm(Comm):
 
             # get function
             try:
-                func = await self._get_dbus_method(client, "handle_event")
+                await self._call_dbus_method(client, "handle_event", json.dumps(event.to_json()))
             except ValueError:
                 # client offline?
                 continue
-
-            # call it
-            await func(json.dumps(event.to_json()))
 
     async def handle_event(self, event: Event, sender: str) -> None:
         """Handle event localy, i.e. send it to module.

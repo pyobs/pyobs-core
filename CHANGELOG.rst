@@ -1,3 +1,19 @@
+v0.22.0 (2022-08-25)
+********************
+* Removed comm.sleexxmpp implementation.
+* Renamed comm.slixmpp to comm.xmpp.
+
+v0.21.0 (2022-08-25)
+********************
+* Some pipeline stuff.
+* Added DbusComm for communicating via Dbus.
+* Cleaned up parameter casting for communication.
+
+v0.20.0 (2022-06-22)
+********************
+* Some fixes with asyncio and the GUI.
+* Handle JID conflicts in XMPP.
+
 v0.19.0 (2022-05-17)
 ********************
 * Getter/setter methods in Module must be async.

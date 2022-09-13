@@ -15,11 +15,11 @@ jobs:
           python-version: "3.9"
       - name: Install poetry
         run: |
-          curl -fsS -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
+          curl -fsS -o get-poetry.py https://install.python-poetry.org
           python get-poetry.py -y
       - name: Publish
         env:
           PYPI_TOKEN: ${{ secrets.pypi_password }}
         run: |
-          $HOME/.poetry/bin/poetry config pypi-token.pypi $PYPI_TOKEN
-          $HOME/.poetry/bin/poetry publish --build
+          $HOME/.local/bin/poetry config pypi-token.pypi $PYPI_TOKEN
+          $HOME/.local/bin/poetry publish --build

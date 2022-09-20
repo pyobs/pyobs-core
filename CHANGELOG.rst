@@ -1,3 +1,7 @@
+v1.1.0 (2022-09-20)
+*******************
+* Changed signature of `pyobs.robotic.TaskSchedule.get_schedule` to have no parameters.
+
 v1.0.0 (2022-09-13)
 *******************
 

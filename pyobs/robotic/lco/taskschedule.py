@@ -77,8 +77,9 @@ class LcoTaskSchedule(TaskSchedule):
         """Open scheduler."""
         await TaskSchedule.open(self)
 
-        # get stuff from portal
+        # get stuff from portal and do initial update
         await self._init_from_portal()
+        await self.update_now()
 
         # start update thread
         asyncio.create_task(self._update_schedule())
@@ -150,9 +151,7 @@ class LcoTaskSchedule(TaskSchedule):
 
         # need update!
         try:
-            tasks = await self.get_schedule(
-                end_after=now, start_before=now + TimeDelta(24 * u.hour), include_running=False
-            )
+            tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
         except TimeoutError:
             log.error("Request timed out")
             await asyncio.sleep(60)
@@ -173,7 +172,19 @@ class LcoTaskSchedule(TaskSchedule):
         # finished
         self._last_schedule_time = now
 
-    async def get_schedule(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_schedule(self) -> Dict[str, Task]:
+        """Fetch schedule from portal.
+
+        Returns:
+            Dictionary with tasks.
+
+        Raises:
+            Timeout: If request timed out.
+            ValueError: If something goes wrong.
+        """
+        return self._tasks
+
+    async def _get_schedule(self, start_before: Time, end_after: Time) -> Dict[str, Task]:
         """Fetch schedule from portal.
 
         Args:
@@ -190,9 +201,7 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # define states
-        states = ["PENDING"]
-        if include_running:
-            states += ["IN_PROGRESS"]
+        states = ["PENDING", "IN_PROGRESS"]
 
         # get url and params
         url = urljoin(self._url, "/api/observations/")

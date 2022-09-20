@@ -116,7 +116,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def update_now(self, force: bool = False) -> None:
         pass
 
-    async def get_schedule(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_schedule(self) -> Dict[str, Task]:
         return {} if self._task is None else {"task": self._task}
 
     async def get_task(self, time: Time) -> Optional[LcoTask]:

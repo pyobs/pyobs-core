@@ -27,13 +27,8 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_schedule(self, start_before: Time, end_after: Time, include_running: bool = True) -> Dict[str, Task]:
+    async def get_schedule(self) -> Dict[str, Task]:
         """Fetch schedule from portal.
-
-        Args:
-            start_before: Task must start before this time.
-            end_after: Task must end after this time.
-            include_running: Whether to include a currently running task.
 
         Returns:
             Dictionary with tasks.

@@ -150,7 +150,12 @@ class Scheduler(Module, IStartStop, IRunnable):
                     self._need_update = False
 
                 # check, if one of the removed blocks was actually in schedule
-                # schedule = self._schedule.
+                if len(removed) > 0 and self._need_update:
+                    schedule = self._schedule.get_schedule()
+                    removed_from_schedule = [r for r in removed if r in schedule]
+                    if len(removed_from_schedule) == 0:
+                        log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")
+                        self._need_update = False
 
                 # store blocks
                 self._blocks = blocks
@@ -260,8 +265,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         else:
             # get running task from archive
             log.info("Trying to find running block in current schedule...")
-            now = Time.now()
-            tasks = await self._schedule.get_schedule(now, now, include_running=True)
+            tasks = await self._schedule.get_schedule()
             if self._current_task_id in tasks:
                 running_task = tasks[self._current_task_id]
             else:

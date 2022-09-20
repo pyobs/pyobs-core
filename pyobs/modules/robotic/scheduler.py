@@ -151,7 +151,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
                 # check, if one of the removed blocks was actually in schedule
                 if len(removed) > 0 and self._need_update:
-                    schedule = self._schedule.get_schedule()
+                    schedule = await self._schedule.get_schedule()
                     removed_from_schedule = [r for r in removed if r in schedule]
                     if len(removed_from_schedule) == 0:
                         log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")

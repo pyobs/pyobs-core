@@ -14,6 +14,7 @@ from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
 from .task import LcoTask
 from ...utils.logger import DuplicateFilter
+from ...utils.parallel import acquire_lock
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class LcoTaskSchedule(TaskSchedule):
         self._period = TimeDelta(period * u.hour)
         self.instruments: Dict[str, Any] = {}
         self._last_schedule_time: Optional[Time] = None
+        self._update_lock = asyncio.Lock()
 
         # buffers in case of errors
         self._last_scheduled: Optional[Time] = None
@@ -131,46 +133,55 @@ class LcoTaskSchedule(TaskSchedule):
             force: Force update.
         """
 
-        # remember now
-        now = Time.now()
-
-        # get time of last scheduler run and check, whether we need an update, which is not the case, if
-        # - we updated before
-        # - AND last update was after last schedule update
-        # - AND last update is less then 1 min ago
-        # - AND force is set to False
-        last_scheduled = await self.last_scheduled()
-        if (
-            self._last_schedule_time is not None
-            and (last_scheduled is None or self._last_schedule_time >= last_scheduled)
-            and self._last_schedule_time > now - TimeDelta(1.0 * u.minute)
-            and force is False
-        ):
-            # need no update
+        # acquire lock
+        if not await acquire_lock(self._update_lock, 20):
             return
 
-        # need update!
         try:
-            tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
-        except TimeoutError:
-            log.error("Request timed out")
-            await asyncio.sleep(60)
-            return
-        except RuntimeError:
-            log.warning("Could not fetch schedule.")
-            return
+            # remember now
+            now = Time.now()
 
-        # any changes?
-        if sorted(tasks) != sorted(self._tasks):
-            log.info("Task list changed, found %d task(s) to run.", len(tasks))
-            for task_id, task in tasks.items():
-                log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
+            # get time of last scheduler run and check, whether we need an update, which is not the case, if
+            # - we updated before
+            # - AND last update was after last schedule update
+            # - AND last update is less then 1 min ago
+            # - AND force is set to False
+            last_scheduled = await self.last_scheduled()
+            if (
+                self._last_schedule_time is not None
+                and (last_scheduled is None or self._last_schedule_time >= last_scheduled)
+                and self._last_schedule_time > now - TimeDelta(1.0 * u.minute)
+                and force is False
+            ):
+                # need no update
+                return
 
-        # update
-        self._tasks = cast(Dict[str, LcoTask], tasks)
+            # need update!
+            try:
+                tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
+            except TimeoutError:
+                log.error("Request timed out")
+                await asyncio.sleep(60)
+                return
+            except RuntimeError:
+                log.warning("Could not fetch schedule.")
+                return
 
-        # finished
-        self._last_schedule_time = now
+            # any changes?
+            if sorted(tasks) != sorted(self._tasks):
+                log.info("Task list changed, found %d task(s) to run.", len(tasks))
+                for task_id, task in tasks.items():
+                    log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
+
+            # update
+            self._tasks = cast(Dict[str, LcoTask], tasks)
+
+            # finished
+            self._last_schedule_time = now
+
+        finally:
+            # release lock
+            self._update_lock.release()
 
     async def get_schedule(self) -> Dict[str, Task]:
         """Fetch schedule from portal.
@@ -278,6 +289,9 @@ class LcoTaskSchedule(TaskSchedule):
         except asyncio.TimeoutError:
             # schedule re-attempt for sending
             asyncio.create_task(self._send_update_later(status_id, status))
+
+        # update
+        await self.update_now()
 
     async def _send_update_later(self, status_id: int, status: Dict[str, Any], delay: int = 300) -> None:
         """Delay re-attempt to send report to LCO portal

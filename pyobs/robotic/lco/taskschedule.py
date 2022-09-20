@@ -77,8 +77,9 @@ class LcoTaskSchedule(TaskSchedule):
         """Open scheduler."""
         await TaskSchedule.open(self)
 
-        # get stuff from portal
+        # get stuff from portal and do initial update
         await self._init_from_portal()
+        await self.update_now()
 
         # start update thread
         asyncio.create_task(self._update_schedule())

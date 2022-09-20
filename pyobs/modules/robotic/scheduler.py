@@ -149,6 +149,9 @@ class Scheduler(Module, IStartStop, IRunnable):
                     log.info("Only one removed block detected, which is the one currently running.")
                     self._need_update = False
 
+                # check, if one of the removed blocks was actually in schedule
+                # schedule = self._schedule.
+
                 # store blocks
                 self._blocks = blocks
 

@@ -167,11 +167,11 @@ class LcoTaskSchedule(TaskSchedule):
                 log.warning("Could not fetch schedule.")
                 return
 
-            # any changes?
-            if sorted(tasks) != sorted(self._tasks):
-                log.info("Task list changed, found %d task(s) to run.", len(tasks))
-                for task_id, task in tasks.items():
-                    log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
+        # any changes?
+        if sorted(tasks) != sorted(self._tasks):
+            log.info("Task list changed, found %d task(s) to run.", len(tasks))
+            for task_id, task in sorted(tasks.items(), key=lambda x: x[1].start):
+                log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
 
             # update
             self._tasks = cast(Dict[str, LcoTask], tasks)

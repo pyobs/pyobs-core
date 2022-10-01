@@ -221,7 +221,7 @@ class LcoTaskSchedule(TaskSchedule):
             "end_after": end_after.isot,
             "start_before": start_before.isot,
             "state": states,
-            "limit": 10,
+            "limit": 1000,
         }
 
         # do request

@@ -107,6 +107,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # starting too late?
             if not task.can_start_late:
                 late_start = now - task.start
+                log.info(f"Trying to start task {late_start:.1f} seconds after the scheduled start.")
                 if late_start > self._allowed_late_start * u.second:
                     # only warn once
                     if first_late_start_warning:

@@ -2,10 +2,12 @@ import logging
 from typing import Any
 import numpy as np
 from astropy.coordinates import EarthLocation, AltAz
+import astropy.units as u
 
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
 from ..time import Time
+from ...images.meta import AltAzOffsets, RaDecOffsets, PixelOffsets
 from ...interfaces import ITelescope, IOffsetsAltAz
 
 log = logging.getLogger(__name__)
@@ -47,21 +49,35 @@ class ApplyAltAzOffsets(ApplyOffsets):
             log.error("Given telescope cannot handle Alt/Az offsets.")
             return False
 
-        # get RA/Dec coordinates of center and center+offsets
-        try:
-            radec_center, radec_target = self._get_radec_center_target(image, location)
-        except ValueError:
-            log.warning("Could not get offsets from image meta.")
-            return False
+        # what kind of offsets to we have?
+        if image.has_meta(AltAzOffsets):
+            # offsets are Alt/Az, so get them directly
+            offsets = image.get_meta(AltAzOffsets)
+            log.info("Found Alt/Az shift of dra=%.2f, ddec=%.2f.", offsets.dalt, offsets.daz)
+            dalt, daz = offsets.dalt * u.arcsec, offsets.daz * u.arcsec
 
-        # convert to Alt/Az
-        frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
-        altaz_center = radec_center.transform_to(frame)
-        altaz_target = radec_target.transform_to(frame)
+        elif image.has_meta(RaDecOffsets):
+            raise NotImplementedError()
 
-        # get offset
-        daz, dalt = altaz_center.spherical_offsets_to(altaz_target)
-        log.info('Transformed to Alt/Az shift of dAlt=%.2f", dAz=%.2f".', dalt.arcsec, daz.arcsec)
+        elif image.has_meta(PixelOffsets):
+            # get RA/Dec coordinates of center and center+offsets
+            try:
+                radec_center, radec_target = self._get_radec_center_target(image, location)
+            except ValueError:
+                log.warning("Could not get offsets from image meta.")
+                return False
+
+            # convert to Alt/Az
+            frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
+            altaz_center = radec_center.transform_to(frame)
+            altaz_target = radec_target.transform_to(frame)
+
+            # get offset
+            daz, dalt = altaz_center.spherical_offsets_to(altaz_target)
+            log.info('Transformed to Alt/Az shift of dAlt=%.2f", dAz=%.2f".', dalt.arcsec, daz.arcsec)
+
+        else:
+            raise ValueError("No offsets found.")
 
         # get current offset
         cur_dalt, cur_daz = await telescope.get_offsets_altaz()

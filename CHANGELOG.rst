@@ -1,3 +1,7 @@
+v1.2.0 (2022-10-06)
+*******************
+* Added AltAzOffsets and RaDecOffsets and (partly) implemented them in the ApplyOffsets classes.
+
 v1.1.0 (2022-09-20)
 *******************
 * Changed signature of `pyobs.robotic.TaskSchedule.get_schedule` to have no parameters.

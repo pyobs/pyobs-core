@@ -1,11 +1,12 @@
 import logging
 from typing import Any
-
 import numpy as np
 from astropy.coordinates import EarthLocation
+import astropy.units as u
 
 from pyobs.images import Image
 from .applyoffsets import ApplyOffsets
+from ...images.meta import RaDecOffsets, PixelOffsets, AltAzOffsets
 from ...interfaces import ITelescope, IOffsetsRaDec
 
 log = logging.getLogger(__name__)
@@ -47,16 +48,30 @@ class ApplyRaDecOffsets(ApplyOffsets):
             log.error("Given telescope cannot handle RA/Dec offsets.")
             return False
 
-        # get RA/Dec coordinates of center and center+offsets
-        try:
-            radec_center, radec_target = self._get_radec_center_target(image, location)
-        except ValueError:
-            log.warning("Could not get offsets from image meta.")
-            return False
+        # what kind of offsets to we have?
+        if image.has_meta(RaDecOffsets):
+            # offsets are RA/Dec, so get them directly
+            offsets = image.get_meta(RaDecOffsets)
+            log.info("Found RA/Dec shift of dra=%.2f, ddec=%.2f.", offsets.dra, offsets.ddec)
+            dra, ddec = offsets.dra * u.arcsec, offsets.ddec * u.arcsec
 
-        # get offset
-        dra, ddec = radec_center.spherical_offsets_to(radec_target)
-        log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra.arcsec, ddec.arcsec)
+        elif image.has_meta(AltAzOffsets):
+            raise NotImplementedError()
+
+        elif image.has_meta(PixelOffsets):
+            # get RA/Dec coordinates of center and center+offsets
+            try:
+                radec_center, radec_target = self._get_radec_center_target(image, location)
+            except ValueError:
+                log.warning("Could not get offsets from image meta.")
+                return False
+
+            # get offset
+            dra, ddec = radec_center.spherical_offsets_to(radec_target)
+            log.info('Transformed to RA/Dec shift of dRA=%.2f", dDec=%.2f".', dra.arcsec, ddec.arcsec)
+
+        else:
+            raise ValueError("No offsets found.")
 
         # get current offset
         cur_dra, cur_ddec = await telescope.get_offsets_radec()

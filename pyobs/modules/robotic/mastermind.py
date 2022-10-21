@@ -135,7 +135,13 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
-            await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
+            try:
+                await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
+            except:
+                # something went wrong
+                log.warning("Task %s failed.", self._task.name)
+                self._task = None
+                return
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))

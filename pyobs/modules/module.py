@@ -139,7 +139,8 @@ class Module(Object, IModule, IConfig):
         """Main loop for application."""
         await self._closing.wait()
 
-    def name(self, **kwargs: Any) -> str:
+    @property
+    def name(self) -> str:
         """Returns name of module."""
         return "" if self._device_name is None else self._device_name
 

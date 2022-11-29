@@ -57,20 +57,28 @@ class Pipeline(Object, PipelineMixin):
             method: Method for combining images.
         """
 
-        # get CCDData objects
-        data = [image.to_ccddata() for image in images]
+        # get bias
+        bias_data = None if bias is None else bias.to_ccddata()
 
-        # trim
-        data = [Pipeline.trim_ccddata(d) for d in data]
+        # prepare images
+        data = []
+        for image in images:
+            # get CCDData objects
+            d = image.to_ccddata()
 
-        # subtract bias?
-        if bias is not None:
-            bias_data = bias.to_ccddata()
-            data = [ccdproc.subtract_bias(d, bias_data) for d in data]
+            # trim
+            d = Pipeline.trim_ccddata(d)
 
-        # normalize?
-        if normalize:
-            data = [d.divide(np.median(d.data), handle_meta="first_found") for d in data]
+            # subtract bias?
+            if bias_data is not None:
+                d = ccdproc.subtract_bias(d, bias_data)
+
+            # normalize?
+            if normalize:
+                d = d.divide(np.median(d.data), handle_meta="first_found")
+
+            # append
+            data.append(d)
 
         # combine image
         combined = ccdproc.combine(
@@ -79,7 +87,7 @@ class Pipeline(Object, PipelineMixin):
             sigma_clip=True,
             sigma_clip_low_thresh=5,
             sigma_clip_high_thresh=5,
-            mem_limit=350e6,
+            mem_limit=2e9,
             unit="adu",
             combine_uncertainty_function=np.ma.std,
         )

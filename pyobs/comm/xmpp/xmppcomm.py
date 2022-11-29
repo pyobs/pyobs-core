@@ -445,6 +445,9 @@ class XmppComm(Comm):
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
+        # send it to local module
+        self._send_event_to_module(event, self._module.name)
+
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
         """Called when an event has been successfully sent.

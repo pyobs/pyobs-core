@@ -51,7 +51,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_night_obs = night_obs
 
         # night exposure number
-        self._fitsheadermixin_cache = "/pyobs/modules/%s/cache.yaml" % module.name()
+        self._fitsheadermixin_cache = "/pyobs/modules/%s/cache.yaml" % module.name
         self._fitsheadermixin_enable_frame_number = frame_number
         self._fitsheadermixin_frame_number = 0
 

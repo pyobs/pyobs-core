@@ -3,6 +3,7 @@ import logging
 from typing import Any, List, Type
 
 from pyobs.comm import Comm
+from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
 
@@ -37,6 +38,14 @@ class DummyComm(Comm):
     def name(self) -> str:
         """Name of this client, which is unknown."""
         return "module"
+
+    async def send_event(self, event: Event) -> None:
+        """Send an event to other clients.
+
+        Args:
+            event (Event): Event to send
+        """
+        self._send_event_to_module(event, "module")
 
 
 __all__ = ["DummyComm"]

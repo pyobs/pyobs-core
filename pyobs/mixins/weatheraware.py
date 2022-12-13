@@ -26,7 +26,8 @@ class WeatherAwareMixin:
         self.__setting_bad_weather = False
         this = self
         if isinstance(self, Module):
-            self.add_background_task(this.__weather_check, True)
+            if weather is not None:
+                self.add_background_task(this.__weather_check, True)
         else:
             raise ValueError("This is not a module.")
 
@@ -34,7 +35,7 @@ class WeatherAwareMixin:
         """Open mixin."""
         # subscribe to events
         this = self
-        if isinstance(self, Module) and self.comm is not None:
+        if self.__weather is not None and isinstance(self, Module) and self.comm is not None:
             await self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
             await self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
 

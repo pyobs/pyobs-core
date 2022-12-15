@@ -118,7 +118,7 @@ class LcoTaskSchedule(TaskSchedule):
 
             except asyncio.TimeoutError:
                 # do nothing
-                error_logger.error("Could not retrieve schedule.")
+                error_logger.warning("Could not retrieve schedule.")
 
             except:
                 log.exception("An exception occurred.")

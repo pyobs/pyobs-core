@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, cast
 
 from pyobs.interfaces import IWeather
 from pyobs.modules import Module
@@ -23,7 +23,8 @@ class WeatherAwareMixin:
         self.__weather = weather
         self.__is_weather_good: Optional[bool] = None
         self.__last_park_attempt: Optional[float] = None
-        self.__setting_bad_weather = False
+        self.__weatheraware_is_error_state = False
+        self.__weatheraware_lock = asyncio.Lock()
         this = self
         if isinstance(self, Module):
             if weather is not None:
@@ -56,29 +57,34 @@ class WeatherAwareMixin:
         return True
 
     async def __set_bad_weather(self) -> None:
-        # already setting?
-        if self.__setting_bad_weather:
+        # locked?
+        if self.__weatheraware_lock.locked():
             return
-        self.__setting_bad_weather = True
 
-        # did weather change?
-        if self.__is_weather_good is True:
-            # weather is bad now
-            self.__is_weather_good = False
-
-            # do we need to park?
-            if isinstance(self, MotionStatusMixin) and isinstance(self, IMotion):
-                motion_status = await self.get_motion_status()
-                if motion_status == MotionStatus.ERROR:
-                    log.error("Telescope is in error mode, cannot park.")
-                elif motion_status != MotionStatus.PARKED:
-                    log.warning("Weather is bad, shutting down.")
-                    await self.park()
+        # get lock
+        async with self.__weatheraware_lock:
+            # get motion status and error state
+            msi = self
+            if isinstance(msi, MotionStatusMixin) and isinstance(msi, IMotion):
+                motion_status = await msi.get_motion_status()
+                is_error_state = motion_status == MotionStatus.ERROR
             else:
                 log.error("This is not a MotionStatusMixin/IMotion.")
+                return
 
-        # finished
-        self.__setting_bad_weather = False
+            # do we need to park?
+            if motion_status not in [MotionStatus.PARKED, MotionStatus.PARKING]:
+                # error state?
+                if is_error_state and not self.__weatheraware_is_error_state:
+                    log.error("Telescope is in error mode, cannot park.")
+                else:
+                    # parking?
+                    if motion_status != MotionStatus.PARKED:
+                        log.warning("Weather is bad, shutting down.")
+                        await msi.park()
+
+            # save error state
+            self.__weatheraware_is_error_state = is_error_state
 
     async def _on_good_weather(self, event: Event, sender: str) -> bool:
         """Change status of weather.

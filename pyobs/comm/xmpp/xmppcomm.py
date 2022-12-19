@@ -394,7 +394,8 @@ class XmppComm(Comm):
 
         # remove from list
         jid = msg["from"].full
-        self._online_clients.remove(jid)
+        if jid in self._online_clients:
+            self._online_clients.remove(jid)
 
         # clear interface cache
         if jid in self._interface_cache:

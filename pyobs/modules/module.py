@@ -82,11 +82,12 @@ class Module(Object, IModule, IConfig):
 
     __module__ = "pyobs.modules"
 
-    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, **kwargs: Any):
+    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, own_comm: bool = True, **kwargs: Any):
         """
         Args:
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
+            own_comm: If True, module owns comm and opens/closes it.
         """
         Object.__init__(self, **kwargs)
 
@@ -106,12 +107,15 @@ class Module(Object, IModule, IConfig):
         self._state = ModuleState.READY
         self._error_string = ""
 
+        # own?
+        self._own_comm = own_comm
+
         # close
         self._closing = asyncio.Event()
 
     async def open(self) -> None:
         # open comm
-        if self.comm is not None:
+        if self.comm is not None and self._own_comm:
             # open it and connect module
             self.comm.module = self
             await self.comm.open()
@@ -127,7 +131,7 @@ class Module(Object, IModule, IConfig):
         await Object.close(self)
 
         # close comm
-        if self.comm is not None:
+        if self.comm is not None and self._own_comm:
             log.info("Closing connection to server...")
             await self.comm.close()
 

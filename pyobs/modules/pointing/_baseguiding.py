@@ -202,11 +202,15 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
             return image
 
         # apply offsets
-        if await self._apply(image, telescope, self.location):
-            self._loop_closed = True
-            log.info("Finished image.")
-        else:
-            log.info("Could not apply offsets.")
+        try:
+            if await self._apply(image, telescope, self.location):
+                self._loop_closed = True
+                log.info("Finished image.")
+            else:
+                log.info("Could not apply offsets.")
+                self._loop_closed = False
+        except ValueError as e:
+            log.info("Could not apply offsets: %s", e)
             self._loop_closed = False
 
         # return image, in case we added important data

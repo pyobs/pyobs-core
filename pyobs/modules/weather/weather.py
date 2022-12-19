@@ -114,7 +114,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
             except Exception as e:
                 # on error, we're always bad
-                log.error("Request failed: %s", e)
+                log.warning("Request failed: %s", str(e))
                 is_good = False
                 error = True
 

@@ -82,12 +82,20 @@ class Module(Object, IModule, IConfig):
 
     __module__ = "pyobs.modules"
 
-    def __init__(self, name: Optional[str] = None, label: Optional[str] = None, own_comm: bool = True, **kwargs: Any):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        label: Optional[str] = None,
+        own_comm: bool = True,
+        additional_config_variables: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
         """
         Args:
             name: Name of module. If None, ID from comm object is used.
             label: Label for module. If None, name is used.
             own_comm: If True, module owns comm and opens/closes it.
+            additional_config_variables: List of additional variable names available to remote config getter/setter.
         """
         Object.__init__(self, **kwargs)
 
@@ -97,6 +105,7 @@ class Module(Object, IModule, IConfig):
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
+        self._additional_config_variables = additional_config_variables
         self._config_caps = self._get_config_caps()
 
         # name and label
@@ -281,7 +290,7 @@ class Module(Object, IModule, IConfig):
         """Returns a dictionary with config caps."""
 
         # init dict of caps and types
-        caps = {}
+        caps: Dict[str, Tuple[bool, bool, bool]] = {}
 
         # loop super classes
         for cls in inspect.getmro(self.__class__):
@@ -296,15 +305,31 @@ class Module(Object, IModule, IConfig):
                 if name in ["self", "args", "kwargs"]:
                     continue
 
-                # check for getter and setter
-                caps[name] = (
-                    hasattr(self, "_get_config_" + name),
-                    hasattr(self, "_set_config_" + name),
-                    hasattr(self, "_get_config_options_" + name),
-                )
+                # add it
+                caps[name] = self._add_config_cap(name)
+
+            # also add all additional config vars
+            if self._additional_config_variables:
+                for name in self._additional_config_variables:
+                    caps[name] = self._add_config_cap(name)
 
         # finished
         return caps
+
+    def _add_config_cap(self, name: str) -> Tuple[bool, bool, bool]:
+        """Check for getter and setter
+
+        Params:
+            name: Name of variable.
+
+        Returns:
+            Tuple of booleans indication whether getter, setter and get_options exist.
+        """
+        return (
+            hasattr(self, "_get_config_" + name),
+            hasattr(self, "_set_config_" + name),
+            hasattr(self, "_get_config_options_" + name),
+        )
 
     async def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
         """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,

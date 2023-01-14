@@ -196,7 +196,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # reset to initial values
             if self._offset:
-                log.info("Resetting focus offset to 0.", guess)
+                log.info("Resetting focus offset to 0.")
                 await focuser.set_focus_offset(0)
             else:
                 log.info("Resetting focus to initial guess of %.3f mm.", guess)

@@ -141,7 +141,10 @@ class WeatherAwareMixin:
             raise ValueError("This is not a module.")
 
     def is_weather_good(self) -> bool:
-        return self.__is_weather_good is True
+        if self.__weather is None:
+            return True
+        else:
+            return self.__is_weather_good is True
 
 
 __all__ = ["WeatherAwareMixin"]

@@ -1,3 +1,7 @@
+v1.3.0 (2023-02-04)
+*******************
+* Adopted LCO default task to new LCO portal.
+
 v1.2.0 (2022-10-06)
 *******************
 * Added AltAzOffsets and RaDecOffsets and (partly) implemented them in the ApplyOffsets classes.

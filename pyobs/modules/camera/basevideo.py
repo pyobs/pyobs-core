@@ -337,6 +337,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
                 for req in self._image_requests:
                     req.image = image
                     req.filename = filename
+                    await asyncio.sleep(0.02)
 
         # convert to jpeg only if we need live view
         now = time.time()
@@ -449,7 +450,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # we want an image that starts exposing AFTER now, so we wait for the current image to finish.
         log.info("Waiting for image to finish...")
         while image_request.image is None:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
 
         # remove from list
         self._image_requests.remove(image_request)

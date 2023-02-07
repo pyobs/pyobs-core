@@ -231,14 +231,7 @@ class LcoDefaultScript(Script):
 
             # loop instrument configs
             for ic in self.configuration["instrument_configs"]:
-                # get readout mode
-                for readout_mode in instrument["modes"]["readout"]["modes"]:
-                    if readout_mode["code"] == ic["mode"]:
-                        break
-                else:
-                    # could not find readout mode
-                    raise ValueError("Could not find readout mode %s." % ic["mode"])
-                log.info('Using readout mode "%s"...' % readout_mode["name"])
+                log.info('Using readout mode "%s"...' % ic["mode"])
 
                 # set filter
                 set_filter: Union[Future, asyncio.Task[Any]] = Future(empty=True)
@@ -251,10 +244,9 @@ class LcoDefaultScript(Script):
 
                 # set binning and window
                 if isinstance(camera, IBinning):
-                    bin_x = readout_mode["validation_schema"]["bin_x"]["default"]
-                    bin_y = readout_mode["validation_schema"]["bin_y"]["default"]
-                    log.info("Set binning to %dx%d...", bin_x, bin_y)
-                    await camera.set_binning(bin_x, bin_y)
+                    binning = ic["extra_params"]["binning"]
+                    log.info("Set binning to %dx%d...", binning, binning)
+                    await camera.set_binning(binning, binning)
                 if isinstance(camera, IWindow):
                     full_frame = await camera.get_full_frame()
                     await camera.set_window(*full_frame)

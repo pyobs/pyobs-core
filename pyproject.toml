@@ -22,7 +22,7 @@ ccdproc = "^2.2"
 photutils = "^1.2"
 lmfit = "^1.0"
 tornado = "^6.1"
-python-telegram-bot = "^13.8"
+python-telegram-bot = ">=13.8,<21.0"
 typing-extensions = "^4.0"
 sep = [{ version = "^1.2", platform = "linux" }]
 python-daemon = [{ version = "^2.3", platform = "linux" }]

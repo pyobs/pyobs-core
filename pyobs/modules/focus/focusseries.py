@@ -12,7 +12,7 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout, Module
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
-from pyobs.utils import exceptions as exc
+from pyobs.utils import exceptions as exc, exceptions
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 guess = await focuser.get_focus()
                 log.info("Using current focus of %.2fmm as initial guess.", guess)
         except exc.RemoteError:
-            raise ValueError("Could not fetch current focus value.")
+            raise exceptions.GeneralError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
         focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
@@ -148,7 +148,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             else:
                 log.info("Changing focus to %.2fmm...", foc)
             if self._abort.is_set():
-                raise InterruptedError()
+                raise exceptions.AbortedError()
             try:
                 if self._offset:
                     await focuser.set_focus_offset(float(foc))
@@ -156,12 +156,12 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     await focuser.set_focus(float(foc))
 
             except exc.RemoteError:
-                raise ValueError("Could not set new focus value.")
+                raise exceptions.GeneralError("Could not set new focus value.")
 
             # do exposure
             log.info("Taking picture...")
             if self._abort.is_set():
-                raise InterruptedError()
+                raise exceptions.AbortedError()
             try:
                 if isinstance(camera, IExposureTime):
                     await camera.set_exposure_time(exposure_time)
@@ -187,7 +187,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # fit focus
         if self._abort.is_set():
-            raise InterruptedError()
+            raise exceptions.AbortedError()
         focus = self._series.fit_focus()
 
         # did focus series fail?
@@ -203,7 +203,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 await focuser.set_focus(guess)
 
             # raise error
-            raise ValueError("Could not find best focus.")
+            raise exceptions.GeneralError("Could not find best focus.")
 
         # log and set focus
         if self._offset:

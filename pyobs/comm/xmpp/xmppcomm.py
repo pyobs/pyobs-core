@@ -526,17 +526,19 @@ class XmppComm(Comm):
         """
 
         # try multiple times
+        iq = None
         for i in range(self._safe_send_attempts):
             try:
                 # execute method and return result
                 return await method(*args, **kwargs)
 
-            except slixmpp.exceptions.IqTimeout:
+            except slixmpp.exceptions.IqTimeout as timeout:
                 # timeout occurred, try again after some wait
+                iq = timeout.iq
                 await asyncio.sleep(self._safe_send_wait)
 
         # never should reach this
-        raise slixmpp.exceptions.IqTimeout
+        raise slixmpp.exceptions.IqTimeout(iq)
 
     def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.

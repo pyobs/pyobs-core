@@ -153,6 +153,9 @@ class FitsHeaderMixin:
         # get date obs
         date_obs = Time(hdr["DATE-OBS"])
 
+        # set MJD-OBS
+        hdr["MJD-OBS"] = date_obs.mjd
+
         # UT1-UTC
         hdr["UT1_UTC"] = (float(date_obs.delta_ut1_utc), "UT1-UTC")
 

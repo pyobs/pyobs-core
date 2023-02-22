@@ -48,6 +48,7 @@ class ImageType(Enum):
         SKYFLAT: Flat-field taken on sky.
         FOCUS: Exposure from a focus-series.
         ACQUISITION: Exposure from an acquisition
+        GUIDING: Guiding image
     """
 
     BIAS = "bias"
@@ -56,6 +57,7 @@ class ImageType(Enum):
     SKYFLAT = "skyflat"
     FOCUS = "focus"
     ACQUISITION = "acquisition"
+    GUIDING = "guiding"
 
 
 class ImageFormat(Enum):

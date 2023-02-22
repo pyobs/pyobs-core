@@ -89,8 +89,8 @@ class AutoGuiding(BaseGuiding):
                 else:
                     log.info("Taking image...")
                 if isinstance(camera, IImageType):
-                    await camera.set_image_type(ImageType.OBJECT)
-                filename = await camera.grab_data(broadcast=False)
+                    await camera.set_image_type(ImageType.GUIDING)
+                filename = await camera.grab_data(broadcast=self._broadcast)
 
                 # download image
                 image = await self.vfs.read_image(filename)

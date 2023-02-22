@@ -17,17 +17,19 @@ class AutoGuiding(BaseGuiding):
 
     __module__ = "pyobs.modules.guiding"
 
-    def __init__(self, exposure_time: float = 1.0, **kwargs: Any):
+    def __init__(self, exposure_time: float = 1.0, broadcast: bool = False, **kwargs: Any):
         """Initializes a new auto guiding system.
 
         Args:
             exposure_time: Initial exposure time in seconds.
+            broadcast: Whether to broadcast new images.
         """
         BaseGuiding.__init__(self, **kwargs)
 
         # store
         self._default_exposure_time = exposure_time
         self._exposure_time: Optional[float] = None
+        self._broadcast = broadcast
         self._source_detection = SepSourceDetection()
 
         # add thread func

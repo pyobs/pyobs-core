@@ -25,7 +25,7 @@ tornado = "^6.1"
 python-telegram-bot = "^13.8"
 typing-extensions = "^4.0"
 sep = [{ version = "^1.2", platform = "linux" }]
-python-daemon = [{ version = "^2.3", platform = "linux" }]
+python-daemon = [{ version = ">=2.3,<4.0", platform = "linux" }]
 astroquery = "^0.4"
 slixmpp = "^1.7"
 aiohttp = "^3.8"

@@ -83,10 +83,26 @@ ICooling
    :show-inheritance:
    :undoc-members:
 
+IData
+~~~~~
+
+.. autoclass:: pyobs.interfaces.IData
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IDome
 ~~~~~
 
 .. autoclass:: pyobs.interfaces.IDome
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+IExposure
+~~~~~~~~~
+
+.. autoclass:: pyobs.interfaces.IExposure
    :members:
    :show-inheritance:
    :undoc-members:
@@ -147,18 +163,18 @@ IFocuser
    :show-inheritance:
    :undoc-members:
 
-IImageFormat
-~~~~~~~~~~~~
+IGain
+~~~~~
 
-.. autoclass:: pyobs.interfaces.IImageFormat
+.. autoclass:: pyobs.interfaces.IGain
    :members:
    :show-inheritance:
    :undoc-members:
 
-IImageGrabber
-~~~~~~~~~~~~~
+IImageFormat
+~~~~~~~~~~~~
 
-.. autoclass:: pyobs.interfaces.IImageGrabber
+.. autoclass:: pyobs.interfaces.IImageFormat
    :members:
    :show-inheritance:
    :undoc-members:

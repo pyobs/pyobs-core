@@ -43,9 +43,13 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.misc.RemoveBackground
 
+.. autoclass:: pyobs.images.processors.misc.Smooth
+
 .. autoclass:: pyobs.images.processors.misc.SoftBin
 
 .. automodule:: pyobs.images.processors.offsets
+
+.. autoclass:: pyobs.images.processors.offsets.BrightestStarOffsets
 
 .. autoclass:: pyobs.images.processors.offsets.Offsets
 

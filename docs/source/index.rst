@@ -22,6 +22,13 @@ Recipes
 
    recipes/simulation
 
+Config Examples
+---------------
+
+.. toctree::
+   :maxdepth: 1
+
+   config_examples/iag50cm
 
 API Reference
 -------------

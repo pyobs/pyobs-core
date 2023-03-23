@@ -3,6 +3,13 @@ Exceptions (pyobs.utils.exceptions)
 
 .. automodule:: pyobs.utils.exceptions
 
+AbortedError
+~~~~~~~~~~~~
+
+.. autoexception:: pyobs.utils.exceptions.AbortedError
+   :members:
+   :undoc-members:
+
 ExceptionHandler
 ~~~~~~~~~~~~~~~~
 
@@ -10,10 +17,24 @@ ExceptionHandler
    :members:
    :undoc-members:
 
+GeneralError
+~~~~~~~~~~~~
+
+.. autoexception:: pyobs.utils.exceptions.GeneralError
+   :members:
+   :undoc-members:
+
 GrabImageError
 ~~~~~~~~~~~~~~
 
 .. autoexception:: pyobs.utils.exceptions.GrabImageError
+   :members:
+   :undoc-members:
+
+ImageError
+~~~~~~~~~~
+
+.. autoexception:: pyobs.utils.exceptions.ImageError
    :members:
    :undoc-members:
 

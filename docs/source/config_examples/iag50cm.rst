@@ -10,6 +10,8 @@ telescope software and is running on a third computer, together with an
 
 All the configs are shown here without the ``comm`` part and the environment details.
 
+.. image:: ../_static/structure_iag50cm.svg
+
 
 iag50srv
 ^^^^^^^^

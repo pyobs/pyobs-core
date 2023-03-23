@@ -78,6 +78,43 @@ acquisition
 
 autofocus
 """""""""
+.. code-block:: YAML
+  :linenos:
+
+  class: pyobs.modules.focus.AutoFocusSeries
+
+  # modules
+  camera: sbig6303e
+  focuser: focuser
+  filters: sbig6303e
+
+  # use absolute focus values instead of offsets
+  offset: False
+
+  # camera settings
+  filter_name: Clear
+  binning: 2
+
+  # use projected stars
+  series:
+    class: pyobs.utils.focusseries.ProjectionFocusSeries
+
+  vfs:
+    class: pyobs.vfs.VirtualFileSystem
+    roots:
+      cache:
+        class: pyobs.vfs.HttpFile
+        download: http://localhost:37075/
+
+* The :class:`~pyobs.modules.focus.AutoFocusSeries` class is used for the auto focus module (line 1).
+* It requires the name of the other modules to use, which are :ref:`focuser` for the focus unit, :ref:`sbig6303e`
+  for the camera and the same for module for the filter wheel, since it is integrated into the camera (lines 4-6).
+* The ``offset`` parameter defines, whether absolute focus values are used or offsets from a fixed value (line 9).
+* Image settings (lines 12-13).
+* The actual focus series is done using the helper class :class:`~pyobs.utils.focusseries.ProjectionFocusSeries`
+  (lines 16-17).
+* Finally, a VFS is defined with a root ``cache`` that points to the :ref:`filecache` HTTP cache server (lines 31-36).
+
 
 dome
 """"

@@ -52,7 +52,12 @@ extensions = [
 ]
 
 # intersphinx
-intersphinx_mapping = {"pyobs_alpaca": ("https://docs.pyobs.org/projects/pyobs-alpaca/en/latest/", None)}
+intersphinx_mapping = {
+    "pyobs_alpaca": ("https://docs.pyobs.org/projects/pyobs-alpaca/en/latest/", None),
+    "pyobs_weather": ("https://docs.pyobs.org/projects/pyobs-weather/en/latest/", None),
+    "pyobs_sbig": ("https://docs.pyobs.org/projects/pyobs-sbig/en/latest/", None),
+    "pyobs_asi": ("https://docs.pyobs.org/projects/pyobs-asi/en/latest/", None),
+}
 
 # napoleon settings
 napoleon_google_docstring = True

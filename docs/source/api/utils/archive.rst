@@ -8,6 +8,11 @@ Archive
 
 .. autoclass:: pyobs.utils.archive.Archive
 
+LocalArchive
+~~~~~~~~~~~~
+
+.. autoclass:: pyobs.utils.archive.LocalArchive
+
 PyobsArchive
 ~~~~~~~~~~~~
 

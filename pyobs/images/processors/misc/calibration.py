@@ -91,23 +91,19 @@ class Calibration(ImageProcessor):
         ccddata = Pipeline.trim_ccddata(image.to_ccddata())
 
         # calibrate image
-        c = await asyncio.get_running_loop().run_in_executor(
-            None,
-            partial(
-                ccdproc.ccd_process,
-                ccddata,
-                error=True,
-                master_bias=bias.to_ccddata() if bias is not None else None,
-                dark_frame=dark.to_ccddata() if dark is not None else None,
-                master_flat=flat.to_ccddata() if flat is not None else None,
-                bad_pixel_mask=None,
-                gain=image.header["DET-GAIN"] * u.electron / u.adu,
-                readnoise=image.header["DET-RON"] * u.electron,
-                dark_exposure=dark.header["EXPTIME"] * u.second if dark is not None else None,
-                data_exposure=image.header["EXPTIME"] * u.second,
-                dark_scale=True,
-                gain_corrected=False,
-            ),
+        c = ccdproc.ccd_process(
+            ccddata,
+            error=True,
+            master_bias=bias.to_ccddata() if bias is not None else None,
+            dark_frame=dark.to_ccddata() if dark is not None else None,
+            master_flat=flat.to_ccddata() if flat is not None else None,
+            bad_pixel_mask=None,
+            gain=image.header["DET-GAIN"] * u.electron / u.adu,
+            readnoise=image.header["DET-RON"] * u.electron,
+            dark_exposure=dark.header["EXPTIME"] * u.second if dark is not None else None,
+            data_exposure=image.header["EXPTIME"] * u.second,
+            dark_scale=True,
+            gain_corrected=False,
         )
 
         # to image

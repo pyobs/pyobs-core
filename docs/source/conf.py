@@ -47,10 +47,12 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
+    "sphinx.ext.intersphinx",
     # "sphinx_autodoc_typehints",
 ]
 
-intersphinx_mapping = {"http://docs.python.org/3": None}
+# intersphinx
+intersphinx_mapping = {"pyobs_alpaca": ("https://docs.pyobs.org/projects/pyobs-alpaca/en/latest/", None)}
 
 # napoleon settings
 napoleon_google_docstring = True

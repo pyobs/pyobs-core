@@ -29,6 +29,7 @@ Config Examples
    :maxdepth: 1
 
    config_examples/iag50cm
+   config_examples/iagvt
 
 API Reference
 -------------

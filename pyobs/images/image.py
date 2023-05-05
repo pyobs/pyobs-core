@@ -27,6 +27,7 @@ class Image:
         mask: Optional[NDArray[Any]] = None,
         uncertainty: Optional[NDArray[Any]] = None,
         catalog: Optional[Table] = None,
+        raw: Optional[NDArray[Any]] = None,
         meta: Optional[Dict[Any, Any]] = None,
         *args: Any,
         **kwargs: Any,
@@ -39,6 +40,7 @@ class Image:
             mask: Mask for the image.
             uncertainty: Uncertainty image.
             catalog: Catalog table.
+            raw: If image is calibrated, this should be the raw image.
             meta: Dictionary with meta information (note: not preserved in I/O operations!).
         """
 
@@ -48,6 +50,7 @@ class Image:
         self.mask = None if mask is None else mask.copy()
         self.uncertainty = None if uncertainty is None else uncertainty.copy()
         self.catalog = None if catalog is None else catalog.copy()
+        self.raw = None if raw is None else raw.copy()
         self.meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
@@ -160,6 +163,10 @@ class Image:
         if "CAT" in data:
             image.catalog = Table(data["CAT"].data)
 
+        # raw
+        if "RAW" in data:
+            image.raw = data["RAW"].data
+
         # finished
         return image
 
@@ -180,6 +187,7 @@ class Image:
             mask=self.mask,
             uncertainty=self.uncertainty,
             catalog=self.catalog,
+            raw=self.raw,
             meta=self.meta,
         )
 
@@ -221,6 +229,12 @@ class Image:
         if self.uncertainty is not None:
             hdu = ImageHDU(self.uncertainty.data)
             hdu.name = "UNCERT"
+            hdu_list.append(hdu)
+
+        # raw?
+        if self.raw is not None:
+            hdu = ImageHDU(self.raw.data)
+            hdu.name = "RAW"
             hdu_list.append(hdu)
 
         # write it

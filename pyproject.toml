@@ -30,7 +30,7 @@ astroquery = "^0.4.6"
 slixmpp = "^1.8.3"
 aiohttp = "^3.8.4"
 single-source = "^0.3.0"
-asyncinotify = [{ version = "^2.0", platform = "linux" }]
+asyncinotify = [{ version = ">=2,<5", platform = "linux" }]
 dbus-next = "^0.2.3"
 reproject = "^0.10.0"
 

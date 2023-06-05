@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import numpy as np
 from typing import Tuple, Dict, Any, Optional
 import astropy.units as u
 
@@ -140,7 +141,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # calculate distance from offset
             osd = image.get_meta(OnSkyDistance)
-            if osd is None:
+            if osd is None or np.isnan(osd.distance):
                 log.warning("No on sky distance found in meta.")
                 continue
             log.info("Found a distance to target of %.2f arcsec.", osd.distance.arcsec)

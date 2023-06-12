@@ -317,7 +317,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # write to jpeg
         with io.BytesIO() as output:
-            PIL.Image.fromarray(data).save(output, format="jpeg")
+            PIL.Image.fromarray(np.flip(data, axis=0)).save(output, format="jpeg")
             return output.getvalue()
 
     async def _set_image(self, data: NDArray[Any]) -> None:
@@ -386,8 +386,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """
 
         # create image
-        flipped: NDArray[Any] = np.flip(data, axis=0)  # type: ignore
-        image = Image(flipped)
+        image = Image(data)
         image.header["DATE-OBS"] = next_image.date_obs
         image.header["IMAGETYP"] = next_image.image_type.value
 

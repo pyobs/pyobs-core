@@ -333,9 +333,11 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
             )
         # only add all this stuff for OBJECT images
         if "IMAGETYP" not in hdr or hdr["IMAGETYP"] not in ["dark", "bias"]:
-            # projection
-            hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
-            hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
+            # projection, only override if not already set
+            if "CTYPE1" not in hdr:
+                hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
+            if "CTYPE2" not in hdr:
+                hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._fitsheadermixin_rotation is not None:

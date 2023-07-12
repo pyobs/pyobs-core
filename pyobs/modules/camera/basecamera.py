@@ -80,7 +80,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._exposure_time: float = 0.0
         self._image_type = ImageType.OBJECT
 
-        # init camera
+        # __init__.py camera
         self._exposure: Optional[ExposureInfo] = None
         self._camera_status = ExposureStatus.IDLE
 
@@ -273,7 +273,10 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header["IMAGETYP"] = image_type.value
 
         # add fits headers and format filename
+        print('BEFORE ADDING HEADERS Before')
+        print(header_futures_before)
         await self.add_requested_fits_headers(image, header_futures_before)
+        print('BEFORE ADDING HEADERS After')
         await self.add_requested_fits_headers(image, header_futures_after)
         await self.add_fits_headers(image)
         filename = self.format_filename(image)

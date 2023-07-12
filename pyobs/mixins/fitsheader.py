@@ -61,7 +61,8 @@ class FitsHeaderMixin:
         Returns:
             Futures from all modules.
         """
-
+        print('REQUEST HEADERS')
+        print(self.comm)
         # init
         futures: Dict[str, Coroutine] = {}
 
@@ -70,18 +71,21 @@ class FitsHeaderMixin:
         if module.comm:
             # get clients that provide fits headers
             clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
-
+            print(module.comm.clients)
+            print(clients)
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.debug("Requesting FITS headers from %s...", client)
                 if before:
                     proxy1 = await module.proxy(client, IFitsHeaderBefore)
+                    print(client)
                     futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
                     proxy2 = await module.proxy(client, IFitsHeaderAfter)
                     futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished
+        print(futures)
         return futures
 
     async def add_requested_fits_headers(
@@ -99,7 +103,11 @@ class FitsHeaderMixin:
             # join thread
             log.info("Fetching FITS headers from %s...", client)
             try:
-                headers = await future
+                print('AAAA')
+                print(future)
+                #headers = await future
+                headers = {}
+                print('BBBB')
             except exc.RemoteError as e:
                 log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
                 continue

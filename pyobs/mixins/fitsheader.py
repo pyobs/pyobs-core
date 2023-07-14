@@ -254,7 +254,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: float = 0.0, **kwargs: Any):
+    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: Optional[float] = None, **kwargs: Any):
         """Initialise the mixin.
 
         Args:
@@ -271,7 +271,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_rotation = rotation
 
     @property
-    def rotation(self) -> float:
+    def rotation(self) -> Optional[float]:
         return self._fitsheadermixin_rotation
 
     @property

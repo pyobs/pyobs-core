@@ -29,7 +29,7 @@ class SkyOffsets:
             frame: Coordinate frame to use, or None to use coordinates' own frames.
 
         Returns:
-            Two angles for offset in lat and lon.
+            Two angles for offset in lon and lat.
         """
 
         # convert and return offset

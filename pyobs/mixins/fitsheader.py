@@ -61,8 +61,7 @@ class FitsHeaderMixin:
         Returns:
             Futures from all modules.
         """
-        print('REQUEST HEADERS')
-        print(self.comm)
+
         # init
         futures: Dict[str, Coroutine] = {}
 
@@ -71,21 +70,18 @@ class FitsHeaderMixin:
         if module.comm:
             # get clients that provide fits headers
             clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
-            print(module.comm.clients)
-            print(clients)
+
             # create and run a threads in which the fits headers are fetched
             for client in clients:
                 log.debug("Requesting FITS headers from %s...", client)
                 if before:
                     proxy1 = await module.proxy(client, IFitsHeaderBefore)
-                    print(client)
                     futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
                 else:
                     proxy2 = await module.proxy(client, IFitsHeaderAfter)
                     futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
 
         # finished
-        print(futures)
         return futures
 
     async def add_requested_fits_headers(
@@ -103,11 +99,7 @@ class FitsHeaderMixin:
             # join thread
             log.info("Fetching FITS headers from %s...", client)
             try:
-                print('AAAA')
-                print(future)
-                #headers = await future
-                headers = {}
-                print('BBBB')
+                headers = await future
             except exc.RemoteError as e:
                 log.warning("Could not fetch FITS headers from %s: %s.", client, str(e))
                 continue
@@ -262,7 +254,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: float = 0.0, **kwargs: Any):
+    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: Optional[float] = None, **kwargs: Any):
         """Initialise the mixin.
 
         Args:
@@ -279,7 +271,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_rotation = rotation
 
     @property
-    def rotation(self) -> float:
+    def rotation(self) -> Optional[float]:
         return self._fitsheadermixin_rotation
 
     @property
@@ -341,9 +333,11 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
             )
         # only add all this stuff for OBJECT images
         if "IMAGETYP" not in hdr or hdr["IMAGETYP"] not in ["dark", "bias"]:
-            # projection
-            hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
-            hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
+            # projection, only override if not already set
+            if "CTYPE1" not in hdr:
+                hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
+            if "CTYPE2" not in hdr:
+                hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._fitsheadermixin_rotation is not None:

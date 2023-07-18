@@ -281,13 +281,13 @@ class DummyTelescope(
         Returns:
             Dictionary containing FITS headers.
         """
-        print('DUMMYTELESCOPE: GET_FITS_HEADER_BEFORE from Basetelescope')
+
         # fetch from BaseTelescope
         hdr = await BaseTelescope.get_fits_header_before(self)
-        print('DUMMYTELESCOPE: telescope_focus')
+
         # focus
         hdr["TEL-FOCU"] = (self._telescope.focus, "Focus position [mm]")
-        print('DUMMYTELESCOPE: return')
+
         # finished
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 

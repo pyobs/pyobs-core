@@ -51,7 +51,6 @@ def pre_process_yaml(config: str) -> str:
             include = indent + include.replace('\n', indent)
         content = content.replace(match, include)
     # return new yaml
-    print(content)
     return content
 
 def include_parts(include:dict, keys:str) -> str:

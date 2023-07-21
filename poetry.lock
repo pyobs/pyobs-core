@@ -383,14 +383,14 @@ files = [
 
 [[package]]
 name = "asyncinotify"
-version = "2.0.9"
+version = "4.0.2"
 description = "A simple optionally-async python inotify library, focused on simplicity of use and operation, and leveraging modern Python features"
 category = "main"
-optional = true
-python-versions = "*"
+optional = false
+python-versions = ">= 3.6, < 4"
 files = [
-    {file = "asyncinotify-2.0.9-py3-none-any.whl", hash = "sha256:654ec02a77e8dd3fc2de5d354f55d36cfba2b1a3c2120e5346d756fb9a1cad39"},
-    {file = "asyncinotify-2.0.9.tar.gz", hash = "sha256:aa26928afaad9faf5e9da75f256bf35caf66d9946d35a6fe1947eb12a384906f"},
+    {file = "asyncinotify-4.0.2-py3-none-any.whl", hash = "sha256:1a7cbbb1a87cfb24e6950aa8f8e5ed867f94358ef324f7ebb6129b5cbcedf81d"},
+    {file = "asyncinotify-4.0.2.tar.gz", hash = "sha256:bcac19425b1b418bbbc4d31193ea3c39e24343cd7ddff2074ae7b599f1a04829"},
 ]
 
 [[package]]
@@ -868,7 +868,7 @@ name = "docutils"
 version = "0.20.1"
 description = "Docutils -- Python Documentation Utilities"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "docutils-0.20.1-py3-none-any.whl", hash = "sha256:96f387a2c5562db4476f09f13bbab2192e764cac08ebbf3a34a95d9b1e4a59d6"},
@@ -1335,7 +1335,7 @@ name = "lockfile"
 version = "0.12.2"
 description = "Platform-independent file locking module"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "lockfile-0.12.2-py2.py3-none-any.whl", hash = "sha256:6c3cb24f344923d30b2785d5ad75182c8ea7ac1b6171b08657258ec7429d50fa"},
@@ -2140,23 +2140,23 @@ testing = ["coverage (>=6.2)", "flaky (>=3.5.0)", "hypothesis (>=5.7.1)", "mypy 
 
 [[package]]
 name = "python-daemon"
-version = "2.3.2"
+version = "3.0.1"
 description = "Library to implement a well-behaved Unix daemon process."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3"
 files = [
-    {file = "python-daemon-2.3.2.tar.gz", hash = "sha256:3deeb808e72b6b89f98611889e11cc33754f5b2c1517ecfa1aaf25f402051fb5"},
-    {file = "python_daemon-2.3.2-py3-none-any.whl", hash = "sha256:01d26358598f8c3f5fc6de553e2f3080ffc59cf89102d7ee8098f33c72b3c04c"},
+    {file = "python-daemon-3.0.1.tar.gz", hash = "sha256:6c57452372f7eaff40934a1c03ad1826bf5e793558e87fef49131e6464b4dae5"},
+    {file = "python_daemon-3.0.1-py3-none-any.whl", hash = "sha256:42bb848a3260a027fa71ad47ecd959e471327cb34da5965962edd5926229f341"},
 ]
 
 [package.dependencies]
 docutils = "*"
 lockfile = ">=0.10"
-setuptools = "*"
+setuptools = ">=62.4.0"
 
 [package.extras]
-devel = ["coverage", "docutils", "testscenarios (>=0.4)", "testtools", "twine"]
+devel = ["coverage", "docutils", "isort", "testscenarios (>=0.4)", "testtools", "twine"]
 test = ["coverage", "docutils", "testscenarios (>=0.4)", "testtools"]
 
 [[package]]
@@ -3071,4 +3071,4 @@ full = ["aiohttp", "astroplan", "asyncinotify", "ccdproc", "lmfit", "pandas", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "dad88fdc674f9f556fda8ccc2eb94b9f4e7f9733b54259961a4a6cfeaa8eaf9c"
+content-hash = "b9536289dcf599a01d89f522fa68046d092e132228269c7a722d8c34fcd01c62"

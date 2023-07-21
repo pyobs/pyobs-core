@@ -3,23 +3,27 @@ from typing import Any, Dict
 from pyobs.robotic.scripts import Script
 
 
-class ModeSelector(Script):
-    """Script for running a mode selection."""
+class BaseMotor(Module, IMode):
+    """Class for the Selection of Modus (Spectroscopy or Photometry)."""
 
-    __module__ = "pyobs.modules.robotic"
+    __module__ = "pyobs.modules.selector"
 
     def __init__(
-            self,
-            config: Dict[str, Any],
-            **kwargs: Any,
+        self,
+        basis,
+        **kwargs: Any,
     ):
-        """Initialize a new ModeSelector.
+        """Creates a new BaseMotor.
 
         Args:
-            script: Config for script to run.
         """
+        Module.__init__(self, **kwargs)
 
-        Script.__init__(self, **kwargs)
+        # check
+        if self.comm is None:
+            logging.warning("No comm module given!")
+        self.basis = basis
+
         self.modi     = config['modi']
         self.motor    = await self.proxy(config['motor'])
         self.mode_aim = config['mode_aim']
@@ -46,3 +50,36 @@ class ModeSelector(Script):
         await self.motor.move_to(self.modi[mode_aim])
         logging.info('Mode %s ready.', mode_aim)
         return
+
+
+
+    @abstractmethod
+    async def list_modes(self, **kwargs: Any) -> List[str]:
+        """List available modes.
+
+        Returns:
+            List of available modes.
+        """
+        ...
+
+    @abstractmethod
+    async def set_mode(self, mode_name: str, **kwargs: Any) -> None:
+        """Set the current mode.
+
+        Args:
+            mode_name: Name of mode to set.
+
+        Raises:
+            ValueError: If an invalid mode was given.
+            MoveError: If mode wheel cannot be moved.
+        """
+        ...
+
+    @abstractmethod
+    async def get_mode(self, **kwargs: Any) -> str:
+        """Get currently set mode.
+
+        Returns:
+            Name of currently set mode.
+        """
+        ...

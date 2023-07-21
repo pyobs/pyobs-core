@@ -26,7 +26,12 @@ class ScriptRunner(Module, IAutonomous):
         Module.__init__(self, **kwargs)
 
         # store
-        self._script = self.add_child_object(script, Script, configuration={})
+        self.script = script
+        if 'comm' in script.keys():
+            copy_comm = False
+        else:
+            copy_comm = True
+        self._script = self.add_child_object(script, Script, configuration={}, copy_comm=copy_comm)
 
         # add thread func
         self.add_background_task(self._run_thread, False)

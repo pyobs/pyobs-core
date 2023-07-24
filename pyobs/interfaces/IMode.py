@@ -19,15 +19,15 @@ class IMode(IMotion, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def set_mode(self, mode_name: str, **kwargs: Any) -> None:
+    async def set_mode(self, mode: str, **kwargs: Any) -> None:
         """Set the current mode.
 
         Args:
-            mode_name: Name of mode to set.
+            mode: Name of mode to set.
 
         Raises:
             ValueError: If an invalid mode was given.
-            MoveError: If mode wheel cannot be moved.
+            MoveError: If mode selector cannot be moved.
         """
         ...
 

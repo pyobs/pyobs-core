@@ -22,6 +22,13 @@ def pre_process_yaml(config: str) -> str:
             include = indent + include.replace('\n', indent)
         content = content.replace(match, include)
     # return new yaml
+    print(content)
+   # with open('yaml_temp.yaml', 'w') as f:
+   #     f.write(content)
+   # with StringIO(content) as f:
+   #     content = yaml.safe_load(f)
+   #     content = yaml.dump(content, default_flow_style=False, indent=2)
+   #     print(content)
     return content
 
 def include_parts(include:dict, keys:str) -> str:

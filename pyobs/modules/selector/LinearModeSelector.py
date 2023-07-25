@@ -14,22 +14,23 @@ class LinearModeSelector(Module, IMode):
 
     def __init__(
         self,
-        config,
+        modes: dict,
+        motor: str,
         **kwargs: Any,
     ):
         """Creates a new LinearModeSelector.
-
         Args:
+            modes: dictionary of available modes in the form {name: position}
+            motor: name of the motor used to set the modes
         """
         Module.__init__(self, **kwargs)
 
         # check
         if self.comm is None:
             logging.warning("No comm module given!")
-        self.basis = config['basis']
 
-        self.modes    = config['modes']
-        self.motor    = await self.proxy(config['motor'])
+        self.modes = modes
+        self.motor = await self.proxy(motor)
 
     @abstractmethod
     async def list_modes(self) -> List[str]:
@@ -69,7 +70,7 @@ class LinearModeSelector(Module, IMode):
         for mode, mode_pos in self.modes.items():
             if pos_current == mode_pos:
                 return mode
-        logging.warning('Neither photometry nor spectroscopy mode selected')
+        logging.warning('None of the available modes selected. Available modes are: %s', self.list_modes())
         return 'undefined'
 
 
@@ -95,7 +96,7 @@ class LinearModeSelector(Module, IMode):
         Raises:
             ParkError: If device could not be parked.
         """
-        self.motor.move_to(self.basis)
+        self.motor.to_basis()
 
     @abstractmethod
     async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:

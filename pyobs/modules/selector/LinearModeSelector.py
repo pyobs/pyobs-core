@@ -39,7 +39,7 @@ class LinearModeSelector(Module, IMode):
         Returns:
             List of available modes.
         """
-        return self.modes.keys()
+        return list(self.modes.keys())
 
     @abstractmethod
     async def set_mode(self, mode: str) -> None:
@@ -87,7 +87,7 @@ class LinearModeSelector(Module, IMode):
         Raises:
             InitError: If device could not be initialized.
         """
-        log.error("Not implemented")
+        logging.error("Not implemented")
 
     @abstractmethod
     async def park(self, **kwargs: Any) -> None:
@@ -108,7 +108,8 @@ class LinearModeSelector(Module, IMode):
         Returns:
             A string from the Status enumerator.
         """
-        log.error("Not implemented")
+        logging.error("Not implemented")
+        return MotionStatus.ERROR
 
     @abstractmethod
     async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
@@ -117,4 +118,4 @@ class LinearModeSelector(Module, IMode):
         Args:
             device: Name of device to stop, or None for all.
         """
-        log.error("Not implemented")
+        logging.error("Not implemented")

@@ -34,9 +34,6 @@ def pre_process_yaml(config: str) -> str:
         content = replace_aliases(matches_anchor, path+'/'+filename, content)
 
     # return new yaml
-    print('--------CONTENT----------')
-    print(content)
-    print('_________________________')
     return content
 
 

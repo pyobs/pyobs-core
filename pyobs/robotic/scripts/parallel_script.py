@@ -23,7 +23,7 @@ class ParallelRunner(Script):
         """Initialize a new ParallelRunner.
 
         Args:
-            scripts: scripts for script to run.
+            scripts: list or dict of scripts to run in parallel.
         """
         Script.__init__(self, **kwargs)
 

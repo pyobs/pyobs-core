@@ -20,7 +20,7 @@ class SequentialRunner(Script):
         """Initialize a new SequentialRunner.
 
         Args:
-            script: Config for script to run.
+            script: list or dict of scripts to run in a sequence.
         """
         Script.__init__(self, **kwargs)
         if isinstance(scripts, Dict):

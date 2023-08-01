@@ -19,16 +19,19 @@ def pre_process_yaml(config: str) -> str:
     with open(config, "r") as f:
         content = f.read()
     # find all include statements and its indentation level
-    pattern = r"((\s*)?\{include (\S*)( \S*)?\})"
+    pattern = r"((\s*)?(-\s*)?\{include (\S*)( \S*)?\})"
     matches = re.findall(pattern, content)
-    for match, indent, filename, key in matches:
+    for match, indent, tick, filename, key in matches:
         with StringIO(pre_process_yaml(path+'/'+filename)) as f:
             include_full = yaml.safe_load(f)
             include = include_parts(include_full, key)
         include = yaml.dump(include, default_flow_style=False, indent=2)
         # ensure indentation level to be conserved
-        if indent is not '':
-            include = indent + include.replace('\n', indent)
+        if tick != '':
+            include = tick + include
+        if indent != '':
+            indent_newline = indent + ' '*len(tick)
+            include = indent + include.replace('\n', indent_newline)
         matches_anchor = reload_anchors(path+'/'+filename)
         content = content.replace(match, include)
         content = replace_aliases(matches_anchor, path+'/'+filename, content)

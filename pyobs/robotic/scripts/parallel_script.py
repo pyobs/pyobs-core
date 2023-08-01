@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 
 from pyobs.modules.robotic import ScriptRunner
 from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -17,23 +17,27 @@ class ParallelRunner(Script):
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        scripts: Union[List[Dict[str, Any]], Dict[str, Any]],
         **kwargs: Any,
     ):
         """Initialize a new ParallelRunner.
 
         Args:
-            script: Config for script to run.
+            scripts: list or dict of scripts to run in parallel.
         """
-        # TODO: allow list of scripts as input
         Script.__init__(self, **kwargs)
-        self._config = config
-        scripts = []
-        for key in config.keys():
-            config_part = config[key]
-            config_part['comm'] = self.comm
-            scripts.append(config_part)
-        self.scripts = scripts
+
+        if isinstance(scripts, Dict):
+            scripts_ = []
+            for key in scripts.keys():
+                script = scripts[key]
+                script['comm'] = self.comm
+                scripts_.append(script)
+            self.scripts = scripts_
+        elif isinstance(scripts, List):
+            for script in scripts:
+                script['comm'] = self.comm
+            self.scripts = scripts
 
     async def run(self,
                   task_runner: TaskRunner,
@@ -42,5 +46,6 @@ class ParallelRunner(Script):
                   ) -> None:
         tasks = [ScriptRunner(script)._run_thread() for script in self.scripts]
         await asyncio.gather(*tasks)
+
 
 __all__ = ["ParallelRunner"]

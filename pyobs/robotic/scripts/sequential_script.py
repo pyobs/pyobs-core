@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union, List
 
 from pyobs.modules.robotic import ScriptRunner
 from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -14,28 +14,35 @@ class SequentialRunner(Script):
 
     def __init__(
         self,
-        script: Dict[str, Any],
+        scripts: Union[List[Dict[str, Any]], Dict[str, Any]],
         **kwargs: Any,
     ):
         """Initialize a new SequentialRunner.
 
         Args:
-            script: Config for script to run.
+            script: list or dict of scripts to run in a sequence.
         """
-        # TODO: allow list of scripts as input
         Script.__init__(self, **kwargs)
-        self._script = script
+        if isinstance(scripts, Dict):
+            scripts_ = []
+            for key in scripts.keys():
+                script = scripts[key]
+                script['comm'] = self.comm
+                scripts_.append(script)
+            self.scripts = scripts_
+        elif isinstance(scripts, List):
+            for script in scripts:
+                script['comm'] = self.comm
+            self.scripts = scripts
+
 
     async def run(self,
                   task_runner: TaskRunner,
                   task_schedule: Optional[TaskSchedule] = None,
                   task_archive: Optional[TaskArchive] = None
                   ) -> None:
-        script = self._script
-        for key in script.keys():
-            script_part = script[key]
-            script_part['comm'] = self.comm
-            await ScriptRunner(script_part)._run_thread()
+        for script in self.scripts:
+            await ScriptRunner(script)._run_thread()
         return
 
 __all__ = ["SequentialRunner"]

@@ -2,6 +2,7 @@ import logging
 from pyobs.modules.robotic import ScriptRunner
 from typing import Any, Dict, Optional, Union, List
 
+from pyobs.object import get_object
 from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
 from pyobs.robotic.scripts import Script
 
@@ -23,6 +24,8 @@ class SequentialRunner(Script):
         Args:
             script: list or dict of scripts to run in a sequence.
         """
+        if "configuration" not in kwargs:
+            kwargs["configuration"] = {}
         Script.__init__(self, **kwargs)
 
         for script in scripts:
@@ -39,7 +42,7 @@ class SequentialRunner(Script):
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
         for s in self.scripts:
-            await Script(s).run(task_runner, task_schedule, task_archive)
+            await get_object(s, Script).run(task_runner, task_schedule, task_archive)
 
 
 __all__ = ["SequentialRunner"]

@@ -30,7 +30,6 @@ class SelectorScript(Script):
         self.mode = mode
         self.selector = await self.proxy(selector)
 
-
     async def can_run(self) -> bool:
         """Whether this config can currently run.
         Returns:
@@ -42,7 +41,6 @@ class SelectorScript(Script):
             return True
         else:
             return False
-
 
     async def run(
         self,

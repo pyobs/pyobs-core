@@ -30,7 +30,10 @@ class DarkBias(Script):
             exptime: exposure time [s], exptime=0 -> Bias
             binning: binning for dark or bias
         """
+        if "configuration" not in kwargs:
+            kwargs["configuration"] = {}
         Script.__init__(self, **kwargs)
+
         # store modules
         self._camera = camera
 

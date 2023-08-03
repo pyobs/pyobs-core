@@ -162,7 +162,7 @@ class HttpFile(VFSFile):
                     log.error("Wrong credentials for uploading file.")
                     raise FileNotFoundError
                 elif response.status != 200:
-                    log.error("Could not upload file to filecache.")
+                    log.error(f"Could not upload file to filecache: {response.status} {response.reason}")
                     raise FileNotFoundError
 
 

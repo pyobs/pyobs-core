@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 import logging
 from typing import Any, Optional, TYPE_CHECKING
@@ -28,7 +29,8 @@ class SelectorScript(Script):
         Script.__init__(self, **kwargs)
         # store modules
         self.mode = mode
-        self.selector = await self.proxy(selector)
+        self.selector = selector
+#        self.selector = await self.proxy(selector)
 
     async def can_run(self) -> bool:
         """Whether this config can currently run.
@@ -36,6 +38,7 @@ class SelectorScript(Script):
             True if script can run now.
         """
         # check if selector is ready
+	self.selector = await self.proxy(selector)
         status = self.selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
             return True
@@ -52,6 +55,7 @@ class SelectorScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
+ 	selector = await self.proxy(self.selector)
         self.selector.set_mode(self.mode)
 
 

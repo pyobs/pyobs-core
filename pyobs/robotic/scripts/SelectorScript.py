@@ -39,7 +39,7 @@ class SelectorScript(Script):
             True if script can run now.
         """
         # check if selector is ready
-        selector = await self.comm.proxy(self.selector_name, IMode)
+        selector = await self.comm.proxy(self.selector_name)
         status = selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
             return True
@@ -56,7 +56,7 @@ class SelectorScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        selector = await self.comm.proxy(self.selector_name, IMode)
+        selector = await self.comm.proxy(self.selector_name)
         selector.set_mode(self.mode)
 
 

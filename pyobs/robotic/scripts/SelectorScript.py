@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional, TYPE_CHECKING
 
+from pyobs.interfaces.IMode import IMode
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import MotionStatus
 
@@ -38,7 +39,7 @@ class SelectorScript(Script):
             True if script can run now.
         """
         # check if selector is ready
-        selector = await self.proxy(self.selector_name)
+        selector = await self.comm.proxy(self.selector_name, IMode)
         status = selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
             return True
@@ -55,7 +56,7 @@ class SelectorScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        selector = await self.proxy(self.selector_name)
+        selector = await self.comm.proxy(self.selector_name, IMode)
         selector.set_mode(self.mode)
 
 

@@ -1,7 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from typing import List, Any
 
-from . import Interface
+from .interface import Interface
+
 
 class IMode(Interface, metaclass=ABCMeta):
     """The module can change modes in a device."""

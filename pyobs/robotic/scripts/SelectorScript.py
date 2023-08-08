@@ -56,8 +56,9 @@ class SelectorScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        selector = await self.comm.proxy(self.selector_name)
-        selector.set_mode(self.mode)
+        selector = await self.comm.proxy(self.selector_name, IMode)
+        print(selector._interfaces)
+        await selector.set_mode(self.mode)
 
 
 __all__ = ["SelectorScript"]

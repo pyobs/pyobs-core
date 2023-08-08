@@ -40,7 +40,7 @@ class SelectorScript(Script):
         """
         # check if selector is ready
         selector = await self.comm.proxy(self.selector_name, IMode)
-        status = selector.get_motion_status()
+        status = await selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
             return True
         else:

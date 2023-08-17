@@ -26,6 +26,9 @@ class SelectorScript(Script):
             mode: mode that will be selected
             selector: name of the mode selector module, e.g. LinearModeSelector
         """
+        if "configuration" not in kwargs:
+            kwargs["configuration"] = {}
+
         Script.__init__(self, **kwargs)
         # store modules
         self.mode = mode

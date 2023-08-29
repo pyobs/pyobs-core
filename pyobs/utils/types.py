@@ -42,7 +42,10 @@ def iterate_params(
 
     elif isinstance(value, list):
         # handle lists
-        if type_hint and get_origin(type_hint) == list:
+        if type_hint and get_origin(type_hint) == tuple:
+            # also convert a tuple, if type is actually a tuple
+            return list(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
+        elif type_hint and get_origin(type_hint) == list:
             typ = get_args(type_hint)[0]
             return [iterate_params(v, typ, method) for v in value]
         else:

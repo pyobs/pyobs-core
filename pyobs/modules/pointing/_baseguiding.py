@@ -6,15 +6,16 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.images import Image
+from pyobs.utils.guiding_stat.guiding_stat_calculator import GuidingStatCalculator
 from ._base import BasePointing
 from ...interfaces import ITelescope
 
 log = logging.getLogger(__name__)
 
 
-class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMeta):
+class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter, metaclass=ABCMeta):
     """Base class for guiding modules."""
 
     __module__ = "pyobs.modules.pointing"
@@ -28,6 +29,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
+        guiding_stat: type(object) = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -58,6 +60,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         self._last_header = None
         self._ref_header = None
 
+        self._guiding_stat = GuidingStatCalculator(guiding_stat) if guiding_stat is not None else None
+
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
         log.info("Start auto-guiding...")
@@ -87,12 +91,40 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
         Returns:
             Dictionary containing FITS headers.
         """
+        if self._guiding_stat is not None:
+            self._guiding_stat.init_stat(kwargs["sender"])
 
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
 
         # return header
         return {"AGSTATE": (state, "Autoguider state")}
+
+    async def get_fits_header_after(
+        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+    ) -> Dict[str, Tuple[Any, str]]:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+        hdr = {}
+
+        if self._guiding_stat is None:
+            return hdr
+
+        stat = self._guiding_stat.get_stat(kwargs["sender"])
+
+        if len(stat) < 2:
+            return hdr
+
+        hdr["GUIDESTAT1"] = (stat[0], "Guiding stat for axis 1")
+        hdr["GUIDESTAT2"] = (stat[1], "Guiding stat for axis 2")
+
+        return hdr
 
     async def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
         """Reset guiding.
@@ -192,6 +224,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, metaclass=ABCMe
 
         # get offset
         image = await self.run_pipeline(image)
+
+        # update guiding stat
+        self._guiding_stat.add_data(image)
 
         # get telescope
         try:

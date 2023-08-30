@@ -12,6 +12,11 @@ class GuidingStatCalculator:
         self._sessions = ExposureSessionContainer()
 
     def init_stat(self, client: str) -> None:
+        """
+        Initializes a stat measurement session for a client
+        Args:
+            client: name/id of the client
+        """
         self._sessions.init_session(client)
 
     def _calc_rms(self, data: List[Tuple[float, float]]) -> tuple:
@@ -24,12 +29,26 @@ class GuidingStatCalculator:
         return tuple(rms)
 
     def get_stat(self, client: str) -> Tuple[float, float]:
+        """
+        Retrieves the RMS of the measured stat for a client session.
+        The client session is ended on retrieval.
+        Args:
+            client: id/name of the client
+
+        Returns:
+            RMS of the measured stat
+        """
         data = self._sessions.pop_session(client)
         return self._calc_rms(data)
 
-    def add_data(self, image: Image):
+    def add_data(self, image: Image) -> None:
+        """
+        Adds metadata from an image to all client measurement sessions.
+        Args:
+            image: Image witch metadata
+        """
         if not image.has_meta(self._stat_meta_class):
-            raise KeyError("Image has not the necessary meta information!")
+            raise KeyError("Image is missing the necessary meta information!")
 
         data = tuple(image.get_meta(self._stat_meta_class).__dict__.values())
 

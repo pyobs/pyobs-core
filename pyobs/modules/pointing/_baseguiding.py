@@ -156,7 +156,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             return None
 
         # we only accept OBJECT images
-        if image.header["IMAGETYP"] != "object":
+        if image.header["IMAGETYP"] not in ["object", "guiding"]:
             return None
 
         # reference header?

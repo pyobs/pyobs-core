@@ -1,14 +1,18 @@
+import logging
 from typing import List, Tuple
 
 import numpy as np
 
 from pyobs.images import Image
+from pyobs.object import get_class_from_string
 from pyobs.utils.guiding_stat.exposure_session_container import ExposureSessionContainer
+
+log = logging.getLogger(__name__)
 
 
 class GuidingStatCalculator:
-    def __init__(self, stat_meta_class: type[object]):
-        self._stat_meta_class = stat_meta_class
+    def __init__(self, stat_meta_class: str):
+        self._stat_meta_class = get_class_from_string(stat_meta_class)
         self._sessions = ExposureSessionContainer()
 
     def init_stat(self, client: str) -> None:
@@ -25,7 +29,7 @@ class GuidingStatCalculator:
 
         flattened_data = np.array(list(map(list, zip(*data))))
         data_len = len(flattened_data[0])
-        rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1)/data_len)
+        rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1) / data_len)
         return tuple(rms)
 
     def get_stat(self, client: str) -> Tuple[float, float]:
@@ -47,8 +51,10 @@ class GuidingStatCalculator:
         Args:
             image: Image witch metadata
         """
+
         if not image.has_meta(self._stat_meta_class):
-            raise KeyError("Image is missing the necessary meta information!")
+            log.warning("Image is missing the necessary meta information!")
+            return
 
         data = tuple(image.get_meta(self._stat_meta_class).__dict__.values())
 

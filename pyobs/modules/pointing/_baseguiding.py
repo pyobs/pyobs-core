@@ -29,7 +29,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_stat: type(object) = None,
+        guiding_stat: str = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -92,6 +92,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             Dictionary containing FITS headers.
         """
         if self._guiding_stat is not None:
+            log.info(f"Init {kwargs['sender']}")
             self._guiding_stat.init_stat(kwargs["sender"])
 
         # state
@@ -111,19 +112,22 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         Returns:
             Dictionary containing FITS headers.
         """
-        hdr = {}
+        # state
+        state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
+
+        hdr = {"AGSTATE": (state, "Autoguider state")}
 
         if self._guiding_stat is None:
             return hdr
 
         stat = self._guiding_stat.get_stat(kwargs["sender"])
-
+        log.info(f"Write {kwargs['sender']} {stat} {len(stat)}")
         if len(stat) < 2:
             return hdr
 
-        hdr["GUIDESTAT1"] = (stat[0], "Guiding stat for axis 1")
-        hdr["GUIDESTAT2"] = (stat[1], "Guiding stat for axis 2")
-
+        # return header
+        hdr["GUIDESTAT1"] = (float(stat[0]), "Guiding stat for axis 1")
+        hdr["GUIDESTAT2"] = (float(stat[1]), "Guiding stat for axis 2")
         return hdr
 
     async def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:

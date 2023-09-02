@@ -152,7 +152,7 @@ class NStarOffsets(Offsets, PipelineMixin):
     def _fits2numpy(sources: Table) -> Table:
         """Convert from FITS to numpy conventions for pixel coordinates."""
         for k in ["x", "y", "xmin", "xmax", "ymin", "ymax", "xpeak", "ypeak"]:
-            if k in sources:
+            if k in sources.keys():
                 sources[k] -= 1
         return sources
 

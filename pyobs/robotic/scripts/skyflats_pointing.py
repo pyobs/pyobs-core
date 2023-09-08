@@ -48,8 +48,10 @@ class SkyflatsPointing(Script):
         Raises:
             InterruptedError: If interrupted
         """
+        log.info("Setting pointing for skyflats...")
         pointing_module = await self.comm.proxy(self._pointing, IModule)
         await pointing_module.run()
+        log.info("Pointing for skyflats set.")
 
 
 __all__ = ["SkyflatsPointing"]

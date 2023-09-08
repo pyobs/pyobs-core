@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from astropy.time import Time
+from pyobs.utils.time import Time
 from typing import Union, Optional, TYPE_CHECKING, Dict, Any
 
 from pyobs.object import create_object, Object

@@ -120,6 +120,7 @@ class WeatherSensors(Enum):
         SKYTEMP: Relative sky temperature in °C.
         DEWPOINT: Dew point in °C.
         PARTICLES: Number of particles per m³.
+        SKYMAG: Sky magnitude in mag/arcsec^2
 
     """
 
@@ -133,6 +134,7 @@ class WeatherSensors(Enum):
     SKYTEMP = "skytemp"
     DEWPOINT = "dewpoint"
     PARTICLES = "particles"
+    SKYMAG = "skymag"
 
 
 __all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors"]

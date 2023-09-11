@@ -341,6 +341,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._fitsheadermixin_rotation is not None:
+                hdr["POSANG"] = (self._fitsheadermixin_rotation, "Position angle [deg e of n]")
                 theta_rad = math.radians(self._fitsheadermixin_rotation)
                 cos_theta = math.cos(theta_rad)
                 sin_theta = math.sin(theta_rad)

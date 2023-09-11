@@ -25,6 +25,7 @@ FITS_HEADERS = {
     WeatherSensors.SKYTEMP: ("WS-SKY", "Average sky temperature, C", float),
     WeatherSensors.DEWPOINT: ("WS-TDEW", "Ambient dewpoint average during expsoure, C", float),
     WeatherSensors.PARTICLES: ("WS-DUST", "Average particle count during exposure, ppcm", float),
+    WeatherSensors.SKYMAG: ("SKYMAG", "Sky brightness, mag/arcsec^2", float),
 }
 
 

@@ -1,10 +1,9 @@
 from __future__ import annotations
 import logging
-from typing import Any, Optional, Union, TYPE_CHECKING, Tuple
+from typing import Any, Optional, Union, TYPE_CHECKING
 
-from pyobs.interfaces import IBinning, ICamera, IWindow, IExposureTime, IImageType, IData, IModule
+from pyobs.interfaces import IModule
 from pyobs.robotic.scripts import Script
-from pyobs.utils.enums import ImageType
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
@@ -36,7 +35,11 @@ class SkyflatsPointing(Script):
         Returns:
             True if script can run now.
         """
-        return True
+        pointing_module = await self.comm.proxy(self._pointing, IModule)
+        if pointing_module.is_runnning():
+            return True
+        else:
+            return False
 
     async def run(
         self,

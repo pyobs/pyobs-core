@@ -27,7 +27,7 @@ class ScriptRunner(Module, IAutonomous):
 
         # store
         self.script = script
-        if 'comm' in script.keys():
+        if "comm" in script.keys():
             copy_comm = False
         else:
             copy_comm = True

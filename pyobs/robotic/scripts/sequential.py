@@ -42,7 +42,7 @@ class SequentialRunner(Script):
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
         for s in self.scripts:
-            await get_object(s, Script).run(task_runner, task_schedule, task_archive)
+            await self.get_object(s, Script).run(task_runner, task_schedule, task_archive)
 
 
 __all__ = ["SequentialRunner"]

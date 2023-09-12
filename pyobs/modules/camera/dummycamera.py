@@ -2,7 +2,7 @@ import asyncio
 import glob
 import logging
 from datetime import datetime
-from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING
+from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING, List
 
 from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
@@ -191,6 +191,15 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
+
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+        """List available binnings.
+
+        Returns:
+            List of available binnings as (x, y) tuples.
+        """
+
+        return [(1, 1), (2, 2), (3, 3)]
 
     async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.

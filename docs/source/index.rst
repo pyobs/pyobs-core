@@ -21,6 +21,7 @@ Recipes
    :maxdepth: 1
 
    recipes/simulation
+   recipes/jupyter
 
 Config Examples
 ---------------

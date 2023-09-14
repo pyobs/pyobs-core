@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "1.4.13"
+version = "1.4.14"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -22,21 +22,21 @@ asyncinotify = "^4.0.2"
 sep = { version = "^1.2.1", platform = "linux", optional = true }
 python-daemon = "^3.0.1"
 reproject = { version = "^0.12.0", optional = true }
-pandas = { version = "^2.1.0", optional = true }
-astroplan =  { version = "^0.9", optional = true }
-paramiko = { version = "^3.3.1", optional = true }
-py-expression-eval = { version = "^0.3.14", optional = true }
+pandas = "^2.1.0"
+astroplan =  "^0.9"
+paramiko = "^3.3.1"
+py-expression-eval = "^0.3.14"
 requests = { version = "^2.31.0", optional = true }
 ccdproc = { version = "^2.4.1", optional = true }
 photutils = { version = "^1.9.0", optional = true }
 lmfit = { version = "^1.2.2", optional = true }
 tornado = { version = "^6.3.3", optional = true }
 python-telegram-bot = { version = "^20.5", optional = true }
-aiohttp = { version = "^3.8.5", optional = true }
+aiohttp = "^3.8.5"
 
 [tool.poetry.extras]
-full = ['asyncinotify', 'sep', 'python-daemon', 'reproject', 'pandas', 'astroplan', 'paramiko',
-        'py-expression-eval', 'requests', 'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
+full = ['asyncinotify', 'sep', 'python-daemon', 'reproject', 'pandas', 'paramiko',
+        'requests', 'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
         'aiohttp']
 
 [tool.poetry.dev-dependencies]

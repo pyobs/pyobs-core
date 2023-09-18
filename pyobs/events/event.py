@@ -76,8 +76,8 @@ class EventFactory(object):
             obj.timestamp = obj_dict["timestamp"] if "timestamp" in obj_dict else 0
             return obj
 
-        except ValueError:
-            log.warning("Could not create event %s." % obj_dict["type"])
+        except ValueError as e:
+            log.warning(f"Could not create event {obj_dict['type']}: {e}")
             return None
 
 

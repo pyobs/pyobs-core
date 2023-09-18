@@ -141,7 +141,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 # something went wrong
                 log.warning("Task %s failed.", self._task.name)
                 self._task = None
-                return
+                continue
 
             # send event
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))

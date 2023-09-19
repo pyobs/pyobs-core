@@ -92,7 +92,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             Dictionary containing FITS headers.
         """
         if self._guiding_stat is not None:
-            log.info(f"Init {kwargs['sender']}")
+            log.debug(f"Init {kwargs['sender']}")
             self._guiding_stat.init_stat(kwargs["sender"])
 
         # state
@@ -121,7 +121,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             return hdr
 
         stat = self._guiding_stat.get_stat(kwargs["sender"])
-        log.info(f"Write {kwargs['sender']} {stat} {len(stat)}")
+        log.debug(f"Write {kwargs['sender']} {stat} {len(stat)}")
         if len(stat) < 2:
             return hdr
 

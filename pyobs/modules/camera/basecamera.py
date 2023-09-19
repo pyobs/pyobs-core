@@ -425,18 +425,5 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             bottom_binned = np.ceil((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"])
             hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], bottom_binned), c1)
 
-    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
-        """List available binnings.
-
-        Returns:
-            List of available binnings as (x, y) tuples.
-        """
-
-        warnings.warn(
-            "The default implementation for list_binnings() in BaseCamera will be removed in future versions",
-            DeprecationWarning,
-        )
-        return [(1, 1), (2, 2), (3, 3)]
-
 
 __all__ = ["BaseCamera", "CameraException"]

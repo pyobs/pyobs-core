@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TypeVar, Optional, List, Dict, TYPE_CHECKING
+from typing import Any, TypeVar, Optional, List, Dict, TYPE_CHECKING, Union
 
 from pyobs.object import Object
 
@@ -14,7 +14,7 @@ ProxyClass = TypeVar("ProxyClass")
 
 
 class Script(Object):
-    def __init__(self, configuration: Any, **kwargs: Any):
+    def __init__(self, configuration: Optional[Any], **kwargs: Any):
         """Init Script.
 
         Args:

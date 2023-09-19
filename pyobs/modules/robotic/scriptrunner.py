@@ -27,10 +27,7 @@ class ScriptRunner(Module, IAutonomous):
 
         # store
         self.script = script
-        if 'comm' in script.keys():
-            copy_comm = False
-        else:
-            copy_comm = True
+        copy_comm = "comm" not in script.keys()
         self._script = self.add_child_object(script, Script, configuration={}, copy_comm=copy_comm)
 
         # add thread func

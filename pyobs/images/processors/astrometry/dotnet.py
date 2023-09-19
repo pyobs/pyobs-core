@@ -60,6 +60,8 @@ class AstrometryDotNet(Astrometry):
         # get catalog
         if img.catalog is None:
             log.warning("No catalog found in image.")
+            if self.exceptions:
+                raise exc.ImageError("No catalog found in image.")
             return image
         cat = img.catalog[["x", "y", "flux", "peak"]].to_pandas().dropna()
 
@@ -67,6 +69,8 @@ class AstrometryDotNet(Astrometry):
         if cat is None or len(cat) < 3:
             log.warning("Not enough sources for astrometry.")
             img.header["WCSERR"] = 1
+            if self.exceptions:
+                raise exc.ImageError("Not enough sources for astrometry.")
             return img
 
         # sort it, remove saturated stars and take N brightest sources
@@ -78,6 +82,8 @@ class AstrometryDotNet(Astrometry):
         if "CDELT1" not in img.header:
             log.warning("No CDELT1 found in header.")
             img.header["WCSERR"] = 1
+            if self.exceptions:
+                raise exc.ImageError("No CDELT1 found in header.")
             return img
 
         # build request data

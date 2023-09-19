@@ -89,6 +89,36 @@ previously loaded.
     from pyobs.comm.xmpp import XmppComm
     comm = XmppComm(jid=COMM_JID, password=COMM_PWD, use_tls=True)
 
+Open Comms
+^^^^^^^^^^
+
+   Open a channel, lieutenant.
+
+Opening the comm module connects it to the pyobs network, so we can
+communicate with other modules in the network
+
+.. code:: ipython3
+
+    await comm.open()
+
+If everything works and if other modules are connected to the network,
+the following command should return the names of these modules:
+
+.. code:: ipython3
+
+    comm.clients
+
+Closing Comms
+^^^^^^^^^^^^^
+
+At the end of a session, the comm module should be closed again. This
+signals to the rest of the network, that the module is not longer
+available.
+
+.. code:: ipython3
+
+    await comm.close()
+
 Virtual File System (VFS)
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -109,36 +139,6 @@ address below, with your own address.
                 "download": "https://iag50srv.astro.physik.uni-goettingen.de/pyobs/filecache/"
         }})
 
-Opening the module
-~~~~~~~~~~~~~~~~~~
-
-Finally we can create the module with the comm and vfs modules.
-
-.. code:: ipython3
-
-    from pyobs.modules import Module
-    module = Module(comm=comm, vfs=vfs)
-
-Opening the module connects it to the pyobs network via the supplied
-comm module. If everything works, ``module.opened()`` should return
-``True``.
-
-.. code:: ipython3
-
-    await module.open()
-    module.opened
-
-Closing the module
-~~~~~~~~~~~~~~~~~~
-
-At the end of a session, the module should be closed again. This signals
-to the rest of the network, that the module is not longer available.
-
-.. code:: ipython3
-
-    module.close()
-    module.opened
-
 Usage
 -----
 
@@ -156,7 +156,7 @@ module which it is proxying, in this case, the name of the telescope.
     from pyobs.interfaces import ITelescope
     
     TELESCOPE_NAME = "telescope"
-    telescope = await module.proxy(TELESCOPE_NAME, ITelescope)
+    telescope = await comm.proxy(TELESCOPE_NAME, ITelescope)
 
 The proxy telescope then can be used to get the orientation of the
 telescope…
@@ -188,7 +188,7 @@ proxy for a module with the “username” ``"sbig6303e"`` as the camera.
     from pyobs.interfaces import ICamera
     
     CAMERA_NAME = "sbig6303e"
-    camera = await module.proxy(CAMERA_NAME, ICamera)
+    camera = await comm.proxy(CAMERA_NAME, ICamera)
 
 With the proxy object, we then can set the exposure time and image type.
 

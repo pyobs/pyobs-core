@@ -94,8 +94,8 @@ Open Comms
 
    Open a channel, lieutenant.
 
-Opening the comm module connects it to the pyobs network, so we can
-communicate with other modules in the network
+By opening the comm module, we connect it to the pyobs network, so that
+we can communicate with the other modules on the network.
 
 .. code:: ipython3
 

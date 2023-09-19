@@ -14,7 +14,7 @@ ProxyClass = TypeVar("ProxyClass")
 
 
 class Script(Object):
-    def __init__(self, configuration: Optional[Any], **kwargs: Any):
+    def __init__(self, configuration: Optional[Any] = None, **kwargs: Any):
         """Init Script.
 
         Args:

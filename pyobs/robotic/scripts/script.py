@@ -25,7 +25,7 @@ class Script(Object):
 
         # store
         self.exptime_done: float = 0.0
-        self.configuration = configuration
+        self.configuration = {} if configuration is None else configuration
 
     async def can_run(self) -> bool:
         """Whether this config can currently run."""

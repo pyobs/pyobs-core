@@ -1,18 +1,89 @@
-import asyncio
 from abc import ABCMeta
+from collections import defaultdict
 from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
+
+import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.utils.time import Time
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.images import Image
-from pyobs.utils.guiding_stat.guiding_stat_calculator import GuidingStatCalculator
 from ._base import BasePointing
+from ...images.meta import PixelOffsets
 from ...interfaces import ITelescope
 
 log = logging.getLogger(__name__)
+
+
+class _GuidingStatistics:
+    """Calculates statistics for guiding."""
+
+    def __init__(self):
+        self._sessions: Dict[str, List[Tuple[float, float]]] = defaultdict(list)
+
+    def reset_stats(self, client: str) -> None:
+        """
+        Initializes a stat measurement session for a client.
+
+        Args:
+            client: name/id of the client
+        """
+        if client in self._sessions:
+            del self._sessions[client]
+
+    @staticmethod
+    def _calc_rms(data: List[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
+        """Calculates RMS on data.
+
+        Args:
+            data: Data to calculate RMS for.
+
+        Returns:
+            Tuple of RMS.
+        """
+        if len(data) == 0:
+            return None
+
+        flattened_data = np.array(list(map(list, zip(*data))))
+        data_len = len(flattened_data[0])
+        rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1) / data_len)
+        return tuple(rms)
+
+    def get_stats(self, client: str) -> Optional[Tuple[float, float]]:
+        """
+        Retrieves the RMS of the measured stat for a client session.
+        The client session is ended on retrieval.
+        Args:
+            client: id/name of the client
+
+        Returns:
+            RMS of the measured stat
+        """
+        data = self._sessions.pop(client)
+        return self._calc_rms(data)
+
+    def add_data(self, image: Image) -> None:
+        """
+        Adds metadata from an image to all client measurement sessions.
+        Args:
+            image: Image witch metadata
+        """
+
+        # what kind of offsets do we have?
+        if image.has_meta(PixelOffsets):
+            # get data
+            meta = image.get_meta(PixelOffsets)
+
+            # add to all
+            for k in self._sessions.keys():
+                self._sessions[k].append((meta.dx, meta.dy))
+
+        else:
+            # unsupported
+            log.warning("Image is missing the necessary meta information!")
+            raise KeyError("Unknown meta.")
 
 
 class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter, metaclass=ABCMeta):
@@ -29,7 +100,6 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_stat: str = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -60,7 +130,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._last_header = None
         self._ref_header = None
 
-        self._guiding_stat = GuidingStatCalculator(guiding_stat) if guiding_stat is not None else None
+        # stats
+        self._statistics = _GuidingStatistics()
 
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
@@ -91,9 +162,9 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         Returns:
             Dictionary containing FITS headers.
         """
-        if self._guiding_stat is not None:
-            log.debug(f"Init {kwargs['sender']}")
-            self._guiding_stat.init_stat(kwargs["sender"])
+
+        # reset statistics
+        self._statistics.reset_stats(kwargs["sender"])
 
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
@@ -112,22 +183,21 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         Returns:
             Dictionary containing FITS headers.
         """
+
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
-
         hdr = {"AGSTATE": (state, "Autoguider state")}
 
-        if self._guiding_stat is None:
+        # get statistics
+        stats = self._statistics.get_stats(kwargs["sender"])
+        if stats is None or len(stats) < 2:
             return hdr
 
-        stat = self._guiding_stat.get_stat(kwargs["sender"])
-        log.debug(f"Write {kwargs['sender']} {stat} {len(stat)}")
-        if len(stat) < 2:
-            return hdr
+        # add to header
+        hdr["GUIDING RMS1"] = (float(stats[0]), "RMS for guiding on axis 1")
+        hdr["GUIDING RMS2"] = (float(stats[1]), "RMS for guiding on axis 2")
 
-        # return header
-        hdr["GUIDESTAT1"] = (float(stat[0]), "Guiding stat for axis 1")
-        hdr["GUIDESTAT2"] = (float(stat[1]), "Guiding stat for axis 2")
+        # finished
         return hdr
 
     async def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
@@ -145,7 +215,6 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         await self.reset_pipeline()
         if image is not None:
             # if image is given, process it
-            loop = asyncio.get_running_loop()
             await self.run_pipeline(image)
 
     async def _process_image(self, image: Image) -> Optional[Image]:
@@ -230,7 +299,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         image = await self.run_pipeline(image)
 
         # update guiding stat
-        self._guiding_stat.add_data(image)
+        self._statistics.add_data(image)
 
         # get telescope
         try:

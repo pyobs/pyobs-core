@@ -66,7 +66,6 @@ class Telegram(Module):
 
         # get dispatcher
         self._application = Application.builder().token("TOKEN").build()
-        dispatcher = self._updater.dispatcher  # type: ignore
 
         # add command handler
         self._application.add_handler(CommandHandler("start", self._command_start))
@@ -83,9 +82,9 @@ class Telegram(Module):
 
         # load storage file
         try:
-            dispatcher.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
+            self._application.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
         except FileNotFoundError:
-            dispatcher.bot_data["storage"] = {}
+            self._application.bot_data["storage"] = {}
 
         # start polling
         self._application.start_polling(poll_interval=0.1)
@@ -509,7 +508,7 @@ class Telegram(Module):
         # get storage
         if self._application is None:
             raise ValueError("No update initialised.")
-        s = self._updater.dispatcher.bot_data["storage"]  # type: ignore
+        s = self._application.bot_data["storage"]  # type: ignore
 
         # loop users
         for user_id, user in s["users"].items():

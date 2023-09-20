@@ -43,7 +43,7 @@ class _GuidingStatistics:
         Returns:
             Tuple of RMS.
         """
-        if len(data) == 0:
+        if len(data) < 3:
             return None
 
         flattened_data = np.array(list(map(list, zip(*data))))
@@ -51,18 +51,22 @@ class _GuidingStatistics:
         rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1) / data_len)
         return tuple(rms)
 
-    def get_stats(self, client: str) -> Optional[Tuple[float, float]]:
-        """
-        Retrieves the RMS of the measured stat for a client session.
-        The client session is ended on retrieval.
+    def add_to_header(self, client: str, header: Dict[str, Any]):
+        """ "Add statistics to given header.
+
         Args:
             client: id/name of the client
-
-        Returns:
-            RMS of the measured stat
+            header: Header dict to add statistics to.
         """
+
+        # get dataset
         data = self._sessions.pop(client)
-        return self._calc_rms(data)
+
+        # calculate rms
+        rms = self._calc_rms(data)
+        if rms is not None:
+            header["GUIDING RMS1"] = (float(rms[0]), "RMS for guiding on axis 1")
+            header["GUIDING RMS2"] = (float(rms[1]), "RMS for guiding on axis 2")
 
     def add_data(self, image: Image) -> None:
         """
@@ -188,14 +192,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
         hdr = {"AGSTATE": (state, "Autoguider state")}
 
-        # get statistics
-        stats = self._statistics.get_stats(kwargs["sender"])
-        if stats is None or len(stats) < 2:
-            return hdr
-
-        # add to header
-        hdr["GUIDING RMS1"] = (float(stats[0]), "RMS for guiding on axis 1")
-        hdr["GUIDING RMS2"] = (float(stats[1]), "RMS for guiding on axis 2")
+        # add statistics
+        self._statistics.add_to_header(kwargs["sender"], hdr)
 
         # finished
         return hdr

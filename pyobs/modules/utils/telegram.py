@@ -65,7 +65,7 @@ class Telegram(Module):
         self._loop = asyncio.get_running_loop()
 
         # get dispatcher
-        self._application = Application.builder().token("TOKEN").build()
+        self._application = Application.builder().token(self._token).build()
 
         # add command handler
         self._application.add_handler(CommandHandler("start", self._command_start))
@@ -87,7 +87,9 @@ class Telegram(Module):
             self._application.bot_data["storage"] = {}
 
         # start polling
-        self._application.start_polling(poll_interval=0.1)
+        await self._application.initialize()
+        await self._application.updater.start_polling()
+        await self._application.start()
 
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)
@@ -98,7 +100,9 @@ class Telegram(Module):
 
         # stop telegram
         if self._application is not None:
+            await self._application.updater.stop()
             await self._application.stop()
+            await self._application.shutdown()
 
     async def _save_storage(self, context: CallbackContext) -> None:
         """Save storage file.

@@ -1,15 +1,16 @@
-from abc import ABCMeta
-from collections import defaultdict
-from typing import Union, List, Dict, Tuple, Any, Optional
 import logging
+from abc import ABCMeta, abstractmethod, ABC
+from collections import defaultdict
+from datetime import datetime
+from typing import Union, List, Dict, Tuple, Any, Optional
 
+import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-import astropy.units as u
 
-from pyobs.utils.time import Time
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.images import Image
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
+from pyobs.utils.time import Time
 from ._base import BasePointing
 from ...images.meta import PixelOffsets
 from ...interfaces import ITelescope
@@ -17,25 +18,61 @@ from ...interfaces import ITelescope
 log = logging.getLogger(__name__)
 
 
-class _GuidingStatistics:
+class _GuidingStatistics(ABC):
     """Calculates statistics for guiding."""
 
     def __init__(self):
-        self._sessions: Dict[str, List[Tuple[float, float]]] = defaultdict(list)
+        self._sessions: Dict[str, List[Any]] = defaultdict(list)
 
-    def reset_stats(self, client: str) -> None:
+    def init_stats(self, client: str) -> None:
         """
-        Initializes a stat measurement session for a client.
+        Inits a stat measurement session for a client.
 
         Args:
             client: name/id of the client
         """
-        if client in self._sessions:
-            del self._sessions[client]
+        self._sessions[client] = []
 
+    @abstractmethod
+    def _build_header(self, data: Any) -> Dict[str, Tuple[Any, str]]:
+        raise NotImplementedError
+
+    def add_to_header(self, client: str, header: Dict[str, Tuple[Any, str]]) -> Dict[str, Tuple[Any, str]]:
+        """
+        Add statistics to given header.
+
+        Args:
+            client: id/name of the client
+            header: Header dict to add statistics to.
+        """
+
+        data = self._sessions.pop(client)
+        session_header = self._build_header(data)
+
+        return header | session_header
+
+    @abstractmethod
+    def _get_session_data(self, input_data: Any) -> Any:
+        raise NotImplementedError
+
+    def add_data(self, input_data: Any) -> None:
+        """
+        Adds data to all client measurement sessions.
+        Args:
+            input_data: Image witch metadata
+        """
+
+        data = self._get_session_data(input_data)
+
+        for k in self._sessions.keys():
+            self._sessions[k].append(data)
+
+
+class _GuidingStatisticsPixelOffset(_GuidingStatistics):
     @staticmethod
     def _calc_rms(data: List[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
-        """Calculates RMS on data.
+        """
+        Calculates RMS of data.
 
         Args:
             data: Data to calculate RMS for.
@@ -51,43 +88,71 @@ class _GuidingStatistics:
         rms = np.sqrt(np.sum(np.power(flattened_data, 2), axis=1) / data_len)
         return tuple(rms)
 
-    def add_to_header(self, client: str, header: Dict[str, Any]):
-        """ "Add statistics to given header.
-
-        Args:
-            client: id/name of the client
-            header: Header dict to add statistics to.
-        """
-
-        # get dataset
-        data = self._sessions.pop(client)
-
-        # calculate rms
+    def _build_header(self, data: List[Tuple[float, float]]) -> Dict[str, Tuple[Any, str]]:
+        header = {}
         rms = self._calc_rms(data)
+
         if rms is not None:
             header["GUIDING RMS1"] = (float(rms[0]), "RMS for guiding on axis 1")
             header["GUIDING RMS2"] = (float(rms[1]), "RMS for guiding on axis 2")
 
-    def add_data(self, image: Image) -> None:
-        """
-        Adds metadata from an image to all client measurement sessions.
-        Args:
-            image: Image witch metadata
-        """
+        return header
 
-        # what kind of offsets do we have?
-        if image.has_meta(PixelOffsets):
-            # get data
-            meta = image.get_meta(PixelOffsets)
-
-            # add to all
-            for k in self._sessions.keys():
-                self._sessions[k].append((meta.dx, meta.dy))
-
+    def _get_session_data(self, data: Image) -> Tuple[float, float]:
+        if data.has_meta(PixelOffsets):
+            meta = data.get_meta(PixelOffsets)
+            primitive = tuple(meta.__dict__.values())
+            return primitive
         else:
-            # unsupported
             log.warning("Image is missing the necessary meta information!")
             raise KeyError("Unknown meta.")
+
+
+class _GuidingStatisticsUptime(_GuidingStatistics):
+    @staticmethod
+    def _calc_uptime(states: List[Tuple[bool, datetime]]) -> int:
+        uptimes: List[int] = []
+        for i, entry in enumerate(states):
+            state, timestamp = entry
+            # is not closed?
+            if not state or i + 1 == len(states):
+                continue
+
+            uptime = (states[i + 1][1] - timestamp).seconds
+            uptimes.append(uptime)
+
+        return sum(uptimes)
+
+    @staticmethod
+    def _calc_total_time(states: List[Tuple[bool, datetime]]) -> int:
+        initial_time = states[0][1]
+        end_time = states[-1][1]
+        return (end_time - initial_time).seconds
+
+    @staticmethod
+    def _calc_uptime_percentage(states: List[Tuple[bool, datetime]]) -> float:
+        uptime = _GuidingStatisticsUptime._calc_uptime(states)
+        total_time = _GuidingStatisticsUptime._calc_total_time(states)
+
+        """
+        If no time has passed, return 100 if the loop is closed, 0 else.
+        We have to take the second last value in the state array, since the last value is the stop value.
+        """
+        if total_time == 0:
+            return int(states[-2][0]) * 100.0
+
+        return uptime / total_time * 100.0
+
+    def _build_header(self, data: List[Tuple[bool, datetime]]) -> Dict[str, Tuple[Any, str]]:
+        now = datetime.now()
+        data.append((None, now))
+
+        uptime_percentage = self._calc_uptime_percentage(data)
+        return {"GUIDING UPTIME": (uptime_percentage, "Percentage of exposure time the guiding was closed.")}
+
+    def _get_session_data(self, input_data: bool) -> Tuple[bool, datetime]:
+        now = datetime.now()
+        return input_data, now
 
 
 class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter, metaclass=ABCMeta):
@@ -128,14 +193,15 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._pid = pid
         self._reset_at_focus = reset_at_focus
         self._reset_at_filter = reset_at_filter
-        self._loop_closed = False
+        self._set_loop_state(False)
 
         # headers of last and of reference image
         self._last_header = None
         self._ref_header = None
 
         # stats
-        self._statistics = _GuidingStatistics()
+        self._statistics = _GuidingStatisticsPixelOffset()
+        self._uptime = _GuidingStatisticsUptime()
 
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""
@@ -168,7 +234,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         """
 
         # reset statistics
-        self._statistics.reset_stats(kwargs["sender"])
+        self._statistics.init_stats(kwargs["sender"])
+        self._uptime.init_stats(kwargs["sender"])
 
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
@@ -194,6 +261,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
         # add statistics
         self._statistics.add_to_header(kwargs["sender"], hdr)
+        self._uptime.add_to_header(kwargs["sender"], hdr)
 
         # finished
         return hdr
@@ -205,7 +273,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             image: If given, new reference image.
         """
         self._enabled = enabled
-        self._loop_closed = False
+        self._set_loop_state(False)
         self._ref_header = None if image is None else image.header
         self._last_header = None if image is None else image.header
 
@@ -214,6 +282,10 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         if image is not None:
             # if image is given, process it
             await self.run_pipeline(image)
+
+    def _set_loop_state(self, state: bool):
+        self._uptime.add_data(state)
+        self._loop_closed = state
 
     async def _process_image(self, image: Image) -> Optional[Image]:
         """Processes a single image and offsets telescope.
@@ -287,7 +359,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # exposure time too large?
         if self._max_exposure_time is not None and image.header["EXPTIME"] > self._max_exposure_time:
             log.warning("Exposure time too large, skipping auto-guiding for now...")
-            self._loop_closed = False
+            self._set_loop_state(False)
             return None
 
         # remember header
@@ -304,20 +376,20 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             telescope = await self.proxy(self._telescope, ITelescope)
         except ValueError:
             log.error("Given telescope does not exist or is not of correct type.")
-            self._loop_closed = False
+            self._set_loop_state(False)
             return image
 
         # apply offsets
         try:
             if await self._apply(image, telescope, self.location):
-                self._loop_closed = True
+                self._set_loop_state(True)
                 log.info("Finished image.")
             else:
                 log.info("Could not apply offsets.")
-                self._loop_closed = False
+                self._set_loop_state(False)
         except ValueError as e:
             log.info("Could not apply offsets: %s", e)
-            self._loop_closed = False
+            self._set_loop_state(False)
 
         # return image, in case we added important data
         return image

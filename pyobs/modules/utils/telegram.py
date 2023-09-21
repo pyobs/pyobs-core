@@ -538,9 +538,7 @@ class Telegram(Module):
             try:
                 if self._application is None:
                     raise ValueError("No update initialised.")
-                await loop.run_in_executor(
-                    None, partial(self._application.bot.send_message, chat_id=user_id, text=message)
-                )
+                await self._application.bot.send_message(chat_id=user_id, text=message)
 
             except Exception:
                 # something went wrong, sleep a little and queue message again

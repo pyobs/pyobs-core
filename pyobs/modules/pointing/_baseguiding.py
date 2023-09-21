@@ -24,14 +24,19 @@ class _GuidingStatistics(ABC):
     def __init__(self):
         self._sessions: Dict[str, List[Any]] = defaultdict(list)
 
-    def init_stats(self, client: str) -> None:
+    def init_stats(self, client: str, default: Any = None) -> None:
         """
         Inits a stat measurement session for a client.
 
         Args:
             client: name/id of the client
+            default: first entry in session
         """
+
         self._sessions[client] = []
+
+        if default is not None:
+            self._sessions[client].append(self._get_session_data(default))
 
     @abstractmethod
     def _build_header(self, data: Any) -> Dict[str, Tuple[Any, str]]:
@@ -193,7 +198,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._pid = pid
         self._reset_at_focus = reset_at_focus
         self._reset_at_filter = reset_at_filter
-        self._set_loop_state(False)
+        self._loop_closed = False
 
         # headers of last and of reference image
         self._last_header = None
@@ -235,7 +240,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
         # reset statistics
         self._statistics.init_stats(kwargs["sender"])
-        self._uptime.init_stats(kwargs["sender"])
+        self._uptime.init_stats(kwargs["sender"], self._loop_closed)
 
         # state
         state = "GUIDING_CLOSED_LOOP" if self._loop_closed else "GUIDING_OPEN_LOOP"
@@ -260,8 +265,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         hdr = {"AGSTATE": (state, "Autoguider state")}
 
         # add statistics
-        self._statistics.add_to_header(kwargs["sender"], hdr)
-        self._uptime.add_to_header(kwargs["sender"], hdr)
+        hdr = self._statistics.add_to_header(kwargs["sender"], hdr)
+        hdr = self._uptime.add_to_header(kwargs["sender"], hdr)
 
         # finished
         return hdr

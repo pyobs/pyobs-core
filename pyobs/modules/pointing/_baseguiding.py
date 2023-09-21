@@ -153,7 +153,7 @@ class _GuidingStatisticsUptime(_GuidingStatistics):
         data.append((None, now))
 
         uptime_percentage = self._calc_uptime_percentage(data)
-        return {"GUIDING UPTIME": (uptime_percentage, "Percentage of exposure time the guiding was closed.")}
+        return {"GUIDING UPTIME": (uptime_percentage, "Time the guiding loop was closed [%]")}
 
     def _get_session_data(self, input_data: bool) -> Tuple[bool, datetime]:
         now = datetime.now()

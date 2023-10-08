@@ -60,6 +60,8 @@ class _GuidingStatistics:
         """
 
         # get dataset
+        if client not in self._sessions:
+            return
         data = self._sessions.pop(client)
 
         # calculate rms

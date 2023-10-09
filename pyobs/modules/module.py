@@ -182,11 +182,14 @@ class Module(Object, IModule, IConfig):
 
         # check version, only compare major and minor, ignore patch level
         v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
-        if v1.major != v2.major or v1.minor != v2.minor:
-            log.critical(
-                f'Found module "{sender}" with different pyobs version {module_version} (≠{version()}), '
-                f"please update pyobs."
-            )
+        msg = (
+            f'Found module "{sender}" with different pyobs version {module_version} (≠{version()}), '
+            f"please update pyobs."
+        )
+        if v1.major != v2.major:
+            log.critical(msg)
+        elif v1.minor != v2.minor:
+            log.info(msg)
 
         # okay
         return True

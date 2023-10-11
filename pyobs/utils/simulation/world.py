@@ -75,7 +75,7 @@ class SimWorld(Object):
             await self.telescope.open()
 
         # open camera
-        if hasattr(self.telescope, "open"):
+        if hasattr(self.camera, "open"):
             await self.camera.open()
 
     async def close(self) -> None:

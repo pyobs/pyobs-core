@@ -110,7 +110,7 @@ The command accepts the following optional parameters:
     One of critical, error, warning, info, debug. Indicates the level of logging.
 
 :--chuid <user>\:<group>:
-    Switches user to the given user in the given group when starting/stopping a module.
+    Switches user to the given user in the given group when starting/stopping a module, defaults to **pyobs**.
 
 :--start-stop-daemon <path>:
     The path to the :program:`start-stop-daemon` executable, defaults to **/sbin/start-stop-daemon**.

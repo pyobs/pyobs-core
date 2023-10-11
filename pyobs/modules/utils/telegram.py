@@ -8,7 +8,7 @@ from pprint import pprint
 from typing import Any, Optional, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackQueryHandler, CallbackContext
+from telegram.ext import CallbackQueryHandler, CallbackContext, Application
 
 from pyobs.modules import Module
 from pyobs.events import LogEvent, Event
@@ -40,15 +40,14 @@ class Telegram(Module):
 
         """
         Module.__init__(self, **kwargs)
-        from telegram.ext import Updater
 
         # store
         self._token = token
         self._password = password
         self._allow_new_users = allow_new_users
-        self._updater: Optional[Updater] = None
         self._message_queue = asyncio.Queue()
         self._loop = None
+        self._application: Optional[Application] = None
 
         # get log levels
         self._log_levels = {
@@ -60,36 +59,37 @@ class Telegram(Module):
 
     async def open(self) -> None:
         """Open module."""
-        from telegram.ext import CommandHandler, MessageHandler, Filters, Updater
+        from telegram.ext import CommandHandler, MessageHandler, filters
 
         await Module.open(self)
         self._loop = asyncio.get_running_loop()
 
         # get dispatcher
-        self._updater = Updater(token=self._token)
-        dispatcher = self._updater.dispatcher  # type: ignore
+        self._application = Application.builder().token(self._token).build()
 
         # add command handler
-        dispatcher.add_handler(CommandHandler("start", self._command_start))
-        dispatcher.add_handler(CommandHandler("exec", self._command_exec))
-        dispatcher.add_handler(CommandHandler("modules", self._command_modules))
-        dispatcher.add_handler(CommandHandler("loglevel", self._command_loglevel))
+        self._application.add_handler(CommandHandler("start", self._command_start))
+        self._application.add_handler(CommandHandler("exec", self._command_exec))
+        self._application.add_handler(CommandHandler("modules", self._command_modules))
+        self._application.add_handler(CommandHandler("loglevel", self._command_loglevel))
 
         # add text handler
-        echo_handler = MessageHandler(Filters.text & (~Filters.command), self._process_message)
-        dispatcher.add_handler(echo_handler)
+        echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), self._process_message)
+        self._application.add_handler(echo_handler)
 
         # add callback handler for buttons
-        dispatcher.add_handler(CallbackQueryHandler(self._handle_buttons))
+        self._application.add_handler(CallbackQueryHandler(self._handle_buttons))
 
         # load storage file
         try:
-            dispatcher.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
+            self._application.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
         except FileNotFoundError:
-            dispatcher.bot_data["storage"] = {}
+            self._application.bot_data["storage"] = {}
 
         # start polling
-        self._updater.start_polling(poll_interval=0.1)
+        await self._application.initialize()
+        await self._application.updater.start_polling()
+        await self._application.start()
 
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)
@@ -99,8 +99,10 @@ class Telegram(Module):
         await Module.close(self)
 
         # stop telegram
-        if self._updater is not None:
-            self._updater.stop()
+        if self._application is not None:
+            await self._application.updater.stop()
+            await self._application.stop()
+            await self._application.shutdown()
 
     async def _save_storage(self, context: CallbackContext) -> None:
         """Save storage file.
@@ -140,7 +142,7 @@ class Telegram(Module):
         s["users"][user_id] = {"name": name, "loglevel": None}
         asyncio.run_coroutine_threadsafe(self._save_storage(context), self._loop)
 
-    def _command_start(self, update: Update, context: CallbackContext) -> None:
+    async def _command_start(self, update: Update, context: CallbackContext) -> None:
         """Handle /start command.
 
         Args:
@@ -154,7 +156,7 @@ class Telegram(Module):
         # is user already known?
         if self._is_user_authorized(context, update.message.from_user.id):
             # welcome him back
-            context.bot.send_message(
+            await context.bot.send_message(
                 chat_id=update.effective_chat.id, text="Welcome back %s!" % update.message.from_user.first_name
             )
 
@@ -162,14 +164,16 @@ class Telegram(Module):
             # do we allow for new users?
             if self._allow_new_users:
                 # go to AUTH state
-                context.bot.send_message(chat_id=update.effective_chat.id, text="Password?")
+                await context.bot.send_message(chat_id=update.effective_chat.id, text="Password?")
                 context.user_data["state"] = TelegramUserState.AUTH
 
             else:
                 # show message
-                context.bot.send_message(chat_id=update.effective_chat.id, text="No new users allowed in the system.")
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id, text="No new users allowed in the system."
+                )
 
-    def _command_exec(self, update: Update, context: CallbackContext) -> None:
+    async def _command_exec(self, update: Update, context: CallbackContext) -> None:
         """Handle /exec command.
 
         Args:
@@ -182,7 +186,7 @@ class Telegram(Module):
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # create buttons for all modules
@@ -190,7 +194,7 @@ class Telegram(Module):
             [InlineKeyboardButton("Cancel", callback_data="cancel")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text("Please choose module:", reply_markup=reply_markup)
+        await update.message.reply_text("Please choose module:", reply_markup=reply_markup)
 
         # go to EXEC_MODULE state
         context.user_data["state"] = TelegramUserState.EXEC_MODULE
@@ -205,22 +209,14 @@ class Telegram(Module):
         context.user_data["params"] = []
         context.user_data["exec_query"] = None
 
-    def _handle_buttons(self, update: Update, context: CallbackContext) -> None:
+    async def _handle_buttons(self, update: Update, context: CallbackContext) -> None:
         """Handle click on buttons.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
-        asyncio.run_coroutine_threadsafe(self._handle_buttons_async(update, context), self._loop)
 
-    async def _handle_buttons_async(self, update: Update, context: CallbackContext) -> None:
-        """Handle click on buttons.
-
-        Args:
-            update: Message to process.
-            context: Telegram context.
-        """
         if context.user_data is None:
             raise ValueError("No user data in context.")
 
@@ -229,12 +225,12 @@ class Telegram(Module):
 
         # not logged in?
         if not self._is_user_authorized(context, query.from_user.id):
-            query.edit_message_text(text="Not logged in, use /start.")
+            await query.edit_message_text(text="Not logged in, use /start.")
             return
 
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
-        query.answer()
+        await query.answer()
 
         # cancel?
         if query.data == "cancel":
@@ -242,7 +238,7 @@ class Telegram(Module):
             self._reset_state(context)
 
             # remove markup
-            query.edit_message_text("Canceled.")
+            await query.edit_message_text("Canceled.")
 
         # what state are we in?
         if context.user_data["state"] == TelegramUserState.EXEC_MODULE:
@@ -254,8 +250,8 @@ class Telegram(Module):
                 [InlineKeyboardButton(m, callback_data="%s.%s" % (query.data, m))] for m in proxy.method_names
             ] + [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            query.edit_message_text(text="Chose method in %s:" % query.data)
-            query.edit_message_reply_markup(reply_markup)
+            await query.edit_message_text(text="Chose method in %s:" % query.data)
+            await query.edit_message_reply_markup(reply_markup)
 
             # change to EXEC_MEHOD state
             context.user_data["state"] = TelegramUserState.EXEC_METHOD
@@ -270,8 +266,8 @@ class Telegram(Module):
             # show buttons for all methods
             keyboard = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            query.edit_message_text(text="Executing %s..." % query.data)
-            query.edit_message_reply_markup(reply_markup)
+            await query.edit_message_text(text="Executing %s..." % query.data)
+            await query.edit_message_reply_markup(reply_markup)
 
             # go to EXEC_PARAMS state
             context.user_data["state"] = TelegramUserState.EXEC_PARAMS
@@ -286,7 +282,7 @@ class Telegram(Module):
             await self._save_storage(context)
 
             # change to IDLE state
-            query.edit_message_text(text="Changed log level to %s." % query.data)
+            await query.edit_message_text(text="Changed log level to %s." % query.data)
             context.user_data["state"] = TelegramUserState.IDLE
 
     def _handle_params(self, update: Update, context: CallbackContext) -> None:
@@ -345,7 +341,7 @@ class Telegram(Module):
 
             # remove cancel button, and show command
             msg = "Executing %s..." % context.user_data["method"]
-            context.bot.edit_message_text(
+            await context.bot.edit_message_text(
                 text=msg,
                 message_id=context.user_data["exec_query_message"],
                 chat_id=context.user_data["exec_query_chat"],
@@ -358,7 +354,9 @@ class Telegram(Module):
                 + ", ".join(['"%s"' % p if isinstance(p, str) else str(p) for p in context.user_data["params"]])
                 + ")"
             )
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Executing #%d:\n%s" % (call_id, command))
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id, text="Executing #%d:\n%s" % (call_id, command)
+            )
 
             # start call
             asyncio.create_task(
@@ -383,7 +381,7 @@ class Telegram(Module):
             message += "?"
 
             # send it
-            context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     async def _call_method(
         self, context: CallbackContext, chat_id: int, call_id: int, method: str, params: List[Any]
@@ -417,9 +415,9 @@ class Telegram(Module):
                 message = "Finished #%d:\n%s" % (call_id, sio.getvalue())
 
         # send reply
-        context.bot.send_message(chat_id=chat_id, text=message)
+        await context.bot.send_message(chat_id=chat_id, text=message)
 
-    def _process_message(self, update: Update, context: CallbackContext) -> None:
+    async def _process_message(self, update: Update, context: CallbackContext) -> None:
         """Handle normal text messages, e.g. for login or method parameters.
 
         Args:
@@ -435,18 +433,18 @@ class Telegram(Module):
             # AUTH, so we expect a password. Is it valid?
             if update.message.text == self._password:
                 # Yes, successful AUTH
-                context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH successful.")
+                await context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH successful.")
                 context.user_data["state"] = TelegramUserState.IDLE
                 self._store_user(context, update.message.from_user.id, update.message.from_user.first_name)
 
             else:
-                context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH failed, try again.")
+                await context.bot.send_message(chat_id=update.effective_chat.id, text="AUTH failed, try again.")
 
         elif context.user_data["state"] == TelegramUserState.EXEC_PARAMS:
             # we're expecting params, so handle them
             self._handle_params(update, context)
 
-    def _command_modules(self, update: Update, context: CallbackContext) -> None:
+    async def _command_modules(self, update: Update, context: CallbackContext) -> None:
         """Handle /modules command that shows list of modules.
 
         Args:
@@ -456,14 +454,14 @@ class Telegram(Module):
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # list all modules
         message = "Available modules:\n" + "\n".join(["- " + c for c in self.comm.clients])
-        context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
-    def _command_loglevel(self, update: Update, context: CallbackContext) -> None:
+    async def _command_loglevel(self, update: Update, context: CallbackContext) -> None:
         """Handle /loglevel command that sets the log level
 
         Args:
@@ -476,7 +474,7 @@ class Telegram(Module):
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Not logged in, use /start.")
             return
 
         # set state
@@ -491,7 +489,7 @@ class Telegram(Module):
             [InlineKeyboardButton("Cancel", callback_data="cancel")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text(
+        await update.message.reply_text(
             "Current log level: %s\nPlease choose new log level:" % current_level, reply_markup=reply_markup
         )
 
@@ -512,9 +510,9 @@ class Telegram(Module):
         message = "(%s) %s: %s" % (entry.level, sender, entry.message)
 
         # get storage
-        if self._updater is None:
+        if self._application is None:
             raise ValueError("No update initialised.")
-        s = self._updater.dispatcher.bot_data["storage"]  # type: ignore
+        s = self._application.bot_data["storage"]  # type: ignore
 
         # loop users
         for user_id, user in s["users"].items():
@@ -538,9 +536,9 @@ class Telegram(Module):
 
             # send message
             try:
-                if self._updater is None:
+                if self._application is None:
                     raise ValueError("No update initialised.")
-                await loop.run_in_executor(None, partial(self._updater.bot.send_message, chat_id=user_id, text=message))
+                await self._application.bot.send_message(chat_id=user_id, text=message)
 
             except Exception:
                 # something went wrong, sleep a little and queue message again

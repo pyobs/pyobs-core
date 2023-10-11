@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+import asyncio
 import logging
 import math
 import os
+from asyncio import Task
 from collections.abc import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
@@ -63,7 +66,7 @@ class FitsHeaderMixin:
         """
 
         # init
-        futures: Dict[str, Coroutine] = {}
+        futures: Dict[str, Task] = {}
 
         # we can only do this with a comm module
         module = cast(Module, self)
@@ -76,10 +79,14 @@ class FitsHeaderMixin:
                 log.debug("Requesting FITS headers from %s...", client)
                 if before:
                     proxy1 = await module.proxy(client, IFitsHeaderBefore)
-                    futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    futures[client] = asyncio.create_task(
+                        proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    )
                 else:
                     proxy2 = await module.proxy(client, IFitsHeaderAfter)
-                    futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    futures[client] = asyncio.create_task(
+                        proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    )
 
         # finished
         return futures
@@ -254,7 +261,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: float = 0.0, **kwargs: Any):
+    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: Optional[float] = None, **kwargs: Any):
         """Initialise the mixin.
 
         Args:
@@ -271,7 +278,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_rotation = rotation
 
     @property
-    def rotation(self) -> float:
+    def rotation(self) -> Optional[float]:
         return self._fitsheadermixin_rotation
 
     @property
@@ -333,12 +340,15 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
             )
         # only add all this stuff for OBJECT images
         if "IMAGETYP" not in hdr or hdr["IMAGETYP"] not in ["dark", "bias"]:
-            # projection
-            hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
-            hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
+            # projection, only override if not already set
+            if "CTYPE1" not in hdr:
+                hdr["CTYPE1"] = ("RA---TAN", "RA in tangent plane projection")
+            if "CTYPE2" not in hdr:
+                hdr["CTYPE2"] = ("DEC--TAN", "Dec in tangent plane projection")
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._fitsheadermixin_rotation is not None:
+                hdr["POSANG"] = (self._fitsheadermixin_rotation, "Position angle [deg e of n]")
                 theta_rad = math.radians(self._fitsheadermixin_rotation)
                 cos_theta = math.cos(theta_rad)
                 sin_theta = math.sin(theta_rad)

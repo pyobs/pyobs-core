@@ -1,4 +1,10 @@
 from __future__ import annotations
+
+# patch dbus-next to provide sender name
+from .patch import patch
+
+patch()
+
 import asyncio
 import json
 import logging

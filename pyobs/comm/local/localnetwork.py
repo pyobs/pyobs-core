@@ -19,8 +19,8 @@ class LocalNetwork:
 
         return cls._instance
 
-    def connect(self, name: str, comm: pyobs.comm.local.LocalComm):
-        self._clients[name] = comm
+    def connect_client(self, comm: pyobs.comm.local.LocalComm):
+        self._clients[comm.name] = comm
 
     def get_client(self, name: str) -> pyobs.comm.local.LocalComm:
         return self._clients[name]

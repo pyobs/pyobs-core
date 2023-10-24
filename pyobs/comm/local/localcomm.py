@@ -5,6 +5,7 @@ from typing import Optional, List, Type, Dict, Any, Callable, Coroutine
 from pyobs.comm import Comm
 from pyobs.events import Event
 from pyobs.interfaces import Interface
+from pyobs.utils.types import cast_response_to_real
 
 
 class LocalComm(Comm):
@@ -14,7 +15,7 @@ class LocalComm(Comm):
 
         self._name = name
         self._network = pyobs.comm.local.LocalNetwork()
-        self._network.connect(name, self)
+        self._network.connect_client(self)
 
     @property
     def name(self) -> Optional[str]:
@@ -42,11 +43,9 @@ class LocalComm(Comm):
         Raises:
             IndexError: If client cannot be found.
         """
-        if client == self.name:
-            return self.module.interfaces
 
         remote_client: LocalComm = self._network.get_client(client)
-        return await remote_client.get_interfaces(client)
+        return remote_client.module.interfaces
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
@@ -75,7 +74,11 @@ class LocalComm(Comm):
         """
 
         remote_client = self._network.get_client(client)
-        return await remote_client.module.execute(method, *args)
+        simple_results = await remote_client.module.execute(method, *args)
+        real_results = cast_response_to_real(
+                simple_results, annotation["return"], self.cast_to_real_pre, self.cast_to_real_post
+            )
+        return real_results
 
     async def send_event(self, event: Event) -> None:
         """Send an event to other clients.

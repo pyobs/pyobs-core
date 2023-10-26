@@ -88,15 +88,8 @@ class Image:
             New image.
         """
 
-        # open file
-        data = fits.open(filename, memmap=False, lazy_load_hdus=False)
-
-        # load image
-        image = cls._from_hdu_list(data)
-
-        # close file
-        data.close()
-        return image
+        with fits.open(filename, memmap=False, lazy_load_hdus=False) as data:
+            return cls._from_hdu_list(data)
 
     @classmethod
     def from_ccddata(cls, data: CCDData) -> Image:
@@ -113,7 +106,7 @@ class Image:
         image = Image(
             data=data.data.astype(np.float32),
             header=data.header,
-            mask=None if data.mask is None else data.mask,
+            mask=data.mask,
             uncertainty=None if data.uncertainty is None else data.uncertainty.array.astype(np.float32),
         )
         return image
@@ -171,7 +164,10 @@ class Image:
     @property
     def unit(self) -> str:
         """Returns units of pixels in image."""
-        return str(self.header["BUNIT"]).lower() if "BUNIT" in self.header else "adu"
+        if "BUNIT" in self.header:
+            return str(self.header["BUNIT"]).lower()
+        else:
+            return "adu"
 
     def __deepcopy__(self) -> Image:
         """Returns a shallow copy of this image."""
@@ -189,7 +185,7 @@ class Image:
             meta=self.meta,
         )
 
-    def __truediv__(self, other: "Image") -> "Image":
+    def __truediv__(self, other: Image) -> Image:
         """Divides this image by other."""
         img = self.copy()
         if img.data is None or other.data is None:
@@ -249,8 +245,8 @@ class Image:
         if self.catalog is None:
             return
 
-        # create HDU and write it
-        table_to_hdu(self.catalog).writeto(f, *args, **kwargs)
+        hdu = table_to_hdu(self.catalog)
+        hdu.writeto(f, *args, **kwargs)
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""

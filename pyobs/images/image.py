@@ -135,10 +135,8 @@ class Image:
         # find HDU with image data
         for hdu in data:
             if (
-                isinstance(hdu, fits.PrimaryHDU)
-                and hdu.header["NAXIS"] > 0
-                or isinstance(hdu, fits.ImageHDU)
-                and hdu.name == "SCI"
+                isinstance(hdu, fits.PrimaryHDU) and hdu.header["NAXIS"] > 0
+                or isinstance(hdu, fits.ImageHDU) and hdu.name == "SCI"
                 or isinstance(hdu, fits.CompImageHDU)
             ):
                 # found image HDU

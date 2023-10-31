@@ -3,3 +3,4 @@ from .pixeloffsets import PixelOffsets
 from .radecoffsets import RaDecOffsets
 from .skyoffsets import SkyOffsets
 from .onskydistance import OnSkyDistance
+from .exptime import ExpTime

@@ -184,10 +184,28 @@ async def test_call_post_error_n_exception(mocker):
     astrometry = AstrometryDotNet(url, exceptions=False)
 
     resp = MockResponse(json.dumps({}), 404)
-    mocker.patch("aiohttp.ClientSession.post", return_value=resp)
+    mock = mocker.patch("aiohttp.ClientSession.post", return_value=resp)
 
     result_image = await astrometry(image)
     assert result_image.header["WCSERR"] == 1
+
+    assert mock.call_args_list[0].args[0] == url
+    assert mock.call_args_list[0].kwargs["timeout"] == 10
+
+    data = mock.call_args_list[0].kwargs["json"]
+
+    assert data == {
+            "ra": image.header["TEL-RA"],
+            "dec": image.header["TEL-DEC"],
+            "scale_low": 3600 * 0.9,
+            "scale_high": 3600 * 1.1,
+            "radius": 3.0,
+            "nx": image.header["NAXIS1"],
+            "ny": image.header["NAXIS2"],
+            "x": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "y": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "flux": [1.0, 1.0, 1.0, 1.0, 1.0],
+        }
 
 
 @pytest.mark.asyncio

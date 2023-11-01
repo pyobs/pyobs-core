@@ -57,11 +57,11 @@ class _DotNetRequestBuilder:
         }
 
     def __call__(self) -> Dict[str, Any]:
-        self._validate_header()
-
         self._filter_catalog()
         self._validate_catalog()
         self._select_brightest_stars()
+
+        self._validate_header()
 
         self._build_request_data()
 

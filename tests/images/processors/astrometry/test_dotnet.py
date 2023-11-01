@@ -115,14 +115,14 @@ async def test_call_small_catalog_w_exception():
         await astrometry(image)
 
 
-def test_filter_catalogue():
-    catalogue = mock_catalog(2)
-    pandas_catalogue = catalogue.to_pandas()
-    pandas_catalogue.iloc[0]["peak"] = 60001
-    filtered_catalogue = AstrometryDotNet._filter_catalog(pandas_catalogue)
+def test_filter_catalog():
+    catalog = mock_catalog(2)
+    pandas_catalog = catalog.to_pandas()
+    pandas_catalog.iloc[0]["peak"] = 60001
+    filtered_catalog = AstrometryDotNet._filter_catalog(pandas_catalog)
 
-    assert True not in filtered_catalogue.isna()
-    assert len(filtered_catalogue[filtered_catalogue["peak"] >= 6000]) == 0
+    assert True not in filtered_catalog.isna()
+    assert len(filtered_catalog[filtered_catalog["peak"] >= 6000]) == 0
 
 
 @pytest.mark.asyncio
@@ -170,7 +170,7 @@ def mock_header():
 
 
 @pytest.mark.asyncio
-async def test_log_catalogue_data(caplog, mock_header):
+async def test_log_catalog_data(caplog, mock_header):
     data = {"ra": 0.0, "dec": 0.0}
     image = Image(header=mock_header)
 
@@ -178,7 +178,7 @@ async def test_log_catalogue_data(caplog, mock_header):
     astrometry = AstrometryDotNet(url)
 
     with caplog.at_level(logging.INFO):
-        astrometry._log_catalogue_data(image, data)
+        astrometry._log_catalog_data(image, data)
 
     assert caplog.records[-1].message == "Found original RA=00:00:00 (0.0000), Dec=00:00:00 (0.0000) at pixel 1.00,1.00."
     assert caplog.records[-1].levelname == "INFO"

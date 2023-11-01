@@ -54,29 +54,29 @@ class AstrometryDotNet(Astrometry):
         return image.catalog[["x", "y", "flux", "peak"]].to_pandas()
 
     @staticmethod
-    def _filter_catalog(catalogue: pd.DataFrame) -> pd.DataFrame:
-        res_catalogue = catalogue.dropna(how="any")
-        res_catalogue = res_catalogue[res_catalogue["peak"] < 60000]
+    def _filter_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
+        res_catalog = catalog.dropna(how="any")
+        res_catalog = res_catalog[res_catalog["peak"] < 60000]
 
-        return res_catalogue
+        return res_catalog
 
     @staticmethod
-    def _validate_catalogue(catalogue: pd.DataFrame):
-        if catalogue is None or len(catalogue) < 3:
+    def _validate_catalog(catalog: pd.DataFrame):
+        if catalog is None or len(catalog) < 3:
             raise exc.ImageError("Not enough sources for astrometry.")
 
-    def _select_brightest_stars(self, catalogue: pd.DataFrame) -> pd.DataFrame:
-        catalogue = catalogue.sort_values("flux", ascending=False)
-        catalogue = catalogue[: self.source_count]
+    def _select_brightest_stars(self, catalog: pd.DataFrame) -> pd.DataFrame:
+        catalog = catalog.sort_values("flux", ascending=False)
+        catalog = catalog[: self.source_count]
 
-        return catalogue
+        return catalog
 
     @staticmethod
     def _validate_header(header: Header):
         if "CDELT1" not in header:
             raise exc.ImageError("No CDELT1 found in header.")
 
-    def _build_request_data(self, image: Image, catalogue: pd.DataFrame):
+    def _build_request_data(self, image: Image, catalog: pd.DataFrame):
         scale = abs(image.header["CDELT1"]) * 3600
         data = {
             "ra": image.header["TEL-RA"],
@@ -86,15 +86,15 @@ class AstrometryDotNet(Astrometry):
             "radius": self.radius,
             "nx": image.header["NAXIS1"],
             "ny": image.header["NAXIS2"],
-            "x": catalogue["x"].tolist(),
-            "y": catalogue["y"].tolist(),
-            "flux": catalogue["flux"].tolist(),
+            "x": catalog["x"].tolist(),
+            "y": catalog["y"].tolist(),
+            "flux": catalog["flux"].tolist(),
         }
 
         return data
 
     @staticmethod
-    def _log_catalogue_data(image: Image, data: Dict[str, Any]):
+    def _log_catalog_data(image: Image, data: Dict[str, Any]):
         ra_dec = SkyCoord(ra=data["ra"] * u.deg, dec=data["dec"] * u.deg, frame="icrs")
         cx, cy = image.header["CRPIX1"], image.header["CRPIX2"]
         log.info(
@@ -156,11 +156,11 @@ class AstrometryDotNet(Astrometry):
             del header[keyword]
 
     @staticmethod
-    def _add_plate_solution_to_catalogue(catalogue: pd.DataFrame, image_wcs: WCS):
-        ras, decs = image_wcs.all_pix2world(catalogue["x"], catalogue["y"], 1)
+    def _add_plate_solution_to_catalog(catalog: pd.DataFrame, image_wcs: WCS):
+        ras, decs = image_wcs.all_pix2world(catalog["x"], catalog["y"], 1)
 
-        catalogue["ra"] = ras
-        catalogue["dec"] = decs
+        catalog["ra"] = ras
+        catalog["dec"] = decs
 
     @staticmethod
     def _log_request_result(image: Image, image_wcs: WCS, data: Dict[str, Any]):
@@ -183,18 +183,18 @@ class AstrometryDotNet(Astrometry):
     async def _process(self, image: Image) -> Image:
         img = image.copy()
 
-        catalogue = self._get_catalog(image)
-        filtered_catalogue = self._filter_catalog(catalogue)
+        catalog = self._get_catalog(image)
+        filtered_catalog = self._filter_catalog(catalog)
 
-        self._validate_catalogue(filtered_catalogue)
+        self._validate_catalog(filtered_catalog)
 
-        reduced_catalogue = self._select_brightest_stars(filtered_catalogue)
+        reduced_catalog = self._select_brightest_stars(filtered_catalog)
 
         self._validate_header(img.header)
 
-        data = self._build_request_data(img, reduced_catalogue)
+        data = self._build_request_data(img, reduced_catalog)
 
-        self._log_catalogue_data(image, data)
+        self._log_catalog_data(image, data)
 
         json, status_code = await self._send_request(data)
 
@@ -206,7 +206,7 @@ class AstrometryDotNet(Astrometry):
         self._delete_old_wcs_data(img.header)
 
         image_wcs = WCS(img.header)
-        self._add_plate_solution_to_catalogue(img.catalog, image_wcs)
+        self._add_plate_solution_to_catalog(img.catalog, image_wcs)
         self._log_request_result(image, image_wcs, data)
 
         # huge success

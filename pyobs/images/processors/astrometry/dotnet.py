@@ -21,13 +21,13 @@ class AstrometryDotNet(Astrometry):
     __module__ = "pyobs.images.processors.astrometry"
 
     def __init__(
-            self,
-            url: str,
-            source_count: int = 50,
-            radius: float = 3.0,
-            timeout: int = 10,
-            exceptions: bool = True,
-            **kwargs: Any,
+        self,
+        url: str,
+        source_count: int = 50,
+        radius: float = 3.0,
+        timeout: int = 10,
+        exceptions: bool = True,
+        **kwargs: Any,
     ):
         """Init new astronomy.net processor.
 

@@ -49,17 +49,16 @@ class AstrometryDotNet(Astrometry):
     @staticmethod
     def _get_catalog(image: Image) -> pd.DataFrame:
         if image.catalog is None:
-            log.warning("No catalog found in image.")
             raise exc.ImageError("No catalog found in image.")
 
         return image.catalog[["x", "y", "flux", "peak"]].to_pandas()
 
     @staticmethod
     def _filter_catalog(catalogue: pd.DataFrame) -> pd.DataFrame:
-        catalogue = catalogue.dropna()
-        catalogue = catalogue[catalogue["peak"] < 60000]
+        res_catalogue = catalogue.dropna(how="any")
+        res_catalogue = res_catalogue[res_catalogue["peak"] < 60000]
 
-        return catalogue
+        return res_catalogue
 
     @staticmethod
     def _validate_catalogue(catalogue: pd.DataFrame):

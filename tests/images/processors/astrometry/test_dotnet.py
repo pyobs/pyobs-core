@@ -1,9 +1,11 @@
 import json
+import logging
 
 import numpy as np
 import pytest
 from astropy.io.fits import Header
 from astropy.table import QTable
+from astropy.wcs import WCS
 
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image
@@ -113,6 +115,16 @@ async def test_call_small_catalog_w_exception():
         await astrometry(image)
 
 
+def test_filter_catalogue():
+    catalogue = mock_catalog(2)
+    pandas_catalogue = catalogue.to_pandas()
+    pandas_catalogue.iloc[0]["peak"] = 60001
+    filtered_catalogue = AstrometryDotNet._filter_catalog(pandas_catalogue)
+
+    assert True not in filtered_catalogue.isna()
+    assert len(filtered_catalogue[filtered_catalogue["peak"] >= 6000]) == 0
+
+
 @pytest.mark.asyncio
 async def test_call_cdelt_n_exception():
     image = Image()
@@ -136,6 +148,7 @@ async def test_call_cdelt_w_exception():
         await astrometry(image)
 
 
+@pytest.fixture()
 def mock_header():
     header = Header()
     header["CDELT1"] = 1.0
@@ -154,6 +167,21 @@ def mock_header():
         header[keyword] = 0.0
 
     return header
+
+
+@pytest.mark.asyncio
+async def test_log_catalogue_data(caplog, mock_header):
+    data = {"ra": 0.0, "dec": 0.0}
+    image = Image(header=mock_header)
+
+    url = "https://nova.astrometry.net"
+    astrometry = AstrometryDotNet(url)
+
+    with caplog.at_level(logging.INFO):
+        astrometry._log_catalogue_data(image, data)
+
+    assert caplog.records[-1].message == "Found original RA=00:00:00 (0.0000), Dec=00:00:00 (0.0000) at pixel 1.00,1.00."
+    assert caplog.records[-1].levelname == "INFO"
 
 
 class MockResponse:
@@ -176,9 +204,9 @@ class MockResponse:
 
 
 @pytest.mark.asyncio
-async def test_call_post_error_n_exception(mocker):
+async def test_call_post_error_n_exception(mocker, mock_header):
     image = Image()
-    image.header = mock_header()
+    image.header = mock_header
     image.catalog = mock_catalog(5)
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=False)
@@ -209,9 +237,9 @@ async def test_call_post_error_n_exception(mocker):
 
 
 @pytest.mark.asyncio
-async def test_call_post_error_w_exception(mocker):
+async def test_call_post_error_w_exception(mocker, mock_header):
     image = Image()
-    image.header = mock_header()
+    image.header = mock_header
     image.catalog = mock_catalog(5)
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=True)
@@ -221,6 +249,7 @@ async def test_call_post_error_w_exception(mocker):
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
+
 
 @pytest.fixture()
 def mock_response_data():
@@ -243,9 +272,9 @@ def mock_response_data():
 
 
 @pytest.mark.asyncio
-async def test_call_success(mocker, mock_response_data):
+async def test_call_success(mocker, mock_response_data, mock_header):
     image = Image()
-    image.header = mock_header()
+    image.header = mock_header
     image.catalog = mock_catalog(5)
     url = "https://nova.astrometry.net"
     astrometry = AstrometryDotNet(url, exceptions=False)
@@ -256,3 +285,30 @@ async def test_call_success(mocker, mock_response_data):
     result_image = await astrometry(image)
     assert result_image.header["WCSERR"] == 0
     assert all(result_image.header[x] == mock_response_data[x] for x in mock_response_data.keys())
+
+
+@pytest.mark.asyncio
+async def test_log_request_result(caplog, mock_header):
+    data = {"ra": 0.0, "dec": 0.0}
+    image = Image(header=mock_header)
+
+    url = "https://nova.astrometry.net"
+    astrometry = AstrometryDotNet(url)
+
+    with caplog.at_level(logging.INFO):
+        astrometry._log_request_result(image, WCS(), data)
+
+    assert caplog.records[-1].message == "Found final RA=00:08:00 (0.0000), Dec=02:00:00 (0.0000) at pixel 1.00,1.00."
+    assert caplog.records[-1].levelname == "INFO"
+
+
+@pytest.mark.asyncio
+async def test_generate_request_error_msg():
+    data = {}
+    assert AstrometryDotNet._generate_request_error_msg(data) == "Could not connect to astrometry service."
+
+    data = {"error": "Could not find WCS file."}
+    assert AstrometryDotNet._generate_request_error_msg(data) == "Could not determine WCS."
+
+    data = {"error": "Test"}
+    assert AstrometryDotNet._generate_request_error_msg(data) == "Received error from astrometry service: Test"

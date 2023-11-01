@@ -9,6 +9,7 @@ import astropy.units as u
 
 from pyobs.images import Image
 import pyobs.utils.exceptions as exc
+from ._dotnet_request_builder import _DotNetRequestBuilder
 from .astrometry import Astrometry
 
 log = logging.getLogger(__name__)
@@ -41,57 +42,11 @@ class AstrometryDotNet(Astrometry):
 
         # URL to web-service
         self.url = url
-        self.source_count = source_count
-        self.radius = radius
+
         self.timeout = timeout
         self.exceptions = exceptions
 
-    @staticmethod
-    def _get_catalog(image: Image) -> pd.DataFrame:
-        if image.catalog is None:
-            raise exc.ImageError("No catalog found in image.")
-
-        return image.catalog[["x", "y", "flux", "peak"]].to_pandas()
-
-    @staticmethod
-    def _filter_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
-        res_catalog = catalog.dropna(how="any")
-        res_catalog = res_catalog[res_catalog["peak"] < 60000]
-
-        return res_catalog
-
-    @staticmethod
-    def _validate_catalog(catalog: pd.DataFrame):
-        if catalog is None or len(catalog) < 3:
-            raise exc.ImageError("Not enough sources for astrometry.")
-
-    def _select_brightest_stars(self, catalog: pd.DataFrame) -> pd.DataFrame:
-        catalog = catalog.sort_values("flux", ascending=False)
-        catalog = catalog[: self.source_count]
-
-        return catalog
-
-    @staticmethod
-    def _validate_header(header: Header):
-        if "CDELT1" not in header:
-            raise exc.ImageError("No CDELT1 found in header.")
-
-    def _build_request_data(self, image: Image, catalog: pd.DataFrame):
-        scale = abs(image.header["CDELT1"]) * 3600
-        data = {
-            "ra": image.header["TEL-RA"],
-            "dec": image.header["TEL-DEC"],
-            "scale_low": scale * 0.9,
-            "scale_high": scale * 1.1,
-            "radius": self.radius,
-            "nx": image.header["NAXIS1"],
-            "ny": image.header["NAXIS2"],
-            "x": catalog["x"].tolist(),
-            "y": catalog["y"].tolist(),
-            "flux": catalog["flux"].tolist(),
-        }
-
-        return data
+        self._request_builder = _DotNetRequestBuilder(source_count, radius)
 
     @staticmethod
     def _log_catalog_data(image: Image, data: Dict[str, Any]):
@@ -183,16 +138,10 @@ class AstrometryDotNet(Astrometry):
     async def _process(self, image: Image) -> Image:
         img = image.copy()
 
-        catalog = self._get_catalog(image)
-        filtered_catalog = self._filter_catalog(catalog)
+        self._request_builder.add_catalog_from_image(img)
+        self._request_builder.add_header_from_image(img)
 
-        self._validate_catalog(filtered_catalog)
-
-        reduced_catalog = self._select_brightest_stars(filtered_catalog)
-
-        self._validate_header(img.header)
-
-        data = self._build_request_data(img, reduced_catalog)
+        data = self._request_builder()
 
         self._log_catalog_data(image, data)
 

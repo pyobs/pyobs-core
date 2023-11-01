@@ -18,8 +18,8 @@ def test_init_default():
     astrometry = AstrometryDotNet(url)
 
     assert astrometry.url == url
-    assert astrometry.source_count == 50
-    assert astrometry.radius == 3.0
+    assert astrometry._request_builder._source_count == 50
+    assert astrometry._request_builder._radius == 3.0
     assert astrometry.timeout == 10
     assert astrometry.exceptions is True
 
@@ -33,8 +33,8 @@ def test_init_w_values():
 
     astrometry = AstrometryDotNet(url, source_count, radius, timeout, exceptions)
 
-    assert astrometry.source_count == source_count
-    assert astrometry.radius == radius
+    assert astrometry._request_builder._source_count == source_count
+    assert astrometry._request_builder._radius == radius
     assert astrometry.timeout == timeout
     assert astrometry.exceptions == exceptions
 
@@ -113,16 +113,6 @@ async def test_call_small_catalog_w_exception():
 
     with pytest.raises(exc.ImageError):
         await astrometry(image)
-
-
-def test_filter_catalog():
-    catalog = mock_catalog(2)
-    pandas_catalog = catalog.to_pandas()
-    pandas_catalog.iloc[0]["peak"] = 60001
-    filtered_catalog = AstrometryDotNet._filter_catalog(pandas_catalog)
-
-    assert True not in filtered_catalog.isna()
-    assert len(filtered_catalog[filtered_catalog["peak"] >= 6000]) == 0
 
 
 @pytest.mark.asyncio

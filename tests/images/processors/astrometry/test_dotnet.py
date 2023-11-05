@@ -138,42 +138,6 @@ async def test_call_cdelt_w_exception():
         await astrometry(image)
 
 
-@pytest.fixture()
-def mock_header():
-    header = Header()
-    header["CDELT1"] = 1.0
-    header["CDELT2"] = 1.0
-
-    header["TEL-RA"] = 0.0
-    header["TEL-DEC"] = 0.0
-
-    header["NAXIS1"] = 1.0
-    header["NAXIS2"] = 1.0
-
-    header["CRPIX1"] = 1.0
-    header["CRPIX2"] = 1.0
-
-    for keyword in ["PC1_1", "PC1_2", "PC2_1", "PC2_2"]:
-        header[keyword] = 0.0
-
-    return header
-
-
-@pytest.mark.asyncio
-async def test_log_catalog_data(caplog, mock_header):
-    data = {"ra": 0.0, "dec": 0.0}
-    image = Image(header=mock_header)
-
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url)
-
-    with caplog.at_level(logging.INFO):
-        astrometry._log_catalog_data(image, data)
-
-    assert caplog.records[-1].message == "Found original RA=00:00:00 (0.0000), Dec=00:00:00 (0.0000) at pixel 1.00,1.00."
-    assert caplog.records[-1].levelname == "INFO"
-
-
 class MockResponse:
     """https://stackoverflow.com/questions/57699218/how-can-i-mock-out-responses-made-by-aiohttp-clientsession"""
     def __init__(self, text, status):
@@ -275,30 +239,3 @@ async def test_call_success(mocker, mock_response_data, mock_header):
     result_image = await astrometry(image)
     assert result_image.header["WCSERR"] == 0
     assert all(result_image.header[x] == mock_response_data[x] for x in mock_response_data.keys())
-
-
-@pytest.mark.asyncio
-async def test_log_request_result(caplog, mock_header):
-    data = {"ra": 0.0, "dec": 0.0}
-    image = Image(header=mock_header)
-
-    url = "https://nova.astrometry.net"
-    astrometry = AstrometryDotNet(url)
-
-    with caplog.at_level(logging.INFO):
-        astrometry._log_request_result(image, WCS(), data)
-
-    assert caplog.records[-1].message == "Found final RA=00:08:00 (0.0000), Dec=02:00:00 (0.0000) at pixel 1.00,1.00."
-    assert caplog.records[-1].levelname == "INFO"
-
-
-@pytest.mark.asyncio
-async def test_generate_request_error_msg():
-    data = {}
-    assert AstrometryDotNet._generate_request_error_msg(data) == "Could not connect to astrometry service."
-
-    data = {"error": "Could not find WCS file."}
-    assert AstrometryDotNet._generate_request_error_msg(data) == "Could not determine WCS."
-
-    data = {"error": "Test"}
-    assert AstrometryDotNet._generate_request_error_msg(data) == "Received error from astrometry service: Test"

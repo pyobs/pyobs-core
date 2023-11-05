@@ -5,6 +5,7 @@ from astropy.io.fits import Header
 
 from pyobs.images import Image
 import pyobs.utils.exceptions as exc
+from pyobs.images.processors.astrometry._dotnet_request import _DotNetRequest
 
 
 class _DotNetRequestBuilder:
@@ -56,7 +57,7 @@ class _DotNetRequestBuilder:
             "flux": self._catalog["flux"].tolist(),
         }
 
-    def __call__(self) -> Dict[str, Any]:
+    def __call__(self) -> _DotNetRequest:
         self._filter_catalog()
         self._validate_catalog()
         self._select_brightest_stars()
@@ -65,4 +66,4 @@ class _DotNetRequestBuilder:
 
         self._build_request_data()
 
-        return self._request_data
+        return _DotNetRequest(self._request_data)

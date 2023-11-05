@@ -12,7 +12,7 @@ class _DotNetRequestBuilder:
         self._source_count = source_count
         self._radius = radius
 
-        self._data = {}
+        self._request_data = {}
         self._catalog: pd.DataFrame = None
         self._header: Header = None
 
@@ -43,7 +43,7 @@ class _DotNetRequestBuilder:
 
     def _build_request_data(self):
         scale = abs(self._header["CDELT1"]) * 3600
-        self._data = {
+        self._request_data = {
             "ra": self._header["TEL-RA"],
             "dec": self._header["TEL-DEC"],
             "scale_low": scale * 0.9,
@@ -65,4 +65,4 @@ class _DotNetRequestBuilder:
 
         self._build_request_data()
 
-        return self._data
+        return self._request_data

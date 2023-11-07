@@ -46,7 +46,6 @@ class SepSourceDetection(SourceDetection):
         """
         SourceDetection.__init__(self, **kwargs)
 
-        # store
         self.threshold = threshold
         self.minarea = minarea
         self.deblend_nthresh = deblend_nthresh

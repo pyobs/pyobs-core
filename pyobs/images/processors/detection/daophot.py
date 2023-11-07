@@ -1,9 +1,13 @@
 import asyncio
-from typing import Tuple, Any
 import logging
+from typing import Tuple, Any
 
-from .sourcedetection import SourceDetection
+import numpy as np
+from astropy.table import Table
+from astropy.stats import SigmaClip, sigma_clipped_stats
+
 from pyobs.images import Image
+from .sourcedetection import SourceDetection
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ class DaophotSourceDetection(SourceDetection):
 
         Args:
             fwhm: Full-width at half maximum for Gaussian kernel.
-            threshold: Threshold pixel value for detection.
+            threshold: Threshold pixel value for detection in standard deviations.
             bkg_sigma: Sigma for background kappa-sigma clipping.
             bkg_box_size: Box size for background estimation.
             bkg_filter_size: Filter size for background estimation.
@@ -40,6 +44,53 @@ class DaophotSourceDetection(SourceDetection):
         self.bkg_box_size = bkg_box_size
         self.bkg_filter_size = bkg_filter_size
 
+    @staticmethod
+    def _gen_catalog_from_source(sources):
+        sources.rename_column("xcentroid", "x")
+        sources.rename_column("ycentroid", "y")
+
+        # match fits conventions
+        sources["x"] += 1
+        sources["y"] += 1
+
+        cat = sources["x", "y", "flux", "peak"]
+
+        return cat
+
+    def _estimate_background(self, data: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        from photutils import Background2D, MedianBackground
+
+        sigma_clip = SigmaClip(sigma=self.bkg_sigma)
+        bkg_estimator = MedianBackground()
+        bkg = Background2D(
+            data,
+            self.bkg_box_size,
+            filter_size=self.bkg_filter_size,
+            sigma_clip=sigma_clip,
+            bkg_estimator=bkg_estimator,
+            mask=mask,
+        )
+
+        return bkg.background
+
+    def _remove_background_from_data(self, data, mask) -> np.ndarray:
+        background = self._estimate_background(data, mask)
+        return data - background
+
+    async def _find_stars(self, data: np.ndarray, std: int) -> Table:
+        from photutils import DAOStarFinder
+
+        daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, daofind, data)
+
+    @staticmethod
+    def _save_catalog_in_image(image: Image, catalog: Table) -> Image:
+        output_image = image.copy()
+        output_image.catalog = catalog
+        return output_image
+
     async def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
@@ -49,51 +100,22 @@ class DaophotSourceDetection(SourceDetection):
         Returns:
             Image with attached catalog.
         """
-        from astropy.stats import SigmaClip, sigma_clipped_stats
-        from photutils import Background2D, MedianBackground, DAOStarFinder
 
-        # get data
         if image.data is None:
             log.warning("No data found in image.")
             return image
-        data = image.data.astype(float).copy()
+        image_data = image.data.astype(float)
 
-        # estimate background
-        sigma_clip = SigmaClip(sigma=self.bkg_sigma)
-        bkg_estimator = MedianBackground()
-        bkg = Background2D(
-            data,
-            self.bkg_box_size,
-            filter_size=self.bkg_filter_size,
-            sigma_clip=sigma_clip,
-            bkg_estimator=bkg_estimator,
-            mask=image.mask,
-        )
-        data -= bkg.background
+        background_corrected_data = self._remove_background_from_data(image_data, image.mask)
 
-        # do statistics
-        mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+        _, median, std = sigma_clipped_stats(background_corrected_data, sigma=3.0)
 
-        # find stars
-        daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)
-        loop = asyncio.get_running_loop()
-        sources = await loop.run_in_executor(None, daofind, data - median)
+        median_corrected_data = background_corrected_data - median
+        sources = await self._find_stars(median_corrected_data, std)
 
-        # rename columns
-        sources.rename_column("xcentroid", "x")
-        sources.rename_column("ycentroid", "y")
+        sources_catalog = self._gen_catalog_from_source(sources)
 
-        # match fits conventions
-        sources["x"] += 1
-        sources["y"] += 1
-
-        # pick columns for catalog
-        cat = sources["x", "y", "flux", "peak"]
-
-        # copy image, set catalog and return it
-        img = image.copy()
-        img.catalog = cat
-        return img
+        return self._save_catalog_in_image(image, sources_catalog)
 
 
 __all__ = ["DaophotSourceDetection"]

@@ -62,3 +62,4 @@ async def test_source_detection(gaussian_sources_image):
     output_image = await detector(gaussian_sources_image)
 
     assert len(output_image.catalog) == 4
+    assert list(output_image.catalog.keys()) == ["x", "y", "flux", "peak"]

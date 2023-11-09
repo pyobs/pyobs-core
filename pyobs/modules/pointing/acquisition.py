@@ -175,7 +175,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             # abort?
             if osd.distance > self._max_offset:
                 # move a maximum of 120"=2'
-                raise ValueError("Calculated offsets too large.")
+                raise exc.ImageError("Calculated offsets too large.")
 
             # apply offsets
             if await self._apply(image, telescope, self.location):

@@ -44,8 +44,5 @@ async def test_source_detection(gaussian_sources_image):
     detector = DaophotSourceDetection()
     output_image = await detector(gaussian_sources_image)
 
-    print()
-    print(output_image.catalog)
-
     assert len(output_image.catalog) == 4
     assert list(output_image.catalog.keys()) == ["x", "y", "flux", "peak"]

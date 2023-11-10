@@ -7,6 +7,7 @@ from astropy.table import Table
 from astropy.stats import SigmaClip, sigma_clipped_stats
 
 from pyobs.images import Image
+from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection
 
 log = logging.getLogger(__name__)
@@ -16,6 +17,8 @@ class DaophotSourceDetection(SourceDetection):
     """Detect source using Daophot."""
 
     __module__ = "pyobs.images.processors.detection"
+
+    _CATALOG_KEYS = ["x", "y", "flux", "peak"]
 
     def __init__(
         self,
@@ -43,19 +46,6 @@ class DaophotSourceDetection(SourceDetection):
         self.bkg_sigma = bkg_sigma
         self.bkg_box_size = bkg_box_size
         self.bkg_filter_size = bkg_filter_size
-
-    @staticmethod
-    def _gen_catalog_from_source(sources):
-        sources.rename_column("xcentroid", "x")
-        sources.rename_column("ycentroid", "y")
-
-        # match fits conventions
-        sources["x"] += 1
-        sources["y"] += 1
-
-        cat = sources["x", "y", "flux", "peak"]
-
-        return cat
 
     def _estimate_background(self, data: np.ndarray, mask: np.ndarray) -> np.ndarray:
         from photutils import Background2D, MedianBackground
@@ -85,12 +75,6 @@ class DaophotSourceDetection(SourceDetection):
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, daofind, data)
 
-    @staticmethod
-    def _save_catalog_in_image(image: Image, catalog: Table) -> Image:
-        output_image = image.copy()
-        output_image.catalog = catalog
-        return output_image
-
     async def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
 
@@ -113,9 +97,10 @@ class DaophotSourceDetection(SourceDetection):
         median_corrected_data = background_corrected_data - median
         sources = await self._find_stars(median_corrected_data, std)
 
-        sources_catalog = self._gen_catalog_from_source(sources)
-
-        return self._save_catalog_in_image(image, sources_catalog)
+        sources_catalog = _SourceCatalog.from_table(sources)
+        sources_catalog.apply_fits_origin_convention()
+        output_image = sources_catalog.save_to_image(image, self._CATALOG_KEYS)
+        return output_image
 
 
 __all__ = ["DaophotSourceDetection"]

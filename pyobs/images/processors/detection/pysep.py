@@ -7,7 +7,8 @@ import numpy as np
 import numpy.typing as npt
 
 from pyobs.images import Image
-from ._pysep_catalog import PySepCatalog
+from ._pysep_stats_calculator import PySepStatsCalculator
+from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection
 
 if TYPE_CHECKING:
@@ -20,6 +21,19 @@ class SepSourceDetection(SourceDetection):
     """Detect sources using SEP."""
 
     __module__ = "pyobs.images.processors.detection"
+
+    _CATALOG_KEYS = [
+        "x", "y",
+        "peak",
+        "flux",
+        "fwhm",
+        "a", "b", "theta",
+        "ellipticity",
+        "tnpix",
+        "kronrad",
+        "fluxrad25", "fluxrad50", "fluxrad75",
+        "xwin", "ywin",
+    ]
 
     def __init__(
         self,
@@ -69,31 +83,23 @@ class SepSourceDetection(SourceDetection):
 
         mask = self._get_mask_or_default(image)
 
-        data, bkg = self.remove_background(image.data, mask)
+        data, background = self.remove_background(image.data, mask)
 
-        sources = await self._extract_sources(data, bkg, mask)
+        sources = await self._extract_sources(data, background, mask)
 
-        source_catalog = PySepCatalog.from_array(sources)
+        source_catalog = _SourceCatalog.from_array(sources)
+        source_catalog.filter_detection_flag()
+
+        gain = self._get_gain_or_default(image)
+        sep_calculator = PySepStatsCalculator(source_catalog, data, mask, gain)
+        source_catalog = await sep_calculator()
 
         source_catalog.filter_detection_flag()
         source_catalog.clip_rotation_angle()
-
-        source_catalog.calc_ellipticity()
-        source_catalog.calc_fwhm()
-        source_catalog.calc_kron_radius(data)
-
-        gain = self._get_gain_or_default(image)
-        loop = asyncio.get_running_loop()
-        loop.run_in_executor(None, source_catalog.calc_flux, data, mask, gain)
-
-        source_catalog.calc_flux_radii(data)
-        source_catalog.calc_winpos(data)
-
         source_catalog.rotation_angle_to_degree()
-        source_catalog.filter_detection_flag()
         source_catalog.apply_fits_origin_convention()
 
-        output_image = source_catalog.save_to_image(image)
+        output_image = source_catalog.save_to_image(image, self._CATALOG_KEYS)
         return output_image
 
     @staticmethod
@@ -121,25 +127,21 @@ class SepSourceDetection(SourceDetection):
             mask: Mask to use for estimating background.
 
         Returns:
-            Image without background.
+            Image without background, Background
         """
         import sep
 
-        # get data and make it continuous
-        d = data.astype(float)
+        continuous_data = data.astype(float)
 
-        # estimate background, probably we need to byte swap
         try:
-            bkg = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            background = sep.Background(continuous_data, mask=mask, bw=32, bh=32, fw=3, fh=3)
         except ValueError as e:
-            d = d.byteswap(True).newbyteorder()
-            bkg = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
+            d = continuous_data.byteswap(True).newbyteorder()
+            background = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
 
-        # subtract it
-        bkg.subfrom(d)
+        background.subfrom(continuous_data)
 
-        # return data without background and background
-        return d, bkg
+        return continuous_data, background
 
     async def _extract_sources(self, data, bkg, mask):
         import sep

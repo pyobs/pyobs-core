@@ -1,14 +1,14 @@
 import asyncio
+import logging
 from functools import partial
 from typing import Tuple, TYPE_CHECKING, Any, Optional
-from astropy.table import Table
-import logging
+
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
-from .sourcedetection import SourceDetection
 from pyobs.images import Image
+from ._pysep_catalog import PySepCatalog
+from .sourcedetection import SourceDetection
 
 if TYPE_CHECKING:
     from sep import Background
@@ -62,133 +62,53 @@ class SepSourceDetection(SourceDetection):
         Returns:
             Image with attached catalog.
         """
-        import sep
 
-        loop = asyncio.get_running_loop()
-
-        # got data?
         if image.data is None:
             log.warning("No data found in image.")
             return image
 
-        # no mask?
-        mask = image.mask if image.mask is not None else np.zeros(image.data.shape, dtype=bool)
+        mask = self._get_mask_or_default(image)
 
-        # remove background
-        data, bkg = SepSourceDetection.remove_background(image.data, mask)
+        data, bkg = self.remove_background(image.data, mask)
 
-        # extract sources
-        sources = await loop.run_in_executor(
-            None,
-            partial(
-                sep.extract,
-                data,
-                self.threshold,
-                err=bkg.globalrms,
-                minarea=self.minarea,
-                deblend_nthresh=self.deblend_nthresh,
-                deblend_cont=self.deblend_cont,
-                clean=self.clean,
-                clean_param=self.clean_param,
-                mask=image.mask,
-            ),
-        )
+        sources = await self._extract_sources(data, bkg, mask)
 
-        # convert to astropy table
-        sources = pd.DataFrame(sources)
+        source_catalog = PySepCatalog.from_array(sources)
 
-        # only keep sources with detection flag < 8
-        sources = sources[sources["flag"] < 8]
-        x, y = sources["x"], sources["y"]
+        source_catalog.filter_detection_flag()
+        source_catalog.clip_rotation_angle()
 
-        # Calculate the ellipticity
-        sources["ellipticity"] = 1.0 - (sources["b"] / sources["a"])
+        source_catalog.calc_ellipticity()
+        source_catalog.calc_fwhm()
+        source_catalog.calc_kron_radius(data)
 
-        # calculate the FWHMs of the stars
-        fwhm = 2.0 * (np.log(2) * (sources["a"] ** 2.0 + sources["b"] ** 2.0)) ** 0.5
-        sources["fwhm"] = fwhm
+        gain = self._get_gain_or_default(image)
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, source_catalog.calc_flux, data, mask, gain)
 
-        # clip theta to [-pi/2,pi/2]
-        sources["theta"] = sources["theta"].clip(lower=np.pi / 2, upper=np.pi / 2)
+        source_catalog.calc_flux_radii(data)
+        source_catalog.calc_winpos(data)
 
-        # Kron radius
-        kronrad, krflag = sep.kron_radius(data, x, y, sources["a"], sources["b"], sources["theta"], 6.0)
-        sources["flag"] |= krflag
-        sources["kronrad"] = kronrad
+        source_catalog.rotation_angle_to_degree()
+        source_catalog.filter_detection_flag()
+        source_catalog.apply_fits_origin_convention()
 
-        # equivalent of FLUX_AUTO
-        gain = image.header["DET-GAIN"] if "DET-GAIN" in image.header else None
-        flux, fluxerr, flag = await loop.run_in_executor(
-            None,
-            partial(
-                sep.sum_ellipse,
-                data,
-                x,
-                y,
-                sources["a"],
-                sources["b"],
-                sources["theta"],
-                2.5 * kronrad,
-                subpix=5,
-                mask=image.mask,
-                gain=gain,
-            ),
-        )
-        sources["flag"] |= flag
-        sources["flux"] = flux
+        output_image = source_catalog.save_to_image(image)
+        return output_image
 
-        # radii at 0.25, 0.5, and 0.75 flux
-        flux_radii, flag = sep.flux_radius(
-            data, x, y, 6.0 * sources["a"], [0.25, 0.5, 0.75], normflux=sources["flux"], subpix=5
-        )
-        sources["flag"] |= flag
-        sources["fluxrad25"] = flux_radii[:, 0]
-        sources["fluxrad50"] = flux_radii[:, 1]
-        sources["fluxrad75"] = flux_radii[:, 2]
+    @staticmethod
+    def _get_mask_or_default(image: Image) -> np.ndarray:
+        if image.mask is not None:
+            return image.mask
 
-        # xwin/ywin
-        sig = 2.0 / 2.35 * sources["fluxrad50"]
-        xwin, ywin, flag = sep.winpos(data, x, y, sig)
-        sources["flag"] |= flag
-        sources["xwin"] = xwin
-        sources["ywin"] = ywin
+        return np.zeros(image.data.shape, dtype=bool)
 
-        # theta in degrees
-        sources["theta"] = np.degrees(sources["theta"])
+    @staticmethod
+    def _get_gain_or_default(image: Image) -> Optional[float]:
+        if "DET-GAIN" in image.header:
+            return image.header["DET-GAIN"]
 
-        # only keep sources with detection flag < 8
-        sources = sources[sources["flag"] < 8]
-
-        # match fits conventions
-        sources["x"] += 1
-        sources["y"] += 1
-
-        # pick columns for catalog
-        cat = sources[
-            [
-                "x",
-                "y",
-                "peak",
-                "flux",
-                "fwhm",
-                "a",
-                "b",
-                "theta",
-                "ellipticity",
-                "tnpix",
-                "kronrad",
-                "fluxrad25",
-                "fluxrad50",
-                "fluxrad75",
-                "xwin",
-                "ywin",
-            ]
-        ]
-
-        # copy image, set catalog and return it
-        img = image.copy()
-        img.catalog = Table.from_pandas(cat)
-        return img
+        return None
 
     @staticmethod
     def remove_background(
@@ -220,6 +140,28 @@ class SepSourceDetection(SourceDetection):
 
         # return data without background and background
         return d, bkg
+
+    async def _extract_sources(self, data, bkg, mask):
+        import sep
+
+        loop = asyncio.get_running_loop()
+        sources = await loop.run_in_executor(
+            None,
+            partial(
+                sep.extract,
+                data,
+                self.threshold,
+                err=bkg.globalrms,
+                minarea=self.minarea,
+                deblend_nthresh=self.deblend_nthresh,
+                deblend_cont=self.deblend_cont,
+                clean=self.clean,
+                clean_param=self.clean_param,
+                mask=mask,
+            ),
+        )
+
+        return sources
 
 
 __all__ = ["SepSourceDetection"]

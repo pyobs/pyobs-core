@@ -137,7 +137,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
             # get offset
             log.info("Analysing image...")
-            image = await self.run_pipeline(image)
+            try:
+                image = await self.run_pipeline(image)
+            except Exception as e:
+                log.warning(f"Error in pipeline: {e}. Skipping image.")
 
             # calculate distance from offset
             osd = image.get_meta(OnSkyDistance)

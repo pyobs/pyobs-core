@@ -191,14 +191,17 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             try:
                 self._series.analyse_image(image, foc)
             except:
-                # do nothing..
+                # do nothing...
                 log.error("Could not analyse image.")
                 continue
 
         # fit focus
         if self._abort.is_set():
             raise exceptions.AbortedError()
-        focus = self._series.fit_focus()
+        try:
+            focus = self._series.fit_focus()
+        except Exception as e:
+            raise exc.GeneralError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?
         if focus is None or focus[0] is None or np.isnan(focus[0]):

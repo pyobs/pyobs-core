@@ -44,9 +44,8 @@ class AstrometryDotNet(Astrometry):
         self._request_builder = _DotNetRequestBuilder(source_count, radius)
 
     async def _process(self, image: Image) -> Image:
-        self._request_builder.add_catalog_from_image(image)
-        self._request_builder.add_header_from_image(image)
-        request = self._request_builder()
+        # build the request
+        request = self._request_builder(image)
 
         logger = _RequestLogger(log, image, request.request_data)
         logger.log_request_data()

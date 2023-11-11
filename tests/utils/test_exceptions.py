@@ -13,8 +13,8 @@ def setup_function() -> None:
 
 def test_log() -> None:
     exc.MotionError()
-    # should contain MotionError and PyObsError
-    assert len(exc._local_exceptions) == 2
+    # should still be empty, since exception was not registered
+    assert len(exc._local_exceptions) == 0
 
 
 def test_register() -> None:

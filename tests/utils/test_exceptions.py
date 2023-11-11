@@ -1,10 +1,10 @@
 import asyncio
-from typing import Optional
-
 import pytest
-
 from pyobs.utils import exceptions as exc
 from pyobs.utils.exceptions import PyObsError
+
+
+pytest_plugins = ("pytest_asyncio",)
 
 
 def setup_function() -> None:
@@ -30,7 +30,8 @@ def test_empty() -> None:
     assert len(exc._handlers) == 0
 
 
-def test_callback() -> None:
+@pytest.mark.asyncio
+async def test_callback() -> None:
     event = asyncio.Event()
 
     async def cb(exception: PyObsError) -> None:
@@ -42,18 +43,22 @@ def test_callback() -> None:
 
     # 1st is fine
     exc.MotionError()
+    await asyncio.sleep(0.01)
     assert event.is_set() is False
 
     # 2nd is fine
     exc.MotionError()
+    await asyncio.sleep(0.01)
     assert event.is_set() is False
 
     # 3rd triggers callback
     exc.MotionError()
+    await asyncio.sleep(0.01)
     assert event.is_set() is True
 
 
-def test_raise() -> None:
+@pytest.mark.asyncio
+async def test_raise() -> None:
     event = asyncio.Event()
 
     async def cb(exception: PyObsError) -> None:
@@ -75,6 +80,7 @@ def test_raise() -> None:
     assert isinstance(exc_info.value.exception, exc.MotionError)
 
 
+@pytest.mark.asyncio
 async def test_timespan() -> None:
     event = asyncio.Event()
 
@@ -94,18 +100,21 @@ async def test_timespan() -> None:
     # raise two more
     exc.MotionError()
     exc.MotionError()
+    await asyncio.sleep(0.01)
     with pytest.raises(exc.SevereError):
         raise exc.MotionError()
     assert event.is_set()
 
 
-def test_remote() -> None:
+@pytest.mark.asyncio
+async def test_remote() -> None:
     # get triggered after 3 MotionErrors
     exc.register_exception(exc.MotionError, 3, throw=True)
 
     # raise two, shouldn't do anything
     exc.MotionError()
     exc.MotionError()
+    await asyncio.sleep(0.01)
 
     # one InvocationError should trigger MotionError
     with pytest.raises(exc.SevereError) as exc_info:

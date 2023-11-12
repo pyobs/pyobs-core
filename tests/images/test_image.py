@@ -13,6 +13,9 @@ import pyobs
 from pyobs.images import Image
 
 
+pytest_plugins = ("pytest_mock",)
+
+
 def assert_array_equal_or_none(check_value, value):
     if check_value is None:
         assert value is None
@@ -102,7 +105,7 @@ def test_from_ccddata_w_values(mock_image):
     header["test"] = 1
     mask = np.zeros((4, 4))
     uncertainties = np.zeros((4, 4))
-    ccd_data = astropy.nddata.CCDData(data=mock_image, header=header, mask=mask, uncertainty=uncertainties, unit='adu')
+    ccd_data = astropy.nddata.CCDData(data=mock_image, header=header, mask=mask, uncertainty=uncertainties, unit="adu")
 
     image = Image.from_ccddata(ccd_data)
 
@@ -114,7 +117,7 @@ def test_from_ccddata_non_values(mock_image):
     header = fits.Header()
     header["test"] = 1
 
-    ccd_data = astropy.nddata.CCDData(data=mock_image, header=header, unit='adu')
+    ccd_data = astropy.nddata.CCDData(data=mock_image, header=header, unit="adu")
 
     image = Image.from_ccddata(ccd_data)
     assert_equal_image_params(image, mock_image)
@@ -362,7 +365,7 @@ def test_to_jpeg_w_vmin(mocker, mock_image):
     jpeg_image = image.to_jpeg(0.5, 1.5)
     assert isinstance(jpeg_image, bytes)
 
-    data = (255/2 * mock_image).astype(np.uint8)
+    data = (255 / 2 * mock_image).astype(np.uint8)
 
     np.testing.assert_array_equal(spy.spy_return, data)
 

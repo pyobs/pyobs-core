@@ -1,5 +1,7 @@
+import numpy as np
 import pytest
 
+from pyobs.images import Image
 from pyobs.images.processors.detection import SepSourceDetection
 
 
@@ -11,6 +13,14 @@ def test_init_default():
     assert detector.deblend_cont == 0.005
     assert detector.clean is True
     assert detector.clean_param == 1.0
+
+
+@pytest.mark.asyncio
+async def test_invalid_image():
+    detector = SepSourceDetection()
+    image = Image()
+
+    assert image == await detector(image)
 
 
 def test_init():
@@ -53,3 +63,18 @@ async def test_full(gaussian_sources_image):
                 "fluxrad75",
                 "xwin",
                 "ywin",])
+
+
+def test_get_mask_or_default():
+    mask = np.zeros((4, 4))
+    image = Image(mask=mask)
+
+    np.testing.assert_array_equal(SepSourceDetection._get_mask_or_default(image), mask)
+
+
+def test_get_gain_or_default():
+    image = Image()
+    image.header["DET-GAIN"] = 1
+
+    assert SepSourceDetection._get_gain_or_default(image) == 1
+

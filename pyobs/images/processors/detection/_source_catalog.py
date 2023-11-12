@@ -35,7 +35,7 @@ class _SourceCatalog:
         if "theta" not in self.sources:
             return
 
-        self.sources["theta"] = self.sources["theta"].clip(lower=np.pi / 2, upper=np.pi / 2)
+        self.sources["theta"] = self.sources["theta"].clip(lower=-np.pi / 2, upper=np.pi / 2)
 
     def rotation_angle_to_degree(self):
         if "theta" not in self.sources:

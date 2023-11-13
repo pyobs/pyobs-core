@@ -38,14 +38,12 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._saturated = saturated
         self.coordinates = (None, None)
 
-    async def __call__(self, image: Image) -> Image:
-        """Processes an image and stores new exposure time in exp_time attribute.
+    async def _calc_exp_time(self, image: Image) -> float:
+        """
+        Process an image and calculates the new exposure time
 
         Args:
             image: Image to process.
-
-        Returns:
-            Original image.
         """
 
         # get object
@@ -55,7 +53,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         catalog = (await source_detection(image)).catalog
         if catalog is None:
             log.info("No catalog found in image.")
-            return image
+            return image.header["EXPTIME"]
 
         # sort catalog by peak flux
         catalog.sort("peak", reverse=True)
@@ -83,9 +81,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
         # calculate new exposure time and return it
         new_exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
-        self._set_exp_time(image, new_exp_time)
 
-        return image
+        return new_exp_time
 
 
 __all__ = ["StarExpTimeEstimator"]

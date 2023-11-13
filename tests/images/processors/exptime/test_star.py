@@ -31,9 +31,9 @@ async def test_full_wout_satu_header(mock_table):
 
     estimator = StarExpTimeEstimator(source_detection, saturated=0.1, bias=0.0)
 
-    output_image = await estimator(mock_image)
+    exp_time = await estimator._calc_exp_time(mock_image)
 
-    assert output_image.get_meta(ExpTime).exptime == 2.0
+    assert exp_time == 2.0
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_full_with_satu_header(mock_table):
 
     estimator = StarExpTimeEstimator(source_detection, saturated=0.1, bias=0.0)
 
-    output_image = await estimator(mock_image)
+    exp_time = await estimator._calc_exp_time(mock_image)
 
-    assert output_image.get_meta(ExpTime).exptime == 2400/2000
+    assert exp_time == 2400/2000
 

@@ -58,7 +58,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             return image
 
         # sort catalog by peak flux
-        catalog.sort("peak")
+        catalog.sort("peak", reverse=True)
 
         # saturation level
         if "DET-SATU" in image.header and "DET-GAIN" in image.header:
@@ -82,7 +82,9 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         exp_time = image.header["EXPTIME"]
 
         # calculate new exposure time and return it
-        self.exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
+        new_exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
+        self._set_exp_time(image, new_exp_time)
+
         return image
 
 

@@ -95,7 +95,7 @@ class SepSourceDetection(SourceDetection):
         source_catalog = await sep_calculator()
 
         source_catalog.filter_detection_flag()
-        source_catalog.clip_rotation_angle()
+        source_catalog.wrap_rotation_angle_at_ninty_deg()
         source_catalog.rotation_angle_to_degree()
         source_catalog.apply_fits_origin_convention()
 

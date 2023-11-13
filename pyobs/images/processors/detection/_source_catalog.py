@@ -3,6 +3,7 @@ from typing import Optional, List
 
 import numpy as np
 import pandas as pd
+from astropy.coordinates import Angle
 from astropy.table import Table
 
 from pyobs.images import Image
@@ -31,11 +32,11 @@ class _SourceCatalog:
 
         self.sources = self.sources[self.sources["flag"] < 8]
 
-    def clip_rotation_angle(self):
+    def wrap_rotation_angle_at_ninty_deg(self):
         if "theta" not in self.sources:
             return
 
-        self.sources["theta"] = self.sources["theta"].clip(lower=-np.pi / 2, upper=np.pi / 2)
+        self.sources["theta"] = np.arcsin(np.sin(self.sources["theta"]))
 
     def rotation_angle_to_degree(self):
         if "theta" not in self.sources:

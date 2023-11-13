@@ -2,6 +2,8 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Optional
 
+import numpy as np
+
 from pyobs.images import Image
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processor import ImageProcessor
@@ -31,21 +33,12 @@ class ExpTimeEstimator(ImageProcessor, metaclass=ABCMeta):
         Returns:
             Original image.
         """
-        ...
 
     def _set_exp_time(self, image: Image, exp_time: float) -> None:
         """Internal setter for exposure time."""
 
-        # min exp time
-        if self._min_exp_time is not None and exp_time < self._min_exp_time:
-            exp_time = self._min_exp_time
-
-        # max exp time
-        if self._max_exp_time is not None and exp_time > self._max_exp_time:
-            exp_time = self._max_exp_time
-
-        # set it
-        image.set_meta(ExpTime(exp_time))
+        clipped_exp_time = np.clip(exp_time, self._min_exp_time, self._max_exp_time)
+        image.set_meta(ExpTime(clipped_exp_time))
 
 
 __all__ = ["ExpTimeEstimator"]

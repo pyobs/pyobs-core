@@ -31,7 +31,7 @@ class _DotNetRequest:
         error_msg = self._generate_request_error_msg()
         raise exc.ImageError(error_msg)
 
-    def _is_request_successful(self):
+    def _is_request_successful(self) -> bool:
         return self._status_code != 200 or "error" in self._response_data
 
     async def send(self, url: str, timeout: int):

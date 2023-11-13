@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Optional
 
 import pandas as pd
 from astropy.io.fits import Header
@@ -14,17 +14,8 @@ class _DotNetRequestBuilder:
         self._radius = radius
 
         self._request_data = {}
-        self._catalog: pd.DataFrame = None
-        self._header: Header = None
-
-    def add_catalog_from_image(self, image: Image):
-        if image.catalog is None:
-            raise exc.ImageError("No catalog found in image.")
-
-        self._catalog = image.catalog[["x", "y", "flux", "peak"]].to_pandas()
-
-    def add_header_from_image(self, image: Image):
-        self._header = image.header
+        self._catalog = pd.DataFrame()
+        self._header: Optional[Header] = None
 
     def _filter_catalog(self):
         self._catalog = self._catalog.dropna(how="any")
@@ -57,13 +48,19 @@ class _DotNetRequestBuilder:
             "flux": self._catalog["flux"].tolist(),
         }
 
-    def __call__(self) -> _DotNetRequest:
+    def __call__(self, image: Image) -> _DotNetRequest:
+        # set catalog and header
+        if image.catalog is None:
+            raise exc.ImageError("No catalog found in image.")
+        self._catalog = image.catalog[["x", "y", "flux", "peak"]].to_pandas()
+        self._header = image.header
+
+        # select stars
         self._filter_catalog()
         self._validate_catalog()
         self._select_brightest_stars()
 
+        # validate header and build request
         self._validate_header()
-
         self._build_request_data()
-
         return _DotNetRequest(self._request_data)

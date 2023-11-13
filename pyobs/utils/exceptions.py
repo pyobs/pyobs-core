@@ -176,6 +176,8 @@ def handle_exception(exception: PyObsError) -> PyObsError:
 
     # filter triggered handlers by those that actually handle the exception
     handlers = list(filter(lambda h: isinstance(exception, h.exc_type), triggered_handlers))
+    if hasattr(exception, "exception"):
+        handlers += list(filter(lambda h: isinstance(exception.exception, h.exc_type), triggered_handlers))
 
     # check all handlers
     for h in handlers:

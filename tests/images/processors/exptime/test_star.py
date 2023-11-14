@@ -1,4 +1,5 @@
 import logging
+from copy import copy
 
 import numpy as np
 import pytest
@@ -40,18 +41,21 @@ def test_calc_saturation_level_or_default():
     mock_image.header["DET-GAIN"] = 2.0
 
     estimator = StarExpTimeEstimator(saturated=0.1, bias=0.0)
+    estimator._image = mock_image
 
-    assert estimator._calc_saturation_level_or_default(mock_image) == 24000.0
+    assert estimator._calc_saturation_level_or_default() == 24000.0
 
 
-def test_filter_catalog_axis(mock_table):
-    mock_image = Image(np.zeros((100, 100)), catalog=mock_table)
+def test_filter_edge_stars_axis(mock_table):
+    mock_image = Image(np.zeros((100, 100)), catalog=copy(mock_table))
     mock_image.header["NAXIS0"] = 100
     mock_image.header["NAXIS1"] = 100
 
     estimator = StarExpTimeEstimator(saturated=0.1, bias=0.0, edge=0.2)
+    estimator._image = mock_image
+    estimator._filter_edge_stars_axis(0)
 
-    result_table = estimator._filter_catalog_axis(mock_table, 0, mock_image)
+    result_table = estimator._image.catalog
 
     np.testing.assert_array_equal(result_table["peak"], mock_table[:-1]["peak"])
     np.testing.assert_array_equal(result_table["x"], mock_table[:-1]["x"])

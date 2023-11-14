@@ -1,6 +1,6 @@
 import logging
 from copy import copy
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from astropy.table import Table, Row
@@ -38,6 +38,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._bias = bias
         self._saturated = saturated
 
+        self._image: Optional[Image] = None
+
     async def _calc_exp_time(self, image: Image) -> float:
         """
         Process an image and calculates the new exposure time
@@ -46,58 +48,52 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             image: Image to process.
         """
 
-        catalog = image.catalog
+        self._image = copy(image)
         last_exp_time = image.header["EXPTIME"]
 
-        if catalog is None:
+        if self._image.catalog is None:
             log.info("No catalog found in image.")
             return last_exp_time
 
-        max_peak = self._calc_max_peak(image)
+        max_peak = self._calc_max_peak()
 
-        filtered_catalog = self._filter_saturated_stars(catalog, max_peak)
-        filtered_catalog = self._filter_edge_stars(filtered_catalog, image)
-        brightest_star = self._find_brightest_star(filtered_catalog)
+        self._filter_saturated_stars(max_peak)
+        self._filter_edge_stars()
+        brightest_star = self._find_brightest_star()
 
         new_exp_time = self._calc_new_exp_time(last_exp_time, brightest_star["peak"], max_peak)
 
         return new_exp_time
 
-    def _calc_max_peak(self, image: Image) -> float:
-        saturation = self._calc_saturation_level_or_default(image)
+    def _calc_max_peak(self) -> float:
+        saturation = self._calc_saturation_level_or_default()
         return saturation * self._saturated
 
-    def _calc_saturation_level_or_default(self, image: Image) -> float:
-        if "DET-SATU" in image.header and "DET-GAIN" in image.header:
-            return image.header["DET-SATU"] / image.header["DET-GAIN"]
+    def _calc_saturation_level_or_default(self) -> float:
+        if "DET-SATU" in self._image.header and "DET-GAIN" in self._image.header:
+            return self._image.header["DET-SATU"] / self._image.header["DET-GAIN"]
 
         return self.SATURATION
 
-    @staticmethod
-    def _filter_saturated_stars(catalog: Table, max_peak: float) -> Table:
-        return catalog[catalog["peak"] <= max_peak]
+    def _filter_saturated_stars(self, max_peak: float):
+        self._image.catalog = self._image.catalog[self._image.catalog["peak"] <= max_peak]
 
-    def _filter_edge_stars(self, catalog: Table, image: Image) -> Table:
-        output_catalog = self._filter_catalog_axis(catalog, 0, image)
-        output_catalog = self._filter_catalog_axis(output_catalog, 0, image)
+    def _filter_edge_stars(self):
+        self._filter_edge_stars_axis(0)
+        self._filter_edge_stars_axis(1)
 
-        return output_catalog
-
-    def _filter_catalog_axis(self, catalog: Table, axis: int, image: Image) -> Table:
-        axis_len = image.header[f"NAXIS{axis}"]
+    def _filter_edge_stars_axis(self, axis: int):
+        axis_len = self._image.header[f"NAXIS{axis}"]
         edge_size = int(axis_len * self._edge)
 
         axis_name = ["x", "y"][axis]
 
-        output_catalog = catalog[catalog[axis_name] >= 1 + edge_size]
-        output_catalog = output_catalog[output_catalog[axis_name] <= axis_len - edge_size]
+        self._image.catalog = self._image.catalog[self._image.catalog[axis_name] >= 1 + edge_size]
+        self._image.catalog = self._image.catalog[self._image.catalog[axis_name] <= axis_len - edge_size]
 
-        return output_catalog
-
-    @staticmethod
-    def _find_brightest_star(catalog: Table) -> Row:
-        brightest_star_index = np.argmax(catalog["peak"])
-        brightest_star = catalog[brightest_star_index]
+    def _find_brightest_star(self) -> Row:
+        brightest_star_index = np.argmax(self._image.catalog["peak"])
+        brightest_star = self._image.catalog[brightest_star_index]
         return brightest_star
 
     @staticmethod

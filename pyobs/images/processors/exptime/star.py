@@ -1,10 +1,9 @@
 import logging
-from typing import Union, Any, Dict
+from copy import copy
+from typing import Any
 
-from pyobs.object import get_object
 from pyobs.images import Image
 from pyobs.images.processors.exptime.exptime import ExpTimeEstimator
-from pyobs.images.processors.detection import SourceDetection
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +15,6 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
     def __init__(
         self,
-        source_detection: Union[Dict[str, Any], SourceDetection],
         edge: float = 0.1,
         bias: float = 0.0,
         saturated: float = 0.7,
@@ -32,7 +30,6 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         """
         ExpTimeEstimator.__init__(self, **kwargs)
 
-        self._source_detection = source_detection
         self._edge = edge
         self._bias = bias
         self._saturated = saturated
@@ -46,11 +43,8 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             image: Image to process.
         """
 
-        # get object
-        source_detection = get_object(self._source_detection, SourceDetection)
+        catalog = copy(image.catalog)
 
-        # do photometry and get copy of catalog
-        catalog = (await source_detection(image)).catalog
         if catalog is None:
             log.info("No catalog found in image.")
             return image.header["EXPTIME"]

@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 import pytest
 from astropy.table import QTable
 
@@ -20,6 +21,8 @@ def mock_table() -> QTable:
 @pytest.mark.asyncio
 async def test_full_wout_satu_header(mock_table):
     mock_image = Image(catalog=mock_table)
+    mock_image.header["NAXIS0"] = 100
+    mock_image.header["NAXIS1"] = 100
 
     mock_image.header["EXPTIME"] = 1.0
 
@@ -40,6 +43,19 @@ def test_calc_saturation_level_or_default():
 
     assert estimator._calc_saturation_level_or_default(mock_image) == 24000.0
 
+
+def test_filter_catalog_axis(mock_table):
+    mock_image = Image(np.zeros((100, 100)), catalog=mock_table)
+    mock_image.header["NAXIS0"] = 100
+    mock_image.header["NAXIS1"] = 100
+
+    estimator = StarExpTimeEstimator(saturated=0.1, bias=0.0, edge=0.2)
+
+    result_table = estimator._filter_catalog_axis(mock_table, 0, mock_image)
+
+    np.testing.assert_array_equal(result_table["peak"], mock_table[:-1]["peak"])
+    np.testing.assert_array_equal(result_table["x"], mock_table[:-1]["x"])
+    np.testing.assert_array_equal(result_table["y"], mock_table[:-1]["y"])
 
 
 def test_log_brightest_star(caplog):

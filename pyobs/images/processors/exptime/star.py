@@ -20,7 +20,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
     def __init__(
         self,
-        edge: float = 0.1,
+        edge: float = 0.0,
         bias: float = 0.0,
         saturated: float = 0.7,
         **kwargs: Any,
@@ -28,7 +28,6 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         """Create new exp time estimator from single star.
 
         Args:
-            source_detection: Source detection to use.
             edge: Fraction of image to ignore at each border.
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
@@ -57,6 +56,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         max_peak = self._calc_max_peak(image)
 
         filtered_catalog = self._filter_saturated_stars(catalog, max_peak)
+        filtered_catalog = self._filter_edge_stars(filtered_catalog, image)
         brightest_star = self._find_brightest_star(filtered_catalog)
 
         new_exp_time = self._calc_new_exp_time(last_exp_time, brightest_star["peak"], max_peak)
@@ -76,6 +76,23 @@ class StarExpTimeEstimator(ExpTimeEstimator):
     @staticmethod
     def _filter_saturated_stars(catalog: Table, max_peak: float) -> Table:
         return catalog[catalog["peak"] <= max_peak]
+
+    def _filter_edge_stars(self, catalog: Table, image: Image) -> Table:
+        output_catalog = self._filter_catalog_axis(catalog, 0, image)
+        output_catalog = self._filter_catalog_axis(output_catalog, 0, image)
+
+        return output_catalog
+
+    def _filter_catalog_axis(self, catalog: Table, axis: int, image: Image) -> Table:
+        axis_len = image.header[f"NAXIS{axis}"]
+        edge_size = int(axis_len * self._edge)
+
+        axis_name = ["x", "y"][axis]
+
+        output_catalog = catalog[catalog[axis_name] >= 1 + edge_size]
+        output_catalog = output_catalog[output_catalog[axis_name] <= axis_len - edge_size]
+
+        return output_catalog
 
     @staticmethod
     def _find_brightest_star(catalog: Table) -> Row:

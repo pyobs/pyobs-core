@@ -55,18 +55,17 @@ class StarExpTimeEstimator(ExpTimeEstimator):
             log.info("No catalog found in image.")
             return last_exp_time
 
-        max_peak = self._calc_max_peak()
-
-        self._filter_saturated_stars(max_peak)
+        saturation = self._calc_saturation_level_or_default()
+        self._filter_saturated_stars(saturation)
         self._filter_edge_stars()
         brightest_star = self._find_brightest_star()
 
-        new_exp_time = self._calc_new_exp_time(last_exp_time, brightest_star["peak"], max_peak)
+        target_saturation = self._calc_target_saturation(saturation)
+        new_exp_time = self._calc_new_exp_time(last_exp_time, brightest_star["peak"], target_saturation)
 
         return new_exp_time
 
-    def _calc_max_peak(self) -> float:
-        saturation = self._calc_saturation_level_or_default()
+    def _calc_target_saturation(self, saturation) -> float:
         return saturation * self._saturated
 
     def _calc_saturation_level_or_default(self) -> float:

@@ -26,15 +26,27 @@ class AddMask(ImageProcessor):
 
         # masks
         self._masks: Dict[str, Dict[str, NDArray[Any]]] = {}
-        for instrument, group in masks.items():
+        self._build_instrument_dictionary(masks)
+
+    def _build_instrument_dictionary(self, masks: Dict[str, Dict[str, Union[NDArray[Any], str]]]):
+        for instrument, binning in masks.items():
             self._masks[instrument] = {}
-            for binning, mask in group.items():
-                if isinstance(mask, np.ndarray):
-                    self._masks[instrument][binning] = mask
-                elif isinstance(mask, str):
-                    self._masks[instrument][binning] = fits.getdata(mask)
-                else:
-                    raise ValueError("Unknown mask format.")
+            self._build_binning_dictionary(instrument, binning)
+
+    def _build_binning_dictionary(self, instrument: str, masks: Dict[str, Union[NDArray[Any], str]]):
+        for binning, mask in masks.items():
+            if isinstance(mask, np.ndarray):
+                self._masks[instrument][binning] = mask
+            elif isinstance(mask, str):
+                self._masks[instrument][binning] = fits.getdata(mask)
+            else:
+                raise ValueError("Unknown mask format.")
+
+    def _get_mask(self, image: Image) -> np.ndarray:
+        instrument = image.header["INSTRUME"]
+        binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
+
+        return self._masks[instrument][binning].copy()
 
     async def __call__(self, image: Image) -> Image:
         """Add mask to image.
@@ -46,19 +58,14 @@ class AddMask(ImageProcessor):
             Image with mask
         """
 
-        # copy image
-        img = image.copy()
+        output_image = image.copy()
 
-        # add mask
-        instrument = image.header["INSTRUME"]
-        binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
-        if instrument in self._masks:
-            img.mask = self._masks[instrument][binning].copy()
-        else:
+        try:
+            output_image.mask = self._get_mask(image)
+        except KeyError:
             log.warning("No mask found for binning of frame.")
 
-        # finished
-        return img
+        return output_image
 
 
 __all__ = ["AddMask"]

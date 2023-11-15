@@ -52,7 +52,7 @@ class AddMask(ImageProcessor):
         # add mask
         instrument = image.header["INSTRUME"]
         binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
-        if binning in self._masks:
+        if instrument in self._masks:
             img.mask = self._masks[instrument][binning].copy()
         else:
             log.warning("No mask found for binning of frame.")

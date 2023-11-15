@@ -84,7 +84,7 @@ class Calibration(ImageProcessor):
                 else await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
             )
         except ValueError as e:
-            log.error("Could not find calibration frames: " + str(e))
+            log.warning("Could not find calibration frames: " + str(e))
             return image
 
         # trim image

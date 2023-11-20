@@ -20,19 +20,13 @@ def mock_image():
 
 
 @pytest.mark.asyncio
-async def test_find_master_in_cache(mock_image):
+async def test_find_master_in_cache(mocker, mock_image):
     cached_image = Image()
     image_type = ImageType.OBJECT
-    image_instrument = "cam"
-    image_binning = "1x1"
-    image_filter = "filter"
-
-    Calibration.calib_cache = [
-        [(image_type, image_instrument, image_binning, image_filter), cached_image]
-    ]
 
     archive = Archive()
     calibration = Calibration(archive)
+    mocker.patch.object(calibration._calib_cache, "get_from_cache", return_value=cached_image)
     result_image = await calibration._find_master(mock_image, image_type)
 
     assert cached_image == result_image
@@ -44,7 +38,7 @@ async def test_find_master_not_in_archive(mocker, mock_image):
 
     image_type = ImageType.OBJECT
     archive = Archive()
-    Calibration.calib_cache = []
+
     calibration = Calibration(archive)
 
     with pytest.raises(ValueError):
@@ -68,12 +62,11 @@ async def test_find_master_in_archive(mocker, mock_image):
 
     image_type = ImageType.OBJECT
     archive = Archive()
-    Calibration.calib_cache = []
     calibration = Calibration(archive)
+    mocker.patch.object(calibration._calib_cache, "add_to_cache")
 
     assert calib_image == await calibration._find_master(mock_image, image_type)
-
-    assert ((image_type, "cam", "1x1", "filter"), calib_image) in Calibration.calib_cache
+    calibration._calib_cache.add_to_cache.assert_called_once_with(calib_image, image_type)
 
 
 @pytest.mark.asyncio

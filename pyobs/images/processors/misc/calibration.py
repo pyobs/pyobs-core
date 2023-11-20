@@ -6,6 +6,7 @@ import astropy.units as u
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processors.misc._calibration_cache import _CalibrationCache
 from pyobs.object import get_object
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
@@ -22,7 +23,7 @@ class Calibration(ImageProcessor):
     __module__ = "pyobs.images.processors.misc"
 
     """Cache for calibration frames."""
-    calib_cache: List[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = []
+    _calib_cache: _CalibrationCache = None
 
     def __init__(
         self,
@@ -54,6 +55,9 @@ class Calibration(ImageProcessor):
 
         # get archive
         self._archive = get_object(archive, Archive)
+
+        if self._calib_cache is None:
+            self._calib_cache = _CalibrationCache(max_cache_size)
 
     async def __call__(self, image: Image) -> Image:
         """Calibrate an image.
@@ -163,10 +167,10 @@ class Calibration(ImageProcessor):
             # could not fetch header items
             raise ValueError("Could not fetch items from image header.")
 
-        # is in cache?
-        for m, item in Calibration.calib_cache:
-            if m == mode:
-                return item
+        try:
+            return self._calib_cache.get_from_cache(image, image_type)
+        except ValueError:
+            pass
 
         # try to download one
         master = await Pipeline.find_master(
@@ -183,14 +187,8 @@ class Calibration(ImageProcessor):
         if master is None:
             raise ValueError("No master frame found.")
 
-        # store it in cache
-        Calibration.calib_cache.append((mode, master))
+        self._calib_cache.add_to_cache(master, image_type)
 
-        # too many entries?
-        while len(Calibration.calib_cache) > self._max_cache_size:
-            Calibration.calib_cache.pop(0)
-
-        # return it
         return master
 
 

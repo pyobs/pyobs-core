@@ -39,9 +39,9 @@ class CreateFilename(ImageProcessor):
             Image with filename in FNAME.
         """
 
-        img = image.copy()
-        img.format_filename(self._formatter)
-        return img
+        output_image = image.copy()
+        output_image.format_filename(self._formatter)
+        return output_image
 
 
 __all__ = ["CreateFilename"]

@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -14,7 +14,9 @@ class CreateFilename(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, pattern: str, **kwargs: Any):
+    _DEFAULT_PATTERN = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits"
+
+    def __init__(self, pattern: Optional[str], **kwargs: Any):
         """Init an image processor that adds a filename to an image.
 
         Args:
@@ -22,9 +24,9 @@ class CreateFilename(ImageProcessor):
         """
         ImageProcessor.__init__(self, **kwargs)
 
-        # default filename patterns
         if pattern is None:
-            pattern = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits"
+            pattern = self._DEFAULT_PATTERN
+
         self._formatter = FilenameFormatter(pattern)
 
     async def __call__(self, image: Image) -> Image:
@@ -37,7 +39,6 @@ class CreateFilename(ImageProcessor):
             Image with filename in FNAME.
         """
 
-        # copy image and set filename
         img = image.copy()
         img.format_filename(self._formatter)
         return img

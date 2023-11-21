@@ -7,6 +7,7 @@ import astropy.units as u
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 from pyobs.images.processors.misc._calibration_cache import _CalibrationCache
+from pyobs.images.processors.misc._ccddata_calibrator import _CCDDataCalibrator
 from pyobs.object import get_object
 from pyobs.utils.archive import Archive
 from pyobs.utils.enums import ImageType
@@ -44,7 +45,6 @@ class Calibration(ImageProcessor):
         """
         ImageProcessor.__init__(self, **kwargs)
 
-        # store
         self._max_cache_size = max_cache_size
         self._max_days_bias = max_days_bias
         self._max_days_dark = max_days_dark
@@ -53,7 +53,6 @@ class Calibration(ImageProcessor):
         self._require_dark = require_dark
         self._require_flat = require_flat
 
-        # get archive
         self._archive = get_object(archive, Archive)
 
         if self._calib_cache is None:
@@ -68,57 +67,104 @@ class Calibration(ImageProcessor):
         Returns:
             Calibrated image.
         """
-        import ccdproc
 
-        # get calibration masters
         try:
-            bias = (
-                None
-                if not self._require_bias
-                else await self._find_master(image, ImageType.BIAS, max_days=self._max_days_bias)
-            )
-            dark = (
-                None
-                if not self._require_dark
-                else await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
-            )
-            flat = (
-                None
-                if not self._require_flat
-                else await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
-            )
+            bias, dark, flat = await self._get_calibrations_masters(image)
         except ValueError as e:
             log.warning("Could not find calibration frames: " + str(e))
             return image
 
-        # trim image
-        ccddata = Pipeline.trim_ccddata(image.to_ccddata())
+        calibrator = _CCDDataCalibrator(image, bias, dark, flat)
+        calibrated = calibrator()
 
-        # calibrate image
-        c = ccdproc.ccd_process(
-            ccddata,
-            error=True,
-            master_bias=bias.to_ccddata() if bias is not None else None,
-            dark_frame=dark.to_ccddata() if dark is not None else None,
-            master_flat=flat.to_ccddata() if flat is not None else None,
-            bad_pixel_mask=None,
-            gain=image.header["DET-GAIN"] * u.electron / u.adu,
-            readnoise=image.header["DET-RON"] * u.electron,
-            dark_exposure=dark.header["EXPTIME"] * u.second if dark is not None else None,
-            data_exposure=image.header["EXPTIME"] * u.second,
-            dark_scale=True,
-            gain_corrected=False,
+        self._copy_original_filename(calibrated, image)
+        self._copy_calibration_filename(calibrated, bias, dark, flat)
+
+        self._set_calibration_headers(calibrated)
+
+        return calibrated
+
+    async def _get_calibrations_masters(self, image: Image) -> Tuple[Optional[Image], Optional[Image], Optional[Image]]:
+        bias = (
+            None
+            if not self._require_bias
+            else await self._find_master(image, ImageType.BIAS, max_days=self._max_days_bias)
+        )
+        dark = (
+            None
+            if not self._require_dark
+            else await self._find_master(image, ImageType.DARK, max_days=self._max_days_dark)
+        )
+        flat = (
+            None
+            if not self._require_flat
+            else await self._find_master(image, ImageType.SKYFLAT, max_days=self._max_days_flat)
         )
 
-        # to image
-        calibrated = Image.from_ccddata(c)
-        calibrated.header["BUNIT"] = ("electron", "Unit of pixel values")
+        return bias, dark, flat
 
-        # set raw filename
-        if "ORIGNAME" in image.header:
-            calibrated.header["L1RAW"] = image.header["ORIGNAME"].replace(".fits", "")
+    async def _find_master(
+        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
+    ) -> Image:
+        """Find master calibration frame for given parameters using a cache.
 
-        # add calibration frames
+        Args:
+            image_type: image type.
+
+        Returns:
+            Image or None
+
+        Raises:
+            ValueError: if no calibration frame could be found.
+        """
+
+        self._verify_image_header(image)
+
+        try:
+            master = self._calib_cache.get_from_cache(image, image_type)
+        except ValueError:
+            master = await self._find_master_in_archive(image, image_type, max_days)
+            self._calib_cache.add_to_cache(master, image_type)
+
+        return master
+
+    @staticmethod
+    def _verify_image_header(image: Image):
+        has_instrument = "INSTRUME" in image.header
+        has_binning = "XBINNING" in image.header
+        has_time = "DATE-OBS" in image.header
+
+        if not (has_instrument and has_binning and has_time):
+            raise ValueError("Could not fetch items from image header.")
+
+    async def _find_master_in_archive(self, image: Image, image_type: ImageType, max_days: Optional[float] = None) -> Image:
+        instrument = image.header["INSTRUME"]
+        binning = "{0}x{0}".format(image.header["XBINNING"])
+        filter_name = cast(str, image.header["FILTER"]) if "FILTER" in image.header else None
+        time = Time(image.header["DATE-OBS"])
+
+        master = await Pipeline.find_master(
+            self._archive,
+            image_type,
+            time,
+            instrument,
+            binning,
+            None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
+            max_days=max_days,
+        )
+
+        if master is None:
+            raise ValueError("No master frame found.")
+
+        return master
+
+    @staticmethod
+    def _copy_original_filename(calibrated: Image, original: Image):
+        if "ORIGNAME" in original.header:
+            calibrated.header["L1RAW"] = original.header["ORIGNAME"].replace(".fits", "")
+
+    @staticmethod
+    def _copy_calibration_filename(calibrated: Image, bias: Image = None, dark: Image = None, flat: Image = None):
         if bias is not None:
             calibrated.header["L1BIAS"] = (
                 bias.header["FNAME"].replace(".fits.fz", "").replace(".fits", ""),
@@ -135,61 +181,10 @@ class Calibration(ImageProcessor):
                 "Name of FLAT frame",
             )
 
-        # set RLEVEL
+    @staticmethod
+    def _set_calibration_headers(calibrated):
+        calibrated.header["BUNIT"] = ("electron", "Unit of pixel values")
         calibrated.header["RLEVEL"] = (1, "Reduction level")
-
-        # finished
-        return calibrated
-
-    async def _find_master(
-        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
-    ) -> Optional[Image]:
-        """Find master calibration frame for given parameters using a cache.
-
-        Args:
-            image_type: image type.
-
-        Returns:
-            Image or None
-
-        Raises:
-            ValueError: if no calibration frame could be found.
-        """
-
-        # get mode
-        try:
-            instrument = image.header["INSTRUME"]
-            binning = "{0}x{0}".format(image.header["XBINNING"])
-            filter_name = cast(str, image.header["FILTER"]) if "FILTER" in image.header else None
-            time = Time(image.header["DATE-OBS"])
-            mode = image_type, instrument, binning, filter_name
-        except KeyError:
-            # could not fetch header items
-            raise ValueError("Could not fetch items from image header.")
-
-        try:
-            return self._calib_cache.get_from_cache(image, image_type)
-        except ValueError:
-            pass
-
-        # try to download one
-        master = await Pipeline.find_master(
-            self._archive,
-            image_type,
-            time,
-            instrument,
-            binning,
-            None if image_type in [ImageType.BIAS, ImageType.DARK] else filter_name,
-            max_days=max_days,
-        )
-
-        # nothing?
-        if master is None:
-            raise ValueError("No master frame found.")
-
-        self._calib_cache.add_to_cache(master, image_type)
-
-        return master
 
 
 __all__ = ["Calibration"]

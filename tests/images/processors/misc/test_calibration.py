@@ -1,3 +1,5 @@
+import logging
+
 import ccdproc
 import pytest
 
@@ -40,6 +42,7 @@ async def test_find_master_not_in_archive(mocker, mock_image):
     archive = Archive()
 
     calibration = Calibration(archive)
+    mocker.patch.object(calibration._calib_cache, "get_from_cache", side_effect=ValueError())
 
     with pytest.raises(ValueError):
         await calibration._find_master(mock_image, image_type)
@@ -70,7 +73,7 @@ async def test_find_master_in_archive(mocker, mock_image):
 
 
 @pytest.mark.asyncio
-async def test_full(mocker, mock_image):
+async def test_call_valid(mocker, mock_image):
     mock_image.header["DET-GAIN"] = 1.0
     mock_image.header["DET-RON"] = 0.0
     mock_image.header["EXPTIME"] = 1.0
@@ -98,3 +101,25 @@ async def test_full(mocker, mock_image):
     assert result_image.header["L1FLAT"] == "file"
 
     assert calib_image == result_image
+
+
+@pytest.mark.asyncio
+async def test_call_calibration_not_found(mocker, caplog):
+    archive = Archive()
+    calibration = Calibration(archive)
+
+    mocker.patch.object(calibration, "_get_calibrations_masters", side_effect=ValueError("Test"))
+
+    image = Image()
+    with caplog.at_level(logging.WARNING):
+        result_image = await calibration(image)
+
+    assert caplog.records[0].message == "Could not find calibration frames: Test"
+    assert image == result_image
+
+
+def test_verify_image_header_invalid():
+    image = Image()
+
+    with pytest.raises(ValueError):
+        Calibration._verify_image_header(image)

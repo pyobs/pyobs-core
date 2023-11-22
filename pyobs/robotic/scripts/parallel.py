@@ -2,7 +2,6 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional, List
 
-from pyobs.object import get_object
 from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
 from pyobs.robotic.scripts import Script
 
@@ -25,12 +24,7 @@ class ParallelRunner(Script):
         Args:
             scripts: list or dict of scripts to run in parallel.
         """
-        if "configuration" not in kwargs:
-            kwargs["configuration"] = {}
         Script.__init__(self, **kwargs)
-
-        for script in scripts:
-            script["comm"] = self.comm
         self.scripts = scripts
 
     async def can_run(self) -> bool:
@@ -43,7 +37,7 @@ class ParallelRunner(Script):
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
         tasks = [
-            asyncio.create_task(get_object(s, Script).run(task_runner, task_schedule, task_archive))
+            asyncio.create_task(self.get_object(s, Script).run(task_runner, task_schedule, task_archive))
             for s in self.scripts
         ]
         await asyncio.gather(*tasks)

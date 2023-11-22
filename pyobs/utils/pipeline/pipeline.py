@@ -162,7 +162,11 @@ class Pipeline(Object, PipelineMixin):
         calibrated = image.copy()
 
         # run pipeline
-        return await self.run_pipeline(calibrated)
+        image = await self.run_pipeline(calibrated)
+
+        # set reduction level and return
+        image.header["RLEVEL"] = (1, "Reduction level")
+        return image
 
     @staticmethod
     async def find_master(

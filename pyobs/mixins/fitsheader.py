@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+import asyncio
 import logging
 import math
 import os
+from asyncio import Task
 from collections.abc import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
@@ -63,7 +66,7 @@ class FitsHeaderMixin:
         """
 
         # init
-        futures: Dict[str, Coroutine] = {}
+        futures: Dict[str, Task] = {}
 
         # we can only do this with a comm module
         module = cast(Module, self)
@@ -76,10 +79,14 @@ class FitsHeaderMixin:
                 log.debug("Requesting FITS headers from %s...", client)
                 if before:
                     proxy1 = await module.proxy(client, IFitsHeaderBefore)
-                    futures[client] = proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    futures[client] = asyncio.create_task(
+                        proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                    )
                 else:
                     proxy2 = await module.proxy(client, IFitsHeaderAfter)
-                    futures[client] = proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    futures[client] = asyncio.create_task(
+                        proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                    )
 
         # finished
         return futures

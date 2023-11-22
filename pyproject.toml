@@ -1,19 +1,19 @@
 [tool.poetry]
 name = "pyobs-core"
 packages = [{ include = "pyobs" }]
-version = "1.4.11"
+version = "1.6.7"
 description = "robotic telescope software"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-scipy = "^1.11.1"
-astropy = "^5.3.1"
-numpy = "^1.25.1"
-pytz = "^2023.3"
+scipy = "^1.11.3"
+astropy = "^5.3.4"
+numpy = "^1.26.0"
+pytz = "^2023.3.post1"
 PyYAML = "^6.0.1"
-typing-extensions = "^4.7.1"
+typing-extensions = "^4.8.0"
 astroquery = "^0.4.6"
 slixmpp = "^1.8.4"
 single-source = "^0.3.0"
@@ -21,40 +21,42 @@ dbus-next = "^0.2.3"
 asyncinotify = "^4.0.2"
 sep = { version = "^1.2.1", platform = "linux", optional = true }
 python-daemon = "^3.0.1"
-reproject = { version = "^0.11.0", optional = true }
-pandas = { version = "^2.0.3", optional = true }
-astroplan =  { version = "^0.8", optional = true }
-paramiko = { version = "^3.2.0", optional = true }
-py-expression-eval = { version = "^0.3.14", optional = true }
+reproject = { version = "^0.12.0", optional = true }
+pandas = "^2.1.1"
+astroplan =  "^0.9.1"
+paramiko = "^3.3.1"
+py-expression-eval = "^0.3.14"
 requests = { version = "^2.31.0", optional = true }
 ccdproc = { version = "^2.4.1", optional = true }
-photutils = { version = "^1.8.0", optional = true }
+photutils = { version = "^1.9.0", optional = true }
 lmfit = { version = "^1.2.2", optional = true }
-tornado = { version = "^6.3.2", optional = true }
-python-telegram-bot = { version = "^20.4", optional = true }
-aiohttp = { version = "^3.8.5", optional = true }
+tornado = { version = "^6.3.3", optional = true }
+python-telegram-bot = { version = "^20.6", optional = true }
+aiohttp = "^3.8.6"
 
 [tool.poetry.extras]
-full = ['asyncinotify', 'sep', 'python-daemon', 'reproject', 'pandas', 'astroplan', 'paramiko',
-        'py-expression-eval', 'requests', 'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
+full = ['asyncinotify', 'sep', 'python-daemon', 'reproject', 'pandas', 'paramiko',
+        'requests', 'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
         'aiohttp']
 
 [tool.poetry.dev-dependencies]
 types-cryptography = "^3.3.23.2"
 types-enum34 = "^1.1.8"
 types-ipaddress = "^1.0.8"
-types-paramiko = "^3.2.0.1"
-types-pytz = "^2023.3.0.0"
-types-PyYAML = "^6.0.12.11"
-types-requests = "^2.31.0.2"
-types-setuptools = "^68.0.0.3"
+types-paramiko = "^3.3.0.0"
+types-pytz = "^2023.3.1.1"
+types-PyYAML = "^6.0.12.12"
+types-requests = "^2.31.0.8"
+types-setuptools = "^68.2.0.0"
 types-toml = "^0.10.8.7"
 types-tornado = "^5.1.1"
-mypy = "^1.4.1"
-pytest = "^7.4.0"
+mypy = "^1.5.1"
+pytest = "^7.4.2"
 pytest-asyncio = "^0.21.1"
-black = "^23.7.0"
-pre-commit = "^3.3.3"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+black = "^23.9.1"
+pre-commit = "^3.4.0"
 
 [tool.poetry.scripts]
 pyobs = 'pyobs.cli.pyobs:main'

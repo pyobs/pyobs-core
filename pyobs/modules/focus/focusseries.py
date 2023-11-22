@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pyobs.interfaces import IAutoFocus
-from pyobs.events import FocusFoundEvent
+from pyobs.events import FocusFoundEvent, BadWeatherEvent, Event
 from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
@@ -50,6 +50,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._filters = filters
         self._offset = offset
         self._abort = threading.Event()
+        self._running = False
 
         # create focus series
         self._series: FocusSeries = get_object(series, FocusSeries)
@@ -73,6 +74,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # register event
         await self.comm.register_event(FocusFoundEvent)
+        await self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
         # check focuser and camera
         try:
@@ -100,8 +102,16 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         Raises:
             FileNotFoundException: If image could not be downloaded.
         """
-        log.info("Performing auto-focus...")
 
+        try:
+            log.info("Performing auto-focus...")
+            self._running = True
+            return await self._auto_focus(count, step, exposure_time, **kwargs)
+
+        finally:
+            self._running = False
+
+    async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
         # get focuser
         log.info("Getting proxy for focuser...")
         focuser = await self.proxy(self._focuser, IFocuser)
@@ -181,14 +191,17 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             try:
                 self._series.analyse_image(image, foc)
             except:
-                # do nothing..
+                # do nothing...
                 log.error("Could not analyse image.")
                 continue
 
         # fit focus
         if self._abort.is_set():
             raise exceptions.AbortedError()
-        focus = self._series.fit_focus()
+        try:
+            focus = self._series.fit_focus()
+        except Exception as e:
+            raise exc.GeneralError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?
         if focus is None or focus[0] is None or np.isnan(focus[0]):
@@ -235,6 +248,25 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         self._abort.set()
+
+    async def _on_bad_weather(self, event: Event, sender: str) -> bool:
+        """Abort series if a bad weather event occurs.
+
+        Args:
+            event: The bad weather event.
+            sender: Who sent it.
+        """
+
+        # check
+        if not isinstance(event, BadWeatherEvent):
+            raise ValueError("Wrong event type.")
+
+        # park
+        if self._running:
+            log.warning("Aborting focus series due to bad weather.")
+            self._abort.set()
+            return True
+        return False
 
 
 __all__ = ["AutoFocusSeries"]

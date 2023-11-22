@@ -53,8 +53,8 @@ Module for performing a fine-acquisition on the sun
 * A log file where all the offsets from the acquisitions are stored, can be useful for checking the pointing model
   (line 8).
 * The (initial) exposure time for the camera (line 11).
-* Tolerances for the acquisiton: it succeeds if the telescope is closer than 10" to the position on the sund
-  get larger than 7200". 10 moves are allowed (lines 14-16).
+* Tolerances for the acquisiton: It succeeds if the telescope is closer than 10" to the target position on the sun.
+  It fails if the offsets get larger than 7200". 10 moves are allowed (lines 14-16).
 * The pipeline defines steps performed on the images in order to get the offsets for the next step (lines 18-20):
 
   #. ``DiskOffset`` is a custom class that takes the WCS from the :ref:`suncamera` and calculates offsets to go
@@ -103,8 +103,8 @@ Module for operating the camera looking at the mirror with the two fiber holes
     FPS: 2
 
 * ``FiberCamera`` is a class derived from :class:`pyobs_aravis.araviscamera.AravisCamera` with some extensions.
-* Both fiber holes are defines and one is also defined as the center (lines 5-6).
-* The rotation of the camera is given as well as that the image should be flipped (lines 9-10).
+* The fiber hole and gregory hole are defined and one is also defined as the image center (lines 5-6).
+* The rotation of the camera is given and whether that the image should be flipped (lines 9-10).
 * The plate scale is given (line 13).
 * URLs for FITS files and the video stream are defined (lines 16-17).
 * A SIP calibration is given to be added to the WCS of the FITS file (line 20).
@@ -123,7 +123,7 @@ Module used for distributing images among the other modules
   port: 37075
 
 * :class:`~pyobs.modules.utils.HttpFileCache` provides a HTTP server that can be used for distributing files (line 1).
-* It needs a port to run on (line 3).
+* It needs a host and port to run on (line 3).
 
 
 filewatcher
@@ -176,12 +176,12 @@ Module for operating the Fourier Transform Spectrograph (FTS)
 
 * ``FTS`` is a class deriving from :class:`pyobs.modules.camera.basespectrograph.BaseSpectrograph` to implement
   the functionality of the spectrograph (line 1).
-* The rest of the config is omitted here.
+* The rest of the config is omitted here, since this class is not freely accessible.
 
 
 gregorycamera
 """""""""""""
-Module for operating a camera that looks at the gregory hole fiber
+Module for operating a camera that looks at the gregory hole of the :ref:`fibercamera`.
 
 .. code-block:: YAML
   :linenos:
@@ -287,7 +287,7 @@ Module for running full roboric operations
         acquisition: acquisition
         autoguider: guiding
 
-* ``SolarMastermind`` is a custom class that combined the task runner and the scheduler in one class (line 1).
+* ``SolarMastermind`` is a custom class that combines the task runner and the scheduler in one class (line 1).
 * The schedule is calculated using the custom class ``VTTaskSchedule`` (line 3-5).
 * A task runner is defined which runs a custom script (lines 7-15).
 

@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 import numpy as np
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, Angle
 import astropy.units as u
 
 from pyobs.images import Image
@@ -53,7 +53,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
             # offsets are RA/Dec, so get them directly
             offsets = image.get_meta(RaDecOffsets)
             log.info("Found RA/Dec shift of dra=%.2f, ddec=%.2f.", offsets.dra, offsets.ddec)
-            dra, ddec = offsets.dra * u.arcsec, offsets.ddec * u.arcsec
+            dra, ddec = Angle(offsets.dra * u.arcsec), Angle(offsets.ddec * u.arcsec)
 
         elif image.has_meta(AltAzOffsets):
             raise NotImplementedError()

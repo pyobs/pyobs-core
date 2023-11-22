@@ -11,7 +11,7 @@ class Astrometry(ImageProcessor, metaclass=ABCMeta):
 
     @abstractmethod
     async def __call__(self, image: Image) -> Image:
-        """Find astrometric solution on given image.
+        """Finds astrometric solution to a given image.
 
         Args:
             image: Image to analyse.
@@ -19,7 +19,6 @@ class Astrometry(ImageProcessor, metaclass=ABCMeta):
         Returns:
             Processed image.
         """
-        ...
 
 
 __all__ = ["Astrometry"]

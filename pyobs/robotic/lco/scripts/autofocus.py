@@ -149,7 +149,7 @@ class LcoAutoFocusScript(Script):
             log.info("Performing acquisition...")
             await acquisition.acquire_target()
 
-        # do auto focus
+        # perform auto-focus
         if autofocus is None:
             raise ValueError("No autofocus given.")
         await autofocus.auto_focus(self._count, self._step, self._exptime)

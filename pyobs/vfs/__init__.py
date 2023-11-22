@@ -61,6 +61,7 @@ from .localfile import LocalFile
 from .httpfile import HttpFile
 from .memfile import MemoryFile
 from .smbfile import SMBFile
+from .sftpfile import SFTPFile
 from .sshfile import SSHFile
 from .tempfile import TempFile
 from .archivefile import ArchiveFile
@@ -73,6 +74,7 @@ __all__ = [
     "HttpFile",
     "MemoryFile",
     "SMBFile",
+    "SFTPFile",
     "SSHFile",
     "TempFile",
     "ArchiveFile",

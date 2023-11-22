@@ -51,7 +51,7 @@ class SSHFile(VFSFile):
 
         # build filename
         self.filename = name
-        full_path = os.path.join(root, name)
+        self._full_path = os.path.join(root, name)
 
         # check
         if hostname is None:
@@ -61,31 +61,80 @@ class SSHFile(VFSFile):
         self._ssh = paramiko.SSHClient()
         self._ssh.load_system_host_keys()
         self._ssh.connect(hostname, port=port, username=username, password=password, key_filename=keyfile)
-        self._sftp = self._ssh.open_sftp()
 
         # need to create directory?
-        path = os.path.dirname(full_path)
-        try:
-            self._sftp.chdir(path)
-        except IOError:
-            if mkdir:
-                self._sftp.mkdir(path)
-            else:
-                raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
+        if mkdir:
+            path = os.path.dirname(self._full_path)
+            self._ssh.exec_command(f"mkdir -p {path}")
 
-        # open file
-        self._fd = self._sftp.file(full_path, mode)
+        # build filename
+        self.filename = name
+        self.mode = mode
+        self._buffer = b"" if "b" in self.mode else ""
+        self._pos = 0
+        self._open = True
 
-    async def close(self) -> None:
-        """Close file."""
-        self._sftp.close()
-        self._ssh.close()
+    async def _download(self) -> None:
+        """For read access, download the file into a local buffer.
+
+        Raises:
+            FileNotFoundError: If file could not be found.
+        """
+
+        _, stdout, stderr = self._ssh.exec_command(f"cat {self._full_path}")
+        self._buffer = stdout.read()
 
     async def read(self, n: int = -1) -> AnyStr:
-        return self._fd.read(n)
+        """Read number of bytes from stream.
+
+        Args:
+            n: Number of bytes to read. Read until end, if -1.
+
+        Returns:
+            Read bytes.
+        """
+
+        # load file
+        if len(self._buffer) == 0 and "r" in self.mode:
+            await self._download()
+
+        # check size
+        if n == -1:
+            data = self._buffer
+            self._pos = len(self._buffer) - 1
+        else:
+            # extract data to read
+            data = self._buffer[self._pos : self._pos + n]
+            self._pos += n
+
+        # return data
+        return data
 
     async def write(self, s: AnyStr) -> None:
-        self._fd.write(s)
+        """Write data into the stream.
+
+        Args:
+            b: Bytes of data to write.
+        """
+        self._buffer += s
+
+    async def close(self) -> None:
+        """Close stream."""
+
+        # write it?
+        if "w" in self.mode and self._open:
+            await self._upload()
+
+        # set flag
+        self._open = False
+
+    async def _upload(self) -> None:
+        """If in write mode, actually send the file to the SSH server."""
+
+        transport = self._ssh.get_transport()
+        with transport.open_channel(kind="session") as channel:
+            channel.exec_command(f"cat > {self._full_path}")
+            channel.sendall(self._buffer)
 
     @staticmethod
     async def listdir(path: str, **kwargs: Any) -> List[str]:
@@ -109,16 +158,14 @@ class SSHFile(VFSFile):
             password=kwargs["password"] if "password" in kwargs else None,
             key_filename=kwargs["keyfile"] if "keyfile" in kwargs else None,
         )
-        sftp = ssh.open_sftp()
 
-        # list files in path
-        loop = asyncio.get_running_loop()
-        files = await loop.run_in_executor(None, sftp.listdir, os.path.join(kwargs["root"], path))
+        p = os.path.join(kwargs["root"], path)
+        _, stdout, stderr = ssh.exec_command(f"ls -1 {p}")
+        files = stdout.readlines()
 
         # disconnect and return list
-        sftp.close()
         ssh.close()
-        return files
+        return [f.strip() for f in files]
 
 
 __all__ = ["SSHFile"]

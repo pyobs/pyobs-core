@@ -1,8 +1,12 @@
 from astropy.io import fits
-
+import pytest
 from pyobs.modules.camera import DummyCamera
 
 
+pytest_plugins = ("pytest_asyncio",)
+
+
+@pytest.mark.asyncio
 async def test_open_close():
     """Test basic open/close of BaseCamera."""
 
@@ -12,6 +16,7 @@ async def test_open_close():
     await camera.close()
 
 
+@pytest.mark.asyncio
 async def test_remaining():
     """Test the methods for remaining exposure time and progress."""
 
@@ -94,6 +99,7 @@ async def test_add_fits_headers():
 '''
 
 
+@pytest.mark.asyncio
 async def test_trimsec():
     # create camera, no need for opening it
     camera = DummyCamera()

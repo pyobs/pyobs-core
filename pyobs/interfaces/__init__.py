@@ -34,6 +34,7 @@ from .IGain import IGain
 from .IImageFormat import IImageFormat
 from .IData import IData
 from .IImageType import IImageType
+from .IMode import IMode
 from .IModule import IModule
 from .IMotion import IMotion
 from .IPointingAltAz import IPointingAltAz

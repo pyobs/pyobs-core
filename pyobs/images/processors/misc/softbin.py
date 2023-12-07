@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+import numpy as np
+
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 
@@ -34,36 +36,43 @@ class SoftBin(ImageProcessor):
             Binned image.
         """
 
-        # copy image
-        img = image.copy()
-        if img.data is None:
+        output_image = image.copy()
+        if output_image.data is None:
             log.warning("No data found in image.")
             return image
 
-        # calculate new shape, in which all binned pixels are in a higher dimension
-        shape = (img.data.shape[0] // self.binning, self.binning, img.data.shape[1] // self.binning, self.binning)
-
-        # reshape and average
-        img.data = img.data.reshape(shape).mean(-1).mean(1)
-        if img.data is None:
+        output_image.data = self._reshape_image(output_image.data)
+        if output_image.data is None:
             log.warning("No data found in image after reshaping.")
             return image
 
-        # set NAXIS1/2
-        img.header["NAXIS2"], img.header["NAXIS1"] = img.data.shape
+        self._update_header(output_image)
 
-        # divide some header entries by binning
+        return output_image
+
+    def _reshape_image(self, image_data: np.ndarray) -> np.ndarray:
+        shape = (image_data.shape[0] // self.binning, self.binning, image_data.shape[1] // self.binning, self.binning)
+
+        return image_data.reshape(shape).mean(-1).mean(1)
+
+    def _update_header(self, image: Image):
+        self._update_number_of_pixel_header(image)
+        self._update_reference_pixel_header(image)
+        self._update_image_scaling_header(image)
+
+    @staticmethod
+    def _update_number_of_pixel_header(image: Image):
+        image.header["NAXIS2"], image.header["NAXIS1"] = image.data.shape
+
+    def _update_reference_pixel_header(self, image: Image):
         for key in ["CRPIX1", "CRPIX2"]:
-            if key in img.header:
-                img.header[key] /= self.binning
+            if key in image.header:
+                image.header[key] /= self.binning
 
-        # multiply some header entries with binning
+    def _update_image_scaling_header(self, image: Image):
         for key in ["DET-BIN1", "DET-BIN2", "XBINNING", "YBINNING", "CDELT1", "CDELT2"]:
-            if key in img.header:
-                img.header[key] *= self.binning
-
-        # return result
-        return img
+            if key in image.header:
+                image.header[key] *= self.binning
 
 
 __all__ = ["SoftBin"]

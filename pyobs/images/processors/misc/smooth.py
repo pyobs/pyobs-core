@@ -1,10 +1,10 @@
 import logging
 from typing import Any
-from scipy.ndimage import gaussian_filter
 
-from pyobs.images.processor import ImageProcessor
+import scipy.ndimage
+
 from pyobs.images import Image
-
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class Smooth(ImageProcessor):
             return image
 
         # smooth it
-        img.data = gaussian_filter(
+        img.data = scipy.ndimage.gaussian_filter(
             img.data, self.sigma, order=self.order, mode=self.mode, cval=self.cval, truncate=self.truncate
         )
 

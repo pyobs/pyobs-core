@@ -26,7 +26,13 @@ class Smooth(ImageProcessor):
         """Init a new smoothing pipeline step.
 
         Args:
-            binning: Binning to apply to image.
+            sigma: Standard deviation for Gaussian kernel.
+            order: The order of the filter along each axis.
+            mode: Determines how the input array is extended when the filter overlaps a border.
+            cval: Value to fill past edges of input if mode is ‘constant’.
+            truncate: Truncate the filter at this many standard deviations.
+
+        See Also: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html#scipy-ndimage-gaussian-filter
         """
         ImageProcessor.__init__(self, **kwargs)
 
@@ -38,28 +44,25 @@ class Smooth(ImageProcessor):
         self.truncate = truncate
 
     async def __call__(self, image: Image) -> Image:
-        """Bin an image.
+        """Smooth an image.
 
         Args:
-            image: Image to bin.
+            image: Image to smooth.
 
         Returns:
-            Binned image.
+            Smoothed image.
         """
 
-        # copy image
-        img = image.copy()
-        if img.data is None:
+        output_image = image.copy()
+        if output_image.data is None:
             log.warning("No data found in image.")
             return image
 
-        # smooth it
-        img.data = scipy.ndimage.gaussian_filter(
-            img.data, self.sigma, order=self.order, mode=self.mode, cval=self.cval, truncate=self.truncate
+        output_image.data = scipy.ndimage.gaussian_filter(
+            output_image.data, self.sigma, order=self.order, mode=self.mode, cval=self.cval, truncate=self.truncate
         )
 
-        # return result
-        return img
+        return output_image
 
 
 __all__ = ["Smooth"]

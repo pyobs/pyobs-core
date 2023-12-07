@@ -41,6 +41,8 @@ class _DotNetRequestBuilder:
             "scale_low": scale * 0.9,
             "scale_high": scale * 1.1,
             "radius": self._radius,
+            "crpix-x": self._header["CRPIX1"],
+            "crpix-y": self._header["CRPIX1"],
             "nx": self._header["NAXIS1"],
             "ny": self._header["NAXIS2"],
             "x": self._catalog["x"].tolist(),

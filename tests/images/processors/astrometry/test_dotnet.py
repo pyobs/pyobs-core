@@ -87,7 +87,7 @@ def mock_catalog(size: int):
     flux = [1.0] * size + [np.nan, np.nan]
     peak = [1.0] * size + [np.nan, np.nan]
 
-    cat = QTable([x, y, flux, peak], names=('x', 'y', 'flux', 'peak'))
+    cat = QTable([x, y, flux, peak], names=("x", "y", "flux", "peak"))
 
     return cat
 
@@ -140,6 +140,7 @@ async def test_call_cdelt_w_exception():
 
 class MockResponse:
     """https://stackoverflow.com/questions/57699218/how-can-i-mock-out-responses-made-by-aiohttp-clientsession"""
+
     def __init__(self, text, status):
         self._text = text
         self.status = status
@@ -177,17 +178,19 @@ async def test_call_post_error_n_exception(mocker, mock_header):
     data = mock.call_args_list[0].kwargs["json"]
 
     assert data == {
-            "ra": image.header["TEL-RA"],
-            "dec": image.header["TEL-DEC"],
-            "scale_low": 3600 * 0.9,
-            "scale_high": 3600 * 1.1,
-            "radius": 3.0,
-            "nx": image.header["NAXIS1"],
-            "ny": image.header["NAXIS2"],
-            "x": [0.0, 0.0, 0.0, 0.0, 0.0],
-            "y": [0.0, 0.0, 0.0, 0.0, 0.0],
-            "flux": [1.0, 1.0, 1.0, 1.0, 1.0],
-        }
+        "crpix-x": image.header["CRPIX1"],
+        "crpix-y": image.header["CRPIX2"],
+        "ra": image.header["TEL-RA"],
+        "dec": image.header["TEL-DEC"],
+        "scale_low": 3600 * 0.9,
+        "scale_high": 3600 * 1.1,
+        "radius": 3.0,
+        "nx": image.header["NAXIS1"],
+        "ny": image.header["NAXIS2"],
+        "x": [0.0, 0.0, 0.0, 0.0, 0.0],
+        "y": [0.0, 0.0, 0.0, 0.0, 0.0],
+        "flux": [1.0, 1.0, 1.0, 1.0, 1.0],
+    }
 
 
 @pytest.mark.asyncio

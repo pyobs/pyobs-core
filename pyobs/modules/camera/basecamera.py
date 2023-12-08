@@ -273,6 +273,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header["IMAGETYP"] = image_type.value
 
         # add fits headers and format filename
+        await self.add_custom_fits_headers(image)
         await self.add_requested_fits_headers(image, header_futures_before)
         await self.add_requested_fits_headers(image, header_futures_after)
         await self.add_fits_headers(image)
@@ -299,6 +300,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._exposure = None
         log.info("Finished image %s.", filename)
         return image, filename
+
+    async def add_custom_fits_headers(self, image: Image):
+        """Add FITS headers in derived classes.
+
+        Args:
+            image: Image to write FITS headers to.
+        """
+        pass
 
     @timeout(calc_expose_timeout)
     async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:

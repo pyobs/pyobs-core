@@ -1,8 +1,10 @@
+from __future__ import annotations
 import asyncio
 import logging
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, TYPE_CHECKING
 
-from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+if TYPE_CHECKING:
+    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
 from pyobs.robotic.scripts import Script
 
 

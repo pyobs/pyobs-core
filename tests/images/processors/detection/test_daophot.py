@@ -10,9 +10,9 @@ def test_init_default():
 
     assert detector.fwhm == 3.0
     assert detector.threshold == 4.0
-    assert detector.bkg_sigma == 3.0
-    assert detector.bkg_box_size == (50, 50)
-    assert detector.bkg_filter_size == (3, 3)
+    assert detector._background_remover._sigma_clip.sigma == 3.0
+    assert detector._background_remover._box_size == (50, 50)
+    assert detector._background_remover._filter_size == (3, 3)
 
 
 def test_init():
@@ -26,9 +26,9 @@ def test_init():
 
     assert detector.fwhm == fwhm
     assert detector.threshold == threshold
-    assert detector.bkg_sigma == bkg_sigma
-    assert detector.bkg_box_size == bkg_box_size
-    assert detector.bkg_filter_size == bkg_filter_size
+    assert detector._background_remover._sigma_clip.sigma == bkg_sigma
+    assert detector._background_remover._box_size == bkg_box_size
+    assert detector._background_remover._filter_size == bkg_filter_size
 
 
 @pytest.mark.asyncio

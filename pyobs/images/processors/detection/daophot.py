@@ -3,12 +3,13 @@ import logging
 from typing import Tuple, Any
 
 import numpy as np
+from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
-from astropy.stats import SigmaClip, sigma_clipped_stats
 
 from pyobs.images import Image
 from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection
+from .._daobackgroundremover import _DaoBackgroundRemover
 
 log = logging.getLogger(__name__)
 
@@ -43,29 +44,8 @@ class DaophotSourceDetection(SourceDetection):
         # store
         self.fwhm = fwhm
         self.threshold = threshold
-        self.bkg_sigma = bkg_sigma
-        self.bkg_box_size = bkg_box_size
-        self.bkg_filter_size = bkg_filter_size
 
-    def _estimate_background(self, data: np.ndarray, mask: np.ndarray) -> np.ndarray:
-        from photutils import Background2D, MedianBackground
-
-        sigma_clip = SigmaClip(sigma=self.bkg_sigma)
-        bkg_estimator = MedianBackground()
-        bkg = Background2D(
-            data,
-            self.bkg_box_size,
-            filter_size=self.bkg_filter_size,
-            sigma_clip=sigma_clip,
-            bkg_estimator=bkg_estimator,
-            mask=mask,
-        )
-
-        return bkg.background
-
-    def _remove_background_from_data(self, data, mask) -> np.ndarray:
-        background = self._estimate_background(data, mask)
-        return data - background
+        self._background_remover = _DaoBackgroundRemover(bkg_sigma, bkg_box_size, bkg_filter_size)
 
     async def _find_stars(self, data: np.ndarray, std: int) -> Table:
         from photutils import DAOStarFinder
@@ -88,9 +68,9 @@ class DaophotSourceDetection(SourceDetection):
         if image.data is None:
             log.warning("No data found in image.")
             return image
-        image_data = image.data.astype(float)
 
-        background_corrected_data = self._remove_background_from_data(image_data, image.mask)
+        background_corrected_image = self._background_remover(image)
+        background_corrected_data = background_corrected_image.data.astype(float)
 
         _, median, std = sigma_clipped_stats(background_corrected_data, sigma=3.0)
 

@@ -4,6 +4,7 @@ from astropy.stats import SigmaClip
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processors._daobackgroundremover import _DaoBackgroundRemover
 
 log = logging.getLogger(__name__)
 
@@ -29,10 +30,7 @@ class RemoveBackground(ImageProcessor):
         """
         ImageProcessor.__init__(self, **kwargs)
 
-        # store
-        self.sigma = sigma
-        self.box_size = box_size
-        self.filter_size = filter_size
+        self._background_remover = _DaoBackgroundRemover(sigma, box_size, filter_size)
 
     async def __call__(self, image: Image) -> Image:
         """Remove background from image.
@@ -43,21 +41,9 @@ class RemoveBackground(ImageProcessor):
         Returns:
             Image without background.
         """
-        from photutils.background import Background2D, MedianBackground
 
-        # init objects
-        sigma_clip = SigmaClip(sigma=self.sigma)
-        bkg_estimator = MedianBackground()
+        return self._background_remover(image)
 
-        # calculate background
-        bkg = Background2D(
-            image.data, self.box_size, filter_size=self.filter_size, sigma_clip=sigma_clip, bkg_estimator=bkg_estimator
-        )
-
-        # copy image and remove background
-        img = image.copy()
-        img.data = img.data - bkg.background
-        return img
 
 
 __all__ = ["RemoveBackground"]

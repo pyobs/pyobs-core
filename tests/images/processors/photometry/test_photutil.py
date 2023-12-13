@@ -1,20 +1,11 @@
 import logging
 
-import numpy as np
 import pytest
 from astropy.io.fits import Header
-from astropy.table import QTable
 
+import pyobs.images.processors.photometry._photutil_aperture_photometry
 from pyobs.images import Image
 from pyobs.images.processors.photometry import PhotUtilsPhotometry
-
-
-@pytest.fixture()
-def const_test_image() -> Image:
-    data = np.ones((100, 100))
-    header = Header({"CD1_1": 1.0})
-    catalog = QTable({"x": [40.0], "y": [40.0]})
-    return Image(data=data, header=header, catalog=catalog)
 
 
 @pytest.mark.asyncio
@@ -42,30 +33,12 @@ async def test_call_invalid_catalog(caplog):
 
 
 @pytest.mark.asyncio
-async def test_call_to_large_pixel_scale(caplog, const_test_image):
+async def test_call(mocker, const_test_image):
+    mocker.patch("pyobs.images.processors.photometry._photutil_aperture_photometry._PhotUtilAperturePhotometry.__call__")
+
     photometry = PhotUtilsPhotometry()
+    await photometry(const_test_image)
 
-    result = await photometry(const_test_image)
+    pyobs.images.processors.photometry._photutil_aperture_photometry._PhotUtilAperturePhotometry.__call__.assert_called()
 
-    assert result.catalog.keys() == ["x", "y"]
-    assert result.catalog["x"] == [40]
-    assert result.catalog["y"] == [40]
-
-
-@pytest.mark.asyncio
-async def test_call_const(caplog, const_test_image):
-    photometry = PhotUtilsPhotometry()
-    const_test_image.header["CD1_1"] = 1/(2.5*3600)
-    result = await photometry(const_test_image)
-
-    # Test background is 1.0
-    assert all([
-        abs(result.catalog[f"bkgaper{diameter}"][0] - 1.0) < 1e-14
-        for diameter in range(1, 9)
-    ])
-
-    # Test flux is 0.0
-    assert all([
-        abs(result.catalog[f"fluxaper{diameter}"][0] - 0.0) < 1e-13
-        for diameter in range(1, 9)
-    ])
+    assert pyobs.images.processors.photometry._photutil_aperture_photometry._PhotUtilAperturePhotometry.__call__.call_count == 8

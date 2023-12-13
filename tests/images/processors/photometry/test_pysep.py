@@ -31,6 +31,7 @@ async def test_call_invalid_catalog(caplog):
     assert caplog.records[0].message == "No catalog found in image."
     assert result == image
 
+
 @pytest.mark.asyncio
 async def test_call_const():
     catalog = QTable({"x": [40], "y": [40], "a": [10], "b": [5], "kronrad": [5]})
@@ -38,7 +39,7 @@ async def test_call_const():
     photometry = SepPhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
     result = await photometry(const_test_image)
-    print(result.catalog)
+
     # Test background is 1.0
     np.testing.assert_almost_equal(result.catalog["background"][0], 1.0, 14)
 
@@ -47,3 +48,34 @@ async def test_call_const():
         abs(result.catalog[f"fluxaper{diameter}"][0] - 0.0) < 1e-13
         for diameter in range(1, 9)
     ])
+
+    assert all([
+        abs(result.catalog[f"fluxerr{diameter}"][0] - 0.0) < 1e-13
+        for diameter in range(1, 9)
+    ])
+
+
+@pytest.mark.asyncio
+async def test_call_single_peak():
+    catalog = QTable({"x": [40], "y": [40], "a": [10], "b": [5], "kronrad": [5]})
+    data = np.zeros((100, 100))
+    data[39][39] = 100
+    const_test_image = Image(data=data, catalog=catalog)
+    photometry = SepPhotometry()
+    const_test_image.header["CD1_1"] = 1/(2.5*3600)
+    result = await photometry(const_test_image)
+
+    # Test background is 0.0
+    np.testing.assert_almost_equal(result.catalog["background"][0], 0.0, 14)
+
+    # Test flux is 100.0
+    assert all([
+        abs(result.catalog[f"fluxaper{diameter}"][0] - 100.0) < 1e-13
+        for diameter in range(1, 9)
+    ])
+
+    assert all([
+        abs(result.catalog[f"fluxerr{diameter}"][0] - 0.0) < 1e-13
+        for diameter in range(1, 9)
+    ])
+

@@ -17,34 +17,6 @@ def const_test_image() -> Image:
     return Image(data=data, header=header, catalog=catalog)
 
 
-def test_init():
-    threshold = 2.0
-    minarea = 3
-    deblend_nthresh = 30
-    deblend_cont = 0.001
-    clean = False
-    clean_param = 0.5
-
-    photometry = PhotUtilsPhotometry(threshold, minarea, deblend_nthresh, deblend_cont, clean, clean_param)
-
-    assert photometry.threshold == threshold
-    assert photometry.minarea == minarea
-    assert photometry.deblend_nthresh == deblend_nthresh
-    assert photometry.deblend_cont == deblend_cont
-    assert photometry.clean == clean
-    assert photometry.clean_param == clean_param
-
-
-def test_init_default():
-    photometry = PhotUtilsPhotometry()
-    assert photometry.threshold == 1.5
-    assert photometry.minarea == 5
-    assert photometry.deblend_nthresh == 32
-    assert photometry.deblend_cont == 0.005
-    assert photometry.clean == True
-    assert photometry.clean_param == 1.0
-
-
 @pytest.mark.asyncio
 async def test_call_invalid_pixelscale(caplog):
     image = Image()

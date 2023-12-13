@@ -75,7 +75,7 @@ class SepPhotometry(Photometry):
             return image
 
         # no mask?
-        mask = image.mask if image.mask is not None else np.ones(image.data.shape, dtype=bool)
+        mask = image.mask if image.mask is not None else np.zeros(image.data.shape, dtype=bool)
 
         # remove background
         data, bkg = SepSourceDetection.remove_background(image.data, mask)

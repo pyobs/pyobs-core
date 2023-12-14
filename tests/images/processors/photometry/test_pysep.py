@@ -8,8 +8,14 @@ from pyobs.images import Image
 from pyobs.images.processors.photometry import SepPhotometry
 
 
+@pytest.fixture()
+def test_catalog():
+    catalog = QTable({"x": [40], "y": [40], "a": [10], "b": [5], "kronrad": [5]})
+    return catalog
+
+
 @pytest.mark.asyncio
-async def test_call_invalid_pixelscale(caplog):
+async def test_call_invalid_data(caplog):
     image = Image()
     photometry = SepPhotometry()
 
@@ -18,6 +24,23 @@ async def test_call_invalid_pixelscale(caplog):
 
     assert caplog.records[0].message == "No data found in image."
     assert result == image
+
+
+@pytest.mark.asyncio
+async def test_call_invalid_pixelscale(test_catalog):
+    const_test_image = Image(data=np.ones((100, 100)), catalog=test_catalog)
+    photometry = SepPhotometry()
+
+    result = await photometry(const_test_image)
+
+    # Test background is 1.0
+    np.testing.assert_almost_equal(result.catalog["background"][0], 1.0, 14)
+
+    assert all([
+        result.catalog[f"fluxaper{diameter}"] == 0
+        for diameter in range(1, 9)
+    ])
+
 
 
 @pytest.mark.asyncio
@@ -33,9 +56,8 @@ async def test_call_invalid_catalog(caplog):
 
 
 @pytest.mark.asyncio
-async def test_call_const():
-    catalog = QTable({"x": [40], "y": [40], "a": [10], "b": [5], "kronrad": [5]})
-    const_test_image = Image(data=np.ones((100, 100)), catalog=catalog)
+async def test_call_const(test_catalog):
+    const_test_image = Image(data=np.ones((100, 100)), catalog=test_catalog)
     photometry = SepPhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
     result = await photometry(const_test_image)
@@ -56,11 +78,10 @@ async def test_call_const():
 
 
 @pytest.mark.asyncio
-async def test_call_single_peak():
-    catalog = QTable({"x": [40], "y": [40], "a": [10], "b": [5], "kronrad": [5]})
+async def test_call_single_peak(test_catalog):
     data = np.zeros((100, 100))
     data[39][39] = 100
-    const_test_image = Image(data=data, catalog=catalog)
+    const_test_image = Image(data=data, catalog=test_catalog)
     photometry = SepPhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
     result = await photometry(const_test_image)

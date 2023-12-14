@@ -45,16 +45,18 @@ class SepPhotometry(Photometry):
         output_image = image.copy()
         diameters = range(1, 9)
 
-        if image.pixel_scale is not None:
-            for diameter in diameters:
-                output_image.catalog[f"fluxaper{diameter}"] = 0
-                output_image.catalog[f"fluxerr{diameter}"] = 0
-
         positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
         photometry = _SepAperturePhotometry(output_image, positions)
 
-        for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
-            photometry(diameter)
+        # TODO: Resolve inconsistencies with photutils photometry
+        output_image.catalog = photometry.catalog
+        for diameter in diameters:
+            if image.pixel_scale is None:
+                output_image.catalog[f"fluxaper{diameter}"] = 0
+                output_image.catalog[f"fluxerr{diameter}"] = 0
+            else:
+                photometry(diameter)
+
         output_image.catalog = photometry.catalog
 
         return output_image

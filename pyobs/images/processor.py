@@ -20,11 +20,9 @@ class ImageProcessor(Object, metaclass=ABCMeta):
         Returns:
             Processed image.
         """
-        ...
 
     async def reset(self) -> None:
         """Resets state of image processor"""
-        pass
 
 
 __all__ = ["ImageProcessor"]

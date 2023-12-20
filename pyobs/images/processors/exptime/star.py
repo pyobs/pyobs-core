@@ -1,10 +1,12 @@
 import logging
-from typing import Union, Any, Dict
+from copy import copy
+from typing import Any, Optional
 
-from pyobs.object import get_object
+import numpy as np
+from astropy.table import Table, Row
+
 from pyobs.images import Image
 from pyobs.images.processors.exptime.exptime import ExpTimeEstimator
-from pyobs.images.processors.detection import SourceDetection
 
 log = logging.getLogger(__name__)
 
@@ -14,10 +16,11 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
     __module__ = "pyobs.images.processors.exptime"
 
+    SATURATION = 50000
+
     def __init__(
         self,
-        source_detection: Union[Dict[str, Any], SourceDetection],
-        edge: float = 0.1,
+        edge: float = 0.0,
         bias: float = 0.0,
         saturated: float = 0.7,
         **kwargs: Any,
@@ -25,65 +28,79 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         """Create new exp time estimator from single star.
 
         Args:
-            source_detection: Source detection to use.
             edge: Fraction of image to ignore at each border.
             bias: Bias level of image.
             saturated: Fraction of saturation that is used as brightness limit.
         """
         ExpTimeEstimator.__init__(self, **kwargs)
 
-        self._source_detection = source_detection
         self._edge = edge
         self._bias = bias
         self._saturated = saturated
-        self.coordinates = (None, None)
 
-    async def __call__(self, image: Image) -> Image:
-        """Processes an image and stores new exposure time in exp_time attribute.
+        self._image: Optional[Image] = None
+
+    async def _calc_exp_time(self, image: Image) -> float:
+        """
+        Process an image and calculates the new exposure time
 
         Args:
             image: Image to process.
-
-        Returns:
-            Original image.
         """
 
-        # get object
-        source_detection = get_object(self._source_detection, SourceDetection)
+        self._image = copy(image)
+        last_exp_time = image.header["EXPTIME"]
 
-        # do photometry and get copy of catalog
-        catalog = (await source_detection(image)).catalog
-        if catalog is None:
+        if self._image.catalog is None:
             log.info("No catalog found in image.")
-            return image
+            return last_exp_time
 
-        # sort catalog by peak flux
-        catalog.sort("peak")
+        saturation = self._calc_saturation_level_or_default()
+        self._filter_saturated_stars(saturation)
+        self._filter_edge_stars()
+        brightest_star = self._find_brightest_star()
 
-        # saturation level
-        if "DET-SATU" in image.header and "DET-GAIN" in image.header:
-            saturation = image.header["DET-SATU"] / image.header["DET-GAIN"]
-        else:
-            saturation = 50000
+        target_saturation = self._calc_target_saturation(saturation)
+        new_exp_time = self._calc_new_exp_time(last_exp_time, brightest_star["peak"], target_saturation)
 
-        # get max peak flux that we allow
-        max_peak = saturation * self._saturated
+        return new_exp_time
 
-        # filter out all stars that are saturated
-        catalog = catalog[catalog["peak"] <= max_peak]
+    def _calc_target_saturation(self, saturation) -> float:
+        return saturation * self._saturated
 
-        # get brightest star, get its peak flux and store its coordinates
-        star = catalog[0]
-        peak = star["peak"]
+    def _calc_saturation_level_or_default(self) -> float:
+        if "DET-SATU" in self._image.header and "DET-GAIN" in self._image.header:
+            return self._image.header["DET-SATU"] / self._image.header["DET-GAIN"]
+
+        return self.SATURATION
+
+    def _filter_saturated_stars(self, max_peak: float):
+        self._image.catalog = self._image.catalog[self._image.catalog["peak"] <= max_peak]
+
+    def _filter_edge_stars(self):
+        self._filter_edge_stars_axis(0)
+        self._filter_edge_stars_axis(1)
+
+    def _filter_edge_stars_axis(self, axis: int):
+        axis_len = self._image.header[f"NAXIS{axis}"]
+        edge_size = int(axis_len * self._edge)
+
+        axis_name = ["x", "y"][axis]
+
+        self._image.catalog = self._image.catalog[self._image.catalog[axis_name] >= 1 + edge_size]
+        self._image.catalog = self._image.catalog[self._image.catalog[axis_name] <= axis_len - edge_size]
+
+    def _find_brightest_star(self) -> Row:
+        brightest_star_index = np.argmax(self._image.catalog["peak"])
+        brightest_star = self._image.catalog[brightest_star_index]
+        return brightest_star
+
+    @staticmethod
+    def _log_brightest_star(star: Row):
         log.info("Found peak of %.2f at %.1fx%.1f.", star["peak"], star["x"], star["y"])
-        self.coordinates = (star["x"], star["y"])
 
-        # get exposure time of image
-        exp_time = image.header["EXPTIME"]
-
-        # calculate new exposure time and return it
-        self.exp_time = exp_time / (peak - self._bias) * (max_peak - self._bias)
-        return image
+    def _calc_new_exp_time(self, exp_time, peak, max_peak):
+        return (max_peak - self._bias) / (peak - self._bias) * exp_time
 
 
 __all__ = ["StarExpTimeEstimator"]

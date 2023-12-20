@@ -45,16 +45,16 @@ class Image:
         """
 
         # store
-        self.data = data
-        self.header = fits.Header() if header is None else header.copy()
-        self.mask = None if mask is None else mask.copy()
-        self.uncertainty = None if uncertainty is None else uncertainty.copy()
-        self.catalog = None if catalog is None else catalog.copy()
-        self.raw = None if raw is None else raw.copy()
-        self.meta = {} if meta is None else copy.deepcopy(meta)
+        self._data = data
+        self._header = fits.Header() if header is None else header.copy()
+        self._mask = None if mask is None else mask.copy()
+        self._uncertainty = None if uncertainty is None else uncertainty.copy()
+        self._catalog = None if catalog is None else catalog.copy()
+        self._raw = None if raw is None else raw.copy()
+        self._meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
-        if data is not None:
+        if data is not None and self.header is not None:
             self.header["NAXIS1"] = data.shape[1]
             self.header["NAXIS2"] = data.shape[0]
 
@@ -128,8 +128,10 @@ class Image:
         # find HDU with image data
         for hdu in data:
             if (
-                isinstance(hdu, fits.PrimaryHDU) and hdu.header["NAXIS"] > 0
-                or isinstance(hdu, fits.ImageHDU) and hdu.name == "SCI"
+                isinstance(hdu, fits.PrimaryHDU)
+                and hdu.header["NAXIS"] > 0
+                or isinstance(hdu, fits.ImageHDU)
+                and hdu.name == "SCI"
                 or isinstance(hdu, fits.CompImageHDU)
             ):
                 # found image HDU
@@ -360,6 +362,34 @@ class Image:
             return self.get_meta(meta_class)
         except:
             return default
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def header(self):
+        return self._header
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @property
+    def uncertainty(self):
+        return self._uncertainty
+
+    @property
+    def catalog(self):
+        return self._catalog
+
+    @property
+    def raw(self):
+        return self._raw
+
+    @property
+    def meta(self):
+        return self._meta
 
 
 __all__ = ["Image"]

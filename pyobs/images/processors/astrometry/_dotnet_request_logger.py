@@ -14,7 +14,7 @@ class _RequestLogger:
         self._image = image
         self._request_data = request_data
 
-    def log_request_data(self):
+    def log_request_data(self) -> None:
         ra_dec = SkyCoord(ra=self._request_data["ra"] * u.deg, dec=self._request_data["dec"] * u.deg, frame="icrs")
         center_x, center_y = self._image.header["CRPIX1"], self._image.header["CRPIX2"]
 
@@ -28,7 +28,7 @@ class _RequestLogger:
             center_y,
         )
 
-    def log_request_result(self, image_wcs: WCS):
+    def log_request_result(self, image_wcs: WCS) -> None:
         center_x, center_y = self._image.header["CRPIX1"], self._image.header["CRPIX2"]
         final_ra, final_dec = image_wcs.all_pix2world(center_x, center_y, 0)
         final_ra_dec = SkyCoord(ra=final_ra * u.deg, dec=final_dec * u.deg, frame="icrs")

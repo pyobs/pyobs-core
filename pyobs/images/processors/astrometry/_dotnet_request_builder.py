@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any, Dict
 
 import pandas as pd
 from astropy.io.fits import Header
@@ -13,27 +13,29 @@ class _DotNetRequestBuilder:
         self._source_count = source_count
         self._radius = radius
 
-        self._request_data = {}
+        self._request_data: Dict[str, Any] = {}
         self._catalog = pd.DataFrame()
         self._header: Optional[Header] = None
 
-    def _filter_catalog(self):
+    def _filter_catalog(self) -> None:
         self._catalog = self._catalog.dropna(how="any")
         self._catalog = self._catalog[self._catalog["peak"] < 60000]
 
-    def _validate_catalog(self):
+    def _validate_catalog(self) -> None:
         if self._catalog is None or len(self._catalog) < 3:
             raise exc.ImageError("Not enough sources for astrometry.")
 
-    def _select_brightest_stars(self):
+    def _select_brightest_stars(self) -> None:
         self._catalog = self._catalog.sort_values("flux", ascending=False)
         self._catalog = self._catalog[: self._source_count]
 
-    def _validate_header(self):
-        if "CDELT1" not in self._header:
+    def _validate_header(self) -> None:
+        if self._header is None or "CDELT1" not in self._header:
             raise exc.ImageError("No CDELT1 found in header.")
 
-    def _build_request_data(self):
+    def _build_request_data(self) -> None:
+        if self._header is None:
+            raise exc.ImageError("No header found.")
         scale = abs(self._header["CDELT1"]) * 3600
         self._request_data = {
             "ra": self._header["TEL-RA"],

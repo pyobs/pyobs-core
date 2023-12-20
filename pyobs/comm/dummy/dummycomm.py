@@ -1,6 +1,6 @@
 import inspect
 import logging
-from typing import Any, List, Type
+from typing import Any, List, Type, Dict
 
 from pyobs.comm import Comm
 from pyobs.events import Event
@@ -22,16 +22,26 @@ class DummyComm(Comm):
         """Always return zero clients."""
         return []
 
-    def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
         """No interfaces implemented."""
         return []
 
-    def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Interfaces are never supported."""
         return False
 
-    def execute(self, client: str, method: str, signature: inspect.Signature, *args: Any) -> Future:
-        """Always fake a successful execution of a method."""
+    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+        """Execute a given method on a remote client.
+
+        Args:
+            client (str): ID of client.
+            method (str): Method to call.
+            annotation: Method annotation.
+            *args: List of parameters for given method.
+
+        Returns:
+            Passes through return from method call.
+        """
         return Future(empty=True)
 
     @property

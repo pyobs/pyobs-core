@@ -9,8 +9,7 @@ from pyobs.utils.types import cast_response_to_real
 
 
 class LocalComm(Comm):
-    def __init__(self, name: str, *args, **kwargs):
-
+    def __init__(self, name: str, *args: Any, **kwargs: Any):
         Comm.__init__(self, *args, **kwargs)
 
         self._name = name
@@ -18,7 +17,7 @@ class LocalComm(Comm):
         self._network.connect_client(self)
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str:
         """Name of this client."""
         return self._name
 
@@ -45,7 +44,7 @@ class LocalComm(Comm):
         """
 
         remote_client: LocalComm = self._network.get_client(client)
-        return remote_client.module.interfaces
+        return [] if remote_client.module is None else remote_client.module.interfaces
 
     async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
@@ -55,10 +54,10 @@ class LocalComm(Comm):
             interface: Interface to check.
 
         Returns:
-            Whether or not interface is supported.
+            Whether interface is supported.
         """
         interfaces = await self.get_interfaces(client)
-        return interfaces in interfaces
+        return interface in interfaces
 
     async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
@@ -74,10 +73,12 @@ class LocalComm(Comm):
         """
 
         remote_client = self._network.get_client(client)
+        if remote_client.module is None:
+            raise ValueError
         simple_results = await remote_client.module.execute(method, *args)
         real_results = cast_response_to_real(
-                simple_results, annotation["return"], self.cast_to_real_pre, self.cast_to_real_post
-            )
+            simple_results, annotation["return"], self.cast_to_real_pre, self.cast_to_real_post
+        )
         return real_results
 
     async def send_event(self, event: Event) -> None:

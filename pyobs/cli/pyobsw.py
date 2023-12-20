@@ -1,7 +1,7 @@
 from .pyobs import init_cli, parse_cli, run
 
 
-def main():
+def main() -> None:
     from pyobs.application import GuiApplication
 
     # init argument parsing and parse it

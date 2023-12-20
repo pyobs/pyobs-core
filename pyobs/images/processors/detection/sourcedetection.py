@@ -19,7 +19,6 @@ class SourceDetection(ImageProcessor, metaclass=ABCMeta):
         Returns:
             Image with attached catalog.
         """
-        ...
 
 
 __all__ = ["SourceDetection"]

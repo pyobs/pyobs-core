@@ -72,10 +72,10 @@ class Image:
         # create hdu
         with io.BytesIO(data) as bio:
             # read whole file
-            data = fits.open(bio, memmap=False, lazy_load_hdus=False)
+            d = fits.open(bio, memmap=False, lazy_load_hdus=False)
 
             # load image
-            return cls._from_hdu_list(data)
+            return cls._from_hdu_list(d)
 
     @classmethod
     def from_file(cls, filename: str) -> Image:
@@ -146,19 +146,19 @@ class Image:
 
         # mask
         if "MASK" in data:
-            image.mask = data["MASK"].data
+            image._mask = data["MASK"].data
 
         # uncertainties
         if "UNCERT" in data:
-            image.uncertainty = data["UNCERT"].data
+            image._uncertainty = data["UNCERT"].data
 
         # catalog
         if "CAT" in data:
-            image.catalog = Table(data["CAT"].data)
+            image._catalog = Table(data["CAT"].data)
 
         # raw
         if "RAW" in data:
-            image.raw = data["RAW"].data
+            image._raw = data["RAW"].data
 
         # finished
         return image
@@ -178,21 +178,21 @@ class Image:
     def copy(self) -> Image:
         """Returns a copy of this image."""
         return Image(
-            data=self.data,
-            header=self.header,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-            catalog=self.catalog,
-            raw=self.raw,
-            meta=self.meta,
+            data=self._data,
+            header=self._header,
+            mask=self._mask,
+            uncertainty=self._uncertainty,
+            catalog=self._catalog,
+            raw=self._raw,
+            meta=self._meta,
         )
 
     def __truediv__(self, other: Image) -> Image:
         """Divides this image by other."""
         img = self.copy()
-        if img.data is None or other.data is None:
+        if img._data is None or other._data is None:
             raise ValueError("One image in division is None.")
-        img.data /= other.data
+        img._data /= other._data
         return img
 
     def writeto(self, f: Any, *args: Any, **kwargs: Any) -> None:
@@ -210,26 +210,26 @@ class Image:
         hdu_list.append(hdu)
 
         # catalog?
-        if self.catalog is not None:
-            hdu = table_to_hdu(self.catalog)
+        if self._catalog is not None:
+            hdu = table_to_hdu(self._catalog)
             hdu.name = "CAT"
             hdu_list.append(hdu)
 
         # mask?
-        if self.mask is not None:
-            hdu = ImageHDU(self.mask.astype(np.uint8))
+        if self._mask is not None:
+            hdu = ImageHDU(self._mask.astype(np.uint8))
             hdu.name = "MASK"
             hdu_list.append(hdu)
 
         # errors?
-        if self.uncertainty is not None:
-            hdu = ImageHDU(self.uncertainty.data)
+        if self._uncertainty is not None:
+            hdu = ImageHDU(self._uncertainty.data)
             hdu.name = "UNCERT"
             hdu_list.append(hdu)
 
         # raw?
-        if self.raw is not None:
-            hdu = ImageHDU(self.raw.data)
+        if self._raw is not None:
+            hdu = ImageHDU(self._raw.data)
             hdu.name = "RAW"
             hdu_list.append(hdu)
 
@@ -247,31 +247,31 @@ class Image:
         if self.catalog is None:
             return
 
-        hdu = table_to_hdu(self.catalog)
+        hdu = table_to_hdu(self._catalog)
         hdu.writeto(f, *args, **kwargs)
 
     def to_ccddata(self) -> CCDData:
         """Convert Image to CCDData"""
         return CCDData(
-            data=self.data,
-            meta=self.header,
-            mask=None if self.mask is None else self.mask,
-            uncertainty=None if self.uncertainty is None else StdDevUncertainty(self.uncertainty),
+            data=self._data,
+            meta=self._header,
+            mask=self._mask,
+            uncertainty=None if self._uncertainty is None else StdDevUncertainty(self._uncertainty),
             unit="adu",
         )
 
     def format_filename(self, formatter: FilenameFormatter) -> str:
         """Format filename with given formatter."""
-        self.header["FNAME"] = formatter(self.header)
-        return str(self.header["FNAME"])
+        self._header["FNAME"] = formatter(self._header)
+        return str(self._header["FNAME"])
 
     @property
     def pixel_scale(self) -> Optional[float]:
         """Returns pixel scale in arcsec/pixel."""
-        if "CD1_1" in self.header:
-            return abs(float(self.header["CD1_1"])) * 3600.0
-        elif "CDELT1" in self.header:
-            return abs(float(self.header["CDELT1"])) * 3600.0
+        if "CD1_1" in self._header:
+            return abs(float(self._header["CD1_1"])) * 3600.0
+        elif "CDELT1" in self._header:
+            return abs(float(self._header["CDELT1"])) * 3600.0
         else:
             return None
 
@@ -286,7 +286,7 @@ class Image:
         import PIL.Image
 
         # copy data
-        data: NDArray[Any] = np.copy(self.data)  # type: ignore
+        data: NDArray[Any] = np.copy(self._data)  # type: ignore
         if data is None:
             raise ValueError("No data in image.")
 
@@ -329,11 +329,11 @@ class Image:
         """
 
         # store it
-        self.meta[meta.__class__] = meta
+        self._meta[meta.__class__] = meta
 
     def has_meta(self, meta_class: Type[MetaClass]) -> bool:
         """Whether meta exists."""
-        return meta_class in self.meta
+        return meta_class in self._meta
 
     def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
         """Returns meta information, assuming that it is stored under the class of the object.
@@ -345,15 +345,15 @@ class Image:
             Meta information of the given class.
         """
         # return default?
-        if meta_class not in self.meta:
+        if meta_class not in self._meta:
             raise ValueError("Meta value not found.")
 
         # correct type?
-        if not isinstance(self.meta[meta_class], meta_class):
+        if not isinstance(self._meta[meta_class], meta_class):
             raise ValueError("Stored meta information is of wrong type.")
 
         # return it
-        return cast(MetaClass, self.meta[meta_class])
+        return cast(MetaClass, self._meta[meta_class])
 
     def get_meta_safe(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
         """Calls get_meta in a safe way and returns default value in case of an exception."""
@@ -364,32 +364,60 @@ class Image:
             return default
 
     @property
-    def data(self):
+    def data(self) -> Optional[NDArray[Any]]:
         return self._data
 
+    @data.setter
+    def data(self, val: Optional[NDArray[Any]]):
+        self._data = val
+
     @property
-    def header(self):
+    def header(self) -> Optional[fits.Header]:
         return self._header
 
+    @header.setter
+    def header(self, val: Optional[fits.Header]):
+        self._header = val
+
     @property
-    def mask(self):
+    def mask(self) -> Optional[NDArray[Any]]:
         return self._mask
 
+    @mask.setter
+    def mask(self, val: Optional[NDArray[Any]]):
+        self._mask = val
+
     @property
-    def uncertainty(self):
+    def uncertainty(self) -> Optional[NDArray[Any]]:
         return self._uncertainty
 
+    @uncertainty.setter
+    def uncertainty(self, val: Optional[NDArray[Any]]):
+        self._uncertainty = val
+
     @property
-    def catalog(self):
+    def catalog(self) -> Optional[Table]:
         return self._catalog
 
-    @property
-    def raw(self):
-        return self._raw
+    @catalog.setter
+    def catalog(self, val: Optional[Table]):
+        self._catalog = val
 
     @property
-    def meta(self):
+    def raw(self) -> Optional[NDArray[Any]]:
+        return self._raw
+
+    @raw.setter
+    def raw(self, val: Optional[NDArray[Any]]):
+        self._raw = val
+
+    @property
+    def meta(self) -> Optional[Dict[Any, Any]]:
         return self._meta
+
+    @meta.setter
+    def meta(self, val: Optional[Dict[Any, Any]]):
+        self._meta = val
 
 
 __all__ = ["Image"]

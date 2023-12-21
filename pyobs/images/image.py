@@ -54,7 +54,7 @@ class Image:
         self._meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
-        if data is not None and self.header is not None:
+        if data is not None and self._header is not None:
             self.header["NAXIS1"] = data.shape[1]
             self.header["NAXIS2"] = data.shape[0]
 

@@ -44,7 +44,7 @@ def assert_equal_image(image, other):
         other.safe_uncertainty,
         other.safe_catalog,
         other.safe_raw,
-        other.safe_meta,
+        other.meta,
     )
 
 

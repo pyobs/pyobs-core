@@ -451,11 +451,7 @@ class Image:
     @property
     def meta(self) -> Dict[Any, Any]:
         if self._meta is None:
-            raise exc.ImageError("No meta data found in image.")
-        return self._meta
-
-    @property
-    def safe_meta(self) -> Optional[Dict[Any, Any]]:
+            self._meta: Dict[Any, Any] = {}
         return self._meta
 
     @meta.setter

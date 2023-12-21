@@ -54,8 +54,6 @@ class _DotNetRequestBuilder:
 
     def __call__(self, image: Image) -> _DotNetRequest:
         # set catalog and header
-        if image.catalog is None:
-            raise exc.ImageError("No catalog found in image.")
         self._catalog = image.catalog[["x", "y", "flux", "peak"]].to_pandas()
         self._header = image.header
 

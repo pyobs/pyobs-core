@@ -95,7 +95,7 @@ class SepPhotometry(Photometry):
                     y,
                     diameter / 2.0 / image.pixel_scale,
                     mask=image.safe_mask,
-                    err=image.uncertainty,
+                    err=image.safe_uncertainty,
                     gain=gain,
                 )
                 sources["fluxaper{0}".format(diameter)] = flux

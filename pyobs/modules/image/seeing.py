@@ -79,7 +79,7 @@ class Seeing(Module):
             return False
 
         # get catalog
-        cat = image.catalog
+        cat = image.safe_catalog
         if cat is None:
             # no catalog found in file
             return False

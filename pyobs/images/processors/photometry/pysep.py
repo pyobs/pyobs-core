@@ -67,18 +67,15 @@ class SepPhotometry(Photometry):
         from pyobs.images.processors.detection import SepSourceDetection
 
         # check data
-        if image.data is None:
+        if image.safe_data is None:
             log.warning("No data found in image.")
             return image
-        if image.catalog is None:
+        if image.safe_catalog is None:
             log.warning("No catalog found in image.")
             return image
 
-        # no mask?
-        mask = image.mask if image.mask is not None else np.ones(image.data.shape, dtype=bool)
-
         # remove background
-        data, bkg = SepSourceDetection.remove_background(image.data, mask)
+        data, bkg = SepSourceDetection.remove_background(image.data, image.safe_mask)
 
         # fetch catalog
         sources = image.catalog.copy()

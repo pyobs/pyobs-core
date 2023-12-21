@@ -24,20 +24,28 @@ def assert_array_equal_or_none(check_value, value):
 
 
 def assert_equal_image_params(image, data=None, mask=None, uncertainty=None, catalog=None, raw=None, meta={}):
-    assert_array_equal_or_none(data, image.data)
-    assert_array_equal_or_none(mask, image.mask)
-    assert_array_equal_or_none(uncertainty, image.uncertainty)
+    assert_array_equal_or_none(data, image.safe_data)
+    assert_array_equal_or_none(mask, image.safe_mask)
+    assert_array_equal_or_none(uncertainty, image.safe_uncertainty)
 
     if catalog is None:
-        assert image.catalog is None
+        assert image.safe_catalog is None
     else:
         assert_array_equal_or_none(catalog.as_array(), image.catalog.as_array())
-    assert_array_equal_or_none(raw, image.raw)
+    assert_array_equal_or_none(raw, image.safe_raw)
     assert image.meta == meta
 
 
 def assert_equal_image(image, other):
-    assert_equal_image_params(image, other.data, other.mask, other.uncertainty, other.catalog, other.raw, other.meta)
+    assert_equal_image_params(
+        image,
+        other.safe_data,
+        other.safe_mask,
+        other.safe_uncertainty,
+        other.safe_catalog,
+        other.safe_raw,
+        other.safe_meta,
+    )
 
 
 @pytest.fixture()

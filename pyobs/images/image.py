@@ -245,7 +245,7 @@ class Image:
 
     def write_catalog(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write catalog to file object."""
-        if self.catalog is None:
+        if self._catalog is None:
             return
 
         hdu = table_to_hdu(self._catalog)

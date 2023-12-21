@@ -128,12 +128,6 @@ class NStarOffsets(Offsets, PipelineMixin):
         # run pipeline on 1st image
         img = await self.run_pipeline(image)
 
-        # check data and catalog
-        if img.data is None:
-            raise ValueError("No data found in image.")
-        if img.catalog is None:
-            raise ValueError("No catalog found in image.")
-
         # do photometry and get catalog
         sources = self._fits2numpy(img.catalog)
 
@@ -273,7 +267,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         """
 
         # data?
-        if image.data is None:
+        if image.safe_data is None:
             return None, None
 
         # calculate offset for each star

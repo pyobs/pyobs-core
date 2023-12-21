@@ -37,6 +37,10 @@ class PhotUtilsPhotometry(Photometry):
             Image with attached catalog.
         """
 
+        if image.data is None:
+            log.warning("No data found in image.")
+            return image
+
         if image.pixel_scale is None:
             log.warning("No pixel scale provided by image.")
             return image

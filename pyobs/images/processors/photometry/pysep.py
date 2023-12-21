@@ -39,26 +39,23 @@ class SepPhotometry(Photometry):
             log.warning("No data found in image.")
             return image
 
+        if image.pixel_scale is None:
+            log.warning("No pixel scale provided by image.")
+            return image
+
         if image.catalog is None:
             log.warning("No catalog found in image.")
             return image
-        output_image = image.copy()
         diameters = range(1, 9)
 
         positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
-        photometry = _SepAperturePhotometry(output_image, positions)
+        photometry = _SepAperturePhotometry(image, positions)
 
-        # TODO: Resolve inconsistencies with photutils photometry
-        output_image.catalog = photometry.catalog
         for diameter in diameters:
-            if image.pixel_scale is None:
-                output_image.catalog[f"fluxaper{diameter}"] = 0
-                output_image.catalog[f"fluxerr{diameter}"] = 0
-            else:
-                photometry(diameter)
+            photometry(diameter)
 
+        output_image = image.copy()
         output_image.catalog = photometry.catalog
-
         return output_image
 
 

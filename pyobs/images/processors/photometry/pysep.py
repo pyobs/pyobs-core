@@ -90,7 +90,13 @@ class SepPhotometry(Photometry):
         for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
             if image.pixel_scale is not None:
                 flux, fluxerr, flag = sep.sum_circle(
-                    data, x, y, diameter / 2.0 / image.pixel_scale, mask=image.mask, err=image.uncertainty, gain=gain
+                    data,
+                    x,
+                    y,
+                    diameter / 2.0 / image.pixel_scale,
+                    mask=image.safe_mask,
+                    err=image.uncertainty,
+                    gain=gain,
                 )
                 sources["fluxaper{0}".format(diameter)] = flux
                 sources["fluxerr{0}".format(diameter)] = fluxerr

@@ -96,7 +96,7 @@ class PhotUtilsPhotometry(Photometry):
 
             # do photometry
             phot = await loop.run_in_executor(
-                None, partial(aperture_photometry, image.data, aperture, mask=image.mask, error=image.uncertainty)
+                None, partial(aperture_photometry, image.data, aperture, mask=image.safe_mask, error=image.uncertainty)
             )
 
             # calc flux

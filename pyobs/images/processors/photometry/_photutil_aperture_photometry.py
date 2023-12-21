@@ -61,20 +61,18 @@ class _PhotUtilAperturePhotometry:
 
     async def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[
         np.ndarray[float], Optional[np.ndarray[float]]]:
-        loop = asyncio.get_running_loop()
-        phot: QTable = await loop.run_in_executor(
-            None, partial(
-                aperture_photometry,
-                self._image.data, aperture, mask=self._image.mask, error=self._image.uncertainty
-            )
-        )
+
+        phot: QTable = aperture_photometry(self._image.data, aperture, mask=self._image.mask,
+                                           error=self._image.uncertainty)
+
         aperture_flux = phot["aperture_sum"]
         aperture_error = phot["aperture_sum_err"] if "aperture_sum_err" in phot.keys() else None
 
         return aperture_flux, aperture_error
 
     @staticmethod
-    def _background_correct_aperture_flux(aperture_flux: np.ndarray[float], aperture_background: np.ndarray[float]) -> np.ndarray[float]:
+    def _background_correct_aperture_flux(aperture_flux: np.ndarray[float], aperture_background: np.ndarray[float]) -> \
+            np.ndarray[float]:
         return aperture_flux - aperture_background
 
     def _update_header(self, diameter: int, corrected_aperture_flux: np.ndarray[float],

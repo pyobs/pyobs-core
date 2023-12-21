@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from pyobs.images import Image
 from .photometry import Photometry
@@ -13,6 +13,8 @@ class SepPhotometry(Photometry):
     """Perform photometry using SEP."""
 
     __module__ = "pyobs.images.processors.photometry"
+
+    APERTURE_RADII = range(1, 9)
 
     def __init__(self, **kwargs: Any):
         """Initializes a wrapper for SEP. See its documentation for details.
@@ -31,10 +33,7 @@ class SepPhotometry(Photometry):
         Returns:
             Image with attached catalog.
         """
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._photometry, image)
 
-    def _photometry(self, image: Image) -> Image:
         if image.data is None:
             log.warning("No data found in image.")
             return image
@@ -46,17 +45,20 @@ class SepPhotometry(Photometry):
         if image.catalog is None:
             log.warning("No catalog found in image.")
             return image
-        diameters = range(1, 9)
 
         positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
         photometry = _SepAperturePhotometry(image, positions)
 
-        for diameter in diameters:
-            photometry(diameter)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._photometry, photometry)
 
         output_image = image.copy()
         output_image.catalog = photometry.catalog
         return output_image
+
+    def _photometry(self, photometry: Callable) -> None:
+        for diameter in self.APERTURE_RADII:
+            photometry(diameter)
 
 
 __all__ = ["SepPhotometry"]

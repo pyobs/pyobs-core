@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from typing import Callable
 
 from pyobs.images import Image
 from ._photutil_aperture_photometry import _PhotUtilAperturePhotometry
@@ -11,6 +13,8 @@ class PhotUtilsPhotometry(Photometry):
     """Perform photometry using PhotUtils."""
 
     __module__ = "pyobs.images.processors.photometry"
+
+    APERTURE_RADII = range(1, 9)
 
     def __init__(self, **kwargs):
         """Initializes an aperture photometry based on PhotUtils.
@@ -53,12 +57,16 @@ class PhotUtilsPhotometry(Photometry):
 
         photometry = _PhotUtilAperturePhotometry(image, positions)
 
-        for diameter in range(1, 9):
-            await photometry(diameter)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._photometry, photometry)
 
         output_image = image.copy()
         output_image.catalog = photometry.catalog
         return output_image
+
+    def _photometry(self, photometry: Callable) -> None:
+        for diameter in self.APERTURE_RADII:
+            photometry(diameter)
 
 
 __all__ = ["PhotUtilsPhotometry"]

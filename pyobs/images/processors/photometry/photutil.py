@@ -66,7 +66,7 @@ class PhotUtilsPhotometry(Photometry):
             return image
 
         # fetch catalog
-        if image.catalog is None:
+        if image.safe_catalog is None:
             log.warning("No catalog in image.")
             return image
         sources = image.catalog.copy()
@@ -96,7 +96,8 @@ class PhotUtilsPhotometry(Photometry):
 
             # do photometry
             phot = await loop.run_in_executor(
-                None, partial(aperture_photometry, image.data, aperture, mask=image.mask, error=image.uncertainty)
+                None,
+                partial(aperture_photometry, image.data, aperture, mask=image.safe_mask, error=image.safe_uncertainty),
             )
 
             # calc flux

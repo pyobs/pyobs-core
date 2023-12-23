@@ -19,6 +19,7 @@ class ParallelRunner(Script):
     def __init__(
         self,
         scripts: List[Dict[str, Any]],
+        check_all_can_run: bool = True,
         **kwargs: Any,
     ):
         """Initialize a new ParallelRunner.
@@ -28,9 +29,11 @@ class ParallelRunner(Script):
         """
         Script.__init__(self, **kwargs)
         self.scripts = scripts
+        self.check_all_can_run = check_all_can_run
 
     async def can_run(self) -> bool:
-        return True
+        check_all = [self.get_object(s, Script).can_run() for s in self.scripts]
+        return all(check_all) if self.check_all_can_run else any(check_all)
 
     async def run(
         self,
@@ -38,10 +41,8 @@ class ParallelRunner(Script):
         task_schedule: Optional[TaskSchedule] = None,
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
-        tasks = [
-            asyncio.create_task(self.get_object(s, Script).run(task_runner, task_schedule, task_archive))
-            for s in self.scripts
-        ]
+        scripts = [self.get_object(s, Script) for s in self.scripts]
+        tasks = [asyncio.create_task(s.run(task_runner, task_schedule, task_archive)) for s in scripts if s.can_run()]
         await asyncio.gather(*tasks)
 
 

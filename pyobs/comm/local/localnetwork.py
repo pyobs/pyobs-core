@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,18 +8,18 @@ if TYPE_CHECKING:
 
 
 class LocalNetwork:
-    _instance = None
+    _instance: Optional["LocalNetwork"] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "LocalNetwork":
         if cls._instance is None:
-            print('Creating the object')
+            print("Creating the object")
             cls._instance = super(LocalNetwork, cls).__new__(cls)
 
             cls._clients: Dict[str, pyobs.comm.local.LocalComm] = {}
 
         return cls._instance
 
-    def connect_client(self, comm: pyobs.comm.local.LocalComm):
+    def connect_client(self, comm: pyobs.comm.local.LocalComm) -> None:
         self._clients[comm.name] = comm
 
     def get_client(self, name: str) -> pyobs.comm.local.LocalComm:

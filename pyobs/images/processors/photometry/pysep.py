@@ -67,18 +67,15 @@ class SepPhotometry(Photometry):
         from pyobs.images.processors.detection import SepSourceDetection
 
         # check data
-        if image.data is None:
+        if image.safe_data is None:
             log.warning("No data found in image.")
             return image
-        if image.catalog is None:
+        if image.safe_catalog is None:
             log.warning("No catalog found in image.")
             return image
 
-        # no mask?
-        mask = image.mask if image.mask is not None else np.ones(image.data.shape, dtype=bool)
-
         # remove background
-        data, bkg = SepSourceDetection.remove_background(image.data, mask)
+        data, bkg = SepSourceDetection.remove_background(image.data, image.safe_mask)
 
         # fetch catalog
         sources = image.catalog.copy()
@@ -93,7 +90,13 @@ class SepPhotometry(Photometry):
         for diameter in [1, 2, 3, 4, 5, 6, 7, 8]:
             if image.pixel_scale is not None:
                 flux, fluxerr, flag = sep.sum_circle(
-                    data, x, y, diameter / 2.0 / image.pixel_scale, mask=image.mask, err=image.uncertainty, gain=gain
+                    data,
+                    x,
+                    y,
+                    diameter / 2.0 / image.pixel_scale,
+                    mask=image.safe_mask,
+                    err=image.safe_uncertainty,
+                    gain=gain,
                 )
                 sources["fluxaper{0}".format(diameter)] = flux
                 sources["fluxerr{0}".format(diameter)] = fluxerr

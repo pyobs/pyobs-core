@@ -14,7 +14,7 @@ import dbus_next.service
 from dbus_next import introspection as intr
 
 
-def patch():
+def patch() -> None:
     """
     Patches dbus-next to allow for a providing the sender name. Probably a bad idea, but better than using
     a fork of the project.

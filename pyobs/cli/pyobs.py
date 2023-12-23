@@ -1,11 +1,14 @@
 import argparse
 import os
-from typing import Type, Any
+from typing import Type, Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyobs.application import Application
 
 from pyobs import version
 
 
-def init_cli():
+def init_cli() -> argparse.ArgumentParser:
     # init argument parsing
     # for all command line parameters we set the default to an environment variable,
     # so they can also be specified that way
@@ -30,7 +33,7 @@ def init_cli():
     return parser
 
 
-def parse_cli(parser: argparse.ArgumentParser):
+def parse_cli(parser: argparse.ArgumentParser) -> dict[str, Any]:
     from pyobs.utils.time import Time
 
     # parse args
@@ -50,7 +53,7 @@ def parse_cli(parser: argparse.ArgumentParser):
     return vars(args)
 
 
-def start_daemon(app_class, pid_file=None, **kwargs: Any) -> None:
+def start_daemon(app_class: Type["Application"], pid_file: str, **kwargs: Any) -> None:
     """Start process as a daemon.
 
     Args:
@@ -70,7 +73,7 @@ def start_daemon(app_class, pid_file=None, **kwargs: Any) -> None:
         run(app_class, **kwargs)
 
 
-def run(app_class: Type, **kwargs: Any) -> None:
+def run(app_class: Type["Application"], **kwargs: Any) -> None:
     """Run a pyobs application with the given options.
 
     Args:

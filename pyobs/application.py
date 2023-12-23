@@ -6,7 +6,7 @@ import warnings
 import threading
 from io import StringIO
 from logging.handlers import TimedRotatingFileHandler
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 import yaml
 
 from pyobs.object import get_object, get_class_from_string
@@ -35,7 +35,7 @@ class Application:
 
         # formatter for logging, and list of logging handlers
         formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
-        handlers = []
+        handlers: List[logging.Handler] = []
 
         # create stdout logging handler
         stream_handler = logging.StreamHandler()
@@ -110,7 +110,7 @@ class Application:
         log.info("Closing loop...")
         self._loop.close()
 
-    def _signal_handler(self, sig) -> None:
+    def _signal_handler(self, sig: int) -> None:
         """React to signals and quit module."""
 
         # stop loop

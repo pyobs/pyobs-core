@@ -246,7 +246,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if image is None or image.data is None:
+            if image is None or image.safe_data is None:
                 raise exc.GrabImageError("Could not take image.")
 
         except exc.PyObsError:

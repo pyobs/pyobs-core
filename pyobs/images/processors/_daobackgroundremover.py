@@ -30,7 +30,7 @@ class _DaoBackgroundRemover:
             filter_size=self._filter_size,
             sigma_clip=self._sigma_clip,
             bkg_estimator=self._bkg_estimator,
-            mask=image.mask,
+            mask=image.safe_mask,
         )
 
         return bkg.background

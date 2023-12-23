@@ -45,7 +45,7 @@ class PhotometryFocusSeries(FocusSeries):
         self._source_detection(image)
 
         # filter
-        sources = image.catalog
+        sources = image.safe_catalog
         if sources is None:
             return
         sources = sources[sources["ellipticity"] < 0.1]

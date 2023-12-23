@@ -11,6 +11,7 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from numpy.typing import NDArray
 
 from pyobs.utils.fits import FilenameFormatter
+import pyobs.utils.exceptions as exc
 
 MetaClass = TypeVar("MetaClass")
 
@@ -244,7 +245,7 @@ class Image:
 
     def write_catalog(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write catalog to file object."""
-        if self.catalog is None:
+        if self._catalog is None:
             return
 
         hdu = table_to_hdu(self._catalog)
@@ -364,7 +365,13 @@ class Image:
             return default
 
     @property
-    def data(self) -> Optional[NDArray[Any]]:
+    def data(self) -> NDArray[Any]:
+        if self._data is None:
+            raise exc.ImageError("No data found in image.")
+        return self._data
+
+    @property
+    def safe_data(self) -> Optional[NDArray[Any]]:
         return self._data
 
     @data.setter
@@ -372,7 +379,13 @@ class Image:
         self._data = val
 
     @property
-    def header(self) -> Optional[fits.Header]:
+    def header(self) -> fits.Header:
+        if self._header is None:
+            raise exc.ImageError("No header found in image.")
+        return self._header
+
+    @property
+    def safe_header(self) -> Optional[fits.Header]:
         return self._header
 
     @header.setter
@@ -380,7 +393,13 @@ class Image:
         self._header = val
 
     @property
-    def mask(self) -> Optional[NDArray[Any]]:
+    def mask(self) -> NDArray[Any]:
+        if self._mask is None:
+            raise exc.ImageError("No mask found in image.")
+        return self._mask
+
+    @property
+    def safe_mask(self) -> Optional[NDArray[Any]]:
         return self._mask
 
     @mask.setter
@@ -388,7 +407,13 @@ class Image:
         self._mask = val
 
     @property
-    def uncertainty(self) -> Optional[NDArray[Any]]:
+    def uncertainty(self) -> NDArray[Any]:
+        if self._uncertainty is None:
+            raise exc.ImageError("No uncertainties found in image.")
+        return self._uncertainty
+
+    @property
+    def safe_uncertainty(self) -> Optional[NDArray[Any]]:
         return self._uncertainty
 
     @uncertainty.setter
@@ -396,7 +421,13 @@ class Image:
         self._uncertainty = val
 
     @property
-    def catalog(self) -> Optional[Table]:
+    def catalog(self) -> Table:
+        if self._catalog is None:
+            raise exc.ImageError("No catalog found in image.")
+        return self._catalog
+
+    @property
+    def safe_catalog(self) -> Optional[Table]:
         return self._catalog
 
     @catalog.setter
@@ -404,7 +435,13 @@ class Image:
         self._catalog = val
 
     @property
-    def raw(self) -> Optional[NDArray[Any]]:
+    def raw(self) -> NDArray[Any]:
+        if self._raw is None:
+            raise exc.ImageError("No raw data found in image.")
+        return self._raw
+
+    @property
+    def safe_raw(self) -> Optional[NDArray[Any]]:
         return self._raw
 
     @raw.setter
@@ -412,7 +449,9 @@ class Image:
         self._raw = val
 
     @property
-    def meta(self) -> Optional[Dict[Any, Any]]:
+    def meta(self) -> Dict[Any, Any]:
+        if self._meta is None:
+            self._meta: Dict[Any, Any] = {}
         return self._meta
 
     @meta.setter

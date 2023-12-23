@@ -37,12 +37,12 @@ class SoftBin(ImageProcessor):
         """
 
         output_image = image.copy()
-        if output_image.data is None:
+        if output_image.safe_data is None:
             log.warning("No data found in image.")
             return image
 
         output_image.data = self._reshape_image(output_image.data)
-        if output_image.data is None:
+        if output_image.safe_data is None:
             log.warning("No data found in image after reshaping.")
             return image
 

@@ -47,7 +47,7 @@ class ProjectionFocusSeries(FocusSeries):
         """
 
         # clean data
-        if image.data is None:
+        if image.safe_data is None:
             return
         data = self._clean(image.data)
 

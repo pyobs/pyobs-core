@@ -51,7 +51,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._image = copy(image)
         last_exp_time = image.header["EXPTIME"]
 
-        if self._image.catalog is None:
+        if self._image.safe_catalog is None:
             log.info("No catalog found in image.")
             return last_exp_time
 

@@ -82,10 +82,6 @@ class ProjectedOffsets(Offsets):
         # get image data and header
         data, hdr = image.data, image.header
 
-        # no data?
-        if data is None:
-            raise ValueError("Image contains no data.")
-
         # trimsec
         if "TRIMSEC" in hdr:
             m = re.match(r"\[([0-9]+):([0-9]+),([0-9]+):([0-9]+)\]", hdr["TRIMSEC"])

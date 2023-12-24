@@ -66,8 +66,8 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
     async def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[
         np.ndarray[float], Optional[np.ndarray[float]]]:
 
-        phot: QTable = aperture_photometry(self._image.data, aperture, mask=self._image.mask,
-                                           error=self._image.uncertainty)
+        phot: QTable = aperture_photometry(self._image.data, aperture, mask=self._image.safe_mask,
+                                           error=self._image.safe_uncertainty)
 
         aperture_flux = phot["aperture_sum"]
         aperture_error = phot["aperture_sum_err"] if "aperture_sum_err" in phot.keys() else None

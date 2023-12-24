@@ -25,7 +25,7 @@ class AperturePhotometry(Photometry):
                     Image with attached catalog.
                 """
 
-        if image.data is None:
+        if image.safe_data is None:
             log.warning("No data found in image.")
             return image
 
@@ -33,7 +33,7 @@ class AperturePhotometry(Photometry):
             log.warning("No pixel scale provided by image.")
             return image
 
-        if image.catalog is None:
+        if image.safe_catalog is None:
             log.warning("No catalog found in image.")
             return image
 

@@ -39,7 +39,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
         radius = self._calc_aperture_radius_in_px(diameter)
         flux, fluxerr, _ = sep.sum_circle(
-            self._data, self._pos_x, self._pos_y, radius, mask=self._image.mask, err=self._image.uncertainty, gain=self._gain
+            self._data, self._pos_x, self._pos_y, radius, mask=self._image.safe_mask, err=self._image.safe_uncertainty, gain=self._gain
         )
         self._update_flux_header(diameter, flux, fluxerr)
 
@@ -47,7 +47,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         return self._data is None
 
     def _calc_background(self):
-        self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.mask)
+        self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.safe_mask)
         self._average_background = self._calc_average_background(bkg.back())
 
     def _calc_average_background(self, background: np.ndarray) -> \

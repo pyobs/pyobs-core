@@ -5,3 +5,4 @@ from .sequential import SequentialRunner
 from .parallel import ParallelRunner
 from .selector import SelectorScript
 from .conditional import ConditionalRunner
+from .callmodule import CallModule

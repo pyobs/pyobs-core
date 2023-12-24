@@ -1,3 +1,8 @@
+v1.10.0 (2023-12-23)
+*******************
+* Added CallModule script.
+* Changed ScriptRunner module so that it can run a script multiple times.
+
 v1.9.0 (2023-12-23)
 *******************
 * Added getters and safe getters for Image class.

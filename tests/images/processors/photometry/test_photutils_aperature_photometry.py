@@ -9,7 +9,7 @@ async def test_call_to_large_pixel_scale(caplog, const_test_image):
     photometry = _PhotUtilAperturePhotometry()
     photometry.set_data(const_test_image)
 
-    await photometry(1)
+    photometry(1)
 
     assert photometry.catalog.keys() == ["x", "y"]
     assert photometry.catalog["x"] == [40]
@@ -21,7 +21,7 @@ async def test_call_const(const_test_image):
     const_test_image.header["CD1_1"] = 1 / (2.5 * 3600)
     photometry = _PhotUtilAperturePhotometry()
     photometry.set_data(const_test_image)
-    await photometry(1)
+    photometry(1)
 
     # Test background is 1.0
     np.testing.assert_almost_equal(photometry.catalog[f"bkgaper1"][0], 1.0, 14)

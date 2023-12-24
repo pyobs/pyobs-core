@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any
 
 from pyobs.images import Image
 from pyobs.images.processors.photometry import Photometry
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 class AperturePhotometry(Photometry):
     APERTURE_RADII = range(1, 9)
 
-    def __init__(self, calculator: _PhotometryCalculator, **kwargs):
+    def __init__(self, calculator: _PhotometryCalculator, **kwargs: Any) -> None:
         self._calculator = calculator
         super().__init__(**kwargs)
 

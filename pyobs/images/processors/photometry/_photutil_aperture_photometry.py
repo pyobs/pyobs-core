@@ -23,13 +23,13 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
     def catalog(self):
         return self._image.catalog
 
-    async def __call__(self, diameter: int):
+    def __call__(self, diameter: int):
         radius = self._calc_aperture_radius_in_px(diameter)
         if radius < 1:
             return
 
         aperture = CircularAperture(self._positions, r=radius)
-        aperture_flux, aperture_error = await self._calc_aperture_flux(aperture)
+        aperture_flux, aperture_error = self._calc_aperture_flux(aperture)
 
         median_background = self._calc_median_backgrounds(radius)
         aperture_background = self._calc_integrated_background(median_background, aperture)
@@ -63,7 +63,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
     def _calc_integrated_background(median_background: np.ndarray[float], aperture: CircularAperture) -> np.ndarray[float]:
         return median_background * aperture.area
 
-    async def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[
+    def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[
         np.ndarray[float], Optional[np.ndarray[float]]]:
 
         phot: QTable = aperture_photometry(self._image.data, aperture, mask=self._image.safe_mask,

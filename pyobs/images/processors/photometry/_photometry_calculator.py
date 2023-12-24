@@ -19,5 +19,5 @@ class _PhotometryCalculator(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def __call__(self, diameter: int):
+    def __call__(self, diameter: int):
         ...

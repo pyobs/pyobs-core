@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from ._sep_aperture_photometry import _SepAperturePhotometry
 from .aperture_photometry import AperturePhotometry
@@ -11,7 +12,7 @@ class SepPhotometry(AperturePhotometry):
 
     __module__ = "pyobs.images.processors.photometry"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(_SepAperturePhotometry(), **kwargs)
 
 

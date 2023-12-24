@@ -19,7 +19,7 @@ class MockPhotometryCalculator(_PhotometryCalculator):
     def catalog(self) -> QTable:
         return self._catalog
 
-    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
+    def set_data(self, image: Image):
         self._catalog = image.catalog.copy()
 
     def __call__(self, diameter: int):

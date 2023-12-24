@@ -37,8 +37,7 @@ class AperturePhotometry(Photometry):
             log.warning("No catalog found in image.")
             return image
 
-        positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
-        self._calculator.set_data(image, positions)
+        self._calculator.set_data(image)
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._photometry)

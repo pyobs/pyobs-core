@@ -18,7 +18,7 @@ async def test_call_const(test_catalog):
     photometry = _SepAperturePhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
 
-    photometry.set_data(const_test_image, [(40, 40)])
+    photometry.set_data(const_test_image)
     photometry(5)
 
     # Test background is 1.0
@@ -36,7 +36,7 @@ async def test_call_single_peak(test_catalog):
     const_test_image = Image(data=data, catalog=test_catalog)
     photometry = _SepAperturePhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
-    photometry.set_data(const_test_image, [(40, 40)])
+    photometry.set_data(const_test_image)
     photometry(5)
 
     # Test background is 0.0

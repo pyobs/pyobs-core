@@ -15,7 +15,7 @@ class _PhotometryCalculator(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
+    def set_data(self, image: Image):
         ...
 
     @abstractmethod

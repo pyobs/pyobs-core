@@ -18,9 +18,9 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         self._data: Optional[np.ndarray] = None
         self._average_background: Optional[np.ndarray] = None
 
-    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
+    def set_data(self, image: Image):
         self._image = image.copy()
-        self._pos_x, self._pos_y = list(zip(*positions))
+        self._pos_x, self._pos_y = self._image.catalog["x"], self._image.catalog["y"]
         self._gain = image.header["DET-GAIN"] if "DET-GAIN" in image.header else None
 
     @property

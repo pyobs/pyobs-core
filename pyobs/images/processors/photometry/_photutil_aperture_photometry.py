@@ -15,9 +15,9 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         self._image: Optional[Image] = None
         self._positions: Optional[List[Tuple[float, float]]] = None
 
-    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
+    def set_data(self, image: Image):
         self._image = image.copy()
-        self._positions = positions
+        self._positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
 
     @property
     def catalog(self):

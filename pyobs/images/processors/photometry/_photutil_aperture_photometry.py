@@ -1,5 +1,3 @@
-import asyncio
-from functools import partial
 from typing import List, Tuple, Optional
 
 import numpy as np
@@ -8,10 +6,16 @@ from astropy.table import QTable
 from photutils.aperture import CircularAperture, CircularAnnulus, ApertureMask, aperture_photometry
 
 from pyobs.images import Image
+from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
 
 
-class _PhotUtilAperturePhotometry:
-    def __init__(self, image: Image, positions: List[Tuple[float, float]]):
+class _PhotUtilAperturePhotometry(_PhotometryCalculator):
+
+    def __init__(self):
+        self._image: Optional[Image] = None
+        self._positions: Optional[List[Tuple[float, float]]] = None
+
+    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
         self._image = image.copy()
         self._positions = positions
 

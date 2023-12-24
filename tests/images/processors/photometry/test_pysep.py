@@ -57,6 +57,7 @@ async def test_call_const(test_catalog):
     const_test_image = Image(data=np.ones((100, 100)), catalog=test_catalog)
     photometry = SepPhotometry()
     const_test_image.header["CD1_1"] = 1/(2.5*3600)
+
     result = await photometry(const_test_image)
 
     # Test background is 1.0

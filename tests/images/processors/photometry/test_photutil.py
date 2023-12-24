@@ -40,7 +40,7 @@ async def test_call_invalid_catalog(caplog):
     with caplog.at_level(logging.WARNING):
         result = await photometry(image)
 
-    assert caplog.records[0].message == "No catalog in image."
+    assert caplog.records[0].message == "No catalog found in image."
     assert result == image
 
 

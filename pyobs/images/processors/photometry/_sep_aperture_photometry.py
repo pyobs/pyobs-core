@@ -4,17 +4,24 @@ import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.processors.detection import SepSourceDetection
+from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
 
 
-class _SepAperturePhotometry:
-    def __init__(self, image: Image, positions: List[Tuple[float, float]]):
-        self._image = image.copy()
-        self._pos_x, self._pos_y = list(zip(*positions))
+class _SepAperturePhotometry(_PhotometryCalculator):
+    def __init__(self):
+        self._image: Optional[Image] = None
+        self._pos_x: Optional[List[float]] = None
+        self._pos_y: Optional[List[float]] = None
 
-        self._gain = image.header["DET-GAIN"] if "DET-GAIN" in image.header else None
+        self._gain: Optional[float] = None
 
         self._data: Optional[np.ndarray] = None
         self._average_background: Optional[np.ndarray] = None
+
+    def set_data(self, image: Image, positions: List[Tuple[float, float]]):
+        self._image = image.copy()
+        self._pos_x, self._pos_y = list(zip(*positions))
+        self._gain = image.header["DET-GAIN"] if "DET-GAIN" in image.header else None
 
     @property
     def catalog(self):
@@ -37,7 +44,7 @@ class _SepAperturePhotometry:
         self._update_flux_header(diameter, flux, fluxerr)
 
     def _is_background_calculated(self):
-        return self._data is not None
+        return self._data is None
 
     def _calc_background(self):
         self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.mask)

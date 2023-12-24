@@ -36,5 +36,5 @@ async def test_update_header_flux_error(const_test_image):
     photometry.set_data(const_test_image, [(40, 40)])
 
     test_array = np.array([1.0])
-    photometry._update_header(1, test_array, test_array, test_array)
+    photometry._update_catalog(1, test_array, test_array, test_array)
     np.testing.assert_array_equal(photometry.catalog["fluxerr1"], test_array)

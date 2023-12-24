@@ -36,7 +36,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
         corrected_aperture = self._background_correct_aperture_flux(aperture_flux, aperture_background)
 
-        self._update_header(diameter, corrected_aperture, aperture_error, median_background)
+        self._update_catalog(diameter, corrected_aperture, aperture_error, median_background)
 
     def _calc_aperture_radius_in_px(self, diameter: int):
         radius = diameter / 2.0
@@ -79,8 +79,8 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
             np.ndarray[float]:
         return aperture_flux - aperture_background
 
-    def _update_header(self, diameter: int, corrected_aperture_flux: np.ndarray[float],
-                       aperture_error: Optional[np.ndarray[float]], median_background: np.ndarray[float]):
+    def _update_catalog(self, diameter: int, corrected_aperture_flux: np.ndarray[float],
+                        aperture_error: Optional[np.ndarray[float]], median_background: np.ndarray[float]):
 
         self._image.catalog["fluxaper%d" % diameter] = corrected_aperture_flux
         if aperture_error is not None:

@@ -2,13 +2,13 @@ import logging
 from typing import Any, Dict
 
 from pyobs.modules import Module
-from pyobs.interfaces import IAutonomous
+from pyobs.interfaces import IRunnable
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
 
 
-class ScriptRunner(Module, IAutonomous):
+class ScriptRunner(Module, IRunnable):
     """Module for running a script."""
 
     __module__ = "pyobs.modules.robotic"
@@ -16,6 +16,7 @@ class ScriptRunner(Module, IAutonomous):
     def __init__(
         self,
         script: Dict[str, Any],
+        run_once: bool = False,
         **kwargs: Any,
     ):
         """Initialize a new script runner.
@@ -27,29 +28,24 @@ class ScriptRunner(Module, IAutonomous):
 
         # store
         self.script = script
-        copy_comm = "comm" not in script.keys()
-        self._script = self.add_child_object(script, Script, copy_comm=copy_comm)
+        self._script = self.add_child_object(script, Script)
 
         # add thread func
-        self.add_background_task(self._run_thread, False)
+        if run_once:
+            self.add_background_task(self._run_thread, False)
 
-    async def start(self, **kwargs: Any) -> None:
-        """Starts a service."""
+    async def run(self, **kwargs: Any) -> None:
+        """Run script."""
+        script = self.get_object(self.script, Script)
+        await script.run(None)
+
+    async def abort(self, **kwargs: Any) -> None:
+        """Abort current actions."""
         pass
-
-    async def stop(self, **kwargs: Any) -> None:
-        """Stops a service."""
-        pass
-
-    async def is_running(self, **kwargs: Any) -> bool:
-        """Whether a service is running."""
-        return True
 
     async def _run_thread(self) -> None:
         """Run the script."""
-
-        # run script
-        await self._script.run(None)
+        await self.run()
 
 
 __all__ = ["ScriptRunner"]

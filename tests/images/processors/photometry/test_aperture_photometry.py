@@ -20,7 +20,7 @@ class MockPhotometryCalculator(_PhotometryCalculator):
         return self._catalog
 
     def set_data(self, image: Image, positions: List[Tuple[float, float]]):
-        self._catalog = image.catalog
+        self._catalog = image.catalog.copy()
 
     def __call__(self, diameter: int):
         self._catalog[f"call{diameter}"] = 1
@@ -71,4 +71,4 @@ async def test_call_valid(const_test_image):
     assert all([f"call{x}" in result.catalog.keys() for x in AperturePhotometry.APERTURE_RADII])
 
     np.testing.assert_array_equal(const_test_image.data, result.data)
-    assert const_test_image.catalog is result.catalog  # TODO: Is this meant to be only a shallow copy?
+    assert const_test_image.catalog is not result.catalog

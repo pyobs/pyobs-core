@@ -46,7 +46,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         fits_headers: Optional[Dict[str, Any]] = None,
         centre: Optional[Tuple[float, float]] = None,
         rotation: float = 0.0,
-        flip: bool = False,
+        flip: Optional[bool] = None,
+        flip_x: bool = False,
+        flip_y: bool = False,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz",
         fits_namespaces: Optional[List[str]] = None,
         **kwargs: Any,
@@ -57,7 +59,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             fits_headers: Additional FITS headers.
             centre: (x, y) tuple of camera centre.
             rotation: Rotation east of north.
-            flip: Whether or not to flip the image along its first axis.
+            flip: Whether or not to flip the image along its first axis (deprecated, use flip_x).
+            flip_x: Whether or not to flip the image along its first axis.
+            flip_y: Whether or not to flip the image along its second axis.
             filenames: Template for file naming.
             fits_namespaces: List of namespaces for FITS headers that this camera should request
         """
@@ -76,7 +80,8 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             log.warning("No comm module given, will not be able to signal new images!")
 
         # store
-        self._flip = flip
+        self._flip_x = flip if flip is not None else flip_x
+        self._flip_y = flip_y
         self._exposure_time: float = 0.0
         self._image_type = ImageType.OBJECT
 
@@ -241,7 +246,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
-            if image is None or image.data is None:
+            if image is None or image.safe_data is None:
                 raise exc.GrabImageError("Could not take image.")
 
         except exc.PyObsError:
@@ -258,13 +263,17 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         header_futures_after = await self.request_fits_headers(before=False)
 
         # flip it?
-        if self._flip:
+        if self._flip_x or self._flip_y:
             # do we have three dimensions in array? need this for deciding which axis to flip
             is_3d = len(image.data.shape) == 3
 
             # flip image and make contiguous again
-            flipped: NDArray[Any] = np.flip(image.data, axis=1 if is_3d else 0)
-            image.data = np.ascontiguousarray(flipped)
+            tmp = image.data
+            if self._flip_x:
+                tmp = np.flip(tmp, axis=1 if is_3d else 0)
+            if self._flip_y:
+                tmp = np.flip(tmp, axis=2 if is_3d else 1)
+            image.data = np.ascontiguousarray(tmp)
 
         # add HDU name
         image.header["EXTNAME"] = "SCI"
@@ -273,6 +282,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header["IMAGETYP"] = image_type.value
 
         # add fits headers and format filename
+        await self.add_custom_fits_headers(image)
         await self.add_requested_fits_headers(image, header_futures_before)
         await self.add_requested_fits_headers(image, header_futures_after)
         await self.add_fits_headers(image)
@@ -299,6 +309,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._exposure = None
         log.info("Finished image %s.", filename)
         return image, filename
+
+    async def add_custom_fits_headers(self, image: Image):
+        """Add FITS headers in derived classes.
+
+        Args:
+            image: Image to write FITS headers to.
+        """
+        pass
 
     @timeout(calc_expose_timeout)
     async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:

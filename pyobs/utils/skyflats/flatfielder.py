@@ -88,7 +88,9 @@ class FlatFielder(Object):
         self._abort = asyncio.Event()
 
         # pointing
-        self._pointing: Optional[SkyFlatsBasePointing] = self.get_safe_object(pointing, SkyFlatsBasePointing)
+        self._pointing: Optional[SkyFlatsBasePointing] = None
+        if pointing is not None:
+            self._pointing = self.get_safe_object(pointing, SkyFlatsBasePointing)
 
         # state machine
         self._state = FlatFielder.State.INIT

@@ -33,11 +33,11 @@ class StandAlone(Module):
         """Thread function for async processing."""
         # loop until closing
         while True:
-            # log message
-            log.info(self._message)
+            await self._loop()
 
-            # sleep a little
-            await asyncio.sleep(self._interval)
+    async def _loop(self):
+        log.info(self._message)
+        await asyncio.sleep(self._interval)
 
 
 __all__ = ["StandAlone"]

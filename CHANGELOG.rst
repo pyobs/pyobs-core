@@ -1,3 +1,7 @@
+v1.9.0 (2023-12-23)
+*******************
+* Added getters and safe getters for Image class.
+
 v1.3.0 (2023-02-04)
 *******************
 * Adopted LCO default task to new LCO portal.

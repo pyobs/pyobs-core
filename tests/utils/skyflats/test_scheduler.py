@@ -4,7 +4,7 @@ import pytest
 from pyobs.utils.skyflats import Scheduler
 from pyobs.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time
-
+import astropy.units as u
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -12,7 +12,8 @@ pytest_plugins = ("pytest_asyncio",)
 @pytest.mark.asyncio
 async def test_scheduler():
     # init observer and time
-    observer = Observer.at_site("SAAO")
+    saao_observer = Observer(longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg,
+                             elevation=1798.0 * u.m, timezone="UTC")
     now = Time("2019-11-21T17:10:00Z")
 
     # have some test functions
@@ -26,7 +27,7 @@ async def test_scheduler():
     priorities = ConstSkyflatPriorities({("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
 
     # create scheduler
-    scheduler = Scheduler(functions, priorities, observer)
+    scheduler = Scheduler(functions, priorities, saao_observer)
     await scheduler(now)
 
     # test order

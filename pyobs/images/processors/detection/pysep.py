@@ -23,16 +23,22 @@ class SepSourceDetection(SourceDetection):
     __module__ = "pyobs.images.processors.detection"
 
     _CATALOG_KEYS = [
-        "x", "y",
+        "x",
+        "y",
         "peak",
         "flux",
         "fwhm",
-        "a", "b", "theta",
+        "a",
+        "b",
+        "theta",
         "ellipticity",
         "tnpix",
         "kronrad",
-        "fluxrad25", "fluxrad50", "fluxrad75",
-        "xwin", "ywin",
+        "fluxrad25",
+        "fluxrad50",
+        "fluxrad75",
+        "xwin",
+        "ywin",
     ]
 
     def __init__(
@@ -77,7 +83,7 @@ class SepSourceDetection(SourceDetection):
             Image with attached catalog.
         """
 
-        if image.data is None:
+        if image.safe_data is None:
             log.warning("No data found in image.")
             return image
 
@@ -104,7 +110,7 @@ class SepSourceDetection(SourceDetection):
 
     @staticmethod
     def _get_mask_or_default(image: Image) -> np.ndarray:
-        if image.mask is not None:
+        if image.safe_mask is not None:
             return image.mask
 
         return np.zeros(image.data.shape, dtype=bool)

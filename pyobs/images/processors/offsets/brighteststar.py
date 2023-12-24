@@ -37,7 +37,7 @@ class BrightestStarOffsets(Offsets):
         """
 
         # get catalog and sort by flux
-        cat = image.catalog
+        cat = image.safe_catalog
         if cat is None or len(cat) < 1:
             log.warning("No catalog found in image.")
             return image

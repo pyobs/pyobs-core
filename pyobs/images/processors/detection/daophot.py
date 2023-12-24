@@ -65,7 +65,7 @@ class DaophotSourceDetection(SourceDetection):
             Image with attached catalog.
         """
 
-        if image.data is None:
+        if image.safe_data is None:
             log.warning("No data found in image.")
             return image
 

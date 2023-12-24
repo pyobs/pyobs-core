@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Any, Optional
 
+from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
@@ -12,7 +13,7 @@ from pyobs.utils.parallel import event_wait
 log = logging.getLogger(__name__)
 
 
-class AutoGuiding(BaseGuiding):
+class AutoGuiding(BaseGuiding, CameraSettingsMixin):
     """An auto-guiding system."""
 
     __module__ = "pyobs.modules.guiding"
@@ -31,6 +32,9 @@ class AutoGuiding(BaseGuiding):
         self._exposure_time: Optional[float] = None
         self._broadcast = broadcast
         self._source_detection = SepSourceDetection()
+
+        # init camera settings mixin
+        CameraSettingsMixin.__init__(self, **kwargs)
 
         # add thread func
         self.add_background_task(self._auto_guiding)
@@ -80,6 +84,9 @@ class AutoGuiding(BaseGuiding):
             try:
                 # get camera
                 camera = await self.proxy(self._camera, IData)
+
+                # do camera settings
+                await self._do_camera_settings(camera)
 
                 # take image
                 if isinstance(camera, IExposureTime):

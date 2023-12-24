@@ -309,7 +309,14 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
         # pixel size in world coordinates
         if "DET-PIXL" in hdr and "TEL-FOCL" in hdr and "DET-BIN1" in hdr and "DET-BIN2" in hdr:
+            # calculate plate scale for 1x1 binning
             tmp = 360.0 / (2.0 * math.pi) * v("DET-PIXL") / v("TEL-FOCL")
+
+            # any focal reduction factor?
+            if "FOCL-RED" in hdr:
+                tmp /= hdr["FOCL-RED"]
+
+            # set WCS
             hdr["CDELT1"] = (-tmp * v("DET-BIN1"), "Coordinate increment on x-axis [deg/px]")
             hdr["CDELT2"] = (+tmp * v("DET-BIN2"), "Coordinate increment on y-axis [deg/px]")
             hdr["CUNIT1"] = ("deg", "Units of CRVAL1, CDELT1")
@@ -348,8 +355,14 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
             # PC matrix: rotation only, shift comes from CDELT1/2
             if self._fitsheadermixin_rotation is not None:
-                hdr["POSANG"] = (self._fitsheadermixin_rotation, "Position angle [deg e of n]")
-                theta_rad = math.radians(self._fitsheadermixin_rotation)
+                # position angle is set rotation + DEROTOFF if defined
+                posang = self._fitsheadermixin_rotation
+                if "DEROTOFF" in hdr:
+                    posang += hdr["DEROTOFF"]
+
+                # write position angle
+                hdr["POSANG"] = (posang, "Position angle [deg e of n]")
+                theta_rad = math.radians(posang)
                 cos_theta = math.cos(theta_rad)
                 sin_theta = math.sin(theta_rad)
                 hdr["PC1_1"] = (+cos_theta, "Partial of first axis coordinate w.r.t. x")

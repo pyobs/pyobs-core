@@ -44,7 +44,7 @@ class CallModule(Script):
         task_schedule: Optional[TaskSchedule] = None,
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
-        proxy = self.comm.proxy(self.module)
+        proxy = await self.comm.proxy(self.module)
         await proxy.execute(self.method, *self.params)
 
 

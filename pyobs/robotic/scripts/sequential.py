@@ -30,7 +30,7 @@ class SequentialRunner(Script):
         self.check_all_can_run = check_all_can_run
 
     async def can_run(self) -> bool:
-        check_all = [self.get_object(s, Script).can_run() for s in self.scripts]
+        check_all = [await self.get_object(s, Script).can_run() for s in self.scripts]
         return all(check_all) if self.check_all_can_run else check_all[0]
 
     async def run(

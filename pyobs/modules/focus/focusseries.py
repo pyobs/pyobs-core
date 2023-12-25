@@ -31,6 +31,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         filters: Optional[Union[str, IFilters]] = None,
         filter_name: Optional[str] = None,
         binning: Optional[int] = None,
+        broadcast: bool = False,
+        final_image: bool = True,
         **kwargs: Any,
     ):
         """Initialize a new auto focus system.
@@ -41,6 +43,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             filters: Name of IFilters, if any.
             filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
+            broadcast: Whether to broadcast focus series images.
+            final_image: Whether to take final image with optimal focus, which is always broadcasted.
         """
         Module.__init__(self, **kwargs)
 
@@ -51,6 +55,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._offset = offset
         self._abort = threading.Event()
         self._running = False
+        self._broadcast = broadcast
+        self._final_image = final_image
 
         # create focus series
         self._series: FocusSeries = get_object(series, FocusSeries)
@@ -122,6 +128,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # do camera settings
         await self._do_camera_settings(camera)
+        if isinstance(camera, IImageType):
+            await camera.set_image_type(ImageType.FOCUS)
 
         # get filter wheel and current filter
         filter_name = "unknown"
@@ -173,11 +181,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise exceptions.AbortedError()
             try:
-                if isinstance(camera, IExposureTime):
-                    await camera.set_exposure_time(exposure_time)
-                if isinstance(camera, IImageType):
-                    await camera.set_image_type(ImageType.FOCUS)
-                filename = await camera.grab_data()
+                filename = await self._take_image(camera, exposure_time)
             except exc.RemoteError:
                 log.error("Could not take image.")
                 continue
@@ -231,8 +235,20 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # send event
         await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
 
+        # take final image?
+        if self._final_image:
+            await self._take_image(camera, exposure_time)
+
         # return result
         return focus[0], focus[1]
+
+    async def _take_image(self, camera, exposure_time):
+        if isinstance(camera, IExposureTime):
+            await camera.set_exposure_time(exposure_time)
+        if isinstance(camera, IData):
+            return await camera.grab_data(broadcast=self._broadcast)
+        else:
+            raise exc.GeneralError("Cannot grab data from camera.")
 
     async def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current status of auto focus.

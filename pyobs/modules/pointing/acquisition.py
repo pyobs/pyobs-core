@@ -33,6 +33,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         tolerance: float = 1,
         max_offset: float = 120,
         log_file: Optional[str] = None,
+        broadcast: bool = False,
         **kwargs: Any,
     ):
         """Create a new acquisition.
@@ -44,6 +45,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
+            broadcast: Whether to broadcast acquisition images.
         """
         BasePointing.__init__(self, **kwargs)
 
@@ -55,6 +57,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._tolerance = tolerance * u.arcsec
         self._max_offset = max_offset * u.arcsec
         self._abort_event = asyncio.Event()
+        self._broadcast = broadcast
 
         # init log file
         self._publisher = CsvPublisher(log_file) if log_file is not None else None
@@ -111,6 +114,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
         # do camera settings
         await self._do_camera_settings(camera)
+        if isinstance(camera, IImageType):
+            await camera.set_image_type(ImageType.ACQUISITION)
 
         # try given number of attempts
         for a in range(self._attempts):
@@ -124,9 +129,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 await camera.set_exposure_time(exposure_time)
             else:
                 log.info("Exposing image...")
-            if isinstance(camera, IImageType):
-                await camera.set_image_type(ImageType.ACQUISITION)
-            filename = await camera.grab_data()
+            if isinstance(camera, IData):
+                filename = await camera.grab_data(broadcast=self._broadcast)
+            else:
+                raise exc.GeneralError("Cannot grab data from camera.")
 
             # download image
             log.info("Downloading image...")

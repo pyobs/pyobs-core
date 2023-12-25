@@ -43,6 +43,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             filters: Name of IFilters, if any.
             filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
+            broadcast: Whether to broadcast focus series images.
+            final_image: Whether to take final image with optimal focus, which is always broadcasted.
         """
         Module.__init__(self, **kwargs)
 

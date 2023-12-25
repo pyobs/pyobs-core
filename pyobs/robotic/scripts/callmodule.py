@@ -18,7 +18,7 @@ class CallModule(Script):
         self,
         module: str,
         method: str,
-        params: Optional[List[Any]],
+        params: Optional[List[Any]] = None,
         **kwargs: Any,
     ):
         """Initialize a new SequentialRunner.

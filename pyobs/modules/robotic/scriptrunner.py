@@ -1,11 +1,16 @@
 import logging
 from typing import Any, Dict
 
-from pyobs.modules import Module
+from pyobs.modules import Module, timeout
 from pyobs.interfaces import IRunnable
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
+
+
+async def calc_run_timeout(obj: "ScriptRunner", *args: Any, **kwargs: Any) -> float:
+    """Calculates timeout for run()."""
+    return obj.timeout
 
 
 class ScriptRunner(Module, IRunnable):
@@ -17,6 +22,7 @@ class ScriptRunner(Module, IRunnable):
         self,
         script: Dict[str, Any],
         run_once: bool = False,
+        timeout: int = 10,
         **kwargs: Any,
     ):
         """Initialize a new script runner.
@@ -29,11 +35,13 @@ class ScriptRunner(Module, IRunnable):
         # store
         self.script = script
         self._script = self.add_child_object(script, Script)
+        self.timeout = timeout
 
         # add thread func
         if run_once:
             self.add_background_task(self._run_thread, False)
 
+    @timeout(calc_run_timeout)
     async def run(self, **kwargs: Any) -> None:
         """Run script."""
         script = self.get_object(self.script, Script)

@@ -1,3 +1,10 @@
+v1.12.0 (2023-12-xx)
+*******************
+* Added `list` command for `pyobsd`, which outputs all configurations.
+* Added bash auto-complete script `pyobsd`.
+* Added timeouts (to be defined in the config) for `ScriptRunner` modules.
+
+
 v1.11.0 (2023-12-25)
 *******************
 * Acquisition and AutoFocus both got a `broadcast` option to disable broadcast of images.

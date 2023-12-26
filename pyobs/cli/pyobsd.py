@@ -135,6 +135,10 @@ class PyobsDaemon(object):
         for p in services:
             print(("[X]" if p in configs else "[ ]") + " " + ("[X]" if p in running else "[ ]") + " " + p)
 
+    def list(self, **kwargs) -> None:
+        configs = [self._service(r) for r in self._configs]
+        print("\n".join(configs))
+
     def _start_service(self, service: str) -> None:
         # get PID file
         pid_file = self._pid_file(service)
@@ -228,7 +232,7 @@ def main() -> None:
     parser.add_argument(
         "--start-stop-daemon", type=str, default=config.get("start-stop-daemon", "/sbin/start-stop-daemon")
     )
-    parser.add_argument("command", type=str, choices=["start", "stop", "restart", "status"])
+    parser.add_argument("command", type=str, choices=["start", "stop", "restart", "status", "list"])
     parser.add_argument("services", type=str, nargs="*")
     args = parser.parse_args()
 

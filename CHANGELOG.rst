@@ -1,4 +1,4 @@
-v1.12.0 (2023-12-xx)
+v1.12.0 (2023-12-28)
 *******************
 * Added `list` command for `pyobsd`, which outputs all configurations.
 * Added bash auto-complete script `pyobsd`.

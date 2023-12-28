@@ -51,3 +51,10 @@ async def test_call() -> None:
 
     on_sky_distance = output_image.get_meta(OnSkyDistance)
     np.testing.assert_almost_equal(on_sky_distance.distance.value, 6.06585686e-05)
+
+
+@pytest.mark.asyncio
+async def test_ordering() -> None:
+    catalog = QTable({"x": [2050, 2049], "y": [1020, 1021], "flux": [1, 2]})
+
+    assert BrightestStarOffsets._get_brightest_star_position(catalog) == (2049, 1021)

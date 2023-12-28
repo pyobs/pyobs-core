@@ -2,7 +2,7 @@ import logging
 from typing import Tuple, Any
 
 from astropy.coordinates import Angle
-from astropy.table import Table
+from astropy.table import Table, Row
 from astropy.wcs import WCS
 
 from pyobs.images import Image
@@ -53,10 +53,8 @@ class BrightestStarOffsets(Offsets):
 
     @staticmethod
     def _get_brightest_star_position(catalog: Table) -> Tuple[float, float]:
-        catalog_copy = catalog.copy()
-        catalog_copy.sort("flux", reverse=True)
-
-        return catalog_copy["x"][0], catalog_copy["y"][0]
+        brightest_star: Row = max(catalog, key=lambda row: row["flux"])
+        return brightest_star["x"], brightest_star["y"]
 
     @staticmethod
     def _calc_on_sky_distance(image: Image, center: Tuple[float, float], star_pos: Tuple[float, float]) -> Angle:

@@ -41,7 +41,7 @@ class SequentialRunner(Script):
     ) -> None:
         for s in self.scripts:
             script = self.get_object(s, Script)
-            if script.can_run():
+            if await script.can_run():
                 await script.run(task_runner, task_schedule, task_archive)
 
 

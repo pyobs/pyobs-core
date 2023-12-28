@@ -1,10 +1,12 @@
+from typing import Any
+
 from .offsets import Offsets
 from pyobs.images import Image
 from pyobs.object import get_class_from_string
 
 
 class DummyOffsets(Offsets):
-    def __init__(self, offset_class: str, offset: float = 1.0, **kwargs):
+    def __init__(self, offset_class: str, offset: float = 1.0, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self._offset = offset

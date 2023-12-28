@@ -42,7 +42,9 @@ class ParallelRunner(Script):
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
         scripts = [self.get_object(s, Script) for s in self.scripts]
-        tasks = [asyncio.create_task(s.run(task_runner, task_schedule, task_archive)) for s in scripts if s.can_run()]
+        tasks = [
+            asyncio.create_task(s.run(task_runner, task_schedule, task_archive)) for s in scripts if await s.can_run()
+        ]
         await asyncio.gather(*tasks)
 
 

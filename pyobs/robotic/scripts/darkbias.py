@@ -53,14 +53,10 @@ class DarkBias(Script):
             True if script can run now.
         """
 
-        # get modules
-        try:
-            camera = await self.comm.proxy(self._camera, IData)
-        except ValueError:
-            return False
-
         # we need a camera
-        if not await camera.is_ready():
+        try:
+            await self.comm.proxy(self._camera, IData)
+        except ValueError:
             return False
 
         # seems alright
@@ -95,10 +91,10 @@ class DarkBias(Script):
 
         # image type for logger
         if self._exptime == 0:
-            im_type = '%d biases' % self._count
+            im_type = "%d biases" % self._count
 
         else:
-            im_type = '%d darks (%d s)' % (self._count, self._exptime)
+            im_type = "%d darks (%d s)" % (self._count, self._exptime)
 
         log.info("Starting a series of %s with %s..." % (im_type, self._camera))
         for i in range(self._count):
@@ -108,13 +104,3 @@ class DarkBias(Script):
 
 
 __all__ = ["DarkBias"]
-
-
-
-
-
-
-
-
-
-

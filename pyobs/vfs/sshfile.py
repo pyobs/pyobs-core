@@ -127,6 +127,7 @@ class SSHFile(VFSFile):
 
         # set flag
         self._open = False
+        self._ssh.close()
 
     async def _upload(self) -> None:
         """If in write mode, actually send the file to the SSH server."""

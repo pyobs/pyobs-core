@@ -4,6 +4,7 @@ import numpy as np
 
 from pyobs.images import Image
 from . import Offsets
+from ...meta.genericoffset import GenericOffset
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +16,9 @@ class FitsHeaderOffsets(Offsets):
         """Initializes new fits header offsets."""
         Offsets.__init__(self, **kwargs)
 
-        # store
+        if len(target) != 2 or len(center) != 2:
+            raise ValueError("Target and center must be of length 2!")
+
         self.center = center
         self.target = target
 
@@ -32,13 +35,14 @@ class FitsHeaderOffsets(Offsets):
             ValueError: If offset could not be found.
         """
 
-        # get values from header
         target = [image.header[x] for x in self.target]
         center = [image.header[x] for x in self.center]
 
-        # calculate offset
-        image.meta["offsets"] = np.subtract(target, center)
-        return image
+        offset = np.subtract(target, center)
+
+        output_image = image.copy()
+        output_image.set_meta(GenericOffset(*offset))
+        return output_image
 
 
 __all__ = ["FitsHeaderOffsets"]

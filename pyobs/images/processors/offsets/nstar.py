@@ -86,15 +86,15 @@ class NStarOffsets(Offsets, PipelineMixin):
                 self.ref_boxes = await self._boxes_from_ref(image, star_box_size)
 
                 # reset and finish
-                image.meta["offsets"] = (0, 0)
+                image.set_meta(PixelOffsets(0.0, 0.0))
                 return image
 
             except ValueError as e:
                 # didn't work
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 await self.reset()
-                if "offsets" in image.meta:
-                    del image.meta["offsets"]
+                if PixelOffsets in image.meta:
+                    del image.meta[PixelOffsets]
                 self.offset = None, None
                 return image
 

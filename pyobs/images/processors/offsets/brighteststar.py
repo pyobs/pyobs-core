@@ -1,7 +1,8 @@
 import logging
 from typing import Tuple, Any
 
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle
+from astropy.table import Table, Row
 from astropy.wcs import WCS
 
 from pyobs.images import Image
@@ -16,12 +17,11 @@ class BrightestStarOffsets(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(self, center_header_cards: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
         """Initializes a new auto guiding system."""
         Offsets.__init__(self, **kwargs)
 
-        # init
-        self._center = center
+        self._center_header_cards = center_header_cards
 
     async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -36,31 +36,33 @@ class BrightestStarOffsets(Offsets):
             ValueError: If offset could not be found.
         """
 
-        # get catalog and sort by flux
-        cat = image.safe_catalog
-        if cat is None or len(cat) < 1:
+        catalog = image.safe_catalog
+        if catalog is None or len(catalog) < 1:
             log.warning("No catalog found in image.")
             return image
-        cat.sort("flux", reverse=True)
 
-        # get first X/Y coordinates
-        x, y = cat["x"][0], cat["y"][0]
+        star_pos = self._get_brightest_star_position(catalog)
+        center = image.header[self._center_header_cards[0]], image.header[self._center_header_cards[1]]
 
-        # get center
-        center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
+        offset = (star_pos[0] - center[0], star_pos[1] - center[1])
+        on_sky_distance = self._calc_on_sky_distance(image, center, star_pos)
 
-        # calculate offset
-        dx, dy = x - center_x, y - center_y
-
-        # get distance on sky
-        wcs = WCS(image.header)
-        coords1 = wcs.pixel_to_world(center_x, center_y)
-        coords2 = wcs.pixel_to_world(center_x + dx, center_y + dy)
-
-        # set it and return image
-        image.set_meta(PixelOffsets(dx, dy))
-        image.set_meta(OnSkyDistance(coords1.separation(coords2)))
+        image.set_meta(PixelOffsets(*offset))
+        image.set_meta(OnSkyDistance(on_sky_distance))
         return image
+
+    @staticmethod
+    def _get_brightest_star_position(catalog: Table) -> Tuple[float, float]:
+        brightest_star: Row = max(catalog, key=lambda row: row["flux"])
+        return brightest_star["x"], brightest_star["y"]
+
+    @staticmethod
+    def _calc_on_sky_distance(image: Image, center: Tuple[float, float], star_pos: Tuple[float, float]) -> Angle:
+        wcs = WCS(image.header)
+        center_coordinates = wcs.pixel_to_world(*center)
+        star_coordinates = wcs.pixel_to_world(*star_pos)
+
+        return center_coordinates.separation(star_coordinates)
 
 
 __all__ = ["BrightestStarOffsets"]

@@ -3,6 +3,7 @@ from typing import Tuple, List, Union, Dict, Any, Optional
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from photutils.psf import EPSFStar
 from scipy import signal, optimize
 from astropy.nddata import NDData
 from astropy.table import Table, Column
@@ -54,7 +55,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         self.max_offset = max_offset
         self.min_pixels = min_pixels
         self.min_sources = min_sources
-        self.ref_boxes: List[Any] = []
+        self.ref_boxes: List[EPSFStar] = []
 
     async def reset(self) -> None:
         """Resets guiding."""
@@ -110,7 +111,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         # multiply by 4 to give enough space for fit of correlation around the peak on all sides
         return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
 
-    async def _boxes_from_ref(self, image: Image, star_box_size: int) -> List:
+    async def _boxes_from_ref(self, image: Image, star_box_size: int) -> List[EPSFStar]:
         """Calculate the boxes around self.N_stars best sources in the image.
 
         Args:

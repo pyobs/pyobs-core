@@ -152,7 +152,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         return sources
 
     @staticmethod
-    def remove_sources_close_to_border(sources: Table, image_shape: tuple, min_dist) -> Table:
+    def remove_sources_close_to_border(sources: Table, image_shape: Tuple[int, int], min_dist: float) -> Table:
         """Remove table rows from sources when source is closer than given distance from border of image.
 
         Args:
@@ -164,22 +164,14 @@ class NStarOffsets(Offsets, PipelineMixin):
             Filtered table.
         ."""
 
-        # get shape
         width, height = image_shape
 
-        def min_distance_from_border(source: pd.DataFrame) -> List[float]:
-            # calculate the minimum distance of source to any image border (across x and y)
-            return [
-                min(x, y)
-                for x, y in zip(
-                    width / 2 - np.abs(source["y"] - width / 2), height / 2 - np.abs(source["x"] - height / 2)
-                )
-            ]
+        x_dist_from_border = width / 2 - np.abs(sources["y"] - width / 2)
+        y_dist_from_border = height / 2 - np.abs(sources["x"] - height / 2)
 
-        sources.add_column(Column(name="min_dist", data=min_distance_from_border(sources)))
-        sources.sort("min_dist")
+        min_dist_from_border = np.minimum(x_dist_from_border, y_dist_from_border)
+        sources_result = sources[min_dist_from_border > min_dist]
 
-        sources_result = sources[np.where(sources["min_dist"] > min_dist)]
         return sources_result
 
     def remove_bad_sources(
@@ -201,22 +193,22 @@ class NStarOffsets(Offsets, PipelineMixin):
         sources = sources[sources["peak"] < saturation]
 
         # remove small sources
-        sources = sources[np.where(sources["tnpix"] >= self.min_pixels)]
+        sources = sources[sources["tnpix"] >= self.min_pixels]
 
         # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
-        sources = sources[np.where(sources["tnpix"] <= tnpix_median + 2 * tnpix_std)]
+        sources = sources[sources["tnpix"] <= tnpix_median + 2 * tnpix_std]
 
         # remove highly elliptic sources
         sources.sort("ellipticity")
-        sources = sources[np.where(sources["ellipticity"] <= max_ellipticity)]
+        sources = sources[sources["ellipticity"] <= max_ellipticity]
 
         # remove sources with background <= 0
-        sources = sources[np.where(sources["background"] > 0)]
+        sources = sources[sources["background"] > 0]
 
         # remove sources with low contrast to background
-        sources = sources[np.where((sources["peak"] + sources["background"]) / sources["background"] > min_bkg_factor)]
+        sources = sources[(sources["peak"] + sources["background"]) / sources["background"] > min_bkg_factor]
         return sources
 
     @staticmethod
@@ -231,9 +223,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             New table containing N brightest sources.
         """
 
-        # sort by flux.
-        sources.sort("flux")
-        sources.reverse()
+        sources.sort("flux",  reverse=True)
 
         # extract
         if 0 < num_stars < len(sources):
@@ -253,9 +243,9 @@ class NStarOffsets(Offsets, PipelineMixin):
             ValueError if not at least self.min_sources in sources table
 
         """
-        n_required_sources = self.min_sources
-        if len(sources) < n_required_sources:
-            raise ValueError(f"Only {len(sources)} source(s) in image, but at least {n_required_sources} required.")
+
+        if len(sources) < self.min_sources:
+            raise ValueError(f"Only {len(sources)} source(s) in image, but at least {self.min_sources} required.")
 
     def _calculate_offsets(self, image: Image) -> Tuple[Optional[float], Optional[float]]:
         """Calculate offsets of given image to ref image for every star.

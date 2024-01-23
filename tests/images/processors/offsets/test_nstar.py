@@ -35,7 +35,7 @@ def test_fits2numpy() -> None:
 
 
 def test_remove_sources_close_to_border() -> None:
-    table = Table({"x": [1, 10, 10], "y": [10, 1, 10]})
+    table = Table({"x": [1, 10, 19, 10, 10], "y": [10, 1, 10, 19, 10]})
 
     result = NStarOffsets.remove_sources_close_to_border(table, (20, 20), 5)
     np.testing.assert_array_equal(result["x"], [10])

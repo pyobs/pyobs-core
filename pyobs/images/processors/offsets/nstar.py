@@ -2,6 +2,7 @@ import logging
 from typing import Tuple, List, Union, Dict, Any, Optional
 import numpy as np
 import pandas as pd
+from numpy import ndarray, dtype
 from numpy.typing import NDArray
 from photutils.psf import EPSFStar
 from scipy import signal, optimize
@@ -12,6 +13,7 @@ import photutils
 from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.images.meta import PixelOffsets
+from ._gaussian_fitter import GaussianFitter
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -275,7 +277,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
 
             try:
-                offset = self._offsets_from_corr(corr)
+                offset = GaussianFitter.offsets_from_corr(corr)
                 offsets.append(offset)
             except Exception as e:
                 log.info(f"Exception '{e}' caught. Ignoring this star.")
@@ -286,106 +288,5 @@ class NStarOffsets(Offsets, PipelineMixin):
             return None, None
         offsets_np = np.array(offsets)
         return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
-
-    @staticmethod
-    def _gauss2d(
-        x: NDArray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float
-    ) -> NDArray[float]:
-        """2D Gaussian function."""
-        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x**2) - (x[1] - y0) ** 2 / (2 * sigma_y**2))
-
-    def _offsets_from_corr(self, corr: NDArray[float]) -> Tuple[float, float]:
-        """Fit 2d correlation data with a 2d gaussian + constant offset.
-        raise CorrelationMaxCloseToBorderError if the correlation maximum is not well separated from border."""
-
-        # check if maximum of correlation is too close to border
-        self._check_corr_border(corr)
-
-        # get x,y positions array corresponding to the independent variable values of the correlation
-        x, y = NStarOffsets._corr_grid(corr)
-
-        # shape data as needed by R^2 -> R scipy curve_fit
-        xdata = np.vstack((x.ravel(), y.ravel()))
-        ydata = corr.ravel()
-
-        # estimate initial parameter values
-        # constant offset of 2d gaussian
-        a = np.min(corr)
-
-        # height of 2d gaussian
-        b = np.max(corr) - a
-
-        # gaussian peak position (estimate from maximum pixel position in correlation)
-        max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
-        x0, y0 = x[tuple(max_index)], y[tuple(max_index)]
-
-        # estimate width of 2d gaussian as radius of area with values above half maximum
-        half_max = np.max(corr - a) / 2 + a
-
-        # sum over binary array
-        greater_than_half_max_area = np.sum(corr >= half_max)
-        sigma_x = np.sqrt(greater_than_half_max_area / np.pi)
-        sigma_y = sigma_x
-
-        # initial value list
-        p0 = [a, b, x0, y0, sigma_x, sigma_y]
-        bounds = (
-            [-np.inf, -np.inf, x0 - sigma_x, y0 - sigma_y, 0, 0],
-            [np.inf, np.inf, x0 + sigma_x, y0 + sigma_y, np.inf, np.inf],
-        )
-
-        # only use data points that clearly belong to peak to avoid border effects
-        # mask_value_above_background = ydata > -1e5  # a + .1*b
-        mask_circle_around_peak = (x.ravel() - x0) ** 2 + (y.ravel() - y0) ** 2 < 4 * (sigma_x**2 + sigma_y**2) / 2
-        mask = mask_circle_around_peak
-        ydata_restricted = ydata[mask]
-        xdata_restricted = xdata[:, mask]
-
-        # do fit
-        try:
-            popt, pcov = optimize.curve_fit(self._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds)
-        except Exception as e:
-            # if fit fails return max pixel
-            log.info("Returning pixel position with maximal value in correlation.")
-            idx = np.unravel_index(np.argmax(corr), corr.shape)
-            return float(idx[0]), float(idx[1])
-
-        # check quality of fit
-        median_squared_relative_residue_threshold = 1e-1
-        fit_ydata_restricted = self._gauss2d(xdata_restricted, *popt)
-        square_rel_res = np.square((fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted)
-        median_squared_rel_res = np.median(np.square(square_rel_res))
-
-        if median_squared_rel_res > median_squared_relative_residue_threshold:
-            raise Exception(
-                f"Bad fit with median squared relative residue = {median_squared_rel_res}"
-                f" vs allowed value of {median_squared_relative_residue_threshold}"
-            )
-
-        return popt[2], popt[3]
-
-    @staticmethod
-    def _corr_grid(corr: NDArray[float]) -> NDArray[float]:
-        """Create x/y grid for given 2D correlation."""
-        xs = np.arange(-corr.shape[0] / 2, corr.shape[0] / 2) + 0.5
-        ys = np.arange(-corr.shape[1] / 2, corr.shape[1] / 2) + 0.5
-        return np.meshgrid(xs, ys)
-
-    @staticmethod
-    def _check_corr_border(corr: NDArray[float]) -> None:
-        """Check whether maximum of correlation is too close to border."""
-
-        corr_size = corr.shape[0]
-        x, y = NStarOffsets._corr_grid(corr)
-
-        max_index = np.array(np.unravel_index(np.argmax(corr), corr.shape))
-        x0, y0 = x[tuple(max_index)], y[tuple(max_index)]
-
-        if x0 < -corr_size / 4 or x0 > corr_size / 4 or y0 < -corr_size / 4 or y0 > corr_size / 4:
-            raise CorrelationMaxCloseToBorderError(
-                "Maximum of correlation is outside center half of axes. "
-                "This means that either the given image data is bad, or the offset is larger than expected."
-            )
-
 
 __all__ = ["NStarOffsets"]

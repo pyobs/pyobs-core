@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.images.processors.offsets import NStarOffsets
-from pyobs.images.processors.offsets.nstar import CorrelationMaxCloseToBorderError
+from pyobs.images.processors.offsets._gaussian_fitter import GaussianFitter
 
 
 @pytest.mark.asyncio
@@ -92,26 +92,6 @@ async def test_boxes_from_ref(mocker: MockerFixture) -> None:
     np.testing.assert_array_equal(result[0], np.ones((5, 5)))
 
 
-def test_offsets_from_corr() -> None:
-    corr = np.array([
-        [
-           NStarOffsets._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
-        ] for y in range(21)
-    ])
-
-    result = NStarOffsets()._offsets_from_corr(corr.astype(float))
-
-    np.testing.assert_array_almost_equal(result, (0.0, 0.0), 10)
-
-
-def test_check_corr_border() -> None:
-    corr = np.zeros((10, 10))
-    corr[1][1] = 10
-
-    with pytest.raises(CorrelationMaxCloseToBorderError):
-        NStarOffsets._check_corr_border(corr.astype(float))
-
-
 def test_calculate_offsets_invalid_data() -> None:
     image = Image()
 
@@ -123,7 +103,7 @@ def test_calculate_offsets_invalid_data() -> None:
 def test_calculate_offsets() -> None:
     data = np.array([
         [
-            NStarOffsets._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
+            GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
         ] for y in range(21)
     ])
 
@@ -148,6 +128,7 @@ async def test_call_init(mocker: MockerFixture) -> None:
 
     assert offsets.ref_boxes == boxes
 
+
 @pytest.mark.asyncio
 async def test_call_invalid_init(mocker: MockerFixture) -> None:
     image = Image()
@@ -160,6 +141,7 @@ async def test_call_invalid_init(mocker: MockerFixture) -> None:
     assert not result.has_meta(PixelOffsets)
 
     assert offsets.ref_boxes == []
+
 
 @pytest.mark.asyncio
 async def test_call(mocker: MockerFixture) -> None:

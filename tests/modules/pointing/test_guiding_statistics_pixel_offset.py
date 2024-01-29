@@ -6,13 +6,13 @@ from pyobs.modules.pointing.guidingstatistics import GuidingStatisticsPixelOffse
 
 
 @pytest.fixture()
-def mock_meta_image():
+def mock_meta_image() -> Image:
     image = Image()
     image.set_meta(PixelOffsets(1.0, 1.0))
     return image
 
 
-def test_end_to_end(mock_meta_image):
+def test_end_to_end(mock_meta_image) -> None:
     client = "camera"
     statistic = GuidingStatisticsPixelOffset()
 
@@ -28,12 +28,12 @@ def test_end_to_end(mock_meta_image):
     assert header["GUIDING RMS2"] == (1.0, "RMS for guiding on axis 2")
 
 
-def test_build_header_to_few_values():
+def test_build_header_to_few_values() -> None:
     gspo = GuidingStatisticsPixelOffset()
     assert gspo._build_header([(1.0, 1.0)]) == {}
 
 
-def test_get_session_data():
+def test_get_session_data() -> None:
     image = Image()
     gspo = GuidingStatisticsPixelOffset()
 

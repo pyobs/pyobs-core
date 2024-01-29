@@ -1,18 +1,16 @@
 import logging
-from abc import ABCMeta, abstractmethod, ABC
-from collections import defaultdict
-from datetime import datetime
+from abc import ABCMeta
 from typing import Union, List, Dict, Tuple, Any, Optional
 
 import astropy.units as u
-import numpy as np
 from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
 from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
 from pyobs.utils.time import Time
 from ._base import BasePointing
-from ...images.meta import PixelOffsets
+from .guidingstatistics import GuidingStatisticsUptime, GuidingStatisticsPixelOffset
+from .guidingstatistics.guidingstatistics import GuidingStatistics
 from ...interfaces import ITelescope
 
 log = logging.getLogger(__name__)
@@ -32,6 +30,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
+        guiding_statistic: Optional[GuidingStatistics] = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -63,8 +62,11 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._ref_header = None
 
         # stats
-        self._statistics = _GuidingStatisticsPixelOffset()
-        self._uptime = _GuidingStatisticsUptime()
+        if guiding_statistic is None:
+            guiding_statistic = GuidingStatisticsPixelOffset()
+
+        self._statistics = guiding_statistic
+        self._uptime = GuidingStatisticsUptime()
 
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""

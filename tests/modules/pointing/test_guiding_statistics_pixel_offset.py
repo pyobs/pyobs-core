@@ -2,7 +2,7 @@ import pytest
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets, SkyOffsets
-from pyobs.modules.pointing._baseguiding import _GuidingStatisticsPixelOffset
+from pyobs.modules.pointing.guidingstatistics import GuidingStatisticsPixelOffset
 
 
 @pytest.fixture()
@@ -14,7 +14,7 @@ def mock_meta_image():
 
 def test_end_to_end(mock_meta_image):
     client = "camera"
-    statistic = _GuidingStatisticsPixelOffset()
+    statistic = GuidingStatisticsPixelOffset()
 
     statistic.init_stats(client)
 
@@ -29,13 +29,13 @@ def test_end_to_end(mock_meta_image):
 
 
 def test_build_header_to_few_values():
-    gspo = _GuidingStatisticsPixelOffset()
+    gspo = GuidingStatisticsPixelOffset()
     assert gspo._build_header([(1.0, 1.0)]) == {}
 
 
 def test_get_session_data():
     image = Image()
-    gspo = _GuidingStatisticsPixelOffset()
+    gspo = GuidingStatisticsPixelOffset()
 
     with pytest.raises(KeyError):
         gspo._get_session_data(image)

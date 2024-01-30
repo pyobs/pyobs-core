@@ -10,6 +10,7 @@ from .nstar import NStarOffsets
 from .projected import ProjectedOffsets
 from .fitsheader import FitsHeaderOffsets
 from .dummyoffsets import DummyOffsets
+from .dummyskyoffsets import DummySkyOffsets
 
 __all__ = [
     "Offsets",
@@ -19,4 +20,5 @@ __all__ = [
     "FitsHeaderOffsets",
     "BrightestStarOffsets",
     "DummyOffsets",
+    "DummySkyOffsets"
 ]

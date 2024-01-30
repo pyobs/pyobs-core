@@ -1,12 +1,12 @@
 import pytest
 
 from datetime import datetime
-from pyobs.modules.pointing._baseguiding import _GuidingStatisticsUptime
+from pyobs.modules.pointing.guidingstatistics import GuidingStatisticsUptime
 
 
-def test_end_to_end():
+def test_end_to_end() -> None:
     client = "camera"
-    statistic = _GuidingStatisticsUptime()
+    statistic = GuidingStatisticsUptime()
 
     statistic.init_stats(client)
 
@@ -17,10 +17,10 @@ def test_end_to_end():
     assert header["GUIDING UPTIME"][0] == 100.0
 
 
-def test_calc_uptime_percentage():
+def test_calc_uptime_percentage() -> None:
     states = [
         (True, datetime.fromtimestamp(100)),
         (False, datetime.fromtimestamp(110)),
         (None, datetime.fromtimestamp(120)),
     ]
-    assert _GuidingStatisticsUptime()._calc_uptime_percentage(states) == 50
+    assert GuidingStatisticsUptime()._calc_uptime_percentage(states) == 50

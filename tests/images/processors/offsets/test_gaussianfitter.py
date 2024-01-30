@@ -7,27 +7,25 @@ import scipy.optimize
 from pyobs.images.processors.offsets._gaussian_fitter import GaussianFitter
 
 
-def test_offsets_from_corr() -> None:
-    corr = np.array([
-        [
-           GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
-        ] for y in range(21)
-    ])
-
-    result = GaussianFitter().offsets_from_corr(corr.astype(float))
-
-    np.testing.assert_array_almost_equal(result, (0.0, 0.0), 10)
-
-
-def test_offsets_from_corr_err() -> None:
-    scipy.optimize.curve_fit = Mock(side_effect=RuntimeError)
-    corr = np.array([
+@pytest.fixture()
+def gaussian_data():
+    return np.array([
         [
             GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
         ] for y in range(21)
     ])
 
-    result = GaussianFitter().offsets_from_corr(corr.astype(float))
+
+def test_offsets_from_corr(gaussian_data) -> None:
+    result = GaussianFitter().offsets_from_corr(gaussian_data.astype(float))
+
+    np.testing.assert_array_almost_equal(result, (0.0, 0.0), 10)
+
+
+def test_offsets_from_corr_err(gaussian_data) -> None:
+    scipy.optimize.curve_fit = Mock(side_effect=RuntimeError)
+
+    result = GaussianFitter().offsets_from_corr(gaussian_data.astype(float))
     assert result == (0.0, 0.0)
 
 

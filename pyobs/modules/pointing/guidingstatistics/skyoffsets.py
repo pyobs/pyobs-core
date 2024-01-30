@@ -34,7 +34,7 @@ class GuidingStatisticsSkyOffset(GuidingStatistics):
         rms = self._calc_rms(data)
 
         if rms is not None:
-            header["GUIDING OS RMS"] = (float(rms), "RMS for guiding on sky")
+            header["GUIDING RMS"] = (float(rms), "RMS for guiding on sky")
 
         return header
 

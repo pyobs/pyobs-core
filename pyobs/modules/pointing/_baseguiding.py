@@ -12,6 +12,7 @@ from ._base import BasePointing
 from .guidingstatistics import GuidingStatisticsUptime, GuidingStatisticsPixelOffset
 from .guidingstatistics.guidingstatistics import GuidingStatistics
 from ...interfaces import ITelescope
+from ...object import get_object
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_statistic: Optional[GuidingStatistics] = None,
+        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics]] = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -65,7 +66,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         if guiding_statistic is None:
             guiding_statistic = GuidingStatisticsPixelOffset()
 
-        self._statistics = guiding_statistic
+        self._statistics = get_object(guiding_statistic, GuidingStatistics)
         self._uptime = GuidingStatisticsUptime()
 
     async def start(self, **kwargs: Any) -> None:

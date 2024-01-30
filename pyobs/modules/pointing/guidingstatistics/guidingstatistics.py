@@ -2,6 +2,8 @@ from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 from typing import List, Dict, Tuple, Any
 
+from pyobs.images import Image
+
 
 class GuidingStatistics(object, metaclass=ABCMeta):
     """Calculates statistics for guiding."""
@@ -42,10 +44,10 @@ class GuidingStatistics(object, metaclass=ABCMeta):
         return header | session_header
 
     @abstractmethod
-    def _get_session_data(self, input_data: Any) -> Any:
+    def _get_session_data(self, input_data: Image) -> Any:
         raise NotImplementedError
 
-    def add_data(self, input_data: Any) -> None:
+    def add_data(self, input_data: Image) -> None:
         """
         Adds data to all client measurement sessions.
         Args:

@@ -3,6 +3,7 @@ from typing import Tuple, Any
 
 import numpy as np
 from scipy import optimize
+from scipy.optimize import OptimizeWarning
 
 log = logging.getLogger(__name__)
 
@@ -16,14 +17,12 @@ class GaussianFitter(object):
 
         xdata_restricted, ydata_restricted, p0, bounds = GaussianFitter._init_fit(corr)
 
-        # do fit
         try:
             fit_result, _ = optimize.curve_fit(GaussianFitter._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds)
-        except Exception as e:
-            # if fit fails return max pixel
+        except (ValueError, RuntimeError, OptimizeWarning):
+
             log.info("Returning pixel position with maximal value in correlation.")
-            idx = np.unravel_index(np.argmax(corr), corr.shape)
-            return float(idx[0]), float(idx[1])
+            return p0[2], p0[3]
 
         GaussianFitter._check_fit_quality(xdata_restricted, ydata_restricted, fit_result)
 
@@ -31,7 +30,7 @@ class GaussianFitter(object):
 
     @staticmethod
     def _init_fit(corr: np.ndarray[float]) -> tuple[
-        np.np.ndarray[Any, np.dtype[Any]], np.np.ndarray[Any, np.dtype[float]], tuple[float, float, float, float, float, float], tuple[
+        np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[float]], tuple[float, float, float, float, float, float], tuple[
             tuple[float, float, float, float, int, int], tuple[float, float, float, float, float, float]]]:
         # get x,y positions array corresponding to the independent variable values of the correlation
         x, y = GaussianFitter._corr_grid(corr)

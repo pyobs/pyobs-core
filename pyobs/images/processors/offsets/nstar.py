@@ -75,7 +75,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # no reference image?
         if len(self.ref_boxes) == 0:
-            log.info("Initialising nstar auto-guiding with new image...")
+            log.info("Initialising NStar offsets with new image...")
             star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
             log.info(f"Choosing box size of {star_box_size} pixels.")
 

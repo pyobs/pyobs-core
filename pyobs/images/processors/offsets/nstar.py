@@ -35,17 +35,13 @@ class NStarOffsets(Offsets, PipelineMixin):
         pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
         **kwargs: Any,
     ):
-        """Initializes a new auto guiding system.
-
-        Requires pyobs.images.processors.detection.SepSourceDetection and
-        pyobs.images.processors.photometry.SepPhotometry to be run on the image beforehand.
+        """Initializes an offset calculator.
 
         Args:
             num_stars: maximum number of stars to use to calculate offset from boxes around them
             max_offset: the maximal expected offset in arc seconds. Determines the size of boxes
                 around stars.
-            min_pixels: minimum required number of pixels above threshold for source to be
-                used for offset calculation.
+            min_pixels: minimum required number of pixels for a source to be used for offset calculation.
             min_sources: Minimum required number of sources in image.
             pipeline: Pipeline to be used for first image in series.
         """
@@ -120,9 +116,7 @@ class NStarOffsets(Offsets, PipelineMixin):
              image: Image to process
 
         Returns:
-            2-tuple with
-                list of dimensions of boxes in "numpy" order: [0'th axis min, 0'th axis max, 1st axis min, 1st axis max]
-                list of images of those boxes
+            Boxes around the stars found by the pipeline
 
         Raises:
             ValueError if not at least max(self.min_required_sources_in_image, self.N_stars) in filtered list of sources
@@ -215,14 +209,14 @@ class NStarOffsets(Offsets, PipelineMixin):
 
     @staticmethod
     def _select_brightest_sources(num_stars: int, sources: Table) -> Table:
-        """Select N brightest sources from table.
+        """Select the N brightest sources from table.
 
         Args:
             num_stars: Maximum number of stars to select.
             sources: Source table.
 
         Returns:
-            New table containing N brightest sources.
+            table containing the N brightest sources.
         """
 
         sources.sort("flux",  reverse=True)
@@ -236,7 +230,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         """Check if enough sources in table.
 
         Args:
-            sources: astropy table of sources to check.
+            sources: table of sources.
 
         Returns:
             None
@@ -256,7 +250,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             image: Image to calculate offset for.
 
         Returns:
-            Offset tuple.
+            Offset in x and y dimension.
         """
 
         # data?
@@ -288,5 +282,6 @@ class NStarOffsets(Offsets, PipelineMixin):
             return None, None
         offsets_np = np.array(offsets)
         return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
+
 
 __all__ = ["NStarOffsets"]

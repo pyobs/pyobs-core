@@ -22,6 +22,8 @@ def test_remove_sources_close_to_border() -> None:
     np.testing.assert_array_equal(result["x"], [10])
     np.testing.assert_array_equal(result["y"], [10])
 
+
+def test_remove_bad_sources() -> None:
     table = Table({
         "peak": [50000, 5001, 5002, 5003, 5004, 5005, 5006],
         "tnpix": [10, 2, 100, 10, 10, 10, 10],

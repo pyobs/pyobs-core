@@ -73,26 +73,28 @@ class _BoxGenerator(object):
         """
 
         # remove saturated sources
-        sources = sources[sources["peak"] < saturation]
+        saturated_sources = sources["peak"] >= saturation
 
         # remove small sources
-        sources = sources[sources["tnpix"] >= self._min_pixels]
+        small_sources = sources["tnpix"] < self._min_pixels
 
         # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
-        sources = sources[sources["tnpix"] <= tnpix_median + 2 * tnpix_std]
+        large_sources = sources["tnpix"] > tnpix_median + 2 * tnpix_std
 
         # remove highly elliptic sources
-        sources.sort("ellipticity")
-        sources = sources[sources["ellipticity"] <= max_ellipticity]
+        elliptic_sources = sources["ellipticity"] > max_ellipticity
 
         # remove sources with background <= 0
-        sources = sources[sources["background"] > 0]
+        background_sources = sources["background"] <= 0
 
         # remove sources with low contrast to background
-        sources = sources[(sources["peak"] + sources["background"]) / sources["background"] > min_bkg_factor]
-        return sources
+        low_contrast_sources = (sources["peak"] + sources["background"]) / sources["background"] <= min_bkg_factor
+
+        bad_sources = saturated_sources | small_sources | large_sources | elliptic_sources | background_sources | low_contrast_sources
+
+        return sources[~bad_sources]
 
     def _select_brightest_sources(self, sources: Table) -> Table:
         """Select the N brightest sources from table.

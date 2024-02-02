@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import scipy.optimize
 
-from pyobs.images.processors.offsets._gaussian_fitter import GaussianFitter
+from pyobs.images.processors.offsets.nstar._gaussian_fitter import GaussianFitter
 
 
 @pytest.fixture()

@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.images.processors.offsets import NStarOffsets
-from pyobs.images.processors.offsets._gaussian_fitter import GaussianFitter
+from pyobs.images.processors.offsets.nstar._gaussian_fitter import GaussianFitter
 
 
 @pytest.mark.asyncio

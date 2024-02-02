@@ -1,20 +1,17 @@
 import logging
 from typing import Tuple, List, Union, Dict, Any, Optional
 import numpy as np
-import pandas as pd
-from numpy import ndarray, dtype
-from numpy.typing import NDArray
 from photutils.psf import EPSFStar
-from scipy import signal, optimize
+from scipy import signal
 from astropy.nddata import NDData
-from astropy.table import Table, Column
+from astropy.table import Table
 import photutils
 
 from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.images.meta import PixelOffsets
-from ._gaussian_fitter import GaussianFitter
-from .offsets import Offsets
+from pyobs.images.processors.offsets.nstar._gaussian_fitter import GaussianFitter
+from pyobs.images.processors.offsets.offsets import Offsets
 
 log = logging.getLogger(__name__)
 

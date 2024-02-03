@@ -25,13 +25,13 @@ class NStarOffsets(Offsets, PipelineMixin):
     """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
     def __init__(
-        self,
-        num_stars: int = 10,
-        max_offset: float = 4.0,
-        min_pixels: int = 3,
-        min_sources: int = 1,
-        pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
-        **kwargs: Any,
+            self,
+            num_stars: int = 10,
+            max_offset: float = 4.0,
+            min_pixels: int = 3,
+            min_sources: int = 1,
+            pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
+            **kwargs: Any,
     ):
         """Initializes an offset calculator.
 
@@ -69,36 +69,36 @@ class NStarOffsets(Offsets, PipelineMixin):
             ValueError: If offset could not be found.
         """
 
-        # no reference image?
-        if len(self.ref_boxes) == 0:
+        output_image = image.copy()
+
+        if self._boxes_initialized():
             log.info("Initialising NStar offsets with new image...")
-            star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
-            log.info(f"Choosing box size of {star_box_size} pixels.")
-
-            # initialize reference image information
             try:
-                processed_image = await self.run_pipeline(image)
-                self.ref_boxes = self._box_generator(processed_image, star_box_size)
-
-                # reset and finish
-                image.set_meta(PixelOffsets(0.0, 0.0))
-                return image
-
+                await self._init_boxes(output_image)
+                output_image.set_meta(PixelOffsets(0.0, 0.0))
             except ValueError as e:
-                # didn't work
                 log.warning(f"Could not initialize reference image info due to exception '{e}'. Resetting...")
                 await self.reset()
-                if PixelOffsets in image.meta:
-                    del image.meta[PixelOffsets]
-                self.offset = None, None
-                return image
+                if PixelOffsets in output_image.meta:
+                    del output_image.meta[PixelOffsets]
 
-        # process it
-        log.info("Perform auto-guiding on new image...")
-        offsets = self._calculate_offsets(image)
-        if offsets[0] is not None:
-            image.set_meta(PixelOffsets(offsets[0], offsets[1]))
-        return image
+        else:
+            log.info("Perform auto-guiding on new image...")
+            offsets = self._calculate_offsets(output_image)
+            if offsets[0] is not None and offsets[1] is not None:
+                output_image.set_meta(PixelOffsets(offsets[0], offsets[1]))
+
+        return output_image
+
+    def _boxes_initialized(self):
+        return len(self.ref_boxes) == 0
+
+    async def _init_boxes(self, image: Image):
+        star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
+        log.info(f"Choosing box size of {star_box_size} pixels.")
+
+        processed_image = await self.run_pipeline(image)
+        self.ref_boxes = self._box_generator(processed_image, star_box_size)
 
     @staticmethod
     def _get_box_size(max_expected_offset_in_arcsec, pixel_scale) -> int:
@@ -115,35 +115,31 @@ class NStarOffsets(Offsets, PipelineMixin):
             Offset in x and y dimension.
         """
 
-        # data?
-        if image.safe_data is None:
+        if (image_data := image.safe_data) is None:
             return None, None
 
-        # calculate offset for each star
-        offsets = []
-        for box in self.ref_boxes:
-            # get box dimensions
-            box_ymin, box_ymax = box.origin[1], box.origin[1] + box.data.shape[0]
-            box_xmin, box_xmax = box.origin[0], box.origin[0] + box.data.shape[1]
-
-            # extract box image
-            current_boxed_image = image.data[box_ymin:box_ymax, box_xmin:box_xmax].astype(float)
-
-            # correlate
-            corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
-
-            try:
-                offset = GaussianFitter.offsets_from_corr(corr)
-                offsets.append(offset)
-            except Exception as e:
-                log.info(f"Exception '{e}' caught. Ignoring this star.")
-                pass
+        offsets = np.fromiter(
+            map(lambda x: NStarOffsets._calculate_star_offset(x, image_data), self.ref_boxes),
+            np.dtype((float, 2))
+        )
 
         if len(offsets) == 0:
             log.info(f"All {len(self.ref_boxes)} fits on boxed star correlations failed.")
             return None, None
-        offsets_np = np.array(offsets)
-        return float(np.mean(offsets_np[:, 0])), float(np.mean(offsets_np[:, 1]))
+
+        return float(np.mean(offsets[:, 0])), float(np.mean(offsets[:, 1]))
+
+    @staticmethod
+    def _calculate_star_offset(box: EPSFStar, image: np.ndarray):
+        current_boxed_image = image[box.slices]
+
+        corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
+
+        try:
+            return GaussianFitter.offsets_from_corr(corr)
+        except Exception as e:
+            log.info(f"Exception '{e}' caught. Ignoring this star.")
+            pass
 
 
 __all__ = ["NStarOffsets"]

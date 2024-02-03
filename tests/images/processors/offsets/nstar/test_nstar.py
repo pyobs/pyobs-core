@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock
 
 import numpy as np
@@ -33,6 +34,18 @@ def test_calculate_offsets_invalid_data() -> None:
     offsets = NStarOffsets()
 
     assert offsets._calculate_offsets(image) == (None, None)
+
+
+def test_calculate_offsets_invalid_offsets(caplog) -> None:
+    image = Image(data=np.zeros((1, 1)))
+
+    offsets = NStarOffsets()
+    offsets.ref_boxes = []
+
+    with caplog.at_level(logging.INFO):
+        assert offsets._calculate_offsets(image) == (None, None)
+
+    assert caplog.messages[0] == "All 0 fits on boxed star correlations failed."
 
 
 def test_calculate_offsets() -> None:

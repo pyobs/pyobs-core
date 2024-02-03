@@ -119,7 +119,10 @@ class NStarOffsets(Offsets, PipelineMixin):
             return None, None
 
         offsets = np.fromiter(
-            map(lambda x: NStarOffsets._calculate_star_offset(x, image_data), self.ref_boxes),
+            filter(
+                lambda x: x is not None,
+                map(lambda x: NStarOffsets._calculate_star_offset(x, image_data), self.ref_boxes)
+            ),
             np.dtype((float, 2))
         )
 
@@ -130,7 +133,7 @@ class NStarOffsets(Offsets, PipelineMixin):
         return float(np.mean(offsets[:, 0])), float(np.mean(offsets[:, 1]))
 
     @staticmethod
-    def _calculate_star_offset(box: EPSFStar, image: np.ndarray):
+    def _calculate_star_offset(box: EPSFStar, image: np.ndarray) -> Optional[Tuple[float, float]]:
         current_boxed_image = image[box.slices]
 
         corr = signal.correlate2d(current_boxed_image, box.data, mode="same", boundary="wrap")
@@ -139,7 +142,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             return GaussianFitter.offsets_from_corr(corr)
         except Exception as e:
             log.info(f"Exception '{e}' caught. Ignoring this star.")
-            pass
+            return None
 
 
 __all__ = ["NStarOffsets"]

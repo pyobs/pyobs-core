@@ -62,6 +62,17 @@ def test_calculate_offsets() -> None:
     np.testing.assert_almost_equal(result, (-1.0, -1.0), 2)
 
 
+def test_calculate_star_offset_invalid(caplog) -> None:
+    GaussianFitter.offsets_from_corr = Mock(side_effect=Exception("Invalid"))
+    box = EPSFStar(np.ones((2, 2)), origin=(8, 8))
+    image = np.ones((3, 3))
+
+    with caplog.at_level(logging.INFO):
+        assert NStarOffsets._calculate_star_offset(box, image) is None
+
+    assert caplog.messages[0] == "Exception 'Invalid' caught. Ignoring this star."
+
+
 @pytest.mark.asyncio
 async def test_call_init() -> None:
     image = Image()
@@ -101,4 +112,3 @@ async def test_call(mocker: MockerFixture) -> None:
     result = await offsets(image)
     assert result.get_meta(PixelOffsets).dx == 1.0
     assert result.get_meta(PixelOffsets).dy == -1.0
-

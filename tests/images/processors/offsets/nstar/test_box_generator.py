@@ -53,7 +53,7 @@ def test_check_sources_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_boxes_from_ref() -> None:
+async def test_call() -> None:
     sources = Table({
         "x": [10],
         "y": [10],
@@ -68,5 +68,5 @@ async def test_boxes_from_ref() -> None:
 
     offsets = _BoxGenerator(10, 3, 1)
 
-    result = offsets(sources, image, 5)
+    result = offsets(image, 5)
     np.testing.assert_array_equal(result[0], np.ones((5, 5)))

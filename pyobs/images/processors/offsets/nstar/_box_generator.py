@@ -15,8 +15,8 @@ class _BoxGenerator(object):
         self._min_pixels = min_pixels
         self._min_sources = min_sources
 
-    def __call__(self, sources: Table, image: Image, star_box_size: float) -> List[EPSFStar]:
-        sources_copy = sources.copy()
+    def __call__(self, image: Image, star_box_size: float) -> List[EPSFStar]:
+        sources_copy = image.catalog.copy()
 
         valid_sources = self.remove_sources_close_to_border(sources_copy, image.data.shape, star_box_size // 2 + 1)
         good_sources = self.remove_bad_sources(valid_sources)

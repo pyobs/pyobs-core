@@ -16,10 +16,12 @@ class _BoxGenerator(object):
         self._min_sources = min_sources
 
     def __call__(self, sources: Table, image: Image, star_box_size: float) -> List[EPSFStar]:
-        sources = self.remove_sources_close_to_border(sources, image.data.shape, star_box_size // 2 + 1)
-        sources = self.remove_bad_sources(sources)
-        self._check_sources_count(sources)
-        selected_sources = self._select_brightest_sources(sources)
+        sources_copy = sources.copy()
+
+        valid_sources = self.remove_sources_close_to_border(sources_copy, image.data.shape, star_box_size // 2 + 1)
+        good_sources = self.remove_bad_sources(valid_sources)
+        self._check_sources_count(good_sources)
+        selected_sources = self._select_brightest_sources(good_sources)
 
         # extract boxes
         return photutils.psf.extract_stars(
@@ -72,29 +74,24 @@ class _BoxGenerator(object):
             Filtered table.
         """
 
-        # remove saturated sources
         saturated_sources = sources["peak"] >= saturation
 
-        # remove small sources
         small_sources = sources["tnpix"] < self._min_pixels
 
-        # remove large sources
         tnpix_median = np.median(sources["tnpix"])
         tnpix_std = np.std(sources["tnpix"])
         large_sources = sources["tnpix"] > tnpix_median + 2 * tnpix_std
 
-        # remove highly elliptic sources
         elliptic_sources = sources["ellipticity"] > max_ellipticity
 
-        # remove sources with background <= 0
         background_sources = sources["background"] <= 0
 
-        # remove sources with low contrast to background
         low_contrast_sources = (sources["peak"] + sources["background"]) / sources["background"] <= min_bkg_factor
 
         bad_sources = saturated_sources | small_sources | large_sources | elliptic_sources | background_sources | low_contrast_sources
-
-        return sources[~bad_sources]
+        
+        filtered_sources = sources[~bad_sources]    # keep sources that are not bad
+        return filtered_sources
 
     def _select_brightest_sources(self, sources: Table) -> Table:
         """Select the N brightest sources from table.
@@ -108,7 +105,6 @@ class _BoxGenerator(object):
 
         sources.sort("flux", reverse=True)
 
-        # extract
         if 0 < self._num_stars < len(sources):
             sources = sources[:self._num_stars]
         return sources

@@ -1,13 +1,13 @@
 import logging
+import re
 from typing import Tuple, Any, Optional, List
+
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin
-import re
 
 from pyobs.images import Image
-from pyobs.utils.pid import PID
 from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
 
@@ -66,7 +66,8 @@ class ProjectedOffsets(Offsets):
         image.set_meta(PixelOffsets(dx, dy))
         return image
 
-    def _process(self, image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:
+    @staticmethod
+    def _process(image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:
         """Project image along x and y axes and return results.
 
         Args:
@@ -92,19 +93,36 @@ class ProjectedOffsets(Offsets):
         sum_y = np.nansum(data, 1)
 
         # sky subtraction
-        return self._subtract_sky(sum_x), self._subtract_sky(sum_y)
+        return ProjectedOffsets._subtract_sky(sum_x), ProjectedOffsets._subtract_sky(sum_y)
 
     @staticmethod
-    def _gaussian(pars: List[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
-        a = pars[0]
-        x0 = pars[1]
-        sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
+    def _subtract_sky(data: npt.NDArray[float], frac: float = 0.15, sbin: int = 10) -> npt.NDArray[float]:
+        # find continuum for every of the sbin bins
+        bins = np.zeros((sbin,))
+        binxs = np.zeros((sbin,))
+        x = list(range(len(data)))
+        w1 = 0
+        w2 = float(len(x)) / sbin
+        for i in range(sbin):
+            # sort data in range
+            bindata = list(reversed(sorted(data[int(w1): int(w2)])))
+            # calculate median and set wavelength
+            bins[i] = np.median(bindata[int(-frac * len(bindata)): -1])
+            binxs[i] = np.mean(x[int(w1): int(w2)])
+            # reset ranges
+            w1 = w2
+            w2 += float(len(x)) / sbin
+            # check for last bin
+            if i == sbin - 1:
+                w2 = len(x)
 
-    @staticmethod
-    def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
-        err = y - ProjectedOffsets._gaussian(pars, x)
-        return (err * err).sum()
+        # fit it
+        w = np.where(~np.isnan(bins))
+        ip = UnivariateSpline(binxs[w], bins[w])
+        cont = ip(x)
+
+        # return continuum
+        return data - cont
 
     @staticmethod
     def _correlate(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> Optional[float]:
@@ -137,33 +155,16 @@ class ProjectedOffsets(Offsets):
         return shift
 
     @staticmethod
-    def _subtract_sky(data: npt.NDArray[float], frac: float = 0.15, sbin: int = 10) -> npt.NDArray[float]:
-        # find continuum for every of the sbin bins
-        bins = np.zeros((sbin,))
-        binxs = np.zeros((sbin,))
-        x = list(range(len(data)))
-        w1 = 0
-        w2 = float(len(x)) / sbin
-        for i in range(sbin):
-            # sort data in range
-            bindata = list(reversed(sorted(data[int(w1): int(w2)])))
-            # calculate median and set wavelength
-            bins[i] = np.median(bindata[int(-frac * len(bindata)): -1])
-            binxs[i] = np.mean(x[int(w1): int(w2)])
-            # reset ranges
-            w1 = w2
-            w2 += float(len(x)) / sbin
-            # check for last bin
-            if i == sbin - 1:
-                w2 = len(x)
+    def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
+        err = y - ProjectedOffsets._gaussian(pars, x)
+        return (err * err).sum()
 
-        # fit it
-        w = np.where(~np.isnan(bins))
-        ip = UnivariateSpline(binxs[w], bins[w])
-        cont = ip(x)
-
-        # return continuum
-        return data - cont
+    @staticmethod
+    def _gaussian(pars: List[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
+        a = pars[0]
+        x0 = pars[1]
+        sigma = pars[2]
+        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
 
 
 __all__ = ["ProjectedOffsets"]

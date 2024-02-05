@@ -43,7 +43,7 @@ def test_subtract_sky_constant():
 
 def test_process_axis_collapse():
     offsets = ProjectedOffsets()
-    offsets._subtract_sky = Mock(return_value=np.ones(10))
+    ProjectedOffsets._subtract_sky = Mock(return_value=np.ones(10))
 
     image = Image(data=np.ones((10, 10)))
     result = offsets._process(image)
@@ -67,7 +67,7 @@ def test_process_invalid_timsec():
 
 def test_process_valid_timsec():
     offsets = ProjectedOffsets()
-    offsets._subtract_sky = Mock(return_value=np.ones(10))
+    ProjectedOffsets._subtract_sky = Mock(return_value=np.ones(10))
 
     image = Image(data=np.ones((10, 10)))
     image.header["TRIMSEC"] = "[2:9,2:9]"

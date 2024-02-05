@@ -25,8 +25,6 @@ class ProjectedOffsets(Offsets):
 
         # init
         self._ref_image: Optional[Tuple[npt.NDArray[float], npt.NDArray[float]]] = None
-        self._pid_ra = None
-        self._pid_dec = None
 
     async def reset(self) -> None:
         """Resets guiding."""
@@ -50,7 +48,6 @@ class ProjectedOffsets(Offsets):
         if self._ref_image is None:
             log.info("Initialising auto-guiding with new image...")
             self._ref_image = self._process(image)
-            self._init_pid()
             self.offset = (0, 0)
             return image
 
@@ -88,7 +85,7 @@ class ProjectedOffsets(Offsets):
             if m is None:
                 raise ValueError("Invalid trimsec.")
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
-            data = data[y0 - 1 : y1, x0 - 1 : x1]
+            data = data[y0 - 1: y1, x0 - 1: x1]
 
         # collapse
         sum_x = np.nansum(data, 0)
@@ -102,7 +99,7 @@ class ProjectedOffsets(Offsets):
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma**2))
+        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
 
     @staticmethod
     def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
@@ -120,12 +117,12 @@ class ProjectedOffsets(Offsets):
 
         # cut window
         x = np.linspace(centre - fit_width, centre + fit_width, 2 * fit_width + 1)
-        y = corr[i_max - fit_width : i_max + fit_width + 1]
+        y = corr[i_max - fit_width: i_max + fit_width + 1]
 
         # moment calculation for initial guesses
         total = float(y.sum())
         m = (x * y).sum() / total
-        m2 = (x * x * y).sum() / total - m**2
+        m2 = (x * x * y).sum() / total - m ** 2
 
         # initial guess
         guesses = [np.max(y), m, m2]
@@ -139,16 +136,6 @@ class ProjectedOffsets(Offsets):
             return None
         return shift
 
-    def _init_pid(self) -> None:
-        # init pids
-        Kp = 0.2
-        Ki = 0.16
-        Kd = 0.83
-
-        # reset
-        self._pid_ra = PID(Kp, Ki, Kd)
-        self._pid_dec = PID(Kp, Ki, Kd)
-
     @staticmethod
     def _subtract_sky(data: npt.NDArray[float], frac: float = 0.15, sbin: int = 10) -> npt.NDArray[float]:
         # find continuum for every of the sbin bins
@@ -159,10 +146,10 @@ class ProjectedOffsets(Offsets):
         w2 = float(len(x)) / sbin
         for i in range(sbin):
             # sort data in range
-            bindata = list(reversed(sorted(data[int(w1) : int(w2)])))
+            bindata = list(reversed(sorted(data[int(w1): int(w2)])))
             # calculate median and set wavelength
-            bins[i] = np.median(bindata[int(-frac * len(bindata)) : -1])
-            binxs[i] = np.mean(x[int(w1) : int(w2)])
+            bins[i] = np.median(bindata[int(-frac * len(bindata)): -1])
+            binxs[i] = np.mean(x[int(w1): int(w2)])
             # reset ranges
             w1 = w2
             w2 += float(len(x)) / sbin

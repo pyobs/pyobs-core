@@ -44,11 +44,9 @@ class ProjectedOffsets(Offsets):
             ValueError: If offset could not be found.
         """
 
-        # no reference image?
-        if self._ref_image is None:
+        if not self._reference_initialized():
             log.info("Initialising auto-guiding with new image...")
             self._ref_image = self._process(image)
-            self.offset = (0, 0)
             return image
 
         # process it
@@ -65,6 +63,9 @@ class ProjectedOffsets(Offsets):
         # set it
         image.set_meta(PixelOffsets(dx, dy))
         return image
+
+    def _reference_initialized(self):
+        return self._ref_image is None
 
     @staticmethod
     def _process(image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:

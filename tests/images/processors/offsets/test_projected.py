@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
+from astropy.table import QTable
 from photutils.datasets import make_gaussian_sources_image
 
 from scipy.signal.windows import gaussian
@@ -108,7 +109,7 @@ async def test_call_no_corr(mocker, caplog):
 
 
 @pytest.mark.asyncio
-async def test_call_no_corr(mocker):
+async def test_call(mocker):
     offsets = ProjectedOffsets()
     offsets._ref_image = (np.ones(10) * 10, np.ones(10) * 10)
     mocker.patch.object(offsets, "_process", return_value=(np.ones(10) * 10, np.ones(10) * 10))
@@ -119,31 +120,3 @@ async def test_call_no_corr(mocker):
 
     assert result.get_meta(PixelOffsets).dx == 10
     assert result.get_meta(PixelOffsets).dy == 10
-
-'''
-@pytest.mark.asyncio
-async def test_integration():
-    table = QTable()
-    table['amplitude'] = [150, 150]
-    table['x_mean'] = [15, 30]
-    table['y_mean'] = [15, 35]
-    table['x_stddev'] = [1, 3]
-    table['y_stddev'] = [1, 3]
-    table['theta'] = np.radians(np.array([0, 0]))
-    size = (32, 64)
-    signal = make_gaussian_sources_image(size, table)
-    data = signal + np.ones(size) * 2
-
-    img_data = np.pad(data, ((10, 0), (0, 0)), mode='constant', constant_values=0.0)
-    ref_data = np.pad(data, ((0, 10), (0, 0)), mode='constant', constant_values=0.0)  # Pad behind signal, to match data length
-
-    ref_image = Image(data=ref_data)
-    image = Image(data=img_data)
-    offsets = ProjectedOffsets()
-
-    assert await offsets(ref_image) == ref_image
-    result = await offsets(image)
-
-    assert result.get_meta(PixelOffsets).dy == 10.0
-    assert result.get_meta(PixelOffsets).dx == 0.0
-'''

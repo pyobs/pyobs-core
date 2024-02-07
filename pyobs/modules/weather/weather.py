@@ -1,16 +1,15 @@
 import asyncio
 import logging
 from typing import Tuple, Any, Dict, List, Optional
-import aiohttp
-import urllib.parse
+
 import astropy.units as u
 
-from pyobs.utils.enums import WeatherSensors
-from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderBefore
 from pyobs.modules import Module
-
+from pyobs.modules.weather.weather_api import WeatherApi
+from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # store and create session
         self._system_init_time = system_init_time
-        self._url = url
+        self._api = WeatherApi(url)
 
         # whether module is active, i.e. if None, weather is always good
         self._active = True
@@ -99,13 +98,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         error = False
 
         try:
-            # fetch status
-            url = urllib.parse.urljoin(self._url, "api/current/")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=5) as response:
-                    if response.status != 200:
-                        raise ValueError("Could not connect to weather station.")
-                    status = await response.json()
+            status = await self._api.get_current_status()
 
             # to json
             if "good" not in status:
@@ -175,12 +168,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # do request
-        url = urllib.parse.urljoin(self._url, "api/stations/%s/%s/" % (station, sensor.value))
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=5) as response:
-                if response.status != 200:
-                    raise ValueError("Could not connect to weather station.")
-                status = await response.json()
+        status = await self._api.get_sensor_value(station, sensor)
 
         # to json
         if "time" not in status or "value" not in status:

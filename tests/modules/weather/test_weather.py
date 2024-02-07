@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Dict, Any
 from unittest.mock import AsyncMock
@@ -14,8 +15,11 @@ from pyobs.utils.enums import WeatherSensors
 
 class MockResponse:
     def __init__(self, json: Dict[str, Any], status=200) -> None:
-        self.json = json
+        self._json = json
         self.status = status
+
+    async def json(self) -> Dict[str, Any]:
+        return self._json
 
     async def __aexit__(self, exc_type, exc, tb):
         pass
@@ -97,3 +101,68 @@ async def test_get_fits_header_before(caplog) -> None:
 
     header = await weather.get_fits_header_before()
     assert header["WS-PREC"] == (True, "Ambient precipitation [0/1]")
+
+
+@pytest.mark.asyncio
+async def test_update_invalid_response(mocker, caplog) -> None:
+    weather = Weather("example.com/")
+
+    mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse({}, 404))
+    mocker.patch("asyncio.sleep")
+
+    with caplog.at_level(logging.WARN):
+        await weather._update()
+
+    assert weather._is_good == False
+    assert caplog.messages[0] == "Request failed: Could not connect to weather station."
+
+    aiohttp.ClientSession.get.assert_called_once_with("example.com/api/current/", timeout=5)
+    asyncio.sleep.assert_called_once_with(60)
+
+
+@pytest.mark.asyncio
+async def test_update_invalid_response(mocker, caplog) -> None:
+    weather = Weather("example.com/")
+
+    mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse({}, 200))
+    mocker.patch("asyncio.sleep")
+
+    with caplog.at_level(logging.WARN):
+        await weather._update()
+
+    assert weather._is_good == False
+    assert caplog.messages[0] == "Request failed: Good parameter not found in response from weather station."
+
+@pytest.mark.asyncio
+async def test_update_good_weather(mocker, caplog) -> None:
+    weather = Weather("")
+    weather.comm.send_event = AsyncMock()
+    weather._active = True
+
+    mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse({"good": True}, 200))
+    mocker.patch("asyncio.sleep")
+
+    with caplog.at_level(logging.INFO):
+        await weather._update()
+
+    assert caplog.messages[0] == "Weather is now good."
+    assert isinstance(weather.comm.send_event.await_args[0][0], GoodWeatherEvent)
+
+    asyncio.sleep.assert_called_once_with(5)
+
+
+@pytest.mark.asyncio
+async def test_update_bad_weather(mocker, caplog) -> None:
+    weather = Weather("")
+    weather._is_good = True
+    weather.comm.send_event = AsyncMock()
+    weather._active = True
+
+    mocker.patch("aiohttp.ClientSession.get", return_value=MockResponse({"good": False}, 200))
+    mocker.patch("asyncio.sleep")
+
+    with caplog.at_level(logging.INFO):
+        await weather._update()
+
+    assert caplog.messages[0] == "Weather is now bad."
+    assert isinstance(weather.comm.send_event.await_args[0][0], BadWeatherEvent)

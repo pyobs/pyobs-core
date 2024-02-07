@@ -87,56 +87,58 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Whether a service is running."""
         return self._active
 
+    async def _run(self) -> None:
+        while True:
+            await self._update()
+
     async def _update(self) -> None:
         """Update weather info."""
 
-        # loop forever
-        while True:
-            # new is_good status
-            is_good: Optional[bool] = None
-            error = False
+        # new is_good status
+        is_good: Optional[bool] = None
+        error = False
 
-            try:
-                # fetch status
-                url = urllib.parse.urljoin(self._url, "api/current/")
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=5) as response:
-                        if response.status != 200:
-                            raise ValueError("Could not connect to weather station.")
-                        status = await response.json()
+        try:
+            # fetch status
+            url = urllib.parse.urljoin(self._url, "api/current/")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=5) as response:
+                    if response.status != 200:
+                        raise ValueError("Could not connect to weather station.")
+                    status = await response.json()
 
-                # to json
-                if "good" not in status:
-                    raise ValueError("Good parameter not found in response from weather station.")
+            # to json
+            if "good" not in status:
+                raise ValueError("Good parameter not found in response from weather station.")
 
-                # store it
-                is_good = status["good"]
-                self._status = status
+            # store it
+            is_good = status["good"]
+            self._status = status
 
-            except Exception as e:
-                # on error, we're always bad
-                log.warning("Request failed: %s", str(e))
-                is_good = False
-                error = True
+        except Exception as e:
+            # on error, we're always bad
+            log.warning("Request failed: %s", str(e))
+            is_good = False
+            error = True
 
-            # did status change?
-            if is_good != self._is_good:
-                # only send changes, if active
-                if self._active:
-                    # did it change to good or bad?
-                    if is_good:
-                        log.info("Weather is now good.")
-                        eta = Time.now() + self._system_init_time * u.second
-                        await self.comm.send_event(GoodWeatherEvent(eta=eta))
-                    else:
-                        log.info("Weather is now bad.")
-                        await self.comm.send_event(BadWeatherEvent())
+        # did status change?
+        if is_good != self._is_good:
+            # only send changes, if active
+            if self._active:
+                # did it change to good or bad?
+                if is_good:
+                    log.info("Weather is now good.")
+                    eta = Time.now() + self._system_init_time * u.second
+                    await self.comm.send_event(GoodWeatherEvent(eta=eta))
+                else:
+                    log.info("Weather is now bad.")
+                    await self.comm.send_event(BadWeatherEvent())
 
-                # store new state
-                self._is_good = is_good
+            # store new state
+            self._is_good = is_good
 
-            # sleep a little
-            await asyncio.sleep(60 if error else 5)
+        # sleep a little
+        await asyncio.sleep(60 if error else 5)
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

@@ -8,6 +8,7 @@ from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderBefore
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
+from pyobs.modules.weather.weather_state import WeatherState
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.time import Time
 
@@ -53,10 +54,11 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         self._is_good: Optional[bool] = None
 
         # whole status
-        self._status: Dict[str, Any] = {}
+        self._weather = WeatherState()
 
         # add thread func
         self.add_background_task(self._update, True)
+
 
     async def open(self) -> None:
         """Open module."""
@@ -94,43 +96,27 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Update weather info."""
 
         # new is_good status
-        is_good: Optional[bool] = None
+        was_good = self._weather.is_good
         error = False
 
         try:
-            status = await self._api.get_current_status()
-
-            # to json
-            if "good" not in status:
-                raise ValueError("Good parameter not found in response from weather station.")
-
-            # store it
-            is_good = status["good"]
-            self._status = status
+            self._weather.status = await self._api.get_current_status()
 
         except Exception as e:
             # on error, we're always bad
             log.warning("Request failed: %s", str(e))
-            is_good = False
+            self._weather.is_good = False
             error = True
 
-        # did status change?
-        if is_good != self._is_good:
-            # only send changes, if active
-            if self._active:
-                # did it change to good or bad?
-                if is_good:
-                    log.info("Weather is now good.")
-                    eta = Time.now() + self._system_init_time * u.second
-                    await self.comm.send_event(GoodWeatherEvent(eta=eta))
-                else:
-                    log.info("Weather is now bad.")
-                    await self.comm.send_event(BadWeatherEvent())
+        if was_good != self._weather.is_good and self._active:
+            if self._weather.is_good:
+                log.info("Weather is now good.")
+                eta = Time.now() + self._system_init_time * u.second
+                await self.comm.send_event(GoodWeatherEvent(eta=eta))
+            else:
+                log.info("Weather is now bad.")
+                await self.comm.send_event(BadWeatherEvent())
 
-            # store new state
-            self._is_good = is_good
-
-        # sleep a little
         await asyncio.sleep(60 if error else 5)
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
@@ -154,7 +140,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
             with sensor information, which contain a value and a good flag.
         """
-        return self._status
+        return self._weather.status
 
     async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
@@ -190,7 +176,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # copy status
-        status = dict(self._status)
+        status = dict(self._weather.status)
 
         # got sensors?
         if "sensors" not in status:

@@ -81,7 +81,7 @@ async def test_get_fits_header_before_invalid(caplog) -> None:
 @pytest.mark.asyncio
 async def test_get_fits_header_before(caplog) -> None:
     weather = Weather("")
-    weather._status["sensors"] = {"rain": {"value": 1}}
+    weather._weather.status["sensors"] = {"rain": {"value": 1}}
 
     header = await weather.get_fits_header_before()
     assert header["WS-PREC"] == (True, "Ambient precipitation [0/1]")
@@ -97,7 +97,7 @@ async def test_update_invalid_url(mocker, caplog) -> None:
     with caplog.at_level(logging.WARN):
         await weather._update()
 
-    assert weather._is_good == False
+    assert weather._weather.is_good == False
     assert caplog.messages[0] == "Request failed: Could not connect to weather station."
 
     weather._api.get_current_status.assert_called_once_with()
@@ -114,8 +114,9 @@ async def test_update_invalid_response(mocker, caplog) -> None:
     with caplog.at_level(logging.WARN):
         await weather._update()
 
-    assert weather._is_good == False
+    assert weather._weather.is_good == False
     assert caplog.messages[0] == "Request failed: Good parameter not found in response from weather station."
+
 
 @pytest.mark.asyncio
 async def test_update_good_weather(mocker, caplog) -> None:
@@ -138,7 +139,7 @@ async def test_update_good_weather(mocker, caplog) -> None:
 @pytest.mark.asyncio
 async def test_update_bad_weather(mocker, caplog) -> None:
     weather = Weather("")
-    weather._is_good = True
+    weather._weather.is_good = True
     weather.comm.send_event = AsyncMock()
     weather._active = True
 

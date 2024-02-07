@@ -90,23 +90,28 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
     async def _run(self) -> None:
         while True:
+            await self._loop()
+
+    async def _loop(self) -> None:
+        try:
             await self._update()
+        except:
+            sleep = 60
+        else:
+            sleep = 5
+
+        await asyncio.sleep(sleep)
 
     async def _update(self) -> None:
         """Update weather info."""
 
-        # new is_good status
         was_good = self._weather.is_good
-        error = False
 
         try:
             self._weather.status = await self._api.get_current_status()
-
         except Exception as e:
-            # on error, we're always bad
             log.warning("Request failed: %s", str(e))
-            self._weather.is_good = False
-            error = True
+            self._weather.is_good = False   # on error, we're always bad
 
         if was_good != self._weather.is_good and self._active:
             if self._weather.is_good:
@@ -116,8 +121,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             else:
                 log.info("Weather is now bad.")
                 await self.comm.send_event(BadWeatherEvent())
-
-        await asyncio.sleep(60 if error else 5)
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

@@ -88,11 +88,32 @@ async def test_get_fits_header_before(caplog) -> None:
 
 
 @pytest.mark.asyncio
+async def test_loop_valid(mocker) -> None:
+    weather = Weather("")
+    weather._update = AsyncMock()
+
+    mocker.patch("asyncio.sleep")
+
+    await weather._loop()
+
+    asyncio.sleep.assert_called_once_with(5)
+
+
+@pytest.mark.asyncio
+async def test_loop_valid(mocker) -> None:
+    weather = Weather("")
+    weather._update = AsyncMock(side_effect=ValueError)
+
+    mocker.patch("asyncio.sleep")
+
+    await weather._loop()
+
+    asyncio.sleep.assert_called_once_with(60)
+
+@pytest.mark.asyncio
 async def test_update_invalid_url(mocker, caplog) -> None:
     weather = Weather("example.com/")
     weather._api.get_current_status = AsyncMock(side_effect=ValueError("Could not connect to weather station."))
-
-    mocker.patch("asyncio.sleep")
 
     with caplog.at_level(logging.WARN):
         await weather._update()
@@ -101,7 +122,6 @@ async def test_update_invalid_url(mocker, caplog) -> None:
     assert caplog.messages[0] == "Request failed: Could not connect to weather station."
 
     weather._api.get_current_status.assert_called_once_with()
-    asyncio.sleep.assert_called_once_with(60)
 
 
 @pytest.mark.asyncio
@@ -109,7 +129,6 @@ async def test_update_invalid_response(mocker, caplog) -> None:
     weather = Weather("example.com/")
 
     weather._api.get_current_status = AsyncMock(return_value={})
-    mocker.patch("asyncio.sleep")
 
     with caplog.at_level(logging.WARN):
         await weather._update()
@@ -125,15 +144,12 @@ async def test_update_good_weather(mocker, caplog) -> None:
     weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": True})
-    mocker.patch("asyncio.sleep")
 
     with caplog.at_level(logging.INFO):
         await weather._update()
 
     assert caplog.messages[0] == "Weather is now good."
     assert isinstance(weather.comm.send_event.await_args[0][0], GoodWeatherEvent)
-
-    asyncio.sleep.assert_called_once_with(5)
 
 
 @pytest.mark.asyncio
@@ -144,7 +160,6 @@ async def test_update_bad_weather(mocker, caplog) -> None:
     weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": False})
-    mocker.patch("asyncio.sleep")
 
     with caplog.at_level(logging.INFO):
         await weather._update()

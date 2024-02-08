@@ -116,11 +116,14 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         if was_good != self._weather.is_good and self._active:
             if self._weather.is_good:
                 log.info("Weather is now good.")
-                eta = Time.now() + self._system_init_time * u.second
+                eta = self._calc_system_init_eta()
                 await self.comm.send_event(GoodWeatherEvent(eta=eta))
             else:
                 log.info("Weather is now bad.")
                 await self.comm.send_event(BadWeatherEvent())
+
+    def _calc_system_init_eta(self) -> Time:
+        return Time.now() + self._system_init_time * u.second
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

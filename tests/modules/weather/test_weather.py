@@ -1,14 +1,16 @@
 import asyncio
 import logging
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+import pyobs
 from pyobs.comm.dummy import DummyComm
 from pyobs.events import GoodWeatherEvent, BadWeatherEvent
 from pyobs.modules import Module
 from pyobs.modules.weather import Weather
 from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio
@@ -166,3 +168,11 @@ async def test_update_bad_weather(mocker, caplog) -> None:
 
     assert caplog.messages[0] == "Weather is now bad."
     assert isinstance(weather.comm.send_event.await_args[0][0], BadWeatherEvent)
+
+
+def test_calc_system_init_eta() -> None:
+    weather = Weather("", 600)
+    pyobs.utils.time.Time.now = Mock(return_value=Time("2010-01-01T00:00:00", format='isot', scale='utc'))
+
+    time = weather._calc_system_init_eta()
+    assert time == "2010-01-01T00:10:00"

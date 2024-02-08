@@ -50,9 +50,6 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # whether module is active, i.e. if None, weather is always good
         self._active = True
 
-        # current status
-        self._is_good: Optional[bool] = None
-
         # whole status
         self._weather = WeatherState()
 
@@ -73,7 +70,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Starts a service."""
 
         # did status change and weather is now bad?
-        if not self._active and not self._is_good:
+        if not self._active and not self._weather.is_good:
             # send event!
             await self.comm.send_event(BadWeatherEvent())
 
@@ -136,8 +133,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         if not self._active:
             return True
 
-        # otherwise it depends on the is_good flag
-        return False if self._is_good is None else self._is_good
+        return self._weather.is_good
 
     async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.

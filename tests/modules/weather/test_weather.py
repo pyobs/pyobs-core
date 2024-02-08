@@ -61,7 +61,7 @@ async def test_is_running() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_sensor_value(mocker):
+async def test_get_sensor_value_invalid_request():
     weather = Weather("example.com/")
 
     weather._api.get_sensor_value = AsyncMock(side_effect=ValueError)
@@ -70,6 +70,23 @@ async def test_get_sensor_value(mocker):
         await weather.get_sensor_value("test", WeatherSensors.RAIN)
 
     weather._api.get_sensor_value.assert_called_once_with("test", WeatherSensors.RAIN)
+
+
+@pytest.mark.asyncio
+async def test_get_sensor_value_invalid_response():
+    weather = Weather("example.com/")
+
+    weather._api.get_sensor_value = AsyncMock(return_value={})
+    with pytest.raises(ValueError):
+        await weather.get_sensor_value("test", WeatherSensors.RAIN)
+
+
+@pytest.mark.asyncio
+async def test_get_sensor_value():
+    weather = Weather("example.com/")
+
+    weather._api.get_sensor_value = AsyncMock(return_value={"time": 1, "value": 2})
+    assert await weather.get_sensor_value("test", WeatherSensors.RAIN) == (1, 2)
 
 
 @pytest.mark.asyncio
@@ -102,7 +119,7 @@ async def test_loop_valid(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_loop_valid(mocker) -> None:
+async def test_loop_invalid(mocker) -> None:
     weather = Weather("")
     weather._update = AsyncMock(side_effect=ValueError)
 
@@ -113,7 +130,7 @@ async def test_loop_valid(mocker) -> None:
     asyncio.sleep.assert_called_once_with(60)
 
 @pytest.mark.asyncio
-async def test_update_invalid_url(mocker, caplog) -> None:
+async def test_update_invalid_url(caplog) -> None:
     weather = Weather("example.com/")
     weather._api.get_current_status = AsyncMock(side_effect=ValueError("Could not connect to weather station."))
 
@@ -127,7 +144,7 @@ async def test_update_invalid_url(mocker, caplog) -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_invalid_response(mocker, caplog) -> None:
+async def test_update_invalid_response(caplog) -> None:
     weather = Weather("example.com/")
 
     weather._api.get_current_status = AsyncMock(return_value={})
@@ -140,7 +157,7 @@ async def test_update_invalid_response(mocker, caplog) -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_good_weather(mocker, caplog) -> None:
+async def test_update_good_weather(caplog) -> None:
     weather = Weather("")
     weather.comm.send_event = AsyncMock()
     weather._active = True
@@ -155,7 +172,7 @@ async def test_update_good_weather(mocker, caplog) -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_bad_weather(mocker, caplog) -> None:
+async def test_update_bad_weather(caplog) -> None:
     weather = Weather("")
     weather._weather.is_good = True
     weather.comm.send_event = AsyncMock()
@@ -176,3 +193,22 @@ def test_calc_system_init_eta() -> None:
 
     time = weather._calc_system_init_eta()
     assert time == "2010-01-01T00:10:00"
+
+
+@pytest.mark.asyncio
+async def test_is_weather_good() -> None:
+    weather = Weather("")
+    weather._active = False
+    assert await weather.is_weather_good() == True
+
+    weather._active = True
+
+    assert await weather.is_weather_good() == False
+
+
+@pytest.mark.asyncio
+async def test_get_current_weather() -> None:
+    weather = Weather("")
+    status = {"good": True}
+    weather._weather.status = status
+    assert await weather.get_current_weather() == status

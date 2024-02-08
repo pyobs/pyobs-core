@@ -178,32 +178,23 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             Dictionary containing FITS headers.
         """
 
-        # copy status
-        status = dict(self._weather.status)
-
-        # got sensors?
-        if "sensors" not in status:
+        if "sensors" not in self._weather.status:
             log.error("No sensor data found in status.")
             return {}
-        sensors = status["sensors"]
+        sensors = self._weather.status["sensors"]
 
-        # loop sensor types
+        sensor_types = [sensor_type for sensor_type in WeatherSensors if sensor_type.value in sensors]
+        valid_sensor_types = [sensor_type for sensor_type in sensor_types if "value" in sensors[sensor_type.value]]
+
         header = {}
-        for sensor_type in WeatherSensors:
-            # got a value for this type?
-            if sensor_type.value in sensors:
-                # get value
-                if "value" not in sensors[sensor_type.value]:
-                    continue
-                value = sensors[sensor_type.value]["value"]
+        for sensor_type in valid_sensor_types:
+            value = sensors[sensor_type.value]["value"]
 
-                # get header keyword, comment and data type
-                key, comment, dtype = FITS_HEADERS[sensor_type]
+            key, comment, dtype = FITS_HEADERS[sensor_type]
 
-                # set it
-                header[key] = (None if value is None else dtype(value), comment)
+            header_value = None if value is None else dtype(value)
+            header[key] = (header_value, comment)
 
-        # finished
         return header
 
 

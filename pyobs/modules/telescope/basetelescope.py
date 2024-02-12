@@ -142,7 +142,7 @@ class BaseTelescope(
             await self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
-            asyncio.create_task(self._update_celestial_headers())
+            await asyncio.create_task(self._update_celestial_headers())
             log.info("Finished moving telescope.")
 
     @abstractmethod
@@ -197,7 +197,7 @@ class BaseTelescope(
             await self._change_motion_status(MotionStatus.POSITIONED)
 
             # update headers now
-            asyncio.create_task(self._update_celestial_headers())
+            await asyncio.create_task(self._update_celestial_headers())
             log.info("Finished moving telescope.")
 
     async def get_fits_header_before(

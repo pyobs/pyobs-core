@@ -112,6 +112,7 @@ async def test_call_no_corr(mocker, caplog):
 async def test_call(mocker):
     offsets = ProjectedOffsets()
     offsets._ref_image = (np.ones(10) * 10, np.ones(10) * 10)
+
     mocker.patch.object(offsets, "_process", return_value=(np.ones(10) * 10, np.ones(10) * 10))
     mocker.patch.object(offsets, "_correlate", return_value=10)
     image = Image(data=np.ones((10, 10)))

@@ -65,7 +65,7 @@ class ProjectedOffsets(Offsets):
         return image
 
     def _reference_initialized(self):
-        return self._ref_image is None
+        return self._ref_image is not None
 
     @staticmethod
     def _process(image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:

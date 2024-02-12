@@ -49,18 +49,15 @@ class ProjectedOffsets(Offsets):
             self._ref_image = self._process(image)
             return image
 
-        # process it
         log.info("Perform auto-guiding on new image...")
         sum_x, sum_y = self._process(image)
 
-        # find peaks
-        dx = self._correlate(sum_x, self._ref_image[0])
-        dy = self._correlate(sum_y, self._ref_image[1])
+        dx = self._calc_1d_offset(sum_x, self._ref_image[0])
+        dy = self._calc_1d_offset(sum_y, self._ref_image[1])
         if dx is None or dy is None:
             log.warning("Could not correlate peaks.")
             return image
 
-        # set it
         image.set_meta(PixelOffsets(dx, dy))
         return image
 
@@ -126,7 +123,7 @@ class ProjectedOffsets(Offsets):
         return data - cont
 
     @staticmethod
-    def _correlate(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> Optional[float]:
+    def _calc_1d_offset(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> Optional[float]:
         # do cross-correlation
         corr = np.correlate(data1, data2, "full")
 
@@ -140,11 +137,11 @@ class ProjectedOffsets(Offsets):
 
         # moment calculation for initial guesses
         total = float(y.sum())
-        m = (x * y).sum() / total
-        m2 = (x * x * y).sum() / total - m ** 2
+        mean = (x * y).sum() / total
+        variance = (x * x * y).sum() / total - mean ** 2
 
         # initial guess
-        guesses = [np.max(y), m, m2]
+        guesses = [np.max(y), mean, variance]
 
         # perform fit
         result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)

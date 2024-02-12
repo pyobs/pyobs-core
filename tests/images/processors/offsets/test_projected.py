@@ -33,12 +33,12 @@ def test_gaussian_fit(mocker):
     assert err == 4.0
 
 
-def test_correlate():
+def test_calc_1d_offset():
     signal = gaussian(20, 5.0, sym=True)
     ref_data = np.pad(signal, (5, 0), mode='constant', constant_values=0)
     img_data = np.pad(signal, (0, 5), mode='constant', constant_values=0)   # Pad behind signal, to match data length
 
-    shift = ProjectedOffsets._correlate(ref_data, img_data, fit_width=15)
+    shift = ProjectedOffsets._calc_1d_offset(ref_data, img_data, fit_width=15)
 
     np.testing.assert_almost_equal(shift, 5.0, decimal=4)
 
@@ -106,7 +106,7 @@ async def test_call_no_corr(mocker, caplog):
     offsets = ProjectedOffsets()
     offsets._ref_image = (np.ones(10) * 10, np.ones(10) * 10)
     mocker.patch.object(offsets, "_process", return_value=(np.ones(10) * 10, np.ones(10) * 10))
-    mocker.patch.object(offsets, "_correlate", return_value=None)
+    mocker.patch.object(offsets, "_calc_1d_offset", return_value=None)
     image = Image(data=np.ones((10, 10)))
 
     with caplog.at_level(logging.INFO):
@@ -122,7 +122,7 @@ async def test_call(mocker):
     offsets._ref_image = (np.ones(10) * 10, np.ones(10) * 10)
 
     mocker.patch.object(offsets, "_process", return_value=(np.ones(10) * 10, np.ones(10) * 10))
-    mocker.patch.object(offsets, "_correlate", return_value=10)
+    mocker.patch.object(offsets, "_calc_1d_offset", return_value=10)
     image = Image(data=np.ones((10, 10)))
 
     result = await offsets(image)

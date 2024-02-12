@@ -3,14 +3,22 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from astropy.table import QTable
-from photutils.datasets import make_gaussian_sources_image
-
 from scipy.signal.windows import gaussian
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.images.processors.offsets import ProjectedOffsets
+
+
+@pytest.mark.asyncio
+async def test_reset(caplog):
+    offsets = ProjectedOffsets()
+    offsets._ref_image = np.zeros((2, 2))
+
+    with caplog.at_level(logging.INFO):
+        await offsets.reset()
+
+    assert offsets._ref_image is None
 
 
 def test_gaussian():

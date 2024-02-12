@@ -22,4 +22,7 @@ class WeatherState(object):
         if "good" not in state:
             raise ValueError("Good parameter not found in response from weather station.")
 
+        if state["good"] is None:
+            state["good"] = False
+
         self._state = state

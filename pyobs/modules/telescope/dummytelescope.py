@@ -75,7 +75,7 @@ class DummyTelescope(
         """
 
         # start slewing
-        await self.__move(ra, dec, abort_event)
+        await self._move(ra, dec, abort_event)
 
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -96,9 +96,9 @@ class DummyTelescope(
         icrs = coords.icrs
 
         # start slewing
-        await self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
+        await self._move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
-    async def __move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
+    async def _move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Simulate move.
 
         Args:

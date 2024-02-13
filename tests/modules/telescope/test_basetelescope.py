@@ -252,7 +252,6 @@ async def test_move_radec_min_alt():
         await telescope.move_radec(0, 0)
 
 
-
 @pytest.mark.asyncio
 async def test_move_radec():
     telescope = TestBaseTelescope()

@@ -19,7 +19,6 @@ class Photometry(ImageProcessor, metaclass=ABCMeta):
         Returns:
             Image with attached catalog.
         """
-        ...
 
 
 __all__ = ["Photometry"]

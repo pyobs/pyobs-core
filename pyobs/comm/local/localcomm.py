@@ -75,7 +75,7 @@ class LocalComm(Comm):
         remote_client = self._network.get_client(client)
         if remote_client.module is None:
             raise ValueError
-        simple_results = await remote_client.module.execute(method, *args)
+        simple_results = await remote_client.module.execute(method, *args, sender=self.name)
         real_results = cast_response_to_real(
             simple_results, annotation["return"], self.cast_to_real_pre, self.cast_to_real_post
         )

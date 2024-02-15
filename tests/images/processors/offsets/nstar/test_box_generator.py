@@ -20,7 +20,7 @@ class MockBox:
 
 
 def test_check_overlapping_boxes() -> None:
-    boxes = [MockBox(np.array([1, 1])), MockBox(np.array([4, 4]))]
+    boxes = [MockBox(np.array([1, 1])), MockBox(np.array([4, 4])), MockBox(np.array([10, 10]))]
     generator = _BoxGenerator(3.0, 1)
 
     with pytest.raises(ValueError):

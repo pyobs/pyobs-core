@@ -1,3 +1,4 @@
+import itertools
 from typing import List, Any
 
 import numpy as np
@@ -36,9 +37,8 @@ class _BoxGenerator(object):
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {self._min_sources} required.")
 
     def _check_overlapping_boxes(self, boxes: List[EPSFStar]) -> None:
-        for i in range(len(boxes) - 1):
-            for j in range(i + 1, len(boxes)):
-                self._check_overlapping_box_pair(boxes[i].center, boxes[j].center)
+        for (box_1, box_2) in itertools.combinations(boxes, 2):
+            self._check_overlapping_box_pair(box_1.center, box_2.center)
 
     def _check_overlapping_box_pair(self, box_center_1: np.ndarray[Any, Any], box_center_2: np.ndarray[Any, Any]) -> None:
         dist_2d = np.abs(np.subtract(box_center_1, box_center_2))

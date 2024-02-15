@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 from astropy.table import Table
@@ -13,7 +13,7 @@ class ImageSourceFilter(ImageProcessor):
                  num_stars: int,
                  min_pixels: int,
                  max_ellipticity: float = 0.4,
-                 min_bkg_factor: float = 1.5,
+                 min_weber_contrast: float = 1.5,
                  max_saturation: int = 50000) -> None:
 
         super().__init__()
@@ -22,7 +22,7 @@ class ImageSourceFilter(ImageProcessor):
         self._num_stars = num_stars
         self._min_pixels = min_pixels
         self._max_ellipticity = max_ellipticity
-        self._min_bkg_factor = min_bkg_factor
+        self._min_weber_contrast = min_weber_contrast
         self._max_saturation = max_saturation
 
     async def __call__(self, image: Image) -> Image:
@@ -93,12 +93,16 @@ class ImageSourceFilter(ImageProcessor):
 
         background_sources = sources["background"] <= 0
 
-        low_contrast_sources = (sources["peak"] + sources["background"]) / sources["background"] <= self._min_bkg_factor
+        low_contrast_sources = self._calc_weber_contrast(sources["peak"], sources["background"]) <= self._min_weber_contrast
 
         bad_sources = saturated_sources | small_sources | large_sources | elliptic_sources | background_sources | low_contrast_sources
 
         filtered_sources = sources[~bad_sources]  # keep sources that are not bad
         return filtered_sources
+
+    @staticmethod
+    def _calc_weber_contrast(peak: np.ndarray[Any, Any], background: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+        return (peak - background)/background
 
     def _select_brightest_sources(self, sources: Table) -> Table:
         """Select the N brightest sources from table.

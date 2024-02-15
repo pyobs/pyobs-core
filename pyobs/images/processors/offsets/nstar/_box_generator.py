@@ -1,5 +1,6 @@
-from typing import List
+from typing import List, Any
 
+import numpy as np
 import photutils
 from astropy.nddata import NDData
 from astropy.table import Table
@@ -23,23 +24,24 @@ class _BoxGenerator(object):
         self._check_sources_count(sources)
 
         # extract boxes
-        return photutils.psf.extract_stars(
+        boxes = photutils.psf.extract_stars(
             NDData(image.data.astype(float)), sources, size=self._box_size
         ).all_stars
 
+        self._check_overlapping_boxes(boxes)
+        return boxes
+
     def _check_sources_count(self, sources: Table) -> None:
-        """Check if enough sources in table.
-
-        Args:
-            sources: table of sources.
-
-        Returns:
-            None
-
-        Raises:
-            ValueError if not at least self.min_sources in sources table
-
-        """
-
         if len(sources) < self._min_sources:
             raise ValueError(f"Only {len(sources)} source(s) in image, but at least {self._min_sources} required.")
+
+    def _check_overlapping_boxes(self, boxes: List[EPSFStar]) -> None:
+        for i in range(len(boxes) - 1):
+            for j in range(i + 1, len(boxes)):
+                self._check_overlapping_box_pair(boxes[i].center, boxes[j].center)
+
+    def _check_overlapping_box_pair(self, box_center_1: np.ndarray[Any, Any], box_center_2: np.ndarray[Any, Any]) -> None:
+        dist_2d = np.abs(np.subtract(box_center_1, box_center_2))
+
+        if dist_2d[0] < self._box_size / 2 or dist_2d[1] < self._box_size / 2:
+            raise ValueError("Boxes are overlapping!")

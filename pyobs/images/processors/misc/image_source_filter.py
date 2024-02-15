@@ -9,16 +9,26 @@ from pyobs.images import ImageProcessor, Image
 
 class ImageSourceFilter(ImageProcessor):
     def __init__(self,
-                 dist_to_border: float,
+                 min_dist_to_border: float,
                  num_stars: int,
                  min_pixels: int,
                  max_ellipticity: float = 0.4,
                  min_weber_contrast: float = 1.5,
                  max_saturation: int = 50000) -> None:
+        """
+        Filters the source table after pysep detection has run
+        Args:
+            min_dist_to_border: Minimal distance to the image border
+            num_stars: Number of sources to take
+            min_pixels: Minimum required amount of pixels of a source
+            max_ellipticity:  Maximum allowed ellipticity of a source
+            min_weber_contrast: Minimum required weber contrast of a source (relative to the background)
+            max_saturation:
+        """
 
         super().__init__()
 
-        self._dist_to_border = dist_to_border
+        self._min_dist_to_border = min_dist_to_border
         self._num_stars = num_stars
         self._min_pixels = min_pixels
         self._max_ellipticity = max_ellipticity
@@ -62,7 +72,7 @@ class ImageSourceFilter(ImageProcessor):
         y_dist_from_border = height / 2 - np.abs(sources["x"] - height / 2)
 
         min_dist_from_border = np.minimum(x_dist_from_border, y_dist_from_border)
-        sources_result = sources[min_dist_from_border > self._dist_to_border]
+        sources_result = sources[min_dist_from_border > self._min_dist_to_border]
 
         return sources_result
 
@@ -73,9 +83,6 @@ class ImageSourceFilter(ImageProcessor):
 
         Args:
             sources: Input table.
-            max_ellipticity: Maximum ellipticity.
-            min_bkg_factor: Minimum factor above local background.
-            saturation: Saturation level.
 
         Returns:
             Filtered table.

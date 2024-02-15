@@ -31,7 +31,7 @@ def test_remove_bad_sources() -> None:
         "background": [100, 100, 100, 100, -1, 50000, 100]
     })
 
-    result = _BoxGenerator(10, 3, 1).remove_bad_sources(table)
+    result = _BoxGenerator(10.0, 10, 3, 1).remove_bad_sources(table)
 
     np.testing.assert_array_equal(result["peak"], [5006])
     np.testing.assert_array_equal(result["tnpix"], [10])
@@ -42,14 +42,14 @@ def test_remove_bad_sources() -> None:
 def test_select_brightest_sources() -> None:
     table = Table({"flux": list(range(3))})
 
-    result = _BoxGenerator(2, 3, 2)._select_brightest_sources(table)
+    result = _BoxGenerator(5.0, 2, 3, 2)._select_brightest_sources(table)
     np.testing.assert_array_equal(result["flux"], list(reversed(range(1, 3))))
 
 
 def test_check_sources_count() -> None:
     table = Table()
     with pytest.raises(ValueError):
-        _BoxGenerator(10, 3, 2)._check_sources_count(table)
+        _BoxGenerator(5.0, 10, 3, 2)._check_sources_count(table)
 
 
 @pytest.mark.asyncio
@@ -66,7 +66,7 @@ async def test_call() -> None:
 
     image = Image(data=np.ones((20, 20)), catalog=sources)
 
-    offsets = _BoxGenerator(10, 3, 1)
+    offsets = _BoxGenerator(2.0, 10, 3, 1)
 
-    result = offsets(image, 5)
+    result = offsets(image)
     np.testing.assert_array_equal(result[0], np.ones((5, 5)))

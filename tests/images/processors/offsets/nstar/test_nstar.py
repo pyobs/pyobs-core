@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from astropy.table import Table
 from photutils.psf import EPSFStar
 from pytest_mock import MockerFixture
 
@@ -20,12 +19,6 @@ async def test_reset() -> None:
     await offsets.reset()
 
     assert len(offsets.ref_boxes) == 0
-
-
-def test_get_box_size() -> None:
-    assert NStarOffsets._get_box_size(4, 2) == 8
-
-    assert NStarOffsets._get_box_size(4, None) == 20
 
 
 def test_calculate_offsets_invalid_data() -> None:

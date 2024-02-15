@@ -10,22 +10,28 @@ from pyobs.images import Image
 
 
 class _BoxGenerator(object):
-    def __init__(self, num_stars: int, min_pixels: int, min_sources: int) -> None:
+    def __init__(self, max_offset: float, num_stars: int, min_pixels: int, min_sources: int) -> None:
+        self._box_size = self._max_offset_to_box_size(max_offset)
         self._num_stars = num_stars
         self._min_pixels = min_pixels
         self._min_sources = min_sources
 
-    def __call__(self, image: Image, star_box_size: float) -> List[EPSFStar]:
+    @staticmethod
+    def _max_offset_to_box_size(max_offset: float) -> int:
+        box_size = 2 * max_offset + 1   # photutils.psf.extract_stars only accepts uneven box sizes
+        return int(box_size)
+
+    def __call__(self, image: Image) -> List[EPSFStar]:
         sources_copy = image.catalog.copy()
 
-        valid_sources = self.remove_sources_close_to_border(sources_copy, image.data.shape, star_box_size // 2 + 1)
+        valid_sources = self.remove_sources_close_to_border(sources_copy, image.data.shape, self._box_size // 2 + 1)
         good_sources = self.remove_bad_sources(valid_sources)
         self._check_sources_count(good_sources)
         selected_sources = self._select_brightest_sources(good_sources)
 
         # extract boxes
         return photutils.psf.extract_stars(
-            NDData(image.data.astype(float)), selected_sources, size=star_box_size
+            NDData(image.data.astype(float)), selected_sources, size=self._box_size
         ).all_stars
 
     @staticmethod

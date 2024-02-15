@@ -1,18 +1,16 @@
 import logging
 from typing import Tuple, List, Union, Dict, Any, Optional
+
 import numpy as np
 from photutils.psf import EPSFStar
 from scipy import signal
-from astropy.nddata import NDData
-from astropy.table import Table
-import photutils
 
 from pyobs.images import Image, ImageProcessor
-from pyobs.images.processors.offsets.nstar._box_generator import _BoxGenerator
-from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.images.meta import PixelOffsets
+from pyobs.images.processors.offsets.nstar._box_generator import _BoxGenerator
 from pyobs.images.processors.offsets.nstar._gaussian_fitter import GaussianFitter
 from pyobs.images.processors.offsets.offsets import Offsets
+from pyobs.mixins.pipeline import PipelineMixin
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +25,7 @@ class NStarOffsets(Offsets, PipelineMixin):
     def __init__(
             self,
             num_stars: int = 10,
-            max_offset: float = 4.0,
+            max_pixel_offset: float = 5.0,
             min_pixels: int = 3,
             min_sources: int = 1,
             pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
@@ -37,8 +35,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         Args:
             num_stars: maximum number of stars to use to calculate offset from boxes around them
-            max_offset: the maximal expected offset in arc seconds. Determines the size of boxes
-                around stars.
+            max_pixel_offset: the maximal expected pixel offset. Determines the size of boxes around stars.
             min_pixels: minimum required number of pixels for a source to be used for offset calculation.
             min_sources: Minimum required number of sources in image.
             pipeline: Pipeline to be used for first image in series.
@@ -47,8 +44,8 @@ class NStarOffsets(Offsets, PipelineMixin):
         PipelineMixin.__init__(self, pipeline)
 
         # store
-        self.max_offset = max_offset
-        self._box_generator = _BoxGenerator(num_stars=num_stars, min_pixels=min_pixels, min_sources=min_sources)
+        self._box_size = max_pixel_offset
+        self._box_generator = _BoxGenerator(max_pixel_offset, num_stars=num_stars, min_pixels=min_pixels, min_sources=min_sources)
         self.ref_boxes: List[EPSFStar] = []
 
     async def reset(self) -> None:
@@ -90,20 +87,12 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         return output_image
 
-    def _boxes_initialized(self):
+    def _boxes_initialized(self) -> bool:
         return len(self.ref_boxes) == 0
 
-    async def _init_boxes(self, image: Image):
-        star_box_size = max(5, self._get_box_size(self.max_offset, image.pixel_scale))
-        log.info(f"Choosing box size of {star_box_size} pixels.")
-
+    async def _init_boxes(self, image: Image) -> None:
         processed_image = await self.run_pipeline(image)
-        self.ref_boxes = self._box_generator(processed_image, star_box_size)
-
-    @staticmethod
-    def _get_box_size(max_expected_offset_in_arcsec, pixel_scale) -> int:
-        # multiply by 4 to give enough space for fit of correlation around the peak on all sides
-        return int(4 * max_expected_offset_in_arcsec / pixel_scale if pixel_scale else 20)
+        self.ref_boxes = self._box_generator(processed_image, self._box_size)
 
     def _calculate_offsets(self, image: Image) -> Tuple[Optional[float], Optional[float]]:
         """Calculate offsets of given image to ref image for every star.

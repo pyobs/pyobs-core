@@ -24,9 +24,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
     def __init__(
             self,
-            num_stars: int = 10,
             max_pixel_offset: float = 5.0,
-            min_pixels: int = 3,
             min_sources: int = 1,
             pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
             **kwargs: Any,
@@ -45,7 +43,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
         # store
         self._box_size = max_pixel_offset
-        self._box_generator = _BoxGenerator(max_pixel_offset, num_stars=num_stars, min_pixels=min_pixels, min_sources=min_sources)
+        self._box_generator = _BoxGenerator(max_pixel_offset, min_sources=min_sources)
         self.ref_boxes: List[EPSFStar] = []
 
     async def reset(self) -> None:
@@ -92,7 +90,7 @@ class NStarOffsets(Offsets, PipelineMixin):
 
     async def _init_boxes(self, image: Image) -> None:
         processed_image = await self.run_pipeline(image)
-        self.ref_boxes = self._box_generator(processed_image, self._box_size)
+        self.ref_boxes = self._box_generator(processed_image)
 
     def _calculate_offsets(self, image: Image) -> Tuple[Optional[float], Optional[float]]:
         """Calculate offsets of given image to ref image for every star.

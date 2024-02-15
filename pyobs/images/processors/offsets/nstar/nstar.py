@@ -36,7 +36,7 @@ class NStarOffsets(Offsets, PipelineMixin):
             max_pixel_offset: the maximal expected pixel offset. Determines the size of boxes around stars.
             min_pixels: minimum required number of pixels for a source to be used for offset calculation.
             min_sources: Minimum required number of sources in image.
-            pipeline: Pipeline to be used for first image in series.
+            pipeline: Pipeline to be used for first image in series. (Should use SEP detection and source filtering)
         """
         Offsets.__init__(self, **kwargs)
         PipelineMixin.__init__(self, pipeline)

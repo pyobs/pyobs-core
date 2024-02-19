@@ -13,7 +13,7 @@ from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio
-async def test_open():
+async def test_open() -> None:
     BaseTelescope.open = AsyncMock()
 
     telescope = DummyTelescope()
@@ -31,7 +31,7 @@ async def test_open():
 
 
 @pytest.mark.asyncio
-async def test_move_radec():
+async def test_move_radec() -> None:
     telescope = DummyTelescope()
     telescope._move = AsyncMock()
 
@@ -42,7 +42,7 @@ async def test_move_radec():
 
 
 @pytest.mark.asyncio
-async def test_move_altaz(mocker):
+async def test_move_altaz(mocker) -> None:
     mocker.patch("pyobs.utils.time.Time.now", return_value=Time("2010-01-01T00:00:00", format="isot"))
 
     telescope = DummyTelescope()
@@ -56,7 +56,7 @@ async def test_move_altaz(mocker):
 
 
 @pytest.mark.asyncio
-async def test_set_focus_invalid():
+async def test_set_focus_invalid() -> None:
     telescope = DummyTelescope()
 
     with pytest.raises(ValueError):
@@ -67,7 +67,7 @@ async def test_set_focus_invalid():
 
 
 @pytest.mark.asyncio
-async def test_set_focus(mocker):
+async def test_set_focus(mocker) -> None:
     mocker.patch("asyncio.sleep")
     telescope = DummyTelescope()
 
@@ -76,7 +76,28 @@ async def test_set_focus(mocker):
 
 
 @pytest.mark.asyncio
-async def test_set_filter_invalid_filter():
+async def test_stop_focus(mocker) -> None:
+    mocker.patch("asyncio.sleep")
+    telescope = DummyTelescope()
+    telescope._telescope.focus = 10.0
+    await telescope._step_focus(10.0)
+
+    assert telescope._telescope.focus == 20.0
+    asyncio.sleep.assert_called_once_with(0.01)
+
+
+@pytest.mark.asyncio
+async def test_stop_focus_abord(mocker) -> None:
+    mocker.patch("asyncio.sleep")
+    telescope = DummyTelescope()
+    telescope._telescope.focus = 10.0
+    telescope._abort_focus.set()
+    with pytest.raises(InterruptedError):
+        await telescope._step_focus(10.0)
+
+
+@pytest.mark.asyncio
+async def test_set_filter_invalid_filter() -> None:
     telescope = DummyTelescope()
 
     telescope._telescope.filters = ["clear"]
@@ -86,7 +107,7 @@ async def test_set_filter_invalid_filter():
 
 
 @pytest.mark.asyncio
-async def test_set_filter(mocker):
+async def test_set_filter(mocker) -> None:
     mocker.patch("asyncio.sleep")
     telescope = DummyTelescope()
 
@@ -99,7 +120,7 @@ async def test_set_filter(mocker):
 
 
 @pytest.mark.asyncio
-async def test_init(mocker):
+async def test_init(mocker) -> None:
     mocker.patch("asyncio.sleep")
     telescope = DummyTelescope()
     telescope._change_motion_status = AsyncMock()
@@ -112,7 +133,7 @@ async def test_init(mocker):
 
 
 @pytest.mark.asyncio
-async def test_park(mocker):
+async def test_park(mocker) -> None:
     mocker.patch("asyncio.sleep")
     telescope = DummyTelescope()
     telescope._change_motion_status = AsyncMock()
@@ -125,7 +146,7 @@ async def test_park(mocker):
 
 
 @pytest.mark.asyncio
-async def test_set_offsets_radec():
+async def test_set_offsets_radec() -> None:
     telescope = DummyTelescope()
     telescope.comm = DummyComm()
     telescope.comm.send_event = AsyncMock()
@@ -139,7 +160,7 @@ async def test_set_offsets_radec():
 
 
 @pytest.mark.asyncio
-async def test_get_fits_header_before():
+async def test_get_fits_header_before() -> None:
     BaseTelescope._get_fits_header_before = AsyncMock(return_value={})
 
     telescope = DummyTelescope()

@@ -49,7 +49,6 @@ class BrightestCentralStarOffsets(Offsets):
         focal_length = image.header["TEL-FOCL"]
         pix_arcsec = pix_mm / focal_length * 180 / np.pi * 3600
         radius = self._radius / pix_arcsec
-        print(self._radius, radius, pix_arcsec)
 
         # create circular mask around centre
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
@@ -58,7 +57,6 @@ class BrightestCentralStarOffsets(Offsets):
         # mask out everything except for central circle
         cat_c = cat[circ_mask]
         cat_c.sort("flux", reverse=True)
-        print(cat_c)
 
         # get first X/Y coordinates
         x, y = cat_c["x"][0], cat_c["y"][0]

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Dict
 from unittest.mock import Mock, AsyncMock
 
 import numpy as np
@@ -43,29 +43,31 @@ class TestBaseTelescope(BaseTelescope):
 
 
 class MockObserver:
-    def moon_altaz(self, time: Time):
+    def moon_altaz(self, time: Time) -> SkyCoord:
         return SkyCoord(alt=60, az=0, unit='deg', frame='altaz')
 
-    def sun_altaz(self, time: Time):
+    def sun_altaz(self, time: Time) -> SkyCoord:
         return SkyCoord(alt=60, az=0, unit='deg', frame='altaz')
 
-    def moon_illumination(self, time: Time):
+    def moon_illumination(self, time: Time) -> float:
         return 0.5
 
     @property
-    def location(self):
+    def location(self) -> EarthLocation:
         return EarthLocation(lat=10. * u.degree, lon=10. * u.degree, height=100 * u.meter)
 
 
 @pytest.mark.asyncio
 async def test_update_celestial_headers_no_observer() -> None:
     telescope = TestBaseTelescope()
-    await telescope._update_celestial_headers()
+    celestial_headers = await telescope._calc_celestial_headers()
 
-    assert telescope._celestial_headers == {}
+    assert celestial_headers == {}
 
 
-def compare_telescope_headers(header, moon_alt, moon_frac, moon_dist, sun_alt, sun_dist) -> None:
+def compare_telescope_headers(header: Dict[str, Tuple[Optional[float], str]],
+                              moon_alt: Optional[float], moon_frac: Optional[float], moon_dist: Optional[float],
+                              sun_alt: Optional[float], sun_dist: Optional[float]) -> None:
     assert header["MOONALT"] == (moon_alt, "Lunar altitude")
     assert header["MOONFRAC"] == (moon_frac, "Fraction of the moon illuminated")
     assert header["MOONDIST"] == (moon_dist, "Lunar distance from target")
@@ -80,9 +82,9 @@ async def test_update_celestial_headers_no_altaz() -> None:
 
     telescope.get_altaz = AsyncMock(side_effect=Exception)
 
-    await telescope._update_celestial_headers()
+    celestial_headers = await telescope._calc_celestial_headers()
 
-    compare_telescope_headers(telescope._celestial_headers, 60, 0.5, None, 60, None)
+    compare_telescope_headers(celestial_headers, 60, 0.5, None, 60, None)
 
 
 @pytest.mark.asyncio
@@ -92,9 +94,9 @@ async def test_update_celestial_headers() -> None:
 
     telescope.get_altaz = AsyncMock(return_value=(60, 0))
 
-    await telescope._update_celestial_headers()
+    celestial_headers = await telescope._calc_celestial_headers()
 
-    compare_telescope_headers(telescope._celestial_headers, 60, 0.5, 0.0, 60, 0.0)
+    compare_telescope_headers(celestial_headers, 60, 0.5, 0.0, 60, 0.0)
 
 
 @pytest.mark.asyncio
@@ -110,7 +112,7 @@ async def test_get_fits_header_before_no_altaz() -> None:
 async def test_get_fits_header_before_optional_headers() -> None:
     telescope = TestBaseTelescope()
     telescope._fits_headers = {"TEST": (1.0, "TEST")}
-    telescope._celestial_headers = {"CTEST": (1.0, "CTEST")}
+    telescope._calc_celestial_headers = AsyncMock(return_value={"CTEST": (1.0, "CTEST")})
 
     header = await telescope.get_fits_header_before()
 

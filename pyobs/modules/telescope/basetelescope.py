@@ -49,12 +49,6 @@ class BaseTelescope(
         self._lock_moving = asyncio.Lock()
         self._abort_move = asyncio.Event()
 
-        # celestial status
-        self._celestial_headers: Dict[str, Any] = {}
-
-        # add thread func
-        self.add_background_task(self._celestial, True)
-
         # init mixins
         WeatherAwareMixin.__init__(self, **kwargs)
         MotionStatusMixin.__init__(self, **kwargs)
@@ -142,7 +136,7 @@ class BaseTelescope(
             await self._change_motion_status(MotionStatus.TRACKING)
 
             # update headers now
-            await asyncio.create_task(self._update_celestial_headers())
+            await asyncio.create_task(self._calc_celestial_headers())
             log.info("Finished moving telescope.")
 
     @abstractmethod
@@ -196,8 +190,7 @@ class BaseTelescope(
             # finish slewing
             await self._change_motion_status(MotionStatus.POSITIONED)
 
-            # update headers now
-            await asyncio.create_task(self._update_celestial_headers())
+            await asyncio.create_task(self._calc_celestial_headers())     #
             log.info("Finished moving telescope.")
 
     async def get_fits_header_before(
@@ -252,27 +245,14 @@ class BaseTelescope(
             hdr[key] = tuple(value)
 
         # add celestial headers
-        for key, value in self._celestial_headers.items():
+        celestial_headers = await self._calc_celestial_headers()
+        for key, value in celestial_headers.items():
             hdr[key] = tuple(value)
 
         # finish
         return hdr
 
-    async def _celestial(self) -> None:
-        """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
-
-        # wait a little
-        await asyncio.sleep(10)
-
-        # run until closing
-        while True:
-            # update headers
-            await self._update_celestial_headers()
-
-            # sleep a little
-            await asyncio.sleep(30)
-
-    async def _update_celestial_headers(self) -> None:
+    async def _calc_celestial_headers(self) -> Dict[str, Tuple[Optional[float], str]]:
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
@@ -281,7 +261,7 @@ class BaseTelescope(
 
         # no observer?
         if self.observer is None:
-            return
+            return {}
 
         # get telescope alt/az
         try:
@@ -300,13 +280,15 @@ class BaseTelescope(
         sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
 
         # store it
-        self._celestial_headers = {
+        celestial_headers = {
             "MOONALT": (float(moon_altaz.alt.degree), "Lunar altitude"),
             "MOONFRAC": (float(moon_frac), "Fraction of the moon illuminated"),
             "MOONDIST": (None if moon_dist is None else float(moon_dist.degree), "Lunar distance from target"),
             "SUNALT": (float(sun_altaz.alt.degree), "Solar altitude"),
             "SUNDIST": (None if sun_dist is None else float(sun_dist.degree), "Solar Distance from Target"),
         }
+
+        return celestial_headers
 
 
 __all__ = ["BaseTelescope"]

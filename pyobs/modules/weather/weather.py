@@ -1,16 +1,16 @@
 import asyncio
 import logging
 from typing import Tuple, Any, Dict, List, Optional
-import aiohttp
-import urllib.parse
+
 import astropy.units as u
 
-from pyobs.utils.enums import WeatherSensors
-from pyobs.utils.time import Time
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.interfaces import IWeather, IFitsHeaderBefore
 from pyobs.modules import Module
-
+from pyobs.modules.weather.weather_api import WeatherApi
+from pyobs.modules.weather.weather_state import WeatherState
+from pyobs.utils.enums import WeatherSensors
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -45,19 +45,17 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         # store and create session
         self._system_init_time = system_init_time
-        self._url = url
+        self._api = WeatherApi(url)
 
         # whether module is active, i.e. if None, weather is always good
         self._active = True
 
-        # current status
-        self._is_good: Optional[bool] = None
-
         # whole status
-        self._status: Dict[str, Any] = {}
+        self._weather = WeatherState()
 
         # add thread func
         self.add_background_task(self._update, True)
+
 
     async def open(self) -> None:
         """Open module."""
@@ -72,7 +70,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Starts a service."""
 
         # did status change and weather is now bad?
-        if not self._active and not self._is_good:
+        if not self._active and not self._weather.is_good:
             # send event!
             await self.comm.send_event(BadWeatherEvent())
 
@@ -87,56 +85,42 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """Whether a service is running."""
         return self._active
 
+    async def _run(self) -> None:
+        while True:
+            await self._loop()
+
+    async def _loop(self) -> None:
+        try:
+            await self._update()
+        except:
+            sleep = 60
+        else:
+            sleep = 5
+
+        await asyncio.sleep(sleep)
+
     async def _update(self) -> None:
         """Update weather info."""
 
-        # loop forever
-        while True:
-            # new is_good status
-            is_good: Optional[bool] = None
-            error = False
+        was_good = self._weather.is_good
 
-            try:
-                # fetch status
-                url = urllib.parse.urljoin(self._url, "api/current/")
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=5) as response:
-                        if response.status != 200:
-                            raise ValueError("Could not connect to weather station.")
-                        status = await response.json()
+        try:
+            self._weather.status = await self._api.get_current_status()
+        except Exception as e:
+            log.warning("Request failed: %s", str(e))
+            self._weather.is_good = False   # on error, we're always bad
 
-                # to json
-                if "good" not in status:
-                    raise ValueError("Good parameter not found in response from weather station.")
+        if was_good != self._weather.is_good and self._active:
+            if self._weather.is_good:
+                log.info("Weather is now good.")
+                eta = self._calc_system_init_eta()
+                await self.comm.send_event(GoodWeatherEvent(eta=eta))
+            else:
+                log.info("Weather is now bad.")
+                await self.comm.send_event(BadWeatherEvent())
 
-                # store it
-                is_good = status["good"]
-                self._status = status
-
-            except Exception as e:
-                # on error, we're always bad
-                log.warning("Request failed: %s", str(e))
-                is_good = False
-                error = True
-
-            # did status change?
-            if is_good != self._is_good:
-                # only send changes, if active
-                if self._active:
-                    # did it change to good or bad?
-                    if is_good:
-                        log.info("Weather is now good.")
-                        eta = Time.now() + self._system_init_time * u.second
-                        await self.comm.send_event(GoodWeatherEvent(eta=eta))
-                    else:
-                        log.info("Weather is now bad.")
-                        await self.comm.send_event(BadWeatherEvent())
-
-                # store new state
-                self._is_good = is_good
-
-            # sleep a little
-            await asyncio.sleep(60 if error else 5)
+    def _calc_system_init_eta(self) -> Time:
+        return Time.now() + self._system_init_time * u.second
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
@@ -149,8 +133,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         if not self._active:
             return True
 
-        # otherwise it depends on the is_good flag
-        return False if self._is_good is None else self._is_good
+        return self._weather.is_good
 
     async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns current weather.
@@ -159,7 +142,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             Dictionary containing entries for time, good, and sensor, with the latter being another dictionary
             with sensor information, which contain a value and a good flag.
         """
-        return self._status
+        return self._weather.status
 
     async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
         """Return value for given sensor.
@@ -173,12 +156,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
 
         # do request
-        url = urllib.parse.urljoin(self._url, "api/stations/%s/%s/" % (station, sensor.value))
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=5) as response:
-                if response.status != 200:
-                    raise ValueError("Could not connect to weather station.")
-                status = await response.json()
+        status = await self._api.get_sensor_value(station, sensor)
 
         # to json
         if "time" not in status or "value" not in status:
@@ -199,32 +177,23 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             Dictionary containing FITS headers.
         """
 
-        # copy status
-        status = dict(self._status)
-
-        # got sensors?
-        if "sensors" not in status:
+        if "sensors" not in self._weather.status:
             log.error("No sensor data found in status.")
             return {}
-        sensors = status["sensors"]
+        sensors = self._weather.status["sensors"]
 
-        # loop sensor types
+        sensor_types = [sensor_type for sensor_type in WeatherSensors if sensor_type.value in sensors]
+        valid_sensor_types = [sensor_type for sensor_type in sensor_types if "value" in sensors[sensor_type.value]]
+
         header = {}
-        for sensor_type in WeatherSensors:
-            # got a value for this type?
-            if sensor_type.value in sensors:
-                # get value
-                if "value" not in sensors[sensor_type.value]:
-                    continue
-                value = sensors[sensor_type.value]["value"]
+        for sensor_type in valid_sensor_types:
+            value = sensors[sensor_type.value]["value"]
 
-                # get header keyword, comment and data type
-                key, comment, dtype = FITS_HEADERS[sensor_type]
+            key, comment, dtype = FITS_HEADERS[sensor_type]
 
-                # set it
-                header[key] = (None if value is None else dtype(value), comment)
+            header_value = None if value is None else dtype(value)
+            header[key] = (header_value, comment)
 
-        # finished
         return header
 
 

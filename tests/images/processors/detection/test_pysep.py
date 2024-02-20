@@ -41,6 +41,13 @@ def test_init():
 
 
 @pytest.mark.asyncio
+async def test_remove_const_background():
+    data, bkg = SepSourceDetection.remove_background(data=np.ones((100, 100)))
+    np.testing.assert_array_almost_equal(data, np.zeros((100, 100)), 13)
+    np.testing.assert_array_almost_equal(bkg.back(), np.ones((100, 100)), 13)
+
+
+@pytest.mark.asyncio
 async def test_full(gaussian_sources_image):
     detector = SepSourceDetection()
     output_image = await detector(gaussian_sources_image)

@@ -17,13 +17,20 @@ class BrightestCentralStarOffsets(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, radius: float, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(
+        self,
+        radius: float = None,
+        use_arcsec: bool = False,
+        center: Tuple[str, str] = ("CRPIX1", "CRPIX2"),
+        **kwargs: Any
+    ):
         """Initializes a new auto guiding system."""
         Offsets.__init__(self, **kwargs)
 
         # init
         self._center = center
         self._radius = radius
+        self._use_arcsec = use_arcsec
 
     async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -44,22 +51,35 @@ class BrightestCentralStarOffsets(Offsets):
             log.warning("No catalog found in image.")
             return image
 
-        # transform radius from arcseconds to pixels
-        pix_mm = image.header["DET-PIXL"]
-        focal_length = image.header["TEL-FOCL"]
-        pix_arcsec = pix_mm / focal_length * 180 / np.pi * 3600
-        radius = self._radius / pix_arcsec
-
-        # create circular mask around centre
+        # get pixels to acquire on
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
-        circ_mask = (cat["x"] - center_x) ** 2 + (cat["y"] - center_y) ** 2 <= radius**2
 
-        # mask out everything except for central circle
-        cat_c = cat[circ_mask]
-        cat_c.sort("flux", reverse=True)
+        # transform radius from arcseconds to pixels
+        if self._radius is not None:
+            if self._use_arcsec:
+                # TODO: get platescale from WCS instead of header
+                pix_mm = image.header["DET-PIXL"]
+                focal_length = image.header["TEL-FOCL"]
+                pix_arcsec = pix_mm / focal_length * 180 / np.pi * 3600
+                radius = self._radius / pix_arcsec
+            else:
+                radius = self._radius
 
-        # get first X/Y coordinates
-        x, y = cat_c["x"][0], cat_c["y"][0]
+            # create circular mask around centre
+            circ_mask = (cat["x"] - center_x) ** 2 + (cat["y"] - center_y) ** 2 <= radius**2
+
+            # mask out everything except for central circle
+            cat_c = cat[circ_mask]
+            cat_c.sort("flux", reverse=True)
+
+            # get first X/Y coordinates
+            x, y = cat_c["x"][0], cat_c["y"][0]
+
+        else:
+            cat.sort("flux", reverse=True)
+
+            # get first X/Y coordinates
+            x, y = cat["x"][0], cat["y"][0]
 
         # calculate offset
         dx, dy = x - center_x, y - center_y

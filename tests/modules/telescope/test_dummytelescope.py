@@ -54,6 +54,12 @@ async def test_move_altaz(mocker) -> None:
 
     telescope._move.assert_awaited_with(110.35706910444917, 40.020387331332806, abort_event)
 
+@pytest.mark.asyncio
+async def test_get_focus() -> None:
+    telescope = DummyTelescope()
+    telescope._telescope.focus = 10.0
+
+    assert await telescope.get_focus() == 10.0
 
 @pytest.mark.asyncio
 async def test_set_focus_invalid() -> None:
@@ -94,6 +100,22 @@ async def test_stop_focus_abord(mocker) -> None:
     telescope._abort_focus.set()
     with pytest.raises(InterruptedError):
         await telescope._step_focus(10.0)
+
+
+@pytest.mark.asyncio
+async def test_list_filters() -> None:
+    telescope = DummyTelescope()
+    telescope._telescope.filters = ["clear"]
+
+    assert await telescope.list_filters() == ["clear"]
+
+
+@pytest.mark.asyncio
+async def test_get_filter() -> None:
+    telescope = DummyTelescope()
+    telescope._telescope.filter_name = "not_clear"
+
+    assert await telescope.get_filter() == "not_clear"
 
 
 @pytest.mark.asyncio
@@ -146,6 +168,14 @@ async def test_park(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_offsets_radec() -> None:
+    telescope = DummyTelescope()
+    telescope._telescope._offsets = (10.0, 0.0)
+
+    assert await telescope.get_offsets_radec() == (10.0, 0.0)
+
+
+@pytest.mark.asyncio
 async def test_set_offsets_radec() -> None:
     telescope = DummyTelescope()
     telescope.comm = DummyComm()
@@ -168,3 +198,15 @@ async def test_get_fits_header_before() -> None:
 
     result = await telescope.get_fits_header_before(sender="sender")
     assert result["TEL-FOCU"] == (10.0, "Focus position [mm]")
+
+
+@pytest.mark.asyncio
+async def test_get_focus_offset() -> None:
+    telescope = DummyTelescope()
+    assert await telescope.get_focus_offset() == 0
+
+
+@pytest.mark.asyncio
+async def test_is_ready() -> None:
+    telescope = DummyTelescope()
+    assert await telescope.is_ready() is True

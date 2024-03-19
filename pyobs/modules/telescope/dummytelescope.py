@@ -305,7 +305,6 @@ class DummyTelescope(
         Args:
             device: Name of device to stop, or None for all.
         """
-        pass
 
     async def get_focus_offset(self, **kwargs: Any) -> float:
         """Return current focus offset.

@@ -8,6 +8,7 @@ import pytest
 import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation
 
+import pyobs
 from pyobs.comm.dummy import DummyComm
 from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
 from pyobs.modules.telescope import BaseTelescope
@@ -55,6 +56,20 @@ class MockObserver:
     @property
     def location(self):
         return EarthLocation(lat=10. * u.degree, lon=10. * u.degree, height=100 * u.meter)
+
+
+@pytest.mark.asyncio
+async def test_open(mocker):
+    mocker.patch("pyobs.mixins.WeatherAwareMixin.open")
+    mocker.patch("pyobs.mixins.MotionStatusMixin.open")
+    mocker.patch("pyobs.modules.Module.open")
+
+    telescope = TestBaseTelescope()
+    await telescope.open()
+
+    pyobs.mixins.WeatherAwareMixin.open.assert_called_once_with(telescope)
+    pyobs.mixins.MotionStatusMixin.open.assert_called_once_with(telescope)
+    pyobs.modules.Module.open.assert_called_once_with(telescope)
 
 
 @pytest.mark.asyncio

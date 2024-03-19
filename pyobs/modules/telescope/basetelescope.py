@@ -26,11 +26,11 @@ class BaseTelescope(
     __module__ = "pyobs.modules.telescope"
 
     def __init__(
-        self,
-        fits_headers: Optional[Dict[str, Any]] = None,
-        min_altitude: float = 10,
-        wait_for_dome: Optional[str] = None,
-        **kwargs: Any,
+            self,
+            fits_headers: Optional[Dict[str, Any]] = None,
+            min_altitude: float = 10,
+            wait_for_dome: Optional[str] = None,
+            **kwargs: Any,
     ):
         """Initialize a new base telescope.
 
@@ -88,7 +88,6 @@ class BaseTelescope(
         Raises:
             MoveError: If telescope cannot be moved.
         """
-        ...
 
     @timeout(1200)
     async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
@@ -157,7 +156,6 @@ class BaseTelescope(
         Raises:
             MoveError: If telescope cannot be moved.
         """
-        ...
 
     @timeout(1200)
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
@@ -201,7 +199,7 @@ class BaseTelescope(
             log.info("Finished moving telescope.")
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+            self, namespaces: Optional[List[str]] = None, **kwargs: Any
     ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
@@ -261,15 +259,11 @@ class BaseTelescope(
     async def _celestial(self) -> None:
         """Thread for continuously calculating positions and distances to celestial objects like moon and sun."""
 
-        # wait a little
         await asyncio.sleep(10)
 
         # run until closing
         while True:
-            # update headers
             await self._update_celestial_headers()
-
-            # sleep a little
             await asyncio.sleep(30)
 
     async def _update_celestial_headers(self) -> None:

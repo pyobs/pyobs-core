@@ -47,7 +47,7 @@ class DummyRoof(BaseRoof, IRoof):
         # already open?
         if self.open_percentage != 100:
             # acquire lock
-            with LockWithAbort(self._lock_motion, self._abort_motion):
+            async with LockWithAbort(self._lock_motion, self._abort_motion):
                 # change status
                 await self._change_motion_status(MotionStatus.INITIALIZING)
 
@@ -84,7 +84,7 @@ class DummyRoof(BaseRoof, IRoof):
         # already closed?
         if self.open_percentage != 0:
             # acquire lock
-            with LockWithAbort(self._lock_motion, self._abort_motion):
+            async with LockWithAbort(self._lock_motion, self._abort_motion):
                 # change status
                 await self._change_motion_status(MotionStatus.PARKING)
 
@@ -126,7 +126,7 @@ class DummyRoof(BaseRoof, IRoof):
 
         # abort
         # acquire lock
-        with LockWithAbort(self._lock_motion, self._abort_motion):
+        async with LockWithAbort(self._lock_motion, self._abort_motion):
             # change status
             await self._change_motion_status(MotionStatus.IDLE)
 

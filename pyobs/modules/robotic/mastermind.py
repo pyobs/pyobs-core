@@ -20,12 +20,12 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
     __module__ = "pyobs.modules.robotic"
 
     def __init__(
-        self,
-        schedule: Union[TaskSchedule, Dict[str, Any]],
-        runner: Union[TaskRunner, Dict[str, Any]],
-        allowed_late_start: int = 300,
-        allowed_overrun: int = 300,
-        **kwargs: Any,
+            self,
+            schedule: Union[TaskSchedule, Dict[str, Any]],
+            runner: Union[TaskRunner, Dict[str, Any]],
+            allowed_late_start: int = 300,
+            allowed_overrun: int = 300,
+            **kwargs: Any,
     ):
         """Initialize a new auto focus system.
 
@@ -49,7 +49,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._task_runner = self.add_child_object(runner, TaskRunner)
 
         # observation name and exposure number
-        self._task = None
+        self._task: Optional[Task] = None
         self._obs = None
         self._exp = None
 
@@ -96,64 +96,58 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             await asyncio.sleep(1)
             return
 
-        # get now
         now = Time.now()
 
-        # find task that we want to run now
-        task: Optional[Task] = await self._task_schedule.get_task(now)
-        if task is None or not await self._task_runner.can_run(task):
-            # no task found
+        self._task = await self._task_schedule.get_task(now)
+
+        if self._task is None or not await self._task_runner.can_run(self._task):
             await asyncio.sleep(10)
             return
 
-        # starting too late?
-        if not task.can_start_late:
-            late_start = now - task.start
-            if late_start > self._allowed_late_start * u.second:
-                # only warn once
-                if self._first_late_start_warning:
-                    log.warning(
-                        "Time since start of window (%.1f) too long (>%.1f), skipping task...",
-                        late_start.to_value("second"),
-                        self._allowed_late_start,
-                    )
-                self._first_late_start_warning = False
+        if not self._task.can_start_late and self._check_is_task_late(now):
+            await asyncio.sleep(10)
+            return
 
-                # sleep a little and skip
-                await asyncio.sleep(10)
-                return
+        await self._execute_task(now)
 
-        # reset warning
-        self._first_late_start_warning = True
+        self._remove_task()
 
-        # task is definitely not None here
-        self._task = cast(Task, task)
+    def _check_is_task_late(self, now: Time) -> bool:
+        time_since_planned_start = now - self._task.start
+        is_late_start = time_since_planned_start > self._allowed_late_start * u.second
 
-        # ETA
+        if is_late_start and self._first_late_start_warning:
+            log.warning(
+                "Time since start of window (%.1f) too long (>%.1f), skipping task...",
+                time_since_planned_start.to_value("second"),
+                self._allowed_late_start,
+            )
+            self._first_late_start_warning = False
+        else:
+            self._first_late_start_warning = True
+
+        return is_late_start
+
+    async def _execute_task(self, now: Time) -> None:
         eta = now + self._task.duration * u.second
-
-        # send event
         await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
-        # run task in thread
         log.info("Running task %s...", self._task.name)
         try:
             await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
         except:
-            # something went wrong
             log.warning("Task %s failed.", self._task.name)
-            self._task = None
             return
 
-        # send event
         await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
 
-        # finish
         log.info("Finished task %s.", self._task.name)
+
+    def _remove_task(self) -> None:
         self._task = None
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
+            self, namespaces: Optional[List[str]] = None, **kwargs: Any
     ) -> Dict[str, Tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 

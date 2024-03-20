@@ -36,22 +36,16 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         """
         Module.__init__(self, **kwargs)
 
-        # store
         self._allowed_late_start = allowed_late_start
         self._allowed_overrun = allowed_overrun
-        self._running = False
 
-        # add thread func
+        self._running = False
         self.add_background_task(self._run_thread, True)
 
-        # get schedule and runner
         self._task_schedule = self.add_child_object(schedule, TaskSchedule)
         self._task_runner = self.add_child_object(runner, TaskRunner)
 
-        # observation name and exposure number
         self._task: Optional[Task] = None
-        self._obs = None
-        self._exp = None
 
         self._first_late_start_warning = True
 
@@ -59,12 +53,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         """Open module."""
         await Module.open(self)
 
-        # subscribe to events
-        if self.comm:
-            await self.comm.register_event(TaskStartedEvent)
-            await self.comm.register_event(TaskFinishedEvent)
+        await self.comm.register_event(TaskStartedEvent)
+        await self.comm.register_event(TaskFinishedEvent)
 
-        # start
         self._running = True
 
     async def start(self, **kwargs: Any) -> None:

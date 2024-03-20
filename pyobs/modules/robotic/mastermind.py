@@ -53,6 +53,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._obs = None
         self._exp = None
 
+        self._first_late_start_warning = True
+
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -83,72 +85,72 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         # wait a little
         await asyncio.sleep(1)
 
-        # flags
-        first_late_start_warning = True
-
         # run until closed
         while True:
-            # not running?
-            if not self._running:
-                # sleep a little and continue
-                await asyncio.sleep(1)
-                continue
+            await self._loop()
 
-            # get now
-            now = Time.now()
+    async def _loop(self):
+        # not running?
+        if not self._running:
+            # sleep a little and continue
+            await asyncio.sleep(1)
+            return
 
-            # find task that we want to run now
-            task: Optional[Task] = await self._task_schedule.get_task(now)
-            if task is None or not await self._task_runner.can_run(task):
-                # no task found
+        # get now
+        now = Time.now()
+
+        # find task that we want to run now
+        task: Optional[Task] = await self._task_schedule.get_task(now)
+        if task is None or not await self._task_runner.can_run(task):
+            # no task found
+            await asyncio.sleep(10)
+            return
+
+        # starting too late?
+        if not task.can_start_late:
+            late_start = now - task.start
+            if late_start > self._allowed_late_start * u.second:
+                # only warn once
+                if self._first_late_start_warning:
+                    log.warning(
+                        "Time since start of window (%.1f) too long (>%.1f), skipping task...",
+                        late_start.to_value("second"),
+                        self._allowed_late_start,
+                    )
+                self._first_late_start_warning = False
+
+                # sleep a little and skip
                 await asyncio.sleep(10)
-                continue
+                return
 
-            # starting too late?
-            if not task.can_start_late:
-                late_start = now - task.start
-                if late_start > self._allowed_late_start * u.second:
-                    # only warn once
-                    if first_late_start_warning:
-                        log.warning(
-                            "Time since start of window (%.1f) too long (>%.1f), skipping task...",
-                            late_start.to_value("second"),
-                            self._allowed_late_start,
-                        )
-                    first_late_start_warning = False
+        # reset warning
+        self._first_late_start_warning = True
 
-                    # sleep a little and skip
-                    await asyncio.sleep(10)
-                    continue
+        # task is definitely not None here
+        self._task = cast(Task, task)
 
-            # reset warning
-            first_late_start_warning = True
+        # ETA
+        eta = now + self._task.duration * u.second
 
-            # task is definitely not None here
-            self._task = cast(Task, task)
+        # send event
+        await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
 
-            # ETA
-            eta = now + self._task.duration * u.second
-
-            # send event
-            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
-
-            # run task in thread
-            log.info("Running task %s...", self._task.name)
-            try:
-                await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
-            except:
-                # something went wrong
-                log.warning("Task %s failed.", self._task.name)
-                self._task = None
-                continue
-
-            # send event
-            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
-
-            # finish
-            log.info("Finished task %s.", self._task.name)
+        # run task in thread
+        log.info("Running task %s...", self._task.name)
+        try:
+            await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
+        except:
+            # something went wrong
+            log.warning("Task %s failed.", self._task.name)
             self._task = None
+            return
+
+        # send event
+        await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+
+        # finish
+        log.info("Finished task %s.", self._task.name)
+        self._task = None
 
     async def get_fits_header_before(
         self, namespaces: Optional[List[str]] = None, **kwargs: Any

@@ -27,7 +27,6 @@ class DummyRoof(BaseRoof, IRoof):
         # dummy state
         self._open_percentage: int = self._ROOF_CLOSED_PERCENTAGE
 
-        # allow to abort motion
         self._lock_motion = asyncio.Lock()
         self._abort_motion = asyncio.Event()
 
@@ -35,7 +34,6 @@ class DummyRoof(BaseRoof, IRoof):
         """Open module."""
         await BaseRoof.open(self)
 
-        # register event
         await self.comm.register_event(RoofOpenedEvent)
         await self.comm.register_event(RoofClosingEvent)
 
@@ -61,17 +59,6 @@ class DummyRoof(BaseRoof, IRoof):
     def _is_open(self):
         return self._open_percentage == self._ROOF_OPEN_PERCENTAGE
 
-    async def _move_roof(self, target_pos: int) -> None:
-        step = 1 if target_pos > self._open_percentage else -1
-
-        while self._open_percentage != target_pos:
-            if self._abort_motion.is_set():
-                await self._change_motion_status(MotionStatus.IDLE)
-                return
-
-            self._open_percentage += step
-            await asyncio.sleep(0.1)
-
     @timeout(15)
     async def park(self, **kwargs: Any) -> None:
         """Close the roof.
@@ -94,6 +81,17 @@ class DummyRoof(BaseRoof, IRoof):
     def _is_closed(self):
         return self._open_percentage == self._ROOF_CLOSED_PERCENTAGE
 
+    async def _move_roof(self, target_pos: int) -> None:
+        step = 1 if target_pos > self._open_percentage else -1
+
+        while self._open_percentage != target_pos:
+            if self._abort_motion.is_set():
+                await self._change_motion_status(MotionStatus.IDLE)
+                return
+
+            self._open_percentage += step
+            await asyncio.sleep(0.1)
+
     def get_percent_open(self) -> float:
         """Get the percentage the roof is open."""
         return self._open_percentage
@@ -108,13 +106,9 @@ class DummyRoof(BaseRoof, IRoof):
             AcquireLockFailed: If current motion could not be aborted.
         """
 
-        # change status
         await self._change_motion_status(MotionStatus.ABORTING)
 
-        # abort
-        # acquire lock
         async with LockWithAbort(self._lock_motion, self._abort_motion):
-            # change status
             await self._change_motion_status(MotionStatus.IDLE)
 
 

@@ -195,6 +195,14 @@ ILatLon
    :show-inheritance:
    :undoc-members:
 
+IMode
+~~~~~
+
+.. autoclass:: pyobs.interfaces.IMode
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IModule
 ~~~~~~~
 
@@ -239,6 +247,14 @@ IPointingHGS
 ~~~~~~~~~~~~
 
 .. autoclass:: pyobs.interfaces.IPointingHGS
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+IPointingHelioprojective
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pyobs.interfaces.IPointingHelioprojective
    :members:
    :show-inheritance:
    :undoc-members:

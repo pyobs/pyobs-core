@@ -12,7 +12,8 @@ class BackgroundTask:
         self._task: Optional[asyncio.Future] = None
 
     def start(self) -> None:
-        self._start_task()
+        self._task = asyncio.create_task(self._func())
+        self._task.add_done_callback(self._callback_function)
 
     def _callback_function(self, args=None) -> None:
         try:
@@ -21,17 +22,13 @@ class BackgroundTask:
             return
 
         if exception is not None:
-            log.exception("Exception in thread method %s." % self._func.__name__)
+            log.exception("Exception in task %s." % self._func.__name__)
 
         if self._restart:
             log.error("Background task for %s has died, restarting...", self._func.__name__)
-            self._start_task()
+            self.start()
         else:
             log.error("Background task for %s has died, quitting...", self._func.__name__)
-
-    def _start_task(self) -> None:
-        self._task = asyncio.create_task(self._func())
-        self._task.add_done_callback(self._callback_function)
 
     def stop(self) -> None:
         if self._task is not None:

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Optional, Coroutine, Any, Callable
 
-from pyobs.utils.exceptions import PyObsError
+from pyobs.utils.exceptions import SevereError
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class BackgroundTask:
         except asyncio.CancelledError:
             return
 
-        if isinstance(exception, PyObsError):
+        if isinstance(exception, SevereError):
             raise exception
         elif exception is not None:
             log.error("Exception %s in task %s.", exception, self._func.__name__)

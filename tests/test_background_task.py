@@ -46,12 +46,12 @@ async def test_callback_pyobs_error():
     test_function.__name__ = "test_function"
 
     task = asyncio.create_task(test_function())
-    task.exception = Mock(return_value=exc.ImageError("TestError"))
+    task.exception = Mock(return_value=exc.SevereError(exc.ImageError("TestError")))
 
     bg_task = BackgroundTask(test_function, False)
     bg_task._task = task
 
-    with pytest.raises(exc.ImageError):
+    with pytest.raises(exc.SevereError):
         bg_task._callback_function()
 
 

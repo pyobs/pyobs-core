@@ -75,7 +75,7 @@ class DummyTelescope(
         """
 
         # start slewing
-        await self.__move(ra, dec, abort_event)
+        await self._move(ra, dec, abort_event)
 
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
         """Actually moves to given coordinates. Must be implemented by derived classes.
@@ -96,9 +96,9 @@ class DummyTelescope(
         icrs = coords.icrs
 
         # start slewing
-        await self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
+        await self._move(icrs.ra.degree, icrs.dec.degree, abort_event)
 
-    async def __move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
+    async def _move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Simulate move.
 
         Args:
@@ -139,20 +139,28 @@ class DummyTelescope(
 
         # acquire lock
         async with LockWithAbort(self._lock_focus, self._abort_focus):
-            log.info("Setting focus to %.2f..." % focus)
-            await self._change_motion_status(MotionStatus.SLEWING, interface="IFocuser")
-            ifoc = self._telescope.focus * 1.0
-            dfoc = (focus - ifoc) / 300.0
-            for i in range(300):
-                # abort?
-                if self._abort_focus.is_set():
-                    raise InterruptedError("Setting focus was interrupted.")
+            await self._set_focus(focus)
 
-                # move focus and sleep a little
-                self._telescope.focus = ifoc + i * dfoc
-                await asyncio.sleep(0.01)
-            await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
-            self._telescope.focus = focus
+    async def _set_focus(self, focus: float) -> None:
+        log.info("Setting focus to %.2f..." % focus)
+        await self._change_motion_status(MotionStatus.SLEWING, interface="IFocuser")
+
+        focus_steps = 300
+        initial_focus = self._telescope.focus * 1.0
+        focus_step_size = (focus - initial_focus) / focus_steps
+        for i in range(focus_steps):
+            await self._step_focus(focus_step_size)
+
+        await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
+        self._telescope.focus = focus
+
+    async def _step_focus(self, step: float) -> None:
+        if self._abort_focus.is_set():
+            raise InterruptedError("Setting focus was interrupted.")
+
+        # move focus and sleep a little
+        self._telescope.focus += step
+        await asyncio.sleep(0.01)
 
     async def list_filters(self, **kwargs: Any) -> List[str]:
         """List available filters.
@@ -297,7 +305,6 @@ class DummyTelescope(
         Args:
             device: Name of device to stop, or None for all.
         """
-        pass
 
     async def get_focus_offset(self, **kwargs: Any) -> float:
         """Return current focus offset.

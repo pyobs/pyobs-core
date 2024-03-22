@@ -3,7 +3,7 @@ import logging
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-
+import pyobs.utils.exceptions as exc
 from pyobs.background_task import BackgroundTask
 
 
@@ -28,7 +28,7 @@ async def test_callback_exception(caplog):
     test_function.__name__ = "test_function"
 
     task = asyncio.create_task(test_function())
-    task.exception = Mock(return_value=Exception(""))
+    task.exception = Mock(return_value=Exception("TestError"))
 
     bg_task = BackgroundTask(test_function, False)
     bg_task._task = task
@@ -36,8 +36,23 @@ async def test_callback_exception(caplog):
     with caplog.at_level(logging.ERROR):
         bg_task._callback_function()
 
-    assert caplog.messages[0] == "Exception in task test_function."
+    assert caplog.messages[0] == "Exception TestError in task test_function."
     assert caplog.messages[1] == "Background task for test_function has died, quitting..."
+
+
+@pytest.mark.asyncio
+async def test_callback_pyobs_error():
+    test_function = AsyncMock()
+    test_function.__name__ = "test_function"
+
+    task = asyncio.create_task(test_function())
+    task.exception = Mock(return_value=exc.ImageError("TestError"))
+
+    bg_task = BackgroundTask(test_function, False)
+    bg_task._task = task
+
+    with pytest.raises(exc.ImageError):
+        bg_task._callback_function()
 
 
 @pytest.mark.asyncio

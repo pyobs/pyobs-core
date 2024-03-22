@@ -2,6 +2,8 @@ import asyncio
 import logging
 from typing import Optional, Coroutine, Any, Callable
 
+from pyobs.utils.exceptions import PyObsError
+
 log = logging.getLogger(__name__)
 
 
@@ -21,8 +23,10 @@ class BackgroundTask:
         except asyncio.CancelledError:
             return
 
-        if exception is not None:
-            log.exception("Exception in task %s." % self._func.__name__)
+        if isinstance(exception, PyObsError):
+            raise exception
+        elif exception is not None:
+            log.error("Exception %s in task %s.", exception, self._func.__name__)
 
         if self._restart:
             log.error("Background task for %s has died, restarting...", self._func.__name__)

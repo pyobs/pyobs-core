@@ -274,7 +274,7 @@ class Object:
         self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
 
     def add_background_task(self, func: Callable[..., Coroutine[Any, Any, None]],
-                            restart: bool = True, autostart: bool = True) -> None:
+                            restart: bool = True, autostart: bool = True) -> BackgroundTask:
         """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -283,10 +283,14 @@ class Object:
             func: Func to add.
             restart: Whether to restart this function.
             autostart: Whether to start this function when the module is opened
+        Returns:
+            Background task
         """
 
         background_task = BackgroundTask(func, restart)
-        self._background_tasks = (background_task, autostart)
+        self._background_tasks.append((background_task, autostart))
+
+        return background_task
 
     async def open(self) -> None:
         """Open module."""
@@ -304,9 +308,9 @@ class Object:
         # success
         self._opened = True
 
-    def _perform_background_task_autostart(self):
+    def _perform_background_task_autostart(self) -> None:
         todo = filter(lambda b: b[1] is True, self._background_tasks)
-        for task in todo:
+        for task, _ in todo:
             task.start()
 
     @property

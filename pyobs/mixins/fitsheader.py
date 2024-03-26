@@ -359,7 +359,6 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
                 posang = self._fitsheadermixin_rotation
                 if "DEROTOFF" in hdr:
                     posang += hdr["DEROTOFF"]
-
                 # write position angle
                 hdr["POSANG"] = (posang, "Position angle [deg e of n]")
                 theta_rad = math.radians(posang)

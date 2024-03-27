@@ -39,8 +39,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._allowed_late_start = allowed_late_start
         self._allowed_overrun = allowed_overrun
 
-        self._running = False
-        self.add_background_task(self._run_thread, True)
+        self._mastermind_loop = self.add_background_task(self._run_thread, True, True)
 
         self._task_schedule = self.add_child_object(schedule, TaskSchedule)
         self._task_runner = self.add_child_object(runner, TaskRunner)
@@ -56,37 +55,27 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         await self.comm.register_event(TaskStartedEvent)
         await self.comm.register_event(TaskFinishedEvent)
 
-        self._running = True
-
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
         log.info("Starting robotic system...")
-        self._running = True
+        self._mastermind_loop.start()
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
         log.info("Stopping robotic system...")
-        self._running = False
+        self._mastermind_loop.stop()
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
-        return self._running
+        return self._mastermind_loop.is_running()
 
     async def _run_thread(self) -> None:
-        # wait a little
         await asyncio.sleep(1)
 
-        # run until closed
         while True:
             await self._loop()
 
     async def _loop(self):
-        # not running?
-        if not self._running:
-            # sleep a little and continue
-            await asyncio.sleep(1)
-            return
-
         now = Time.now()
 
         self._task = await self._task_schedule.get_task(now)

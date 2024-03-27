@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import timedelta
 from typing import Optional, Dict, List, Any, Tuple
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from astroplan import ObservingBlock
@@ -95,24 +95,26 @@ async def test_open(mocker):
 @pytest.mark.asyncio
 async def test_start():
     master = Mastermind(TestTaskScheduler(), TaskRunner())
+    master._mastermind_loop.start = Mock()
     await master.start()
-    assert await master.is_running() is True
+
+    master._mastermind_loop.start.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_stop():
     master = Mastermind(TestTaskScheduler(), TaskRunner())
+    master._mastermind_loop.stop = Mock()
     await master.stop()
-    assert await master.is_running() is False
+
+    master._mastermind_loop.stop.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_loop_not_running(mocker):
-    mocker.patch("asyncio.sleep")
+async def test_is_running():
     master = Mastermind(TestTaskScheduler(), TaskRunner())
-
-    await master._loop()
-    asyncio.sleep.assert_called_once_with(1)
+    master._mastermind_loop.is_running = Mock(return_value=True)
+    assert await master.is_running() is True
 
 
 @pytest.mark.asyncio
@@ -121,7 +123,6 @@ async def test_loop_not_task(mocker):
     scheduler = TestTaskScheduler()
     scheduler.get_task = AsyncMock(return_value=None)
     master = Mastermind(scheduler, TaskRunner())
-    await master.start()
 
     await master._loop()
     asyncio.sleep.assert_called_once_with(10)
@@ -137,7 +138,6 @@ async def test_loop_not_runnable_task(mocker):
     runner.can_run = AsyncMock(return_value=False)
 
     master = Mastermind(scheduler, runner)
-    await master.start()
 
     await master._loop()
     asyncio.sleep.assert_called_once_with(10)
@@ -155,7 +155,6 @@ async def test_loop_late_start(mocker, caplog):
     runner.can_run = AsyncMock(return_value=True)
 
     master = Mastermind(scheduler, runner)
-    await master.start()
 
     with caplog.at_level(logging.WARNING):
         await master._loop()
@@ -181,7 +180,6 @@ async def test_loop_valid(mocker):
     runner.run_task = AsyncMock()
 
     master = Mastermind(scheduler, runner)
-    await master.start()
 
     await master._loop()
 
@@ -204,7 +202,6 @@ async def test_loop_failed_task(mocker, caplog):
     runner.run_task = AsyncMock(side_effect=Exception(""))
 
     master = Mastermind(scheduler, runner)
-    await master.start()
 
     with caplog.at_level(logging.WARNING):
         await master._loop()

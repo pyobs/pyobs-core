@@ -74,3 +74,7 @@ async def test_callback_restart(caplog):
     assert caplog.messages[0] == "Background task for test_function has died, restarting..."
     bg_task.start.assert_called_once()
 
+
+def test_is_running_not_started():
+    bg_task = BackgroundTask(AsyncMock(), True)
+    assert bg_task.is_running() is False

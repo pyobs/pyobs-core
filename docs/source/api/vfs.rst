@@ -31,6 +31,11 @@ MemoryFile
 
 .. autoclass:: pyobs.vfs.MemoryFile
 
+SFTPFile
+^^^^^^^^
+
+.. autoclass:: pyobs.vfs.SFTPFile
+
 SMBFile
 ^^^^^^^
 

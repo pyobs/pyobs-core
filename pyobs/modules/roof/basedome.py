@@ -19,7 +19,6 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
         """Initialize a new base dome."""
         BaseRoof.__init__(self, **kwargs)
 
-        # register exception
         exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def get_fits_header_before(
@@ -34,10 +33,8 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
             Dictionary containing FITS headers.
         """
 
-        # get from parent
         hdr = await BaseRoof.get_fits_header_before(self, namespaces, **kwargs)
 
-        # add azimuth and return it
         _, az = await self.get_altaz()
         hdr["ROOF-AZ"] = (az, "Azimuth of roof slit, deg E of N")
         return hdr

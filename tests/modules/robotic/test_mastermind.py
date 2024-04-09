@@ -58,7 +58,7 @@ class TestTask(Task):
 
     @property
     def end(self) -> Time:
-        pass
+        return self._start
 
     async def can_run(self, scripts: Optional[Dict[str, Script]] = None) -> bool:
         pass

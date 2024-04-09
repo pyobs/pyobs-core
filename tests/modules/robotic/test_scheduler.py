@@ -1,21 +1,26 @@
+import datetime
 from typing import List, Optional, Dict
 from unittest.mock import Mock, AsyncMock
 
+import astroplan
 import astropy.units as u
 import pytest
 from astroplan import ObservingBlock, FixedTarget
 from astropy.coordinates import SkyCoord
 
+import pyobs
 from pyobs.modules.robotic import Scheduler
 from pyobs.robotic import TaskArchive, TaskSchedule, Task
 from pyobs.utils.time import Time
+from tests.modules.robotic.test_mastermind import TestTask
 
 
 @pytest.fixture
 def schedule_blocks() -> List[ObservingBlock]:
     blocks = [
         ObservingBlock(
-            FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=str(i)), 10 * u.minute, 10
+            FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=str(i)), 10 * u.minute, 10,
+            constraints=[], configuration={"request": {"id": str(i)}}
         )
         for i in range(10)
     ]
@@ -159,3 +164,118 @@ async def test_worker_loop_need_to_update(schedule_blocks):
 
     assert scheduler._need_update is True
     assert scheduler._blocks == schedule_blocks
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_invalid_twilight():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="invalid")
+
+    with pytest.raises(ValueError):
+        await scheduler._prepare_schedule()
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_astronomical_twilight(schedule_blocks):
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="astronomical")
+    scheduler._blocks = schedule_blocks
+
+    _, _, _, constraints = await scheduler._prepare_schedule()
+
+    assert constraints[0].max_solar_altitude == -18 * u.deg
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_nautical_twilight(schedule_blocks):
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
+    scheduler._blocks = schedule_blocks
+
+    _, _, _, constraints = await scheduler._prepare_schedule()
+
+    assert constraints[0].max_solar_altitude == -12 * u.deg
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_no_blocks():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
+
+    with pytest.raises(ValueError):
+        await scheduler._prepare_schedule()
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_abort(schedule_blocks):
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
+    scheduler._blocks = schedule_blocks
+    scheduler._need_update = True
+
+    with pytest.raises(ValueError):
+        await scheduler._prepare_schedule()
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_no_start(schedule_blocks, mocker):
+    current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
+
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._blocks = schedule_blocks
+
+    _, start, _, _ = await scheduler._prepare_schedule()
+
+    assert start.to_datetime() == datetime.datetime(2024, 4, 1, 20, 1, 0)
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_start(schedule_blocks, mocker):
+    current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
+
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._blocks = schedule_blocks
+    scheduler._schedule_start = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
+
+    _, start, _, _ = await scheduler._prepare_schedule()
+
+    assert start.to_datetime() == datetime.datetime(2024, 4, 1, 20, 1, 0)
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_end(schedule_blocks, mocker):
+    current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
+
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._blocks = schedule_blocks
+    scheduler._schedule_start = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
+
+    _, _, end, _ = await scheduler._prepare_schedule()
+
+    assert end.to_datetime() == datetime.datetime(2024, 4, 2, 20, 1, 0)
+
+
+@pytest.mark.asyncio
+async def test_prepare_schedule_block_filtering(schedule_blocks, mocker):
+    current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
+
+    over_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 3, 20, 0, 0))
+    in_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 2, 10, 0, 0))
+
+    schedule_blocks[1].constraints.append(astroplan.TimeConstraint(min=over_time, max=over_time))
+    schedule_blocks[2].constraints.append(astroplan.TimeConstraint(min=in_time, max=over_time))
+
+    blocks = [
+        schedule_blocks[0], schedule_blocks[1], schedule_blocks[2], schedule_blocks[3]
+    ]
+
+    task_scheduler = TestTaskSchedule()
+    task_scheduler.get_schedule = AsyncMock(return_value={"0": TestTask()})
+
+    scheduler = Scheduler(TestTaskArchive(), task_scheduler)
+    scheduler._schedule_start = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
+    scheduler._current_task_id = "0"
+    scheduler._blocks = blocks
+
+    res_blocks, _, _, _ = await scheduler._prepare_schedule()
+
+    assert [block.configuration["request"]["id"] for block in res_blocks] == ["2", "3"]

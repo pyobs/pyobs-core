@@ -9,6 +9,7 @@ from astroplan import ObservingBlock, FixedTarget
 from astropy.coordinates import SkyCoord
 
 import pyobs
+from pyobs.events import GoodWeatherEvent, TaskStartedEvent, TaskFinishedEvent
 from pyobs.modules.robotic import Scheduler
 from pyobs.robotic import TaskArchive, TaskSchedule, Task
 from pyobs.utils.time import Time
@@ -279,3 +280,45 @@ async def test_prepare_schedule_block_filtering(schedule_blocks, mocker):
     res_blocks, _, _, _ = await scheduler._prepare_schedule()
 
     assert [block.configuration["request"]["id"] for block in res_blocks] == ["2", "3"]
+
+
+@pytest.mark.asyncio
+async def test_on_task_started():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    event = TaskStartedEvent(id=0, eta=time, name="")
+
+    await scheduler._on_task_started(event, "")
+
+    assert scheduler._current_task_id == 0
+    assert scheduler._last_task_id == 0
+    assert scheduler._need_update is True
+    assert scheduler._schedule_start == time
+
+
+@pytest.mark.asyncio
+async def test_on_task_finished(mocker):
+    current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
+
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_finished=True)
+    event = TaskFinishedEvent(id=0, name="")
+
+    await scheduler._on_task_finished(event, "")
+
+    assert scheduler._current_task_id is None
+    assert scheduler._need_update is True
+
+    assert scheduler._schedule_start == current_time
+
+
+@pytest.mark.asyncio
+async def test_on_good_weather():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    event = GoodWeatherEvent(id=0, eta=time, name="")
+
+    await scheduler._on_good_weather(event, "")
+
+    assert scheduler._need_update is True
+    assert scheduler._schedule_start == time

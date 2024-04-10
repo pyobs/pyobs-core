@@ -322,3 +322,20 @@ async def test_on_good_weather():
 
     assert scheduler._need_update is True
     assert scheduler._schedule_start == time
+
+
+@pytest.mark.asyncio
+async def test_convert_blocks_to_astroplan():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    block = ObservingBlock(
+            FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
+            constraints=[astroplan.TimeConstraint(min=time, max=time)]
+        )
+    scheduler._blocks = [block]
+
+    converted_blocks = await scheduler._convert_blocks_to_astroplan()
+
+    assert converted_blocks[0].priority == 0
+    assert converted_blocks[0].constraints[0].min.to_datetime() == datetime.datetime(2024, 4, 1, 20, 0, 30)
+    assert converted_blocks[0].constraints[0].max.to_datetime() == datetime.datetime(2024, 4, 1, 19, 59, 30)

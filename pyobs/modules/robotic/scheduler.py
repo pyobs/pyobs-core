@@ -5,6 +5,7 @@ import logging
 import multiprocessing as mp
 from typing import Union, List, Tuple, Any, Optional, Dict
 import astroplan
+import astropy
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -15,8 +16,7 @@ from pyobs.events import GoodWeatherEvent, Event
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, TaskSchedule
-
+from pyobs.robotic import TaskArchive, TaskSchedule, Task
 
 log = logging.getLogger(__name__)
 
@@ -201,55 +201,90 @@ class Scheduler(Module, IStartStop, IRunnable):
         return unique1, unique2
 
     async def _schedule_worker(self) -> None:
-        # run forever
+
         while True:
-            # need update?
             if self._need_update and self._initial_update_done:
-                # reset need for update
-                self._need_update = False
+                await self._schedule_worker_loop()
 
-                try:
-                    # prepare scheduler
-                    blocks, start, end, constraints = await self._prepare_schedule()
-
-                    # schedule
-                    scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
-
-                    # finish schedule
-                    await self._finish_schedule(scheduled_blocks, start)
-
-                except ValueError as e:
-                    log.warning(str(e))
-
-            # sleep a little
             await asyncio.sleep(1)
+
+    async def _schedule_worker_loop(self) -> None:
+        # reset need for update
+        self._need_update = False
+
+        try:
+            # prepare scheduler
+            blocks, start, end, constraints = await self._prepare_schedule()
+
+            # schedule
+            scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
+
+            # finish schedule
+            await self._finish_schedule(scheduled_blocks, start)
+
+        except ValueError as e:
+            log.warning(str(e))
 
     async def _prepare_schedule(self) -> Tuple[List[ObservingBlock], Time, Time, List[Any]]:
         """TaskSchedule blocks."""
 
-        # only global constraint is the night
+        converted_blocks = await self._convert_blocks_to_astroplan()
+
+        start, end = await self._get_time_range()
+
+        blocks = self._filter_blocks(converted_blocks, end)
+
+        # if need new update, skip here
+        if self._need_update:
+            raise ValueError("Not running scheduler, since update was requested.")
+
+        # no blocks found?
+        if len(blocks) == 0:
+            await self._schedule.set_schedule([], start)
+            raise ValueError("No blocks left for scheduling.")
+
+        constraints = await self._get_twilight_constraint()
+
+        # return all
+        return blocks, start, end, constraints
+
+    async def _get_twilight_constraint(self) -> List[astroplan.Constraint]:
         if self._twilight == "astronomical":
-            constraints = [astroplan.AtNightConstraint.twilight_astronomical()]
+            return [astroplan.AtNightConstraint.twilight_astronomical()]
         elif self._twilight == "nautical":
-            constraints = [astroplan.AtNightConstraint.twilight_nautical()]
+            return [astroplan.AtNightConstraint.twilight_nautical()]
         else:
             raise ValueError("Unknown twilight type.")
 
-        # make shallow copies of all blocks and loop them
+    async def _convert_blocks_to_astroplan(self) -> List[astroplan.ObservingBlock]:
         copied_blocks = [copy.copy(block) for block in self._blocks]
+
         for block in copied_blocks:
-            # astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
-            # 1000 - priority
-            block.priority = 1000.0 - block.priority
-            if block.priority < 0:
-                block.priority = 0
+            self._invert_block_priority(block)
+            self._tighten_block_time_constraints(block)
 
-            # it also doesn't match the requested observing windows exactly, so we make them a little smaller.
-            for constraint in block.constraints:
-                if isinstance(constraint, astroplan.TimeConstraint):
-                    constraint.min += 30 * u.second
-                    constraint.max -= 30 * u.second
+        return copied_blocks
 
+    @staticmethod
+    def _invert_block_priority(block: astroplan.ObservingBlock):
+        """
+        astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
+        1000 - priority
+        """
+        block.priority = max(1000.0 - block.priority, 0.0)
+
+    @staticmethod
+    def _tighten_block_time_constraints(block: astroplan.ObservingBlock):
+        """
+        astroplan's PriorityScheduler doesn't match the requested observing windows exactly,
+        so we make them a little smaller.
+        """
+        time_constraints = filter(lambda c: isinstance(c, astroplan.TimeConstraint), block.constraints)
+        for constraint in time_constraints:
+            constraint.min += 30 * u.second
+            constraint.max -= 30 * u.second
+
+    async def _get_time_range(self) -> Tuple[astropy.time.Time, astropy.time.Time]:
         # get start time for scheduler
         start = self._schedule_start
         now_plus_safety = Time.now() + self._safety_time * u.second
@@ -257,22 +292,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             # if no ETA exists or is in the past, use safety time
             start = now_plus_safety
 
-        # get running scheduled block, if any
-        if self._current_task_id is None:
-            log.info("No running block found.")
-            running_task = None
-        else:
-            # get running task from archive
-            log.info("Trying to find running block in current schedule...")
-            tasks = await self._schedule.get_schedule()
-            if self._current_task_id in tasks:
-                running_task = tasks[self._current_task_id]
-            else:
-                log.info("Running block not found in last schedule.")
-                running_task = None
-
-        # if start is before end time of currently running block, change that
-        if running_task is not None:
+        if (running_task := await self._get_current_task()) is not None:
             log.info("Found running block that ends at %s.", running_task.end)
 
             # get block end plus some safety
@@ -284,38 +304,35 @@ class Scheduler(Module, IStartStop, IRunnable):
         # calculate end time
         end = start + TimeDelta(self._schedule_range * u.hour)
 
-        # remove currently running block and filter by start time
-        blocks: List[ObservingBlock] = []
-        for b in filter(lambda x: x.configuration["request"]["id"] != self._current_task_id, copied_blocks):
-            time_constraint_found = False
-            # loop all constraints
-            for c in b.constraints:
-                if isinstance(c, astroplan.TimeConstraint):
-                    # we found a time constraint
-                    time_constraint_found = True
+        return start, end
 
-                    # does the window start before the end of the scheduling range?
-                    if c.min < end:
-                        # yes, store block and break loop
-                        blocks.append(b)
-                        break
-            else:
-                # loop has finished without breaking
-                # if no time constraint has been found, we still take the block
-                if time_constraint_found is False:
-                    blocks.append(b)
+    async def _get_current_task(self) -> Optional[Task]:
+        if self._current_task_id is None:
+            log.info("No running block found.")
+            return None
 
-        # if need new update, skip here
-        if self._need_update:
-            raise ValueError("Not running scheduler, since update was requested.")
+        log.info("Trying to find running block in current schedule...")
+        tasks = await self._schedule.get_schedule()
+        if self._current_task_id in tasks:
+            return tasks[self._current_task_id]
+        else:
+            log.info("Running block not found in last schedule.")
+            return None
 
-        # no blocks found?
-        if len(blocks) == 0:
-            await self._schedule.set_schedule([], start)
-            raise ValueError("No blocks left for scheduling.")
+    def _filter_blocks(self, blocks: List[astroplan.ObservingBlock], end: astropy.time.Time) -> List[astroplan.ObservingBlock]:
+        blocks_without_current = filter(lambda x: x.configuration["request"]["id"] != self._current_task_id, blocks)
+        blocks_in_schedule_range = filter(lambda b: self._is_block_starting_in_schedule(b, end), blocks_without_current)
 
-        # return all
-        return blocks, start, end, constraints
+        return list(blocks_in_schedule_range)
+
+    @staticmethod
+    def _is_block_starting_in_schedule(block: astroplan.ObservingBlock, end: astropy.time.Time) -> bool:
+        time_constraints = [c for c in block.constraints if isinstance(c, astroplan.TimeConstraint)]
+
+        # does constraint start before the end of the scheduling range?
+        before_end = [c for c in time_constraints if c.min < end]
+
+        return len(time_constraints) == 0 or len(before_end) > 0
 
     async def _schedule_blocks(
         self, blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any]

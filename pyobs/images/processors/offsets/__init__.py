@@ -2,7 +2,6 @@
 Offsets
 -------
 """
-from .brightestcentralstar import BrightestCentralStarOffsets
 from .offsets import Offsets
 from .astrometry import AstrometryOffsets
 from .brighteststar import BrightestStarOffsets
@@ -19,7 +18,6 @@ __all__ = [
     "ProjectedOffsets",
     "FitsHeaderOffsets",
     "BrightestStarOffsets",
-    "BrightestCentralStarOffsets",
     "DummyOffsets",
     "DummySkyOffsets"
 ]

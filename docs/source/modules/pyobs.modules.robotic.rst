@@ -24,3 +24,10 @@ Scheduler
    :members:
    :show-inheritance:
 
+ScriptRunner
+~~~~~~~~~~~~
+
+.. autoclass:: pyobs.modules.robotic.ScriptRunner
+   :members:
+   :show-inheritance:
+

@@ -19,7 +19,6 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """Initialize a new base roof."""
         Module.__init__(self, **kwargs)
 
-        # init mixins
         WeatherAwareMixin.__init__(self, **kwargs)
         MotionStatusMixin.__init__(self, **kwargs)
 
@@ -50,7 +49,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         }
 
     async def is_ready(self, **kwargs: Any) -> bool:
-        """Returns the device is "ready", whatever that means for the specific device.
+        """The roof is ready, if it is open.
 
         Returns:
             True, if roof is open.

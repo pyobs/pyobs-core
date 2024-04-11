@@ -17,14 +17,16 @@ class DummyRoof(BaseRoof, IRoof):
 
     __module__ = "pyobs.modules.roof"
 
+    _ROOF_CLOSED_PERCENTAGE = 0
+    _ROOF_OPEN_PERCENTAGE = 100
+
     def __init__(self, **kwargs: Any):
         """Creates a new dummy root."""
         BaseRoof.__init__(self, **kwargs)
 
         # dummy state
-        self.open_percentage = 0
+        self._open_percentage: int = self._ROOF_CLOSED_PERCENTAGE
 
-        # allow to abort motion
         self._lock_motion = asyncio.Lock()
         self._abort_motion = asyncio.Event()
 
@@ -32,7 +34,6 @@ class DummyRoof(BaseRoof, IRoof):
         """Open module."""
         await BaseRoof.open(self)
 
-        # register event
         await self.comm.register_event(RoofOpenedEvent)
         await self.comm.register_event(RoofClosingEvent)
 
@@ -44,34 +45,19 @@ class DummyRoof(BaseRoof, IRoof):
             AcquireLockFailed: If current motion could not be aborted.
         """
 
-        # already open?
-        if self.open_percentage != 100:
-            # acquire lock
-            with LockWithAbort(self._lock_motion, self._abort_motion):
-                # change status
-                await self._change_motion_status(MotionStatus.INITIALIZING)
+        if self._is_open():
+            return
 
-                # open roof
-                while self.open_percentage < 100:
-                    # open more
-                    self.open_percentage += 1
+        async with LockWithAbort(self._lock_motion, self._abort_motion):
+            await self._change_motion_status(MotionStatus.INITIALIZING)
 
-                    # abort?
-                    if self._abort_motion.is_set():
-                        await self._change_motion_status(MotionStatus.IDLE)
-                        return
+            await self._move_roof(self._ROOF_OPEN_PERCENTAGE)
 
-                    # wait a little
-                    await asyncio.sleep(0.1)
+            await self._change_motion_status(MotionStatus.IDLE)
+            self.comm.send_event(RoofOpenedEvent())
 
-                # open fully
-                self.open_percentage = 100
-
-                # change status
-                await self._change_motion_status(MotionStatus.IDLE)
-
-                # send event
-                self.comm.send_event(RoofOpenedEvent())
+    def _is_open(self):
+        return self._open_percentage == self._ROOF_OPEN_PERCENTAGE
 
     @timeout(15)
     async def park(self, **kwargs: Any) -> None:
@@ -81,35 +67,34 @@ class DummyRoof(BaseRoof, IRoof):
             AcquireLockFailed: If current motion could not be aborted.
         """
 
-        # already closed?
-        if self.open_percentage != 0:
-            # acquire lock
-            with LockWithAbort(self._lock_motion, self._abort_motion):
-                # change status
-                await self._change_motion_status(MotionStatus.PARKING)
+        if self._is_closed():
+            return
 
-                # send event
-                self.comm.send_event(RoofClosingEvent())
+        async with LockWithAbort(self._lock_motion, self._abort_motion):
+            await self._change_motion_status(MotionStatus.PARKING)
+            self.comm.send_event(RoofClosingEvent())
 
-                # close roof
-                while self.open_percentage > 0:
-                    # close more
-                    self.open_percentage -= 1
+            await self._move_roof(self._ROOF_CLOSED_PERCENTAGE)
 
-                    # abort?
-                    if self._abort_motion.is_set():
-                        await self._change_motion_status(MotionStatus.IDLE)
-                        return
+            await self._change_motion_status(MotionStatus.PARKED)
 
-                    # wait a little
-                    await asyncio.sleep(0.1)
+    def _is_closed(self):
+        return self._open_percentage == self._ROOF_CLOSED_PERCENTAGE
 
-                # change status
-                await self._change_motion_status(MotionStatus.PARKED)
+    async def _move_roof(self, target_pos: int) -> None:
+        step = 1 if target_pos > self._open_percentage else -1
+
+        while self._open_percentage != target_pos:
+            if self._abort_motion.is_set():
+                await self._change_motion_status(MotionStatus.IDLE)
+                return
+
+            self._open_percentage += step
+            await asyncio.sleep(0.1)
 
     def get_percent_open(self) -> float:
         """Get the percentage the roof is open."""
-        return self.open_percentage
+        return self._open_percentage
 
     async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
         """Stop the motion.
@@ -121,13 +106,9 @@ class DummyRoof(BaseRoof, IRoof):
             AcquireLockFailed: If current motion could not be aborted.
         """
 
-        # change status
         await self._change_motion_status(MotionStatus.ABORTING)
 
-        # abort
-        # acquire lock
-        with LockWithAbort(self._lock_motion, self._abort_motion):
-            # change status
+        async with LockWithAbort(self._lock_motion, self._abort_motion):
             await self._change_motion_status(MotionStatus.IDLE)
 
 

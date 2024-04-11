@@ -9,7 +9,7 @@ from pyobs.images import Image
 log = logging.getLogger(__name__)
 
 
-class RadiusFilter(ImageProcessor):
+class CentralFilter(ImageProcessor):
     """Filter for central circle with given radius."""
 
     __module__ = "pyobs.images.processors.misc"
@@ -60,4 +60,4 @@ class RadiusFilter(ImageProcessor):
             return image
 
 
-__all__ = ["RadiusFilter"]
+__all__ = ["CentralFilter"]

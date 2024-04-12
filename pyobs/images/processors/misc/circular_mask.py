@@ -9,13 +9,13 @@ from pyobs.images import Image
 log = logging.getLogger(__name__)
 
 
-class CentralFilter(ImageProcessor):
-    """Filter for central circle with given radius."""
+class CircularMask(ImageProcessor):
+    """Mask for central circle with given radius."""
 
     __module__ = "pyobs.images.processors.misc"
 
     def __init__(self, radius: float, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
-        """Init an image processor that filters out everything except for a central circle.
+        """Init an image processor that masks out everything except for a central circle.
 
         Args:
             radius: radius of the central circle in pixels
@@ -51,4 +51,4 @@ class CentralFilter(ImageProcessor):
         return image
 
 
-__all__ = ["CentralFilter"]
+__all__ = ["CircularMask"]

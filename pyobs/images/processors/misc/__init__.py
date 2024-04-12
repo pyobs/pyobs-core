@@ -10,5 +10,5 @@ from .removebackground import RemoveBackground
 from .smooth import Smooth
 from .softbin import SoftBin
 from .broadcast import Broadcast
-from .central_filter import CentralFilter
+from .circular_mask import CircularMask
 from .image_source_filter import ImageSourceFilter

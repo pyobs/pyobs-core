@@ -7,13 +7,13 @@ from pyobs.images.processors.misc import CircularMask
 
 @pytest.mark.asyncio
 async def test_call():
-    radius = 50
+    radius = 1
     circular_mask = CircularMask(radius=radius)
-    data = np.random.randint(1, 10, (500, 500))  # np.ones(500, 500)
+    data = np.ones((4, 4))
     image = Image(data)
-    image.header["CRPIX1"] = 250
-    image.header["CRPIX2"] = 250
+    image.header["CRPIX1"] = 1.5
+    image.header["CRPIX2"] = 1.5
     masked_image = await circular_mask(image)
 
-    assert image.data[250, 250] == masked_image.data[250, 250] > 0
-    assert masked_image.data[400, 400] == 0
+    expected_output = np.array([[0, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 0]])
+    assert np.array_equal(masked_image.data, expected_output)

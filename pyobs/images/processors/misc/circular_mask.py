@@ -39,13 +39,11 @@ class CircularMask(ImageProcessor):
 
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
 
-        radius = self._radius
-
-        # create arrays with the pixel coordinates of image.data as entries
         nx, ny = image.data.shape
-        data_x = np.array([np.arange(nx) for y in range(ny)])
-        data_y = np.array([y + np.zeros(nx) for y in range(ny)])
-        circ_mask = (data_x - center_x) ** 2 + (data_y - center_y) ** 2 <= radius**2
+        x, y = np.arange(0, nx), np.arange(0, ny)
+        x_coordinates, y_coordinates = np.meshgrid(x, y)
+
+        circ_mask = (x_coordinates - center_x) ** 2 + (y_coordinates - center_y) ** 2 <= self._radius**2
 
         image.data *= circ_mask.transpose()
         return image

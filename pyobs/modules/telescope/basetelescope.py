@@ -1,7 +1,9 @@
 import asyncio
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Any, Tuple, Union, List, Optional
-from astropy.coordinates import SkyCoord, ICRS, AltAz
+
+from astroplan import Observer
+from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation
 import astropy.units as u
 import logging
 
@@ -307,6 +309,11 @@ class BaseTelescope(
             "SUNALT": (float(sun_altaz.alt.degree), "Solar altitude"),
             "SUNDIST": (None if sun_dist is None else float(sun_dist.degree), "Solar Distance from Target"),
         }
+
+    def _calculate_derotator_position(self, ra: float, dec: float, alt: float, obstime: Time) -> float:
+        target = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="gcrs")
+        parallactic = self.observer.parallactic_angle(time=obstime, target=target).deg
+        return float(parallactic - alt)
 
 
 __all__ = ["BaseTelescope"]

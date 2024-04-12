@@ -2,7 +2,6 @@
 Offsets
 -------
 """
-
 from .offsets import Offsets
 from .astrometry import AstrometryOffsets
 from .brighteststar import BrightestStarOffsets

@@ -23,6 +23,7 @@ import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 
+from pyobs.background_task import BackgroundTask
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
 
@@ -270,12 +271,10 @@ class Object:
         self._opened = False
 
         # background tasks
-        self._background_tasks: Dict[
-            Callable[..., Coroutine[Any, Any, None]], Tuple[Optional[asyncio.Task[bool]], bool]
-        ] = {}
-        self._watchdog_task: Optional[asyncio.Task[None]] = None
+        self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
 
-    def add_background_task(self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True) -> None:
+    def add_background_task(self, func: Callable[..., Coroutine[Any, Any, None]],
+                            restart: bool = True, autostart: bool = True) -> BackgroundTask:
         """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -283,20 +282,20 @@ class Object:
         Args:
             func: Func to add.
             restart: Whether to restart this function.
+            autostart: Whether to start this function when the module is opened
+        Returns:
+            Background task
         """
 
-        # create thread
-        self._background_tasks[func] = (None, restart)
+        background_task = BackgroundTask(func, restart)
+        self._background_tasks.append((background_task, autostart))
+
+        return background_task
 
     async def open(self) -> None:
         """Open module."""
 
-        # start background tasks
-        for func, (task, restart) in self._background_tasks.items():
-            log.info("Starting background task for %s...", func.__name__)
-            self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
-        if len(self._background_tasks) > 0:
-            self._watchdog_task = asyncio.create_task(self._watchdog())
+        self._perform_background_task_autostart()
 
         # open child objects
         for obj in self._child_objects:
@@ -308,6 +307,11 @@ class Object:
 
         # success
         self._opened = True
+
+    def _perform_background_task_autostart(self) -> None:
+        todo = filter(lambda b: b[1] is True, self._background_tasks)
+        for task, _ in todo:
+            task.start()
 
     @property
     def opened(self) -> bool:
@@ -322,57 +326,15 @@ class Object:
             if hasattr(obj, "close"):
                 await obj.close()
 
-        # join watchdog and then all threads
-        if self._watchdog_task and not self._watchdog_task.done():
-            self._watchdog_task.cancel()
-        for func, (task, restart) in self._background_tasks.items():
-            if task and not task.done():
-                task.cancel()
+        self._stop_background_tasks()
 
-    @staticmethod
-    async def _background_func(target: Callable[..., Coroutine[Any, Any, None]]) -> None:
-        """Run given function.
-
-        Args:
-            target: Function to run.
-        """
-        try:
-            await target()
-
-        except asyncio.CancelledError:
-            # task was canceled
-            return
-
-        except:
-            log.exception("Exception in thread method %s." % target.__name__)
+    def _stop_background_tasks(self) -> None:
+        for task, _ in self._background_tasks:
+            task.stop()
 
     def quit(self) -> None:
         """Can be overloaded to quit program."""
         pass
-
-    async def _watchdog(self) -> None:
-        """Watchdog thread that tries to restart threads if they quit."""
-
-        while True:
-            # get dead taks that need to be restarted
-            dead = {}
-            for func, (task, restart) in self._background_tasks.items():
-                if task.done():
-                    dead[func] = restart
-
-            # restart dead tasks or quit
-            for func, restart in dead.items():
-                if restart:
-                    log.error("Background task for %s has died, restarting...", func.__name__)
-                    del self._background_tasks[func]
-                    self._background_tasks[func] = (asyncio.create_task(self._background_func(func)), restart)
-                else:
-                    log.error("Background task for %s has died, quitting...", func.__name__)
-                    self.quit()
-                    return
-
-            # sleep a little
-            await asyncio.sleep(1)
 
     @overload
     def get_object(

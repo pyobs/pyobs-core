@@ -14,7 +14,7 @@ class CentralFilter(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, radius: float = None, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(self, radius: float, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
         """Init an image processor that filters out everything except for a central circle.
 
         Args:
@@ -41,23 +41,18 @@ class CentralFilter(ImageProcessor):
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
 
         # filter everything except for central circle
-        if self._radius is not None:
-            radius = self._radius
+        radius = self._radius
 
-            # create arrays with the pixel coordinates of image.data as entries
-            nx, ny = image.data.shape
-            data_x = np.array([np.arange(nx) for y in range(ny)])
-            data_y = np.array([y + np.zeros(nx) for y in range(ny)])
+        # create arrays with the pixel coordinates of image.data as entries
+        nx, ny = image.data.shape
+        data_x = np.array([np.arange(nx) for y in range(ny)])
+        data_y = np.array([y + np.zeros(nx) for y in range(ny)])
 
-            # create filter mask
-            circ_mask = (data_x - center_x) ** 2 + (data_y - center_y) ** 2 <= radius**2
+        # create filter mask
+        circ_mask = (data_x - center_x) ** 2 + (data_y - center_y) ** 2 <= radius**2
 
-            image.data *= circ_mask.transpose()
-            return image
-
-        else:
-            log.warning("No radius for filter given. Using the full image.")
-            return image
+        image.data *= circ_mask.transpose()
+        return image
 
 
 __all__ = ["CentralFilter"]

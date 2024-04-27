@@ -3,7 +3,7 @@ import copy
 import json
 import logging
 import multiprocessing as mp
-from typing import Union, List, Tuple, Any, Optional, Dict
+from typing import Union, List, Tuple, Any, Optional, Dict, cast
 import astroplan
 import astropy
 from astroplan import ObservingBlock
@@ -52,8 +52,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         Module.__init__(self, **kwargs)
 
         # get scheduler
-        self._task_archive = self.add_child_object(tasks, TaskArchive)
-        self._schedule = self.add_child_object(schedule, TaskSchedule)
+        self._task_archive = self.add_child_object(tasks, TaskArchive)  # type: ignore
+        self._schedule = self.add_child_object(schedule, TaskSchedule)  # type: ignore
 
         # store
         self._schedule_range = schedule_range
@@ -79,7 +79,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self.add_background_task(self._schedule_worker)
         self.add_background_task(self._update_worker)
 
-        self._last_change = None
+        self._last_change: Optional[Time] = None
 
     async def open(self) -> None:
         """Open module."""
@@ -113,7 +113,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
             await asyncio.sleep(5)
 
-    async def _worker_loop(self):
+    async def _worker_loop(self) -> None:
         # got new time of last change?
         t = await self._task_archive.last_changed()
         if self._last_change is None or self._last_change < t:
@@ -266,7 +266,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         return copied_blocks
 
     @staticmethod
-    def _invert_block_priority(block: astroplan.ObservingBlock):
+    def _invert_block_priority(block: astroplan.ObservingBlock) -> None:
         """
         astroplan's PriorityScheduler expects lower priorities to be more important, so calculate
         1000 - priority
@@ -274,7 +274,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         block.priority = max(1000.0 - block.priority, 0.0)
 
     @staticmethod
-    def _tighten_block_time_constraints(block: astroplan.ObservingBlock):
+    def _tighten_block_time_constraints(block: astroplan.ObservingBlock) -> None:
         """
         astroplan's PriorityScheduler doesn't match the requested observing windows exactly,
         so we make them a little smaller.
@@ -299,7 +299,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             block_end = running_task.end + 10.0 * u.second
             if start < block_end:
                 start = block_end
-                log.info("Start time would be within currently running block, shifting to %s.", start.isot)
+                log.info("Start time would be within currently running block, shifting to %s.", cast(Time, start).isot)
 
         # calculate end time
         end = start + TimeDelta(self._schedule_range * u.hour)
@@ -339,7 +339,7 @@ class Scheduler(Module, IStartStop, IRunnable):
     ) -> List[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
-        qout: mp.Queue = mp.Queue()
+        qout: mp.Queue[List[ObservingBlock]] = mp.Queue()
         p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, qout))
         p.start()
 
@@ -378,7 +378,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         start: Time,
         end: Time,
         constraints: List[Any],
-        scheduled_blocks: mp.Queue,
+        scheduled_blocks: mp.Queue[List[ObservingBlock]],
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
 

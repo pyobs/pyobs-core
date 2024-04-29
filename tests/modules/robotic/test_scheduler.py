@@ -1,15 +1,16 @@
 import datetime
-from typing import List, Optional, Dict
+import multiprocessing
+from typing import List, Optional, Dict, Any
 from unittest.mock import Mock, AsyncMock
 
 import astroplan
 import astropy.units as u
 import pytest
-from astroplan import ObservingBlock, FixedTarget
+from astroplan import ObservingBlock, FixedTarget, Observer
 from astropy.coordinates import SkyCoord
 
 import pyobs
-from pyobs.events import GoodWeatherEvent, TaskStartedEvent, TaskFinishedEvent
+from pyobs.events import GoodWeatherEvent, TaskStartedEvent, TaskFinishedEvent, Event
 from pyobs.modules.robotic import Scheduler
 from pyobs.robotic import TaskArchive, TaskSchedule, Task
 from pyobs.utils.time import Time
@@ -282,6 +283,61 @@ async def test_prepare_schedule_block_filtering(schedule_blocks, mocker):
     assert [block.configuration["request"]["id"] for block in res_blocks] == ["2", "3"]
 
 
+def mock_schedule_process(blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any],
+                          scheduled_blocks: multiprocessing.Queue) -> None:  # type: ignore
+    scheduled_blocks.put(blocks)
+
+
+@pytest.mark.asyncio
+async def test_schedule_blocks() -> None:
+    observer = Observer(longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg,
+                        elevation=1798.0 * u.m, timezone="UTC")
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), observer=observer)
+
+    scheduler._schedule_process = mock_schedule_process  # type: ignore
+
+    time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    block = ObservingBlock(
+        FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
+        configuration={"request": {"id": "0"}}
+    )
+    blocks = [block]
+    scheduled_blocks = await scheduler._schedule_blocks(blocks, time, time, [])
+    assert scheduled_blocks[0].configuration["request"]["id"] == block.configuration["request"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_finish_schedule_no_update() -> None:
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._schedule.set_schedule = AsyncMock()  # type: ignore
+
+    scheduler._need_update = True
+
+    await scheduler._finish_schedule([], pyobs.utils.time.Time.now())
+    scheduler._schedule.set_schedule.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_finish_schedule() -> None:
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._schedule.set_schedule = AsyncMock()  # type: ignore
+
+    time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    block = ObservingBlock(
+        FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
+        configuration={"request": {"id": "0"}},
+        constraints=[astroplan.TimeConstraint(min=time, max=time)]
+    )
+    block.start_time = time
+    block.end_time = time
+    blocks = [block]
+
+    scheduler._need_update = False
+
+    await scheduler._finish_schedule(blocks, time)
+    scheduler._schedule.set_schedule.assert_called_with(blocks, time)
+
+
 @pytest.mark.asyncio
 async def test_on_task_started():
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
@@ -294,6 +350,14 @@ async def test_on_task_started():
     assert scheduler._last_task_id == 0
     assert scheduler._need_update is True
     assert scheduler._schedule_start == time
+
+
+@pytest.mark.asyncio
+async def test_on_task_started_wrong_event():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    event = Event()
+
+    assert await scheduler._on_task_started(event, "") is False
 
 
 @pytest.mark.asyncio
@@ -313,6 +377,14 @@ async def test_on_task_finished(mocker):
 
 
 @pytest.mark.asyncio
+async def test_on_task_finished_wrong_event():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    event = Event()
+
+    assert await scheduler._on_task_finished(event, "") is False
+
+
+@pytest.mark.asyncio
 async def test_on_good_weather():
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
@@ -325,13 +397,21 @@ async def test_on_good_weather():
 
 
 @pytest.mark.asyncio
+async def test_on_good_weather_not_weather_event():
+    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    event = Event()
+
+    assert await scheduler._on_good_weather(event, "") is False
+
+
+@pytest.mark.asyncio
 async def test_convert_blocks_to_astroplan():
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     block = ObservingBlock(
-            FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
-            constraints=[astroplan.TimeConstraint(min=time, max=time)]
-        )
+        FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
+        constraints=[astroplan.TimeConstraint(min=time, max=time)]
+    )
     scheduler._blocks = [block]
 
     converted_blocks = await scheduler._convert_blocks_to_astroplan()

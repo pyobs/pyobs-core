@@ -378,7 +378,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         start: Time,
         end: Time,
         constraints: List[Any],
-        scheduled_blocks: mp.Queue[List[ObservingBlock]],
+        scheduled_blocks: mp.Queue   # type: ignore
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
 

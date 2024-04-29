@@ -138,33 +138,31 @@ async def test_worker_loop_removed_current(schedule_blocks) -> None:
 @pytest.mark.asyncio
 async def test_worker_loop_removed_not_in_schedule(schedule_blocks)  -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._scheduler_task.start = Mock()  # type: ignore
     scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._schedule.get_schedule = AsyncMock(return_value=[])  # type: ignore
     scheduler._blocks = schedule_blocks
 
     scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))  # type: ignore
 
-    scheduler._need_update = False
-
     await scheduler._worker_loop()
 
-    assert scheduler._need_update is False
+    scheduler._scheduler_task.start.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_worker_loop_need_to_update(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._scheduler_task.start = Mock()  # type: ignore
     scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._schedule.get_schedule = AsyncMock(return_value=[])  # type: ignore
     scheduler._blocks = []
 
     scheduler._compare_block_lists = Mock(return_value=([], [schedule_blocks[0]]))  # type: ignore
 
-    scheduler._need_update = False
-
     await scheduler._worker_loop()
 
-    assert scheduler._need_update is True
+    scheduler._scheduler_task.start.assert_called_once()
     assert scheduler._blocks == schedule_blocks
 
 
@@ -199,16 +197,6 @@ async def test_prepare_schedule_nautical_twilight(schedule_blocks) -> None:
 @pytest.mark.asyncio
 async def test_prepare_schedule_no_blocks() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
-
-    with pytest.raises(ValueError):
-        await scheduler._prepare_schedule()
-
-
-@pytest.mark.asyncio
-async def test_prepare_schedule_abort(schedule_blocks) -> None:
-    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
-    scheduler._blocks = schedule_blocks
-    scheduler._need_update = True
 
     with pytest.raises(ValueError):
         await scheduler._prepare_schedule()
@@ -307,17 +295,6 @@ async def test_schedule_blocks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_finish_schedule_no_update() -> None:
-    scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._schedule.set_schedule = AsyncMock()  # type: ignore
-
-    scheduler._need_update = True
-
-    await scheduler._finish_schedule([], pyobs.utils.time.Time.now())
-    scheduler._schedule.set_schedule.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_finish_schedule() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
     scheduler._schedule.set_schedule = AsyncMock()  # type: ignore
@@ -341,6 +318,7 @@ async def test_finish_schedule() -> None:
 @pytest.mark.asyncio
 async def test_on_task_started() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    scheduler._scheduler_task.start = Mock()  # type: ignore
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     event = TaskStartedEvent(id=0, eta=time, name="")
 
@@ -348,7 +326,7 @@ async def test_on_task_started() -> None:
 
     assert scheduler._current_task_id == 0
     assert scheduler._last_task_id == 0
-    assert scheduler._need_update is True
+    scheduler._scheduler_task.start.assert_called_once()
     assert scheduler._schedule_start == time
 
 
@@ -366,12 +344,13 @@ async def test_on_task_finished(mocker) -> None:
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_finished=True)
+    scheduler._scheduler_task.start = Mock()  # type: ignore
     event = TaskFinishedEvent(id=0, name="")
 
     await scheduler._on_task_finished(event, "")
 
     assert scheduler._current_task_id is None
-    assert scheduler._need_update is True
+    scheduler._scheduler_task.start.assert_called_once()
 
     assert scheduler._schedule_start == current_time
 
@@ -387,12 +366,14 @@ async def test_on_task_finished_wrong_event() -> None:
 @pytest.mark.asyncio
 async def test_on_good_weather() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
+    scheduler._scheduler_task.start = Mock()  # type: ignore
+
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     event = GoodWeatherEvent(id=0, eta=time, name="")
 
     await scheduler._on_good_weather(event, "")
 
-    assert scheduler._need_update is True
+    scheduler._scheduler_task.start.assert_called_once()
     assert scheduler._schedule_start == time
 
 

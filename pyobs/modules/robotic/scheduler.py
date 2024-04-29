@@ -59,9 +59,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._schedule_range = schedule_range
         self._safety_time = safety_time
         self._twilight = twilight
-        self._running = True
-        self._initial_update_done = False
-        self._need_update = False
+
         self._trigger_on_task_started = trigger_on_task_started
         self._trigger_on_task_finished = trigger_on_task_finished
 
@@ -76,8 +74,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._blocks: List[ObservingBlock] = []
 
         # update thread
-        self.add_background_task(self._schedule_worker)
-        self.add_background_task(self._update_worker)
+        self._scheduler_task = self.add_background_task(self._schedule_task, autostart=False, restart=False)
+        self._update_task = self.add_background_task(self._update_worker)
 
         self._last_change: Optional[Time] = None
 
@@ -93,24 +91,19 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""
-        self._running = True
+        self._update_task.start()
 
     async def stop(self, **kwargs: Any) -> None:
         """Stop scheduler."""
-        self._running = False
+        self._update_task.stop()
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""
-        return self._running
+        return self._update_task.is_running()
 
     async def _update_worker(self) -> None:
         while True:
-            if self._running is False:
-                await asyncio.sleep(1)
-                continue
-
             await self._worker_loop()
-
             await asyncio.sleep(5)
 
     async def _worker_loop(self) -> None:
@@ -129,13 +122,13 @@ class Scheduler(Module, IStartStop, IRunnable):
             removed, added = self._compare_block_lists(self._blocks, blocks)
 
             # schedule update
-            self._need_update = True
+            need_update = True
 
             # no changes?
             if len(removed) == 0 and len(added) == 0:
                 # no need to re-schedule
                 log.info("No change in list of blocks detected.")
-                self._need_update = False
+                need_update = False
 
             # has only the current block been removed?
             log.info("Removed: %d, added: %d", len(removed), len(added))
@@ -149,26 +142,27 @@ class Scheduler(Module, IStartStop, IRunnable):
             if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._last_task_id:
                 # no need to re-schedule
                 log.info("Only one removed block detected, which is the one currently running.")
-                self._need_update = False
+                need_update = False
 
             # check, if one of the removed blocks was actually in schedule
-            if len(removed) > 0 and self._need_update:
+            if len(removed) > 0 and need_update:
                 schedule = await self._schedule.get_schedule()
                 removed_from_schedule = [r for r in removed if r in schedule]
                 if len(removed_from_schedule) == 0:
                     log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")
-                    self._need_update = False
+                    need_update = False
 
             # store blocks
             self._blocks = blocks
 
             # schedule update
-            if self._need_update:
+            if need_update:
                 log.info("Triggering scheduler run...")
+                self._scheduler_task.stop()
+                self._scheduler_task.start()
 
             # remember now
             self._last_change = Time.now()
-            self._initial_update_done = True
 
     @staticmethod
     def _compare_block_lists(
@@ -200,18 +194,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         unique2 = [names2[n] for n in additional2]
         return unique1, unique2
 
-    async def _schedule_worker(self) -> None:
-
-        while True:
-            if self._need_update and self._initial_update_done:
-                await self._schedule_worker_loop()
-
-            await asyncio.sleep(1)
-
-    async def _schedule_worker_loop(self) -> None:
-        # reset need for update
-        self._need_update = False
-
+    async def _schedule_task(self) -> None:
         try:
             # prepare scheduler
             blocks, start, end, constraints = await self._prepare_schedule()
@@ -233,10 +216,6 @@ class Scheduler(Module, IStartStop, IRunnable):
         start, end = await self._get_time_range()
 
         blocks = self._filter_blocks(converted_blocks, end)
-
-        # if need new update, skip here
-        if self._need_update:
-            raise ValueError("Not running scheduler, since update was requested.")
 
         # no blocks found?
         if len(blocks) == 0:
@@ -352,11 +331,6 @@ class Scheduler(Module, IStartStop, IRunnable):
         return scheduled_blocks
 
     async def _finish_schedule(self, scheduled_blocks: List[ObservingBlock], start: Time) -> None:
-        # if need new update, skip here
-        if self._need_update:
-            log.info("Not using scheduler results, since update was requested.")
-            return
-
         # update
         await self._schedule.set_schedule(scheduled_blocks, start)
         if len(scheduled_blocks) > 0:
@@ -400,7 +374,8 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""
-        self._need_update = True
+        self._scheduler_task.stop()
+        self._scheduler_task.start()
 
     async def _on_task_started(self, event: Event, sender: str) -> bool:
         """Re-schedule when task has started and we can predict its end.
@@ -422,8 +397,8 @@ class Scheduler(Module, IStartStop, IRunnable):
             eta = (event.eta - Time.now()).sec / 60
             log.info("Received task started event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
-            # set it
-            self._need_update = True
+            self._scheduler_task.stop()
+            self._scheduler_task.start()
             self._schedule_start = event.eta
 
         return True
@@ -446,8 +421,8 @@ class Scheduler(Module, IStartStop, IRunnable):
             # get ETA in minutes
             log.info("Received task finished event, triggering new scheduler run...")
 
-            # set it
-            self._need_update = True
+            self._scheduler_task.stop()
+            self._scheduler_task.start()
             self._schedule_start = Time.now()
 
         return True
@@ -466,8 +441,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         eta = (event.eta - Time.now()).sec / 60
         log.info("Received good weather event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
-        # set it
-        self._need_update = True
+        self._scheduler_task.stop()
+        self._scheduler_task.start()
         self._schedule_start = event.eta
         return True
 

@@ -30,7 +30,7 @@ def schedule_blocks() -> List[ObservingBlock]:
     return blocks
 
 
-def test_compare_block_lists_with_overlap(schedule_blocks):
+def test_compare_block_lists_with_overlap(schedule_blocks) -> None:
     old_blocks = schedule_blocks[:7]
     new_blocks = schedule_blocks[5:]
 
@@ -43,7 +43,7 @@ def test_compare_block_lists_with_overlap(schedule_blocks):
     assert set(new_names) == {7, 8, 9}
 
 
-def test_compare_block_lists_without_overlap(schedule_blocks):
+def test_compare_block_lists_without_overlap(schedule_blocks) -> None:
     old_blocks = schedule_blocks[:5]
     new_blocks = schedule_blocks[5:]
 
@@ -56,7 +56,7 @@ def test_compare_block_lists_without_overlap(schedule_blocks):
     assert set(new_names) == {5, 6, 7, 8, 9}
 
 
-def test_compare_block_lists_identical(schedule_blocks):
+def test_compare_block_lists_identical(schedule_blocks) -> None:
     old_blocks = schedule_blocks
     new_blocks = schedule_blocks
 
@@ -94,11 +94,11 @@ class TestTaskSchedule(TaskSchedule):
 
 
 @pytest.mark.asyncio
-async def test_worker_loop_not_changed():
+async def test_worker_loop_not_changed() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
     scheduler._need_update = False
 
-    scheduler._task_archive.last_changed = AsyncMock(return_value=Time.now())
+    scheduler._task_archive.last_changed = AsyncMock(return_value=Time.now())  # type: ignore
     scheduler._last_change = Time.now()
 
     await scheduler._worker_loop()
@@ -107,9 +107,9 @@ async def test_worker_loop_not_changed():
 
 
 @pytest.mark.asyncio
-async def test_worker_loop_no_changes(schedule_blocks):
+async def test_worker_loop_no_changes(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)
+    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._blocks = schedule_blocks
 
     scheduler._need_update = False
@@ -120,13 +120,13 @@ async def test_worker_loop_no_changes(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_worker_loop_removed_current(schedule_blocks):
+async def test_worker_loop_removed_current(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)
+    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._blocks = schedule_blocks
     scheduler._last_task_id = "0"
 
-    scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))
+    scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))  # type: ignore
 
     scheduler._need_update = False
 
@@ -136,13 +136,13 @@ async def test_worker_loop_removed_current(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_worker_loop_removed_not_in_schedule(schedule_blocks):
+async def test_worker_loop_removed_not_in_schedule(schedule_blocks)  -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)
-    scheduler._schedule.get_schedule = AsyncMock(return_value=[])
+    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
+    scheduler._schedule.get_schedule = AsyncMock(return_value=[])  # type: ignore
     scheduler._blocks = schedule_blocks
 
-    scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))
+    scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))  # type: ignore
 
     scheduler._need_update = False
 
@@ -152,13 +152,13 @@ async def test_worker_loop_removed_not_in_schedule(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_worker_loop_need_to_update(schedule_blocks):
+async def test_worker_loop_need_to_update(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)
-    scheduler._schedule.get_schedule = AsyncMock(return_value=[])
+    scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
+    scheduler._schedule.get_schedule = AsyncMock(return_value=[])  # type: ignore
     scheduler._blocks = []
 
-    scheduler._compare_block_lists = Mock(return_value=([], [schedule_blocks[0]]))
+    scheduler._compare_block_lists = Mock(return_value=([], [schedule_blocks[0]]))  # type: ignore
 
     scheduler._need_update = False
 
@@ -169,7 +169,7 @@ async def test_worker_loop_need_to_update(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_invalid_twilight():
+async def test_prepare_schedule_invalid_twilight() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="invalid")
 
     with pytest.raises(ValueError):
@@ -177,7 +177,7 @@ async def test_prepare_schedule_invalid_twilight():
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_astronomical_twilight(schedule_blocks):
+async def test_prepare_schedule_astronomical_twilight(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="astronomical")
     scheduler._blocks = schedule_blocks
 
@@ -187,7 +187,7 @@ async def test_prepare_schedule_astronomical_twilight(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_nautical_twilight(schedule_blocks):
+async def test_prepare_schedule_nautical_twilight(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
     scheduler._blocks = schedule_blocks
 
@@ -197,7 +197,7 @@ async def test_prepare_schedule_nautical_twilight(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_no_blocks():
+async def test_prepare_schedule_no_blocks() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
 
     with pytest.raises(ValueError):
@@ -205,7 +205,7 @@ async def test_prepare_schedule_no_blocks():
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_abort(schedule_blocks):
+async def test_prepare_schedule_abort(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), twilight="nautical")
     scheduler._blocks = schedule_blocks
     scheduler._need_update = True
@@ -215,7 +215,7 @@ async def test_prepare_schedule_abort(schedule_blocks):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_no_start(schedule_blocks, mocker):
+async def test_prepare_schedule_no_start(schedule_blocks, mocker) -> None:
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
@@ -228,7 +228,7 @@ async def test_prepare_schedule_no_start(schedule_blocks, mocker):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_start(schedule_blocks, mocker):
+async def test_prepare_schedule_start(schedule_blocks, mocker) -> None:
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
@@ -242,7 +242,7 @@ async def test_prepare_schedule_start(schedule_blocks, mocker):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_end(schedule_blocks, mocker):
+async def test_prepare_schedule_end(schedule_blocks, mocker) -> None:
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
@@ -256,7 +256,7 @@ async def test_prepare_schedule_end(schedule_blocks, mocker):
 
 
 @pytest.mark.asyncio
-async def test_prepare_schedule_block_filtering(schedule_blocks, mocker):
+async def test_prepare_schedule_block_filtering(schedule_blocks, mocker) -> None:
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
@@ -271,7 +271,7 @@ async def test_prepare_schedule_block_filtering(schedule_blocks, mocker):
     ]
 
     task_scheduler = TestTaskSchedule()
-    task_scheduler.get_schedule = AsyncMock(return_value={"0": TestTask()})
+    task_scheduler.get_schedule = AsyncMock(return_value={"0": TestTask()})  # type: ignore
 
     scheduler = Scheduler(TestTaskArchive(), task_scheduler)
     scheduler._schedule_start = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
@@ -339,7 +339,7 @@ async def test_finish_schedule() -> None:
 
 
 @pytest.mark.asyncio
-async def test_on_task_started():
+async def test_on_task_started() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     event = TaskStartedEvent(id=0, eta=time, name="")
@@ -353,7 +353,7 @@ async def test_on_task_started():
 
 
 @pytest.mark.asyncio
-async def test_on_task_started_wrong_event():
+async def test_on_task_started_wrong_event() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     event = Event()
 
@@ -361,7 +361,7 @@ async def test_on_task_started_wrong_event():
 
 
 @pytest.mark.asyncio
-async def test_on_task_finished(mocker):
+async def test_on_task_finished(mocker) -> None:
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
@@ -377,7 +377,7 @@ async def test_on_task_finished(mocker):
 
 
 @pytest.mark.asyncio
-async def test_on_task_finished_wrong_event():
+async def test_on_task_finished_wrong_event() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     event = Event()
 
@@ -385,7 +385,7 @@ async def test_on_task_finished_wrong_event():
 
 
 @pytest.mark.asyncio
-async def test_on_good_weather():
+async def test_on_good_weather() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     event = GoodWeatherEvent(id=0, eta=time, name="")
@@ -397,7 +397,7 @@ async def test_on_good_weather():
 
 
 @pytest.mark.asyncio
-async def test_on_good_weather_not_weather_event():
+async def test_on_good_weather_not_weather_event() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), trigger_on_task_started=True)
     event = Event()
 
@@ -405,7 +405,7 @@ async def test_on_good_weather_not_weather_event():
 
 
 @pytest.mark.asyncio
-async def test_convert_blocks_to_astroplan():
+async def test_convert_blocks_to_astroplan() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
     time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
     block = ObservingBlock(

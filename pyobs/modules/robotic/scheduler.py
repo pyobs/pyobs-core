@@ -103,66 +103,67 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def _update_worker(self) -> None:
         while True:
-            await self._worker_loop()
+            await self._update_worker_loop()
             await asyncio.sleep(5)
 
-    async def _worker_loop(self) -> None:
+    async def _update_worker_loop(self) -> None:
         # got new time of last change?
         t = await self._task_archive.last_changed()
         if self._last_change is None or self._last_change < t:
-            # get schedulable blocks and sort them
-            log.info("Found update in schedulable block, downloading them...")
-            blocks = sorted(
-                await self._task_archive.get_schedulable_blocks(),
-                key=lambda x: json.dumps(x.configuration, sort_keys=True),
-            )
-            log.info("Downloaded %d schedulable block(s).", len(blocks))
+            await self._update_blocks()
 
-            # compare new and old lists
-            removed, added = self._compare_block_lists(self._blocks, blocks)
-
-            # schedule update
-            need_update = True
-
-            # no changes?
-            if len(removed) == 0 and len(added) == 0:
-                # no need to re-schedule
-                log.info("No change in list of blocks detected.")
-                need_update = False
-
-            # has only the current block been removed?
-            log.info("Removed: %d, added: %d", len(removed), len(added))
-            if len(removed) == 1:
-                log.info(
-                    "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
-                    removed[0].target.name,
-                    str(self._last_task_id),
-                    str(self._current_task_id),
-                )
-            if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._last_task_id:
-                # no need to re-schedule
-                log.info("Only one removed block detected, which is the one currently running.")
-                need_update = False
-
-            # check, if one of the removed blocks was actually in schedule
-            if len(removed) > 0 and need_update:
-                schedule = await self._schedule.get_schedule()
-                removed_from_schedule = [r for r in removed if r in schedule]
-                if len(removed_from_schedule) == 0:
-                    log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")
-                    need_update = False
-
-            # store blocks
-            self._blocks = blocks
-
-            # schedule update
-            if need_update:
-                log.info("Triggering scheduler run...")
-                self._scheduler_task.stop()
-                self._scheduler_task.start()
-
-            # remember now
             self._last_change = Time.now()
+
+    async def _update_blocks(self) -> None:
+        # get schedulable blocks and sort them
+        log.info("Found update in schedulable block, downloading them...")
+        blocks = sorted(
+            await self._task_archive.get_schedulable_blocks(),
+            key=lambda x: json.dumps(x.configuration, sort_keys=True),
+        )
+        log.info("Downloaded %d schedulable block(s).", len(blocks))
+
+        # compare new and old lists
+        removed, added = self._compare_block_lists(self._blocks, blocks)
+
+        # store blocks
+        self._blocks = blocks
+
+        # schedule update
+        if await self._need_update(removed, added):
+            log.info("Triggering scheduler run...")
+            self._scheduler_task.stop()     # Stop current run
+            self._scheduler_task.start()
+
+    async def _need_update(self, removed: List[ObservingBlock], added: List[ObservingBlock]) -> bool:
+        if len(removed) == 0 and len(added) == 0:
+            # no need to re-schedule
+            log.info("No change in list of blocks detected.")
+            return False
+
+        # has only the current block been removed?
+        log.info("Removed: %d, added: %d", len(removed), len(added))
+        if len(removed) == 1:
+            log.info(
+                "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
+                removed[0].target.name,
+                str(self._last_task_id),
+                str(self._current_task_id),
+            )
+        if len(removed) == 1 and len(added) == 0 and removed[0].target.name == self._last_task_id:
+            # no need to re-schedule
+            log.info("Only one removed block detected, which is the one currently running.")
+            return False
+
+        # check, if one of the removed blocks was actually in schedule
+        if len(removed) > 0:
+            schedule = await self._schedule.get_schedule()
+            removed_from_schedule = [r for r in removed if r in schedule]
+            if len(removed_from_schedule) == 0:
+                log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")
+                return False
+
+        return True
 
     @staticmethod
     def _compare_block_lists(

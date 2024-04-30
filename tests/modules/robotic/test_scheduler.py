@@ -96,43 +96,40 @@ class TestTaskSchedule(TaskSchedule):
 @pytest.mark.asyncio
 async def test_worker_loop_not_changed() -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
-    scheduler._need_update = False
 
     scheduler._task_archive.last_changed = AsyncMock(return_value=Time.now())  # type: ignore
     scheduler._last_change = Time.now()
 
-    await scheduler._worker_loop()
+    await scheduler._update_worker_loop()
 
-    assert scheduler._need_update is False
 
 
 @pytest.mark.asyncio
 async def test_worker_loop_no_changes(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._scheduler_task.start = Mock()  # type: ignore
     scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._blocks = schedule_blocks
 
-    scheduler._need_update = False
+    await scheduler._update_worker_loop()
 
-    await scheduler._worker_loop()
-
-    assert scheduler._need_update is False
+    scheduler._scheduler_task.start.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_worker_loop_removed_current(schedule_blocks) -> None:
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule())
+    scheduler._scheduler_task.start = Mock()  # type: ignore
+
     scheduler._task_archive.get_schedulable_blocks = AsyncMock(return_value=schedule_blocks)  # type: ignore
     scheduler._blocks = schedule_blocks
     scheduler._last_task_id = "0"
 
     scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))  # type: ignore
 
-    scheduler._need_update = False
+    await scheduler._update_worker_loop()
 
-    await scheduler._worker_loop()
-
-    assert scheduler._need_update is False
+    scheduler._scheduler_task.start.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -145,7 +142,7 @@ async def test_worker_loop_removed_not_in_schedule(schedule_blocks)  -> None:
 
     scheduler._compare_block_lists = Mock(return_value=([schedule_blocks[0]], []))  # type: ignore
 
-    await scheduler._worker_loop()
+    await scheduler._update_worker_loop()
 
     scheduler._scheduler_task.start.assert_not_called()
 
@@ -160,7 +157,7 @@ async def test_worker_loop_need_to_update(schedule_blocks) -> None:
 
     scheduler._compare_block_lists = Mock(return_value=([], [schedule_blocks[0]]))  # type: ignore
 
-    await scheduler._worker_loop()
+    await scheduler._update_worker_loop()
 
     scheduler._scheduler_task.start.assert_called_once()
     assert scheduler._blocks == schedule_blocks

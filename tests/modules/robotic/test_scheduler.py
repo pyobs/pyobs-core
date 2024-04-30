@@ -293,9 +293,8 @@ def mock_schedule_process(blocks: List[ObservingBlock], start: Time, end: Time, 
 
 
 @pytest.mark.asyncio
-async def test_schedule_blocks() -> None:
-    observer = Observer(longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg,
-                        elevation=1798.0 * u.m, timezone="UTC")
+async def test_schedule_blocks(observer) -> None:
+
     scheduler = Scheduler(TestTaskArchive(), TestTaskSchedule(), observer=observer)
 
     scheduler._schedule_process = mock_schedule_process  # type: ignore

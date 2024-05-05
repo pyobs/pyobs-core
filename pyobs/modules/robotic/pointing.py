@@ -2,13 +2,16 @@ import logging
 import random
 from typing import Tuple, Any, Optional, List, Dict
 
+import astropy
 import numpy as np
 import pandas as pd
+from astropy import units as u
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.interfaces import IAcquisition, ITelescope
 from pyobs.modules import Module
+from pyobs.modules.robotic._pointingseriesiterator import _PointingSeriesIterator
 from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
 from pyobs.utils.time import Time
@@ -56,12 +59,13 @@ class PointingSeries(Module, IAutonomous):
         self._num_alt = num_alt
         self._az_range = tuple(az_range)
         self._num_az = num_az
-        self._dec_range = dec_range
-        self._min_moon_dist = min_moon_dist
-        self._finish = 1.0 - finish / 100.0
         self._exp_time = exp_time
         self._acquisition = acquisition
         self._telescope = telescope
+
+        self._dec_range = dec_range
+        self._min_moon_dist = min_moon_dist
+        self._finish = finish
 
         # if Az range is [0, 360], we got north double, so remove one step
         if self._az_range == (0.0, 360.0):
@@ -85,16 +89,7 @@ class PointingSeries(Module, IAutonomous):
     async def _run_thread(self) -> None:
         """Run a pointing series."""
 
-        # create grid
-        grid: Dict[str, List[Any]] = {"alt": [], "az": [], "done": []}
-        for az in np.linspace(self._az_range[0], self._az_range[1], self._num_az):
-            for alt in np.linspace(self._alt_range[0], self._alt_range[1], self._num_alt):
-                grid["alt"] += [alt]
-                grid["az"] += [az]
-                grid["done"] += [False]
-
-        # to dataframe
-        pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
+        pd_grid = self._generate_grid()
 
         # get acquisition and telescope units
         acquisition = await self.proxy(self._acquisition, IAcquisition)
@@ -104,68 +99,27 @@ class PointingSeries(Module, IAutonomous):
         if self.observer is None:
             raise ValueError("No observer given.")
 
-        # loop until finished
-        while True:
-            # get all entries without offset measurements
-            todo = list(pd_grid[~pd_grid["done"]].index)
-            if len(todo) / len(pd_grid) < self._finish:
-                log.info("Finished.")
-                break
-            log.info("Grid points left to do: %d", len(todo))
+        pointing_series = _PointingSeriesIterator(self.observer, telescope, acquisition, self._dec_range, self._min_moon_dist, self._finish, pd_grid)
 
-            # get moon
-            moon = self.observer.moon_altaz(Time.now())
-
-            # try to find a good point
-            while True:
-                # pick a random index and remove from list
-                alt, az = random.sample(todo, 1)[0]
-                todo.remove((alt, az))
-                altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, frame="altaz", obstime=Time.now(), location=self.observer.location
-                )
-
-                # get RA/Dec
-                radec = altaz.icrs
-
-                # moon far enough away?
-                if altaz.separation(moon).degree >= self._min_moon_dist:
-                    # yep, are we in declination range?
-                    if self._dec_range[0] <= radec.dec.degree < self._dec_range[1]:
-                        # yep, break here, we found our target
-                        break
-
-                # to do list empty?
-                if len(todo) == 0:
-                    # could not find a grid point
-                    log.info("Could not find a suitable grid point, resetting todo list for next entry...")
-                    todo = list(pd_grid.index)
-                    continue
-
-            # log finding
-            log.info("Picked grid point at Alt=%.2f, Az=%.2f (%s).", alt, az, radec.to_string("hmsdms"))
-
-            # acquire target and process result
-            try:
-                # move telescope
-                await telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree))
-
-                # acquire target
-                acq = await acquisition.acquire_target()
-
-                #  process result
-                if acq is not None:
-                    await self._process_acquisition(**acq)
-
-            except (ValueError, exc.RemoteError):
-                log.info("Could not acquire target.")
-                continue
-
-            # finished
-            pd_grid.loc[alt, az] = True
+        async for acquisition_result in pointing_series:
+            if acquisition_result is not None:
+                await self._process_acquisition(**acquisition_result)
 
         # finished
         log.info("Pointing series finished.")
+
+    def _generate_grid(self) -> pd.DataFrame:
+        # create grid
+        grid: Dict[str, List[Any]] = {"alt": [], "az": [], "done": []}
+        for az in np.linspace(self._az_range[0], self._az_range[1], self._num_az):
+            for alt in np.linspace(self._alt_range[0], self._alt_range[1], self._num_alt):
+                grid["alt"] += [alt]
+                grid["az"] += [az]
+                grid["done"] += [False]
+        # to dataframe
+        pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
+
+        return pd_grid
 
     async def _process_acquisition(
         self,

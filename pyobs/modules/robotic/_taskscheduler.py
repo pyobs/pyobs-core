@@ -30,7 +30,7 @@ class _TaskScheduler:
         self._current_task_id: Optional[str] = None
         self._schedule_start: Optional[Time] = None
 
-    def set_current_task_id(self, task_id: str) -> None:
+    def set_current_task_id(self, task_id: Optional[str]) -> None:
         self._current_task_id = task_id
 
     def set_schedule_start(self, time: Optional[Time]) -> None:

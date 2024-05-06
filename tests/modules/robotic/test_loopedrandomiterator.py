@@ -6,5 +6,5 @@ def test_iter() -> None:
 
     iterator = _LoopedRandomIterator(data)
 
-    assert data == [next(iterator), next(iterator)]  # Check first cycle
-    assert data == [next(iterator), next(iterator)]  # Check second cycle
+    assert set(data) == {next(iterator), next(iterator)}  # Check first cycle
+    assert set(data) == {next(iterator), next(iterator)}  # Check second cycle

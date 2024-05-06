@@ -82,7 +82,7 @@ class _PointingSeriesIterator:
         num_finished_coords: int = sum(self._grid_points["done"].values)
         total_num_coords: int = len(self._grid_points)
 
-        return num_finished_coords/total_num_coords >= self._finish_fraction
+        return num_finished_coords >= self._finish_fraction * total_num_coords
 
     def _get_todo_coords(self) -> List[Tuple[float, float]]:
         return list(self._grid_points[~self._grid_points["done"]].index)
@@ -94,7 +94,7 @@ class _PointingSeriesIterator:
             altaz = SkyCoord(
                 alt=alt * u.deg, az=az * u.deg, frame="altaz", obstime=Time.now(), location=self._observer.location
             )
-            radec = altaz.icrs
+            radec = altaz.transform_to("icrs")
 
             if self._is_valid_target(altaz, radec, moon):
                 log.info("Picked grid point at Alt=%.2f, Az=%.2f (%s).", alt, az, radec.to_string("hmsdms"))

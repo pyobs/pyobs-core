@@ -13,14 +13,35 @@ from tests.modules.robotic.conftest import MockTelescope, MockAcquisition
 
 
 @pytest.mark.asyncio
+async def test_telescope_not_set(observer: astroplan.Observer) -> None:
+    iterator = _PointingSeriesIterator(observer, (-80.0, 80.0), 0, 0)
+    iterator.set_acquisition(MockAcquisition())  # type: ignore
+
+    with pytest.raises(ValueError):
+        async for _ in iterator:
+            ...
+
+
+@pytest.mark.asyncio
+async def test_acquisition_not_set(observer: astroplan.Observer) -> None:
+    iterator = _PointingSeriesIterator(observer, (-80.0, 80.0), 0, 0)
+    iterator.set_telescope(MockTelescope())  # type: ignore
+
+    with pytest.raises(ValueError):
+        async for _ in iterator:
+            ...
+
+
+@pytest.mark.asyncio
 async def test_empty(observer: astroplan.Observer) -> None:
     coords = pd.DataFrame({"alt": [], "az": [], "done": []})
     coords.set_index(["alt", "az"])
 
-    iterator = _PointingSeriesIterator(observer,
-                                       MockTelescope(),  # type: ignore
-                                       MockAcquisition(),  # type: ignore
-                                       (-80.0, 80.0), 1, 0, coords)
+    iterator = _PointingSeriesIterator(observer, (-80.0, 80.0), 0, 0)
+
+    iterator.set_telescope(MockTelescope())  # type: ignore
+    iterator.set_acquisition(MockAcquisition())  # type: ignore
+    iterator.set_grid_points(coords)
 
     with pytest.raises(StopAsyncIteration):
         await anext(iterator)  # type: ignore
@@ -38,10 +59,10 @@ async def test_next(observer: astroplan.Observer, mocker: pytest_mock.MockerFixt
 
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
-    iterator = _PointingSeriesIterator(observer,
-                                       MockTelescope(),     # type: ignore
-                                       MockAcquisition(),   # type: ignore
-                                       (-80.0, 80.0), 1, 0, coords)
+    iterator = _PointingSeriesIterator(observer,(-80.0, 80.0), 0, 0)
+    iterator.set_telescope(MockTelescope())  # type: ignore
+    iterator.set_acquisition(MockAcquisition())  # type: ignore
+    iterator.set_grid_points(coords)
 
     iterator._telescope.move_radec = AsyncMock()  # type: ignore
 
@@ -62,10 +83,10 @@ async def test_acquire_error(observer: astroplan.Observer, mocker: pytest_mock.M
 
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
 
-    iterator = _PointingSeriesIterator(observer,
-                                       MockTelescope(),     # type: ignore
-                                       MockAcquisition(),   # type: ignore
-                                       (-80.0, 80.0), 1, 0, coords)
+    iterator = _PointingSeriesIterator(observer, (-80.0, 80.0), 0, 0)
+    iterator.set_telescope(MockTelescope())  # type: ignore
+    iterator.set_acquisition(MockAcquisition())  # type: ignore
+    iterator.set_grid_points(coords)
 
     iterator._acquisition.acquire_target = AsyncMock(side_effect=ValueError)  # type: ignore
 

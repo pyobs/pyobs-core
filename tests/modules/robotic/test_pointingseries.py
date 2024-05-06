@@ -31,9 +31,11 @@ async def test_run_thread(observer, mocker):
     current_time = pyobs.utils.time.Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
 
     mocker.patch("pyobs.utils.time.Time.now", return_value=current_time)
-    series = PointingSeries(num_alt=1, num_az=1, observer=observer, finish=1)
+    series = PointingSeries(num_alt=1, num_az=1, observer=observer, finish=0)
     series.comm.proxy = mock_proxy  # type: ignore
     series._process_acquisition = AsyncMock()  # type: ignore
+
+    await series.open()
     await series._run_thread()
 
     mock_proxy.telescope.move_radec.assert_called_once_with(151.12839530803322, 27.74121078725986)

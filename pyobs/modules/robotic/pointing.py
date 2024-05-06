@@ -1,20 +1,13 @@
 import logging
-import random
 from typing import Tuple, Any, Optional, List, Dict
 
-import astropy
 import numpy as np
 import pandas as pd
-from astropy import units as u
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 
 from pyobs.interfaces import IAcquisition, ITelescope
+from pyobs.interfaces import IAutonomous
 from pyobs.modules import Module
 from pyobs.modules.robotic._pointingseriesiterator import _PointingSeriesIterator
-from pyobs.utils import exceptions as exc
-from pyobs.interfaces import IAutonomous
-from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -25,18 +18,18 @@ class PointingSeries(Module, IAutonomous):
     __module__ = "pyobs.modules.robotic"
 
     def __init__(
-        self,
-        alt_range: Tuple[float, float] = (30.0, 85.0),
-        num_alt: int = 8,
-        az_range: Tuple[float, float] = (0.0, 360.0),
-        num_az: int = 24,
-        dec_range: Tuple[float, float] = (-80.0, 80.0),
-        min_moon_dist: float = 15.0,
-        finish: int = 90,
-        exp_time: float = 1.0,
-        acquisition: str = "acquisition",
-        telescope: str = "telescope",
-        **kwargs: Any,
+            self,
+            alt_range: Tuple[float, float] = (30.0, 85.0),
+            num_alt: int = 8,
+            az_range: Tuple[float, float] = (0.0, 360.0),
+            num_az: int = 24,
+            dec_range: Tuple[float, float] = (-80.0, 80.0),
+            min_moon_dist: float = 15.0,
+            finish: int = 90,
+            exp_time: float = 1.0,
+            acquisition: str = "acquisition",
+            telescope: str = "telescope",
+            **kwargs: Any,
     ):
         """Initialize a new auto focus system.
 
@@ -59,13 +52,15 @@ class PointingSeries(Module, IAutonomous):
         self._num_alt = num_alt
         self._az_range = tuple(az_range)
         self._num_az = num_az
-        self._exp_time = exp_time
+
         self._acquisition = acquisition
         self._telescope = telescope
 
-        self._dec_range = dec_range
-        self._min_moon_dist = min_moon_dist
-        self._finish = finish
+        self._pointing_series_iterator = _PointingSeriesIterator(
+            self.observer, dec_range,
+            finish_percentage=finish,
+            min_moon_dist=min_moon_dist
+        )
 
         # if Az range is [0, 360], we got north double, so remove one step
         if self._az_range == (0.0, 360.0):
@@ -86,22 +81,22 @@ class PointingSeries(Module, IAutonomous):
         """Whether a service is running."""
         return True
 
+    async def open(self, **kwargs: Any) -> None:
+        await Module.open(self)
+
+        acquisition = await self.proxy(self._acquisition, IAcquisition)
+        telescope = await self.proxy(self._telescope, ITelescope)
+
+        self._pointing_series_iterator.set_acquisition(acquisition)
+        self._pointing_series_iterator.set_telescope(telescope)
+
     async def _run_thread(self) -> None:
         """Run a pointing series."""
 
         pd_grid = self._generate_grid()
+        self._pointing_series_iterator.set_grid_points(pd_grid)
 
-        # get acquisition and telescope units
-        acquisition = await self.proxy(self._acquisition, IAcquisition)
-        telescope = await self.proxy(self._telescope, ITelescope)
-
-        # check observer
-        if self.observer is None:
-            raise ValueError("No observer given.")
-
-        pointing_series = _PointingSeriesIterator(self.observer, telescope, acquisition, self._dec_range, self._min_moon_dist, self._finish, pd_grid)
-
-        async for acquisition_result in pointing_series:
+        async for acquisition_result in self._pointing_series_iterator:
             if acquisition_result is not None:
                 await self._process_acquisition(**acquisition_result)
 
@@ -122,16 +117,16 @@ class PointingSeries(Module, IAutonomous):
         return pd_grid
 
     async def _process_acquisition(
-        self,
-        datetime: str,
-        ra: float,
-        dec: float,
-        alt: float,
-        az: float,
-        off_ra: Optional[float] = None,
-        off_dec: Optional[float] = None,
-        off_alt: Optional[float] = None,
-        off_az: Optional[float] = None,
+            self,
+            datetime: str,
+            ra: float,
+            dec: float,
+            alt: float,
+            az: float,
+            off_ra: Optional[float] = None,
+            off_dec: Optional[float] = None,
+            off_alt: Optional[float] = None,
+            off_az: Optional[float] = None,
     ) -> None:
         """Process the result of the acquisition. Either ra_off/dec_off or alt_off/az_off must be given.
 

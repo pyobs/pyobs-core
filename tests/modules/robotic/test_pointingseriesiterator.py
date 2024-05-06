@@ -68,7 +68,7 @@ async def test_next(observer: astroplan.Observer, mocker: pytest_mock.MockerFixt
 
     assert await anext(iterator) == {"datetime": "", "ra": 0.0, "dec": 0.0, "az": 0.0, "alt": 0.0}  # type: ignore
 
-    iterator._telescope.move_radec.assert_called_once_with(0, 0)
+    iterator._telescope.move_radec.assert_called_once_with(0, 0)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -91,4 +91,3 @@ async def test_acquire_error(observer: astroplan.Observer, mocker: pytest_mock.M
     iterator._acquisition.acquire_target = AsyncMock(side_effect=ValueError)  # type: ignore
 
     assert await anext(iterator) is None  # type: ignore
-

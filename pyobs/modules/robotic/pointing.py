@@ -56,6 +56,9 @@ class PointingSeries(Module, IAutonomous):
         self._acquisition = acquisition
         self._telescope = telescope
 
+        if self.observer is None:
+            raise ValueError("No observer given.")
+
         self._pointing_series_iterator = _PointingSeriesIterator(
             self.observer, dec_range,
             finish_percentage=finish,
@@ -71,11 +74,9 @@ class PointingSeries(Module, IAutonomous):
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
-        pass
 
     async def stop(self, **kwargs: Any) -> None:
         """Stops a service."""
-        pass
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
@@ -141,7 +142,6 @@ class PointingSeries(Module, IAutonomous):
             off_alt: Found Alt offset.
             off_az: Found Az offset.
         """
-        pass
 
 
 __all__ = ["PointingSeries"]

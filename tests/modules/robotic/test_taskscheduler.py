@@ -1,7 +1,7 @@
 import datetime
 import multiprocessing
 from typing import List, Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import astroplan
 import astropy.units as u
@@ -18,30 +18,21 @@ from tests.modules.robotic.test_scheduler import TestTaskSchedule
 
 @pytest.mark.asyncio
 async def test_prepare_schedule_invalid_twilight(observer: Observer) -> None:
-    scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "invalid")
-
     with pytest.raises(ValueError):
-        await scheduler._prepare_schedule()
+        _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "invalid")
 
 
 @pytest.mark.asyncio
 async def test_prepare_schedule_astronomical_twilight(observer: Observer, schedule_blocks: List[ObservingBlock]) -> None:
     scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "astronomical")
-    scheduler._blocks = schedule_blocks
 
-    _, _, _, constraints = await scheduler._prepare_schedule()
-
-    assert constraints[0].max_solar_altitude == -18 * u.deg
+    assert scheduler._scheduler.constraints[0].max_solar_altitude == -18 * u.deg
 
 
 @pytest.mark.asyncio
 async def test_prepare_schedule_nautical_twilight(observer: Observer, schedule_blocks: List[ObservingBlock]) -> None:
     scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "nautical")
-    scheduler._blocks = schedule_blocks
-
-    _, _, _, constraints = await scheduler._prepare_schedule()
-
-    assert constraints[0].max_solar_altitude == -12 * u.deg
+    assert scheduler._scheduler.constraints[0].max_solar_altitude == -12 * u.deg
 
 
 @pytest.mark.asyncio
@@ -60,7 +51,7 @@ async def test_prepare_schedule_no_start(observer: Observer, schedule_blocks: Li
     scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "nautical")
     scheduler._blocks = schedule_blocks
 
-    _, start, _, _ = await scheduler._prepare_schedule()
+    _, start, _ = await scheduler._prepare_schedule()
 
     assert start.to_datetime() == datetime.datetime(2024, 4, 1, 20, 1, 0)
 
@@ -74,7 +65,7 @@ async def test_prepare_schedule_start(observer: Observer, schedule_blocks: List[
     scheduler._blocks = schedule_blocks
     scheduler._schedule_start = Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
 
-    _, start, _, _ = await scheduler._prepare_schedule()
+    _, start, _ = await scheduler._prepare_schedule()
 
     assert start.to_datetime() == datetime.datetime(2024, 4, 1, 20, 1, 0)
 
@@ -88,7 +79,7 @@ async def test_prepare_schedule_end(observer: Observer, schedule_blocks: List[Ob
     scheduler._blocks = schedule_blocks
     scheduler._schedule_start = Time(datetime.datetime(2024, 4, 1, 20, 1, 0))
 
-    _, _, end, _ = await scheduler._prepare_schedule()
+    _, _, end = await scheduler._prepare_schedule()
 
     assert end.to_datetime() == datetime.datetime(2024, 4, 2, 20, 1, 0)
 
@@ -116,12 +107,12 @@ async def test_prepare_schedule_block_filtering(observer: Observer, schedule_blo
     scheduler._current_task_id = "0"
     scheduler._blocks = blocks
 
-    res_blocks, _, _, _ = await scheduler._prepare_schedule()
+    res_blocks, _, _ = await scheduler._prepare_schedule()
 
     assert [block.configuration["request"]["id"] for block in res_blocks] == ["2", "3"]
 
 
-def mock_schedule_process(blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any],
+def mock_schedule_process(blocks: List[ObservingBlock], start: Time, end: Time,
                           scheduled_blocks: multiprocessing.Queue) -> None:  # type: ignore
     scheduled_blocks.put(blocks)
 
@@ -130,7 +121,6 @@ def mock_schedule_process(blocks: List[ObservingBlock], start: Time, end: Time, 
 async def test_schedule_blocks(observer: Observer) -> None:
 
     scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "nautical")
-
     scheduler._schedule_process = mock_schedule_process  # type: ignore
 
     time = Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
@@ -139,7 +129,7 @@ async def test_schedule_blocks(observer: Observer) -> None:
         configuration={"request": {"id": "0"}}
     )
     blocks = [block]
-    scheduled_blocks = await scheduler._schedule_blocks(blocks, time, time, [])
+    scheduled_blocks = await scheduler._schedule_blocks(blocks, time, time)
     assert scheduled_blocks[0].configuration["request"]["id"] == block.configuration["request"]["id"]
 
 
@@ -177,3 +167,29 @@ async def test_convert_blocks_to_astroplan(observer: Observer) -> None:
     assert converted_blocks[0].priority == 0
     assert converted_blocks[0].constraints[0].min.to_datetime() == datetime.datetime(2024, 4, 1, 20, 0, 30)
     assert converted_blocks[0].constraints[0].max.to_datetime() == datetime.datetime(2024, 4, 1, 19, 59, 30)
+
+
+class MockSchedule:
+    def __init__(self, blocks: List[ObservingBlock]) -> None:
+        self.scheduled_blocks = blocks
+
+
+@pytest.mark.asyncio
+async def test_schedule_process(observer: Observer) -> None:
+    scheduler = _TaskScheduler(TestTaskSchedule(), observer, 24, 60, "nautical")
+
+    time = Time(datetime.datetime(2024, 4, 1, 20, 0, 0))
+    block = ObservingBlock(
+        FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=0), 10 * u.minute, 2000.0,
+        constraints=[astroplan.TimeConstraint(min=time, max=time)]
+    )
+    blocks = [block]
+    scheduler._scheduler = Mock(return_value=MockSchedule(blocks))
+
+    queue = multiprocessing.Queue()  # type: ignore
+    scheduler._schedule_process(blocks, time, time, queue)
+    converted_blocks = queue.get()
+
+    assert converted_blocks[0].priority == 2000.0
+    assert converted_blocks[0].constraints[0].min.to_datetime() == datetime.datetime(2024, 4, 1, 20, 0)
+    assert converted_blocks[0].constraints[0].max.to_datetime() == datetime.datetime(2024, 4, 1, 20, 0)

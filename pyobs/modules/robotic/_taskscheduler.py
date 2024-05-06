@@ -23,12 +23,23 @@ class _TaskScheduler:
 
         self._schedule_range = schedule_range
         self._safety_time = safety_time
-        self._twilight = twilight
+
+        twilight_constraint = self._get_twilight_constraint(twilight)
+        self._scheduler = astroplan.PriorityScheduler(twilight_constraint, self._observer, transitioner=astroplan.Transitioner())
 
         self._blocks: List[ObservingBlock] = []
 
         self._current_task_id: Optional[str] = None
         self._schedule_start: Optional[Time] = None
+
+    @staticmethod
+    def _get_twilight_constraint(twilight: str) -> List[astroplan.AtNightConstraint]:
+        if twilight == "astronomical":
+            return [astroplan.AtNightConstraint.twilight_astronomical()]
+        elif twilight == "nautical":
+            return [astroplan.AtNightConstraint.twilight_nautical()]
+        else:
+            raise ValueError("Unknown twilight type.")
 
     def set_current_task_id(self, task_id: Optional[str]) -> None:
         self._current_task_id = task_id
@@ -42,10 +53,10 @@ class _TaskScheduler:
     async def schedule_task(self) -> None:
         try:
             # prepare scheduler
-            blocks, start, end, constraints = await self._prepare_schedule()
+            blocks, start, end = await self._prepare_schedule()
 
             # schedule
-            scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
+            scheduled_blocks = await self._schedule_blocks(blocks, start, end)
 
             # finish schedule
             await self._finish_schedule(scheduled_blocks, start)
@@ -53,7 +64,7 @@ class _TaskScheduler:
         except ValueError as e:
             log.warning(str(e))
 
-    async def _prepare_schedule(self) -> Tuple[List[ObservingBlock], Time, Time, List[Any]]:
+    async def _prepare_schedule(self) -> Tuple[List[ObservingBlock], Time, Time]:
         """TaskSchedule blocks."""
 
         converted_blocks = await self._convert_blocks_to_astroplan()
@@ -67,18 +78,8 @@ class _TaskScheduler:
             await self._schedule.set_schedule([], start)
             raise ValueError("No blocks left for scheduling.")
 
-        constraints = await self._get_twilight_constraint()
-
         # return all
-        return blocks, start, end, constraints
-
-    async def _get_twilight_constraint(self) -> List[astroplan.Constraint]:
-        if self._twilight == "astronomical":
-            return [astroplan.AtNightConstraint.twilight_astronomical()]
-        elif self._twilight == "nautical":
-            return [astroplan.AtNightConstraint.twilight_nautical()]
-        else:
-            raise ValueError("Unknown twilight type.")
+        return blocks, start, end
 
     async def _convert_blocks_to_astroplan(self) -> List[astroplan.ObservingBlock]:
         copied_blocks = [copy.copy(block) for block in self._blocks]
@@ -158,13 +159,11 @@ class _TaskScheduler:
 
         return len(time_constraints) == 0 or len(before_end) > 0
 
-    async def _schedule_blocks(
-        self, blocks: List[ObservingBlock], start: Time, end: Time, constraints: List[Any]
-    ) -> List[ObservingBlock]:
+    async def _schedule_blocks(self, blocks: List[ObservingBlock], start: Time, end: Time) -> List[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
         qout: mp.Queue[List[ObservingBlock]] = mp.Queue()
-        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, qout))
+        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, qout))
         p.start()
 
         # wait for process to finish
@@ -196,7 +195,6 @@ class _TaskScheduler:
         blocks: List[ObservingBlock],
         start: Time,
         end: Time,
-        constraints: List[Any],
         scheduled_blocks: mp.Queue   # type: ignore
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
@@ -204,15 +202,9 @@ class _TaskScheduler:
         # log it
         log.info("Calculating schedule for %d schedulable block(s) starting at %s...", len(blocks), start)
 
-        # we don't need any transitions
-        transitioner = astroplan.Transitioner()
-
-        # create scheduler
-        scheduler = astroplan.PriorityScheduler(constraints, self._observer, transitioner=transitioner)
-
         # run scheduler
         time_range = astroplan.Schedule(start, end)
-        schedule = scheduler(blocks, time_range)
+        schedule = self._scheduler(blocks, time_range)
 
         # put scheduled blocks in queue
         scheduled_blocks.put(schedule.scheduled_blocks)

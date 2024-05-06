@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
-from astroplan import Observer
+from astroplan import Observer, ObservingBlock, FixedTarget
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 
 
 class MockAcquisition:
@@ -16,6 +17,19 @@ class MockTelescope:
 
 
 @pytest.fixture(scope='module')
-def observer():
+def observer() -> Observer:
     return Observer(longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg,
                         elevation=1798.0 * u.m, timezone="UTC")
+
+
+@pytest.fixture(scope='module')
+def schedule_blocks() -> List[ObservingBlock]:
+    blocks = [
+        ObservingBlock(
+            FixedTarget(SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs"), name=str(i)), 10 * u.minute, 10,
+            constraints=[], configuration={"request": {"id": str(i)}}
+        )
+        for i in range(10)
+    ]
+
+    return blocks

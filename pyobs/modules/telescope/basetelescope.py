@@ -206,67 +206,65 @@ class BaseTelescope(
         # define base header
         hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
 
-        # positions
+        await self._add_coordinate_header(hdr)
+        await self._add_side_information_header(hdr)
+
+        self._copy_header(self._fits_headers, hdr)
+
+        celestial_headers = await self._calc_celestial_headers()
+        self._copy_header(celestial_headers, hdr)
+
+        return hdr
+
+    async def _add_coordinate_header(self, header: Dict[str, Union[Any, Tuple[Any, str]]]) -> None:
         try:
             ra, dec = await self.get_radec()
             coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
             alt, az = await self.get_altaz()
             coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
-
         except Exception as e:
             log.warning("Could not fetch telescope position: %s", e)
-            coords_ra_dec, coords_alt_az = None, None
+            return
 
-        # set coordinate headers
-        if coords_ra_dec is not None:
-            hdr["TEL-RA"] = (float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
-            hdr["TEL-DEC"] = (float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
-        if coords_alt_az is not None:
-            hdr["TEL-ALT"] = (float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
-            hdr["TEL-AZ"] = (float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
-            hdr["TEL-ZD"] = (90.0 - hdr["TEL-ALT"][0], "Telescope zenith distance [degrees]")
-            hdr["AIRMASS"] = (float(coords_alt_az.secz.value), "Airmass of observation start")
+        header["TEL-RA"] = (float(coords_ra_dec.ra.degree), "Right ascension of telescope [degrees]")
+        header["TEL-DEC"] = (float(coords_ra_dec.dec.degree), "Declination of telescope [degrees]")
 
-        # convert to sexagesimal
-        if coords_ra_dec is not None:
-            hdr["RA"] = (str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object")
-            hdr["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
+        header["TEL-ALT"] = (float(coords_alt_az.alt.degree), "Telescope altitude [degrees]")
+        header["TEL-AZ"] = (float(coords_alt_az.az.degree), "Telescope azimuth [degrees]")
+        header["TEL-ZD"] = (90.0 - header["TEL-ALT"][0], "Telescope zenith distance [degrees]")
+        header["AIRMASS"] = (float(coords_alt_az.secz.value), "Airmass of observation start")
 
-        # site location
-        if self.observer is not None:
-            hdr["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
-            hdr["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
-            hdr["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
+        header["RA"] = (str(coords_ra_dec.ra.to_string(sep=":", unit=u.hour, pad=True)), "Right ascension of object")
+        header["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
 
-        # add static fits headers
-        for key, value in self._fits_headers.items():
-            hdr[key] = tuple(value)
+    async def _add_side_information_header(self, header: Dict[str, Union[Any, Tuple[Any, str]]]) -> None:
+        if self.observer is None:
+            return
 
-        # add celestial headers
-        celestial_headers = await self._calc_celestial_headers()
-        for key, value in celestial_headers.items():
-            hdr[key] = tuple(value)
+        header["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
+        header["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
+        header["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
 
-        # finish
-        return hdr
+    @staticmethod
+    def _copy_header(source: Dict[str, Any], target: Dict[str, Union[Any, Tuple[Any, str]]]) -> None:
+        for key, value in source.items():
+            target[key] = tuple(value)
 
     async def _calc_celestial_headers(self) -> Dict[str, Tuple[Optional[float], str]]:
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
-        alt: Optional[float]
-        az: Optional[float]
 
         # no observer?
         if self.observer is None:
             return {}
 
-        # get telescope alt/az
+        tel_altaz: Optional[SkyCoord] = None
         try:
             alt, az = await self.get_altaz()
             tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame="altaz")
         except:
-            alt, az, tel_altaz = None, None, None
+            pass
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)

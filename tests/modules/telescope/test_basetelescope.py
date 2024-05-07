@@ -6,6 +6,7 @@ from unittest.mock import Mock, AsyncMock
 import numpy as np
 import pytest
 import astropy.units as u
+import pytest_mock
 from astropy.coordinates import SkyCoord, EarthLocation
 
 import pyobs
@@ -59,7 +60,7 @@ class MockObserver:
 
 
 @pytest.mark.asyncio
-async def test_open(mocker):
+async def test_open(mocker: pytest_mock.MockFixture) -> None:
     mocker.patch("pyobs.mixins.WeatherAwareMixin.open")
     mocker.patch("pyobs.mixins.MotionStatusMixin.open")
     mocker.patch("pyobs.modules.Module.open")
@@ -67,9 +68,9 @@ async def test_open(mocker):
     telescope = TestBaseTelescope()
     await telescope.open()
 
-    pyobs.mixins.WeatherAwareMixin.open.assert_called_once_with(telescope)
-    pyobs.mixins.MotionStatusMixin.open.assert_called_once_with(telescope)
-    pyobs.modules.Module.open.assert_called_once_with(telescope)
+    pyobs.mixins.WeatherAwareMixin.open.assert_called_once_with(telescope)  # type: ignore
+    pyobs.mixins.MotionStatusMixin.open.assert_called_once_with(telescope)  # type: ignore
+    pyobs.modules.Module.open.assert_called_once_with(telescope)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -95,7 +96,7 @@ async def test_update_celestial_headers_no_altaz() -> None:
     telescope = TestBaseTelescope()
     telescope.observer = MockObserver()
 
-    telescope.get_altaz = AsyncMock(side_effect=Exception)
+    telescope.get_altaz = AsyncMock(side_effect=Exception)  # type: ignore
 
     celestial_headers = await telescope._calc_celestial_headers()
 
@@ -107,7 +108,7 @@ async def test_update_celestial_headers() -> None:
     telescope = TestBaseTelescope()
     telescope.observer = MockObserver()
 
-    telescope.get_altaz = AsyncMock(return_value=(60, 0))
+    telescope.get_altaz = AsyncMock(return_value=(60, 0))  # type: ignore
 
     celestial_headers = await telescope._calc_celestial_headers()
 
@@ -118,7 +119,7 @@ async def test_update_celestial_headers() -> None:
 async def test_get_fits_header_before_no_altaz() -> None:
     telescope = TestBaseTelescope()
 
-    telescope.get_altaz = AsyncMock(side_effect=Exception)
+    telescope.get_altaz = AsyncMock(side_effect=Exception)  # type: ignore
 
     assert await telescope.get_fits_header_before() == {}
 
@@ -127,7 +128,7 @@ async def test_get_fits_header_before_no_altaz() -> None:
 async def test_get_fits_header_before_optional_headers() -> None:
     telescope = TestBaseTelescope()
     telescope._fits_headers = {"TEST": (1.0, "TEST")}
-    telescope._calc_celestial_headers = AsyncMock(return_value={"CTEST": (1.0, "CTEST")})
+    telescope._calc_celestial_headers = AsyncMock(return_value={"CTEST": (1.0, "CTEST")})  # type: ignore
 
     header = await telescope.get_fits_header_before()
 
@@ -156,8 +157,8 @@ async def test_get_fits_header_before_altaz() -> None:
     telescope = TestBaseTelescope()
     telescope.observer = MockObserver()
 
-    telescope.get_radec = AsyncMock(return_value=(60, 0))
-    telescope.get_altaz = AsyncMock(return_value=(60, 0))
+    telescope.get_radec = AsyncMock(return_value=(60, 0))  # type: ignore
+    telescope.get_altaz = AsyncMock(return_value=(60, 0))  # type: ignore
 
     header = await telescope.get_fits_header_before()
 
@@ -178,36 +179,36 @@ async def test_get_fits_header_before_altaz() -> None:
 
 
 @pytest.mark.asyncio
-async def test_move_altaz_motion_status():
+async def test_move_altaz_motion_status() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.INITIALIZING)
-    telescope._move_altaz = AsyncMock()
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.INITIALIZING)  # type: ignore
+    telescope._move_altaz = AsyncMock()  # type: ignore
 
     await telescope.move_altaz(60, 0)
     telescope._move_altaz.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_move_altaz_min_alt():
+async def test_move_altaz_min_alt() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     with pytest.raises(ValueError):
         await telescope.move_altaz(0, 0)
 
 
 @pytest.mark.asyncio
-async def test_move_altaz():
+async def test_move_altaz() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     telescope.comm = DummyComm()
-    telescope.comm.send_event = AsyncMock()
+    telescope.comm.send_event = AsyncMock()  # type: ignore
 
-    telescope._change_motion_status = AsyncMock()
-    telescope._move_altaz = AsyncMock()
+    telescope._change_motion_status = AsyncMock()  # type: ignore
+    telescope._move_altaz = AsyncMock()  # type: ignore
 
-    telescope._wait_for_motion = AsyncMock()
+    telescope._wait_for_motion = AsyncMock()  # type: ignore
 
     await telescope.move_altaz(60.0, 0.0)
 
@@ -224,11 +225,11 @@ async def test_move_altaz():
 
 
 @pytest.mark.asyncio
-async def test_move_altaz_log(caplog):
+async def test_move_altaz_log(caplog: pytest.LogCaptureFixture) -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
-    telescope._change_motion_status = AsyncMock()   # We need to mock this, since this also logs to logging.INFO
+    telescope._change_motion_status = AsyncMock()  # type: ignore # We need to mock this, since this also logs to logging.INFO
 
     with caplog.at_level(logging.INFO):
         await telescope.move_altaz(60.0, 0.0)
@@ -239,51 +240,51 @@ async def test_move_altaz_log(caplog):
 
 
 @pytest.mark.asyncio
-async def test_move_radec_motion_status():
+async def test_move_radec_motion_status() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.INITIALIZING)
-    telescope._move_radec = AsyncMock()
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.INITIALIZING)  # type: ignore
+    telescope._move_radec = AsyncMock()  # type: ignore
 
     await telescope.move_radec(60, 0)
     telescope._move_radec.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_move_radec_no_observer():
+async def test_move_radec_no_observer() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     with pytest.raises(ValueError):
         await telescope.move_radec(0, 0)
 
 
 @pytest.mark.asyncio
-async def test_move_radec_min_alt():
+async def test_move_radec_min_alt() -> None:
     telescope = TestBaseTelescope()
     telescope.observer = MockObserver()
-    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=0.0, az=0.0, unit="deg", frame="altaz"))
+    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=0.0, az=0.0, unit="deg", frame="altaz"))  # type: ignore
 
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     with pytest.raises(ValueError):
         await telescope.move_radec(0, 0)
 
 
 @pytest.mark.asyncio
-async def test_move_radec():
+async def test_move_radec() -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     telescope.observer = MockObserver()
-    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=60.0, az=0.0, unit="deg", frame="altaz"))
+    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=60.0, az=0.0, unit="deg", frame="altaz"))  # type: ignore
 
     telescope.comm = DummyComm()
-    telescope.comm.send_event = AsyncMock()
+    telescope.comm.send_event = AsyncMock()  # type: ignore
 
-    telescope._change_motion_status = AsyncMock()
-    telescope._move_radec = AsyncMock()
+    telescope._change_motion_status = AsyncMock()  # type: ignore
+    telescope._move_radec = AsyncMock()  # type: ignore
 
-    telescope._wait_for_motion = AsyncMock()
+    telescope._wait_for_motion = AsyncMock()  # type: ignore
 
     await telescope.move_radec(60.0, 0.0)
 
@@ -300,14 +301,14 @@ async def test_move_radec():
 
 
 @pytest.mark.asyncio
-async def test_move_radec_log(caplog):
+async def test_move_radec_log(caplog: pytest.LogCaptureFixture) -> None:
     telescope = TestBaseTelescope()
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)
+    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.IDLE)  # type: ignore
 
     telescope.observer = MockObserver()
-    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=60.0, az=0.0, unit="deg", frame="altaz"))
+    telescope.observer.altaz = Mock(return_value=SkyCoord(alt=60.0, az=0.0, unit="deg", frame="altaz"))  # type: ignore
 
-    telescope._change_motion_status = AsyncMock()   # We need to mock this, since this also logs to logging.INFO
+    telescope._change_motion_status = AsyncMock()  # type: ignore # We need to mock this, since this also logs to logging.INFO
 
     with caplog.at_level(logging.INFO):
         await telescope.move_radec(60.0, 0.0)

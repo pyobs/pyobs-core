@@ -1,7 +1,9 @@
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
+import astropy
 import pytest
+import pytest_mock
 from astropy.coordinates import EarthLocation, SkyCoord
 
 import astropy.units as u
@@ -42,8 +44,9 @@ async def test_move_radec() -> None:
 
 
 @pytest.mark.asyncio
-async def test_move_altaz(mocker) -> None:
+async def test_move_altaz(mocker: pytest_mock.MockFixture) -> None:
     mocker.patch("pyobs.utils.time.Time.now", return_value=Time("2010-01-01T00:00:00", format="isot"))
+    mocker.patch("astropy.coordinates.SkyCoord.transform_to", return_value=SkyCoord(0, 0, unit="deg", frame="icrs"))
 
     telescope = DummyTelescope()
     telescope.location = EarthLocation(lat=10. * u.degree, lon=10. * u.degree, height=100 * u.meter)
@@ -52,7 +55,8 @@ async def test_move_altaz(mocker) -> None:
     abort_event = asyncio.Event()
     await telescope._move_altaz(60, 0, abort_event)
 
-    telescope._move.assert_awaited_with(110.35706910444917, 40.020387331332806, abort_event)
+    astropy.coordinates.SkyCoord.transform_to.assert_called_once_with("icrs")
+    telescope._move.assert_awaited_with(0, 0, abort_event)
 
 @pytest.mark.asyncio
 async def test_get_focus() -> None:

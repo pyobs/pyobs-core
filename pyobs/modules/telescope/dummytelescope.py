@@ -93,7 +93,7 @@ class DummyTelescope(
         coords = SkyCoord(
             alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self.location, frame="altaz"
         )
-        icrs = coords.icrs
+        icrs = coords.transform_to("icrs")
 
         # start slewing
         await self._move(icrs.ra.degree, icrs.dec.degree, abort_event)

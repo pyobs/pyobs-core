@@ -54,8 +54,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         self._weather = WeatherState()
 
         # add thread func
-        self.add_background_task(self._update, True)
-
+        self.add_background_task(self._run, True)
 
     async def open(self) -> None:
         """Open module."""
@@ -108,7 +107,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             self._weather.status = await self._api.get_current_status()
         except Exception as e:
             log.warning("Request failed: %s", str(e))
-            self._weather.is_good = False   # on error, we're always bad
+            self._weather.is_good = False  # on error, we're always bad
 
         if was_good != self._weather.is_good and self._active:
             if self._weather.is_good:

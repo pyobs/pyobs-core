@@ -26,6 +26,7 @@ class CatalogCircularMask(ImageProcessor):
         # init
         self._center = center
         self._radius = radius
+        self._radius_is_corrected = False
 
     async def __call__(self, image: Image) -> Image:
         """Remove everything outside the given radius from the image.
@@ -36,6 +37,8 @@ class CatalogCircularMask(ImageProcessor):
         Returns:
             Image with masked Catalog.
         """
+        if not self._radius_is_corrected:
+            self._correct_radius_for_binning(image)
 
         center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
 
@@ -44,6 +47,14 @@ class CatalogCircularMask(ImageProcessor):
         image.catalog = catalog[mask]
 
         return image
+
+    def _correct_radius_for_binning(self, image):
+        binning_x, binning_y = image.header["XBINNING"], image.header["YBINNING"]
+        if binning_x == binning_y:
+            self._radius /= binning_x
+        else:
+            log.warning("Binning factor is not the same for x and y axis. Filter radius remains uncorrected ...")
+        self._radius_is_corrected = True
 
 
 __all__ = ["CatalogCircularMask"]

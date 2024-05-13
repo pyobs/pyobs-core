@@ -1,13 +1,15 @@
 import logging
 from typing import Tuple, Any, Optional
 
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, AltAz, EarthLocation
 from astropy.table import Table, Row
 from astropy.wcs import WCS
 from pandas._typing import npt
+from pyobs.utils.time import Time
+import astropy.units as u
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance
+from pyobs.images.meta import PixelOffsets, OnSkyDistance, AltAzOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -53,10 +55,11 @@ class BrightestStarGuiding(Offsets):
         star_pos = self._get_brightest_star_position(catalog)
 
         offset = (star_pos[0] - self._ref_pos[0], star_pos[1] - self._ref_pos[1])
-        on_sky_distance = self._calc_on_sky_distance(image, self._ref_pos, star_pos)
-
         image.set_meta(PixelOffsets(*offset))
-        image.set_meta(OnSkyDistance(on_sky_distance))
+        log.info("Found pixel offset of dx=%.2f, dy=%.2f", offset[0], offset[1])
+
+        altaz_offset = self._calc_altaz_offset(image, star_pos)
+        image.set_meta(AltAzOffsets(*altaz_offset))
         return image
 
     def _reference_initialized(self):
@@ -67,13 +70,24 @@ class BrightestStarGuiding(Offsets):
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])
         return brightest_star["x"], brightest_star["y"]
 
-    @staticmethod
-    def _calc_on_sky_distance(image: Image, ref_pos: Tuple[float, float], star_pos: Tuple[float, float]) -> Angle:
-        wcs = WCS(image.header)
-        reference_coordinates = wcs.pixel_to_world(*ref_pos)
-        star_coordinates = wcs.pixel_to_world(*star_pos)
+    def _calc_altaz_offset(self, image: Image,  star_pos: Tuple[float, float]):
+        radec_ref, radec_target = self._get_radec_ref_target(image, star_pos)
+        hdr = image.header
+        location = EarthLocation(lat=hdr["LATITUDE"]*u.deg, lon=hdr["LONGITUD"]*u.deg, height=hdr["HEIGHT"]*u.m)
+        frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
+        altaz_ref = radec_ref.transform_to(frame)
+        altaz_target = radec_target.transform_to(frame)
 
-        return reference_coordinates.separation(star_coordinates)
+        # get offset
+        daz, dalt = altaz_ref.spherical_offsets_to(altaz_target)
+
+        return dalt.arcsec/2, daz.arcsec/2
+
+    def _get_radec_ref_target(self, image: Image, star_pos):
+        wcs = WCS(image.header)
+        ref = wcs.pixel_to_world(*self._ref_pos)
+        target = wcs.pixel_to_world(*star_pos)
+        return ref, target
 
 
 __all__ = ["BrightestStarGuiding"]

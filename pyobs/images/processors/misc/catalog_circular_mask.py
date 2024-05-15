@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Tuple
+from typing import Any, Tuple, Union, Type
 
 import numpy as np
 
@@ -14,7 +14,12 @@ class CatalogCircularMask(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, radius: float, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(
+        self,
+        radius: float,
+        center: Union[Tuple[int, int], Tuple[float, float], Tuple[str, str]] = ("CRPIX1", "CRPIX2"),
+        **kwargs: Any
+    ):
         """Init an image processor that masks out everything except for a central circle.
 
         Args:
@@ -24,9 +29,9 @@ class CatalogCircularMask(ImageProcessor):
         ImageProcessor.__init__(self, **kwargs)
 
         # init
-        self._center = center
         self._radius = radius
         self._radius_is_corrected = False
+        self._center = center
 
     async def __call__(self, image: Image) -> Image:
         """Remove everything outside the given radius from the image.
@@ -40,7 +45,7 @@ class CatalogCircularMask(ImageProcessor):
         if not self._radius_is_corrected:
             self._correct_radius_for_binning(image)
 
-        center_x, center_y = image.header[self._center[0]], image.header[self._center[1]]
+        center_x, center_y = self._get_center(image)
 
         catalog = image.safe_catalog
         mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
@@ -55,6 +60,12 @@ class CatalogCircularMask(ImageProcessor):
         else:
             log.warning("Binning factor is not the same for x and y axis. Filter radius remains uncorrected ...")
         self._radius_is_corrected = True
+
+    def _get_center(self, image):
+        if isinstance(self._center[0], str) and isinstance(self._center[1], str):
+            return image.header[self._center[0]], image.header[self._center[1]]
+        else:
+            return self._center
 
 
 __all__ = ["CatalogCircularMask"]

@@ -70,10 +70,10 @@ class BrightestStarGuiding(Offsets):
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])
         return brightest_star["x"], brightest_star["y"]
 
-    def _calc_altaz_offset(self, image: Image,  star_pos: Tuple[float, float]):
+    def _calc_altaz_offset(self, image: Image, star_pos: Tuple[float, float]):
         radec_ref, radec_target = self._get_radec_ref_target(image, star_pos)
         hdr = image.header
-        location = EarthLocation(lat=hdr["LATITUDE"]*u.deg, lon=hdr["LONGITUD"]*u.deg, height=hdr["HEIGHT"]*u.m)
+        location = EarthLocation(lat=hdr["LATITUDE"] * u.deg, lon=hdr["LONGITUD"] * u.deg, height=hdr["HEIGHT"] * u.m)
         frame = AltAz(obstime=Time(image.header["DATE-OBS"]), location=location)
         altaz_ref = radec_ref.transform_to(frame)
         altaz_target = radec_target.transform_to(frame)
@@ -81,12 +81,13 @@ class BrightestStarGuiding(Offsets):
         # get offset
         daz, dalt = altaz_ref.spherical_offsets_to(altaz_target)
 
-        return dalt.arcsec/2, daz.arcsec/2
+        return dalt.arcsec, daz.arcsec
 
     def _get_radec_ref_target(self, image: Image, star_pos):
-        wcs = WCS(image.header)
-        ref = wcs.pixel_to_world(*self._ref_pos)
-        target = wcs.pixel_to_world(*star_pos)
+        wcs_ref = WCS(self._ref_image.header)
+        ref = wcs_ref.pixel_to_world(*self._ref_pos)
+        wcs_target = WCS(image.header)
+        target = wcs_target.pixel_to_world(*star_pos)
         return ref, target
 
 

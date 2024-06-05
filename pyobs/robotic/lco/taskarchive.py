@@ -111,7 +111,11 @@ class LcoTaskArchive(TaskArchive):
 
                     # target
                     t = cfg["target"]
-                    target = SkyCoord(t["ra"] * u.deg, t["dec"] * u.deg, frame=t["type"].lower())
+                    if "ra" in t and "dec" in t:
+                        target = SkyCoord(t["ra"] * u.deg, t["dec"] * u.deg, frame=t["type"].lower())
+                    else:
+                        log.warning("Unsupported coordinate type.")
+                        continue
 
                     # constraints
                     c = cfg["constraints"]

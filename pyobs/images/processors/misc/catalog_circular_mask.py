@@ -24,7 +24,7 @@ class CatalogCircularMask(ImageProcessor):
 
         Args:
             radius: radius of the central circle in pixels
-            center: fits-header keywords defining the pixel coordinates of the center of the circle
+            center: fits-header keywords or pixel coordinates defining the center of the circle
         """
         ImageProcessor.__init__(self, **kwargs)
 

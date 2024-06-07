@@ -68,6 +68,7 @@ class BrightestStarGuiding(Offsets):
     @staticmethod
     def _get_brightest_star_position(catalog: Table) -> Tuple[float, float]:
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])
+        log.info("Found brightest star at x=%.2f, y=%.2f", brightest_star["x"], brightest_star["y"])
         return brightest_star["x"], brightest_star["y"]
 
     def _calc_altaz_offset(self, image: Image, star_pos: Tuple[float, float]):
@@ -81,13 +82,12 @@ class BrightestStarGuiding(Offsets):
         # get offset
         daz, dalt = altaz_ref.spherical_offsets_to(altaz_target)
 
-        return dalt.arcsec, daz.arcsec
+        return dalt.arcsec/2, daz.arcsec/2
 
     def _get_radec_ref_target(self, image: Image, star_pos):
-        wcs_ref = WCS(self._ref_image.header)
-        ref = wcs_ref.pixel_to_world(*self._ref_pos)
-        wcs_target = WCS(image.header)
-        target = wcs_target.pixel_to_world(*star_pos)
+        wcs = WCS(image.header)
+        ref = wcs.pixel_to_world(*self._ref_pos)
+        target = wcs.pixel_to_world(*star_pos)
         return ref, target
 
 

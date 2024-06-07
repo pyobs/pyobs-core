@@ -82,7 +82,7 @@ class BrightestStarGuiding(Offsets):
         # get offset
         daz, dalt = altaz_ref.spherical_offsets_to(altaz_target)
 
-        return dalt.arcsec/2, daz.arcsec/2
+        return dalt.arcsec, daz.arcsec
 
     def _get_radec_ref_target(self, image: Image, star_pos):
         wcs = WCS(image.header)

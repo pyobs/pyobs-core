@@ -19,8 +19,8 @@ async def test_call(mocker):
 
     assert await estimator(image) == image
 
-    estimator._calc_exp_time.called_once_with(image)
-    estimator._set_exp_time.called_once_with(image, 1.0)
+    estimator._calc_exp_time.assert_called_once_with(image)
+    estimator._set_exp_time.assert_called_once_with(image, 1.0)
 
 
 def test_set_exp_time_lower(mocker):

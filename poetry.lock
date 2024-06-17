@@ -2964,9 +2964,9 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
-full = ["aiohttp", "asyncinotify", "ccdproc", "lmfit", "pandas", "paramiko", "photutils", "python-daemon", "python-telegram-bot", "reproject", "requests", "sep", "tornado"]
+full = ["aiohttp", "asyncinotify", "ccdproc", "lmfit", "pandas", "paramiko", "photutils", "python-daemon", "python-telegram-bot", "sep", "tornado"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "11e440b89ad288a77e03a7c802098c1fd9e6070a8e20330e9b4840cb47e632ce"
+content-hash = "0a55fbbe73e54fa72e3aaac6fb852c37c6b6ff765e0cdf23dac8b343c018c6f7"

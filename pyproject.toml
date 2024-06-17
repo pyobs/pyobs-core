@@ -35,7 +35,7 @@ python-telegram-bot = { version = "^20.6", optional = true }
 aiohttp = "^3.8.6"
 
 [tool.poetry.extras]
-full = ['asyncinotify', 'sep', 'python-daemon', 'reproject', 'pandas', 'paramiko',
+full = ['asyncinotify', 'sep', 'python-daemon', 'pandas', 'paramiko',
         'requests', 'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
         'aiohttp']
 

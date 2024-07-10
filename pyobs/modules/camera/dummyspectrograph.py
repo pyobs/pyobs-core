@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 import numpy as np
 from astropy.io import fits
@@ -43,7 +43,7 @@ class DummySpectrograph(BaseSpectrograph):
         # do exposure
         log.info("Starting exposure...")
         exposure_time = 1.0
-        date_obs = datetime.utcnow()
+        date_obs = datetime.now(timezone.utc)
         self._exposing = True
         steps = 10
         for i in range(steps):

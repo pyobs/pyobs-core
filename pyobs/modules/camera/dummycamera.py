@@ -1,7 +1,7 @@
 import asyncio
 import glob
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING, List
 
 from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
@@ -122,7 +122,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
         # start exposure
         log.info("Starting exposure with {0:s} shutter...".format("open" if open_shutter else "closed"))
-        date_obs = datetime.utcnow()
+        date_obs = datetime.now(timezone.utc)
         self._exposing = True
 
         # request image

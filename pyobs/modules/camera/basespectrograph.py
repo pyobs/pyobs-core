@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+from datetime import datetime, timezone
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class ExposureInfo(NamedTuple):
     """Info about a running exposure."""
 
-    start: datetime.datetime
+    start: datetime
 
 
 class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass=ABCMeta):
@@ -90,7 +90,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         header_futures_before = await self.request_fits_headers(before=True)
 
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.datetime.utcnow())
+        self._exposure = ExposureInfo(start=datetime.now(timezone.utc))
         try:
             hdulist = await self._expose(abort_event=self.expose_abort)
             if hdulist is None or hdulist[0].data is None:

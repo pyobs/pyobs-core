@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone, timedelta, tzinfo, date
 import functools
 import logging
 from typing import Union, Optional, Any, Dict
@@ -62,7 +62,7 @@ class Environment:
             )
 
     @property
-    def timezone(self) -> datetime.tzinfo:
+    def timezone(self) -> tzinfo:
         """Returns the timezone of the observatory."""
         return self._timezone
 
@@ -72,7 +72,7 @@ class Environment:
         return self._location
 
     @functools.lru_cache()
-    def localtime(self, utc: Optional[datetime.datetime] = None) -> datetime.datetime:
+    def localtime(self, utc: Optional[datetime] = None) -> datetime:
         """Returns the local time at the observatory, either for a given UTC time or for now, if none is given.
 
         Args:
@@ -83,14 +83,14 @@ class Environment:
         """
         # get UTC
         if utc is None:
-            utc = datetime.datetime.utcnow()
+            utc = datetime.now(timezone.utc)
         # mark as UTC
         utc_dt = pytz.utc.localize(utc)
         # convert to local timezone
         return utc_dt.astimezone(self._timezone)
 
     @functools.lru_cache()
-    def night_obs(self, time: Optional[Union[datetime.datetime, Time]] = None) -> datetime.date:
+    def night_obs(self, time: Optional[Union[datetime, Time]] = None) -> date:
         """Returns the date of the night for the given night, i.e. the date of the start of the night.
 
         Args:
@@ -109,18 +109,18 @@ class Environment:
             time = time.datetime
 
         # get local datetime
-        if not isinstance(time, datetime.datetime):
+        if not isinstance(time, datetime):
             raise ValueError("Invalid time")
         utc_dt = pytz.utc.localize(time)
         loc_dt = utc_dt.astimezone(self._timezone)
 
         # get night
         if loc_dt.hour < 15:
-            loc_dt += datetime.timedelta(days=-1)
+            loc_dt += timedelta(days=-1)
         return loc_dt.date()
 
     @functools.lru_cache()
-    def lst(self, time: Union[datetime.datetime, Time]) -> Longitude:
+    def lst(self, time: Union[datetime, Time]) -> Longitude:
         """Returns the local sidereal time for a given time.
 
         Args:

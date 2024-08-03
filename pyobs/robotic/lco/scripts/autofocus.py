@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Tuple, Optional, Any
+from typing import Union, Tuple, Optional, Any, cast
 
 from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus
 from pyobs.robotic import TaskRunner
@@ -153,6 +153,9 @@ class LcoAutoFocusScript(Script):
         if autofocus is None:
             raise ValueError("No autofocus given.")
         await autofocus.auto_focus(self._count, self._step, self._exptime)
+
+        # finally, stop telescope
+        await cast(ITelescope, telescope).stop_motion()
 
 
 __all__ = ["LcoAutoFocusScript"]

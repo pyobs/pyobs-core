@@ -3,7 +3,7 @@ TODO: write doc
 """
 __title__ = "Time"
 
-import datetime
+from datetime import datetime, timezone, date, timedelta
 from typing import cast
 
 import astropy.time
@@ -43,10 +43,10 @@ class Time(astropy.time.Time):  # type: ignore
             such a subclass) at the current time.
         """
         # call `utcnow` immediately to be sure it's ASAP
-        dtnow = datetime.datetime.utcnow()
+        dtnow = datetime.now(timezone.utc)
         return cast(Time, Time(val=dtnow, format="datetime", scale="utc") + Time._now_offset)
 
-    def night_obs(self, observer: Observer) -> datetime.date:
+    def night_obs(self, observer: Observer) -> date:
         """Returns the night for this time, i.e. the date of the start of the current night.
 
         Args:
@@ -65,7 +65,7 @@ class Time(astropy.time.Time):  # type: ignore
 
         # get night
         if loc_dt.hour < 15:
-            loc_dt += datetime.timedelta(days=-1)
+            loc_dt += timedelta(days=-1)
         return loc_dt.date()
 
 

@@ -38,3 +38,19 @@ async def test_else():
     assert cases["2"].triggered is False
     assert cases["3"].triggered is False
     assert cases["else"].triggered is True
+
+
+@pytest.mark.asyncio
+async def test_config():
+    cases = {
+        1: DebugTriggerRunner(),
+        2: DebugTriggerRunner(),
+        3: DebugTriggerRunner(),
+        "else": DebugTriggerRunner(),
+    }
+    cr = CasesRunner("config['abc']", cases, configuration={"abc": 2})
+    await cr.run(None, None, None)
+    assert cases[1].triggered is False
+    assert cases[2].triggered is True
+    assert cases[3].triggered is False
+    assert cases["else"].triggered is False

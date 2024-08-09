@@ -237,16 +237,12 @@ def main() -> None:
     )
 
     # commands
-    subparsers = parser.add_subparsers(dest="command")
-    cmd_start = subparsers.add_parser("start", help="start modules")
-    cmd_start.add_argument("modules", type=str, nargs="*")
-    cmd_stop = subparsers.add_parser("stop", help="stop modules")
-    cmd_stop.add_argument("modules", type=str, nargs="*")
-    cmd_restart = subparsers.add_parser("restart", help="restart modules")
-    cmd_restart.add_argument("modules", type=str, nargs="*")
-    cmd_status = subparsers.add_parser("status", help="status of modules")
-    cmd_status.add_argument("--json", action="store_true")
-    cmd_list = subparsers.add_parser("list", help="list of modules")
+    sp = parser.add_subparsers(dest="command")
+    sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
+    sp.add_parser("list", help="list of modules")
 
     # parse
     args = parser.parse_args()

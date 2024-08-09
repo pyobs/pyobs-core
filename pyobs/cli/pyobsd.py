@@ -138,7 +138,7 @@ class PyobsDaemon(object):
             for p in modules:
                 print(("[X]" if p in configs else "[ ]") + " " + ("[X]" if p in running else "[ ]") + " " + p)
 
-    def list(self, **kwargs) -> None:
+    def list(self) -> None:
         configs = [self._module(r) for r in self._configs]
         print("\n".join(configs))
 
@@ -249,9 +249,9 @@ def main() -> None:
 
     # init daemon
     daemon = PyobsDaemon(
-        os.path.join(args.path, args.config_path),
-        os.path.join(args.path, args.run_path),
-        os.path.join(args.path, args.log_path),
+        str(os.path.join(args.path, args.config_path)),
+        str(os.path.join(args.path, args.run_path)),
+        str(os.path.join(args.path, args.log_path)),
         log_level=args.log_level,
         chuid=args.chuid,
         start_stop_daemon=args.start_stop_daemon,

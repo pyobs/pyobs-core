@@ -83,7 +83,7 @@ class PyobsDaemon(object):
         configs = [self._module(r) for r in self._configs]
 
         # if no modules are given, start all
-        if modules is None:
+        if modules is None or len(modules) == 0:
             # ignore all configs that start with an underscore, those need to be started explicitly
             modules = [self._module(c) for c in configs if not os.path.basename(c).startswith("_")]
 
@@ -103,7 +103,7 @@ class PyobsDaemon(object):
 
     def stop(self, modules: Optional[List[str]] = None) -> None:
         # if no modules are given, stop all
-        if modules is None:
+        if modules is None or len(modules) == 0:
             modules = [self._module(r) for r in self._running]
 
         # loop running and stop them

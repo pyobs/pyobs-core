@@ -88,7 +88,7 @@ class LcoTaskSchedule(TaskSchedule):
         await self.update_now()
 
         # start update thread
-        asyncio.create_task(self._update_schedule())
+        asyncio.ensure_future(asyncio.create_task(self._update_schedule()))
 
     async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""

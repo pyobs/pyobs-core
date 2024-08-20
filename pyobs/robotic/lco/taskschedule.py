@@ -14,6 +14,7 @@ from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
 from .task import LcoTask
 from ...utils.logger import DuplicateFilter
+from ...utils.logging.resolvableerror import ResolvableErrorLogger
 from ...utils.parallel import acquire_lock
 
 log = logging.getLogger(__name__)
@@ -74,6 +75,9 @@ class LcoTaskSchedule(TaskSchedule):
 
         # task list
         self._tasks: Dict[str, LcoTask] = {}
+
+        # error logging for regular updates
+        self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
 
     async def open(self) -> None:
         """Open scheduler."""
@@ -159,12 +163,13 @@ class LcoTaskSchedule(TaskSchedule):
             # need update!
             try:
                 tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
+                self._update_error_log.resolve("Successfully updated schedule.")
             except TimeoutError:
-                log.error("Request timed out")
+                self._update_error_log.error("Request for updating schedule timed out.")
                 await asyncio.sleep(60)
                 return
             except RuntimeError:
-                log.warning("Could not fetch schedule.")
+                self._update_error_log.error("Could not fetch schedule.")
                 return
 
             # any changes?

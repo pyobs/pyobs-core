@@ -110,7 +110,7 @@ class XmppComm(Comm):
             resource: Resource part of the JID.
             password: Password for given JID.
             server: Server to connect to. If not given, domain from JID is used.
-            use_tls: Whether or not to use TLS.
+            use_tls: Whether to use TLS.
         """
         Comm.__init__(self, *args, **kwargs)
 
@@ -169,12 +169,23 @@ class XmppComm(Comm):
             Whether opening was successful.
         """
 
+        # connect
+        await self._connect()
+
+        # subscribe to events
+        await self.register_event(LogEvent)
+
+        # open Comm
+        await Comm.open(self)
+
+    async def _connect(self) -> None:
         # create client
         self._xmpp = XmppClient(self._jid, self._password)
         # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
         self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
+        self._xmpp.add_event_handler("disconnected", self._disconnected)
 
         # server given?
         server = () if self._server is None else tuple(self._server.split(":"))
@@ -198,12 +209,6 @@ class XmppComm(Comm):
                 self.module.quit()
             return
 
-        # subscribe to events
-        await self.register_event(LogEvent)
-
-        # open Comm
-        await Comm.open(self)
-
         # wait a little and finished
         await asyncio.sleep(1)
         self._connected = True
@@ -216,6 +221,25 @@ class XmppComm(Comm):
 
         # disconnect from sleekxmpp server
         await self._xmpp.disconnect()
+
+    async def _reconnect(self):
+        """Sleep a little and reconnect"""
+        await asyncio.sleep(2)
+        await self._connect()
+
+    def _disconnected(self, event: Any):
+        """Reset connection after disconnect."""
+        log.info("Disconnected from server, waiting for reconnect...")
+
+        # disconnect all clients
+        for jid in self._online_clients:
+            self._jid_got_offline(jid)
+
+        # reconnect
+        asyncio.ensure_future(
+            self._reconnect(),
+            loop=self._loop,
+        )
 
     @property
     def name(self) -> Optional[str]:
@@ -391,9 +415,16 @@ class XmppComm(Comm):
         Args:
             msg: XMPP message.
         """
+        self._jid_got_offline(msg["from"].full)
+
+    def _jid_got_offline(self, jid: str) -> None:
+        """If a new client disconnects, remove it from list.
+
+        Args:
+            jid: JID that got offline.
+        """
 
         # remove from list
-        jid = msg["from"].full
         if jid in self._online_clients:
             self._online_clients.remove(jid)
 
@@ -402,7 +433,8 @@ class XmppComm(Comm):
             del self._interface_cache[jid]
 
         # send event
-        self._send_event_to_module(ModuleClosedEvent(), msg["from"].username)
+        username = jid[: jid.find("@")]
+        self._send_event_to_module(ModuleClosedEvent(), username)
 
     @property
     def clients(self) -> List[str]:

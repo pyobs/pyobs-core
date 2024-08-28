@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 import logging
 import os
 import subprocess
@@ -39,8 +40,8 @@ class PyobsDaemon(object):
             if os.path.exists(filename):
                 self._pyobs_exec = filename
                 break
-        else:
-            raise ValueError("Could not find pyobs executable.")
+        # else:
+        #    raise ValueError("Could not find pyobs executable.")
 
         # get configs and running
         self._configs = self._get_configs()
@@ -59,7 +60,7 @@ class PyobsDaemon(object):
         running = []
         for pid_file in pid_files:
             # get pid
-            pid = self._pid(self._service(pid_file))
+            pid = self._pid(self._module(pid_file))
             if pid is None:
                 print("No PID file found.")
                 continue
@@ -76,72 +77,74 @@ class PyobsDaemon(object):
         # return running processes
         return running
 
-    def start(self, services: Optional[List[str]] = None) -> None:
+    def start(self, modules: Optional[List[str]] = None) -> None:
         # get list of running processes
-        running = [self._service(r) for r in self._running]
-        configs = [self._service(r) for r in self._configs]
+        running = [self._module(r) for r in self._running]
+        configs = [self._module(r) for r in self._configs]
 
-        # if no services are given, start all
-        if services is None:
+        # if no modules are given, start all
+        if modules is None or len(modules) == 0:
             # ignore all configs that start with an underscore, those need to be started explicitly
-            services = [self._service(c) for c in configs if not os.path.basename(c).startswith("_")]
+            modules = [self._module(c) for c in configs if not os.path.basename(c).startswith("_")]
 
         # loop configs
-        for service in sorted(services):
+        for module in sorted(modules):
             # exists?
-            if service not in configs:
-                print("Service %s does not exists." % service)
+            if module not in configs:
+                print("module %s does not exists." % module)
                 sys.exit(1)
 
             # start it?
-            if service in running:
-                print("%s already running." % service)
+            if module in running:
+                print("%s already running." % module)
             else:
-                print("Starting %s..." % service)
-                self._start_service(service)
+                print("Starting %s..." % module)
+                self._start_service(module)
 
-    def stop(self, services: Optional[List[str]] = None) -> None:
-        # if no services are given, stop all
-        if services is None:
-            services = [self._service(r) for r in self._running]
+    def stop(self, modules: Optional[List[str]] = None) -> None:
+        # if no modules are given, stop all
+        if modules is None or len(modules) == 0:
+            modules = [self._module(r) for r in self._running]
 
         # loop running and stop them
-        for service in services:
-            print("Stopping %s..." % service)
-            self._stop_service(service)
+        for module in modules:
+            print("Stopping %s..." % module)
+            self._stop_service(module)
 
-    def restart(self, services: Optional[List[str]] = None) -> None:
-        # stop all services
-        self.stop(services=services)
+    def restart(self, modules: Optional[List[str]] = None) -> None:
+        # stop all modules
+        self.stop(modules=modules)
 
         # sleep a little and get running
         time.sleep(1)
         self._running = self._get_running()
 
-        # start all services
-        self.start(services=services)
+        # start all modules
+        self.start(modules=modules)
 
-    def status(self, services: Optional[List[str]] = None) -> None:
+    def status(self, print_json: bool = False) -> None:
         # get all configs and running
-        configs = [self._service(r) for r in self._configs]
-        running = [self._service(r) for r in self._running]
+        configs = [self._module(r) for r in self._configs]
+        running = [self._module(r) for r in self._running]
 
-        # if no services are given, get all
-        if services is None:
-            services = sorted(list(set(configs + running)))
+        # if no modules are given, get all
+        modules = sorted(list(set(configs + running)))
 
-        # print them
-        print("cfg run service")
-        for p in services:
-            print(("[X]" if p in configs else "[ ]") + " " + ("[X]" if p in running else "[ ]") + " " + p)
+        # json or print them
+        if print_json:
+            print(json.dumps({m: m in running for m in modules}))
+        else:
+            print("cfg run module")
+            for p in modules:
+                print(("[X]" if p in configs else "[ ]") + " " + ("[X]" if p in running else "[ ]") + " " + p)
 
-    def list(self, **kwargs) -> None:
-        configs = [self._service(r) for r in self._configs]
+    def list(self) -> None:
+        configs = [self._module(r) for r in self._configs]
         print("\n".join(configs))
 
-    def _start_service(self, service: str) -> None:
+    def _start_service(self, module: str) -> None:
         # get PID file
-        pid_file = self._pid_file(service)
+        pid_file = self._pid_file(module)
 
         # define command
         cmd = []
@@ -160,46 +163,46 @@ class PyobsDaemon(object):
                 "--pid-file",
                 pid_file,
                 "--log-file",
-                self._log_file(service),
+                self._log_file(module),
                 "--log-level",
                 self._log_level,
-                self._config_file(service),
+                self._config_file(module),
             ]
         )
 
         # execute
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def _stop_service(self, service: str) -> None:
-        # get service name and PID
-        pid_file = self._pid_file(service)
+    def _stop_service(self, module: str) -> None:
+        # get module name and PID
+        pid_file = self._pid_file(module)
 
-        # stop service
+        # stop module
         cmd = [self._start_stop_daemon, "--stop", "--quiet", "--oknodo", "--pidfile", pid_file]
         if self._chuid:
             cmd.extend(["--user", self._chuid[: self._chuid.find(":")]])
         subprocess.call(cmd)
 
     @staticmethod
-    def _service(config_file: str) -> str:
+    def _module(config_file: str) -> str:
         # get basename without extension
         return os.path.splitext(os.path.basename(config_file))[0]
 
-    def _config_file(self, service: str) -> str:
+    def _config_file(self, module: str) -> str:
         # get pid file
-        return os.path.join(self._config_path, service + ".yaml")
+        return os.path.join(self._config_path, module + ".yaml")
 
-    def _pid_file(self, service: str) -> str:
+    def _pid_file(self, module: str) -> str:
         # get pid file
-        return os.path.join(self._run_path, service + ".pid")
+        return os.path.join(self._run_path, module + ".pid")
 
-    def _log_file(self, service: str) -> str:
+    def _log_file(self, module: str) -> str:
         # get pid file
-        return os.path.join(self._log_path, service + ".log")
+        return os.path.join(self._log_path, module + ".log")
 
-    def _pid(self, service: str) -> Optional[int]:
+    def _pid(self, module: str) -> Optional[int]:
         # get pid file
-        pid_file = self._pid_file(service)
+        pid_file = self._pid_file(module)
         if not os.path.exists(pid_file):
             return None
 
@@ -232,23 +235,40 @@ def main() -> None:
     parser.add_argument(
         "--start-stop-daemon", type=str, default=config.get("start-stop-daemon", "/sbin/start-stop-daemon")
     )
-    parser.add_argument("command", type=str, choices=["start", "stop", "restart", "status", "list"])
-    parser.add_argument("services", type=str, nargs="*")
+
+    # commands
+    sp = parser.add_subparsers(dest="command")
+    sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
+    sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
+    sp.add_parser("list", help="list of modules")
+
+    # parse
     args = parser.parse_args()
 
     # init daemon
     daemon = PyobsDaemon(
-        os.path.join(args.path, args.config_path),
-        os.path.join(args.path, args.run_path),
-        os.path.join(args.path, args.log_path),
+        str(os.path.join(args.path, args.config_path)),
+        str(os.path.join(args.path, args.run_path)),
+        str(os.path.join(args.path, args.log_path)),
         log_level=args.log_level,
         chuid=args.chuid,
         start_stop_daemon=args.start_stop_daemon,
     )
 
     # run
-    cmd = getattr(daemon, args.command)
-    cmd(services=args.services if args.services else None)
+    match args.command:
+        case "start":
+            daemon.start(modules=args.modules)
+        case "stop":
+            daemon.stop(modules=args.modules)
+        case "restart":
+            daemon.restart(modules=args.modules)
+        case "status":
+            daemon.status(print_json=args.json)
+        case "list":
+            daemon.list()
 
 
 if __name__ == "__main__":

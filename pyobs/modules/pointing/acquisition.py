@@ -176,9 +176,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                     log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
 
                 # write log
-                # TODO: reactivate!
-                # if self._publisher is not None:
-                #    await self._publisher(**log_entry)
+                if self._publisher is not None:
+                    await self._publisher(**log_entry)
 
                 # finished
                 return log_entry

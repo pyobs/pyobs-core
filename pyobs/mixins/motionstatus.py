@@ -43,9 +43,10 @@ class MotionStatusMixin:
         if interface is None:
             # did status change?
             if self.__motion_status != status:
-                # set it
+                # log and set it
                 changed = True
                 self.__motion_status = status
+                log.info("Changed motion status to %s.", status)
 
                 # also set all individual interfaces
                 for i in self.__motion_status_interfaces:
@@ -63,6 +64,7 @@ class MotionStatusMixin:
                 # set it
                 self.__motion_status_single[interface] = status
                 changed = True
+                log.info("Changed motion status for interface %s to %s.", interface, status)
 
                 # combine status
                 self.__motion_status = self._combine_motion_status()

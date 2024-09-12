@@ -26,7 +26,7 @@ class BackgroundTask:
         if isinstance(exception, SevereError):
             raise exception
         elif exception is not None:
-            log.error("Exception %s in task %s.", exception, self._func.__name__)
+            log.exception("Exception in task %s.", self._func.__name__)
 
         if self._restart:
             log.error("Background task for %s has died, restarting...", self._func.__name__)

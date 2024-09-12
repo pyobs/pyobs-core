@@ -36,7 +36,7 @@ async def test_callback_exception(caplog):
     with caplog.at_level(logging.ERROR):
         bg_task._callback_function()
 
-    assert caplog.messages[0] == "Exception TestError in task test_function."
+    assert caplog.messages[0] == "Exception in task test_function."
     assert caplog.messages[1] == "Background task for test_function has died, quitting..."
 
 

@@ -46,9 +46,12 @@ class CasesRunner(Script):
 
         # check in cases
         if value in self.cases:
-            await self.get_object(self.cases[value], Script).run(task_runner, task_schedule, task_archive)
+            script = self.get_object(self.cases[value], Script, configuration=self.configuration)
         elif "else" in self.cases:
-            await self.get_object(self.cases["else"], Script).run(task_runner, task_schedule, task_archive)
+            script = self.get_object(self.cases["else"], Script, configuration=self.configuration)
+        else:
+            raise ValueError("Invalid choice")
+        await script.run(task_runner, task_schedule, task_archive)
 
 
 __all__ = ["CasesRunner"]

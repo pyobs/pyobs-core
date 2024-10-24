@@ -12,3 +12,4 @@ from .softbin import SoftBin
 from .broadcast import Broadcast
 from .circular_mask import CircularMask
 from .image_source_filter import ImageSourceFilter
+from .catalog_circular_mask import CatalogCircularMask

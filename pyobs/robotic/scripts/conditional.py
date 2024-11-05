@@ -35,8 +35,20 @@ class ConditionalRunner(Script):
         self.true = true
         self.false = false
 
+    def __get_script(self) -> Script:
+        # evaluate condition
+        ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
+
+        # run scripts
+        if ret:
+            return self.get_object(self.true, Script)
+        else:
+            if self.false is not None:
+                return self.get_object(self.false, Script)
+
     async def can_run(self) -> bool:
-        return True
+        script = self.__get_script()
+        return await script.can_run()
 
     async def run(
         self,
@@ -44,15 +56,8 @@ class ConditionalRunner(Script):
         task_schedule: Optional[TaskSchedule] = None,
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
-        # evaluate condition
-        ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
-
-        # run scripts
-        if ret:
-            await self.get_object(self.true, Script).run(task_runner, task_schedule, task_archive)
-        else:
-            if self.false is not None:
-                await self.get_object(self.false, Script).run(task_runner, task_schedule, task_archive)
+        script = self.__get_script()
+        await script.run(task_runner, task_schedule, task_archive)
 
 
 __all__ = ["ConditionalRunner"]

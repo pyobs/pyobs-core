@@ -32,8 +32,21 @@ class CasesRunner(Script):
         self.expression = expression
         self.cases = cases
 
+    def __get_script(self) -> Script:
+        # evaluate condition
+        value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
+
+        # check in cases
+        if value in self.cases:
+            return self.get_object(self.cases[value], Script, configuration=self.configuration)
+        elif "else" in self.cases:
+            return self.get_object(self.cases["else"], Script, configuration=self.configuration)
+        else:
+            raise ValueError("Invalid choice")
+
     async def can_run(self) -> bool:
-        return True
+        script = self.__get_script()
+        return await script.can_run()
 
     async def run(
         self,
@@ -41,16 +54,7 @@ class CasesRunner(Script):
         task_schedule: Optional[TaskSchedule] = None,
         task_archive: Optional[TaskArchive] = None,
     ) -> None:
-        # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
-
-        # check in cases
-        if value in self.cases:
-            script = self.get_object(self.cases[value], Script, configuration=self.configuration)
-        elif "else" in self.cases:
-            script = self.get_object(self.cases["else"], Script, configuration=self.configuration)
-        else:
-            raise ValueError("Invalid choice")
+        script = self.__get_script()
         await script.run(task_runner, task_schedule, task_archive)
 
 

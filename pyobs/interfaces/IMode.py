@@ -56,5 +56,12 @@ class IMode(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
+    async def get_mode_configs(self, mode:str = None) -> dict:
+        """Get given mode's configurations.
+        Args:
+            mode: Name of mode to get.
+        """
+        ...
 
 __all__ = ["IMode"]

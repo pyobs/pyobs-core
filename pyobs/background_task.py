@@ -35,5 +35,11 @@ class BackgroundTask:
             log.error("Background task for %s has died, quitting...", self._func.__name__)
 
     def stop(self) -> None:
-        if self._task is not None:
+        if self.is_running():
             self._task.cancel()
+
+    def is_running(self) -> bool:
+        if self._task is None:
+            return False
+
+        return self._task.done()

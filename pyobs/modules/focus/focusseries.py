@@ -237,7 +237,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # take final image?
         if self._final_image:
-            await self._take_image(camera, exposure_time)
+            log.info("Exposing final image at %.2f mm and broadcasting it...", absolute)
+            if isinstance(camera, IExposureTime):
+                await camera.set_exposure_time(exposure_time)
+            if isinstance(camera, IData):
+                return await camera.grab_data()
 
         # return result
         return focus[0], focus[1]

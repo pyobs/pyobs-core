@@ -205,6 +205,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         try:
             focus = self._series.fit_focus()
         except Exception as e:
+            # restore initial guess
+            if self._offset:
+                await focuser.set_focus_offset(float(guess))
+            else:
+                await focuser.set_focus(float(guess))
             raise exc.GeneralError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?

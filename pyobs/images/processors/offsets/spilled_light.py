@@ -24,7 +24,14 @@ class SpilledLightGuiding(Offsets):
     __module__ = "pyobs.images.processors.offsets"
 
     def __init__(
-        self, fibre_position, inner_radius, outer_radius, max_relative_sigma=0.1, relative_shift=0.5, **kwargs: Any
+        self,
+        fibre_position,
+        inner_radius,
+        outer_radius,
+        max_relative_sigma=0.1,
+        relative_shift=0.5,
+        delta_angle=45,
+        **kwargs: Any
     ):
         """Init an image processor that adds the calculated offset.
 
@@ -34,6 +41,7 @@ class SpilledLightGuiding(Offsets):
             outer_radius: outer pixel radius of the considered ring
             max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is uniform
             relative_shift: fraction of inner radius, that will be used as pixel offset
+            delta_angle: angle of the sections of the ring, that are used to find the offset direction
         """
         Offsets.__init__(self, **kwargs)
 
@@ -42,6 +50,7 @@ class SpilledLightGuiding(Offsets):
         self._outer_radius = outer_radius
         self._max_relative_sigma = max_relative_sigma
         self._relative_shift = relative_shift
+        self._delta_angle = delta_angle
 
     async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -86,18 +95,42 @@ class SpilledLightGuiding(Offsets):
 
     async def _get_brightest_point(self, ring):
         index = np.nanargmax(ring)
+        # TODO: divide ring in sections and calculate mean brightness, use central pixel of region as reference
         return np.unravel_index(index, ring.shape)
 
-    async def _get_brightest_direction(self, ring):
+    async def _get_section_angles(self):
+        # min_angles = np.arange(0, 360, self._delta_angle / 2)
+        # max_angles = min_angles + self._delta_angle
+        # mean_angles = (max_angles - min_angles) / 2
+        return np.arange(0, 360, self._delta_angle / 2)
+
+    async def _apply_section_mask(self, ring, min_angle):
+        ny, nx = ring.shape
+        x, y = np.arange(0, nx), np.arange(0, ny)
+        x_coordinates, y_coordinates = np.meshgrid(x, y)
+        min_angles, max_angles, mean_angles = self._get_section_angles()
+        section_mask =  self._get_angle_from_position(x_coordinates, y_coordinates) > min_angle
+        section = ring.copy()
+        section *= section_mask
+        section = np.where(section == 0, np.nan, section)
+        return section
+
+    async def _get_sections(self, ring):
+
+
+    async def _get_angle_from_position(self, x_coordinate, y_coordinate):
         x_fibre, y_fibre = self._fibre_position
-        y_brightest_point, x_brightest_point = await self._get_brightest_point(ring)
-        print(y_brightest_point, x_brightest_point)
-        delta_x, delta_y = x_brightest_point - x_fibre, y_brightest_point - y_fibre
+        delta_x, delta_y = x_coordinate - x_fibre, y_coordinate - y_fibre
         return np.arctan(delta_x / delta_y)
+
+    async def _get_brightest_direction(self, ring):
+        y_brightest_point, x_brightest_point = await self._get_brightest_point(ring)
+        print("Brightest Point at: ", y_brightest_point, x_brightest_point)
+        return self._get_angle_from_position(x_brightest_point, y_brightest_point)
 
     async def _get_offset(self, ring):
         angle_direction = await self._get_brightest_direction(ring)
-        print(angle_direction * 180 / np.pi)
+        print("Direction Angle:", angle_direction * 180 / np.pi)
         total_offset = self._relative_shift * self._inner_radius
         x_offset = total_offset * np.sin(angle_direction)
         y_offset = total_offset * np.cos(angle_direction)

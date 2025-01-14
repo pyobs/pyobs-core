@@ -43,7 +43,7 @@ class MotionStatusMixin:
         if interface is None:
             # did status change?
             if self.__motion_status != status:
-                # set it
+                # log and set it
                 changed = True
                 self.__motion_status = status
 

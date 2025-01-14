@@ -10,6 +10,7 @@ from .filterchanged import FilterChangedEvent
 from .focusfound import FocusFoundEvent
 from .goodweather import GoodWeatherEvent
 from .log import LogEvent
+from .modechanged import ModeChangedEvent
 from .moduleclosed import ModuleClosedEvent
 from .moduleopened import ModuleOpenedEvent
 from .motionstatuschanged import MotionStatusChangedEvent

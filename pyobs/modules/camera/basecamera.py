@@ -176,7 +176,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # calculate difference between start of exposure and now, and return in ms
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
-        diff = self._exposure.start + duration - datetime.datetime.utcnow()
+        diff = self._exposure.start + duration - datetime.datetime.now(datetime.UTC)
         return diff.total_seconds()
 
     async def get_exposure_progress(self, **kwargs: Any) -> float:
@@ -191,7 +191,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             return 0.0
 
         # calculate difference between start of exposure and now
-        diff = datetime.datetime.utcnow() - self._exposure[0]
+        diff = datetime.datetime.now(datetime.UTC) - self._exposure[0]
 
         # zero exposure time?
         if self._exposure.exposure_time == 0.0 or self._camera_status == ExposureStatus.READOUT:
@@ -207,7 +207,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         Args:
             exposure_time: The requested exposure time in seconds.
-            open_shutter: Whether or not to open the shutter.
+            open_shutter: Whether to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
         Returns:
@@ -224,7 +224,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Args:
             exposure_time: The requested exposure time in seconds.
             image_type: Type of image.
-            broadcast: Whether or not the new image should be broadcasted.
+            broadcast: Whether the new image should be broadcasted.
 
         Returns:
             Tuple of the image itself and its filename.
@@ -243,7 +243,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self.expose_abort.clear()
 
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.datetime.utcnow(), exposure_time=exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.now(datetime.UTC), exposure_time=exposure_time)
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.safe_data is None:

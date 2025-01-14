@@ -200,9 +200,9 @@ class SpilledLightGuiding(Offsets):
 
     async def _calculate_relative_shift(self):
         if self._relative_shift is None:
-            #TODO find suitable weighting (equal sections -> no shift, unequal sections -> shift should approach 1 asymptotically)
             section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-            self._relative_shift = min(1, section_ratio-1)
+            relative_shift = ((section_ratio - 3) / (1 + abs(section_ratio - 3)) + 1) / 2
+            self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
         if method == "brightest_point":

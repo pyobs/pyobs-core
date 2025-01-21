@@ -144,7 +144,6 @@ class SpilledLightGuiding(Offsets):
         inner_radius,
         outer_radius,
         max_relative_sigma=0.1,
-        relative_shift=None,
         section_angular_width=36,
         section_angular_shift=18,
         **kwargs: Any
@@ -165,7 +164,6 @@ class SpilledLightGuiding(Offsets):
         self._inner_radius = inner_radius
         self._outer_radius = outer_radius
         self._max_relative_sigma = max_relative_sigma
-        self._relative_shift = relative_shift
         self._section_angular_width = section_angular_width
         self._section_angular_shift = section_angular_shift
 
@@ -199,10 +197,11 @@ class SpilledLightGuiding(Offsets):
         return image
 
     async def _calculate_relative_shift(self):
-        if self._relative_shift is None:
-            section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-            relative_shift = ((section_ratio - 3) / (1 + abs(section_ratio - 3)) + 1) / 2
-            self._relative_shift = min(1, relative_shift)
+        section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
+        print("section ratio: ", section_ratio)
+        relative_shift = ((section_ratio - 4) / (1 + abs(section_ratio - 4)) + 1) / 2
+        print("sigmoid: ", relative_shift)
+        self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
         if method == "brightest_point":

@@ -1,14 +1,12 @@
 import asyncio
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Any, Tuple, Union, List, Optional
-
-from astroplan import Observer
-from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation
+from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
 
 from pyobs.events import MoveRaDecEvent, MoveAltAzEvent
-from pyobs.interfaces import ITelescope, IFitsHeaderBefore
+from pyobs.interfaces import ITelescope, IFitsHeaderBefore, IPointingRaDec, IPointingAltAz
 from pyobs.modules import Module
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
 from pyobs.modules import timeout
@@ -104,6 +102,10 @@ class BaseTelescope(
             MoveError: If telescope cannot be moved.
         """
 
+        # no RA/Dec telescope?
+        if not isinstance(self, IPointingRaDec):
+            raise NotImplementedError
+
         # do nothing, if initializing, parking or parked
         if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
@@ -173,6 +175,10 @@ class BaseTelescope(
             MoveError: If telescope cannot be moved.
         """
 
+        # no Alt/Az telescope?
+        if not isinstance(self, IPointingAltAz):
+            raise NotImplementedError
+
         # do nothing, if initializing, parking or parked
         if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
@@ -218,15 +224,20 @@ class BaseTelescope(
         hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
 
         # positions
-        try:
-            ra, dec = await self.get_radec()
-            coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-            alt, az = await self.get_altaz()
-            coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
-
-        except Exception as e:
-            log.warning("Could not fetch telescope position: %s", e)
-            coords_ra_dec, coords_alt_az = None, None
+        coords_ra_dec = None
+        if isinstance(self, IPointingRaDec):
+            try:
+                ra, dec = await self.get_radec()
+                coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
+            except Exception as e:
+                log.warning("Could not fetch telescope RA/Dec: %s", e)
+        coords_alt_az = None
+        if isinstance(self, IPointingAltAz):
+            try:
+                alt, az = await self.get_altaz()
+                coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
+            except Exception as e:
+                log.warning("Could not fetch telescope Alt/Az: %s", e)
 
         # set coordinate headers
         if coords_ra_dec is not None:
@@ -286,29 +297,38 @@ class BaseTelescope(
             return
 
         # get telescope alt/az
-        try:
-            alt, az = await self.get_altaz()
-            tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame="altaz")
-        except:
-            alt, az, tel_altaz = None, None, None
+        tel_altaz = None
+        if isinstance(self, IPointingAltAz):
+            try:
+                alt, az = await self.get_altaz()
+                tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame="altaz")
+            except:
+                pass
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)
         moon_frac = self.observer.moon_illumination(now)
         sun_altaz = self.observer.sun_altaz(now)
 
-        # calculate distance to telescope
-        moon_dist = tel_altaz.separation(moon_altaz) if tel_altaz is not None else None
-        sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
-
         # store it
         self._celestial_headers = {
             "MOONALT": (float(moon_altaz.alt.degree), "Lunar altitude"),
             "MOONFRAC": (float(moon_frac), "Fraction of the moon illuminated"),
-            "MOONDIST": (None if moon_dist is None else float(moon_dist.degree), "Lunar distance from target"),
             "SUNALT": (float(sun_altaz.alt.degree), "Solar altitude"),
-            "SUNDIST": (None if sun_dist is None else float(sun_dist.degree), "Solar Distance from Target"),
         }
+
+        # calculate distance to telescope
+        if tel_altaz is not None:
+            moon_dist = tel_altaz.separation(moon_altaz) if tel_altaz is not None else None
+            sun_dist = tel_altaz.separation(sun_altaz) if tel_altaz is not None else None
+            self._celestial_headers["MOONDIST"] = (
+                None if moon_dist is None else float(moon_dist.degree),
+                "Lunar distance from target",
+            )
+            self._celestial_headers["SUNDIST"] = (
+                None if sun_dist is None else float(sun_dist.degree),
+                "Solar Distance from Target",
+            )
 
     def _calculate_derotator_position(self, ra: float, dec: float, alt: float, obstime: Time) -> float:
         target = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="gcrs")

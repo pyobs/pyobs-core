@@ -1,6 +1,5 @@
 import logging
 from typing import Any
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pyobs.images import Image
@@ -8,19 +7,6 @@ from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
-
-
-def plot_masked_image(full_image, masked_image, sigma_clim=3):
-    vmin, vmax = (np.nanmean(full_image.ravel()) - sigma_clim * np.nanstd(full_image.ravel()),
-                  np.nanmean(full_image.ravel()) + sigma_clim * np.nanstd(full_image.ravel()))
-    full_image_plot = np.where(full_image == np.nan, 0, full_image)
-    masked_image_plot = np.where(masked_image == np.nan, 0, masked_image)
-    fig = plt.figure(frameon=False)
-    im1 = plt.imshow(full_image_plot, cmap="gray", alpha=1)
-    im1.set_clim(vmin, vmax)
-    im2 = plt.imshow(masked_image_plot, cmap="viridis", alpha=0.7)
-    im2.set_clim(vmin, vmax)
-    plt.show()
 
 
 class Ring:

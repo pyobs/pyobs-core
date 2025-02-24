@@ -1,25 +1,16 @@
 import logging
-from typing import Tuple, Any, Optional
-
-import matplotlib.colors
+from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.coordinates import Angle, AltAz, EarthLocation
-from astropy.table import Table, Row
-from astropy.wcs import WCS
-from pandas._typing import npt
-from pyobs.utils.time import Time
-import astropy.units as u
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance, AltAzOffsets
+from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
 
-#TODO: use number of sections and relative overlap as input, calculate shift and width from that
 
-def plot_masked_image(full_image, masked_image, sigma_clim=5):
+def plot_masked_image(full_image, masked_image, sigma_clim=3):
     vmin, vmax = (np.nanmean(full_image.ravel()) - sigma_clim * np.nanstd(full_image.ravel()),
                   np.nanmean(full_image.ravel()) + sigma_clim * np.nanstd(full_image.ravel()))
     full_image_plot = np.where(full_image == np.nan, 0, full_image)
@@ -31,13 +22,6 @@ def plot_masked_image(full_image, masked_image, sigma_clim=5):
     im2.set_clim(vmin, vmax)
     plt.show()
 
-class Section():
-    def __init__(
-            self,
-            min_angle,
-            index
-    ):
-        ...
 
 class Ring:
     def __init__(
@@ -111,10 +95,6 @@ class Ring:
 
     def _calculate_brightest_section_index(self):
         section_mean_counts = [np.nanmean(section.ravel()) for section in self.sections]
-        plt.figure()
-        plt.plot(self._get_section_angles() + self._section_angular_width / 2, section_mean_counts)
-        plt.show()
-        plot_masked_image(self.data, self.sections[np.argmax(section_mean_counts)], sigma_clim=1)
         self.brightest_section_index = np.argmax(section_mean_counts)
 
     def get_brightest_section_angle(self):
@@ -198,9 +178,9 @@ class SpilledLightGuiding(Offsets):
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-        print("section ratio: ", section_ratio)
-        relative_shift = ((section_ratio - 4) / (1 + abs(section_ratio - 4)) + 1) / 2
-        print("sigmoid: ", relative_shift)
+        log.info("section ratio: ", section_ratio)
+        relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
+        log.info("sigmoid: ", relative_shift)
         self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
@@ -212,11 +192,11 @@ class SpilledLightGuiding(Offsets):
 
     async def _get_offset(self):
         angle_direction = await self._get_brightest_direction()
-        print("Brightest Angle:", angle_direction)
+        log.info("Brightest Angle:", angle_direction, " deg")
         await self._calculate_relative_shift()
         total_offset = self._relative_shift * self._inner_radius
         x_offset = total_offset * np.sin(angle_direction / 180 * np.pi)
-        y_offset = total_offset * np.cos(angle_direction / 180 * np.pi)
+        y_offset = -total_offset * np.cos(angle_direction / 180 * np.pi)
         return x_offset, y_offset
 
 

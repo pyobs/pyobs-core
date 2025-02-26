@@ -218,6 +218,10 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         ...
 
+    async def _init_exposure(self) -> None:
+        """Method that is always called at the very beginning of __expose and can be used to set stuff up."""
+        ...
+
     async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) -> Tuple[Image, str]:
         """Wrapper for a single exposure.
 
@@ -232,6 +236,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         Raises:
             GrabImageError: If there was a problem grabbing the image.
         """
+
+        # init stuff
+        await self._init_exposure()
 
         # request fits headers
         header_futures_before = await self.request_fits_headers(before=True)

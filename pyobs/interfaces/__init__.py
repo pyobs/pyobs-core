@@ -37,6 +37,7 @@ from .IImageType import IImageType
 from .IMode import IMode
 from .IModule import IModule
 from .IMotion import IMotion
+from .IMultiFiber import IMultiFiber
 from .IPointingAltAz import IPointingAltAz
 from .IPointingHelioprojective import IPointingHelioprojective
 from .IPointingHGS import IPointingHGS

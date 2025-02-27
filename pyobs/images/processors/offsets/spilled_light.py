@@ -154,7 +154,7 @@ class SpilledLightGuiding(Offsets):
                          section_angular_width=self._section_angular_width,
                          section_angular_shift=self._section_angular_shift)
         if self.ring.is_uniform():
-            print("Ring is uniform, No offset")
+            log.info("Ring is uniform, no offset applied.")
             pixel_offset = (0, 0)
         else:
             pixel_offset = await self._get_offset()
@@ -164,9 +164,9 @@ class SpilledLightGuiding(Offsets):
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-        log.info("section ratio: ", section_ratio)
+        log.info("Ratio between brightest and the opposite section: ", section_ratio)
         relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
-        log.info("sigmoid: ", relative_shift)
+        log.info("Corresponding relative offset: ", relative_shift)
         self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
@@ -178,7 +178,7 @@ class SpilledLightGuiding(Offsets):
 
     async def _get_offset(self):
         angle_direction = await self._get_brightest_direction()
-        log.info("Brightest Angle:", angle_direction, " deg")
+        log.info("Angle of the brightest section:", angle_direction, " deg")
         await self._calculate_relative_shift()
         total_offset = self._relative_shift * self._inner_radius
         x_offset = total_offset * np.sin(angle_direction / 180 * np.pi)

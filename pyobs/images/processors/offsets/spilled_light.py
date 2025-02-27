@@ -4,6 +4,7 @@ import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
+from pyobs.interfaces import IMultiFiber
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -42,7 +43,6 @@ class Ring:
         ring = self._full_image.data.copy()
         ring *= inner_mask * outer_mask
         self.data = np.where(ring == 0, np.nan, ring)
-        plot_masked_image(self._full_image.data, self.data)
 
     def is_uniform(self):
         return np.nanstd(self.data) < np.nanmedian(self.data) * self._max_relative_sigma
@@ -106,9 +106,8 @@ class SpilledLightGuiding(Offsets):
 
     def __init__(
         self,
-        fibre_position,
-        inner_radius,
-        outer_radius,
+        fibers: IMultiFiber,
+        radius_ratio: float=2,
         max_relative_sigma=0.1,
         section_angular_width=36,
         section_angular_shift=18,
@@ -117,18 +116,18 @@ class SpilledLightGuiding(Offsets):
         """Init an image processor that adds the calculated offset.
 
         Args:
-            fibre_position: pixel position of the fibre centre
-            inner_radius: inner pixel radius of the considered ring
-            outer_radius: outer pixel radius of the considered ring
+            fibers: IMultiFiber module that contains information about the currently selected fiber
+            radius_ratio: ratio between inner radius (radius of the fiber) and outer radius of the ring around the fiber
             max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is uniform
             relative_shift: fraction of inner radius, that will be used as pixel offset
             delta_angle: angle of the sections of the ring, that are used to find the offset direction
         """
         Offsets.__init__(self, **kwargs)
 
-        self._fibre_position = fibre_position
-        self._inner_radius = inner_radius
-        self._outer_radius = outer_radius
+        self._fibers = fibers
+        self._fibre_position = None
+        self._inner_radius = None
+        self._radius_ratio = radius_ratio
         self._max_relative_sigma = max_relative_sigma
         self._section_angular_width = section_angular_width
         self._section_angular_shift = section_angular_shift
@@ -146,10 +145,11 @@ class SpilledLightGuiding(Offsets):
             ValueError: If offset could not be found.
         """
         image.data = image.data - np.mean(image.data.ravel())
+        await self._load_fibre_information()
         self.ring = Ring(image,
                          fibre_position=self._fibre_position,
                          inner_radius=self._inner_radius,
-                         outer_radius=self._outer_radius,
+                         outer_radius=self._inner_radius * self._radius_ratio,
                          max_relative_sigma=self._max_relative_sigma,
                          section_angular_width=self._section_angular_width,
                          section_angular_shift=self._section_angular_shift)
@@ -158,9 +158,12 @@ class SpilledLightGuiding(Offsets):
             pixel_offset = (0, 0)
         else:
             pixel_offset = await self._get_offset()
-        print(pixel_offset)
         image.set_meta(PixelOffsets(*pixel_offset))
         return image
+
+    async def _load_fibre_information(self):
+        self._fibre_position = await self._fibers.get_pixel_position()
+        self._inner_radius = await self._fibers.get_radius()
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)

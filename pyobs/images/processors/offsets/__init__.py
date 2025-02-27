@@ -11,6 +11,7 @@ from .projected import ProjectedOffsets
 from .fitsheader import FitsHeaderOffsets
 from .dummyoffsets import DummyOffsets
 from .dummyskyoffsets import DummySkyOffsets
+from .spilled_light import SpilledLightGuiding
 
 __all__ = [
     "Offsets",
@@ -22,4 +23,5 @@ __all__ = [
     "BrightestStarGuiding",
     "DummyOffsets",
     "DummySkyOffsets",
+    "SpilledLightGuiding"
 ]

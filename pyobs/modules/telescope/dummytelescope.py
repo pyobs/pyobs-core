@@ -6,7 +6,15 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
-from pyobs.interfaces import IFocuser, IFitsHeaderBefore, IFilters, ITemperatures, IOffsetsRaDec
+from pyobs.interfaces import (
+    IFocuser,
+    IFitsHeaderBefore,
+    IFilters,
+    ITemperatures,
+    IOffsetsRaDec,
+    IPointingAltAz,
+    IPointingRaDec,
+)
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
@@ -22,7 +30,15 @@ log = logging.getLogger(__name__)
 
 
 class DummyTelescope(
-    BaseTelescope, IOffsetsRaDec, IFocuser, IFilters, IFitsHeaderBefore, ITemperatures, FitsNamespaceMixin
+    BaseTelescope,
+    IPointingRaDec,
+    IPointingAltAz,
+    IOffsetsRaDec,
+    IFocuser,
+    IFilters,
+    IFitsHeaderBefore,
+    ITemperatures,
+    FitsNamespaceMixin,
 ):
     """A dummy telescope for testing."""
 

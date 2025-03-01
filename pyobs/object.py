@@ -380,14 +380,35 @@ class Object:
 
         # set parameters
         params = copy.copy(kwargs)
-        params.update(
-            {"timezone": self.timezone, "location": self.location, "vfs": self.vfs, "observer": self.observer}
-        )
+
+        # copy comm?
         if copy_comm:
             params["comm"] = self.comm
 
+        # copy timezone, location, vfs, and observer, if not exists
+        for p in ["timezone", "location", "vfs", "observer"]:
+            if self.__config_or_object_get_param(config_or_object, p) is None:
+                params[p] = getattr(self, p)
+
         # get it
         return get_object(config_or_object, object_class, **params)
+
+    def __config_or_object_get_param(self, config_or_object: Dict[str, Any], param: str) -> Any:
+        """Checks, whether a config_or_object has the given parameter.
+
+        Args:
+            config_or_object: Dict config or object.
+            param: Parameter name to check.
+
+        Returns:
+
+        """
+        is_dict = isinstance(config_or_object, dict)
+        if is_dict and param in config_or_object:
+            return config_or_object[param]
+        if not is_dict and hasattr(config_or_object, param):
+            return getattr(config_or_object, param)
+        return None
 
     @overload
     def get_safe_object(

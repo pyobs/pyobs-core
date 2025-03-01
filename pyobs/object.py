@@ -213,10 +213,7 @@ class Object:
         self._child_objects: List[Any] = []
 
         # create vfs
-        if vfs:
-            self.vfs = get_object(vfs, VirtualFileSystem)
-        else:
-            self.vfs = VirtualFileSystem()
+        self.vfs = get_object(vfs, VirtualFileSystem) if vfs else None
 
         # timezone
         if isinstance(timezone, datetime.tzinfo):

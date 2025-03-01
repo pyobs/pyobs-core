@@ -46,15 +46,13 @@ def get_object(
     config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
     object_class: Type[ObjectClass],
     **kwargs: Any,
-) -> ObjectClass:
-    ...
+) -> ObjectClass: ...
 
 
 @overload
 def get_object(
     config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any], object_class: None, **kwargs: Any
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def get_object(
@@ -104,13 +102,11 @@ def get_object(
 @overload
 def get_safe_object(
     config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass], **kwargs: Any
-) -> Optional[ObjectClass]:
-    ...
+) -> Optional[ObjectClass]: ...
 
 
 @overload
-def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]:
-    ...
+def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]: ...
 
 
 def get_safe_object(
@@ -217,10 +213,7 @@ class Object:
         self._child_objects: List[Any] = []
 
         # create vfs
-        if vfs:
-            self.vfs = get_object(vfs, VirtualFileSystem)
-        else:
-            self.vfs = VirtualFileSystem()
+        self.vfs = get_object(vfs, VirtualFileSystem) if vfs else None
 
         # timezone
         if isinstance(timezone, datetime.tzinfo):
@@ -273,8 +266,9 @@ class Object:
         # background tasks
         self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
 
-    def add_background_task(self, func: Callable[..., Coroutine[Any, Any, None]],
-                            restart: bool = True, autostart: bool = True) -> BackgroundTask:
+    def add_background_task(
+        self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True
+    ) -> BackgroundTask:
         """Add a new function that should be run in the background.
 
         MUST be called in constructor of derived class or at least before calling open() on the object.
@@ -343,14 +337,12 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def get_object(
         self, config_or_object: Type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def get_object(
@@ -359,8 +351,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def get_object(
         self,
@@ -386,14 +377,35 @@ class Object:
 
         # set parameters
         params = copy.copy(kwargs)
-        params.update(
-            {"timezone": self.timezone, "location": self.location, "vfs": self.vfs, "observer": self.observer}
-        )
+
+        # copy comm?
         if copy_comm:
             params["comm"] = self.comm
 
+        # copy timezone, location, vfs, and observer, if not exists
+        for p in ["timezone", "location", "vfs", "observer"]:
+            if self.__config_or_object_get_param(config_or_object, p) is None:
+                params[p] = getattr(self, p)
+
         # get it
         return get_object(config_or_object, object_class, **params)
+
+    def __config_or_object_get_param(self, config_or_object: Dict[str, Any], param: str) -> Any:
+        """Checks, whether a config_or_object has the given parameter.
+
+        Args:
+            config_or_object: Dict config or object.
+            param: Parameter name to check.
+
+        Returns:
+
+        """
+        is_dict = isinstance(config_or_object, dict)
+        if is_dict and param in config_or_object:
+            return config_or_object[param]
+        if not is_dict and hasattr(config_or_object, param):
+            return getattr(config_or_object, param)
+        return None
 
     @overload
     def get_safe_object(
@@ -402,8 +414,7 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[ObjectClass]:
-        ...
+    ) -> Optional[ObjectClass]: ...
 
     @overload
     def get_safe_object(
@@ -412,8 +423,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[Any]:
-        ...
+    ) -> Optional[Any]: ...
 
     def get_safe_object(
         self,
@@ -436,14 +446,12 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def add_child_object(
         self, config_or_object: Type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def add_child_object(
@@ -452,8 +460,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def add_child_object(
         self,
@@ -483,12 +490,10 @@ class Object:
         return obj
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
-        ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType: ...
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
-        ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any: ...
 
     async def proxy(
         self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None

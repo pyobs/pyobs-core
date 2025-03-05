@@ -15,6 +15,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """Abort current actions."""
         ...
 
+    @abstractmethod
     async def get_fiber_count(self, **kwargs: Any) -> int:
         """Returns the number of available fibers in the setup.
 
@@ -23,6 +24,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
     async def list_fiber_names(self, **kwargs: Any) -> list[str]:
         """Returns the names of all available fibers.
 
@@ -31,6 +33,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
     async def get_fiber(self, **kwargs: Any) -> str:
         """Returns the name of the currently active fiber.
 
@@ -39,6 +42,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
     async def set_fiber(self, fiber: str, **kwargs: Any) -> None:
         """Sets the currently active filter. Must be in list returned by @list_fiber_names.
 
@@ -47,6 +51,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
     async def get_pixel_position(self, **kwargs: Any) -> tuple[float, float]:
         """Get pixel position of currently active fiber on acquisition/guiding image.
 
@@ -55,6 +60,7 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         """
         ...
 
+    @abstractmethod
     async def get_radius(self, **kwargs: Any) -> float:
         """Get radius of currently active fiber on acquisition/guiding image.
 

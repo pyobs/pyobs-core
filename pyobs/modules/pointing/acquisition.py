@@ -199,6 +199,29 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if image.has_meta(ExpTime):
                 exposure_time = image.get_meta(ExpTime).exptime
 
+            if self._attempts == 1:
+                log.warning("Only 1 attempt for acquisition configured. Applied offset cannot be evaluated.")
+                # get current Alt/Az
+                cur_alt, cur_az = await telescope.get_altaz()
+                cur_ra, cur_dec = await telescope.get_radec()
+
+                # prepare log entry
+                log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
+
+                # Alt/Az or RA/Dec?
+                if isinstance(telescope, IOffsetsRaDec):
+                    log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
+                elif isinstance(telescope, IOffsetsAltAz):
+                    log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
+
+                # write log
+                if self._publisher is not None:
+                    await self._publisher(**log_entry)
+
+                # finished
+                return log_entry
+
+
         # could not acquire target
         raise exc.ImageError("Could not acquire target within given tolerance.")
 

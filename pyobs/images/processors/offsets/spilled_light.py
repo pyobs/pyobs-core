@@ -170,8 +170,7 @@ class SpilledLightGuiding(Offsets):
         self._inner_radius = await self._fibers.get_radius()
 
     async def _correct_for_binning(self, binning):
-        self._fibre_position[0] /= binning
-        self._fibre_position[1] /= binning
+        self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)
         self._inner_radius /= binning
 
     async def _get_trimmed_image(self, image_data):

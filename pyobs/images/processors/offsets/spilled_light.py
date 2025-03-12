@@ -191,9 +191,9 @@ class SpilledLightGuiding(Offsets):
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-        log.info("Ratio between brightest and the opposite section: ", section_ratio)
+        log.info("Ratio between brightest and the opposite section: %s", section_ratio)
         relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
-        log.info("Corresponding relative offset: ", relative_shift)
+        log.info("Corresponding relative offset: %s", relative_shift)
         self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
@@ -205,7 +205,7 @@ class SpilledLightGuiding(Offsets):
 
     async def _get_offset(self):
         angle_direction = await self._get_brightest_direction()
-        log.info("Angle of the brightest section:", angle_direction, " deg")
+        log.info("Angle of the brightest section: %s deg", angle_direction)
         await self._calculate_relative_shift()
         total_offset = self._relative_shift * self._inner_radius
         x_offset = total_offset * np.sin(angle_direction / 180 * np.pi)

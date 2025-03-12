@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 class Ring:
     def __init__(
         self,
-        full_image,
+        full_image_data,
         fibre_position,
         inner_radius,
         outer_radius,
@@ -22,7 +22,7 @@ class Ring:
         section_angular_shift=18,
         **kwargs: Any
     ):
-        self._full_image = full_image
+        self._full_image_data = full_image_data
         self._fibre_position = fibre_position
         self._inner_radius = inner_radius
         self._outer_radius = outer_radius
@@ -34,13 +34,13 @@ class Ring:
         self._calculate_brightest_section_index()
 
     def _apply_ring_mask(self):
-        ny, nx = self._full_image.data.shape
+        ny, nx = self._full_image_data.shape
         x, y = np.arange(0, nx), np.arange(0, ny)
         x_coordinates, y_coordinates = np.meshgrid(x, y)
         fibre_x, fibre_y = self._fibre_position
         inner_mask = (x_coordinates - fibre_x) ** 2 + (y_coordinates - fibre_y) ** 2 >= self._inner_radius**2
         outer_mask = (x_coordinates - fibre_x) ** 2 + (y_coordinates - fibre_y) ** 2 <= self._outer_radius**2
-        ring = self._full_image.data.copy()
+        ring = self._full_image_data.copy()
         ring *= inner_mask * outer_mask
         self.data = np.where(ring == 0, np.nan, ring)
 
@@ -144,9 +144,12 @@ class SpilledLightGuiding(Offsets):
         Raises:
             ValueError: If offset could not be found.
         """
-        image.data = image.data - np.mean(image.data.ravel())
         await self._load_fibre_information()
-        self.ring = Ring(image,
+        await self._correct_for_binning(binning=image.header["DET-BIN1"])
+        image.data = image.data - np.mean(image.data.ravel())
+        trimmed_image_data = await self._get_trimmed_image(image.data)
+        await self._correct_fibre_position_for_trimming()
+        self.ring = Ring(full_image_data=trimmed_image_data,
                          fibre_position=self._fibre_position,
                          inner_radius=self._inner_radius,
                          outer_radius=self._inner_radius * self._radius_ratio,
@@ -162,14 +165,34 @@ class SpilledLightGuiding(Offsets):
         return image
 
     async def _load_fibre_information(self):
+        self._fibers = await self.comm.safe_proxy(self._fibers, IMultiFiber)
         self._fibre_position = await self._fibers.get_pixel_position()
         self._inner_radius = await self._fibers.get_radius()
 
+    async def _correct_for_binning(self, binning):
+        self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)
+        self._inner_radius /= binning
+
+    async def _get_trimmed_image(self, image_data):
+        xmin, xmax, ymin, ymax = await self._get_trim_limits()
+        return image_data[xmin:xmax, ymin:ymax]
+
+    async def _correct_fibre_position_for_trimming(self):
+        xmin, xmax, ymin, ymax = await self._get_trim_limits()
+        self._fibre_position = (self._fibre_position[1] - xmin, self._fibre_position[0] - ymin)
+
+    async def _get_trim_limits(self):
+        xmin = self._fibre_position[1] - self._radius_ratio * self._inner_radius
+        xmax = self._fibre_position[1] + self._radius_ratio * self._inner_radius
+        ymin = self._fibre_position[0] - self._radius_ratio * self._inner_radius
+        ymax = self._fibre_position[0] + self._radius_ratio * self._inner_radius
+        return int(xmin), int(xmax), int(ymin), int(ymax)
+
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
-        log.info("Ratio between brightest and the opposite section: ", section_ratio)
+        log.info("Ratio between brightest and the opposite section: %s", section_ratio)
         relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
-        log.info("Corresponding relative offset: ", relative_shift)
+        log.info("Corresponding relative offset: %s", relative_shift)
         self._relative_shift = min(1, relative_shift)
 
     async def _get_brightest_direction(self, method="brightest_section"):
@@ -181,7 +204,7 @@ class SpilledLightGuiding(Offsets):
 
     async def _get_offset(self):
         angle_direction = await self._get_brightest_direction()
-        log.info("Angle of the brightest section:", angle_direction, " deg")
+        log.info("Angle of the brightest section: %s deg", angle_direction)
         await self._calculate_relative_shift()
         total_offset = self._relative_shift * self._inner_radius
         x_offset = total_offset * np.sin(angle_direction / 180 * np.pi)
@@ -190,3 +213,4 @@ class SpilledLightGuiding(Offsets):
 
 
 __all__ = ["SpilledLightGuiding"]
+

@@ -186,7 +186,7 @@ class SpilledLightGuiding(Offsets):
         xmax = self._fibre_position[1] + self._radius_ratio * self._inner_radius
         ymin = self._fibre_position[0] - self._radius_ratio * self._inner_radius
         ymax = self._fibre_position[0] + self._radius_ratio * self._inner_radius
-        return xmin, xmax, ymin, ymax
+        return int(xmin), int(xmax), int(ymin), int(ymax)
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)

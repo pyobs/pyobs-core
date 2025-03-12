@@ -144,8 +144,9 @@ class SpilledLightGuiding(Offsets):
         Raises:
             ValueError: If offset could not be found.
         """
-        image.data = image.data - np.mean(image.data.ravel())
         await self._load_fibre_information()
+        await self._correct_for_binning(binning=image.header["DET-BIN1"])
+        image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
         await self._correct_fibre_position_for_trimming()
         self.ring = Ring(full_image_data=trimmed_image_data,
@@ -163,6 +164,16 @@ class SpilledLightGuiding(Offsets):
         image.set_meta(PixelOffsets(*pixel_offset))
         return image
 
+    async def _load_fibre_information(self):
+        self._fibers = await self.comm.safe_proxy(self._fibers, IMultiFiber)
+        self._fibre_position = await self._fibers.get_pixel_position()
+        self._inner_radius = await self._fibers.get_radius()
+
+    async def _correct_for_binning(self, binning):
+        self._fibre_position[0] /= binning
+        self._fibre_position[1] /= binning
+        self._inner_radius /= binning
+
     async def _get_trimmed_image(self, image_data):
         xmin, xmax, ymin, ymax = await self._get_trim_limits()
         return image_data[xmin:xmax, ymin:ymax]
@@ -177,10 +188,6 @@ class SpilledLightGuiding(Offsets):
         ymin = self._fibre_position[0] - self._radius_ratio * self._inner_radius
         ymax = self._fibre_position[0] + self._radius_ratio * self._inner_radius
         return xmin, xmax, ymin, ymax
-
-    async def _load_fibre_information(self):
-        self._fibre_position = await self._fibers.get_pixel_position()
-        self._inner_radius = await self._fibers.get_radius()
 
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)

@@ -28,6 +28,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         camera: Union[str, IData],
         series: Union[Dict[str, Any], FocusSeries],
         offset: bool = False,
+        init_offset_to_zero: bool = True,
         filters: Optional[Union[str, IFilters]] = None,
         filter_name: Optional[str] = None,
         binning: Optional[int] = None,
@@ -43,6 +44,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             filters: Name of IFilters, if any.
             filter_name: Name of filter to set.
             offset: If True, offsets are used instead of absolute focus values.
+            init_offset_to_zero: If True, a zero offset is used as initial guess. Otherwise, the current value is used.
             broadcast: Whether to broadcast focus series images.
             final_image: Whether to take final image with optimal focus, which is always broadcasted.
         """
@@ -53,6 +55,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._camera = camera
         self._filters = filters
         self._offset = offset
+        self._init_offset_to_zero = init_offset_to_zero
         self._abort = threading.Event()
         self._running = False
         self._broadcast = broadcast
@@ -142,8 +145,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # get focus as first guess
         try:
             if self._offset:
-                guess = 0.0
-                log.info("Using focus offset of 0mm as initial guess.")
+                guess = 0.0 if self._init_offset_to_zero else await focuser.get_focus_offset()
+                log.info(f"Using focus offset of {guess:.2f}mm as initial guess.")
             else:
                 guess = await focuser.get_focus()
                 log.info("Using current focus of %.2fmm as initial guess.", guess)

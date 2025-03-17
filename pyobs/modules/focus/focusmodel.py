@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Any, Dict, TYPE_CHECKING, cast
+from typing import Optional, Any, Dict, TYPE_CHECKING, cast, Union, List
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
@@ -74,6 +74,7 @@ class FocusModel(Module, IFocusModel):
         default_filter: Optional[str] = None,
         filter_offsets: Optional[Dict[str, float]] = None,
         filter_wheel: Optional[str] = None,
+        auto_focus: Optional[Union[str, List[str]]] = None,
         **kwargs: Any,
     ):
         """Initialize a focus model.
@@ -92,6 +93,7 @@ class FocusModel(Module, IFocusModel):
             default_filter: Name of default filter. If None, filters are ignored.
             filter_offsets: Offsets for different filters. If None, they are not modeled.
             filter_wheel: Name of filter wheel module to use for fetching filter before setting focus.
+            auto_focus: Name or list of names of auto-focus modules to accept focus values from.
         """
         Module.__init__(self, **kwargs)
 
@@ -119,6 +121,7 @@ class FocusModel(Module, IFocusModel):
         self._default_filter = default_filter
         self._filter_offsets = filter_offsets
         self._filter_wheel = filter_wheel
+        self._auto_focus = [auto_focus] if isinstance(auto_focus, str) else auto_focus
         log.info("Going to fetch temperature from sensor %s at station %s.", self._temp_sensor, self._temp_station)
 
         # model
@@ -352,6 +355,8 @@ class FocusModel(Module, IFocusModel):
         """
         if not isinstance(event, FocusFoundEvent):
             raise ValueError("Not a focus event.")
+        if self._auto_focus is not None and sender not in self._auto_focus:
+            return False
         log.info("Received new focus of %.4f +- %.4f.", event.focus, event.error)
 
         # collect values for model

@@ -94,9 +94,11 @@ class Ring:
         else:
             return int(index_section - number_of_sections / 2)
 
-    def get_opposite_section_counts_ratio(self, index_section):
+    def get_opposite_section_normalized_counts_ratio(self, index_section):
         index_opposite_section = self._get_opposite_section_index(index_section)
-        return np.nanmean(self.sections[index_section]) / np.nanmean(self.sections[index_opposite_section])
+        counts_section = np.nanmean(self.sections[index_section])
+        counts_opposite_section = np.nanmean(self.sections[index_opposite_section])
+        return (counts_section - counts_opposite_section) / counts_section
 
 
 class SpilledLightGuiding(Offsets):
@@ -189,7 +191,7 @@ class SpilledLightGuiding(Offsets):
         return int(xmin), int(xmax), int(ymin), int(ymax)
 
     async def _calculate_relative_shift(self):
-        section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
+        section_ratio = self.ring.get_opposite_section_normalized_counts_ratio(self.ring.brightest_section_index)
         log.info("Ratio between brightest and the opposite section: %s", section_ratio)
         relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
         log.info("Corresponding relative offset: %s", relative_shift)

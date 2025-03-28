@@ -150,6 +150,7 @@ class SpilledLightGuiding(Offsets):
         await self._correct_for_binning(binning=image.header["DET-BIN1"])
         image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
+        log.info(f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}.")
         await self._correct_fibre_position_for_trimming()
         self.ring = Ring(full_image_data=trimmed_image_data,
                          fibre_position=self._fibre_position,

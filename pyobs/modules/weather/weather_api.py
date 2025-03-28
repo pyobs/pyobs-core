@@ -23,12 +23,16 @@ class WeatherApi(object):
         async with aiohttp.ClientSession() as session:
             return await self._get_response(url, session)
 
-    async def _get_response(self, url, session, max_attempts=3):
+    async def _get_response(self, url, session):
+        async with session.get(url, timeout=self.TIMEOUT) as response:
+            if await self._check_valid_response(response):
+                return await response.json()
+
+    @staticmethod
+    async def _check_valid_response(response, max_attempts: int=3) -> bool:
         attempt = 0
         while attempt < max_attempts:
-            async with session.get(url, timeout=self.TIMEOUT) as response:
-                if response.status == 200:
-                    return await response.json()
+            if response.status == 200:
+                return True
             attempt += 1
         raise ValueError("Could not connect to weather station.")
-

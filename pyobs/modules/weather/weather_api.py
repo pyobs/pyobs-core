@@ -21,7 +21,13 @@ class WeatherApi(object):
     async def _send(self, path: str) -> Dict[str, Any]:
         url = urllib.parse.urljoin(self._url, path)
         async with aiohttp.ClientSession() as session:
+            return await self._get_response(url, session)
+
+    async def _get_response(self, url, session, max_attempts=3):
+        attempt = 0
+        while attempt < max_attempts:
             async with session.get(url, timeout=self.TIMEOUT) as response:
-                if response.status != 200:
-                    raise ValueError("Could not connect to weather station.")
-                return await response.json()
+                if response.status == 200:
+                    return await response.json()
+            attempt += 1
+        raise ValueError("Could not connect to weather station.")

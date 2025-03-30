@@ -94,9 +94,11 @@ class Ring:
         else:
             return int(index_section - number_of_sections / 2)
 
-    def get_opposite_section_counts_ratio(self, index_section):
+    def get_opposite_section_normalized_counts_ratio(self, index_section):
         index_opposite_section = self._get_opposite_section_index(index_section)
-        return np.nanmean(self.sections[index_section]) / np.nanmean(self.sections[index_opposite_section])
+        counts_section = np.nanmean(self.sections[index_section])
+        counts_opposite_section = np.nanmean(self.sections[index_opposite_section])
+        return (counts_section - counts_opposite_section) / counts_section
 
 
 class SpilledLightGuiding(Offsets):
@@ -148,6 +150,7 @@ class SpilledLightGuiding(Offsets):
         await self._correct_for_binning(binning=image.header["DET-BIN1"])
         image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
+        log.info(f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}.")
         await self._correct_fibre_position_for_trimming()
         self.ring = Ring(full_image_data=trimmed_image_data,
                          fibre_position=self._fibre_position,
@@ -189,9 +192,9 @@ class SpilledLightGuiding(Offsets):
         return int(xmin), int(xmax), int(ymin), int(ymax)
 
     async def _calculate_relative_shift(self):
-        section_ratio = self.ring.get_opposite_section_counts_ratio(self.ring.brightest_section_index)
+        section_ratio = self.ring.get_opposite_section_normalized_counts_ratio(self.ring.brightest_section_index)
         log.info("Ratio between brightest and the opposite section: %s", section_ratio)
-        relative_shift = ((section_ratio - 3) / np.sqrt(1 + (section_ratio - 3)**2) + 1) / 2
+        relative_shift = 1 / (1+np.exp(-(section_ratio-0.8)*5))
         log.info("Corresponding relative offset: %s", relative_shift)
         self._relative_shift = min(1, relative_shift)
 

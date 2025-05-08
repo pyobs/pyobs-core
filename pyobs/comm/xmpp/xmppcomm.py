@@ -188,7 +188,13 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("disconnected", self._disconnected)
 
         # server given?
-        server = () if self._server is None else tuple(self._server.split(":"))
+        server, port = None, None
+        if self._server is not None:
+            if ":" in self._server:
+                server, port = self._server.split(":")
+            else:
+                server, port = self._server, None
+        print(server, port)
 
         # add features
         if self._module is not None:
@@ -200,7 +206,7 @@ class XmppComm(Comm):
         self._rpc.set_handler(self._module)
 
         # connect
-        self._xmpp.connect(address=server, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
+        await self._xmpp.connect(host=server, port=server) #, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 
         # wait for connected

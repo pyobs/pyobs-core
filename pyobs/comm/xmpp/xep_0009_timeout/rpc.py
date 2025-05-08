@@ -1,6 +1,6 @@
 import logging
 from slixmpp.plugins.base import BasePlugin
-from slixmpp.plugins.xep_0009.stanza.RPC import RPCQuery
+from slixmpp.plugins.xep_0009.stanza import RPCQuery
 from slixmpp.xmlstream.stanzabase import register_stanza_plugin
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXPath

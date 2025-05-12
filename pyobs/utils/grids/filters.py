@@ -57,12 +57,12 @@ class GridFilterValue(GridFilter):
                 continue
             if self._x_lte is not None and point[0] > self._x_lte:
                 continue
-            if self._y_gt is not None and point[0] <= self._y_gt:
+            if self._y_gt is not None and point[1] <= self._y_gt:
                 continue
-            if self._y_gte is not None and point[0] < self._y_gte:
+            if self._y_gte is not None and point[1] < self._y_gte:
                 continue
-            if self._y_lt is not None and point[0] >= self._y_lt:
+            if self._y_lt is not None and point[1] >= self._y_lt:
                 continue
-            if self._y_lte is not None and point[0] > self._y_lte:
+            if self._y_lte is not None and point[1] > self._y_lte:
                 continue
             return point

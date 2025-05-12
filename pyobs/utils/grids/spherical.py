@@ -12,13 +12,8 @@ class SphericalGrid(Grid, metaclass=abc.ABCMeta):
     pass
 
 
-class SphericalRegularGrid(SphericalGrid):
+class RegularSphericalGrid(SphericalGrid):
     def __init__(self, n_lon: int, n_lat: int, **kwargs):
-        SphericalGrid.__init__(self)
-        self._n_lon = n_lon
-        self._n_lat = n_lat
-
-    def __next__(self) -> Tuple[float, float]:
         """Creates a grid with points at the intersections of longitudinal and latitudinal lines.
 
         Params:
@@ -28,18 +23,15 @@ class SphericalRegularGrid(SphericalGrid):
         Returns:
             Lat/lon grid.
         """
-        for lon in np.linspace(0, 360.0 - 360.0 / self._n_lon, self._n_lon):
-            for lat in np.linspace(-90, 90, self._n_lat):
-                yield lon, lat
-        raise StopIteration
+        points = []
+        for lon in np.linspace(0.0, 360.0 - 360.0 / n_lon, n_lon):
+            for lat in np.linspace(-90.0, 90.0, n_lat):
+                points.append((float(lon), float(lat)))
+        SphericalGrid.__init__(self, points=points, **kwargs)
 
 
-class SphericalGraticuleGrid(SphericalGrid):
+class GraticuleSphericalGrid(SphericalGrid):
     def __init__(self, n: int, **kwargs):
-        SphericalGrid.__init__(self)
-        self._n = n
-
-    def __next__(self) -> Tuple[float, float]:
         """Creates equidistributed points on the surface of a sphere
 
         See https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
@@ -52,11 +44,12 @@ class SphericalGraticuleGrid(SphericalGrid):
         """
 
         # init
-        a = 4 * np.pi / self._n
+        a = 4 * np.pi / n
         d = np.sqrt(a)
         m_phi = round(np.pi / d)
         d_phi = np.pi / m_phi
         d_varphi = a / d_phi
+        points: List[Tuple[float, float]] = []
 
         # conversion radians -> degrees
         r2d = 180.0 / np.pi
@@ -71,7 +64,6 @@ class SphericalGraticuleGrid(SphericalGrid):
                 lon = 2 * np.pi * n / m_varphi
 
                 # append to grid
-                yield lon * r2d, lat * r2d - 90.0
+                points.append((lon * r2d, lat * r2d - 90.0))
 
-        # finished
-        raise StopIteration
+        SphericalGrid.__init__(self, points=points, **kwargs)

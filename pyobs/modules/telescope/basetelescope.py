@@ -280,7 +280,10 @@ class BaseTelescope(
         # run until closing
         while True:
             # update headers
-            await self._update_celestial_headers()
+            try:
+                await self._update_celestial_headers()
+            except:
+                log.exception("Something went wrong.")
 
             # sleep a little
             await asyncio.sleep(30)
@@ -301,9 +304,12 @@ class BaseTelescope(
         if isinstance(self, IPointingAltAz):
             try:
                 alt, az = await self.get_altaz()
-                tel_altaz = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame="altaz")
+                tel_altaz = SkyCoord(
+                    alt=alt * u.deg, az=az * u.deg, location=self.observer.location, obstime=now, frame="altaz"
+                )
             except:
-                pass
+                log.exception("Could not fetch telescope Alt/Az: %s", self)
+                return
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)

@@ -31,5 +31,8 @@ class GridPipeline:
             raise StopIteration
         return next(self._grid_pipeline)
 
+    def __len__(self) -> int:
+        return len(self._grid_pipeline)
+
     def append_last(self):
         self._grid_pipeline.append_last()

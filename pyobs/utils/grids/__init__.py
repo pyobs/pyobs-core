@@ -1,12 +1,14 @@
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
+from warnings import deprecated
 
 
 class SphericalGrid:
     """Methods for creating points on a spherical lon/lat grid (e.g. Az/Alt or RA/Dec."""
 
     @staticmethod
+    @deprecated("This function has been deprecated, use grids.RegularSphericalGrid instead.")
     def lonlat(n_lon: int, n_lat: int) -> List[Tuple[float, float]]:
         """Creates a grid with points at the intersections of longitudinal and latitudinal lines.
 
@@ -24,6 +26,7 @@ class SphericalGrid:
         return grid
 
     @staticmethod
+    @deprecated("This function has been deprecated, use grids.GraticuleSphericalGrid instead.")
     def equidistributed(n: int) -> List[Tuple[float, float]]:
         """Creates equidistributed points on the surface of a sphere
 

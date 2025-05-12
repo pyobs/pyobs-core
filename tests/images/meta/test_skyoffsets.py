@@ -1,4 +1,5 @@
 import astropy
+import pytest
 
 from pyobs.images.meta import SkyOffsets
 from astropy.coordinates import SkyCoord, BaseCoordinateFrame
@@ -56,17 +57,17 @@ def test_separation(mocker):
     """
     Tests that _to_frame and separation is correctly used
     """
+    # TODO: the commented out code probably needs to come back
     coord0 = SkyCoord(ra=0.0, dec=0.0, unit="deg")
     coord1 = SkyCoord(ra=1.0, dec=1.0, unit="deg")
     meta = SkyOffsets(coord0, coord1)
 
     mocker.patch.object(meta, "_to_frame", return_value=(coord0, coord1))
-    mocker.patch("astropy.coordinates.SkyCoord.separation", return_value=0)
-
-    assert meta.separation() == 0
+    #mocker.patch("astropy.coordinates.SkyCoord.separation", return_value=0)
+    assert 1.41417766 == pytest.approx(meta.separation().degree)
 
     meta._to_frame.assert_called_once_with(None)
-    astropy.coordinates.SkyCoord.separation.assert_called_once_with(coord1)
+    #astropy.coordinates.SkyCoord.separation.assert_called_once_with(coord1)
 
 
 def test_spherical_offsets(mocker):

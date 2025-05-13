@@ -31,7 +31,7 @@ class PointingSeries(Module, IAutonomous):
         min_moon_dist: float = 15.0,
         finish: int = 90,
         exp_time: float = 1.0,
-        acquisition: str = "acquisition",
+        acquisition: Optional[str] = None,
         telescope: str = "telescope",
         **kwargs: Any,
     ):
@@ -86,7 +86,7 @@ class PointingSeries(Module, IAutonomous):
         pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
 
         # get acquisition and telescope units
-        acquisition = await self.proxy(self._acquisition, IAcquisition)
+        acquisition = None if self._acquisition is None else await self.proxy(self._acquisition, IAcquisition)
         telescope = await self.proxy(self._telescope, ITelescope)
 
         # check observer
@@ -140,11 +140,12 @@ class PointingSeries(Module, IAutonomous):
                 await telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree))
 
                 # acquire target
-                acq = await acquisition.acquire_target()
+                if acquisition is not None:
+                    acq = await acquisition.acquire_target()
 
-                #  process result
-                if acq is not None:
-                    await self._process_acquisition(**acq)
+                    #  process result
+                    if acq is not None:
+                        await self._process_acquisition(**acq)
 
             except (ValueError, exc.RemoteError):
                 log.info("Could not acquire target.")

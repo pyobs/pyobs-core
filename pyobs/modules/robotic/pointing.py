@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Tuple, Any, Optional, List, Dict
+from typing import Tuple, Any, Optional, List, Dict, Union
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,9 @@ from pyobs.interfaces import IAcquisition, ITelescope
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
+from pyobs.utils.grids.filters import GridFilter
+from pyobs.utils.grids.grid import Grid
+from pyobs.utils.grids.pipeline import GridPipeline
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -23,25 +26,19 @@ class PointingSeries(Module, IAutonomous):
 
     def __init__(
         self,
-        alt_range: Tuple[float, float] = (30.0, 85.0),
-        num_alt: int = 8,
-        az_range: Tuple[float, float] = (0.0, 360.0),
-        num_az: int = 24,
+        grid: List[Union[Grid, GridFilter, dict]],
         dec_range: Tuple[float, float] = (-80.0, 80.0),
         min_moon_dist: float = 15.0,
         finish: int = 90,
         exp_time: float = 1.0,
-        acquisition: str = "acquisition",
+        acquisition: Optional[str] = None,
         telescope: str = "telescope",
         **kwargs: Any,
     ):
-        """Initialize a new auto focus system.
+        """Initialize a new pointing series.
 
         Args:
-            alt_range: Range in degrees to use in altitude.
-            num_alt: Number of altitude points to create on grid.
-            az_range: Range in degrees to use in azimuth.
-            num_az: Number of azimuth points to create on grid.
+            grid: Grid to use for pointing series.
             dec_range: Range in declination in degrees to use.
             min_moon_dist: Minimum moon distance in degrees.
             finish: When this number in percent of points have been finished, terminate mastermind.
@@ -52,20 +49,13 @@ class PointingSeries(Module, IAutonomous):
         Module.__init__(self, **kwargs)
 
         # store
-        self._alt_range = tuple(alt_range)
-        self._num_alt = num_alt
-        self._az_range = tuple(az_range)
-        self._num_az = num_az
+        self._grid = GridPipeline(steps=grid)
         self._dec_range = dec_range
         self._min_moon_dist = min_moon_dist
         self._finish = 1.0 - finish / 100.0
         self._exp_time = exp_time
         self._acquisition = acquisition
         self._telescope = telescope
-
-        # if Az range is [0, 360], we got north double, so remove one step
-        if self._az_range == (0.0, 360.0):
-            self._az_range = (0.0, 360.0 - 360.0 / self._num_az)
 
         # add thread func
         self.add_background_task(self._run_thread, False)
@@ -87,17 +77,16 @@ class PointingSeries(Module, IAutonomous):
 
         # create grid
         grid: Dict[str, List[Any]] = {"alt": [], "az": [], "done": []}
-        for az in np.linspace(self._az_range[0], self._az_range[1], self._num_az):
-            for alt in np.linspace(self._alt_range[0], self._alt_range[1], self._num_alt):
-                grid["alt"] += [alt]
-                grid["az"] += [az]
-                grid["done"] += [False]
+        for az, alt in self._grid:
+            grid["alt"] += [alt]
+            grid["az"] += [az]
+            grid["done"] += [False]
 
         # to dataframe
         pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
 
         # get acquisition and telescope units
-        acquisition = await self.proxy(self._acquisition, IAcquisition)
+        acquisition = None if self._acquisition is None else await self.proxy(self._acquisition, IAcquisition)
         telescope = await self.proxy(self._telescope, ITelescope)
 
         # check observer
@@ -151,11 +140,12 @@ class PointingSeries(Module, IAutonomous):
                 await telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree))
 
                 # acquire target
-                acq = await acquisition.acquire_target()
+                if acquisition is not None:
+                    acq = await acquisition.acquire_target()
 
-                #  process result
-                if acq is not None:
-                    await self._process_acquisition(**acq)
+                    #  process result
+                    if acq is not None:
+                        await self._process_acquisition(**acq)
 
             except (ValueError, exc.RemoteError):
                 log.info("Could not acquire target.")

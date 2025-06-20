@@ -1,71 +1,77 @@
-[tool.poetry]
+[project]
 name = "pyobs-core"
-packages = [{ include = "pyobs" }]
 version = "1.24.1"
 description = "robotic telescope software"
-authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
+authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
+requires-python = ">=3.11,<3.14"
 license = "MIT"
+dependencies = [
+    "scipy>=1.15.2,<2",
+    "astropy>=7.0.1,<8",
+    "numpy>=2.2.5,<3",
+    "pytz~=2025.2",
+    "PyYAML>=6.0.2,<7",
+    "typing-extensions>=4.13.2,<5",
+    "astroquery>=0.4.10,<0.5",
+    "slixmpp>=1.10.0,<2",
+    "single-source>=0.4.0,<0.5",
+    "dbus-next>=0.2.3,<0.3",
+    "astroplan>=0.10.1,<0.11",
+    "py-expression-eval>=0.3.14,<0.4",
+    "requests>=2.32.3,<3",
+    "matplotlib>=3.10.3,<4",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.14"
-scipy = "^1.15.2"
-astropy = "^7.0.1"
-numpy = "^2.2.5"
-pytz = "^2025.2"
-PyYAML = "^6.0.2"
-typing-extensions = "^4.13.2"
-astroquery = "^0.4.10"
-slixmpp = "^1.10.0"
-single-source = "^0.4.0"
-dbus-next = "^0.2.3"
-asyncinotify = "^4.2.1"
-sep = { version = "^1.4.1", platform = "linux", optional = true }
-python-daemon = "^3.1.2"
-pandas = "^2.2.3"
-astroplan =  "^0.10.1"
-paramiko = "^3.5.1"
-py-expression-eval = "^0.3.14"
-requests = "^2.32.3"
-ccdproc = { version = "^2.4.3", optional = true }
-photutils = { version = "^2.2.0", optional = true }
-lmfit = { version = "^1.3.3", optional = true }
-tornado = { version = "^6.4.2", optional = true }
-python-telegram-bot = { version = "^22.0", optional = true }
-aiohttp = "^3.11.18"
-matplotlib = "^3.10.3"
+[project.optional-dependencies]
+full = [
+    "asyncinotify>=4.2.1,<5",
+    "sep>=1.4.1,<2 ; sys_platform == 'linux'",
+    "python-daemon>=3.1.2,<4",
+    "pandas>=2.2.3,<3",
+    "paramiko>=3.5.1,<4",
+    "ccdproc>=2.4.3,<3",
+    "photutils>=2.2.0,<3",
+    "lmfit>=1.3.3,<2",
+    "tornado>=6.4.2,<7",
+    "python-telegram-bot~=22.0",
+    "aiohttp>=3.11.18,<4",
+]
 
-[tool.poetry.extras]
-full = ['asyncinotify', 'sep', 'python-daemon', 'pandas', 'paramiko',
-        'ccdproc', 'photutils', 'lmfit', 'tornado', 'python-telegram-bot',
-        'aiohttp']
+[project.scripts]
+pyobs = "pyobs.cli.pyobs:main"
+pyobsd = "pyobs.cli.pyobsd:main"
+pyobsw = "pyobs.cli.pyobsw:main"
 
-[tool.poetry.dev-dependencies]
-types-cryptography = "^3.3.23.2"
-types-enum34 = "^1.1.8"
-types-ipaddress = "^1.0.8"
-types-paramiko = "^3.5.0.20240928"
-types-pytz = "^2025.2.0.20250326"
-types-PyYAML = "^6.0.12.20250402"
-types-requests = "^2.32.0.20250328"
-types-setuptools = "^80.3.0.20250505"
-types-toml = "^0.10.8.20240310"
-types-tornado = "^5.1.1"
-mypy = "^1.15.0"
-pytest = "^8.3.5"
-pytest-asyncio = "^0.26.0"
-pytest-cov = "^6.1.1"
-pytest-mock = "^3.14.0"
-black = "^25.1.0"
-pre-commit = "^4.2.0"
+[dependency-groups]
+dev = [
+    "types-cryptography>=3.3.23.2,<4",
+    "types-enum34>=1.1.8,<2",
+    "types-ipaddress>=1.0.8,<2",
+    "types-paramiko>=3.5.0.20240928,<4",
+    "types-pytz>=2025.2.0.20250326,<2026",
+    "types-PyYAML>=6.0.12.20250402,<7",
+    "types-requests>=2.32.0.20250328,<3",
+    "types-setuptools>=80.3.0.20250505,<81",
+    "types-toml>=0.10.8.20240310,<0.11",
+    "types-tornado>=5.1.1,<6",
+    "mypy>=1.15.0,<2",
+    "pytest>=8.3.5,<9",
+    "pytest-asyncio>=0.26.0,<0.27",
+    "pytest-cov>=6.1.1,<7",
+    "pytest-mock>=3.14.0,<4",
+    "black>=25.1.0,<26",
+    "pre-commit>=4.2.0,<5",
+]
 
-[tool.poetry.scripts]
-pyobs = 'pyobs.cli.pyobs:main'
-pyobsd = 'pyobs.cli.pyobsd:main'
-pyobsw = 'pyobs.cli.pyobsw:main'
+[tool.hatch.build.targets.sdist]
+include = ["pyobs"]
+
+[tool.hatch.build.targets.wheel]
+include = ["pyobs"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 120

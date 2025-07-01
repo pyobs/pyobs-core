@@ -10,14 +10,14 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
 
-      - name: Install poetry
+      - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version-file: 'pyproject.toml'
-          cache: 'poetry'
+          cache: 'uv'
 
       - run: uv sync --all-extras
       - run: uv run pytest -v

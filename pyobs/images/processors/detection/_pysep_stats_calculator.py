@@ -14,7 +14,7 @@ class PySepStatsCalculator:
         self._data = data
         self._mask = mask
         self._gain = gain
-        
+
     async def __call__(self, *args, **kwargs) -> _SourceCatalog:
         self._calc_ellipticity()
         self._calc_fwhm()
@@ -96,4 +96,3 @@ class PySepStatsCalculator:
         self._catalog.sources["flag"] |= flag
         self._catalog.sources["xwin"] = xwin
         self._catalog.sources["ywin"] = ywin
-

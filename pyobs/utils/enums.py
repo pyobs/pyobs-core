@@ -1,6 +1,7 @@
 """
 TODO: write doc
 """
+
 __title__ = "Enumerations"
 
 from enum import Enum

@@ -8,5 +8,5 @@ def test_valuefilter() -> None:
     points = list(grid2)
     assert len(points) == 15
     for p in points:
-        assert p[0] >= 0.
-        assert p[1] >= 0.
+        assert p[0] >= 0.0
+        assert p[1] >= 0.0

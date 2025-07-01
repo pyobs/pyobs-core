@@ -45,5 +45,4 @@ class RemoveBackground(ImageProcessor):
         return self._background_remover(image)
 
 
-
 __all__ = ["RemoveBackground"]

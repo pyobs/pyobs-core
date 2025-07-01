@@ -2,6 +2,7 @@
 Offsets
 -------
 """
+
 from .brighteststar_guiding import BrightestStarGuiding
 from .offsets import Offsets
 from .add_pixeloffset import AddPixelOffset
@@ -25,5 +26,5 @@ __all__ = [
     "BrightestStarGuiding",
     "DummyOffsets",
     "DummySkyOffsets",
-    "SpilledLightGuiding"
+    "SpilledLightGuiding",
 ]

@@ -16,8 +16,9 @@ def test_init_default(mocker):
     spy = mocker.spy(pyobs.utils.fits.FilenameFormatter, "__init__")
     CreateFilename(None)
 
-    assert (spy.call_args[0][1] ==
-            "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits")
+    assert (
+        spy.call_args[0][1] == "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits"
+    )
 
 
 @pytest.mark.asyncio

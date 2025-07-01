@@ -42,11 +42,7 @@ def test_calculate_offsets_invalid_offsets(caplog) -> None:
 
 
 def test_calculate_offsets() -> None:
-    data = np.array([
-        [
-            GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
-        ] for y in range(21)
-    ])
+    data = np.array([[GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)] for y in range(21)])
 
     offsets = NStarOffsets()
     offsets.ref_boxes = [EPSFStar(data[7:14, 7:14], origin=(8, 8))]

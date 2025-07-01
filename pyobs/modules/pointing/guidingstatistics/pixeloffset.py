@@ -49,6 +49,3 @@ class GuidingStatisticsPixelOffset(GuidingStatistics):
         else:
             log.warning("Image is missing the necessary meta information!")
             raise KeyError("Unknown meta.")
-
-
-

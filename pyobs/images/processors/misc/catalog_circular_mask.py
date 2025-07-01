@@ -18,7 +18,7 @@ class CatalogCircularMask(ImageProcessor):
         self,
         radius: float,
         center: Union[Tuple[int, int], Tuple[float, float], Tuple[str, str]] = ("CRPIX1", "CRPIX2"),
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """Init an image processor that masks out everything except for a central circle.
 

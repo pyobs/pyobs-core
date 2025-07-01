@@ -23,11 +23,11 @@ class NStarOffsets(Offsets, PipelineMixin):
     """An offset-calculation method based on comparing 2D images of the surroundings of a variable number of stars."""
 
     def __init__(
-            self,
-            max_pixel_offset: float = 5.0,
-            min_sources: int = 1,
-            pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
-            **kwargs: Any,
+        self,
+        max_pixel_offset: float = 5.0,
+        min_sources: int = 1,
+        pipeline: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None,
+        **kwargs: Any,
     ):
         """Initializes an offset calculator.
 
@@ -108,9 +108,9 @@ class NStarOffsets(Offsets, PipelineMixin):
         offsets = np.fromiter(
             filter(
                 lambda x: x is not None,
-                map(lambda x: NStarOffsets._calculate_star_offset(x, image_data), self.ref_boxes)
+                map(lambda x: NStarOffsets._calculate_star_offset(x, image_data), self.ref_boxes),
             ),
-            np.dtype((float, 2))
+            np.dtype((float, 2)),
         )
 
         if len(offsets) == 0:

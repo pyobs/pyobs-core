@@ -79,8 +79,7 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
 
 class DbusMethod(Protocol):
-    def __call__(self, *args: Any) -> Any:
-        ...
+    def __call__(self, *args: Any) -> Any: ...
 
 
 class DbusComm(Comm):

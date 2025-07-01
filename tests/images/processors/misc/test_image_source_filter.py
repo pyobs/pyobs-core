@@ -25,12 +25,14 @@ def test_remove_sources_close_to_border() -> None:
 
 
 def test_remove_bad_sources() -> None:
-    table = Table({
-        "peak": [50000, 5001, 5002, 5003, 5004, 5005, 5006],
-        "tnpix": [10, 2, 100, 10, 10, 10, 10],
-        "ellipticity": [0.3, 0.3, 0.3, 0.5, 0.3, 0.3, 0.3],
-        "background": [100, 100, 100, 100, -1, 50000, 100]
-    })
+    table = Table(
+        {
+            "peak": [50000, 5001, 5002, 5003, 5004, 5005, 5006],
+            "tnpix": [10, 2, 100, 10, 10, 10, 10],
+            "ellipticity": [0.3, 0.3, 0.3, 0.5, 0.3, 0.3, 0.3],
+            "background": [100, 100, 100, 100, -1, 50000, 100],
+        }
+    )
 
     result = ImageSourceFilter(10, 10, 3, 0.4).remove_bad_sources(table)
 
@@ -49,15 +51,9 @@ def test_select_brightest_sources() -> None:
 
 @pytest.mark.asyncio
 async def test_call() -> None:
-    sources = Table({
-        "x": [10],
-        "y": [10],
-        "flux": [10],
-        "peak": [100],
-        "tnpix": [10],
-        "ellipticity": [0.0],
-        "background": [1.0]
-    })
+    sources = Table(
+        {"x": [10], "y": [10], "flux": [10], "peak": [100], "tnpix": [10], "ellipticity": [0.0], "background": [1.0]}
+    )
 
     image = Image(data=np.ones((20, 20)), catalog=sources)
 

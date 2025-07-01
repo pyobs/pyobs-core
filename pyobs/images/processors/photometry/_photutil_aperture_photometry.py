@@ -46,10 +46,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         annulus_aperture = CircularAnnulus(self._positions, r_in=2 * radius, r_out=3 * radius)
         annulus_masks = annulus_aperture.to_mask(method="center")
 
-        bkg_median = [
-            self._calc_median_background(mask)
-            for mask in annulus_masks
-        ]
+        bkg_median = [self._calc_median_background(mask) for mask in annulus_masks]
 
         return np.array(bkg_median)
 
@@ -60,14 +57,16 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         return sigma_clipped_median
 
     @staticmethod
-    def _calc_integrated_background(median_background: np.ndarray[float], aperture: CircularAperture) -> np.ndarray[float]:
+    def _calc_integrated_background(
+        median_background: np.ndarray[float], aperture: CircularAperture
+    ) -> np.ndarray[float]:
         return median_background * aperture.area
 
-    def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[
-        np.ndarray[float], Optional[np.ndarray[float]]]:
+    def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[np.ndarray[float], Optional[np.ndarray[float]]]:
 
-        phot: QTable = aperture_photometry(self._image.data, aperture, mask=self._image.safe_mask,
-                                           error=self._image.safe_uncertainty)
+        phot: QTable = aperture_photometry(
+            self._image.data, aperture, mask=self._image.safe_mask, error=self._image.safe_uncertainty
+        )
 
         aperture_flux = phot["aperture_sum"]
         aperture_error = phot["aperture_sum_err"] if "aperture_sum_err" in phot.keys() else None
@@ -75,12 +74,18 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         return aperture_flux, aperture_error
 
     @staticmethod
-    def _background_correct_aperture_flux(aperture_flux: np.ndarray[float], aperture_background: np.ndarray[float]) -> \
-            np.ndarray[float]:
+    def _background_correct_aperture_flux(
+        aperture_flux: np.ndarray[float], aperture_background: np.ndarray[float]
+    ) -> np.ndarray[float]:
         return aperture_flux - aperture_background
 
-    def _update_catalog(self, diameter: int, corrected_aperture_flux: np.ndarray[float],
-                        aperture_error: Optional[np.ndarray[float]], median_background: np.ndarray[float]):
+    def _update_catalog(
+        self,
+        diameter: int,
+        corrected_aperture_flux: np.ndarray[float],
+        aperture_error: Optional[np.ndarray[float]],
+        median_background: np.ndarray[float],
+    ):
 
         self._image.catalog["fluxaper%d" % diameter] = corrected_aperture_flux
         if aperture_error is not None:

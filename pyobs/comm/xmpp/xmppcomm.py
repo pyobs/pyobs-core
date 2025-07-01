@@ -206,7 +206,9 @@ class XmppComm(Comm):
         self._rpc.set_handler(self._module)
 
         # connect
-        await self._xmpp.connect(host=server, port=server) #, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
+        await self._xmpp.connect(
+            host=server, port=server
+        )  # , force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 
         # wait for connected

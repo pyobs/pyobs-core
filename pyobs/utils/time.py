@@ -1,6 +1,7 @@
 """
 TODO: write doc
 """
+
 __title__ = "Time"
 
 from datetime import datetime, timezone, date, timedelta

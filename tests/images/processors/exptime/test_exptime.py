@@ -11,7 +11,7 @@ class TestExpTimeEstimator(ExpTimeEstimator):
 
 @pytest.mark.asyncio
 async def test_call(mocker):
-    estimator = TestExpTimeEstimator(5., 10.)
+    estimator = TestExpTimeEstimator(5.0, 10.0)
     image = Image()
 
     mocker.patch.object(estimator, "_calc_exp_time", return_value=1.0)
@@ -27,7 +27,7 @@ def test_set_exp_time_lower(mocker):
     image = Image()
     mocker.patch.object(image, "set_meta")
 
-    estimator = TestExpTimeEstimator(5., 10.)
+    estimator = TestExpTimeEstimator(5.0, 10.0)
 
     estimator._set_exp_time(image, 0.0)
 
@@ -39,7 +39,7 @@ def test_set_exp_time_upper(mocker):
     image = Image()
     mocker.patch.object(image, "set_meta")
 
-    estimator = TestExpTimeEstimator(5., 10.)
+    estimator = TestExpTimeEstimator(5.0, 10.0)
 
     estimator._set_exp_time(image, 15.0)
 

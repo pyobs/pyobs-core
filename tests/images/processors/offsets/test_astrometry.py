@@ -10,7 +10,7 @@ from pyobs.images.processors.offsets import AstrometryOffsets
 
 @pytest.mark.asyncio
 async def test_call() -> None:
-    filename = get_pkg_data_filename('data/j94f05bgq_flt.fits', package='astropy.wcs.tests')
+    filename = get_pkg_data_filename("data/j94f05bgq_flt.fits", package="astropy.wcs.tests")
     fits_file = fits.open(filename)
     header = fits_file[1].header
     header["TEL-RA"] = 5.63

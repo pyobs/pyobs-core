@@ -100,9 +100,7 @@ class Calibration(ImageProcessor):
 
         return bias, dark, flat
 
-    async def _find_master(
-        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
-    ) -> Image:
+    async def _find_master(self, image: Image, image_type: ImageType, max_days: Optional[float] = None) -> Image:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -134,7 +132,9 @@ class Calibration(ImageProcessor):
         if not (has_instrument and has_binning and has_time):
             raise ValueError("Could not fetch items from image header.")
 
-    async def _find_master_in_archive(self, image: Image, image_type: ImageType, max_days: Optional[float] = None) -> Image:
+    async def _find_master_in_archive(
+        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
+    ) -> Image:
         instrument = image.header["INSTRUME"]
         binning = "{0}x{0}".format(image.header["XBINNING"])
         filter_name = cast(str, image.header["FILTER"]) if "FILTER" in image.header else None

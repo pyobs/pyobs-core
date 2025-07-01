@@ -1,6 +1,7 @@
 """
 TODO: write doc
 """
+
 __title__ = "Image archives"
 
 from .archive import Archive, FrameInfo

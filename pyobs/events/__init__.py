@@ -1,6 +1,7 @@
 """
 TODO: write doc
 """
+
 __title__ = "Events"
 
 from .badweather import BadWeatherEvent

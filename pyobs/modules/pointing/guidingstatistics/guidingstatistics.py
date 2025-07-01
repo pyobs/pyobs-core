@@ -58,4 +58,3 @@ class GuidingStatistics(object, metaclass=ABCMeta):
 
         for k in self._sessions.keys():
             self._sessions[k].append(data)
-

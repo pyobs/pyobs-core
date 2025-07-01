@@ -90,4 +90,3 @@ async def test_send_event(mocker):
 
     await comm.send_event(Event())
     another_comm._send_event_to_module.assert_called_once()
-

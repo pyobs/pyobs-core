@@ -3,7 +3,7 @@ name = "pyobs-core"
 version = "1.24.1"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "scipy>=1.15.2,<2",
@@ -20,6 +20,7 @@ dependencies = [
     "py-expression-eval>=0.3.14,<0.4",
     "requests>=2.32.3,<3",
     "matplotlib>=3.10.3,<4",
+    "pandas>=2.2.3",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +28,6 @@ full = [
     "asyncinotify>=4.2.1,<5",
     "sep>=1.4.1,<2 ; sys_platform == 'linux'",
     "python-daemon>=3.1.2,<4",
-    "pandas>=2.2.3,<3",
     "paramiko>=3.5.1,<4",
     "ccdproc>=2.4.3,<3",
     "photutils>=2.2.0,<3",
@@ -62,7 +62,6 @@ dev = [
     "black>=25.1.0,<26",
     "pre-commit>=4.2.0,<5",
     "flake8>=7.3.0",
-    "flake8-pyproject>=1.2.3",
 ]
 
 [tool.hatch.build.targets.sdist]

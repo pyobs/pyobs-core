@@ -12,14 +12,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: "3.9"
-      - name: Install poetry
-        run: |
-          curl -fsS -o get-poetry.py https://install.python-poetry.org
-          python get-poetry.py -y
+          python-version: "3.11"
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Publish
         env:
           PYPI_TOKEN: ${{ secrets.pypi_password }}
         run: |
-          $HOME/.local/bin/poetry config pypi-token.pypi $PYPI_TOKEN
-          $HOME/.local/bin/poetry publish --build
+          $HOME/.local/bin/uv --token $PYPI_TOKEN
+          $HOME/.local/bin/uv publish 

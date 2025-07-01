@@ -69,7 +69,7 @@ def start_daemon(app_class: Type["Application"], pid_file: str, **kwargs: Any) -
     # This launches the daemon in its context
     with daemon.DaemonContext(
         working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
-    ) as context:
+    ) as _:
         run(app_class, **kwargs)
 
 

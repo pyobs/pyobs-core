@@ -9,13 +9,16 @@ class VFSFile(metaclass=ABCMeta):
     __module__ = "pyobs.vfs"
 
     @abstractmethod
-    async def close(self) -> None: ...
+    async def close(self) -> None:
+        ...
 
     @abstractmethod
-    async def read(self, n: int = -1) -> AnyStr: ...
+    async def read(self, n: int = -1) -> AnyStr:
+        ...
 
     @abstractmethod
-    async def write(self, s: AnyStr) -> None: ...
+    async def write(self, s: AnyStr) -> None:
+        ...
 
     async def __aenter__(self) -> "VFSFile":
         return self

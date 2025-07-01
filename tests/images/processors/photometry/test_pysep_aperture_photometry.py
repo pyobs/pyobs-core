@@ -25,8 +25,8 @@ async def test_call_const(test_catalog):
     np.testing.assert_almost_equal(photometry.catalog["background"][0], 1.0, 14)
 
     # Test flux is 0.0
-    assert abs(photometry.catalog[f"fluxaper5"][0] - 0.0) < 1e-13
-    assert abs(photometry.catalog[f"fluxerr5"][0] - 0.0) < 1e-13
+    assert abs(photometry.catalog["fluxaper5"][0] - 0.0) < 1e-13
+    assert abs(photometry.catalog["fluxerr5"][0] - 0.0) < 1e-13
 
 
 @pytest.mark.asyncio
@@ -43,5 +43,5 @@ async def test_call_single_peak(test_catalog):
     np.testing.assert_almost_equal(photometry.catalog["background"][0], 0.0, 14)
 
     # Test flux is 100.0
-    assert abs(photometry.catalog[f"fluxaper5"][0] - 100.0) < 1e-13
-    assert abs(photometry.catalog[f"fluxerr5"][0] - 0.0) < 1e-13
+    assert abs(photometry.catalog["fluxaper5"][0] - 100.0) < 1e-13
+    assert abs(photometry.catalog["fluxerr5"][0] - 0.0) < 1e-13

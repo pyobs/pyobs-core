@@ -109,3 +109,6 @@ def _method(name: str = None, disabled: bool = False, sender_keyword: str = None
         return wrapped
 
     return decorator
+
+
+patch()

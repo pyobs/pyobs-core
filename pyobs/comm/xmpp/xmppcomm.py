@@ -591,7 +591,7 @@ class XmppComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if type(value) == str:
+        if isinstance(value, str):
             return True, xml.sax.saxutils.escape(value)
         else:
             return False, value
@@ -607,7 +607,7 @@ class XmppComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if type(value) == str:
+        if isinstance(value, str):
             return True, xml.sax.saxutils.unescape(value)
         else:
             return False, value

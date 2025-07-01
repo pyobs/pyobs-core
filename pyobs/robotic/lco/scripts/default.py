@@ -209,8 +209,8 @@ class LcoDefaultScript(Script):
             raise ValueError("Task schedule is not for LCO observation portal.")
 
         # get instrument info
-        instrument_type = self.configuration["instrument_type"].lower()
-        instrument = task_schedule.instruments[instrument_type]
+        # instrument_type = self.configuration["instrument_type"].lower()
+        # instrument = task_schedule.instruments[instrument_type]
 
         # setting repeat duration depending on config type
         repeat_duration = None

@@ -30,9 +30,6 @@ def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> C
 
     def timeout_decorator(func: F) -> F:
         async def _timeout(obj: Any, *args: Any, **kwargs: Any) -> float:
-            # define variables as non-local
-            nonlocal func_timeout, func
-
             # init to 0 second
             to = 0.0
 

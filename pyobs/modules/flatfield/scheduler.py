@@ -102,7 +102,6 @@ class FlatFieldScheduler(Module, IRunnable):
             await self._scheduler(Time.now())
 
             # do flat fields
-            sched: SchedulerItem
             for item in self._scheduler:
                 # aborted?
                 if self._abort.is_set():

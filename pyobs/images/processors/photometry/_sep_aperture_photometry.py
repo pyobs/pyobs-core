@@ -29,7 +29,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         return self._image.catalog
 
     def _update_background_header(self) -> None:
-        self._image.catalog[f"background"] = self._average_background
+        self._image.catalog["background"] = self._average_background
 
     def __call__(self, diameter: int) -> None:
         import sep

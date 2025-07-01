@@ -56,7 +56,8 @@ class Comm:
         # store module
         self._module = module
 
-    def _set_module(self, module: Module) -> None: ...
+    def _set_module(self, module: Module) -> None:
+        ...
 
     async def open(self) -> None:
         """Open module."""
@@ -123,10 +124,12 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType: ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
+        ...
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any: ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
+        ...
 
     async def proxy(
         self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None

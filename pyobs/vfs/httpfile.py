@@ -156,7 +156,7 @@ class HttpFile(VFSFile):
         # send data and return image ID
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
-            data.add_field("file", self._buffer, filename=self.filename)
+            data.add_field("file", self._buffer, filename=filename)
             async with session.post(self._upload_path, auth=self._auth, data=data, timeout=self._timeout) as response:
                 if response.status == 401:
                     log.error("Wrong credentials for uploading file.")

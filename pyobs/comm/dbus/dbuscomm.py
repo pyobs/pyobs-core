@@ -3,8 +3,6 @@ from __future__ import annotations
 # patch dbus-next to provide sender name
 from .patch import patch
 
-patch()
-
 import asyncio
 import json
 import logging
@@ -51,12 +49,12 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
     @no_type_check_decorator
     @dbus_next.service.method()
-    def get_interfaces(self) -> "as":
+    def get_interfaces(self) -> "as":   # noqa: F722
         return self._interfaces
 
     @no_type_check_decorator
     @dbus_next.service.method(sender_keyword="sender")
-    async def handle_event(self, event: "s", sender):
+    async def handle_event(self, event: "s", sender):   # noqa: F821
         # convert event to dict
         try:
             d = json.loads(event.replace("'", '"'))
@@ -74,12 +72,13 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
     @no_type_check_decorator
     @dbus_next.service.method()
-    def set_timeout(self, uid: "s", timeout: "d"):
+    def set_timeout(self, uid: "s", timeout: "d"):   # noqa: F821
         self._comm.set_timeout(uid, timeout)
 
 
 class DbusMethod(Protocol):
-    def __call__(self, *args: Any) -> Any: ...
+    def __call__(self, *args: Any) -> Any:
+        ...
 
 
 class DbusComm(Comm):

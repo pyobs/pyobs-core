@@ -61,6 +61,8 @@ dev = [
     "pytest-mock>=3.14.0,<4",
     "black>=25.1.0,<26",
     "pre-commit>=4.2.0,<5",
+    "flake8>=7.3.0",
+    "flake8-pyproject>=1.2.3",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -75,4 +77,29 @@ build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 120
-target-version = ['py39', 'py311']
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+)/
+'''
+
+[tool.flake8]
+ignore = ['E203', 'E266', 'E501', 'W503', 'F403', 'F401']
+max-line-length = 120
+max-complexity = 18
+select = ['B','C','E','F','W','T4','B9']
+exclude = ['.git','.venv','__pycache__','docs','build','dist']

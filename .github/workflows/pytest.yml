@@ -8,16 +8,17 @@ jobs:
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Enable caching
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version-file: 'pyproject.toml'
-          cache: 'uv'
+          enable-cache: true
 
-      - run: uv sync --all-extras
-      - run: uv run pytest -v
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - run: uv sync --locked --all-extras --dev
+      - run: uv run pytest tests

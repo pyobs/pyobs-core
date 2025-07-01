@@ -1,6 +1,5 @@
 import inspect
 from functools import wraps
-from types import MethodType
 
 import asyncio
 from typing import no_type_check_decorator

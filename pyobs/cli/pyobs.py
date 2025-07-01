@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Type, Any, Optional, TYPE_CHECKING
+from typing import Type, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.application import Application

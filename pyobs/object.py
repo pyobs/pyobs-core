@@ -17,7 +17,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Coroutine
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Awaitable
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
 import pytz
 from astroplan import Observer
@@ -46,15 +46,13 @@ def get_object(
     config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any],
     object_class: Type[ObjectClass],
     **kwargs: Any,
-) -> ObjectClass:
-    ...
+) -> ObjectClass: ...
 
 
 @overload
 def get_object(
     config_or_object: Union[Dict[str, Any], ObjectClass, Type[ObjectClass], Any], object_class: None, **kwargs: Any
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def get_object(
@@ -104,13 +102,11 @@ def get_object(
 @overload
 def get_safe_object(
     config_or_object: Union[ObjectClass, Dict[str, Any]], object_class: Type[ObjectClass], **kwargs: Any
-) -> Optional[ObjectClass]:
-    ...
+) -> Optional[ObjectClass]: ...
 
 
 @overload
-def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]:
-    ...
+def get_safe_object(config_or_object: Union[ObjectClass, Any], object_class: None, **kwargs: Any) -> Optional[Any]: ...
 
 
 def get_safe_object(
@@ -344,14 +340,12 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def get_object(
         self, config_or_object: Type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def get_object(
@@ -360,8 +354,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def get_object(
         self,
@@ -424,8 +417,7 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[ObjectClass]:
-        ...
+    ) -> Optional[ObjectClass]: ...
 
     @overload
     def get_safe_object(
@@ -434,8 +426,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[Any]:
-        ...
+    ) -> Optional[Any]: ...
 
     def get_safe_object(
         self,
@@ -458,14 +449,12 @@ class Object:
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def add_child_object(
         self, config_or_object: Type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
-    ) -> ObjectClass:
-        ...
+    ) -> ObjectClass: ...
 
     @overload
     def add_child_object(
@@ -474,8 +463,7 @@ class Object:
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def add_child_object(
         self,
@@ -505,12 +493,10 @@ class Object:
         return obj
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType:
-        ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType: ...
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any:
-        ...
+    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any: ...
 
     async def proxy(
         self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None

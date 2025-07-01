@@ -7,7 +7,6 @@ __title__ = "FITS utilities"
 import logging
 import re
 from typing import Union, Any, cast, Optional, List, Callable, Dict
-import numpy as np
 from astropy.io import fits
 from numpy.typing import NDArray
 

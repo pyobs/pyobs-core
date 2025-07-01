@@ -1,8 +1,8 @@
 import logging
-from typing import Tuple, Any
+from typing import Any
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance
+from pyobs.images.meta import PixelOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

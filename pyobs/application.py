@@ -5,7 +5,6 @@ import signal
 import warnings
 import threading
 from io import StringIO
-from logging.handlers import TimedRotatingFileHandler
 from typing import Optional, Any, Dict, List
 import yaml
 

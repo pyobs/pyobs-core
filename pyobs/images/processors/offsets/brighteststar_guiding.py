@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple, Any, Optional
 
-from astropy.coordinates import Angle, AltAz, EarthLocation
+from astropy.coordinates import AltAz, EarthLocation
 from astropy.table import Table, Row
 from astropy.wcs import WCS
 from pandas._typing import npt
@@ -9,7 +9,7 @@ from pyobs.utils.time import Time
 import astropy.units as u
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance, AltAzOffsets
+from pyobs.images.meta import PixelOffsets, AltAzOffsets
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

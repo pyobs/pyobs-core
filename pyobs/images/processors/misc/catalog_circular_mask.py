@@ -1,7 +1,5 @@
 import logging
-from typing import Any, Tuple, Union, Type
-
-import numpy as np
+from typing import Any, Tuple, Union
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image

@@ -1,12 +1,10 @@
 import asyncio
 import datetime
 import logging
-import warnings
 from abc import ABCMeta, abstractmethod
 from typing import Tuple, Optional, Dict, Any, NamedTuple, List
 import numpy as np
 from astropy.io import fits
-from numpy.typing import NDArray
 
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.utils.enums import ImageType, ExposureStatus

@@ -2,7 +2,6 @@ import asyncio
 import io
 import logging
 from enum import Enum
-from functools import partial
 from inspect import Parameter
 from pprint import pprint
 from typing import Any, Optional, List

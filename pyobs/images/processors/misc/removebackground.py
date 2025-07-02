@@ -1,6 +1,5 @@
 import logging
 from typing import Any, Tuple
-from astropy.stats import SigmaClip
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -43,7 +42,6 @@ class RemoveBackground(ImageProcessor):
         """
 
         return self._background_remover(image)
-
 
 
 __all__ = ["RemoveBackground"]

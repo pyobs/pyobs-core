@@ -8,7 +8,6 @@ from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
 from pyobs.utils.enums import ExposureStatus
-from pyobs.utils import exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld

@@ -8,13 +8,15 @@ from pyobs.images import ImageProcessor, Image
 
 
 class ImageSourceFilter(ImageProcessor):
-    def __init__(self,
-                 min_dist_to_border: float,
-                 num_stars: int,
-                 min_pixels: int,
-                 max_ellipticity: float = 0.4,
-                 min_weber_contrast: float = 1.5,
-                 max_saturation: int = 50000) -> None:
+    def __init__(
+        self,
+        min_dist_to_border: float,
+        num_stars: int,
+        min_pixels: int,
+        max_ellipticity: float = 0.4,
+        min_weber_contrast: float = 1.5,
+        max_saturation: int = 50000,
+    ) -> None:
         """
         Filters the source table after pysep detection has run
         Args:
@@ -77,7 +79,8 @@ class ImageSourceFilter(ImageProcessor):
         return sources_result
 
     def remove_bad_sources(
-            self, sources: Table,
+        self,
+        sources: Table,
     ) -> Table:
         """Remove bad sources from table.
 
@@ -100,16 +103,25 @@ class ImageSourceFilter(ImageProcessor):
 
         background_sources = sources["background"] <= 0
 
-        low_contrast_sources = self._calc_weber_contrast(sources["peak"], sources["background"]) <= self._min_weber_contrast
+        low_contrast_sources = (
+            self._calc_weber_contrast(sources["peak"], sources["background"]) <= self._min_weber_contrast
+        )
 
-        bad_sources = saturated_sources | small_sources | large_sources | elliptic_sources | background_sources | low_contrast_sources
+        bad_sources = (
+            saturated_sources
+            | small_sources
+            | large_sources
+            | elliptic_sources
+            | background_sources
+            | low_contrast_sources
+        )
 
         filtered_sources = sources[~bad_sources]  # keep sources that are not bad
         return filtered_sources
 
     @staticmethod
     def _calc_weber_contrast(peak: np.ndarray[Any, Any], background: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-        return (peak - background)/background
+        return (peak - background) / background
 
     def _select_brightest_sources(self, sources: Table) -> Table:
         """Select the N brightest sources from table.
@@ -124,5 +136,5 @@ class ImageSourceFilter(ImageProcessor):
         sources.sort("flux", reverse=True)
 
         if 0 < self._num_stars < len(sources):
-            sources = sources[:self._num_stars]
+            sources = sources[: self._num_stars]
         return sources

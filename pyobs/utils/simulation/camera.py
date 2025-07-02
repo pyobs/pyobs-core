@@ -9,8 +9,8 @@ from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
 from numpy.typing import NDArray
-from photutils.datasets import make_gaussian_sources_image
-from photutils.datasets import make_noise_image
+from photutils.datasets import make_model_image, make_noise_image
+from astropy.modeling import models
 import logging
 
 from pyobs.object import Object
@@ -147,7 +147,9 @@ class SimCamera(Object):
                 ]
 
                 # create image
-                data += make_gaussian_sources_image(shape, sources)
+                model = models.Moffat2D()
+                model_shape = (15, 15)
+                data += make_model_image(shape, model, sources, model_shape=model_shape)
 
         # saturate
         data[data > 65535] = 65535

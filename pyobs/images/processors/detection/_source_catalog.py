@@ -1,9 +1,8 @@
 from copy import copy
-from typing import Optional, List
+from typing import List
 
 import numpy as np
 import pandas as pd
-from astropy.coordinates import Angle
 from astropy.table import Table
 
 from pyobs.images import Image

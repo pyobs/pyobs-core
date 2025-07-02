@@ -1,7 +1,12 @@
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
-from warnings import deprecated
+
+# TODO: remove when Python 3.13 is lowest version
+try:
+    from warnings import deprecated
+except ImportError:
+    from typing_extensions import deprecated
 
 
 class SphericalGrid:

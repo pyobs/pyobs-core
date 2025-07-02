@@ -129,6 +129,7 @@ async def test_loop_invalid(mocker) -> None:
 
     asyncio.sleep.assert_called_once_with(60)
 
+
 @pytest.mark.asyncio
 async def test_update_invalid_url(caplog) -> None:
     weather = Weather("example.com/")
@@ -189,7 +190,7 @@ async def test_update_bad_weather(caplog) -> None:
 
 def test_calc_system_init_eta() -> None:
     weather = Weather("", 600)
-    pyobs.utils.time.Time.now = Mock(return_value=Time("2010-01-01T00:00:00", format='isot', scale='utc'))
+    pyobs.utils.time.Time.now = Mock(return_value=Time("2010-01-01T00:00:00", format="isot", scale="utc"))
 
     time = weather._calc_system_init_eta()
     assert time == "2010-01-01T00:10:00"

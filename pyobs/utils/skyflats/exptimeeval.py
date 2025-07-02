@@ -1,4 +1,3 @@
-import itertools
 import re
 from typing import Dict, Optional, Union, List, Tuple, Any
 from astroplan import Observer

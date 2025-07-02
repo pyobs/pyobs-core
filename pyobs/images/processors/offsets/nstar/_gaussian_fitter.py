@@ -18,7 +18,9 @@ class GaussianFitter(object):
         xdata_restricted, ydata_restricted, p0, bounds = GaussianFitter._init_fit(corr)
 
         try:
-            fit_result, _ = optimize.curve_fit(GaussianFitter._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds)
+            fit_result, _ = optimize.curve_fit(
+                GaussianFitter._gauss2d, xdata_restricted, ydata_restricted, p0, bounds=bounds
+            )
         except (ValueError, RuntimeError, OptimizeWarning):
 
             log.info("Returning pixel position with maximal value in correlation.")
@@ -29,9 +31,14 @@ class GaussianFitter(object):
         return fit_result[2], fit_result[3]
 
     @staticmethod
-    def _init_fit(corr: np.ndarray[float]) -> tuple[
-        np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[float]], tuple[float, float, float, float, float, float], tuple[
-            tuple[float, float, float, float, int, int], tuple[float, float, float, float, float, float]]]:
+    def _init_fit(
+        corr: np.ndarray[float],
+    ) -> tuple[
+        np.ndarray[Any, np.dtype[Any]],
+        np.ndarray[Any, np.dtype[float]],
+        tuple[float, float, float, float, float, float],
+        tuple[tuple[float, float, float, float, int, int], tuple[float, float, float, float, float, float]],
+    ]:
         # get x,y positions array corresponding to the independent variable values of the correlation
         x, y = GaussianFitter._corr_grid(corr)
 
@@ -71,7 +78,8 @@ class GaussianFitter(object):
         # only use data points that clearly belong to peak to avoid border effects
         # mask_value_above_background = ydata > -1e5  # a + .1*b
         mask_circle_around_peak = (x.ravel() - peak_x) ** 2 + (y.ravel() - peak_y) ** 2 < 4 * (
-                sigma_x ** 2 + sigma_y ** 2) / 2
+            sigma_x**2 + sigma_y**2
+        ) / 2
         mask = mask_circle_around_peak
         ydata_restricted = ydata[mask]
         xdata_restricted = xdata[:, mask]
@@ -99,14 +107,17 @@ class GaussianFitter(object):
 
     @staticmethod
     def _gauss2d(
-            x: np.ndarray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float
+        x: np.ndarray[float], a: float, b: float, x0: float, y0: float, sigma_x: float, sigma_y: float
     ) -> np.ndarray[float]:
         """2D Gaussian function."""
-        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x ** 2) - (x[1] - y0) ** 2 / (2 * sigma_y ** 2))
+        return a + b * np.exp(-((x[0] - x0) ** 2) / (2 * sigma_x**2) - (x[1] - y0) ** 2 / (2 * sigma_y**2))
 
     @staticmethod
-    def _check_fit_quality(xdata_restricted: np.ndarray[float], ydata_restricted: np.ndarray[float],
-                           popt: Tuple[float, float, float, float, float, float]) -> None:
+    def _check_fit_quality(
+        xdata_restricted: np.ndarray[float],
+        ydata_restricted: np.ndarray[float],
+        popt: Tuple[float, float, float, float, float, float],
+    ) -> None:
         median_squared_relative_residue_threshold = 1e-1
         fit_ydata_restricted = GaussianFitter._gauss2d(xdata_restricted, *popt)
         square_rel_res = np.square((fit_ydata_restricted - ydata_restricted) / fit_ydata_restricted)

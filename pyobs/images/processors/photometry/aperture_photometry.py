@@ -19,12 +19,12 @@ class AperturePhotometry(Photometry):
     async def __call__(self, image: Image) -> Image:
         """Do aperture photometry on given image.
 
-                Args:
-                    image: Image to do aperture photometry on.
+        Args:
+            image: Image to do aperture photometry on.
 
-                Returns:
-                    Image with attached catalog.
-                """
+        Returns:
+            Image with attached catalog.
+        """
 
         if image.safe_data is None:
             log.warning("No data found in image.")

@@ -35,7 +35,7 @@ async def test_empty_catalog(caplog: pytest.LogCaptureFixture) -> None:
 
 @pytest.mark.asyncio
 async def test_call() -> None:
-    fn = get_pkg_data_filename('data/j94f05bgq_flt.fits', package='astropy.wcs.tests')
+    fn = get_pkg_data_filename("data/j94f05bgq_flt.fits", package="astropy.wcs.tests")
     f = fits.open(fn)
 
     catalog = QTable({"x": [2050], "y": [1020], "flux": [1]})

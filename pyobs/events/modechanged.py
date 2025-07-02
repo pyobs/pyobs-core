@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from typing_extensions import TypedDict
 
 from .event import Event

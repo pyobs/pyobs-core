@@ -10,7 +10,6 @@ import random
 
 from pyobs.object import Object
 from pyobs.utils.enums import MotionStatus
-from pyobs.utils.parallel import event_wait
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld

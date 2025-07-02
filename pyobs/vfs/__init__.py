@@ -53,6 +53,7 @@ Currently supported are these types of file access:
 The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
 
 """
+
 __title__ = "Virtual File System"
 
 from .vfs import VirtualFileSystem

@@ -8,16 +8,16 @@ jobs:
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version-file: 'pyproject.toml'
-          cache: 'poetry'
+          enable-cache: true
+          python-version: "3.11"
 
-      - run: poetry install --all-extras
-      - run: poetry run pytest -v
+      - name: Install packages
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run tests
+        run: uv run pytest tests

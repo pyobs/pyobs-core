@@ -1,12 +1,12 @@
 """
 TODO: write doc
 """
+
 __title__ = "FITS utilities"
 
 import logging
 import re
 from typing import Union, Any, cast, Optional, List, Callable, Dict
-import numpy as np
 from astropy.io import fits
 from numpy.typing import NDArray
 
@@ -110,7 +110,7 @@ class FilenameFormatter:
         for f in self.format:
             try:
                 # find all placeholders in format
-                placeholders = re.findall("\{[\w\d_-]+(?:\|[\w\d_-]+\:?(?:[\w\d_-]+)*)?\}", f)
+                placeholders = re.findall(r"\{[\w\d_-]+(?:\|[\w\d_-]+\:?(?:[\w\d_-]+)*)?\}", f)
                 if len(placeholders) == 0:
                     return f
 

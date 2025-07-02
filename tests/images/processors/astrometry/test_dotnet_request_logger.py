@@ -17,7 +17,9 @@ def test_log_catalog_data(caplog, mock_header):
     with caplog.at_level(logging.INFO):
         logger.log_request_data()
 
-    assert caplog.records[-1].message == "Found original RA=00:00:00 (0.0000), Dec=00:00:00 (0.0000) at pixel 1.00,1.00."
+    assert (
+        caplog.records[-1].message == "Found original RA=00:00:00 (0.0000), Dec=00:00:00 (0.0000) at pixel 1.00,1.00."
+    )
     assert caplog.records[-1].levelname == "INFO"
 
 

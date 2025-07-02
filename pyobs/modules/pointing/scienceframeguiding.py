@@ -5,7 +5,6 @@ from typing import Any
 from pyobs.events import NewImageEvent, Event
 from pyobs.images import Image
 from ._baseguiding import BaseGuiding
-from ...utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 

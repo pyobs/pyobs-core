@@ -3,7 +3,7 @@ from copy import copy
 from typing import Any, Optional
 
 import numpy as np
-from astropy.table import Table, Row
+from astropy.table import Row
 
 from pyobs.images import Image
 from pyobs.images.processors.exptime.exptime import ExpTimeEstimator

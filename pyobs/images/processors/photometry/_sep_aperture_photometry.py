@@ -29,7 +29,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         return self._image.catalog
 
     def _update_background_header(self) -> None:
-        self._image.catalog[f"background"] = self._average_background
+        self._image.catalog["background"] = self._average_background
 
     def __call__(self, diameter: int) -> None:
         import sep
@@ -40,7 +40,13 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
         radius = self._calc_aperture_radius_in_px(diameter)
         flux, fluxerr, _ = sep.sum_circle(
-            self._data, self._pos_x, self._pos_y, radius, mask=self._image.safe_mask, err=self._image.safe_uncertainty, gain=self._gain
+            self._data,
+            self._pos_x,
+            self._pos_y,
+            radius,
+            mask=self._image.safe_mask,
+            err=self._image.safe_uncertainty,
+            gain=self._gain,
         )
         self._update_flux_header(diameter, flux, fluxerr)
 
@@ -51,8 +57,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.safe_mask)
         self._average_background = self._calc_average_background(bkg.back())
 
-    def _calc_average_background(self, background: np.ndarray) -> \
-    np.ndarray[float]:
+    def _calc_average_background(self, background: np.ndarray) -> np.ndarray[float]:
         """
         since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area
         """
@@ -63,15 +68,20 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         return median_background
 
     @staticmethod
-    def _sum_ellipse(data: np.ndarray[float], image: Image, x: np.ndarray[float], y: np.ndarray[float]) -> np.ndarray[float]:
+    def _sum_ellipse(
+        data: np.ndarray[float], image: Image, x: np.ndarray[float], y: np.ndarray[float]
+    ) -> np.ndarray[float]:
         import sep
+
         sum, _, _ = sep.sum_ellipse(
-            data, x, y,
+            data,
+            x,
+            y,
             image.catalog["a"],
             image.catalog["b"],
             theta=np.pi / 2.0,
             r=2.5 * image.catalog["kronrad"],
-            subpix=1
+            subpix=1,
         )
         return sum
 

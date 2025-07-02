@@ -1,7 +1,6 @@
 import asyncio
 import logging
-import threading
-from typing import Any, Union
+from typing import Any
 
 from pyobs.utils.parallel import acquire_lock
 

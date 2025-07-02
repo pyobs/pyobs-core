@@ -29,7 +29,7 @@ def test_init():
     deblend_nthresh = 30
     deblend_cont = 0.001
     clean = False
-    clean_param = .5
+    clean_param = 0.5
 
     detector = SepSourceDetection(threshold, minarea, deblend_nthresh, deblend_cont, clean, clean_param)
     assert detector.threshold == threshold
@@ -53,23 +53,24 @@ async def test_full(gaussian_sources_image):
     output_image = await detector(gaussian_sources_image)
 
     assert len(output_image.catalog) == 4
-    assert (list(output_image.catalog.keys()) ==
-            ["x",
-                "y",
-                "peak",
-                "flux",
-                "fwhm",
-                "a",
-                "b",
-                "theta",
-                "ellipticity",
-                "tnpix",
-                "kronrad",
-                "fluxrad25",
-                "fluxrad50",
-                "fluxrad75",
-                "xwin",
-                "ywin",])
+    assert list(output_image.catalog.keys()) == [
+        "x",
+        "y",
+        "peak",
+        "flux",
+        "fwhm",
+        "a",
+        "b",
+        "theta",
+        "ellipticity",
+        "tnpix",
+        "kronrad",
+        "fluxrad25",
+        "fluxrad50",
+        "fluxrad75",
+        "xwin",
+        "ywin",
+    ]
 
 
 def test_get_mask_or_default():
@@ -84,4 +85,3 @@ def test_get_gain_or_default():
     image.header["DET-GAIN"] = 1
 
     assert SepSourceDetection._get_gain_or_default(image) == 1
-

@@ -12,9 +12,9 @@ from pyobs.images.processors.exptime import StarExpTimeEstimator
 @pytest.fixture()
 def mock_table() -> QTable:
     table = QTable()
-    table['peak'] = [56000, 2500, 2000, 40, 30]
-    table['x'] = [50, 30, 25, 80, 90]
-    table['y'] = [50, 10, 40, 25, 60]
+    table["peak"] = [56000, 2500, 2000, 40, 30]
+    table["x"] = [50, 30, 25, 80, 90]
+    table["y"] = [50, 10, 40, 25, 60]
 
     return table
 

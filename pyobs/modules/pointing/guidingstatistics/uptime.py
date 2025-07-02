@@ -51,4 +51,4 @@ class GuidingStatisticsUptime(GuidingStatistics):
         return input_data, now
 
 
-__all__ = ['GuidingStatisticsUptime']
+__all__ = ["GuidingStatisticsUptime"]

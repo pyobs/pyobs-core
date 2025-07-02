@@ -17,7 +17,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Coroutine
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING, Awaitable
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Dict, Any, overload, TYPE_CHECKING
 import logging
 import pytz
 from astroplan import Observer

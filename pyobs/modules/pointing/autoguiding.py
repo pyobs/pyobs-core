@@ -8,7 +8,6 @@ from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
 from pyobs.interfaces import IExposureTime, IImageType, IData
 from pyobs.utils.enums import ImageType
-from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 

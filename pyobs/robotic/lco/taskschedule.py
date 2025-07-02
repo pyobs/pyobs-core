@@ -310,7 +310,7 @@ class LcoTaskSchedule(TaskSchedule):
         await asyncio.sleep(delay)
 
         # re-send
-        await self.send_update(status_id, update)
+        await self.send_update(status_id, status)
 
     async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.

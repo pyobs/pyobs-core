@@ -26,7 +26,7 @@ def test_gaussian():
 
 
 def test_gaussian_fit(mocker):
-    mocker.patch('pyobs.images.processors.offsets.ProjectedOffsets._gaussian', return_value=np.ones((4, 1)))
+    mocker.patch("pyobs.images.processors.offsets.ProjectedOffsets._gaussian", return_value=np.ones((4, 1)))
     gaussian_params = [2, 1, 1]
 
     err = ProjectedOffsets._gaussian_fit(gaussian_params, np.zeros((4, 1)), np.zeros((4, 1)))
@@ -35,8 +35,8 @@ def test_gaussian_fit(mocker):
 
 def test_calc_1d_offset():
     signal = gaussian(20, 5.0, sym=True)
-    ref_data = np.pad(signal, (5, 0), mode='constant', constant_values=0)
-    img_data = np.pad(signal, (0, 5), mode='constant', constant_values=0)   # Pad behind signal, to match data length
+    ref_data = np.pad(signal, (5, 0), mode="constant", constant_values=0)
+    img_data = np.pad(signal, (0, 5), mode="constant", constant_values=0)  # Pad behind signal, to match data length
 
     shift = ProjectedOffsets._calc_1d_offset(ref_data, img_data, fit_width=15)
 
@@ -90,7 +90,7 @@ def test_process_valid_timsec():
 @pytest.mark.asyncio
 async def test_call_ref(mocker, caplog):
     offsets = ProjectedOffsets()
-    mocker.patch.object(offsets, "_process", return_value=(np.ones(10)*10, np.ones(10)*10))
+    mocker.patch.object(offsets, "_process", return_value=(np.ones(10) * 10, np.ones(10) * 10))
     image = Image(data=np.ones((10, 10)))
 
     with caplog.at_level(logging.INFO):

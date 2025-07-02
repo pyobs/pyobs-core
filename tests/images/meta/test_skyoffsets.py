@@ -63,11 +63,11 @@ def test_separation(mocker):
     meta = SkyOffsets(coord0, coord1)
 
     mocker.patch.object(meta, "_to_frame", return_value=(coord0, coord1))
-    #mocker.patch("astropy.coordinates.SkyCoord.separation", return_value=0)
+    # mocker.patch("astropy.coordinates.SkyCoord.separation", return_value=0)
     assert 1.41417766 == pytest.approx(meta.separation().degree)
 
     meta._to_frame.assert_called_once_with(None)
-    #astropy.coordinates.SkyCoord.separation.assert_called_once_with(coord1)
+    # astropy.coordinates.SkyCoord.separation.assert_called_once_with(coord1)
 
 
 def test_spherical_offsets(mocker):

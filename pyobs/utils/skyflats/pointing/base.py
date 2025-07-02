@@ -1,6 +1,5 @@
 from pyobs.interfaces import ITelescope
 from pyobs.object import Object
-from pyobs.utils.parallel import Future
 
 
 class SkyFlatsBasePointing(Object):

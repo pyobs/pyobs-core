@@ -12,8 +12,9 @@ pytest_plugins = ("pytest_asyncio",)
 @pytest.mark.asyncio
 async def test_scheduler():
     # init observer and time
-    saao_observer = Observer(longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg,
-                             elevation=1798.0 * u.m, timezone="UTC")
+    saao_observer = Observer(
+        longitude=20.8108 * u.deg, latitude=-32.375823 * u.deg, elevation=1798.0 * u.m, timezone="UTC"
+    )
     now = Time("2019-11-21T17:10:00Z")
 
     # have some test functions

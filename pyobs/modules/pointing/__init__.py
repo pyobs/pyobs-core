@@ -2,6 +2,7 @@
 Modules for performing auto-guiding.
 TODO: write doc
 """
+
 __title__ = "Auto-guiding"
 
 from ._baseguiding import BaseGuiding

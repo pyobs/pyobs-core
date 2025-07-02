@@ -2,7 +2,6 @@ import logging
 import random
 from typing import Tuple, Any, Optional, List, Dict, Union
 
-import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u

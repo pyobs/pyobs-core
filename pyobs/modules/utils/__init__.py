@@ -2,6 +2,7 @@
 Utilities
 TODO: write doc
 """
+
 __title__ = "Utility modules"
 
 from .autonomouswarning import AutonomousWarning

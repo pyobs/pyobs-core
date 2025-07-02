@@ -20,7 +20,7 @@ class Ring:
         max_relative_sigma=0.1,
         section_angular_width=36,
         section_angular_shift=18,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         self._full_image_data = full_image_data
         self._fibre_position = fibre_position
@@ -51,7 +51,7 @@ class Ring:
         x_fibre, y_fibre = self._fibre_position
         delta_x, delta_y = x_coordinate - x_fibre, y_coordinate - y_fibre
         angle = np.arctan2(delta_y, delta_x) * 180 / np.pi + 90
-        angle =  np.where(angle < 0, angle + 360, angle)
+        angle = np.where(angle < 0, angle + 360, angle)
         return np.where(angle > 360, angle - 360, angle)
 
     def get_brightest_point(self):
@@ -65,8 +65,9 @@ class Ring:
         ny, nx = self.data.shape
         x, y = np.arange(0, nx), np.arange(0, ny)
         x_coordinates, y_coordinates = np.meshgrid(x, y)
-        section_mask = ((min_angle < self.get_angle_from_position(x_coordinates, y_coordinates)) &
-                        (max_angle > self.get_angle_from_position(x_coordinates, y_coordinates)))
+        section_mask = (min_angle < self.get_angle_from_position(x_coordinates, y_coordinates)) & (
+            max_angle > self.get_angle_from_position(x_coordinates, y_coordinates)
+        )
         section = self.data.copy()
         section *= section_mask
         section = np.where(section == 0, np.nan, section)
@@ -109,11 +110,11 @@ class SpilledLightGuiding(Offsets):
     def __init__(
         self,
         fibers: IMultiFiber,
-        radius_ratio: float=2,
+        radius_ratio: float = 2,
         max_relative_sigma=0.1,
         section_angular_width=36,
         section_angular_shift=18,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """Init an image processor that adds the calculated offset.
 
@@ -150,15 +151,19 @@ class SpilledLightGuiding(Offsets):
         await self._correct_for_binning(binning=image.header["DET-BIN1"])
         image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
-        log.info(f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}.")
+        log.info(
+            f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}."
+        )
         await self._correct_fibre_position_for_trimming()
-        self.ring = Ring(full_image_data=trimmed_image_data,
-                         fibre_position=self._fibre_position,
-                         inner_radius=self._inner_radius,
-                         outer_radius=self._inner_radius * self._radius_ratio,
-                         max_relative_sigma=self._max_relative_sigma,
-                         section_angular_width=self._section_angular_width,
-                         section_angular_shift=self._section_angular_shift)
+        self.ring = Ring(
+            full_image_data=trimmed_image_data,
+            fibre_position=self._fibre_position,
+            inner_radius=self._inner_radius,
+            outer_radius=self._inner_radius * self._radius_ratio,
+            max_relative_sigma=self._max_relative_sigma,
+            section_angular_width=self._section_angular_width,
+            section_angular_shift=self._section_angular_shift,
+        )
         if self.ring.is_uniform():
             log.info("Ring is uniform, no offset applied.")
             pixel_offset = (0, 0)
@@ -194,7 +199,7 @@ class SpilledLightGuiding(Offsets):
     async def _calculate_relative_shift(self):
         section_ratio = self.ring.get_opposite_section_normalized_counts_ratio(self.ring.brightest_section_index)
         log.info("Ratio between brightest and the opposite section: %s", section_ratio)
-        relative_shift = 1 / (1+np.exp(-(section_ratio-0.8)*5))
+        relative_shift = 1 / (1 + np.exp(-(section_ratio - 0.8) * 5))
         log.info("Corresponding relative offset: %s", relative_shift)
         self._relative_shift = min(1, relative_shift)
 
@@ -216,4 +221,3 @@ class SpilledLightGuiding(Offsets):
 
 
 __all__ = ["SpilledLightGuiding"]
-

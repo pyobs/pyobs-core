@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import inspect
 import json
 import logging
 import re
@@ -206,7 +205,9 @@ class XmppComm(Comm):
         self._rpc.set_handler(self._module)
 
         # connect
-        await self._xmpp.connect(host=server, port=server) #, force_starttls=self._use_tls, disable_starttls=not self._use_tls)
+        await self._xmpp.connect(
+            host=server, port=server
+        )  # , force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 
         # wait for connected
@@ -589,7 +590,7 @@ class XmppComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if type(value) == str:
+        if isinstance(value, str):
             return True, xml.sax.saxutils.escape(value)
         else:
             return False, value
@@ -605,7 +606,7 @@ class XmppComm(Comm):
             A tuple containing a tuple that indicates whether this value should be further processed and a new value.
         """
 
-        if type(value) == str:
+        if isinstance(value, str):
             return True, xml.sax.saxutils.unescape(value)
         else:
             return False, value

@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Type, Any, Optional, TYPE_CHECKING
+from typing import Type, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.application import Application
@@ -69,7 +69,7 @@ def start_daemon(app_class: Type["Application"], pid_file: str, **kwargs: Any) -
     # This launches the daemon in its context
     with daemon.DaemonContext(
         working_directory=run_dir, umask=0o002, pidfile=pidfile.TimeoutPIDLockFile(pid_file)
-    ) as context:
+    ) as _:
         run(app_class, **kwargs)
 
 

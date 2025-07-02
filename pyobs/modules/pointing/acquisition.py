@@ -152,7 +152,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if not image.has_meta(OnSkyDistance):
                 log.warning("No on-sky distance found in meta.")
                 continue
-                #raise exc.ImageError("No on sky distance found in meta.")
+                # raise exc.ImageError("No on sky distance found in meta.")
             osd = image.get_meta(OnSkyDistance)
             if osd is None or np.isnan(osd.distance):
                 log.warning("On-sky distance found in meta is None or NaN.")

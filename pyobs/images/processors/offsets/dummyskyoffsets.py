@@ -10,7 +10,9 @@ from pyobs.object import get_object
 
 
 class DummySkyOffsets(Offsets):
-    def __init__(self, coord0: Union[SkyCoord, Dict[str, Any]], coord1: Union[SkyCoord, Dict[str, Any]], **kwargs: Any) -> None:
+    def __init__(
+        self, coord0: Union[SkyCoord, Dict[str, Any]], coord1: Union[SkyCoord, Dict[str, Any]], **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         sky_coord0 = get_object(coord0, SkyCoord)
         sky_coord1 = get_object(coord1, SkyCoord)

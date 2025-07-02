@@ -6,7 +6,6 @@ import astropy.units as u
 from pyobs.interfaces import ITelescope
 from pyobs.utils.time import Time
 from .base import SkyFlatsBasePointing
-from ...parallel import Future
 
 log = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.testing
 import pandas as pd
 
-from pyobs.images.processors.detection._source_catalog import  _SourceCatalog
+from pyobs.images.processors.detection._source_catalog import _SourceCatalog
 
 
 def test_filter_detection_flag_default():
@@ -29,10 +29,10 @@ def test_wrap_rotation_angle_default():
 
 
 def test_wrap_rotation_angle():
-    catalog = _SourceCatalog(pd.DataFrame({"theta": [np.pi/2, np.pi, 0, -np.pi/3]}))
+    catalog = _SourceCatalog(pd.DataFrame({"theta": [np.pi / 2, np.pi, 0, -np.pi / 3]}))
     catalog.wrap_rotation_angle_at_ninty_deg()
 
-    numpy.testing.assert_almost_equal(catalog.sources["theta"], [np.pi/2, 0, 0, -np.pi/3])
+    numpy.testing.assert_almost_equal(catalog.sources["theta"], [np.pi / 2, 0, 0, -np.pi / 3])
 
 
 def test_rotation_angle_to_degree_default():

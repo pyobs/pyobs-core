@@ -9,4 +9,3 @@ def test_radecoffsets():
 
     assert meta.dra == dra
     assert meta.ddec == ddec
-

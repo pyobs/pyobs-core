@@ -93,7 +93,6 @@ class InvocationError(RemoteError, metaclass=_Meta):
     def __init__(self, module: str, exception: Exception):
         RemoteError.__init__(self, module, None)
         self.module = module
-        a = ValueError()
 
         # never encapsulate a SevereError
         self.exception = exception.exception if isinstance(exception, SevereError) else exception

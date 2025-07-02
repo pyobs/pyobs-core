@@ -1,6 +1,6 @@
 from threading import Thread
 import logging
-from typing import Optional, Any, cast
+from typing import Optional, Any
 
 log = logging.getLogger(__name__)
 

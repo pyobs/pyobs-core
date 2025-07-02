@@ -9,7 +9,7 @@ from pyobs.modules import timeout
 from pyobs.object import get_object
 from pyobs.utils.parallel import event_wait
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
-from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
+from pyobs.utils.skyflats.scheduler import Scheduler
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -102,7 +102,6 @@ class FlatFieldScheduler(Module, IRunnable):
             await self._scheduler(Time.now())
 
             # do flat fields
-            sched: SchedulerItem
             for item in self._scheduler:
                 # aborted?
                 if self._abort.is_set():

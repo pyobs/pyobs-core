@@ -57,10 +57,11 @@ class AstrometryOffsets(Offsets):
     def _get_coordinates_from_header(self, header_cards: Tuple[str, str]) -> Tuple[SkyCoord, Tuple[float, float]]:
         coordinates = SkyCoord(
             self._image.header[header_cards[0]] * u.deg,  # type: ignore
-            self._image.header[header_cards[1]] * u.deg,    # type: ignore
-            frame="icrs")
+            self._image.header[header_cards[1]] * u.deg,  # type: ignore
+            frame="icrs",
+        )
 
-        pixel_coordinates = self._wcs.world_to_pixel(coordinates)   # type: ignore
+        pixel_coordinates = self._wcs.world_to_pixel(coordinates)  # type: ignore
         return coordinates, pixel_coordinates
 
 

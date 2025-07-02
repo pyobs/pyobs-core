@@ -84,7 +84,7 @@ class ProjectedOffsets(Offsets):
             if m is None:
                 raise ValueError("Invalid trimsec.")
             x0, x1, y0, y1 = [int(f) for f in m.groups()]
-            data = data[y0 - 1: y1, x0 - 1: x1]
+            data = data[y0 - 1 : y1, x0 - 1 : x1]
 
         # collapse
         sum_x = np.nansum(data, 0)
@@ -103,10 +103,10 @@ class ProjectedOffsets(Offsets):
         w2 = float(len(x)) / sbin
         for i in range(sbin):
             # sort data in range
-            bindata = list(reversed(sorted(data[int(w1): int(w2)])))
+            bindata = list(reversed(sorted(data[int(w1) : int(w2)])))
             # calculate median and set wavelength
-            bins[i] = np.median(bindata[int(-frac * len(bindata)): -1])
-            binxs[i] = np.mean(x[int(w1): int(w2)])
+            bins[i] = np.median(bindata[int(-frac * len(bindata)) : -1])
+            binxs[i] = np.mean(x[int(w1) : int(w2)])
             # reset ranges
             w1 = w2
             w2 += float(len(x)) / sbin
@@ -133,12 +133,12 @@ class ProjectedOffsets(Offsets):
 
         # cut window
         x = np.linspace(centre - fit_width, centre + fit_width, 2 * fit_width + 1)
-        y = corr[i_max - fit_width: i_max + fit_width + 1]
+        y = corr[i_max - fit_width : i_max + fit_width + 1]
 
         # moment calculation for initial guesses
         total = float(y.sum())
         mean = (x * y).sum() / total
-        variance = (x * x * y).sum() / total - mean ** 2
+        variance = (x * x * y).sum() / total - mean**2
 
         # initial guess
         guesses = [np.max(y), mean, variance]
@@ -162,7 +162,7 @@ class ProjectedOffsets(Offsets):
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma ** 2))
+        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma**2))
 
 
 __all__ = ["ProjectedOffsets"]

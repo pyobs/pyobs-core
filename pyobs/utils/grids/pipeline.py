@@ -7,6 +7,7 @@ from pyobs.utils.grids.grid import Grid
 
 class GridPipeline:
     """A pipeline for a grid and filters. Accepts a Grid as first element in the input list plus 0-N filters"""
+
     def __init__(self, steps: List[Union[Grid, GridFilter, dict]]):
         # variables
         self._grid_pipeline: Optional[Grid] = None

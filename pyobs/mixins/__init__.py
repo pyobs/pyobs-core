@@ -1,6 +1,7 @@
 """
 Mixins are classes that can be inherited from to automatically add some functionality to a module.
 """
+
 __title__ = "Mixins"
 
 from .camerasettings import CameraSettingsMixin

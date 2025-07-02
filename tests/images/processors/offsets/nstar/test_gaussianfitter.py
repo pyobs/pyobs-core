@@ -9,11 +9,7 @@ from pyobs.images.processors.offsets.nstar._gaussian_fitter import GaussianFitte
 
 @pytest.fixture()
 def gaussian_data():
-    return np.array([
-        [
-            GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)
-        ] for y in range(21)
-    ])
+    return np.array([[GaussianFitter._gauss2d([x, y], 1, 2, 10, 10, 1, 1) for x in range(21)] for y in range(21)])
 
 
 def test_offsets_from_corr(gaussian_data) -> None:

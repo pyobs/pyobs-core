@@ -1,7 +1,7 @@
 """
 A module in *pyobs* is the smalles executable unit. The base class for all modules is
 :class:`~pyobs.modules.Module`, so all modules should derive from this class and, usually, implement
-one or more :class:`~pyobs.interfaces.Interface`\ s.
+one or more :class:`~pyobs.interfaces.Interface` s.
 
 Modules are usually not created directly in code, but via a configuration file, which is a YAML file that directly
 maps to the constructor of the module plus an additional entry ``class`` containing the full reference to the class

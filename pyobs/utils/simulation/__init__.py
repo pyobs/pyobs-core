@@ -1,6 +1,7 @@
 """
 TODO: write docs
 """
+
 __title__ = "Simulations"
 
 from .world import SimWorld

@@ -41,18 +41,11 @@ def test_check_overlapping_box_pair_invalid() -> None:
         generator._check_overlapping_box_pair([1, 1], [4, 10])
 
 
-
 @pytest.mark.asyncio
 async def test_call() -> None:
-    sources = Table({
-        "x": [10],
-        "y": [10],
-        "flux": [10],
-        "peak": [100],
-        "tnpix": [10],
-        "ellipticity": [0.0],
-        "background": [1.0]
-    })
+    sources = Table(
+        {"x": [10], "y": [10], "flux": [10], "peak": [100], "tnpix": [10], "ellipticity": [0.0], "background": [1.0]}
+    )
 
     image = Image(data=np.ones((20, 20)), catalog=sources)
 

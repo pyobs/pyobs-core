@@ -24,10 +24,10 @@ async def test_call_const(const_test_image):
     photometry(1)
 
     # Test background is 1.0
-    np.testing.assert_almost_equal(photometry.catalog[f"bkgaper1"][0], 1.0, 14)
+    np.testing.assert_almost_equal(photometry.catalog["bkgaper1"][0], 1.0, 14)
 
     # Test flux is 0.0
-    np.testing.assert_almost_equal(photometry.catalog[f"fluxaper1"][0], 0.0, 13)
+    np.testing.assert_almost_equal(photometry.catalog["fluxaper1"][0], 0.0, 13)
 
 
 @pytest.mark.asyncio

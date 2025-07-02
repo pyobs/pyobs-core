@@ -42,8 +42,8 @@ pyobs = "pyobs.cli.pyobs:main"
 pyobsd = "pyobs.cli.pyobsd:main"
 pyobsw = "pyobs.cli.pyobsw:main"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "types-cryptography>=3.3.23.2,<4",
     "types-enum34>=1.1.8,<2",
     "types-ipaddress>=1.0.8,<2",

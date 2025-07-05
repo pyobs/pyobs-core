@@ -11,6 +11,7 @@ Introduction
 
    quickstart
    installing
+   development
    overview
    cli
 

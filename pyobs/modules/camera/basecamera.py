@@ -49,6 +49,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         flip_y: bool = False,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz",
         fits_namespaces: Optional[List[str]] = None,
+        meridian_flip_on: Optional[str] = None,
         **kwargs: Any,
     ):
         """Creates a new BaseCamera.
@@ -82,6 +83,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._flip_y = flip_y
         self._exposure_time: float = 0.0
         self._image_type = ImageType.OBJECT
+        self._meridian_flip_on = meridian_flip_on
 
         # init camera
         self._exposure: Optional[ExposureInfo] = None
@@ -291,6 +293,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         await self.add_requested_fits_headers(image, header_futures_before)
         await self.add_requested_fits_headers(image, header_futures_after)
         await self.add_fits_headers(image)
+        await self.apply_meridian_flip(image)
         filename = self.format_filename(image)
 
         # don't want to save?
@@ -447,6 +450,17 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"])
             hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], bottom_binned), c1)
+
+    async def apply_meridian_flip(self, image: Image):
+        """If the telescope has a meridian flip (MERIDIAN keyword in header), flip the image on both axes.
+
+        Args:
+            image: Image to be flipped.
+        """
+        if "MERIDIAN" in image.header:
+            if image.header["MERIDIAN"].upper() == self._meridian_flip_on:
+                # flip both axes
+                image.data = image.data[::-1, ::-1]
 
 
 __all__ = ["BaseCamera", "CameraException"]

@@ -7,14 +7,15 @@ http://www.pyobs.org/
 Quick start
 -----------
 
-Install pyobs-core:
+Create a directory and a virtual environment:
 
-    pip3 install --user pyobs-core
-    
-Alternatively, create a virtual environment and install pyobs-core in there:
+    mkdir test
+    cd test
+    python3 -m venv venv
 
-    python3 -m venv pyobs-venv
-    source pyobs-venv/bin/activate
+Activate environment and install pyobs-core:
+
+    ./venv/bin/activate
     pip3 install pyobs-core
     
 Create a test configuration test.yaml:

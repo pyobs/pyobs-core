@@ -206,7 +206,7 @@ class XmppComm(Comm):
 
         # connect
         await self._xmpp.connect(
-            host=server, port=server
+            host=server, port=port
         )  # , force_starttls=self._use_tls, disable_starttls=not self._use_tls)
         self._xmpp.init_plugins()
 

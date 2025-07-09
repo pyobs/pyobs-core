@@ -176,7 +176,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # calculate difference between start of exposure and now, and return in ms
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
-        diff = self._exposure.start + duration - datetime.datetime.now(datetime.UTC)
+        diff = self._exposure.start + duration - datetime.datetime.now(datetime.timezone.utc)
         return diff.total_seconds()
 
     async def get_exposure_progress(self, **kwargs: Any) -> float:
@@ -191,7 +191,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             return 0.0
 
         # calculate difference between start of exposure and now
-        diff = datetime.datetime.now(datetime.UTC) - self._exposure[0]
+        diff = datetime.datetime.now(datetime.timezone.utc) - self._exposure[0]
 
         # zero exposure time?
         if self._exposure.exposure_time == 0.0 or self._camera_status == ExposureStatus.READOUT:
@@ -250,7 +250,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self.expose_abort.clear()
 
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.datetime.now(datetime.UTC), exposure_time=exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.now(datetime.timezone.utc), exposure_time=exposure_time)
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.safe_data is None:

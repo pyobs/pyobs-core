@@ -180,6 +180,7 @@ class XmppComm(Comm):
     async def _connect(self) -> None:
         # create client
         self._xmpp = XmppClient(self._jid, self._password)
+
         # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
         self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
         self._xmpp.add_event_handler("got_online", self._got_online)
@@ -192,8 +193,9 @@ class XmppComm(Comm):
             if ":" in self._server:
                 server, port = self._server.split(":")
             else:
-                server, port = self._server, None
-        print(server, port)
+                server, port = self._server, 5222
+        elif self._domain is not None:
+            server, port = self._domain, 5222
 
         # add features
         if self._module is not None:
@@ -205,9 +207,12 @@ class XmppComm(Comm):
         self._rpc.set_handler(self._module)
 
         # connect
-        await self._xmpp.connect(
-            host=server, port=port
-        )  # , force_starttls=self._use_tls, disable_starttls=not self._use_tls)
+        self._xmpp.connect(
+            address=(server, port),
+            # use_ssl=self._use_tls,
+            force_starttls=self._use_tls,
+            disable_starttls=not self._use_tls,
+        )
         self._xmpp.init_plugins()
 
         # wait for connected

@@ -1933,7 +1933,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.25.6"
+version = "1.25.7"
 source = { editable = "." }
 dependencies = [
     { name = "astroplan" },

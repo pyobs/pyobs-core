@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class XmppClient(slixmpp.ClientXMPP):  # type: ignore
     """XMPP client for pyobs."""
 
-    def __init__(self, jid: str, password: str):
+    def __init__(self, jid: str, password: str, **kwargs):
         """Create a new XMPP client.
 
         An XmppClient handles the actual XMPP communication for the XmppComm module.
@@ -25,7 +25,9 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
             password: Password to use for connection.
         """
 
-        slixmpp.ClientXMPP.__init__(self, jid, password)
+        slixmpp.ClientXMPP.__init__(self, jid, password, **kwargs)
+        # self.enable_starttls = False
+        # self.enable_direct_tls = False
 
         # stuff
         self._connect_event = asyncio.Event()

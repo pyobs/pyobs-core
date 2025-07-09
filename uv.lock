@@ -1933,7 +1933,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.25.9"
+version = "1.25.10"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -2013,7 +2013,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.15.2,<2" },
     { name = "sep", marker = "sys_platform == 'linux' and extra == 'full'", specifier = ">=1.4.1,<2" },
     { name = "single-source", specifier = ">=0.4.0,<0.5" },
-    { name = "slixmpp", specifier = ">=1.10.0,<2" },
+    { name = "slixmpp", specifier = "==1.8.4" },
     { name = "tornado", marker = "extra == 'full'", specifier = ">=6.4.2,<7" },
     { name = "typing-extensions", specifier = ">=4.13.2,<5" },
 ]
@@ -2388,22 +2388,14 @@ wheels = [
 
 [[package]]
 name = "slixmpp"
-version = "1.10.0"
+version = "1.8.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiodns" },
     { name = "pyasn1" },
     { name = "pyasn1-modules" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/79/0ceacbcdc5f84248a36c98e11c126494c4c262902bba69eb9bd536771f76/slixmpp-1.10.0.tar.gz", hash = "sha256:46bc5d01507cb4285c8255ce5c717c0b5f68e54dfc1f1712883998d6d722578a", size = 705681, upload-time = "2025-03-26T19:58:50.956Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/a2/f2d170330477b50a71ed8720c048a2de775ebd99f5afd072695e4db42279/slixmpp-1.10.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:27a46a2dee7c4531f176b648e70c624b3c5e07401c7b19b3bb3dc5fb7a21bce2", size = 925509, upload-time = "2025-03-27T23:31:36.275Z" },
-    { url = "https://files.pythonhosted.org/packages/06/31/fe90303e8facd62eb9cc5c4656a2c4ad1fc6227075465d17a8f670c60821/slixmpp-1.10.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aa9e5c4a48637588f5e9e9bd2cc6d28107a5262211968c46d159ec6f6b71c39e", size = 929715, upload-time = "2025-03-26T20:50:26.893Z" },
-    { url = "https://files.pythonhosted.org/packages/29/24/93f36273dce1beaebfb19bcef11b9423e9164951c5a9e3fac7df72d7cecc/slixmpp-1.10.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2e11e308bb9bdb28f6753184d29c5cf03d7056e32bebebe6aff8d25532f15f8e", size = 925576, upload-time = "2025-03-27T23:31:38.025Z" },
-    { url = "https://files.pythonhosted.org/packages/e6/bb/b4ed1601c1a51efb439e38767d1e71bdff6d234d5a9dcdfd57361c8f8d4d/slixmpp-1.10.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:38c8babf6771f8ac03380efa566e09469b4d967fb38934ea0649e1481ae5af23", size = 929685, upload-time = "2025-03-26T20:50:30.986Z" },
-    { url = "https://files.pythonhosted.org/packages/73/f4/1eda543f5520e98a63df2a56e2600e652ba437b5e6cd16b0c4b62ec52413/slixmpp-1.10.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6187313f255fd36a2a23e2f9fcbef4afeb9dacbac11ab666557d189d0913158b", size = 925269, upload-time = "2025-03-27T23:31:39.93Z" },
-    { url = "https://files.pythonhosted.org/packages/79/ed/35fd9ca70c8e8545a7a06fd45571cc6ef41af5080506e57296b24ec00787/slixmpp-1.10.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2eb7fd7239df14636c01bb22034f78349d1a408080d4a1398862ef20ef6c9986", size = 929193, upload-time = "2025-03-26T20:50:38.611Z" },
-]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/b4/d7b98fa23b42c97ba32abc6a439a729c814d57b098c74327ab2a60c9cfc9/slixmpp-1.8.4.tar.gz", hash = "sha256:406f1f4bab7e7573dd559a441027d3de33d17bba354bcf20ddc6aafba272286b", size = 546263, upload-time = "2023-05-28T11:05:59.304Z" }
 
 [[package]]
 name = "sniffio"

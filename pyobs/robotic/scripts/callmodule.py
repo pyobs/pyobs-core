@@ -33,7 +33,7 @@ class CallModule(Script):
 
     async def can_run(self) -> bool:
         try:
-            self.comm.proxy(self.module)
+            await self.comm.proxy(self.module)
             return True
         except ValueError:
             return False

@@ -4,10 +4,10 @@ from .grid import Grid
 
 
 class GridFilter:
-    def __init__(self, grid: Union[Grid, "GridFilter"], **kwargs):
+    def __init__(self, grid: Union[Grid, "GridFilter"], **kwargs: object):
         self._grid = grid
 
-    def __iter__(self):
+    def __iter__(self) -> "GridFilter":
         return self
 
     def __next__(self) -> Tuple[float, float]:
@@ -17,13 +17,14 @@ class GridFilter:
     def __len__(self) -> int:
         return len(self._grid)
 
-    def append_last(self):
+    def append_last(self) -> None:
         self._grid.append_last()
 
 
 class GridFilterValue(GridFilter):
     def __init__(
         self,
+        grid: Union[Grid, "GridFilter"],
         x_gt: Optional[int] = None,
         x_gte: Optional[int] = None,
         x_lt: Optional[int] = None,
@@ -32,9 +33,9 @@ class GridFilterValue(GridFilter):
         y_gte: Optional[int] = None,
         y_lt: Optional[int] = None,
         y_lte: Optional[int] = None,
-        **kwargs,
+        **kwargs: object,
     ):
-        GridFilter.__init__(self, **kwargs)
+        GridFilter.__init__(self, grid, **kwargs)
         self._x_gt = x_gt
         self._x_gte = x_gte
         self._x_lt = x_lt

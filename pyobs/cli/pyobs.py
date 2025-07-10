@@ -27,7 +27,7 @@ def init_cli() -> argparse.ArgumentParser:
     parser.add_argument("--debug-time", type=str, help="Fake time at start for pyobs to use")
 
     # version
-    parser.add_argument("-v", "--version", action="version", version=version())
+    parser.add_argument("-v", "--version", action="version", version=version.version())
 
     # return it
     return parser

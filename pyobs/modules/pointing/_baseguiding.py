@@ -149,7 +149,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             # if image is given, process it
             await self.run_pipeline(image)
 
-    def _set_loop_state(self, state: bool):
+    def _set_loop_state(self, state: bool) -> None:
         self._uptime.add_data(state)
         self._loop_closed = state
 

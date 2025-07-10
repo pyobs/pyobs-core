@@ -7,4 +7,4 @@ class FileList:
     __module__ = "pyobs.vfs.filelists"
 
     def __call__(self, filename: str) -> List[str]:
-        pass
+        return []

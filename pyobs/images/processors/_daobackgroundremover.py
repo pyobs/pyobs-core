@@ -1,6 +1,5 @@
-from typing import Tuple
-
-import numpy.typing as npt
+from typing import Tuple, cast
+import numpy as np
 from astropy.stats import SigmaClip
 
 from pyobs.images import Image
@@ -20,7 +19,7 @@ class _DaoBackgroundRemover:
         background = self._estimate_background(image)
         return self._remove_background(image, background)
 
-    def _estimate_background(self, image: Image) -> npt.NDArray[float]:
+    def _estimate_background(self, image: Image) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         from photutils.background import Background2D
 
         bkg = Background2D(
@@ -32,10 +31,10 @@ class _DaoBackgroundRemover:
             mask=image.safe_mask,
         )
 
-        return bkg.background
+        return cast(np.ndarray[tuple[int, int], np.dtype[np.number]], bkg.background)
 
     @staticmethod
-    def _remove_background(image: Image, background: npt.NDArray[float]) -> Image:
+    def _remove_background(image: Image, background: np.ndarray[tuple[int, int], np.dtype[np.number]]) -> Image:
         output_image = image.copy()
         output_image.data = output_image.data - background
         return output_image

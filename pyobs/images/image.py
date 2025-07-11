@@ -23,13 +23,13 @@ class Image:
 
     def __init__(
         self,
-        data: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
-        header: Optional[fits.Header] = None,
-        mask: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
-        uncertainty: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
-        catalog: Optional[Table] = None,
-        raw: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
-        meta: Optional[dict[Any, Any]] = None,
+        data: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
+        header: fits.Header | None = None,
+        mask: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
+        uncertainty: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
+        catalog: Table | None = None,
+        raw: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
+        meta: dict[Any, Any] | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -46,12 +46,14 @@ class Image:
         """
 
         # store
-        self._data = data
+        self._data: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = data
         self._header = fits.Header() if header is None else header.copy()
-        self._mask = None if mask is None else mask.copy()
-        self._uncertainty = None if uncertainty is None else uncertainty.copy()
+        self._mask: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None if mask is None else mask.copy()
+        self._uncertainty: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = (
+            None if uncertainty is None else uncertainty.copy()
+        )
         self._catalog = None if catalog is None else catalog.copy()
-        self._raw = None if raw is None else raw.copy()
+        self._raw: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None if raw is None else raw.copy()
         self._meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
@@ -394,21 +396,22 @@ class Image:
         self._header = val
 
     @property
-    def safe_mask(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+    def safe_mask(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]] | None:
         return self._mask
 
     @property
-    def mask(self) -> NDArray[Any]:
-        if self._mask is None:
+    def mask(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+        if self._mask is not None:
+            return self._mask
+        else:
             raise exc.ImageError("No mask found in image.")
-        return self._mask
 
     @mask.setter
-    def mask(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
+    def mask(self, val: np.ndarray[tuple[int, int], np.dtype[np.number]] | None) -> None:
         self._mask = val
 
     @property
-    def safe_uncertainty(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+    def safe_uncertainty(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]] | None:
         return self._uncertainty
 
     @property
@@ -418,11 +421,11 @@ class Image:
         return self._uncertainty
 
     @uncertainty.setter
-    def uncertainty(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
+    def uncertainty(self, val: np.ndarray[tuple[int, int], np.dtype[np.number]] | None) -> None:
         self._uncertainty = val
 
     @property
-    def safe_catalog(self) -> Optional[Table]:
+    def safe_catalog(self) -> Table | None:
         return self._catalog
 
     @property
@@ -432,11 +435,11 @@ class Image:
         return self._catalog
 
     @catalog.setter
-    def catalog(self, val: Optional[Table]) -> None:
+    def catalog(self, val: Table | None) -> None:
         self._catalog = val
 
     @property
-    def safe_raw(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+    def safe_raw(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]] | None:
         return self._raw
 
     @property
@@ -446,7 +449,7 @@ class Image:
         return self._raw
 
     @raw.setter
-    def raw(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
+    def raw(self, val: np.ndarray[tuple[int, int], np.dtype[np.number]] | None) -> None:
         self._raw = val
 
     @property

@@ -21,7 +21,7 @@ class Calibration(ImageProcessor):
     __module__ = "pyobs.images.processors.misc"
 
     """Cache for calibration frames."""
-    _calib_cache: _CalibrationCache = None
+    _calib_cache: _CalibrationCache | None = None
 
     def __init__(
         self,
@@ -51,9 +51,6 @@ class Calibration(ImageProcessor):
         self._require_flat = require_flat
 
         self._archive = get_object(archive, Archive)
-
-        if self._calib_cache is None:
-            self._calib_cache = _CalibrationCache(max_cache_size)
 
     async def __call__(self, image: Image) -> Image:
         """Calibrate an image.
@@ -115,16 +112,18 @@ class Calibration(ImageProcessor):
 
         self._verify_image_header(image)
 
+        if self._calib_cache is None:
+            self._calib_cache = _CalibrationCache(self._max_cache_size)
+
         try:
-            master = self._calib_cache.get_from_cache(image, image_type)
+            return self._calib_cache.get_from_cache(image, image_type)
         except ValueError:
             master = await self._find_master_in_archive(image, image_type, max_days)
             self._calib_cache.add_to_cache(master, image_type)
-
-        return master
+            return master
 
     @staticmethod
-    def _verify_image_header(image: Image):
+    def _verify_image_header(image: Image) -> None:
         has_instrument = "INSTRUME" in image.header
         has_binning = "XBINNING" in image.header
         has_time = "DATE-OBS" in image.header
@@ -156,12 +155,14 @@ class Calibration(ImageProcessor):
         return master
 
     @staticmethod
-    def _copy_original_filename(calibrated: Image, original: Image):
+    def _copy_original_filename(calibrated: Image, original: Image) -> None:
         if "ORIGNAME" in original.header:
             calibrated.header["L1RAW"] = original.header["ORIGNAME"].replace(".fits", "")
 
     @staticmethod
-    def _copy_calibration_filename(calibrated: Image, bias: Image = None, dark: Image = None, flat: Image = None):
+    def _copy_calibration_filename(
+        calibrated: Image, bias: Image | None = None, dark: Image | None = None, flat: Image | None = None
+    ) -> None:
         if bias is not None:
             calibrated.header["L1BIAS"] = (
                 bias.header["FNAME"].replace(".fits.fz", "").replace(".fits", ""),
@@ -179,7 +180,7 @@ class Calibration(ImageProcessor):
             )
 
     @staticmethod
-    def _set_calibration_headers(calibrated):
+    def _set_calibration_headers(calibrated: Image) -> None:
         calibrated.header["BUNIT"] = ("electron", "Unit of pixel values")
         calibrated.header["RLEVEL"] = (1, "Reduction level")
 

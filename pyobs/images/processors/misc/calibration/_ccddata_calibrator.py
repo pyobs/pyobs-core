@@ -9,7 +9,7 @@ import astropy.units as u
 
 
 class _CCDDataCalibrator:
-    def __init__(self, image: Image, bias: Image = None, dark: Image = None, flat: Image = None):
+    def __init__(self, image: Image, bias: Image | None = None, dark: Image | None = None, flat: Image | None = None):
         self._image = image
         self._bias = self._optional_to_ccddata(bias)
         self._dark = self._optional_to_ccddata(dark)
@@ -34,10 +34,10 @@ class _CCDDataCalibrator:
         calibrated = Image.from_ccddata(calibrated_ccd_data)
         return calibrated
 
-    def _trim_image(self):
+    def _trim_image(self) -> None:
         self._ccd_data = Pipeline.trim_ccddata(self._ccd_data)
 
-    def _calibrate_image(self):
+    def _calibrate_image(self) -> CCDData:
         import ccdproc
 
         return ccdproc.ccd_process(

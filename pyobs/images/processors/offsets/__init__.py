@@ -19,7 +19,6 @@ __all__ = [
     "Offsets",
     "AddPixelOffset",
     "AstrometryOffsets",
-    "NStarOffsets",
     "ProjectedOffsets",
     "FitsHeaderOffsets",
     "BrightestStarOffsets",

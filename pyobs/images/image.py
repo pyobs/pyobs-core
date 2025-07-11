@@ -1,7 +1,7 @@
 from __future__ import annotations
 import copy
 import io
-from typing import TypeVar, Optional, Type, Dict, Any, cast
+from typing import TypeVar, Optional, Type, Any, cast
 
 import numpy as np
 from astropy.io import fits
@@ -23,13 +23,13 @@ class Image:
 
     def __init__(
         self,
-        data: Optional[NDArray[Any]] = None,
+        data: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
         header: Optional[fits.Header] = None,
-        mask: Optional[NDArray[Any]] = None,
-        uncertainty: Optional[NDArray[Any]] = None,
+        mask: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
+        uncertainty: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
         catalog: Optional[Table] = None,
-        raw: Optional[NDArray[Any]] = None,
-        meta: Optional[Dict[Any, Any]] = None,
+        raw: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]] = None,
+        meta: Optional[dict[Any, Any]] = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -142,8 +142,8 @@ class Image:
             raise ValueError("Could not find HDU with main image.")
 
         # get data
-        image.data = image_hdu.data
-        image.header = image_hdu.header
+        image._data = image_hdu.data
+        image._header = image_hdu.header
 
         # mask
         if "MASK" in data:
@@ -191,10 +191,11 @@ class Image:
     def __truediv__(self, other: Image) -> Image:
         """Divides this image by other."""
         img = self.copy()
-        if img._data is None or other._data is None:
+        if img._data is not None and other._data is not None:
+            img._data = img._data / other._data
+            return img
+        else:
             raise ValueError("One image in division is None.")
-        img._data /= other._data
-        return img
 
     def writeto(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write image as FITS to given file object.
@@ -365,18 +366,22 @@ class Image:
             return default
 
     @property
-    def data(self) -> NDArray[Any]:
+    def safe_data(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+        return self._data
+
+    @property
+    def data(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         if self._data is None:
             raise exc.ImageError("No data found in image.")
         return self._data
 
-    @property
-    def safe_data(self) -> Optional[NDArray[Any]]:
-        return self._data
-
     @data.setter
-    def data(self, val: Optional[NDArray[Any]]):
+    def data(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
         self._data = val
+
+    @property
+    def safe_header(self) -> Optional[fits.Header]:
+        return self._header
 
     @property
     def header(self) -> fits.Header:
@@ -384,13 +389,13 @@ class Image:
             raise exc.ImageError("No header found in image.")
         return self._header
 
-    @property
-    def safe_header(self) -> Optional[fits.Header]:
-        return self._header
-
     @header.setter
-    def header(self, val: Optional[fits.Header]):
+    def header(self, val: Optional[fits.Header]) -> None:
         self._header = val
+
+    @property
+    def safe_mask(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+        return self._mask
 
     @property
     def mask(self) -> NDArray[Any]:
@@ -398,27 +403,27 @@ class Image:
             raise exc.ImageError("No mask found in image.")
         return self._mask
 
-    @property
-    def safe_mask(self) -> Optional[NDArray[Any]]:
-        return self._mask
-
     @mask.setter
-    def mask(self, val: Optional[NDArray[Any]]):
+    def mask(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
         self._mask = val
 
     @property
-    def uncertainty(self) -> NDArray[Any]:
+    def safe_uncertainty(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+        return self._uncertainty
+
+    @property
+    def uncertainty(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         if self._uncertainty is None:
             raise exc.ImageError("No uncertainties found in image.")
         return self._uncertainty
 
-    @property
-    def safe_uncertainty(self) -> Optional[NDArray[Any]]:
-        return self._uncertainty
-
     @uncertainty.setter
-    def uncertainty(self, val: Optional[NDArray[Any]]):
+    def uncertainty(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
         self._uncertainty = val
+
+    @property
+    def safe_catalog(self) -> Optional[Table]:
+        return self._catalog
 
     @property
     def catalog(self) -> Table:
@@ -426,37 +431,33 @@ class Image:
             raise exc.ImageError("No catalog found in image.")
         return self._catalog
 
-    @property
-    def safe_catalog(self) -> Optional[Table]:
-        return self._catalog
-
     @catalog.setter
-    def catalog(self, val: Optional[Table]):
+    def catalog(self, val: Optional[Table]) -> None:
         self._catalog = val
 
     @property
-    def raw(self) -> NDArray[Any]:
+    def safe_raw(self) -> Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]:
+        return self._raw
+
+    @property
+    def raw(self) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         if self._raw is None:
             raise exc.ImageError("No raw data found in image.")
         return self._raw
 
-    @property
-    def safe_raw(self) -> Optional[NDArray[Any]]:
-        return self._raw
-
     @raw.setter
-    def raw(self, val: Optional[NDArray[Any]]):
+    def raw(self, val: Optional[np.ndarray[tuple[int, int], np.dtype[np.number]]]) -> None:
         self._raw = val
 
     @property
-    def meta(self) -> Dict[Any, Any]:
+    def meta(self) -> dict[Any, Any]:
         if self._meta is None:
-            self._meta: Dict[Any, Any] = {}
+            self._meta = {}
         return self._meta
 
     @meta.setter
-    def meta(self, val: Optional[Dict[Any, Any]]):
-        self._meta = val
+    def meta(self, val: Optional[dict[Any, Any]]) -> None:
+        self._meta = {} if val is None else val
 
 
 __all__ = ["Image"]

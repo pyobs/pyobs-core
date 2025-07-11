@@ -14,7 +14,7 @@ class MultiPublisher(Publisher):
         """Initialize new multi publisher.
 
         Args:
-            publishers: Publishers to forwards messages to.
+            publishers: Publishers to forward messages to.
         """
         Publisher.__init__(self, **kwargs)
 

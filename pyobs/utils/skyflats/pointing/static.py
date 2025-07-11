@@ -3,7 +3,7 @@ from typing import Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from pyobs.interfaces import ITelescope
+from pyobs.interfaces import IPointingAltAz
 from pyobs.utils.time import Time
 from .base import SkyFlatsBasePointing
 
@@ -27,7 +27,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
         # whether we've moved already
         self._initialized = initialized
 
-    async def __call__(self, telescope: ITelescope) -> None:
+    async def __call__(self, telescope: IPointingAltAz) -> None:
         """Move telescope.
 
         Args:
@@ -43,6 +43,8 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
         # calculate Alt/Az position of sun
         now = Time.now()
+        if self.observer is None:
+            raise RuntimeError("Observer not initialized.")
         sun = self.observer.sun_altaz(now)
         log.info("Sun is currently located at alt=%.2f°, az=%.2f°", sun.alt.degree, sun.az.degree)
 

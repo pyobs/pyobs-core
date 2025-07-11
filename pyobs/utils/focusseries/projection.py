@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Optional, Any
+from typing import Tuple, Dict, List, Any
 
 import numpy as np
 import logging
@@ -17,7 +17,7 @@ class ProjectionFocusSeries(FocusSeries):
 
     __module__ = "pyobs.utils.focusseries"
 
-    def __init__(self, backsub: bool = True, xbad: Optional[List[int]] = None, ybad: Optional[List[int]] = None):
+    def __init__(self, backsub: bool = True, xbad: list[int] | None = None, ybad: list[int] | None = None):
         """Initialize a new projection focus series.
 
         Args:
@@ -140,7 +140,9 @@ class ProjectionFocusSeries(FocusSeries):
         return float(foc), float(err)
 
     @staticmethod
-    def _window_function(arr: np.ndarray, border: int = 0) -> np.ndarray:
+    def _window_function(
+        arr: np.ndarray[tuple[int], np.dtype[np.number]], border: int = 0
+    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
         """
         Creates a sine window function of the same size as some 1-D array "arr".
         Optionally, a zero border at the edges is added by "scrunching" the window.
@@ -154,8 +156,11 @@ class ProjectionFocusSeries(FocusSeries):
 
     @staticmethod
     def _clean(
-        data: np.ndarray, backsub: bool = True, xbad: Optional[np.ndarray] = None, ybad: Optional[np.ndarray] = None
-    ) -> np.ndarray:
+        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        backsub: bool = True,
+        xbad: list[int] | None = None,
+        ybad: list[int] | None = None,
+    ) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         """
         Removes global slopes and fills up bad rows (ybad) or columns (xbad).
         """
@@ -163,25 +168,27 @@ class ProjectionFocusSeries(FocusSeries):
 
         # REMOVE BAD COLUMNS AND ROWS
         if xbad is not None:
-            x1 = xbad - 1
-            if x1 < 0:
-                x1 = 1
-            x2 = x1 + 2
-            if x2 >= nx:
-                x2 = nx - 1
-                x1 = x2 - 2
-            for j in range(ny):
-                data[j][xbad] = 0.5 * (data[j][x1] + data[j][x2])
+            for xb in xbad:
+                x1 = xb - 1
+                if x1 < 0:
+                    x1 = 1
+                x2 = x1 + 2
+                if x2 >= nx:
+                    x2 = nx - 1
+                    x1 = x2 - 2
+                for j in range(ny):
+                    data[j][xb] = 0.5 * (data[j][x1] + data[j][x2])
         if ybad is not None:
-            y1 = ybad - 1
-            if y1 < 0:
-                y1 = 1
-            y2 = y1 + 2
-            if y2 >= ny:
-                y2 = ny - 1
-                y1 = y2 - 2
-            for i in range(nx):
-                data[ybad][i] = 0.5 * (data[y1][i] + data[y2][i])
+            for yb in ybad:
+                y1 = yb - 1
+                if y1 < 0:
+                    y1 = 1
+                y2 = y1 + 2
+                if y2 >= ny:
+                    y2 = ny - 1
+                    y1 = y2 - 2
+                for i in range(nx):
+                    data[yb][i] = 0.5 * (data[y1][i] + data[y2][i])
 
         # REMOVE GLOBAL SLOPES
         if backsub:
@@ -196,7 +203,7 @@ class ProjectionFocusSeries(FocusSeries):
             return data
 
     @staticmethod
-    def _fit_correlation(correl: np.ndarray) -> Any:
+    def _fit_correlation(correl: np.ndarray[tuple[int], np.dtype[np.number]]) -> Any:
         from lmfit.models import GaussianModel
 
         # create Gaussian model

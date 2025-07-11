@@ -1,12 +1,7 @@
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
-
-# TODO: remove when Python 3.13 is lowest version
-try:
-    from warnings import deprecated
-except ImportError:
-    from typing_extensions import deprecated
+from typing_extensions import deprecated
 
 
 class SphericalGrid:
@@ -24,6 +19,7 @@ class SphericalGrid:
         Returns:
             Lat/lon grid.
         """
+
         grid = []
         for lon in np.linspace(0, 360.0 - 360.0 / n_lon, n_lon):
             for lat in np.linspace(-90, 90, n_lat):

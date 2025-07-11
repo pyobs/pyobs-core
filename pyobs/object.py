@@ -470,7 +470,7 @@ class Object:
     def add_child_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
-        object_class: Optional[Type[ObjectClass]] = None,
+        object_class: type[ObjectClass] | None = None,
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> ObjectClass:

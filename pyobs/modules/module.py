@@ -3,7 +3,7 @@ import asyncio
 import inspect
 import logging
 import typing
-from typing import Union, Type, Any, Callable, Dict, Tuple, List, TypeVar, Optional, cast
+from typing import Any, Callable, TypeVar, cast
 from py_expression_eval import Parser
 import packaging.version
 
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def timeout(func_timeout: Union[str, int, Callable[..., Any], None] = None) -> Callable[[F], F]:
+def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Callable[[F], F]:
     """Decorates a method with information about timeout for an async HTTP call.
 
     :param func_timeout:  Integer or string that specifies the timeout.
@@ -81,10 +81,10 @@ class Module(Object, IModule, IConfig):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        label: Optional[str] = None,
+        name: str | None = None,
+        label: str | None = None,
         own_comm: bool = True,
-        additional_config_variables: Optional[List[str]] = None,
+        additional_config_variables: list[str] | None = None,
         **kwargs: Any,
     ):
         """
@@ -97,8 +97,8 @@ class Module(Object, IModule, IConfig):
         Object.__init__(self, **kwargs)
 
         # get list of client interfaces
-        self._interfaces: List[Type[Interface]] = []
-        self._methods: Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]] = {}
+        self._interfaces: list[type[Interface]] = []
+        self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
         self._get_interfaces_and_methods()
 
         # get configuration caps, i.e. all parameters from c'tor
@@ -192,12 +192,12 @@ class Module(Object, IModule, IConfig):
         return True
 
     @property
-    def interfaces(self) -> List[Type[Interface]]:
+    def interfaces(self) -> list[type[Interface]]:
         """List of implemented interfaces."""
         return self._interfaces
 
     @property
-    def methods(self) -> Dict[str, Tuple[Callable[..., Any], inspect.Signature, Dict[Any, Any]]]:
+    def methods(self) -> dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]]:
         """List of methods."""
         return self._methods
 
@@ -286,11 +286,11 @@ class Module(Object, IModule, IConfig):
             response, type_hints["return"], self.comm.cast_to_simple_pre, self.comm.cast_to_simple_post
         )
 
-    def _get_config_caps(self) -> Dict[str, Tuple[bool, bool, bool]]:
+    def _get_config_caps(self) -> dict[str, tuple[bool, bool, bool]]:
         """Returns a dictionary with config caps."""
 
         # init dict of caps and types
-        caps: Dict[str, Tuple[bool, bool, bool]] = {}
+        caps: dict[str, tuple[bool, bool, bool]] = {}
 
         # loop super classes
         for cls in inspect.getmro(self.__class__):
@@ -316,7 +316,7 @@ class Module(Object, IModule, IConfig):
         # finished
         return caps
 
-    def _add_config_cap(self, name: str) -> Tuple[bool, bool, bool]:
+    def _add_config_cap(self, name: str) -> tuple[bool, bool, bool]:
         """Check for getter and setter
 
         Params:
@@ -331,7 +331,7 @@ class Module(Object, IModule, IConfig):
             hasattr(self, "_get_config_options_" + name),
         )
 
-    async def get_config_caps(self, **kwargs: Any) -> Dict[str, Tuple[bool, bool, bool]]:
+    async def get_config_caps(self, **kwargs: Any) -> dict[str, tuple[bool, bool, bool]]:
         """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
         third is for a list of possible options..
 
@@ -363,7 +363,7 @@ class Module(Object, IModule, IConfig):
         getter = getattr(self, "_get_config_" + name)
         return await getter()
 
-    async def get_config_value_options(self, name: str, **kwargs: Any) -> List[str]:
+    async def get_config_value_options(self, name: str, **kwargs: Any) -> list[str]:
         """Returns possible values for config item with given name.
 
         Args:
@@ -384,7 +384,7 @@ class Module(Object, IModule, IConfig):
 
         # get getter method and call it
         options = getattr(self, "_get_config_options_" + name)
-        return cast(List[str], await options())
+        return cast(list[str], await options())
 
     async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
         """Sets value of config item with given name.
@@ -407,7 +407,7 @@ class Module(Object, IModule, IConfig):
         setter = getattr(self, "_set_config_" + name)
         await setter(value)
 
-    async def set_state(self, state: ModuleState, error_string: Optional[str] = None) -> None:
+    async def set_state(self, state: ModuleState, error_string: str | None = None) -> None:
         """Set state of module.
 
         Args:
@@ -468,8 +468,8 @@ class MultiModule(Module):
 
     def __init__(
         self,
-        modules: Dict[str, Union[Module, Dict[str, Any]]],
-        shared: Optional[Dict[str, Union[object, Dict[str, Any]]]] = None,
+        modules: dict[str, Module | dict[str, Any]],
+        shared: dict[str, Any | dict[str, Any]] | None = None,
         **kwargs: Any,
     ):
         """
@@ -480,7 +480,7 @@ class MultiModule(Module):
         Module.__init__(self, name="multi", **kwargs)
 
         # create shared objects
-        self._shared: Dict[str, Module] = {}
+        self._shared: dict[str, Module] = {}
         if shared:
             for name, obj in shared.items():
                 # if obj is an object definition, create it, otherwise just set it
@@ -498,7 +498,7 @@ class MultiModule(Module):
                 self._modules[name] = self.add_child_object(mod, **self._shared, copy_comm=False)
 
     @property
-    def modules(self) -> Dict[str, Module]:
+    def modules(self) -> dict[str, Module]:
         return self._modules
 
     def __contains__(self, name: str) -> bool:

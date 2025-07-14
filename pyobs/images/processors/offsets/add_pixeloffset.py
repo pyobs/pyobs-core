@@ -13,7 +13,7 @@ class AddPixelOffset(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, pixel_offset_x, pixel_offset_y, **kwargs: Any):
+    def __init__(self, pixel_offset_x: float, pixel_offset_y: float, **kwargs: Any):
         Offsets.__init__(self, **kwargs)
         self._pixel_offset_x = pixel_offset_x
         self._pixel_offset_y = pixel_offset_y

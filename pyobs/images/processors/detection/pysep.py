@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from functools import partial
-from typing import Tuple, TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -109,23 +109,21 @@ class SepSourceDetection(SourceDetection):
         return output_image
 
     @staticmethod
-    def _get_mask_or_default(image: Image) -> np.ndarray:
-        if image.safe_mask is not None:
-            return image.mask
-
-        return np.zeros(image.data.shape, dtype=bool)
+    def _get_mask_or_default(image: Image) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+        return image.mask if image.safe_mask is not None else np.zeros(image.data.shape, dtype=bool)
 
     @staticmethod
     def _get_gain_or_default(image: Image) -> Optional[float]:
         if "DET-GAIN" in image.header:
-            return image.header["DET-GAIN"]
+            return cast(float, image.header["DET-GAIN"])
 
         return None
 
     @staticmethod
     def remove_background(
-        data: npt.NDArray[float], mask: Optional[npt.NDArray[float]] = None
-    ) -> Tuple[npt.NDArray[float], "Background"]:
+        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        mask: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
+    ) -> tuple[np.ndarray[tuple[int, int], np.dtype[np.number]], "Background"]:
         """Remove background from image in data.
 
         Args:
@@ -149,7 +147,12 @@ class SepSourceDetection(SourceDetection):
 
         return continuous_data, background
 
-    async def _extract_sources(self, data, bkg, mask):
+    async def _extract_sources(
+        self,
+        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        bkg: "Background",
+        mask: np.ndarray[tuple[int, int], np.dtype[np.number]],
+    ) -> npt.NDArray[Any]:
         import sep
 
         loop = asyncio.get_running_loop()
@@ -169,7 +172,7 @@ class SepSourceDetection(SourceDetection):
             ),
         )
 
-        return sources
+        return cast(npt.NDArray[Any], sources)
 
 
 __all__ = ["SepSourceDetection"]

@@ -47,7 +47,7 @@ class DaophotSourceDetection(SourceDetection):
 
         self._background_remover = _DaoBackgroundRemover(bkg_sigma, bkg_box_size, bkg_filter_size)
 
-    async def _find_stars(self, data: np.ndarray, std: int) -> Table:
+    async def _find_stars(self, data: np.ndarray[tuple[int, int], np.dtype[np.number]], std: int) -> Table:
         from photutils.detection import DAOStarFinder
 
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)

@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import List, Optional
 
 import numpy as np
 from astropy.table import Table
@@ -16,8 +16,8 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
         self._gain: Optional[float] = None
 
-        self._data: Optional[np.ndarray[int, Any]] = None
-        self._average_background: Optional[np.ndarray[int, float]] = None
+        self._data: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None
+        self._average_background: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None
 
     def set_data(self, image: Image) -> None:
         self._image = image.copy()
@@ -25,11 +25,12 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         self._gain = image.header["DET-GAIN"] if "DET-GAIN" in image.header else None
 
     @property
-    def catalog(self) -> Table:
-        return self._image.catalog
+    def catalog(self) -> Table | None:
+        return None if self._image is None else self._image.catalog
 
     def _update_background_header(self) -> None:
-        self._image.catalog["background"] = self._average_background
+        if self._image is not None:
+            self._image.catalog["background"] = self._average_background
 
     def __call__(self, diameter: int) -> None:
         import sep
@@ -44,23 +45,29 @@ class _SepAperturePhotometry(_PhotometryCalculator):
             self._pos_x,
             self._pos_y,
             radius,
-            mask=self._image.safe_mask,
-            err=self._image.safe_uncertainty,
+            mask=None if self._image is None else self._image.safe_mask,
+            err=None if self._image is None else self._image.safe_uncertainty,
             gain=self._gain,
         )
         self._update_flux_header(diameter, flux, fluxerr)
 
-    def _is_background_calculated(self) -> None:
+    def _is_background_calculated(self) -> bool:
         return self._data is None
 
     def _calc_background(self) -> None:
+        if self._image is None:
+            raise RuntimeError("No image set.")
         self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.safe_mask)
         self._average_background = self._calc_average_background(bkg.back())
 
-    def _calc_average_background(self, background: np.ndarray) -> np.ndarray[float]:
+    def _calc_average_background(
+        self, background: np.ndarray[tuple[int, int], np.dtype[np.number]]
+    ) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         """
         since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area
         """
+        if self._image is None:
+            raise RuntimeError("No image set.")
         background_flux = self._sum_ellipse(background, self._image, self._pos_x, self._pos_y)
         background_area = self._sum_ellipse(np.ones(shape=background.shape), self._image, self._pos_x, self._pos_y)
 
@@ -69,8 +76,11 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
     @staticmethod
     def _sum_ellipse(
-        data: np.ndarray[float], image: Image, x: np.ndarray[float], y: np.ndarray[float]
-    ) -> np.ndarray[float]:
+        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        image: Image,
+        x: list[float] | None,
+        y: list[float] | None,
+    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
         import sep
 
         sum, _, _ = sep.sum_ellipse(
@@ -86,9 +96,18 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         return sum
 
     def _calc_aperture_radius_in_px(self, diameter: int) -> float:
-        radius = diameter / 2.0
+        if self._image is None or self._image.pixel_scale is None:
+            raise RuntimeError("Image and its pixel scale must be set before calculating aperture radius")
+        radius: float = diameter / 2.0
         return radius / self._image.pixel_scale
 
-    def _update_flux_header(self, diameter: int, flux: np.ndarray, fluxerr: np.ndarray[float]) -> None:
+    def _update_flux_header(
+        self,
+        diameter: int,
+        flux: np.ndarray[tuple[int], np.dtype[np.number]],
+        fluxerr: np.ndarray[tuple[int], np.dtype[np.number]],
+    ) -> None:
+        if self._image is None:
+            raise RuntimeError("No image set.")
         self._image.catalog[f"fluxaper{diameter}"] = flux
         self._image.catalog[f"fluxerr{diameter}"] = fluxerr

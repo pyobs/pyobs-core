@@ -1,10 +1,8 @@
 import logging
-from typing import Tuple, Any, Optional
-
-from astropy.coordinates import AltAz, EarthLocation
+from typing import Any
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.table import Table, Row
 from astropy.wcs import WCS
-from pandas._typing import npt
 from pyobs.utils.time import Time
 import astropy.units as u
 
@@ -20,13 +18,12 @@ class BrightestStarGuiding(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, center_header_cards: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(self, center_header_cards: tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
         """Initializes a new auto guiding system."""
         Offsets.__init__(self, **kwargs)
 
         self._center_header_cards = center_header_cards
-        self._ref_image: Optional[Tuple[npt.NDArray[float], npt.NDArray[float]]] = None
-        self._ref_pos: Optional[Tuple[float, float]] = None
+        self._ref_pos: tuple[float, float] | None = None
 
     async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -48,12 +45,13 @@ class BrightestStarGuiding(Offsets):
 
         if not self._reference_initialized():
             log.info("Initialising auto-guiding with new image...")
-            self._ref_image = image
             self._ref_pos = self._get_brightest_star_position(catalog)
             return image
 
         star_pos = self._get_brightest_star_position(catalog)
 
+        if self._ref_pos is None:
+            raise ValueError("No reference position given.")
         offset = (star_pos[0] - self._ref_pos[0], star_pos[1] - self._ref_pos[1])
         image.set_meta(PixelOffsets(*offset))
         log.info("Found pixel offset of dx=%.2f, dy=%.2f", offset[0], offset[1])
@@ -62,16 +60,16 @@ class BrightestStarGuiding(Offsets):
         image.set_meta(AltAzOffsets(*altaz_offset))
         return image
 
-    def _reference_initialized(self):
-        return self._ref_image is not None
+    def _reference_initialized(self) -> bool:
+        return self._ref_pos is not None
 
     @staticmethod
-    def _get_brightest_star_position(catalog: Table) -> Tuple[float, float]:
+    def _get_brightest_star_position(catalog: Table) -> tuple[float, float]:
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])
         log.info("Found brightest star at x=%.2f, y=%.2f", brightest_star["x"], brightest_star["y"])
         return brightest_star["x"], brightest_star["y"]
 
-    def _calc_altaz_offset(self, image: Image, star_pos: Tuple[float, float]):
+    def _calc_altaz_offset(self, image: Image, star_pos: tuple[float, float]) -> tuple[float, float]:
         radec_ref, radec_target = self._get_radec_ref_target(image, star_pos)
         hdr = image.header
         location = EarthLocation(lat=hdr["LATITUDE"] * u.deg, lon=hdr["LONGITUD"] * u.deg, height=hdr["HEIGHT"] * u.m)
@@ -84,7 +82,7 @@ class BrightestStarGuiding(Offsets):
 
         return dalt.arcsec, daz.arcsec
 
-    def _get_radec_ref_target(self, image: Image, star_pos):
+    def _get_radec_ref_target(self, image: Image, star_pos: tuple[float, float]) -> tuple[SkyCoord, SkyCoord]:
         wcs = WCS(image.header)
         ref = wcs.pixel_to_world(*self._ref_pos)
         target = wcs.pixel_to_world(*star_pos)

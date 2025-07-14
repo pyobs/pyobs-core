@@ -51,6 +51,8 @@ class AstrometryDotNet(Astrometry):
         logger.log_request_data()
 
         await request.send(self.url, self.timeout)
+        if request.response_data is None:
+            raise RuntimeError("No response")
 
         response_writer = _ResponseImageWriter(request.response_data, image)
         result_image = response_writer()
@@ -59,7 +61,7 @@ class AstrometryDotNet(Astrometry):
 
         return result_image
 
-    def _handle_error(self, image: Image, error: exc.ImageError):
+    def _handle_error(self, image: Image, error: exc.ImageError) -> Image:
         if self.exceptions:
             raise error
 

@@ -2,7 +2,7 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.table import QTable
+from astropy.table import QTable, Table
 from photutils.aperture import CircularAperture, CircularAnnulus, ApertureMask, aperture_photometry
 
 from pyobs.images import Image
@@ -11,19 +11,19 @@ from pyobs.images.processors.photometry._photometry_calculator import _Photometr
 
 class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._image: Optional[Image] = None
         self._positions: Optional[List[Tuple[float, float]]] = None
 
-    def set_data(self, image: Image):
+    def set_data(self, image: Image) -> None:
         self._image = image.copy()
         self._positions = [(x - 1, y - 1) for x, y in image.catalog.iterrows("x", "y")]
 
     @property
-    def catalog(self):
+    def catalog(self) -> Table | None:
         return self._image.catalog
 
-    def __call__(self, diameter: int):
+    def __call__(self, diameter: int) -> None:
         radius = self._calc_aperture_radius_in_px(diameter)
         if radius < 1:
             return
@@ -38,7 +38,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
         self._update_catalog(diameter, corrected_aperture, aperture_error, median_background)
 
-    def _calc_aperture_radius_in_px(self, diameter: int):
+    def _calc_aperture_radius_in_px(self, diameter: int) -> float:
         radius = diameter / 2.0
         return radius / self._image.pixel_scale
 

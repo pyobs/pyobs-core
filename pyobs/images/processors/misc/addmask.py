@@ -1,8 +1,7 @@
-from typing import Union, Dict, Any
+from typing import Dict, Any
 import logging
 import numpy as np
 from astropy.io import fits
-from numpy.typing import NDArray
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -16,7 +15,9 @@ class AddMask(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, masks: Dict[str, Dict[str, Union[NDArray[Any], str]]], **kwargs: Any):
+    def __init__(
+        self, masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]], **kwargs: Any
+    ):
         """Init an image processor that adds a mask to an image.
 
         Args:
@@ -25,15 +26,19 @@ class AddMask(ImageProcessor):
         ImageProcessor.__init__(self, **kwargs)
 
         # masks
-        self._masks: Dict[str, Dict[str, NDArray[Any]]] = {}
+        self._masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]]]] = {}
         self._build_instrument_dictionary(masks)
 
-    def _build_instrument_dictionary(self, masks: Dict[str, Dict[str, Union[NDArray[Any], str]]]):
+    def _build_instrument_dictionary(
+        self, masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]]
+    ) -> None:
         for instrument, binning in masks.items():
             self._masks[instrument] = {}
             self._build_binning_dictionary(instrument, binning)
 
-    def _build_binning_dictionary(self, instrument: str, masks: Dict[str, Union[NDArray[Any], str]]):
+    def _build_binning_dictionary(
+        self, instrument: str, masks: Dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]
+    ) -> None:
         for binning, mask in masks.items():
             if isinstance(mask, np.ndarray):
                 self._masks[instrument][binning] = mask
@@ -42,7 +47,7 @@ class AddMask(ImageProcessor):
             else:
                 raise ValueError("Unknown mask format.")
 
-    def _get_mask(self, image: Image) -> np.ndarray:
+    def _get_mask(self, image: Image) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
         instrument = image.header["INSTRUME"]
         binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
 

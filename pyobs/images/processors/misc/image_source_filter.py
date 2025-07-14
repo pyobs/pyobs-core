@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Tuple, Any
+from typing import Tuple
 
 import numpy as np
 from astropy.table import Table
@@ -120,7 +120,10 @@ class ImageSourceFilter(ImageProcessor):
         return filtered_sources
 
     @staticmethod
-    def _calc_weber_contrast(peak: np.ndarray[Any, Any], background: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    def _calc_weber_contrast(
+        peak: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        background: np.ndarray[tuple[int, int], np.dtype[np.number]],
+    ) -> np.ndarray[tuple[int, ...], np.dtype[np.number]]:
         return (peak - background) / background
 
     def _select_brightest_sources(self, sources: Table) -> Table:

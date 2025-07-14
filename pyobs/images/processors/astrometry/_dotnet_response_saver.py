@@ -64,7 +64,7 @@ class _ResponseImageWriter:
     def _add_wcs_err_success(self) -> None:
         self._image.header["WCSERR"] = 0
 
-    def __call__(self, *args, **kwargs) -> Image:
+    def __call__(self, *args: Any, **kwargs: Any) -> Image:
         self._write_response_into_header()
         self._delete_old_wcs_data()
         self._generate_image_wcs()

@@ -16,7 +16,6 @@ import asyncio
 import copy
 import datetime
 import inspect
-from abc import ABCMeta
 from collections.abc import Coroutine
 from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Any, overload, TYPE_CHECKING
 import logging
@@ -45,7 +44,7 @@ ProxyType = TypeVar("ProxyType")
 @overload
 def get_object(
     config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-    object_class: type[ObjectClass] | ABCMeta,
+    object_class: type[ObjectClass],
     **kwargs: Any,
 ) -> ObjectClass: ...
 
@@ -58,7 +57,7 @@ def get_object(
 
 def get_object(
     config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-    object_class: type[ObjectClass] | ABCMeta | None = None,
+    object_class: type[ObjectClass] | None = None,
     **kwargs: Any,
 ) -> ObjectClass | Any | None:
     """Creates object from config or returns object directly, both optionally after check of type.
@@ -102,7 +101,7 @@ def get_object(
 
 @overload
 def get_safe_object(
-    config_or_object: ObjectClass | dict[str, Any], object_class: type[ObjectClass] | ABCMeta, **kwargs: Any
+    config_or_object: ObjectClass | dict[str, Any], object_class: type[ObjectClass], **kwargs: Any
 ) -> ObjectClass: ...
 
 
@@ -111,7 +110,7 @@ def get_safe_object(config_or_object: ObjectClass | Any, object_class: None, **k
 
 
 def get_safe_object(
-    config_or_object: dict[str, Any] | Any, object_class: type[ObjectClass] | ABCMeta | None = None, **kwargs: Any
+    config_or_object: dict[str, Any] | Any, object_class: type[ObjectClass] | None = None, **kwargs: Any
 ) -> ObjectClass | Any | None:
     """Calls get_object in a safe way and returns None, if an exceptions thrown.
 
@@ -338,7 +337,7 @@ class Object:
     def get_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: type[ObjectClass] | ABCMeta,
+        object_class: type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> ObjectClass: ...
@@ -360,7 +359,7 @@ class Object:
     def get_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: type[ObjectClass] | ABCMeta | None = None,
+        object_class: type[ObjectClass] | None = None,
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> ObjectClass | Any | None:

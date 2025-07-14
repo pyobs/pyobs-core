@@ -21,7 +21,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
     @property
     def catalog(self) -> Table | None:
-        return self._image.catalog
+        return None if self._image is None else self._image.catalog
 
     def __call__(self, diameter: int) -> None:
         radius = self._calc_aperture_radius_in_px(diameter)
@@ -39,6 +39,8 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         self._update_catalog(diameter, corrected_aperture, aperture_error, median_background)
 
     def _calc_aperture_radius_in_px(self, diameter: int) -> float:
+        if self._image is None or self._image.pixel_scale is None:
+            raise ValueError("No image.")
         radius = diameter / 2.0
         return radius / self._image.pixel_scale
 

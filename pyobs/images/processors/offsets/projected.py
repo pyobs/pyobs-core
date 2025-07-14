@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Tuple, Any, Optional, List
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -24,7 +24,9 @@ class ProjectedOffsets(Offsets):
         Offsets.__init__(self, **kwargs)
 
         # init
-        self._ref_image: Optional[Tuple[npt.NDArray[float], npt.NDArray[float]]] = None
+        self._ref_image: (
+            tuple[np.ndarray[tuple[int], np.dtype[np.number]], np.ndarray[tuple[int], np.dtype[np.number]]] | None
+        ) = None
 
     async def reset(self) -> None:
         """Resets guiding."""
@@ -61,11 +63,13 @@ class ProjectedOffsets(Offsets):
         image.set_meta(PixelOffsets(dx, dy))
         return image
 
-    def _reference_initialized(self):
+    def _reference_initialized(self) -> bool:
         return self._ref_image is not None
 
     @staticmethod
-    def _process(image: Image) -> Tuple[npt.NDArray[float], npt.NDArray[float]]:
+    def _process(
+        image: Image,
+    ) -> tuple[np.ndarray[tuple[int], np.dtype[np.number]], np.ndarray[tuple[int], np.dtype[np.number]]]:
         """Project image along x and y axes and return results.
 
         Args:
@@ -94,7 +98,9 @@ class ProjectedOffsets(Offsets):
         return ProjectedOffsets._subtract_sky(sum_x), ProjectedOffsets._subtract_sky(sum_y)
 
     @staticmethod
-    def _subtract_sky(data: npt.NDArray[float], frac: float = 0.15, sbin: int = 10) -> npt.NDArray[float]:
+    def _subtract_sky(
+        data: np.ndarray[tuple[int], np.dtype[np.number]], frac: float = 0.15, sbin: int = 10
+    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
         # find continuum for every of the sbin bins
         bins = np.zeros((sbin,))
         binxs = np.zeros((sbin,))
@@ -123,7 +129,7 @@ class ProjectedOffsets(Offsets):
         return data - cont
 
     @staticmethod
-    def _calc_1d_offset(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> Optional[float]:
+    def _calc_1d_offset(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> float | None:
         # do cross-correlation
         corr = np.correlate(data1, data2, "full")
 
@@ -153,12 +159,12 @@ class ProjectedOffsets(Offsets):
         return shift
 
     @staticmethod
-    def _gaussian_fit(pars: List[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
+    def _gaussian_fit(pars: list[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
         err = y - ProjectedOffsets._gaussian(pars, x)
         return (err * err).sum()
 
     @staticmethod
-    def _gaussian(pars: List[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
+    def _gaussian(pars: list[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]

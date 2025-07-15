@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, cast
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -24,7 +24,7 @@ REQUEST = {
                 "instrument_configs": [
                     {
                         "optical_elements": {},
-                        "mode": None,
+                        "mode": "",
                         "exposure_time": 0.0,
                         "exposure_count": 1,
                         "bin_x": 3,
@@ -43,7 +43,7 @@ REQUEST = {
                     "ra": 0.0,
                     "dec": 0.0,
                 },
-                "instrument_type": None,
+                "instrument_type": "",
                 "type": "BIAS",
                 "priority": 1,
                 "configuration_status": {},
@@ -102,7 +102,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         cfg["end"] = Time.now() + TimeDelta(5.0 * u.minute)
 
         # create task
-        self._task: Optional[LcoTask] = self._create_task(LcoTask, config=cfg)
+        self._task: Task | None = self._create_task(LcoTask, config=cfg)
 
     async def _init_from_portal(self) -> None:
         pass
@@ -122,7 +122,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def get_task(self, time: Time) -> Optional[LcoTask]:
         task = self._task
         self._task = None
-        return task
+        return cast(LcoTask, task)
 
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         pass

@@ -2,7 +2,7 @@ import asyncio
 import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
-from typing import List, Dict, Optional, Any, cast
+from typing import Any, cast
 import aiohttp as aiohttp
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
@@ -32,9 +32,9 @@ class LcoTaskSchedule(TaskSchedule):
         url: str,
         site: str,
         token: str,
-        enclosure: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
+        enclosure: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
         period: int = 24,
         **kwargs: Any,
     ):
@@ -61,20 +61,20 @@ class LcoTaskSchedule(TaskSchedule):
         self._telescope = telescope
         self._instrument = instrument
         self._period = TimeDelta(period * u.hour)
-        self.instruments: Dict[str, Any] = {}
-        self._last_schedule_time: Optional[Time] = None
+        self.instruments: dict[str, Any] = {}
+        self._last_schedule_time: Time | None = None
         self._update_lock = asyncio.Lock()
 
         # buffers in case of errors
-        self._last_scheduled: Optional[Time] = None
-        self._last_changed: Optional[Time] = None
+        self._last_scheduled: Time | None = None
+        self._last_changed: Time | None = None
 
         # header
         self._token = token
         self._header = {"Authorization": "Token " + token}
 
         # task list
-        self._tasks: Dict[str, LcoTask] = {}
+        self._tasks: dict[str, LcoTask] = {}
 
         # error logging for regular updates
         self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
@@ -100,7 +100,7 @@ class LcoTaskSchedule(TaskSchedule):
         # and store
         self.instruments = {k.lower(): v for k, v in data.items()}
 
-    async def last_scheduled(self) -> Optional[Time]:
+    async def last_scheduled(self) -> Time | None:
         """Returns time of last scheduler run."""
 
         # try to update time
@@ -179,7 +179,7 @@ class LcoTaskSchedule(TaskSchedule):
                     log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
 
                 # update
-                self._tasks = cast(Dict[str, LcoTask], tasks)
+                self._tasks = cast(dict[str, LcoTask], tasks)
 
                 # finished
                 self._last_schedule_time = now
@@ -188,7 +188,7 @@ class LcoTaskSchedule(TaskSchedule):
             # release lock
             self._update_lock.release()
 
-    async def get_schedule(self) -> Dict[str, Task]:
+    async def get_schedule(self) -> dict[str, Task]:
         """Fetch schedule from portal.
 
         Returns:
@@ -198,9 +198,9 @@ class LcoTaskSchedule(TaskSchedule):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return self._tasks
+        return cast(dict[str, Task], self._tasks)
 
-    async def _get_schedule(self, start_before: Time, end_after: Time) -> Dict[str, Task]:
+    async def _get_schedule(self, start_before: Time, end_after: Time) -> dict[str, Task]:
         """Fetch schedule from portal.
 
         Args:
@@ -253,7 +253,7 @@ class LcoTaskSchedule(TaskSchedule):
                 # finished
                 return tasks
 
-    async def get_task(self, time: Time) -> Optional[LcoTask]:
+    async def get_task(self, time: Time) -> LcoTask | None:
         """Returns the active task at the given time.
 
         Args:
@@ -272,7 +272,7 @@ class LcoTaskSchedule(TaskSchedule):
         # nothing found
         return None
 
-    async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
+    async def send_update(self, status_id: int, status: dict[str, Any]) -> None:
         """Send report to LCO portal
 
         Args:
@@ -297,7 +297,7 @@ class LcoTaskSchedule(TaskSchedule):
         # update
         await self.update_now()
 
-    async def _send_update_later(self, status_id: int, status: Dict[str, Any], delay: int = 300) -> None:
+    async def _send_update_later(self, status_id: int, status: dict[str, Any], delay: int = 300) -> None:
         """Delay re-attempt to send report to LCO portal
 
         Args:
@@ -312,7 +312,7 @@ class LcoTaskSchedule(TaskSchedule):
         # re-send
         await self.send_update(status_id, status)
 
-    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def set_schedule(self, blocks: list[ObservingBlock], start_time: Time) -> None:
         """Update the list of scheduled blocks.
 
         Args:
@@ -352,7 +352,7 @@ class LcoTaskSchedule(TaskSchedule):
                 if response.status != 200:
                     log.error("Could not cancel schedule: %s", await response.text())
 
-    def _create_observations(self, blocks: List[ObservingBlock]) -> List[Dict[str, Any]]:
+    def _create_observations(self, blocks: list[ObservingBlock]) -> list[dict[str, Any]]:
         """Create observations from schedule.
 
         Args:
@@ -390,7 +390,7 @@ class LcoTaskSchedule(TaskSchedule):
         # return list
         return observations
 
-    async def _submit_observations(self, observations: List[Dict[str, Any]]) -> None:
+    async def _submit_observations(self, observations: list[dict[str, Any]]) -> None:
         """Submit observations.
 
         Args:

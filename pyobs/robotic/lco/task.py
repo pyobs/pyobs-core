@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Union, Dict, Tuple, Optional, List, Any, TYPE_CHECKING
+from typing import Union, Dict, Tuple, Optional, List, Any, TYPE_CHECKING, cast
 
 from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
@@ -135,7 +135,7 @@ class LcoTask(Task):
             observation_type of this task.
         """
         if "observation_type" in self.config:
-            return self.config["observation_type"]
+            return cast(str, self.config["observation_type"])
         else:
             raise ValueError("No observation_type found in request group.")
 

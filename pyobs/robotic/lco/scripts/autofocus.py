@@ -1,7 +1,7 @@
 import logging
 from typing import Union, Tuple, Optional, Any, cast
 
-from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus
+from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus, IPointingRaDec
 from pyobs.robotic import TaskRunner
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
@@ -126,9 +126,12 @@ class LcoAutoFocusScript(Script):
             raise ValueError("No telescope given.")
 
         # got a target?
-        target = self.configuration["target"]
-        log.info("Moving to target %s...", target["name"])
-        await telescope.move_radec(target["ra"], target["dec"])
+        if isinstance(telescope, IPointingRaDec):
+            target = self.configuration["target"]
+            log.info("Moving to target %s...", target["name"])
+            await telescope.move_radec(target["ra"], target["dec"])
+        else:
+            raise ValueError("Invalid telescope.")
 
         # acquisition?
         if (

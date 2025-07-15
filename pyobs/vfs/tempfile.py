@@ -1,7 +1,7 @@
 import os
 from tempfile import NamedTemporaryFile
 import logging
-from typing import Optional, Any, AnyStr, cast
+from typing import Optional, Any, AnyStr, cast, Generic
 
 from .localfile import VFSFile
 
@@ -9,7 +9,7 @@ from .localfile import VFSFile
 log = logging.getLogger(__name__)
 
 
-class TempFile(VFSFile):
+class TempFile(Generic[AnyStr], VFSFile[AnyStr]):
     """A temporary file."""
 
     __module__ = "pyobs.vfs"

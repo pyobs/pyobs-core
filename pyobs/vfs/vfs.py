@@ -72,6 +72,8 @@ class VirtualFileSystem(object):
         """
         # split root
         root, filename = VirtualFileSystem.split_root(filename)
+        f = open("bla", "r")
+        f.write("s")
 
         # does root exist?
         if root not in self._roots:

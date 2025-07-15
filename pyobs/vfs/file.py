@@ -1,26 +1,24 @@
+from __future__ import annotations
 import fnmatch
 from abc import ABCMeta, abstractmethod
-from typing import Any, AnyStr, List
+from typing import Any, AnyStr, List, Generic
 
 
-class VFSFile(metaclass=ABCMeta):
+class VFSFile(Generic[AnyStr], metaclass=ABCMeta):
     """Base class for all VFS file classes."""
 
     __module__ = "pyobs.vfs"
 
     @abstractmethod
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
     @abstractmethod
-    async def read(self, n: int = -1) -> AnyStr:
-        ...
+    async def read(self, n: int = -1) -> AnyStr: ...
 
     @abstractmethod
-    async def write(self, s: AnyStr) -> None:
-        ...
+    async def write(self, s: AnyStr) -> None: ...
 
-    async def __aenter__(self) -> "VFSFile":
+    async def __aenter__(self) -> VFSFile:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

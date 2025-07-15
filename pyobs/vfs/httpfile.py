@@ -1,6 +1,6 @@
 import io
 import uuid
-from typing import Optional, Any, AnyStr
+from typing import Optional, Any, AnyStr, Generic
 from urllib.parse import urljoin
 import logging
 import aiohttp
@@ -11,7 +11,7 @@ from .file import VFSFile
 log = logging.getLogger(__name__)
 
 
-class HttpFile(VFSFile):
+class HttpFile(Generic[AnyStr], VFSFile[AnyStr]):
     """Wraps a file on a HTTP server that can be accessed via GET/POST.
     Especially useful in combination with :class:`~pyobs.modules.utils.HttpFileCache`."""
 

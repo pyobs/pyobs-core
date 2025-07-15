@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Generic, AnyStr
 import logging
 import aiohttp
 
@@ -9,7 +9,7 @@ from .httpfile import HttpFile
 log = logging.getLogger(__name__)
 
 
-class ArchiveFile(HttpFile):
+class ArchiveFile(Generic[AnyStr], HttpFile[AnyStr]):
     """Wraps a file in an archive. To be used in combination with pyobs-archive."""
 
     __module__ = "pyobs.vfs"

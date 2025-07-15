@@ -1,12 +1,12 @@
 import os
-from typing import Optional, Any, AnyStr, List
+from typing import Optional, Any, AnyStr, List, Generic
 import paramiko
 import paramiko.sftp
 
 from .file import VFSFile
 
 
-class SSHFile(VFSFile):
+class SSHFile(Generic[AnyStr], VFSFile[AnyStr]):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
 
     __module__ = "pyobs.vfs"

@@ -1,7 +1,7 @@
 import asyncio
 from functools import partial
 from pathlib import PureWindowsPath
-from typing import Optional, Any, AnyStr, List
+from typing import Optional, Any, AnyStr, List, Generic
 import logging
 
 from .file import VFSFile
@@ -11,7 +11,7 @@ from .file import VFSFile
 logging.getLogger("smbprotocol").setLevel(logging.WARNING)
 
 
-class SMBFile(VFSFile):
+class SMBFile(Generic[AnyStr], VFSFile[AnyStr]):
     """VFS wrapper for a file that can be accessed over a SMB connection.
 
     Requires smbprotocol package to work.

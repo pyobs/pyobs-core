@@ -2,17 +2,17 @@ import asyncio
 import fnmatch
 import os
 from pathlib import PurePosixPath
-from typing import Any, Optional, IO, AnyStr, cast, List
+from typing import Any, IO, AnyStr, Generic
 
 from .file import VFSFile
 
 
-class LocalFile(VFSFile):
+class LocalFile(Generic[AnyStr], VFSFile[AnyStr]):
     """Wraps a local file with the virtual file system."""
 
     __module__ = "pyobs.vfs"
 
-    def __init__(self, name: str, mode: str = "r", root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
+    def __init__(self, name: str, mode: str = "r", root: str | None = None, mkdir: bool = True, **kwargs: Any):
         """Open a local file.
 
         Args:
@@ -43,7 +43,7 @@ class LocalFile(VFSFile):
                 raise ValueError("Cannot write into sub-directory with disabled mkdir option.")
 
         # file object
-        self.fd: IO[Any] = open(full_path, mode)
+        self.fd: IO[AnyStr] = open(full_path, mode)
 
     async def close(self) -> None:
         if self.fd:
@@ -52,7 +52,7 @@ class LocalFile(VFSFile):
     async def read(self, n: int = -1) -> AnyStr:
         if self.fd is None:
             raise OSError
-        return cast(AnyStr, self.fd.read(n))
+        return self.fd.read(n)
 
     async def write(self, s: AnyStr) -> None:
         if self.fd is None:
@@ -78,7 +78,7 @@ class LocalFile(VFSFile):
         return os.path.join(root, path)
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:
@@ -98,7 +98,7 @@ class LocalFile(VFSFile):
         return await loop.run_in_executor(None, os.listdir, str(full_path))
 
     @staticmethod
-    async def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
+    async def find(path: str, pattern: str, **kwargs: Any) -> list[str]:
         """Find files by pattern matching.
 
         Args:

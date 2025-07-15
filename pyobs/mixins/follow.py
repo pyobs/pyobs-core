@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import Awaitable
-from typing import Union, Tuple, Type, Optional, Any
+from typing import Type, Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -14,8 +14,8 @@ log = logging.getLogger(__name__)
 
 
 async def get_coords(
-    obj: Union[IPointingAltAz, IPointingRaDec], mode: Type[Union[IPointingAltAz, IPointingRaDec]]
-) -> Tuple[float, float]:
+    obj: IPointingAltAz | IPointingRaDec, mode: Type[IPointingAltAz | IPointingRaDec]
+) -> tuple[float, float]:
     """Gets coordinates from object
 
     Args:
@@ -34,7 +34,7 @@ async def get_coords(
         raise ValueError("Unknown mode.")
 
 
-def build_skycoord(coord: Tuple[float, float], mode: Type[Union[IPointingAltAz, IPointingRaDec]]) -> SkyCoord:
+def build_skycoord(coord: tuple[float, float], mode: Type[IPointingAltAz | IPointingRaDec]) -> SkyCoord:
     """Build SkyCoord from x/y tuple in given mode.
 
     Args:
@@ -58,8 +58,8 @@ class FollowMixin:
 
     def __init__(
         self,
-        device: Optional[str],
-        mode: Type[Union[IPointingAltAz, IPointingRaDec]],
+        device: str | None,
+        mode: Type[IPointingAltAz | IPointingRaDec],
         interval: float = 10,
         tolerance: float = 1,
         only_follow_when_ready: bool = True,
@@ -133,7 +133,10 @@ class FollowMixin:
 
             # get coordinates from other and from myself
             try:
-                my_coords = build_skycoord(await get_coords(module, this.__follow_mode), this.__follow_mode)
+                if isinstance(module, IPointingRaDec) or isinstance(module, IPointingAltAz):
+                    my_coords = build_skycoord(await get_coords(module, this.__follow_mode), this.__follow_mode)
+                else:
+                    continue
                 xy_coords = await get_coords(device, this.__follow_mode)
                 if xy_coords is None:
                     continue

@@ -18,7 +18,7 @@ class VFSFile(Generic[AnyStr], metaclass=ABCMeta):
     @abstractmethod
     async def write(self, s: AnyStr) -> None: ...
 
-    async def __aenter__(self) -> VFSFile:
+    async def __aenter__(self) -> VFSFile[AnyStr]:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

@@ -60,7 +60,7 @@ class VirtualFileSystem(object):
         # return it
         return root, filename
 
-    def open_file(self, filename: str, mode: str) -> VFSFile:
+    def open_file(self, filename: str, mode: str) -> VFSFile[str] | VFSFile[bytes]:
         """Open a file. The handling class is chosen depending on the rootse in the filename.
 
         Args:

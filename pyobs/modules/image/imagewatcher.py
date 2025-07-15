@@ -4,7 +4,7 @@ import os
 import asyncio
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Optional, List, Tuple, AnyStr
+from typing import Any
 from astropy.io import fits
 
 from pyobs.modules import Module
@@ -16,9 +16,9 @@ log = logging.getLogger(__name__)
 @dataclass
 class CurrentFile:
     filename: str
-    data: AnyStr
-    out_filename: Optional[str] = None
-    hdu_list: Optional[fits.HDUList] = None
+    data: fits.HDUList
+    out_filename: str | None = None
+    hdu_list: fits.HDUList | None = None
 
 
 class ImageWatcher(Module):
@@ -33,7 +33,7 @@ class ImageWatcher(Module):
     def __init__(
         self,
         watchpath: str,
-        destinations: Optional[List[str]] = None,
+        destinations: list[str] | None = None,
         poll: bool = False,
         poll_interval: int = 5,
         wait_time: int = 10,
@@ -60,13 +60,13 @@ class ImageWatcher(Module):
 
         # variables
         self._watchpath = watchpath
-        self._notifier: Optional[Any] = None
-        self._queue = asyncio.Queue[Tuple[str, asyncio.Future[None]]]()
+        self._notifier: Any | None = None
+        self._queue = asyncio.Queue[tuple[str, asyncio.Future[None]]]()
         self._poll = poll
         self._poll_interval = poll_interval
         self._wait_time = wait_time
         self._pattern = pattern
-        self.current_file: Optional[CurrentFile] = None
+        self.current_file: CurrentFile | None = None
 
         # filename patterns
         if not destinations:
@@ -74,7 +74,7 @@ class ImageWatcher(Module):
         self._destinations = destinations
 
     async def _watch_inotify(self) -> None:
-        from asyncinotify import Inotify, Mask  # type: ignore
+        from asyncinotify import Inotify, Mask
 
         # get local directory
         local = await self.vfs.local_path(self._watchpath)

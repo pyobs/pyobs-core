@@ -5,7 +5,7 @@ import math
 import time
 from asyncio import Server
 from struct import unpack, pack
-from typing import Any, Optional, List
+from typing import Any, Optional, List, NoReturn, cast
 
 from pyobs.interfaces import IPointingRaDec
 from pyobs.modules import Module
@@ -19,16 +19,16 @@ class StellariumProtocol(asyncio.Protocol):
     def __init__(self, server: Stellarium):
         self.server = server
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.transports.BaseTransport) -> None:
         log.info("Client connected.")
-        self.transport = transport
+        self.transport = cast(asyncio.transports.WriteTransport, transport)
         self.server.register_client(self)
 
     def connection_lost(self, exc: Exception | None) -> None:
         log.info("Client disconnected.")
         self.server.unregister_client(self)
 
-    def data_received(self, data):
+    def data_received(self, data: bytes) -> None:
         # unpack data
         request = unpack("<BBBBQIi", data)
 
@@ -41,7 +41,7 @@ class StellariumProtocol(asyncio.Protocol):
         log.info(f"Received command to move telescope to RA={ra}, Dec={dec}.")
         asyncio.create_task(self.server.move_telescope(ra, dec))
 
-    def send(self, ra, dec, status):
+    def send(self, ra: float, dec: float, status: int) -> None:
         # to integer
         ra_int = math.floor(0.5 + ra * MAX_INT / 180.0)
         dec_int = math.floor(0.5 + dec * MAX_INT / 180.0)
@@ -89,23 +89,24 @@ class Stellarium(Module):
     async def close(self) -> None:
         """Close module."""
         await Module.close(self)
-        self._server.close()
-        await self._server.wait_closed()
+        if self._server is not None:
+            self._server.close()
+            await self._server.wait_closed()
 
-    def register_client(self, client: StellariumProtocol):
+    def register_client(self, client: StellariumProtocol) -> None:
         self._clients.append(client)
 
-    def unregister_client(self, client: StellariumProtocol):
+    def unregister_client(self, client: StellariumProtocol) -> None:
         self._clients.remove(client)
 
-    async def move_telescope(self, ra, dec):
+    async def move_telescope(self, ra: float, dec: float) -> None:
         try:
             telescope = await self.proxy(self._telescope, IPointingRaDec)
             await telescope.move_radec(ra, dec)
         except ValueError:
             return
 
-    async def _send_task(self):
+    async def _send_task(self) -> NoReturn:
         """Send coordinates to clients."""
 
         while True:

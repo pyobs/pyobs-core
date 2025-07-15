@@ -6,7 +6,7 @@ __title__ = "FITS utilities"
 
 import logging
 import re
-from typing import Union, Any, cast, Optional, List, Callable, Dict
+from typing import Any, cast, Callable
 from astropy.io import fits
 from numpy.typing import NDArray
 
@@ -49,7 +49,7 @@ def fitssec(hdu: Any, keyword: str = "TRIMSEC") -> NDArray[Any]:
 
 
 class FilenameFormatter:
-    def __init__(self, fmt: Union[str, List[str]], keys: Optional[Dict[str, Any]] = None):
+    def __init__(self, fmt: str | list[str], keys: dict[str, int | float | str] | None = None):
         """Initializes a new filename formatter.
 
         Args:
@@ -57,10 +57,10 @@ class FilenameFormatter:
             keys: Additional keys to pass to the formatter.
         """
         self.format = fmt
-        self.keys: Dict[str, Any] = {} if keys is None else keys
+        self.keys: dict[str, int | float | str] = {} if keys is None else keys
 
         # define functions
-        self.funcs: Dict[str, Callable[..., str]] = {
+        self.funcs: dict[str, Callable[..., str]] = {
             "lower": self._format_lower,
             "time": self._format_time,
             "date": self._format_date,
@@ -69,7 +69,7 @@ class FilenameFormatter:
             "type": self._format_type,
         }
 
-    def _value(self, hdr: fits.Header, key: str) -> Any:
+    def _value(self, hdr: fits.Header, key: str) -> int | float | str:
         """Returns value for given key.
 
         Args:
@@ -85,9 +85,9 @@ class FilenameFormatter:
             return self.keys[key]
 
         # then check header
-        return hdr[key]
+        return cast(int | float | str, hdr[key])
 
-    def __call__(self, hdr: fits.Header) -> Optional[str]:
+    def __call__(self, hdr: fits.Header) -> str:
         """Formats a filename given a format template and a FITS header.
 
         Args:
@@ -102,7 +102,7 @@ class FilenameFormatter:
 
         # make fmt a list
         if self.format is None:
-            return None
+            return ""
         if isinstance(self.format, str):
             self.format = [self.format]
 
@@ -226,7 +226,7 @@ class FilenameFormatter:
         """
         it = hdr[image_type].lower()
         if it in ["light", "object", "flat", "skyflat"]:
-            return str(prefix + self._value(hdr, key))
+            return prefix + str(self._value(hdr, key))
         else:
             return ""
 
@@ -264,9 +264,7 @@ class FilenameFormatter:
             return "e"
 
 
-def format_filename(
-    hdr: fits.Header, fmt: Union[str, List[str]], keys: Optional[Dict[str, Any]] = None
-) -> Optional[str]:
+def format_filename(hdr: fits.Header, fmt: str | list[str], keys: dict[str, Any] | None = None) -> str:
     """Formats a filename given a format template and a FITS header.
 
     Args:

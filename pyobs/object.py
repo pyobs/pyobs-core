@@ -17,7 +17,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Coroutine
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Any, overload, TYPE_CHECKING
+from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Any, overload, TYPE_CHECKING, Literal
 import logging
 import pytz
 from astroplan import Observer
@@ -454,7 +454,12 @@ class Object:
 
     @overload
     def add_child_object(
-        self, config_or_object: type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
+        self, config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any, **kwargs: Any
+    ) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(
+        self, config_or_object: type[ObjectClass], object_class: Literal[None], copy_comm: bool = True, **kwargs: Any
     ) -> ObjectClass: ...
 
     @overload

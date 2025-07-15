@@ -5,7 +5,6 @@ import logging
 import math
 import os
 from asyncio import Task
-from collections.abc import Coroutine
 from typing import Union, Dict, Any, Tuple, Optional, List, cast
 import astropy.units as u
 from astropy.io import fits
@@ -58,7 +57,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_enable_frame_number = frame_number
         self._fitsheadermixin_frame_number = 0
 
-    async def request_fits_headers(self, before: bool = True) -> Dict[str, Coroutine]:
+    async def request_fits_headers(self, before: bool = True) -> dict[str, Task[Any]]:
         """Request FITS headers from other modules.
 
         Returns:
@@ -66,7 +65,7 @@ class FitsHeaderMixin:
         """
 
         # init
-        futures: Dict[str, Task] = {}
+        futures: dict[str, Task[Any]] = {}
 
         # we can only do this with a comm module
         module = cast(Module, self)
@@ -92,7 +91,7 @@ class FitsHeaderMixin:
         return futures
 
     async def add_requested_fits_headers(
-        self, image: Union[Image, fits.PrimaryHDU], futures: Dict[str, Coroutine]
+        self, image: Union[Image, fits.PrimaryHDU], futures: Dict[str, Task[Any]]
     ) -> None:
         """Add requested FITS headers to header of given image.
 
@@ -335,7 +334,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         # reference pixel in binned image
         if "DET-CPX1" in hdr and "DET-BIN1" in hdr and "DET-CPX2" in hdr and "DET-BIN2" in hdr:
             # offset?
-            off_x, off_y = 0, 0
+            off_x, off_y = 0.0, 0.0
             if "XORGSUBF" in hdr and "YORGSUBF" in hdr:
                 off_x = v("XORGSUBF") if "XORGSUBF" in hdr else 0.0
                 off_y = v("YORGSUBF") if "YORGSUBF" in hdr else 0.0

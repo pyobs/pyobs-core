@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 import scipy.ndimage
 
@@ -18,7 +18,9 @@ class Smooth(ImageProcessor):
         self,
         sigma: float,
         order: int = 0,
-        mode: str = "reflect",
+        mode: Literal[
+            "reflect", "constant", "nearest", "mirror", "wrap", "grid-constant", "grid-mirror", "grid-wrap"
+        ] = "reflect",
         cval: float = 0.0,
         truncate: float = 4.0,
         **kwargs: Any,

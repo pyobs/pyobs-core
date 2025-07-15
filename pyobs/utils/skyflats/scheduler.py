@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import logging
-from typing import Dict, Union, Tuple, Optional, List
 from astroplan import Observer
 import operator
 
@@ -16,7 +14,7 @@ log = logging.getLogger(__name__)
 class SchedulerItem:
     """A single item in the flat scheduler"""
 
-    def __init__(self, start: float, end: float, filter_name: str, binning: Tuple[int, int], priority: float):
+    def __init__(self, start: float, end: float, filter_name: str, binning: tuple[int, int], priority: float):
         """Initializes a new scheduler item
 
         Args:
@@ -31,7 +29,7 @@ class SchedulerItem:
         self.binning = binning
         self.priority = priority
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Nice string representation for item"""
         return "%d - %d (%s %dx%d): %.2f" % (
             self.start,
@@ -50,7 +48,7 @@ class Scheduler:
 
     def __init__(
         self,
-        functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
+        functions: str | dict[str, str | dict[str, str]],
         priorities: SkyflatPriorities,
         observer: Observer,
         min_exptime: float = 0.5,
@@ -58,7 +56,7 @@ class Scheduler:
         timespan: float = 7200,
         filter_change: float = 30,
         count: int = 20,
-        readout: Optional[Dict[str, float]] = None,
+        readout: dict[str, float] | None = None,
     ):
         """Initializes a new scheduler for taking flat fields
 
@@ -78,7 +76,7 @@ class Scheduler:
         self._priorities = priorities
         self._min_exptime = min_exptime
         self._max_exptime = max_exptime
-        self._schedules: List[SchedulerItem] = []
+        self._schedules: list[SchedulerItem] = []
         self._current = 0
         self._timespan = timespan
         self._filter_change = filter_change
@@ -100,7 +98,7 @@ class Scheduler:
         priorities = sorted(tmp, key=operator.itemgetter(1), reverse=True)
 
         # place them
-        schedules: List[SchedulerItem] = []
+        schedules: list[SchedulerItem] = []
         for (filter_name, binning), priority in priorities:
             # find possible time
             self._find_slot(schedules, filter_name, binning, priority)
@@ -122,12 +120,12 @@ class Scheduler:
         else:
             raise StopIteration
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> SchedulerItem:
         """Return schedule item."""
         return self._schedules[item]
 
     def _find_slot(
-        self, schedules: List[SchedulerItem], filter_name: str, binning: Tuple[int, int], priority: float
+        self, schedules: list[SchedulerItem], filter_name: str, binning: tuple[int, int], priority: float
     ) -> None:
         """Find a possible slot for a given filter/binning in the given schedule
 
@@ -174,7 +172,7 @@ class Scheduler:
         # being here means we didn't find any
         return
 
-    def _overlaps(self, schedules: List[SchedulerItem], start: float, end: float) -> bool:
+    def _overlaps(self, schedules: list[SchedulerItem], start: float, end: float) -> bool:
         """Checks, whether a new scheduler item would overlap an existing item
 
         Args:

@@ -323,15 +323,15 @@ class Scheduler(Module, IStartStop, IRunnable):
     ) -> List[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
-        qout: mp.Queue = mp.Queue()
-        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, qout))
+        queue_out = mp.Queue[ObservingBlock]()
+        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, queue_out))
         p.start()
 
         # wait for process to finish
         # note that the process only finishes, when the queue is empty! so we have to poll the queue first
         # and then the process.
         loop = asyncio.get_running_loop()
-        scheduled_blocks: List[ObservingBlock] = await loop.run_in_executor(None, qout.get, True)
+        scheduled_blocks: List[ObservingBlock] = await loop.run_in_executor(None, queue_out.get, True)
         await loop.run_in_executor(None, p.join)
         return scheduled_blocks
 
@@ -362,7 +362,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         start: Time,
         end: Time,
         constraints: List[Any],
-        scheduled_blocks: mp.Queue,
+        scheduled_blocks: mp.Queue[ObservingBlock],
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
 

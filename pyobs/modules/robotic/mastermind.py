@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Union, List, Dict, Tuple, Any, Optional, cast
+from typing import Any
 import astropy.units as u
 
 from pyobs.modules import Module
@@ -21,8 +21,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     def __init__(
         self,
-        schedule: Union[TaskSchedule, Dict[str, Any]],
-        runner: Union[TaskRunner, Dict[str, Any]],
+        schedule: TaskSchedule | dict[str, Any],
+        runner: TaskRunner | dict[str, Any],
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
         **kwargs: Any,
@@ -49,9 +49,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._task_runner = self.add_child_object(runner, TaskRunner)
 
         # observation name and exposure number
-        self._task = None
-        self._obs = None
-        self._exp = None
+        self._task: Task | None = None
 
     async def open(self) -> None:
         """Open module."""
@@ -98,7 +96,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            task: Optional[Task] = await self._task_schedule.get_task(now)
+            task: Task | None = await self._task_schedule.get_task(now)
             if task is None or not await self._task_runner.can_run(task):
                 # no task found
                 await asyncio.sleep(10)
@@ -125,7 +123,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             first_late_start_warning = True
 
             # task is definitely not None here
-            self._task = cast(Task, task)
+            self._task = task
 
             # ETA
             eta = now + self._task.duration * u.second
@@ -151,8 +149,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             self._task = None
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

@@ -52,6 +52,10 @@ class Calibration(ImageProcessor):
 
         self._archive = get_object(archive, Archive)
 
+        if self._calib_cache is None:
+            self._calib_cache = _CalibrationCache(self._max_cache_size)
+
+
     async def __call__(self, image: Image) -> Image:
         """Calibrate an image.
 
@@ -111,9 +115,6 @@ class Calibration(ImageProcessor):
         """
 
         self._verify_image_header(image)
-
-        if self._calib_cache is None:
-            self._calib_cache = _CalibrationCache(self._max_cache_size)
 
         try:
             return self._calib_cache.get_from_cache(image, image_type)

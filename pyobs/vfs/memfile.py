@@ -26,14 +26,14 @@ class MemoryFile(BufferedFile):
         BufferedFile.__init__(self)
 
         # store
-        self._filename = name
-        self._mode = mode
+        self.filename = name
+        self.mode = mode
         self._pos = 0
         self._open = True
 
         # clear cache on write?
-        if "w" in self._mode:
-            self._clear_buffer(self._filename)
+        if "w" in self.mode:
+            self._clear_buffer(self.filename)
 
     async def read(self, n: int = -1) -> str | bytes:
         """Read number of bytes from stream.
@@ -47,11 +47,11 @@ class MemoryFile(BufferedFile):
 
         # check size
         if n == -1:
-            data = self._buffer(self._filename)
+            data = self._buffer(self.filename)
             self._pos = len(data) - 1
         else:
             # extract data to read
-            data = self._buffer(self._filename)[self._pos : self._pos + n]
+            data = self._buffer(self.filename)[self._pos: self._pos + n]
             self._pos += n
 
         # return data
@@ -63,7 +63,7 @@ class MemoryFile(BufferedFile):
         Args:
             buf: Bytes of data to write.
         """
-        self._append_to_buffer(self._filename, buf)
+        self._append_to_buffer(self.filename, buf)
 
     async def close(self) -> None:
         """Close stream."""

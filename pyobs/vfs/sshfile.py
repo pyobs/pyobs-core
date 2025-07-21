@@ -73,7 +73,7 @@ class SSHFile(BufferedFile):
         self._open = True
 
         # clear cache on write?
-        if "w" in self._mode:
+        if "w" in self.mode:
             self._clear_buffer(self.filename)
 
     async def _download(self) -> None:

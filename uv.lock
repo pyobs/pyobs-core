@@ -1529,6 +1529,18 @@ wheels = [
 ]
 
 [[package]]
+name = "optype"
+version = "0.12.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/51/1f6c24e698e1b9e6b9d9a4c3d20374ce92c4790755252b224fc3fe5c1c19/optype-0.12.2.tar.gz", hash = "sha256:3f53a89f56f0ea23be4d212611dce0f3a2a8946543a9a72783e349c49b232934", size = 99163, upload-time = "2025-07-20T19:03:59.047Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/b9/3a3fc49de2f9a607ee871227ec1e8806d1a399fa691e0d44d080a5742691/optype-0.12.2-py3-none-any.whl", hash = "sha256:e38966fcd5ae9dec1c1bdecccdd8fdc7cfb8f21686f45ce3669a3a566c7cc110", size = 87737, upload-time = "2025-07-20T19:03:57.417Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2009,6 +2021,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "scipy" },
+    { name = "scipy-stubs" },
     { name = "single-source" },
     { name = "slixmpp" },
     { name = "typing-extensions" },
@@ -2071,6 +2084,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2,<7" },
     { name = "requests", specifier = ">=2.32.3,<3" },
     { name = "scipy", specifier = ">=1.15.2,<2" },
+    { name = "scipy-stubs", specifier = "==1.16.0.2" },
     { name = "sep", marker = "sys_platform == 'linux' and extra == 'full'", specifier = ">=1.4.1,<2" },
     { name = "single-source", specifier = ">=0.4.0,<0.5" },
     { name = "slixmpp", specifier = "==1.8.4" },
@@ -2394,6 +2408,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/b3/21001cff985a122ba434c33f2c9d7d1dc3b669827e94f4fc4e1fe8b9dfd8/scipy-1.16.0-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:4f720300a3024c237ace1cb11f9a84c38beb19616ba7c4cdcd771047a10a1706", size = 35570990, upload-time = "2025-06-22T16:21:27.797Z" },
     { url = "https://files.pythonhosted.org/packages/e5/d3/7ba42647d6709251cdf97043d0c107e0317e152fa2f76873b656b509ff55/scipy-1.16.0-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:aad603e9339ddb676409b104c48a027e9916ce0d2838830691f39552b38a352e", size = 37950262, upload-time = "2025-06-22T16:21:36.976Z" },
     { url = "https://files.pythonhosted.org/packages/eb/c4/231cac7a8385394ebbbb4f1ca662203e9d8c332825ab4f36ffc3ead09a42/scipy-1.16.0-cp313-cp313t-win_amd64.whl", hash = "sha256:f56296fefca67ba605fd74d12f7bd23636267731a72cb3947963e76b8c0a25db", size = 38515076, upload-time = "2025-06-22T16:21:45.694Z" },
+]
+
+[[package]]
+name = "scipy-stubs"
+version = "1.16.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "optype" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/19/a8461383f7328300e83c34f58bf38ccc05f57c2289c0e54e2bea757de83c/scipy_stubs-1.16.0.2.tar.gz", hash = "sha256:f83aacaf2e899d044de6483e6112bf7a1942d683304077bc9e78cf6f21353acd", size = 306747, upload-time = "2025-07-01T23:19:04.513Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/30/b73418e6d3d8209fef684841d9a0e5b439d3528fa341a23b632fe47918dd/scipy_stubs-1.16.0.2-py3-none-any.whl", hash = "sha256:dc364d24a3accd1663e7576480bdb720533f94de8a05590354ff6d4a83d765c7", size = 491346, upload-time = "2025-07-01T23:19:03.222Z" },
 ]
 
 [[package]]

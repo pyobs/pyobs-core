@@ -1,7 +1,7 @@
 from copy import copy
-from typing import Tuple
-
+from typing import Tuple, Any
 import numpy as np
+import numpy.typing as npt
 from astropy.table import Table
 
 from pyobs.images import ImageProcessor, Image
@@ -121,8 +121,8 @@ class ImageSourceFilter(ImageProcessor):
 
     @staticmethod
     def _calc_weber_contrast(
-        peak: np.ndarray[tuple[int, int], np.dtype[np.number]],
-        background: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        peak: npt.NDArray[np.floating[Any]],
+        background: npt.NDArray[np.floating[Any]],
     ) -> np.ndarray[tuple[int, ...], np.dtype[np.number]]:
         return (peak - background) / background
 

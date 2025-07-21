@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import Any
-
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import UnivariateSpline

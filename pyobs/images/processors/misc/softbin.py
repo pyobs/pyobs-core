@@ -1,6 +1,7 @@
 import logging
 from typing import Any, cast
 import numpy as np
+import numpy.typing as npt
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -50,11 +51,11 @@ class SoftBin(ImageProcessor):
         return output_image
 
     def _reshape_image(
-        self, image_data: np.ndarray[tuple[int, int], np.dtype[np.number]]
-    ) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+        self, image_data: npt.NDArray[np.floating[Any]]
+    ) -> npt.NDArray[np.floating[Any]]:
         shape = (image_data.shape[0] // self.binning, self.binning, image_data.shape[1] // self.binning, self.binning)
 
-        return cast(np.ndarray[tuple[int, int], np.dtype[np.number]], image_data.reshape(shape).mean(-1).mean(1))
+        return cast(npt.NDArray[np.floating[Any]], image_data.reshape(shape).mean(-1).mean(1))
 
     def _update_header(self, image: Image) -> None:
         self._update_number_of_pixel_header(image)

@@ -1,6 +1,6 @@
-from typing import List, Optional
-
+from typing import List, Optional, Any
 import numpy as np
+import numpy.typing as npt
 from astropy.table import Table
 
 from pyobs.images import Image
@@ -16,8 +16,8 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
         self._gain: Optional[float] = None
 
-        self._data: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None
-        self._average_background: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None
+        self._data: npt.NDArray[np.floating[Any]] | None = None
+        self._average_background: npt.NDArray[np.floating[Any]] | None = None
 
     def set_data(self, image: Image) -> None:
         self._image = image.copy()
@@ -61,8 +61,8 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         self._average_background = self._calc_average_background(bkg.back())
 
     def _calc_average_background(
-        self, background: np.ndarray[tuple[int, int], np.dtype[np.number]]
-    ) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+        self, background: npt.NDArray[np.floating[Any]]
+    ) -> npt.NDArray[np.floating[Any]]:
         """
         since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area
         """
@@ -76,7 +76,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
 
     @staticmethod
     def _sum_ellipse(
-        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        data: npt.NDArray[np.floating[Any]],
         image: Image,
         x: list[float] | None,
         y: list[float] | None,

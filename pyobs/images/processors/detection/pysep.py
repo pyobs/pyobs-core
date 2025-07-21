@@ -2,7 +2,6 @@ import asyncio
 import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional, cast
-
 import numpy as np
 import numpy.typing as npt
 
@@ -109,7 +108,7 @@ class SepSourceDetection(SourceDetection):
         return output_image
 
     @staticmethod
-    def _get_mask_or_default(image: Image) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+    def _get_mask_or_default(image: Image) -> npt.NDArray[np.floating[Any]]:
         return image.mask if image.safe_mask is not None else np.zeros(image.data.shape, dtype=bool)
 
     @staticmethod
@@ -121,9 +120,9 @@ class SepSourceDetection(SourceDetection):
 
     @staticmethod
     def remove_background(
-        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
-        mask: np.ndarray[tuple[int, int], np.dtype[np.number]] | None = None,
-    ) -> tuple[np.ndarray[tuple[int, int], np.dtype[np.number]], "Background"]:
+        data: npt.NDArray[np.floating[Any]],
+        mask: npt.NDArray[np.floating[Any]] | None = None,
+    ) -> tuple[npt.NDArray[np.floating[Any]], "Background"]:
         """Remove background from image in data.
 
         Args:
@@ -149,9 +148,9 @@ class SepSourceDetection(SourceDetection):
 
     async def _extract_sources(
         self,
-        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        data: npt.NDArray[np.floating[Any]],
         bkg: "Background",
-        mask: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        mask: npt.NDArray[np.floating[Any]],
     ) -> npt.NDArray[Any]:
         import sep
 

@@ -1,6 +1,6 @@
 from typing import Tuple, Dict, List, Any
-
 import numpy as np
+import numpy.typing as npt
 import logging
 from scipy import ndimage
 
@@ -156,11 +156,11 @@ class ProjectionFocusSeries(FocusSeries):
 
     @staticmethod
     def _clean(
-        data: np.ndarray[tuple[int, int], np.dtype[np.number]],
+        data: npt.NDArray[np.floating[Any]],
         backsub: bool = True,
         xbad: list[int] | None = None,
         ybad: list[int] | None = None,
-    ) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+    ) -> npt.NDArray[np.floating[Any]]:
         """
         Removes global slopes and fills up bad rows (ybad) or columns (xbad).
         """

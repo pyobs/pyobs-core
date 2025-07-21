@@ -1,6 +1,7 @@
 from typing import Dict, Any
 import logging
 import numpy as np
+import numpy.typing as npt
 from astropy.io import fits
 
 from pyobs.images.processor import ImageProcessor
@@ -16,7 +17,7 @@ class AddMask(ImageProcessor):
     __module__ = "pyobs.images.processors.misc"
 
     def __init__(
-        self, masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]], **kwargs: Any
+        self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]], **kwargs: Any
     ):
         """Init an image processor that adds a mask to an image.
 
@@ -26,18 +27,18 @@ class AddMask(ImageProcessor):
         ImageProcessor.__init__(self, **kwargs)
 
         # masks
-        self._masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]]]] = {}
+        self._masks: dict[str, dict[str, npt.NDArray[np.floating[Any]]]] = {}
         self._build_instrument_dictionary(masks)
 
     def _build_instrument_dictionary(
-        self, masks: dict[str, dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]]
+        self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]]
     ) -> None:
         for instrument, binning in masks.items():
             self._masks[instrument] = {}
             self._build_binning_dictionary(instrument, binning)
 
     def _build_binning_dictionary(
-        self, instrument: str, masks: Dict[str, np.ndarray[tuple[int, int], np.dtype[np.number]] | str]
+        self, instrument: str, masks: Dict[str, npt.NDArray[np.floating[Any]] | str]
     ) -> None:
         for binning, mask in masks.items():
             if isinstance(mask, np.ndarray):
@@ -47,7 +48,7 @@ class AddMask(ImageProcessor):
             else:
                 raise ValueError("Unknown mask format.")
 
-    def _get_mask(self, image: Image) -> np.ndarray[tuple[int, int], np.dtype[np.number]]:
+    def _get_mask(self, image: Image) -> npt.NDArray[np.floating[Any]]:
         instrument = image.header["INSTRUME"]
         binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
 

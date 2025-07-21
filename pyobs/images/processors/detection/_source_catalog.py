@@ -1,7 +1,7 @@
 from copy import copy
-from typing import List
-
+from typing import Any
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from astropy.table import Table
 
@@ -13,7 +13,7 @@ class _SourceCatalog:
         self.sources = sources
 
     @classmethod
-    def from_array(cls, sources: np.ndarray) -> "_SourceCatalog":
+    def from_array(cls, sources: npt.NDArray[np.floating[Any]]) -> "_SourceCatalog":
         source_dataframe = pd.DataFrame(sources)
         return cls(source_dataframe)
 
@@ -47,7 +47,7 @@ class _SourceCatalog:
         self.sources["x"] += 1
         self.sources["y"] += 1
 
-    def save_to_image(self, image: Image, keys: List[str]) -> Image:
+    def save_to_image(self, image: Image, keys: list[str]) -> Image:
         cat = self.sources[keys]
 
         output_image = copy(image)

@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Tuple, Any
+from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 from astropy.table import Table
@@ -57,7 +57,7 @@ class ImageSourceFilter(ImageProcessor):
                 sources[k] -= 1
         return sources
 
-    def remove_sources_close_to_border(self, sources: Table, image_shape: Tuple[int, int]) -> Table:
+    def remove_sources_close_to_border(self, sources: Table, image_shape: tuple[int, ...]) -> Table:
         """Remove table rows from sources when source is closer than given distance from border of image.
 
         Args:
@@ -123,8 +123,8 @@ class ImageSourceFilter(ImageProcessor):
     def _calc_weber_contrast(
         peak: npt.NDArray[np.floating[Any]],
         background: npt.NDArray[np.floating[Any]],
-    ) -> np.ndarray[tuple[int, ...], np.dtype[np.number]]:
-        return (peak - background) / background
+    ) -> npt.NDArray[np.floating[Any]]:
+        return cast(npt.NDArray[np.floating[Any]], (peak - background) / background)
 
     def _select_brightest_sources(self, sources: Table) -> Table:
         """Select the N brightest sources from table.

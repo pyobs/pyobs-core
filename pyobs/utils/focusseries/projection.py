@@ -140,9 +140,7 @@ class ProjectionFocusSeries(FocusSeries):
         return float(foc), float(err)
 
     @staticmethod
-    def _window_function(
-        arr: np.ndarray[tuple[int], np.dtype[np.number]], border: int = 0
-    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
+    def _window_function(arr: npt.NDArray[np.floating[Any]], border: int = 0) -> npt.NDArray[np.floating[Any]]:
         """
         Creates a sine window function of the same size as some 1-D array "arr".
         Optionally, a zero border at the edges is added by "scrunching" the window.
@@ -203,7 +201,7 @@ class ProjectionFocusSeries(FocusSeries):
             return data
 
     @staticmethod
-    def _fit_correlation(correl: np.ndarray[tuple[int], np.dtype[np.number]]) -> Any:
+    def _fit_correlation(correl: npt.NDArray[np.floating[Any]]) -> Any:
         from lmfit.models import GaussianModel
 
         # create Gaussian model

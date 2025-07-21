@@ -1,6 +1,6 @@
-from typing import List, Tuple, Optional
-
+from typing import List, Tuple, Optional, Any, cast
 import numpy as np
+import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
 from astropy.table import QTable, Table
 from photutils.aperture import CircularAperture, CircularAnnulus, ApertureMask, aperture_photometry
@@ -44,7 +44,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         radius = diameter / 2.0
         return radius / self._image.pixel_scale
 
-    def _calc_median_backgrounds(self, radius: float) -> np.ndarray[float]:
+    def _calc_median_backgrounds(self, radius: float) -> npt.NDArray[np.floating[Any]]:
         annulus_aperture = CircularAnnulus(self._positions, r_in=2 * radius, r_out=3 * radius)
         annulus_masks = annulus_aperture.to_mask(method="center")
 
@@ -53,19 +53,24 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
         return np.array(bkg_median)
 
     def _calc_median_background(self, mask: ApertureMask) -> float:
+        if self._image is None or self._image.data is None:
+            raise ValueError("No image.")
         annulus_data = mask.multiply(self._image.data)
         annulus_data_1d = annulus_data[mask.data > 0]
         _, sigma_clipped_median, _ = sigma_clipped_stats(annulus_data_1d)
-        return sigma_clipped_median
+        return float(sigma_clipped_median)
 
     @staticmethod
     def _calc_integrated_background(
-        median_background: np.ndarray[float], aperture: CircularAperture
-    ) -> np.ndarray[float]:
-        return median_background * aperture.area
+        median_background: npt.NDArray[np.floating[Any]], aperture: CircularAperture
+    ) -> npt.NDArray[np.floating[Any]]:
+        return cast(npt.NDArray[np.floating[Any]], median_background * aperture.area)
 
-    def _calc_aperture_flux(self, aperture: CircularAperture) -> Tuple[np.ndarray[float], Optional[np.ndarray[float]]]:
-
+    def _calc_aperture_flux(
+        self, aperture: CircularAperture
+    ) -> tuple[npt.NDArray[np.floating[Any]], npt.NDArray[np.floating[Any]] | None]:
+        if self._image is None or self._image.data is None:
+            raise ValueError("No image.")
         phot: QTable = aperture_photometry(
             self._image.data, aperture, mask=self._image.safe_mask, error=self._image.safe_uncertainty
         )
@@ -77,18 +82,19 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
     @staticmethod
     def _background_correct_aperture_flux(
-        aperture_flux: np.ndarray[float], aperture_background: np.ndarray[float]
-    ) -> np.ndarray[float]:
+        aperture_flux: npt.NDArray[np.floating[Any]], aperture_background: npt.NDArray[np.floating[Any]]
+    ) -> npt.NDArray[np.floating[Any]]:
         return aperture_flux - aperture_background
 
     def _update_catalog(
         self,
         diameter: int,
-        corrected_aperture_flux: np.ndarray[float],
-        aperture_error: Optional[np.ndarray[float]],
-        median_background: np.ndarray[float],
-    ):
-
+        corrected_aperture_flux: npt.NDArray[np.floating[Any]],
+        aperture_error: npt.NDArray[np.floating[Any]] | None,
+        median_background: npt.NDArray[np.floating[Any]],
+    ) -> None:
+        if self._image is None or self._image.catalog is None:
+            raise ValueError("No catalog.")
         self._image.catalog["fluxaper%d" % diameter] = corrected_aperture_flux
         if aperture_error is not None:
             self._image.catalog["fluxerr%d" % diameter] = aperture_error

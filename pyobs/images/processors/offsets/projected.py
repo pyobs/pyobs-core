@@ -23,9 +23,7 @@ class ProjectedOffsets(Offsets):
         Offsets.__init__(self, **kwargs)
 
         # init
-        self._ref_image: (
-            tuple[np.ndarray[tuple[int], np.dtype[np.number]], np.ndarray[tuple[int], np.dtype[np.number]]] | None
-        ) = None
+        self._ref_image: tuple[npt.NDArray[np.floating[Any]], npt.NDArray[np.floating[Any]]] | None = None
 
     async def reset(self) -> None:
         """Resets guiding."""
@@ -68,7 +66,7 @@ class ProjectedOffsets(Offsets):
     @staticmethod
     def _process(
         image: Image,
-    ) -> tuple[np.ndarray[tuple[int], np.dtype[np.number]], np.ndarray[tuple[int], np.dtype[np.number]]]:
+    ) -> tuple[npt.NDArray[np.floating[Any]], npt.NDArray[np.floating[Any]]]:
         """Project image along x and y axes and return results.
 
         Args:
@@ -98,8 +96,8 @@ class ProjectedOffsets(Offsets):
 
     @staticmethod
     def _subtract_sky(
-        data: np.ndarray[tuple[int], np.dtype[np.number]], frac: float = 0.15, sbin: int = 10
-    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
+        data: npt.NDArray[np.floating[Any]], frac: float = 0.15, sbin: int = 10
+    ) -> npt.NDArray[np.floating[Any]]:
         # find continuum for every of the sbin bins
         bins = np.zeros((sbin,))
         binxs = np.zeros((sbin,))

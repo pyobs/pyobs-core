@@ -24,6 +24,7 @@ dependencies = [
     "paramiko>=3.5.1",
     "aiohttp>=3.11.18,<4",
     "scipy-stubs==1.16.0.2",
+    "pandas-stubs==2.3.0.250703",
 ]
 
 [project.optional-dependencies]

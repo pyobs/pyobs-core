@@ -1591,6 +1591,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pandas-stubs"
+version = "2.3.0.250703"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "types-pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/df/c1c51c5cec087b8f4d04669308b700e9648745a77cdd0c8c5e16520703ca/pandas_stubs-2.3.0.250703.tar.gz", hash = "sha256:fb6a8478327b16ed65c46b1541de74f5c5947f3601850caf3e885e0140584717", size = 103910, upload-time = "2025-07-02T17:49:11.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/cb/09d5f9bf7c8659af134ae0ffc1a349038a5d0ff93e45aedc225bde2872a3/pandas_stubs-2.3.0.250703-py3-none-any.whl", hash = "sha256:a9265fc69909f0f7a9cabc5f596d86c9d531499fed86b7838fd3278285d76b81", size = 154719, upload-time = "2025-07-02T17:49:10.697Z" },
+]
+
+[[package]]
 name = "paramiko"
 version = "3.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2015,6 +2028,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pandas-stubs" },
     { name = "paramiko" },
     { name = "py-expression-eval" },
     { name = "pytz" },
@@ -2075,6 +2089,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.10.3,<4" },
     { name = "numpy", specifier = ">=2.2.5,<3" },
     { name = "pandas", specifier = ">=2.2.3" },
+    { name = "pandas-stubs", specifier = "==2.3.0.250703" },
     { name = "paramiko", specifier = ">=3.5.1" },
     { name = "photutils", marker = "extra == 'full'", specifier = ">=2.2.0,<3" },
     { name = "py-expression-eval", specifier = ">=0.3.14,<0.4" },

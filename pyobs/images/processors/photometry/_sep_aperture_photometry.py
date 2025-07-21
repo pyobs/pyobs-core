@@ -60,9 +60,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         self._data, bkg = SepSourceDetection.remove_background(self._image.data, self._image.safe_mask)
         self._average_background = self._calc_average_background(bkg.back())
 
-    def _calc_average_background(
-        self, background: npt.NDArray[np.floating[Any]]
-    ) -> npt.NDArray[np.floating[Any]]:
+    def _calc_average_background(self, background: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:
         """
         since SEP sums up whole pixels, we need to do the same on an image of ones for the background_area
         """
@@ -80,7 +78,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         image: Image,
         x: list[float] | None,
         y: list[float] | None,
-    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
+    ) -> npt.NDArray[np.floating[Any]]:
         import sep
 
         sum, _, _ = sep.sum_ellipse(
@@ -104,8 +102,8 @@ class _SepAperturePhotometry(_PhotometryCalculator):
     def _update_flux_header(
         self,
         diameter: int,
-        flux: np.ndarray[tuple[int], np.dtype[np.number]],
-        fluxerr: np.ndarray[tuple[int], np.dtype[np.number]],
+        flux: npt.NDArray[np.floating[Any]],
+        fluxerr: npt.NDArray[np.floating[Any]],
     ) -> None:
         if self._image is None:
             raise RuntimeError("No image set.")

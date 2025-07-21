@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import UnivariateSpline
@@ -51,6 +51,8 @@ class ProjectedOffsets(Offsets):
         log.info("Perform auto-guiding on new image...")
         sum_x, sum_y = self._process(image)
 
+        if self._ref_image is None:
+            raise ValueError("No reference image.")
         dx = self._calc_1d_offset(sum_x, self._ref_image[0])
         dy = self._calc_1d_offset(sum_y, self._ref_image[1])
         if dx is None or dy is None:
@@ -102,7 +104,7 @@ class ProjectedOffsets(Offsets):
         bins = np.zeros((sbin,))
         binxs = np.zeros((sbin,))
         x = list(range(len(data)))
-        w1 = 0
+        w1 = 0.0
         w2 = float(len(x)) / sbin
         for i in range(sbin):
             # sort data in range
@@ -123,10 +125,12 @@ class ProjectedOffsets(Offsets):
         cont = ip(x)
 
         # return continuum
-        return data - cont
+        return cast(npt.NDArray[np.floating[Any]], data - cont)
 
     @staticmethod
-    def _calc_1d_offset(data1: npt.NDArray[float], data2: npt.NDArray[float], fit_width: int = 10) -> float | None:
+    def _calc_1d_offset(
+        data1: npt.NDArray[np.floating[Any]], data2: npt.NDArray[np.floating[Any]], fit_width: int = 10
+    ) -> float | None:
         # do cross-correlation
         corr = np.correlate(data1, data2, "full")
 
@@ -156,12 +160,12 @@ class ProjectedOffsets(Offsets):
         return shift
 
     @staticmethod
-    def _gaussian_fit(pars: list[float], y: npt.NDArray[float], x: npt.NDArray[float]) -> float:
+    def _gaussian_fit(pars: list[float], y: npt.NDArray[np.floating[Any]], x: npt.NDArray[np.floating[Any]]) -> float:
         err = y - ProjectedOffsets._gaussian(pars, x)
         return (err * err).sum()
 
     @staticmethod
-    def _gaussian(pars: list[float], x: npt.NDArray[float]) -> npt.NDArray[float]:
+    def _gaussian(pars: list[float], x: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]

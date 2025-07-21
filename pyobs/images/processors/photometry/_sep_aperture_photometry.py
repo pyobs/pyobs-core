@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import List, Optional, Any, cast
 import numpy as np
 import numpy.typing as npt
 from astropy.table import Table
@@ -70,7 +70,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
         background_area = self._sum_ellipse(np.ones(shape=background.shape), self._image, self._pos_x, self._pos_y)
 
         median_background = np.divide(background_flux, background_area, where=background_area != 0)
-        return median_background
+        return cast(npt.NDArray[np.floating[Any]], median_background)
 
     @staticmethod
     def _sum_ellipse(
@@ -91,7 +91,7 @@ class _SepAperturePhotometry(_PhotometryCalculator):
             r=2.5 * image.catalog["kronrad"],
             subpix=1,
         )
-        return sum
+        return cast(npt.NDArray[np.floating[Any]], sum)
 
     def _calc_aperture_radius_in_px(self, diameter: int) -> float:
         if self._image is None or self._image.pixel_scale is None:

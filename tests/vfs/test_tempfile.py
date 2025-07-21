@@ -20,12 +20,12 @@ async def test_write_file() -> None:
 async def test_name() -> None:
     # test prefix
     async with TempFile(mode="w", prefix="test") as f:
-        assert f.full_name.startswith("test")
+        assert f.filename.startswith("test")
 
     # test suffix
     async with TempFile(mode="w", suffix=".fits") as f:
-        assert f.full_name.endswith(".fits")
+        assert f.filename.endswith(".fits")
 
     # test given name
     async with TempFile(name="test.txt", mode="w") as f:
-        assert f.full_name == "test.txt"
+        assert f.filename == "test.txt"

@@ -44,6 +44,7 @@ class HttpFile(BufferedFile):
 
         # init
         io.RawIOBase.__init__(self)
+        BufferedFile.__init__(self)
         self._verify_tls = verify_tls
         self._timeout = timeout
 
@@ -69,6 +70,10 @@ class HttpFile(BufferedFile):
             raise ValueError("No download URL given.")
         if "w" in self.mode and self._upload_path is None:
             raise ValueError("No upload URL given.")
+
+        # clear cache on write?
+        if "w" in self.mode:
+            self._clear_buffer(self.filename)
 
     @property
     def url(self) -> str:

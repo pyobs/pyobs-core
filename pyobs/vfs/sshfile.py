@@ -38,6 +38,7 @@ class SSHFile(BufferedFile):
             root: Root directory on host.
             mkdir: Whether or not to automatically create directories.
         """
+        BufferedFile.__init__(self)
 
         # no root given?
         if root is None:
@@ -70,6 +71,10 @@ class SSHFile(BufferedFile):
         self.mode = mode
         self._pos = 0
         self._open = True
+
+        # clear cache on write?
+        if "w" in self._mode:
+            self._clear_buffer(self.filename)
 
     async def _download(self) -> None:
         """For read access, download the file into a local buffer.

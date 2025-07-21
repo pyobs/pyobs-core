@@ -23,12 +23,17 @@ class MemoryFile(BufferedFile):
 
         # init
         io.RawIOBase.__init__(self)
+        BufferedFile.__init__(self)
 
         # store
         self._filename = name
         self._mode = mode
         self._pos = 0
         self._open = True
+
+        # clear cache on write?
+        if "w" in self._mode:
+            self._clear_buffer(self._filename)
 
     async def read(self, n: int = -1) -> str | bytes:
         """Read number of bytes from stream.

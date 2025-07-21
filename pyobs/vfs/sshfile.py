@@ -1,12 +1,12 @@
 import os
-from typing import Optional, Any, AnyStr, List
+from typing import Any
 import paramiko
 import paramiko.sftp
 
-from .file import VFSFile
+from .bufferedfile import BufferedFile
 
 
-class SSHFile(VFSFile):
+class SSHFile(BufferedFile):
     """VFS wrapper for a file that can be accessed over a SFTP connection."""
 
     __module__ = "pyobs.vfs"
@@ -15,13 +15,12 @@ class SSHFile(VFSFile):
         self,
         name: str,
         mode: str = "r",
-        bufsize: int = -1,
-        hostname: Optional[str] = None,
+        hostname: str | None = None,
         port: int = 22,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        keyfile: Optional[str] = None,
-        root: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
+        keyfile: str | None = None,
+        root: str | None = None,
         mkdir: bool = True,
         **kwargs: Any,
     ):
@@ -69,7 +68,6 @@ class SSHFile(VFSFile):
         # build filename
         self.filename = name
         self.mode = mode
-        self._buffer = b"" if "b" in self.mode else ""
         self._pos = 0
         self._open = True
 
@@ -81,9 +79,9 @@ class SSHFile(VFSFile):
         """
 
         _, stdout, stderr = self._ssh.exec_command(f"cat {self._full_path}")
-        self._buffer = stdout.read()
+        self._set_buffer(self.filename, stdout.read())
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         """Read number of bytes from stream.
 
         Args:
@@ -93,29 +91,34 @@ class SSHFile(VFSFile):
             Read bytes.
         """
 
+        # get buffer
+        if not self._buffer_exists(self.filename):
+            raise IndexError("File not found.")
+        buf = self._buffer(self.filename)
+
         # load file
-        if len(self._buffer) == 0 and "r" in self.mode:
+        if len(buf) == 0 and "r" in self.mode:
             await self._download()
 
         # check size
         if n == -1:
-            data = self._buffer
-            self._pos = len(self._buffer) - 1
+            data = buf
+            self._pos = len(buf) - 1
         else:
             # extract data to read
-            data = self._buffer[self._pos : self._pos + n]
+            data = buf[self._pos : self._pos + n]
             self._pos += n
 
         # return data
         return data
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         """Write data into the stream.
 
         Args:
             b: Bytes of data to write.
         """
-        self._buffer += s
+        self._append_to_buffer(self.filename, s)
 
     async def close(self) -> None:
         """Close stream."""
@@ -132,12 +135,17 @@ class SSHFile(VFSFile):
         """If in write mode, actually send the file to the SSH server."""
 
         transport = self._ssh.get_transport()
+        if transport is None:
+            raise OSError("Transport not available.")
         with transport.open_channel(kind="session") as channel:
             channel.exec_command(f"cat > {self._full_path}")
-            channel.sendall(self._buffer)
+            buf = self._buffer(self.filename)
+            if not isinstance(buf, bytes):
+                buf = buf.encode()
+            channel.sendall(buf)
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:

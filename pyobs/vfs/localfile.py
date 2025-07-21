@@ -2,7 +2,7 @@ import asyncio
 import fnmatch
 import os
 from pathlib import PurePosixPath
-from typing import Any, Optional, IO, AnyStr, cast, List
+from typing import Any, IO
 
 from .file import VFSFile
 
@@ -12,7 +12,7 @@ class LocalFile(VFSFile):
 
     __module__ = "pyobs.vfs"
 
-    def __init__(self, name: str, mode: str = "r", root: Optional[str] = None, mkdir: bool = True, **kwargs: Any):
+    def __init__(self, name: str, mode: str = "r", root: str | None = None, mkdir: bool = True, **kwargs: Any):
         """Open a local file.
 
         Args:
@@ -49,12 +49,15 @@ class LocalFile(VFSFile):
         if self.fd:
             self.fd.close()
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         if self.fd is None:
             raise OSError
-        return cast(AnyStr, self.fd.read(n))
+        buf = self.fd.read(n)
+        if not isinstance(buf, str) and not isinstance(buf, bytes):
+            raise OSError
+        return buf
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         if self.fd is None:
             raise OSError
         self.fd.write(s)
@@ -78,7 +81,7 @@ class LocalFile(VFSFile):
         return os.path.join(root, path)
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:
@@ -98,7 +101,7 @@ class LocalFile(VFSFile):
         return await loop.run_in_executor(None, os.listdir, str(full_path))
 
     @staticmethod
-    async def find(path: str, pattern: str, **kwargs: Any) -> List[str]:
+    async def find(path: str, pattern: str, **kwargs: Any) -> list[str]:
         """Find files by pattern matching.
 
         Args:

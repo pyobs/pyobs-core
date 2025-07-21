@@ -1,17 +1,17 @@
 import io
 import uuid
-from typing import Optional, Any, AnyStr
+from typing import Any
 from urllib.parse import urljoin
 import logging
 import aiohttp
 
-from .file import VFSFile
+from .bufferedfile import BufferedFile
 
 
 log = logging.getLogger(__name__)
 
 
-class HttpFile(VFSFile):
+class HttpFile(BufferedFile):
     """Wraps a file on a HTTP server that can be accessed via GET/POST.
     Especially useful in combination with :class:`~pyobs.modules.utils.HttpFileCache`."""
 
@@ -21,10 +21,10 @@ class HttpFile(VFSFile):
         self,
         name: str,
         mode: str = "r",
-        download: Optional[str] = None,
-        upload: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        download: str | None = None,
+        upload: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
         verify_tls: bool = False,
         timeout: int = 30,
         **kwargs: Any,
@@ -59,7 +59,6 @@ class HttpFile(VFSFile):
         # build filename
         self.filename = name
         self.mode = mode
-        self._buffer = b"" if "b" in self.mode else ""
         self._pos = 0
         self._open = True
 
@@ -91,7 +90,7 @@ class HttpFile(VFSFile):
                 # check response
                 if response.status == 200:
                     # get data and return it
-                    self._buffer = await response.read()
+                    self._set_buffer(self.filename, await response.read())
                 elif response.status == 401:
                     log.error("Wrong credentials for downloading file.")
                     raise FileNotFoundError
@@ -99,7 +98,7 @@ class HttpFile(VFSFile):
                     log.error("Could not download file from filecache.")
                     raise FileNotFoundError
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         """Read number of bytes from stream.
 
         Args:
@@ -109,29 +108,34 @@ class HttpFile(VFSFile):
             Read bytes.
         """
 
+        # get buffer
+        if not self._buffer_exists(self.filename):
+            raise IndexError("File not found.")
+        buf = self._buffer(self.filename)
+
         # load file
-        if len(self._buffer) == 0 and "r" in self.mode:
+        if len(buf) == 0 and "r" in self.mode:
             await self._download()
 
         # check size
         if n == -1:
-            data = self._buffer
-            self._pos = len(self._buffer) - 1
+            data = buf
+            self._pos = len(buf) - 1
         else:
             # extract data to read
-            data = self._buffer[self._pos : self._pos + n]
+            data = buf[self._pos : self._pos + n]
             self._pos += n
 
         # return data
         return data
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         """Write data into the stream.
 
         Args:
-            b: Bytes of data to write.
+            s: Bytes of data to write.
         """
-        self._buffer += s
+        self._append_to_buffer(self.url, s)
 
     async def close(self) -> None:
         """Close stream."""
@@ -156,7 +160,7 @@ class HttpFile(VFSFile):
         # send data and return image ID
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
-            data.add_field("file", self._buffer, filename=filename)
+            data.add_field("file", self._buffer(filename), filename=filename)
             async with session.post(self._upload_path, auth=self._auth, data=data, timeout=self._timeout) as response:
                 if response.status == 401:
                     log.error("Wrong credentials for uploading file.")

@@ -1,7 +1,8 @@
 import io
 import logging
 import os
-from typing import Optional, Dict, Any, Tuple, List, Callable, Type
+from typing import Any, Type, cast, overload, Literal
+from collections.abc import Callable, Awaitable
 import yaml
 from astropy.io import fits
 import pandas as pd
@@ -19,7 +20,7 @@ class VirtualFileSystem(object):
 
     __module__ = "pyobs.vfs"
 
-    def __init__(self, roots: Optional[Dict[str, Any]] = None, **kwargs: Any):
+    def __init__(self, roots: dict[str, Any] | None = None, **kwargs: Any):
         """Create a new VFS.
 
         Args:
@@ -27,14 +28,14 @@ class VirtualFileSystem(object):
         """
 
         # if no root for 'pyobs' is given, add one
-        self._roots: Dict[str, Any] = {
+        self._roots: dict[str, Any] = {
             "pyobs": {"class": "pyobs.vfs.LocalFile", "root": os.path.expanduser("~/.pyobs/")}
         }
         if roots is not None:
             self._roots.update(roots)
 
     @staticmethod
-    def split_root(path: str) -> Tuple[str, str]:
+    def split_root(path: str) -> tuple[str, str]:
         """Splits the root from the rest of the path.
 
         Args:
@@ -124,6 +125,8 @@ class VirtualFileSystem(object):
         """
         async with self.open_file(filename, "rb") as f:
             data = await f.read()
+            if isinstance(data, str):
+                data = data.encode("utf-8")
             return Image.from_bytes(data)
 
     async def write_image(self, filename: str, image: Image, *args: Any, **kwargs: Any) -> None:
@@ -154,7 +157,9 @@ class VirtualFileSystem(object):
             # open file
             async with self.open_file(filename, "r") as f:
                 data = await f.read()
-                return pd.read_csv(io.StringIO(data), *args, **kwargs)
+                if isinstance(data, bytes):
+                    data = data.decode("utf-8")
+                return cast(pd.DataFrame, pd.read_csv(io.StringIO(data), *args, **kwargs))
 
         except pd.errors.EmptyDataError:
             # on error, return empty dataframe
@@ -191,6 +196,8 @@ class VirtualFileSystem(object):
         async with self.open_file(filename, "r") as f:
             # read YAML
             data = await f.read()
+            if isinstance(data, bytes):
+                data = data.decode("utf-8")
             return yaml.safe_load(io.StringIO(data))
 
     async def write_yaml(self, filename: str, data: Any) -> None:
@@ -235,21 +242,39 @@ class VirtualFileSystem(object):
         # get local path
         return await klass.local_path(path, **self._roots[root])
 
-    def _get_class(self, path: str) -> Tuple[Type[VFSFile], str, str]:
+    def _get_class(self, path: str) -> tuple[Type[VFSFile], str, str]:
         # split root
         root, path = VirtualFileSystem.split_root(path)
 
         # get root class
         return get_class_from_string(self._roots[root]["class"]), root, path
 
-    def _get_method(self, path: str, method: str) -> Tuple[Callable[..., Any], str, str]:
+    @overload
+    def _get_method(
+        self, path: str, method: Literal["find"]
+    ) -> tuple[Callable[..., Awaitable[list[str]]], str, str]: ...
+
+    @overload
+    def _get_method(
+        self, path: str, method: Literal["listdir"]
+    ) -> tuple[Callable[..., Awaitable[list[str]]], str, str]: ...
+
+    @overload
+    def _get_method(self, path: str, method: Literal["exists"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+
+    @overload
+    def _get_method(self, path: str, method: Literal["remove"]) -> tuple[Callable[..., Awaitable[bool]], str, str]: ...
+
+    def _get_method(
+        self, path: str, method: Literal["find", "listdir", "exists", "remove"]
+    ) -> tuple[Callable[..., Any], str, str]:
         # split root
         klass, root, path = self._get_class(path)
 
         # get find method
         return getattr(klass, method), root, path
 
-    async def find(self, path: str, pattern: str) -> List[str]:
+    async def find(self, path: str, pattern: str) -> list[str]:
         """Find a file in the given path.
 
         Args:
@@ -266,7 +291,7 @@ class VirtualFileSystem(object):
         # and call it
         return await find(path, pattern, **self._roots[root])
 
-    async def listdir(self, path: str) -> List[str]:
+    async def listdir(self, path: str) -> list[str]:
         """Find a file in the given path.
 
         Args:

@@ -1,7 +1,7 @@
 import os
 from tempfile import NamedTemporaryFile
 import logging
-from typing import Optional, Any, AnyStr, cast
+from typing import Any
 
 from .localfile import VFSFile
 
@@ -16,10 +16,10 @@ class TempFile(VFSFile):
 
     def __init__(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         mode: str = "r",
-        prefix: Optional[str] = None,
-        suffix: Optional[str] = None,
+        prefix: str | None = None,
+        suffix: str | None = None,
         root: str = "/tmp/pyobs/",
         mkdir: bool = True,
         **kwargs: Any,
@@ -84,12 +84,15 @@ class TempFile(VFSFile):
         if "w" in self.mode:
             os.remove(self.full_name)
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         if self.fd is None:
             raise OSError
-        return cast(AnyStr, self.fd.read(n))
+        buf = self.fd.read(n)
+        if not isinstance(buf, str) and not isinstance(buf, bytes):
+            raise OSError
+        return buf
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         if self.fd is None:
             raise OSError
         self.fd.write(s)

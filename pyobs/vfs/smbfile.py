@@ -1,7 +1,7 @@
 import asyncio
 from functools import partial
 from pathlib import PureWindowsPath
-from typing import Optional, Any, AnyStr, List
+from typing import Any
 import logging
 
 from .file import VFSFile
@@ -23,11 +23,11 @@ class SMBFile(VFSFile):
         self,
         name: str,
         mode: str = "r",
-        hostname: Optional[str] = None,
-        share: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        root: Optional[str] = None,
+        hostname: str | None = None,
+        share: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        root: str | None = None,
         mkdir: bool = True,
         **kwargs: Any,
     ):
@@ -90,14 +90,17 @@ class SMBFile(VFSFile):
         """Close file."""
         self._fd.close()
 
-    async def read(self, n: int = -1) -> AnyStr:
-        return self._fd.read(n)
+    async def read(self, n: int = -1) -> str | bytes:
+        buf = self._fd.read(n)
+        if not isinstance(buf, str) and not isinstance(buf, bytes):
+            raise OSError
+        return buf
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         self._fd.write(s)
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:

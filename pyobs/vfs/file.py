@@ -1,6 +1,6 @@
 import fnmatch
 from abc import ABCMeta, abstractmethod
-from typing import Any, AnyStr, List
+from typing import Any
 
 
 class VFSFile(metaclass=ABCMeta):
@@ -9,16 +9,13 @@ class VFSFile(metaclass=ABCMeta):
     __module__ = "pyobs.vfs"
 
     @abstractmethod
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
     @abstractmethod
-    async def read(self, n: int = -1) -> AnyStr:
-        ...
+    async def read(self, n: int = -1) -> str | bytes: ...
 
     @abstractmethod
-    async def write(self, s: AnyStr) -> None:
-        ...
+    async def write(self, s: str | bytes) -> None: ...
 
     async def __aenter__(self) -> "VFSFile":
         return self
@@ -27,7 +24,7 @@ class VFSFile(metaclass=ABCMeta):
         await self.close()
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:
@@ -40,7 +37,7 @@ class VFSFile(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @classmethod
-    async def find(cls, path: str, pattern: str, **kwargs: Any) -> List[str]:
+    async def find(cls, path: str, pattern: str, **kwargs: Any) -> list[str]:
         """Find files by pattern matching.
 
         Args:

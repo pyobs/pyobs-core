@@ -1,28 +1,31 @@
 import os
+import pytest
 
 from pyobs.vfs import TempFile
 
-"""
-def test_write_file():
+
+@pytest.mark.asyncio
+async def test_write_file() -> None:
     # create new temp file with name
-    with TempFile(mode='w') as f:
+    async with TempFile(mode="w") as f:
+        filename = f.full_name
         # does file exist?
-        assert os.path.exists(f.name)
+        assert os.path.exists(filename)
 
     # file should be gone
-    assert not os.path.exists(f.name)
+    assert not os.path.exists(filename)
 
 
-def test_name():
+@pytest.mark.asyncio
+async def test_name() -> None:
     # test prefix
-    with TempFile(mode='w', prefix='test') as f:
-        assert f.filename.startswith('test')
+    async with TempFile(mode="w", prefix="test") as f:
+        assert f.full_name.startswith("test")
 
     # test suffix
-    with TempFile(mode='w', suffix='.fits') as f:
-        assert f.filename.endswith('.fits')
+    async with TempFile(mode="w", suffix=".fits") as f:
+        assert f.full_name.endswith(".fits")
 
     # test given name
-    with TempFile(name='test.txt', mode='w') as f:
-        assert f.filename == 'test.txt'
-"""
+    async with TempFile(name="test.txt", mode="w") as f:
+        assert f.full_name == "test.txt"

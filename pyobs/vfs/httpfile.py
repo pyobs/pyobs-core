@@ -108,14 +108,10 @@ class HttpFile(BufferedFile):
             Read bytes.
         """
 
-        # get buffer
-        if not self._buffer_exists(self.filename):
-            raise IndexError("File not found.")
-        buf = self._buffer(self.filename)
-
         # load file
-        if len(buf) == 0 and "r" in self.mode:
+        if not self._buffer_exists(self.filename):
             await self._download()
+        buf = self._buffer(self.filename)
 
         # check size
         if n == -1:
@@ -135,7 +131,7 @@ class HttpFile(BufferedFile):
         Args:
             s: Bytes of data to write.
         """
-        self._append_to_buffer(self.url, s)
+        self._append_to_buffer(self.filename, s)
 
     async def close(self) -> None:
         """Close stream."""

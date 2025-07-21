@@ -62,6 +62,7 @@ dev = [
     "black>=25.1.0,<26",
     "pre-commit>=4.2.0,<5",
     "flake8>=7.3.0",
+    "aioresponses>=0.7.8",
 ]
 
 [tool.hatch.build.targets.sdist]

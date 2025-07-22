@@ -349,7 +349,7 @@ class Object:
         object_class: Literal[None],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass | Any: ...
+    ) -> Any: ...
 
     @overload
     def get_object(

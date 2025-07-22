@@ -1,11 +1,14 @@
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
-from typing import Any
+from typing import Any, TypeVar, Generic
 
 from pyobs.images import Image
 
+IN = TypeVar("IN")
+OUT = TypeVar("OUT")
 
-class GuidingStatistics(object, metaclass=ABCMeta):
+
+class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
     """Calculates statistics for guiding."""
 
     def __init__(self) -> None:
@@ -44,10 +47,10 @@ class GuidingStatistics(object, metaclass=ABCMeta):
         return header | session_header
 
     @abstractmethod
-    def _get_session_data(self, input_data: Image) -> Any:
+    def _get_session_data(self, input_data: IN) -> OUT:
         raise NotImplementedError
 
-    def add_data(self, input_data: Image) -> None:
+    def add_data(self, input_data: IN) -> None:
         """
         Adds data to all client measurement sessions.
         Args:

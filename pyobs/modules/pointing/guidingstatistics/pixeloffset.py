@@ -10,7 +10,7 @@ from pyobs.images.meta import PixelOffsets
 log = logging.getLogger(__name__)
 
 
-class GuidingStatisticsPixelOffset(GuidingStatistics):
+class GuidingStatisticsPixelOffset(GuidingStatistics[Image, tuple[float, float]]):
     @staticmethod
     def _calc_rms(data: list[tuple[float, float]]) -> tuple[float, float] | None:
         """

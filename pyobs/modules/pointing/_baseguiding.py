@@ -31,7 +31,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics]] = None,
+        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics[Any, Any]]] = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.

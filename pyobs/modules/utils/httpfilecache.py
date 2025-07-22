@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Optional
+import aiohttp
 from aiohttp import web
 
 from pyobs.modules import Module
@@ -93,9 +94,9 @@ class HttpFileCache(Module):
         reader = await request.multipart()
         filename: Optional[str] = None
         data: Optional[bytes] = None
-        async for field in reader:
+        async for field in reader:  # type: ignore
             # we expect a file called 'file'
-            if field.name == "file":
+            if isinstance(field, aiohttp.BodyPartReader) and field.name == "file":
                 filename = field.filename
                 data = await field.read()
                 break

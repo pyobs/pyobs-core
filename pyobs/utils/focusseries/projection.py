@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any
+from typing import Tuple, Dict, List, Any, cast
 import numpy as np
 import numpy.typing as npt
 import logging
@@ -196,7 +196,7 @@ class ProjectionFocusSeries(FocusSeries):
             ysl -= np.mean(ysl)
             xslope = np.tile(xsl, (ny, 1))
             yslope = np.tile(ysl, (1, nx))
-            return data - xslope - yslope
+            return cast(npt.NDArray[np.floating[Any]], data - xslope - yslope)
         else:
             return data
 

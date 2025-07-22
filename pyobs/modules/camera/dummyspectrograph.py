@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import threading
 import time
@@ -27,7 +28,7 @@ class DummySpectrograph(BaseSpectrograph):
         """
         BaseSpectrograph.__init__(self, **kwargs)
 
-    async def _expose(self, abort_event: threading.Event) -> fits.HDUList:
+    async def _expose(self, abort_event: asyncio.Event) -> fits.HDUList:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:

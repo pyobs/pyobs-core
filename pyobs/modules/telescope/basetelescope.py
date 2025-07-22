@@ -338,6 +338,8 @@ class BaseTelescope(
 
     def _calculate_derotator_position(self, ra: float, dec: float, alt: float, obstime: Time) -> float:
         target = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="gcrs")
+        if self.observer is None:
+            raise ValueError("No observer.")
         parallactic = self.observer.parallactic_angle(time=obstime, target=target).deg
         return float(parallactic - alt)
 

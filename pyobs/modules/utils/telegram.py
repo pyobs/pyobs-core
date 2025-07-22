@@ -44,9 +44,9 @@ class Telegram(Module):
         self._token = token
         self._password = password
         self._allow_new_users = allow_new_users
-        self._message_queue = asyncio.Queue()
-        self._loop = None
-        self._application: Optional[Application] = None
+        self._message_queue: asyncio.Queue[Any] = asyncio.Queue()
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._application: Application | None = None  # type: ignore
 
         # get log levels
         self._log_levels = {
@@ -87,6 +87,8 @@ class Telegram(Module):
 
         # start polling
         await self._application.initialize()
+        if self._application.updater is None:
+            raise ValueError("No telegram updater.")
         await self._application.updater.start_polling()
         await self._application.start()
 
@@ -99,11 +101,12 @@ class Telegram(Module):
 
         # stop telegram
         if self._application is not None:
-            await self._application.updater.stop()
+            if self._application.updater is not None:
+                await self._application.updater.stop()
             await self._application.stop()
             await self._application.shutdown()
 
-    async def _save_storage(self, context: CallbackContext) -> None:
+    async def _save_storage(self, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Save storage file.
 
         Args:
@@ -112,7 +115,7 @@ class Telegram(Module):
         await self.vfs.write_yaml("/pyobs/telegram.yaml", context.bot_data["storage"])
 
     @staticmethod
-    def _is_user_authorized(context: CallbackContext, user_id: int) -> bool:
+    def _is_user_authorized(context: CallbackContext[Any, Any, Any, Any], user_id: int) -> bool:
         """Is user authorized?
 
         Args:
@@ -125,7 +128,7 @@ class Telegram(Module):
         s = context.bot_data["storage"]
         return "users" in s and user_id in s["users"]
 
-    def _store_user(self, context: CallbackContext, user_id: int, name: str) -> None:
+    def _store_user(self, context: CallbackContext[Any, Any, Any, Any], user_id: int, name: str) -> None:
         """Store new user in auth database.
 
         Args:
@@ -139,9 +142,11 @@ class Telegram(Module):
         if "users" not in s:
             s["users"] = {}
         s["users"][user_id] = {"name": name, "loglevel": None}
+        if self._loop is None:
+            raise ValueError("No event loop.")
         asyncio.run_coroutine_threadsafe(self._save_storage(context), self._loop)
 
-    async def _command_start(self, update: Update, context: CallbackContext) -> None:
+    async def _command_start(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle /start command.
 
         Args:
@@ -151,6 +156,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+        if update.message is None or update.message.from_user is None or update.effective_chat is None:
+            raise ValueError("Invalid message data")
 
         # is user already known?
         if self._is_user_authorized(context, update.message.from_user.id):
@@ -172,7 +179,7 @@ class Telegram(Module):
                     chat_id=update.effective_chat.id, text="No new users allowed in the system."
                 )
 
-    async def _command_exec(self, update: Update, context: CallbackContext) -> None:
+    async def _command_exec(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle /exec command.
 
         Args:
@@ -182,6 +189,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+        if update.message is None or update.message.from_user is None or update.effective_chat is None:
+            raise ValueError("Invalid message data")
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
@@ -199,7 +208,7 @@ class Telegram(Module):
         context.user_data["state"] = TelegramUserState.EXEC_MODULE
 
     @staticmethod
-    def _reset_state(context: CallbackContext) -> None:
+    def _reset_state(context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Reset state."""
         if context.user_data is None:
             raise ValueError("No user data in context.")
@@ -208,7 +217,7 @@ class Telegram(Module):
         context.user_data["params"] = []
         context.user_data["exec_query"] = None
 
-    async def _handle_buttons(self, update: Update, context: CallbackContext) -> None:
+    async def _handle_buttons(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle click on buttons.
 
         Args:
@@ -221,6 +230,9 @@ class Telegram(Module):
 
         # get query
         query = update.callback_query
+
+        if query is None or query.from_user is None:
+            raise ValueError("Invalid query data")
 
         # not logged in?
         if not self._is_user_authorized(context, query.from_user.id):
@@ -259,8 +271,11 @@ class Telegram(Module):
             # init command
             context.user_data["method"] = query.data
             context.user_data["params"] = []
+            if update.callback_query is None or update.callback_query.message is None:
+                raise ValueError("Invalid update message.")
             context.user_data["exec_query_message"] = update.callback_query.message.message_id
-            context.user_data["exec_query_chat"] = update.callback_query.message.chat_id
+            if hasattr(update.callback_query.message, "chat_id"):
+                context.user_data["exec_query_chat"] = update.callback_query.message.chat_id
 
             # show buttons for all methods
             keyboard = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
@@ -284,16 +299,18 @@ class Telegram(Module):
             await query.edit_message_text(text="Changed log level to %s." % query.data)
             context.user_data["state"] = TelegramUserState.IDLE
 
-    def _handle_params(self, update: Update, context: CallbackContext) -> None:
+    def _handle_params(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle input of params when in EXEC_PARAMS state.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+        if self._loop is None:
+            raise ValueError("No event loop.")
         asyncio.run_coroutine_threadsafe(self._handle_params_async(update, context), self._loop)
 
-    async def _handle_params_async(self, update: Update, context: CallbackContext) -> None:
+    async def _handle_params_async(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle input of params when in EXEC_PARAMS state.
 
         Args:
@@ -303,6 +320,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+        if update.effective_chat is None:
+            raise ValueError("No effective chat.")
 
         # wrong state?
         if context.user_data["state"] != TelegramUserState.EXEC_PARAMS:
@@ -383,7 +402,7 @@ class Telegram(Module):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     async def _call_method(
-        self, context: CallbackContext, chat_id: int, call_id: int, method: str, params: List[Any]
+        self, context: CallbackContext[Any, Any, Any, Any], chat_id: int, call_id: int, method: str, params: List[Any]
     ) -> None:
         """
 
@@ -416,7 +435,7 @@ class Telegram(Module):
         # send reply
         await context.bot.send_message(chat_id=chat_id, text=message)
 
-    async def _process_message(self, update: Update, context: CallbackContext) -> None:
+    async def _process_message(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle normal text messages, e.g. for login or method parameters.
 
         Args:
@@ -426,6 +445,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+        if update.message is None or update.effective_chat is None or update.message.from_user is None:
+            raise ValueError("Invalid message.")
 
         # what state is user in?
         if context.user_data["state"] == TelegramUserState.AUTH:
@@ -443,13 +464,15 @@ class Telegram(Module):
             # we're expecting params, so handle them
             self._handle_params(update, context)
 
-    async def _command_modules(self, update: Update, context: CallbackContext) -> None:
+    async def _command_modules(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle /modules command that shows list of modules.
 
         Args:
             update: Message to process.
             context: Telegram context.
         """
+        if update.message is None or update.effective_chat is None or update.message.from_user is None:
+            raise ValueError("Invalid message.")
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
@@ -460,7 +483,7 @@ class Telegram(Module):
         message = "Available modules:\n" + "\n".join(["- " + c for c in self.comm.clients])
         await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
-    async def _command_loglevel(self, update: Update, context: CallbackContext) -> None:
+    async def _command_loglevel(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
         """Handle /loglevel command that sets the log level
 
         Args:
@@ -470,6 +493,8 @@ class Telegram(Module):
 
         if context.user_data is None:
             raise ValueError("No user data in context.")
+        if update.message is None or update.effective_chat is None or update.message.from_user is None:
+            raise ValueError("Invalid message.")
 
         # not logged in?
         if not self._is_user_authorized(context, update.message.from_user.id):
@@ -511,7 +536,7 @@ class Telegram(Module):
         # get storage
         if self._application is None:
             raise ValueError("No update initialised.")
-        s = self._application.bot_data["storage"]  # type: ignore
+        s = self._application.bot_data["storage"]
 
         # loop users
         for user_id, user in s["users"].items():

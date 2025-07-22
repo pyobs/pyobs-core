@@ -481,7 +481,7 @@ class Object:
     def add_child_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
-        object_class: None,
+        object_class: Literal[None],
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> Any: ...

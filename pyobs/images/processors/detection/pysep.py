@@ -139,7 +139,7 @@ class SepSourceDetection(SourceDetection):
         try:
             background = sep.Background(continuous_data, mask=mask, bw=32, bh=32, fw=3, fh=3)
         except ValueError:
-            d = continuous_data.byteswap(True).newbyteorder()
+            d = continuous_data.view(continuous_data.dtype.newbyteorder()).byteswap()
             background = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
 
         background.subfrom(continuous_data)

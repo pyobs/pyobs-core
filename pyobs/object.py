@@ -51,15 +51,15 @@ def get_object(
 
 @overload
 def get_object(
-    config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass], object_class: None = None, **kwargs: Any
-) -> ObjectClass | Any | None: ...
+    config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass], object_class: Literal[None], **kwargs: Any
+) -> ObjectClass | Any: ...
 
 
 def get_object(
     config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
     object_class: type[ObjectClass] | None = None,
     **kwargs: Any,
-) -> ObjectClass | Any | None:
+) -> ObjectClass | Any:
     """Creates object from config or returns object directly, both optionally after check of type.
 
     Args:
@@ -344,17 +344,30 @@ class Object:
 
     @overload
     def get_object(
-        self, config_or_object: type[ObjectClass], object_class: None = None, copy_comm: bool = True, **kwargs: Any
+        self,
+        config_or_object: dict[str, Any],
+        object_class: Literal[None],
+        copy_comm: bool = True,
+        **kwargs: Any,
+    ) -> ObjectClass | Any: ...
+
+    @overload
+    def get_object(
+        self,
+        config_or_object: ObjectClass | type[ObjectClass],
+        object_class: Literal[None],
+        copy_comm: bool = True,
+        **kwargs: Any,
     ) -> ObjectClass: ...
 
     @overload
     def get_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: None,
+        object_class: type[ObjectClass] | None = None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass: ...
+    ) -> ObjectClass | Any: ...
 
     def get_object(
         self,
@@ -362,7 +375,7 @@ class Object:
         object_class: type[ObjectClass] | None = None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass | Any | None:
+    ) -> ObjectClass | Any:
         """Creates object from config or returns object directly, both optionally after check of type.
 
         Args:
@@ -450,16 +463,6 @@ class Object:
         object_class: type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass: ...
-
-    @overload
-    def add_child_object(
-        self, config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any, **kwargs: Any
-    ) -> ObjectClass: ...
-
-    @overload
-    def add_child_object(
-        self, config_or_object: type[ObjectClass], object_class: Literal[None], copy_comm: bool = True, **kwargs: Any
     ) -> ObjectClass: ...
 
     @overload

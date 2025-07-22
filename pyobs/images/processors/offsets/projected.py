@@ -108,7 +108,7 @@ class ProjectedOffsets(Offsets):
         w2 = float(len(x)) / sbin
         for i in range(sbin):
             # sort data in range
-            bindata = list(reversed(sorted(data[int(w1) : int(w2)])))
+            bindata = list(reversed(sorted(data[int(w1) : int(w2)].tolist())))
             # calculate median and set wavelength
             bins[i] = np.median(bindata[int(-frac * len(bindata)) : -1])
             binxs[i] = np.mean(x[int(w1) : int(w2)])

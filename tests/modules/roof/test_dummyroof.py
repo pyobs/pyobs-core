@@ -28,7 +28,7 @@ async def test_init(mocker) -> None:
 
     roof = DummyRoof()
     roof._change_motion_status = AsyncMock()
-    roof.comm.send_event = Mock()
+    roof.comm.send_event = AsyncMock()
 
     await roof.init()
 
@@ -44,7 +44,7 @@ async def test_park(mocker) -> None:
     roof._open_percentage = 100
 
     roof._change_motion_status = AsyncMock()
-    roof.comm.send_event = Mock()
+    roof.comm.send_event = AsyncMock()
 
     await roof.park()
 

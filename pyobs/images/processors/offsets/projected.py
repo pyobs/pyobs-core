@@ -162,7 +162,7 @@ class ProjectedOffsets(Offsets):
     @staticmethod
     def _gaussian_fit(pars: list[float], y: npt.NDArray[np.floating[Any]], x: npt.NDArray[np.floating[Any]]) -> float:
         err = y - ProjectedOffsets._gaussian(pars, x)
-        return (err * err).sum()
+        return float((err * err).sum())
 
     @staticmethod
     def _gaussian(pars: list[float], x: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:

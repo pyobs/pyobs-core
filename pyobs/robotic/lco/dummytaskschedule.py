@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Dict, Optional, Any, cast
+from typing import List, Dict, Optional, Any, cast, TypedDict
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -13,7 +13,59 @@ from .taskschedule import LcoTaskSchedule
 log = logging.getLogger(__name__)
 
 
-REQUEST = {
+class InstrumentConfig(TypedDict):
+    optical_elements: dict[str, Any]
+    mode: str
+    exposure_time: float
+    exposure_count: int
+    bin_x: int
+    bin_y: int
+
+
+class AcquisitionConfig(TypedDict):
+    mode: str
+
+
+class GuidingConfig(TypedDict):
+    mode: str
+
+
+class Target(TypedDict):
+    type: str
+    name: str
+    ra: float
+    dec: float
+
+
+class Configuration(TypedDict):
+    constraints: dict[str, float]
+    instrument_configs: list[InstrumentConfig]
+    acquisition_config: AcquisitionConfig
+    guiding_config: GuidingConfig
+    target: Target
+    instrument_type: str
+    type: str
+    priority: int
+    configuration_status: dict[str, Any]
+
+
+class Request(TypedDict):
+    id: int
+    configurations: list[Configuration]
+    windows: list[str]
+    duration: float | int
+    acceptability_threshold: float
+
+
+class RequestGroup(TypedDict):
+    name: str
+    observation_type: str
+    request: Request
+    start: str | None
+    end: str | None
+
+
+REQUEST: RequestGroup = {
     "name": "Test",
     "observation_type": "NORMAL",
     "request": {
@@ -53,6 +105,8 @@ REQUEST = {
         "duration": 10,
         "acceptability_threshold": 90.0,
     },
+    "start": None,
+    "end": None,
 }
 
 

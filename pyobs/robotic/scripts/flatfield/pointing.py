@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, Optional, Union, TYPE_CHECKING, Dict
+from typing import Any, TYPE_CHECKING
 
 from pyobs.interfaces import ITelescope
 from pyobs.robotic.scripts import Script
@@ -17,8 +17,8 @@ class Pointing(Script):
 
     def __init__(
         self,
-        telescope: Union[str, ITelescope],
-        pointing: Union[Dict[str, Any], SkyFlatsBasePointing],
+        telescope: str | ITelescope,
+        pointing: dict[str, Any] | SkyFlatsBasePointing,
         **kwargs: Any,
     ):
         """Init a new Pointing script.
@@ -55,9 +55,9 @@ class Pointing(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
         Raises:

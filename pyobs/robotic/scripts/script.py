@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TypeVar, Optional, List, Dict, TYPE_CHECKING
+from typing import Any, TypeVar, TYPE_CHECKING
 
 from pyobs.object import Object
 
@@ -14,7 +14,7 @@ ProxyClass = TypeVar("ProxyClass")
 
 
 class Script(Object):
-    def __init__(self, configuration: Optional[Any] = None, **kwargs: Any):
+    def __init__(self, configuration: dict[str, Any] | None = None, **kwargs: Any):
         """Init Script.
 
         Args:
@@ -33,9 +33,9 @@ class Script(Object):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
 
@@ -44,7 +44,7 @@ class Script(Object):
         """
         raise NotImplementedError
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Any]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.
 
         Args:

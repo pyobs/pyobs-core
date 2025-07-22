@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pyobs.interfaces.IMode import IMode
 from pyobs.robotic.scripts import Script
@@ -51,9 +51,9 @@ class SelectorScript(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
         Raises:

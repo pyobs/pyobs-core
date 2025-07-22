@@ -1,6 +1,7 @@
 import logging
-from typing import Any, Tuple
+from typing import Any, cast, overload
 import numpy as np
+import numpy.typing as npt
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
@@ -13,8 +14,8 @@ log = logging.getLogger(__name__)
 class Ring:
     def __init__(
         self,
-        full_image_data: np.ndarray[tuple[int], np.dtype[np.number]],
-        fibre_position: Tuple[float, float],
+        full_image_data: npt.NDArray[np.floating[Any]],
+        fibre_position: tuple[float, float],
         inner_radius: float,
         outer_radius: float,
         max_relative_sigma: float = 0.1,
@@ -31,6 +32,7 @@ class Ring:
         self._section_angular_shift = section_angular_shift
         self._apply_ring_mask()
         self._load_sections()
+        self.brightest_section_index = 0
         self._calculate_brightest_section_index()
 
     def _apply_ring_mask(self) -> None:
@@ -45,23 +47,33 @@ class Ring:
         self.data = np.where(ring == 0, np.nan, ring)
 
     def is_uniform(self) -> bool:
-        return np.nanstd(self.data) < np.nanmedian(self.data) * self._max_relative_sigma
+        return bool(np.nanstd(self.data) < float(np.nanmedian(self.data)) * self._max_relative_sigma)
 
-    def get_angle_from_position(self, x_coordinate: float, y_coordinate: float) -> float:
+    @overload
+    def get_angle_from_position(self, x_coordinate: float, y_coordinate: float) -> float: ...
+
+    @overload
+    def get_angle_from_position(
+        self, x_coordinate: npt.NDArray[np.floating[Any]], y_coordinate: npt.NDArray[np.floating[Any]]
+    ) -> npt.NDArray[np.floating[Any]]: ...
+
+    def get_angle_from_position(
+        self, x_coordinate: float | npt.NDArray[np.floating[Any]], y_coordinate: float | npt.NDArray[np.floating[Any]]
+    ) -> float | npt.NDArray[np.floating[Any]]:
         x_fibre, y_fibre = self._fibre_position
         delta_x, delta_y = x_coordinate - x_fibre, y_coordinate - y_fibre
         angle = np.arctan2(delta_y, delta_x) * 180 / np.pi + 90
         angle = np.where(angle < 0, angle + 360, angle)
         return np.where(angle > 360, angle - 360, angle)
 
-    def get_brightest_point(self) -> Tuple[int, int]:
+    def get_brightest_point(self) -> tuple[int, int]:
         index_brightest_point = np.nanargmax(self.data)
-        return np.unravel_index(index_brightest_point, self.data.shape)
+        return cast(tuple[int, int], np.unravel_index(index_brightest_point, self.data.shape))
 
-    def _get_section_angles(self) -> np.ndarray[tuple[int], np.dtype[np.number]]:
-        return np.arange(0, 360, self._section_angular_shift)
+    def _get_section_angles(self) -> npt.NDArray[np.float32]:
+        return np.arange(0, 360, self._section_angular_shift, dtype=float)
 
-    def _apply_section_mask(self, min_angle: float, max_angle: float) -> np.ndarray[tuple[int], np.dtype[np.number]]:
+    def _apply_section_mask(self, min_angle: float, max_angle: float) -> npt.NDArray[np.floating[Any]]:
         ny, nx = self.data.shape
         x, y = np.arange(0, nx), np.arange(0, ny)
         x_coordinates, y_coordinates = np.meshgrid(x, y)
@@ -76,17 +88,17 @@ class Ring:
     def _load_sections(self) -> None:
         section_list = []
         for section_start in self._get_section_angles():
-            section = self._apply_section_mask(section_start, section_start + self._section_angular_width)
+            section = self._apply_section_mask(float(section_start), float(section_start) + self._section_angular_width)
             section_list.append(section)
         self.sections = section_list
 
     def _calculate_brightest_section_index(self) -> None:
         section_mean_counts = [np.nanmean(section.ravel()) for section in self.sections]
-        self.brightest_section_index = np.argmax(section_mean_counts)
+        self.brightest_section_index = int(np.argmax(section_mean_counts))
 
     def get_brightest_section_angle(self) -> float:
         section_angles = self._get_section_angles()
-        return section_angles[self.brightest_section_index] + self._section_angular_width / 2
+        return float(section_angles[self.brightest_section_index] + self._section_angular_width / 2)
 
     def _get_opposite_section_index(self, index_section: int) -> int:
         number_of_sections = len(self._get_section_angles())
@@ -99,7 +111,7 @@ class Ring:
         index_opposite_section = self._get_opposite_section_index(index_section)
         counts_section = np.nanmean(self.sections[index_section])
         counts_opposite_section = np.nanmean(self.sections[index_opposite_section])
-        return (counts_section - counts_opposite_section) / counts_section
+        return float((counts_section - counts_opposite_section) / counts_section)
 
 
 class SpilledLightGuiding(Offsets):
@@ -109,7 +121,7 @@ class SpilledLightGuiding(Offsets):
 
     def __init__(
         self,
-        fibers: IMultiFiber,
+        fibers: str,
         radius_ratio: float = 2,
         max_relative_sigma: float = 0.1,
         section_angular_width: float = 36,
@@ -128,7 +140,7 @@ class SpilledLightGuiding(Offsets):
         Offsets.__init__(self, **kwargs)
 
         self._fibers = fibers
-        self._fibre_position: Any[Tuple[float, float], None] = None
+        self._fibre_position: Any[tuple[float, float], None] = None
         self._inner_radius: Any[float, None] = None
         self._radius_ratio = radius_ratio
         self._max_relative_sigma = max_relative_sigma
@@ -166,24 +178,22 @@ class SpilledLightGuiding(Offsets):
         )
         if self.ring.is_uniform():
             log.info("Ring is uniform, no offset applied.")
-            pixel_offset = (0, 0)
+            pixel_offset = (0.0, 0.0)
         else:
             pixel_offset = await self._get_offset()
         image.set_meta(PixelOffsets(*pixel_offset))
         return image
 
     async def _load_fibre_information(self) -> None:
-        self._fibers = await self.comm.safe_proxy(self._fibers, IMultiFiber)
-        self._fibre_position = await self._fibers.get_pixel_position()
-        self._inner_radius = await self._fibers.get_radius()
+        fibers = await self.comm.proxy(self._fibers, IMultiFiber)
+        self._fibre_position = await fibers.get_pixel_position()
+        self._inner_radius = await fibers.get_radius()
 
     async def _correct_for_binning(self, binning: int) -> None:
         self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)
         self._inner_radius /= binning
 
-    async def _get_trimmed_image(
-        self, image_data: np.ndarray[tuple[int], np.dtype[np.number]]
-    ) -> np.ndarray[tuple[int], np.dtype[np.number]]:
+    async def _get_trimmed_image(self, image_data: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:
         xmin, xmax, ymin, ymax = await self._get_trim_limits()
         return image_data[xmin:xmax, ymin:ymax]
 
@@ -191,7 +201,7 @@ class SpilledLightGuiding(Offsets):
         xmin, xmax, ymin, ymax = await self._get_trim_limits()
         self._fibre_position = (self._fibre_position[1] - xmin, self._fibre_position[0] - ymin)
 
-    async def _get_trim_limits(self) -> Tuple[int, int, int, int]:
+    async def _get_trim_limits(self) -> tuple[int, int, int, int]:
         xmin = self._fibre_position[1] - self._radius_ratio * self._inner_radius
         xmax = self._fibre_position[1] + self._radius_ratio * self._inner_radius
         ymin = self._fibre_position[0] - self._radius_ratio * self._inner_radius
@@ -209,10 +219,12 @@ class SpilledLightGuiding(Offsets):
         if method == "brightest_point":
             y_brightest_point, x_brightest_point = self.ring.get_brightest_point()
             return self.ring.get_angle_from_position(x_brightest_point, y_brightest_point)
-        if method == "brightest_section":
+        elif method == "brightest_section":
             return self.ring.get_brightest_section_angle()
+        else:
+            raise ValueError(f"Unknown method {method}")
 
-    async def _get_offset(self) -> Tuple[float, float]:
+    async def _get_offset(self) -> tuple[float, float]:
         angle_direction = await self._get_brightest_direction()
         log.info("Angle of the brightest section: %s deg", angle_direction)
         await self._calculate_relative_shift()

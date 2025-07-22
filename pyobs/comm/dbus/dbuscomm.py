@@ -1,3 +1,4 @@
+# type: ignore
 from __future__ import annotations
 
 # patch dbus-next to provide sender name

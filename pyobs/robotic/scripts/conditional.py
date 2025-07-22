@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -19,8 +19,8 @@ class ConditionalRunner(Script):
     def __init__(
         self,
         condition: str,
-        true: Dict[str, Any],
-        false: Optional[Dict[str, Any]] = None,
+        true: dict[str, Any],
+        false: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """Initialize a new ConditionalRunner.
@@ -35,15 +35,15 @@ class ConditionalRunner(Script):
         self.true = true
         self.false = false
 
-    def __get_script(self) -> Optional[Script]:
+    def __get_script(self) -> Script | None:
         # evaluate condition
         ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
 
         # run scripts
         if ret:
-            return self.get_object(self.true, Script)
+            return self.get_safe_object(self.true, Script)
         elif self.false is not None:
-            return self.get_object(self.false, Script)
+            return self.get_safe_object(self.false, Script)
         else:
             return None
 

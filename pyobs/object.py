@@ -50,8 +50,20 @@ def get_object(
 
 
 @overload
+def get_object(config_or_object: dict[str, Any], object_class: Literal[None], **kwargs: Any) -> Any: ...
+
+
+@overload
 def get_object(
-    config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass], object_class: Literal[None], **kwargs: Any
+    config_or_object: ObjectClass | type[ObjectClass], object_class: Literal[None], **kwargs: Any
+) -> ObjectClass: ...
+
+
+@overload
+def get_object(
+    config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
+    object_class: type[ObjectClass] | None = None,
+    **kwargs: Any,
 ) -> ObjectClass | Any: ...
 
 

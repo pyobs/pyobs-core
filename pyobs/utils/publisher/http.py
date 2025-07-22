@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import threading
+from typing import Any
 
 import pandas as pd
 import logging
@@ -19,7 +20,11 @@ class LatestJsonHandler(tornado.web.RequestHandler):
     """Latest data as JSON."""
 
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> None:
+        # app
+        if not isinstance(self.application, HttpPublisher):
+            return
+
         # set header
         self.set_header("content-type", "application/json")
 
@@ -41,7 +46,11 @@ class HistoryCsvHandler(tornado.web.RequestHandler):
     """History as CSV."""
 
     @tornado.gen.coroutine
-    def get(self):
+    def get(self) -> None:
+        # app
+        if not isinstance(self.application, HttpPublisher):
+            return
+
         # set header
         self.set_header("content-type", "text/csv")
 
@@ -53,7 +62,7 @@ class HistoryCsvHandler(tornado.web.RequestHandler):
 
 
 class HttpPublisher(Publisher, tornado.web.Application):
-    def __init__(self, port: int = 37077, keep: int = 10, **kwargs):
+    def __init__(self, port: int = 37077, keep: int = 10, **kwargs: Any):
         """Initialize new CSV publisher.
 
         Args:
@@ -71,25 +80,26 @@ class HttpPublisher(Publisher, tornado.web.Application):
         )
 
         # store stuff
-        self._io_loop = None
+        self._io_loop: tornado.ioloop.IOLoop | None = None
         self._lock = threading.RLock()
         self._port = port
         self._keep = keep
         self._data = pd.DataFrame()
 
-    def close(self):
+    async def close(self) -> None:
         """Close server."""
 
         # close io loop and parent
-        self._io_loop.add_callback(self._io_loop.stop)
-        Publisher.close(self)
+        if self._io_loop is not None:
+            self._io_loop.add_callback(self._io_loop.stop)
+        await Publisher.close(self)
 
     @property
-    def data(self):
+    def data(self) -> pd.DataFrame:
         with self._lock:
             return self._data.copy()
 
-    def _http(self):
+    def _http(self) -> None:
         """Thread function for the web server."""
 
         # create io loop
@@ -104,7 +114,7 @@ class HttpPublisher(Publisher, tornado.web.Application):
         # start the io loop
         self._io_loop.start()
 
-    def __call__(self, **kwargs):
+    async def __call__(self, **kwargs: Any) -> None:
         """Publish the given results.
 
         Args:

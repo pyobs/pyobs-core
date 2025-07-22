@@ -1,8 +1,7 @@
 import glob
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
 import logging
-
 import pandas as pd
 from astropy.io import fits
 
@@ -24,12 +23,12 @@ class LocalArchive(Archive):
         self._data = pd.DataFrame()
         self._update_root()
 
-    def _update_root(self):
+    def _update_root(self) -> None:
         """Update files in root directory."""
 
         # init lists
         filenames = sorted(glob.glob(str(self._root / "*.fits")))
-        columns = {
+        columns: dict[str, Any] = {
             h: []
             for h in [
                 "date-obs",
@@ -66,16 +65,16 @@ class LocalArchive(Archive):
 
     def _filter_data(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
     ) -> pd.DataFrame:
         """Filter data"""
 
@@ -105,17 +104,17 @@ class LocalArchive(Archive):
 
     async def list_options(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> Dict[str, List[Any]]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> dict[str, list[Any]]:
         """Returns a list of options restricted to the given parameters.
 
         Args:
@@ -141,27 +140,27 @@ class LocalArchive(Archive):
 
         # return results
         return {
-            "binnings": data["binning"].unique(),
-            "filters": data["filter"].unique(),
-            "imagetypes": data["image_type"].unique(),
-            "instruments": data["instrument"].unique(),
-            "sites": data["site"].unique(),
-            "telescopes": data["telescope"].unique(),
+            "binnings": list(data["binning"].unique()),
+            "filters": list(data["filter"].unique()),
+            "imagetypes": list(data["image_type"].unique()),
+            "instruments": list(data["instrument"].unique()),
+            "sites": list(data["site"].unique()),
+            "telescopes": list(data["telescope"].unique()),
         }
 
     async def list_frames(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> List[FrameInfo]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> list[FrameInfo]:
         """Returns a list of frames restricted to the given parameters.
 
         Args:
@@ -186,7 +185,7 @@ class LocalArchive(Archive):
         )
 
         # create list of FrameInfos
-        infos: List[FrameInfo] = []
+        infos: list[FrameInfo] = []
         for _, row in data.iterrows():
             info = FrameInfo()
             info.id = row["filename"]
@@ -197,7 +196,7 @@ class LocalArchive(Archive):
             infos.append(info)
         return infos
 
-    async def download_frames(self, frames: List[FrameInfo]) -> List[Image]:
+    async def download_frames(self, frames: list[FrameInfo]) -> list[Image]:
         """Download given frames.
 
         Args:
@@ -208,12 +207,13 @@ class LocalArchive(Archive):
         """
 
         # load frames
-        images = []
+        images: list[Image] = []
         for frame in frames:
-            images.append(Image.from_file(frame.filename))
+            if frame.filename is not None:
+                images.append(Image.from_file(frame.filename))
         return images
 
-    async def download_headers(self, infos: List[FrameInfo]) -> List[Dict[str, Any]]:
+    async def download_headers(self, infos: list[FrameInfo]) -> list[dict[str, Any]]:
         """Download given headers.
 
         Args:
@@ -229,7 +229,7 @@ class LocalArchive(Archive):
             headers.append({k: v for k, v in fits.getheader(frame.filename).items()})
         return headers
 
-    async def upload_frames(self, images: List[Image]) -> None:
+    async def upload_frames(self, images: list[Image]) -> None:
         pass
 
 

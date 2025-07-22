@@ -1,5 +1,5 @@
 import io
-from typing import List, Dict, Any, Optional, cast
+from typing import Any, TypedDict, cast
 import aiohttp
 import urllib.parse
 import logging
@@ -12,10 +12,19 @@ from pyobs.utils.enums import ImageType
 log = logging.getLogger(__name__)
 
 
+class PyobsArchiveFrameInfoDict(TypedDict):
+    id: int
+    basename: str
+    DATE_OBS: str
+    FILTER: str
+    binning: str
+    url: str
+
+
 class PyobsArchiveFrameInfo(FrameInfo):
     """Frame info for pyobs archive."""
 
-    def __init__(self, info: Dict[str, str]):
+    def __init__(self, info: PyobsArchiveFrameInfoDict):
         FrameInfo.__init__(self)
         self.info = info
         self.id = self.info["id"]
@@ -31,24 +40,24 @@ class PyobsArchive(Archive):
 
     __module__ = "pyobs.utils.archive"
 
-    def __init__(self, url: str, token: str, proxies: Optional[Dict[str, str]] = None, **kwargs: Any):
+    def __init__(self, url: str, token: str, proxies: dict[str, str] | None = None, **kwargs: Any):
         self._url = url
         self._headers = {"Authorization": "Token " + token}
         self._proxies = proxies
 
     async def list_options(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> Dict[str, List[Any]]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> dict[str, list[Any]]:
         # build URL
         url = urllib.parse.urljoin(self._url, "frames/aggregate/")
 
@@ -64,21 +73,21 @@ class PyobsArchive(Archive):
                     raise ValueError("Could not query frames: %s" % str(await response.text()))
 
                 # create frames and return them
-                return await response.json()
+                return cast(dict[str, list[Any]], await response.json())
 
     async def list_frames(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> List[FrameInfo]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> list[FrameInfo]:
         # build URL
         url = urllib.parse.urljoin(self._url, "frames/")
 
@@ -88,7 +97,7 @@ class PyobsArchive(Archive):
         )
 
         # init list
-        frames = []
+        frames: list[FrameInfo] = []
 
         # set offset and limit
         params["offset"] = 0
@@ -112,26 +121,26 @@ class PyobsArchive(Archive):
 
                     # got all?
                     if len(frames) >= res["count"]:
-                        return cast(List[FrameInfo], frames)
+                        return frames
 
                     # get next chunk
                     params["offset"] += len(new_frames)
 
     @staticmethod
     def _build_query(
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> dict[str, Any]:
         # build params
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if start is not None:
             params["start"] = start.isot
         if end is not None:
@@ -154,7 +163,7 @@ class PyobsArchive(Archive):
             params["RLEVEL"] = rlevel
         return params
 
-    async def download_frames(self, infos: List[FrameInfo]) -> List[Image]:
+    async def download_frames(self, infos: list[FrameInfo]) -> list[Image]:
         # loop infos
         images = []
         for info in infos:
@@ -180,7 +189,7 @@ class PyobsArchive(Archive):
         # return all
         return images
 
-    async def download_headers(self, infos: List[PyobsArchiveFrameInfo]) -> List[Dict[str, Any]]:
+    async def download_headers(self, infos: list[PyobsArchiveFrameInfo]) -> list[dict[str, Any]]:
         # loop infos
         headers = []
         for info in infos:
@@ -201,7 +210,7 @@ class PyobsArchive(Archive):
         # return all
         return headers
 
-    async def upload_frames(self, images: List[Image]) -> None:
+    async def upload_frames(self, images: list[Image]) -> None:
         # build URL
         url = urllib.parse.urljoin(self._url, "frames/create/")
 

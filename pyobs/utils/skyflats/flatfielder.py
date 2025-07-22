@@ -15,7 +15,16 @@ from pyobs.utils.parallel import Future, event_wait
 from pyobs.utils.time import Time
 from .exptimeeval import ExpTimeEval
 from .pointing import SkyFlatsBasePointing
-from pyobs.interfaces import ITelescope, ICamera, IFilters, IExposureTime, IBinning, IWindow, IImageType
+from pyobs.interfaces import (
+    ITelescope,
+    ICamera,
+    IFilters,
+    IExposureTime,
+    IBinning,
+    IWindow,
+    IImageType,
+    IPointingAltAz,
+)
 from pyobs.images import Image
 
 log = logging.getLogger(__name__)
@@ -238,15 +247,18 @@ class FlatFielder(Object):
             await camera.set_binning(*self._cur_binning)
 
         # get bias level
-        self._bias_level = await self._get_bias(camera)
+        self._bias_level = await self._get_bias(camera) if isinstance(camera, ICamera) else 0.0
 
         # move telescope
-        future_track = self._pointing(telescope) if self._pointing is not None else None
+        future_track = (
+            self._pointing(telescope) if self._pointing is not None and isinstance(telescope, IPointingAltAz) else None
+        )
 
         # get filter from first step and set it
+        future_filter: asyncio.Task[Any] | Future
         if filters is not None and self._cur_filter is not None:
             log.info("Setting filter to %s...", self._cur_filter)
-            future_filter = await filters.set_filter(self._cur_filter)
+            future_filter = asyncio.create_task(filters.set_filter(self._cur_filter))
         else:
             future_filter = Future(empty=True)
 
@@ -497,7 +509,7 @@ class FlatFielder(Object):
         await self._set_window(camera, testing=False)
 
         # move telescope
-        if self._pointing is not None:
+        if self._pointing is not None and isinstance(telescope, IPointingAltAz):
             await self._pointing(telescope)
 
         # do exposures, do not broadcast while testing

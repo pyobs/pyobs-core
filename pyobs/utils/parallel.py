@@ -28,7 +28,7 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
         return False
 
 
-class Future(asyncio.Future):
+class Future(asyncio.Future[Any]):
     def __init__(
         self,
         empty: bool = False,

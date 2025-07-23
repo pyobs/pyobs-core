@@ -6,7 +6,7 @@ on:
       - '*.py'
 
 jobs:
-  mypy:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -20,6 +20,9 @@ jobs:
 
       - name: Install packages
         run: uv sync --all-extras --dev
+
+      - name: Run flake8
+        run: uv run flake8 pyobs/
 
       - name: Run mypy
         run: uv run mypy pyobs/

@@ -1,11 +1,10 @@
-import pyobs.comm
-
 from typing import Optional, List, Type, Dict, Any, Callable, Coroutine
 
 from pyobs.comm import Comm
 from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_response_to_real
+from .localnetwork import LocalNetwork
 
 
 class LocalComm(Comm):
@@ -13,7 +12,7 @@ class LocalComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
         self._name = name
-        self._network = pyobs.comm.local.LocalNetwork()
+        self._network = LocalNetwork()
         self._network.connect_client(self)
 
     @property

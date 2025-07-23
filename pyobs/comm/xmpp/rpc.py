@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 import inspect
 import logging
-from typing import Dict, Optional, Any, Callable, Tuple, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 import slixmpp.exceptions
 
 from pyobs.modules import Module
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 class RPC(object):
     """RPC wrapper around XEP0009."""
 
-    def __init__(self, comm: XmppComm, client: slixmpp.ClientXMPP, handler: Optional[Module] = None):
+    def __init__(self, comm: XmppComm, client: slixmpp.ClientXMPP, handler: Module | None = None):
         """Create a new RPC wrapper.
 
         Args:
@@ -31,9 +31,9 @@ class RPC(object):
         # store
         self._comm = comm
         self._client = client
-        self._futures: Dict[str, Future] = {}
+        self._futures: dict[str, Future] = {}
         self._handler = handler
-        self._methods: Dict[str, Tuple[Callable[[], Any], inspect.Signature], Dict[Any, Any]] = {}
+        self._methods: dict[str, tuple[Callable[..., Any], inspect.Signature, dict[Any, Any]]] = {}
 
         # set up callbacks
         client.add_event_handler("jabber_rpc_method_call", self._on_jabber_rpc_method_call)
@@ -45,7 +45,7 @@ class RPC(object):
         # register handler
         self.set_handler(handler)
 
-    def set_handler(self, handler: Optional[Module] = None) -> None:
+    def set_handler(self, handler: Module | None = None) -> None:
         """Set the handler for remote procedure calls to this client.
 
         Args:
@@ -58,7 +58,7 @@ class RPC(object):
         # update methods
         self._methods = copy.copy(handler.methods) if handler else {}
 
-    async def call(self, target_jid: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def call(self, target_jid: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Call a method on a remote host.
 
         Args:
@@ -72,7 +72,7 @@ class RPC(object):
         """
 
         # create the method call
-        iq = self._client.plugin["xep_0009"].make_iq_method_call(target_jid, method, py2xml(*args))
+        iq = self._client.plugin["xep_0009"].make_iq_method_call(target_jid, method, py2xml(*args))  # type: ignore
 
         # create a future for this
         pid = iq["id"]
@@ -120,7 +120,7 @@ class RPC(object):
                 timeout = await getattr(method, "timeout")(self._handler, **ba.arguments)
                 if timeout:
                     # yes, send it!
-                    response = self._client.plugin["xep_0009_timeout"].make_iq_method_timeout(
+                    response = self._client.plugin["xep_0009_timeout"].make_iq_method_timeout(  # type: ignore
                         iq["id"], iq["from"], int(timeout)
                     )
                     response.send()
@@ -130,7 +130,7 @@ class RPC(object):
             return_value = () if return_value is None else (return_value,)
 
             # send response
-            self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()
+            self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()  # type: ignore
 
         # except InvocationException as ie:
         #    # could not invoke method

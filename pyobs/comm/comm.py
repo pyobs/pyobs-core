@@ -42,8 +42,10 @@ class Comm:
         logging.getLogger().addHandler(handler)
 
     @property
-    def module(self) -> Optional[Module]:
+    def module(self) -> Module:
         """The module that this Comm object is attached to."""
+        if self._module is None:
+            raise ValueError("No module.")
         return self._module
 
     @module.setter

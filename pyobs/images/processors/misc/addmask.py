@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, cast
 import logging
 import numpy as np
 import numpy.typing as npt
@@ -16,9 +16,7 @@ class AddMask(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(
-        self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]], **kwargs: Any
-    ):
+    def __init__(self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]], **kwargs: Any):
         """Init an image processor that adds a mask to an image.
 
         Args:
@@ -30,16 +28,12 @@ class AddMask(ImageProcessor):
         self._masks: dict[str, dict[str, npt.NDArray[np.floating[Any]]]] = {}
         self._build_instrument_dictionary(masks)
 
-    def _build_instrument_dictionary(
-        self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]]
-    ) -> None:
+    def _build_instrument_dictionary(self, masks: dict[str, dict[str, npt.NDArray[np.floating[Any]] | str]]) -> None:
         for instrument, binning in masks.items():
             self._masks[instrument] = {}
             self._build_binning_dictionary(instrument, binning)
 
-    def _build_binning_dictionary(
-        self, instrument: str, masks: Dict[str, npt.NDArray[np.floating[Any]] | str]
-    ) -> None:
+    def _build_binning_dictionary(self, instrument: str, masks: Dict[str, npt.NDArray[np.floating[Any]] | str]) -> None:
         for binning, mask in masks.items():
             if isinstance(mask, np.ndarray):
                 self._masks[instrument][binning] = mask
@@ -52,7 +46,7 @@ class AddMask(ImageProcessor):
         instrument = image.header["INSTRUME"]
         binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
 
-        return self._masks[instrument][binning].copy()
+        return cast(npt.NDArray[np.floating[Any]], self._masks[instrument][binning].copy())
 
     async def __call__(self, image: Image) -> Image:
         """Add mask to image.

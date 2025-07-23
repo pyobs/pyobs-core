@@ -151,7 +151,7 @@ class ProjectedOffsets(Offsets):
         guesses = [np.max(y), mean, variance]
 
         # perform fit
-        result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)
+        result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)  # type: ignore
 
         # sanity check and finish up
         shift = float(result[1])
@@ -169,7 +169,7 @@ class ProjectedOffsets(Offsets):
         a = pars[0]
         x0 = pars[1]
         sigma = pars[2]
-        return a * np.exp(-((x - x0) ** 2) / (2.0 * sigma**2))
+        return cast(npt.NDArray[np.floating[Any]], a * np.exp(-((x - x0) ** 2) / (2.0 * sigma**2)))
 
 
 __all__ = ["ProjectedOffsets"]

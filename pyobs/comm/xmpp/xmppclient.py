@@ -12,10 +12,10 @@ from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
 log = logging.getLogger(__name__)
 
 
-class XmppClient(slixmpp.ClientXMPP):  # type: ignore
+class XmppClient(slixmpp.ClientXMPP):
     """XMPP client for pyobs."""
 
-    def __init__(self, jid: str, password: str, **kwargs):
+    def __init__(self, jid: str, password: str, **kwargs: Any):
         """Create a new XMPP client.
 
         An XmppClient handles the actual XMPP communication for the XmppComm module.
@@ -98,7 +98,7 @@ class XmppClient(slixmpp.ClientXMPP):  # type: ignore
 
         # send presence and get roster
         self.send_presence()
-        self.get_roster()
+        self.get_roster()  # type: ignore
 
         # send connected event
         self._connect_event.set()

@@ -1,4 +1,3 @@
-# type: ignore
 from __future__ import annotations
 
 # patch dbus-next to provide sender name
@@ -49,13 +48,13 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         self._comm = comm
 
     @no_type_check_decorator
-    @dbus_next.service.method()
-    def get_interfaces(self) -> "as":  # noqa: F722
+    @dbus_next.service.method()  # type: ignore
+    def get_interfaces(self) -> "as":  # type: ignore # noqa: F722
         return self._interfaces
 
     @no_type_check_decorator
-    @dbus_next.service.method(sender_keyword="sender")
-    async def handle_event(self, event: "s", sender):  # noqa: F821
+    @dbus_next.service.method(sender_keyword="sender")  # type: ignore
+    async def handle_event(self, event: "s", sender):  # type: ignore # noqa: F821
         # convert event to dict
         try:
             d = json.loads(event.replace("'", '"'))
@@ -69,11 +68,11 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
         real_sender = await self._comm.get_dbus_owner(sender)
 
         # handle it
-        await self._comm.handle_event(ev, real_sender)
+        await self._comm.handle_event(ev, real_sender)  # type: ignore
 
     @no_type_check_decorator
-    @dbus_next.service.method()
-    def set_timeout(self, uid: "s", timeout: "d"):  # noqa: F821
+    @dbus_next.service.method()  # type: ignore
+    def set_timeout(self, uid: "s", timeout: "d"):  # type: ignore # noqa: F821
         self._comm.set_timeout(uid, timeout)
 
 
@@ -161,7 +160,7 @@ class DbusComm(Comm):
 
         # disconnect from dbus
         if self._dbus:
-            self._dbus.disconnect()
+            self._dbus.disconnect()  # type: ignore
 
     async def _update(self) -> None:
         """Periodic updates."""
@@ -177,7 +176,7 @@ class DbusComm(Comm):
             return
 
         # get all interfaces containing "pyobs"
-        x = await self._dbus_introspection.call_list_names()
+        x = await self._dbus_introspection.call_list_names()  # type: ignore
         data = list(filter(lambda d: self._domain in d, x))
 
         # get all modules: first run regexp on all entries and then cut by length of prefix
@@ -317,7 +316,7 @@ class DbusComm(Comm):
         module = obj.get_interface(interface)
 
         # get function
-        return getattr(module, f"call_{method}")
+        return getattr(module, f"call_{method}")  # type: ignore
 
     def _dbus_function_wrapper(self, method: str, sig: inspect.Signature) -> Any:
         """Function wrapper for dbus methods.
@@ -346,7 +345,7 @@ class DbusComm(Comm):
             args = args[:-1]
 
             # get method
-            func, signature, _ = self._module.methods[method]
+            func, signature, _ = self._module.methods[method]  # type: ignore
 
             # bind parameters
             ba = signature.bind(*args)
@@ -364,9 +363,9 @@ class DbusComm(Comm):
             return await self.module.execute(method, *args, sender=sender)
 
         # set signature
-        inner.__signature__ = self._build_dbus_signature(sig)
+        inner.__signature__ = self._build_dbus_signature(sig)  # type: ignore
         # TODO: Nicer way to do this?
-        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
+        inner.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(  # type: ignore
             inner, method, disabled=False, sender_keyword="sender"
         )
         return inner
@@ -389,7 +388,7 @@ class DbusComm(Comm):
         # loop all clients, get their owner, and check against bus
         for c in self.clients:
             try:
-                owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")
+                owner = await self._dbus_introspection.call_get_name_owner(f"{self._domain}.{c}")  # type: ignore
             except dbus_next.errors.DBusError:
                 break
             if owner == bus:

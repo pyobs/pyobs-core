@@ -1,7 +1,7 @@
 import asyncio
 from copy import copy
 from functools import partial
-from typing import Optional, Any
+from typing import Any
 import numpy as np
 import numpy.typing as npt
 

@@ -2,8 +2,6 @@ from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 from typing import Any, TypeVar, Generic
 
-from pyobs.images import Image
-
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")
 

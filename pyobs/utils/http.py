@@ -1,5 +1,5 @@
 # taken from: https://www.peterbe.com/plog/best-practice-with-retries-with-requests
-from typing import Iterable, Optional, Collection
+from typing import Optional, Collection
 
 import requests
 from requests.adapters import HTTPAdapter

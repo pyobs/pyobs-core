@@ -4,8 +4,7 @@ import logging
 from enum import Enum
 from inspect import Parameter
 from pprint import pprint
-from typing import Any, Optional, List
-
+from typing import Any
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, CallbackContext, Application
 
@@ -402,7 +401,7 @@ class Telegram(Module):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     async def _call_method(
-        self, context: CallbackContext[Any, Any, Any, Any], chat_id: int, call_id: int, method: str, params: List[Any]
+        self, context: CallbackContext[Any, Any, Any, Any], chat_id: int, call_id: int, method: str, params: list[Any]
     ) -> None:
         """
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, Dict, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
@@ -12,11 +12,11 @@ class FrameInfo:
     """Base class for frame infos."""
 
     def __init__(self) -> None:
-        self.id = None
-        self.filename = None
-        self.filter_name = None
-        self.binning = None
-        self.dateobs = None
+        self.id: str | int | None = None
+        self.filename: str | None = None
+        self.filter_name: str | None = None
+        self.binning: int | None = None
+        self.dateobs: str | None = None
 
 
 class Archive:
@@ -26,17 +26,17 @@ class Archive:
 
     async def list_options(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> Dict[str, List[Any]]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> dict[str, list[Any]]:
         """Returns a list of options restricted to the given parameters.
 
         Args:
@@ -58,17 +58,17 @@ class Archive:
 
     async def list_frames(
         self,
-        start: Optional[Time] = None,
-        end: Optional[Time] = None,
-        night: Optional[str] = None,
-        site: Optional[str] = None,
-        telescope: Optional[str] = None,
-        instrument: Optional[str] = None,
-        image_type: Optional[ImageType] = None,
-        binning: Optional[str] = None,
-        filter_name: Optional[str] = None,
-        rlevel: Optional[int] = None,
-    ) -> List[FrameInfo]:
+        start: Time | None = None,
+        end: Time | None = None,
+        night: str | None = None,
+        site: str | None = None,
+        telescope: str | None = None,
+        instrument: str | None = None,
+        image_type: ImageType | None = None,
+        binning: str | None = None,
+        filter_name: str | None = None,
+        rlevel: int | None = None,
+    ) -> list[FrameInfo]:
         """Returns a list of frames restricted to the given parameters.
 
         Args:
@@ -88,7 +88,7 @@ class Archive:
         """
         raise NotImplementedError
 
-    async def download_frames(self, frames: List[FrameInfo]) -> List[Image]:
+    async def download_frames(self, frames: list[FrameInfo]) -> list[Image]:
         """Download given frames.
 
         Args:
@@ -99,7 +99,7 @@ class Archive:
         """
         raise NotImplementedError
 
-    async def upload_frames(self, frames: List[Image]) -> None:
+    async def upload_frames(self, frames: list[Image]) -> None:
         raise NotImplementedError
 
 

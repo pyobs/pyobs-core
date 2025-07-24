@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 
 from pyobs.robotic.scripts import Script
 from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class LcoScript(Script):
     """Auto SCRIPT script for LCO configs."""
 
-    def __init__(self, scripts: Dict[str, Script], **kwargs: Any):
+    def __init__(self, scripts: dict[str, Script], **kwargs: Any):
         """Initialize a new LCO auto focus script.
 
         Args:
@@ -21,7 +21,7 @@ class LcoScript(Script):
         # store
         self.scripts = scripts
 
-    def _get_config_script(self, config: Dict[str, Any]) -> Script:
+    def _get_config_script(self, config: dict[str, Any]) -> Script:
         """Get config script for given configuration.
 
         Args:
@@ -57,9 +57,9 @@ class LcoScript(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
 

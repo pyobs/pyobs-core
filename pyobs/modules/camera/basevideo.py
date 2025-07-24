@@ -1,11 +1,10 @@
 from abc import ABCMeta
-from collections.abc import Coroutine
 from datetime import datetime, timezone
 import io
 import logging
 import time
 import asyncio
-from typing import Dict, Any, Tuple, NamedTuple, Optional, List
+from typing import Any, NamedTuple
 import numpy as np
 import PIL.Image
 from aiohttp import web
@@ -47,22 +46,22 @@ async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) 
 class NextImage(NamedTuple):
     date_obs: str
     image_type: ImageType
-    header_futures: Dict[str, Coroutine[Dict[str, Tuple[Any, str]], None, None]]
+    header_futures: dict[str, asyncio.Task[Any]]
     broadcast: bool
 
 
 class ImageRequest:
     def __init__(self, broadcast: bool = True):
         self.broadcast: bool = broadcast
-        self.image: Optional[Image] = None
-        self.filename: Optional[str] = None
+        self.image: Image | None = None
+        self.filename: str | None = None
 
 
 class LastImage(NamedTuple):
     data: NDArray[Any]
-    image: Optional[Image]
-    jpeg: Optional[bytes]
-    filename: Optional[str]
+    image: Image | None
+    jpeg: bytes | None
+    filename: str | None
 
 
 class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCMeta):
@@ -76,9 +75,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         interval: float = 0.5,
         video_path: str = "/webcam/video.mjpg",
         filenames: str = "/webcam/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
-        fits_namespaces: Optional[List[str]] = None,
-        fits_headers: Optional[Dict[str, Any]] = None,
-        centre: Optional[Tuple[float, float]] = None,
+        fits_namespaces: list[str] | None = None,
+        fits_headers: dict[str, Any] | None = None,
+        centre: tuple[float, float] | None = None,
         rotation: float = 0.0,
         cache_size: int = 5,
         live_view: bool = True,
@@ -126,9 +125,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._live_view = live_view
         self._image_type = ImageType.OBJECT
         self._image_request_lock = asyncio.Lock()
-        self._image_requests: List[ImageRequest] = []
-        self._next_image: Optional[NextImage] = None
-        self._last_image: Optional[LastImage] = None
+        self._image_requests: list[ImageRequest] = []
+        self._next_image: NextImage | None = None
+        self._last_image: LastImage | None = None
         self._last_time = 0.0
         self._flip = flip
         self._sleep_time = sleep_time
@@ -151,7 +150,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             ]
         )
         self._runner = web.AppRunner(self._app)
-        self._site: Optional[web.TCPSite] = None
+        self._site: web.TCPSite | None = None
 
     async def open(self) -> None:
         """Open module."""
@@ -290,7 +289,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # wait a little for next check
             await asyncio.sleep(1)
 
-    async def image_jpeg(self) -> Tuple[Optional[int], Optional[bytes]]:
+    async def image_jpeg(self) -> tuple[int | None, bytes | None]:
         """Return image as jpeg."""
 
         # activate camera, first image will most probably be None
@@ -375,7 +374,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # reset
             self._image_request = None
 
-    async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> Tuple[Image, str]:
+    async def _create_image(self, data: NDArray[Any], next_image: NextImage) -> tuple[Image, str]:
         """Create an Image object from numpy array.
 
         Args:
@@ -397,7 +396,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # finish it up
         return await self._finish_image(image, next_image.broadcast, next_image.image_type)
 
-    async def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> Tuple[Image, str]:
+    async def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> tuple[Image, str]:
         """Finish up an image at the end of _create_image.
 
         Args:

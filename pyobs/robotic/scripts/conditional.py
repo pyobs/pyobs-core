@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -19,8 +19,8 @@ class ConditionalRunner(Script):
     def __init__(
         self,
         condition: str,
-        true: Dict[str, Any],
-        false: Optional[Dict[str, Any]] = None,
+        true: dict[str, Any],
+        false: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """Initialize a new ConditionalRunner.
@@ -35,29 +35,31 @@ class ConditionalRunner(Script):
         self.true = true
         self.false = false
 
-    def __get_script(self) -> Script:
+    def __get_script(self) -> Script | None:
         # evaluate condition
         ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
 
         # run scripts
         if ret:
-            return self.get_object(self.true, Script)
+            return self.get_safe_object(self.true, Script)
+        elif self.false is not None:
+            return self.get_safe_object(self.false, Script)
         else:
-            if self.false is not None:
-                return self.get_object(self.false, Script)
+            return None
 
     async def can_run(self) -> bool:
         script = self.__get_script()
-        return await script.can_run()
+        return True if script is None else await script.can_run()
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         script = self.__get_script()
-        await script.run(task_runner, task_schedule, task_archive)
+        if script is not None:
+            await script.run(task_runner, task_schedule, task_archive)
 
 
 __all__ = ["ConditionalRunner"]

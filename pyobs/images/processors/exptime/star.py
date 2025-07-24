@@ -49,7 +49,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         """
 
         self._image = copy(image)
-        last_exp_time = image.header["EXPTIME"]
+        last_exp_time: float = image.header["EXPTIME"]
 
         if self._image.safe_catalog is None:
             log.info("No catalog found in image.")
@@ -65,24 +65,30 @@ class StarExpTimeEstimator(ExpTimeEstimator):
 
         return new_exp_time
 
-    def _calc_target_saturation(self, saturation) -> float:
+    def _calc_target_saturation(self, saturation: float) -> float:
         return saturation * self._saturated
 
     def _calc_saturation_level_or_default(self) -> float:
+        if self._image is None:
+            raise RuntimeError("No image available.")
         if "DET-SATU" in self._image.header and "DET-GAIN" in self._image.header:
-            return self._image.header["DET-SATU"] / self._image.header["DET-GAIN"]
-
+            return float(self._image.header["DET-SATU"] / self._image.header["DET-GAIN"])
         return self.SATURATION
 
-    def _filter_saturated_stars(self, max_peak: float):
+    def _filter_saturated_stars(self, max_peak: float) -> None:
+        if self._image is None:
+            raise RuntimeError("No image available.")
         self._image.catalog = self._image.catalog[self._image.catalog["peak"] <= max_peak]
 
-    def _filter_edge_stars(self):
+    def _filter_edge_stars(self) -> None:
         self._filter_edge_stars_axis(0)
         self._filter_edge_stars_axis(1)
 
-    def _filter_edge_stars_axis(self, axis: int):
-        axis_len = self._image.header[f"NAXIS{axis}"]
+    def _filter_edge_stars_axis(self, axis: int) -> None:
+        if self._image is None:
+            raise RuntimeError("No image available.")
+
+        axis_len = int(self._image.header[f"NAXIS{axis}"])
         edge_size = int(axis_len * self._edge)
 
         axis_name = ["x", "y"][axis]
@@ -91,15 +97,18 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._image.catalog = self._image.catalog[self._image.catalog[axis_name] <= axis_len - edge_size]
 
     def _find_brightest_star(self) -> Row:
+        if self._image is None:
+            raise RuntimeError("No image available.")
+
         brightest_star_index = np.argmax(self._image.catalog["peak"])
         brightest_star = self._image.catalog[brightest_star_index]
         return brightest_star
 
     @staticmethod
-    def _log_brightest_star(star: Row):
+    def _log_brightest_star(star: Row) -> None:
         log.info("Found peak of %.2f at %.1fx%.1f.", star["peak"], star["x"], star["y"])
 
-    def _calc_new_exp_time(self, exp_time, peak, max_peak):
+    def _calc_new_exp_time(self, exp_time: float, peak: float, max_peak: float) -> float:
         return (max_peak - self._bias) / (peak - self._bias) * exp_time
 
 

@@ -28,6 +28,7 @@ async def test_find_master_in_cache(mocker, mock_image):
 
     archive = Archive()
     calibration = Calibration(archive)
+    assert calibration._calib_cache is not None
     mocker.patch.object(calibration._calib_cache, "get_from_cache", return_value=cached_image)
     result_image = await calibration._find_master(mock_image, image_type)
 
@@ -42,6 +43,7 @@ async def test_find_master_not_in_archive(mocker, mock_image):
     archive = Archive()
 
     calibration = Calibration(archive)
+    assert calibration._calib_cache is not None
     mocker.patch.object(calibration._calib_cache, "get_from_cache", side_effect=ValueError())
 
     with pytest.raises(ValueError):
@@ -66,6 +68,7 @@ async def test_find_master_in_archive(mocker, mock_image):
     image_type = ImageType.OBJECT
     archive = Archive()
     calibration = Calibration(archive)
+    assert calibration._calib_cache is not None
     mocker.patch.object(calibration._calib_cache, "add_to_cache")
 
     assert calib_image == await calibration._find_master(mock_image, image_type)

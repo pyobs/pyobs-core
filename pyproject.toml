@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.25.14"
+version = "1.26.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -62,6 +62,8 @@ dev = [
     "black>=25.1.0,<26",
     "pre-commit>=4.2.0,<5",
     "flake8>=7.3.0",
+    "aioresponses>=0.7.8",
+    "coverage>=7.9.2",
 ]
 
 [tool.hatch.build.targets.sdist]

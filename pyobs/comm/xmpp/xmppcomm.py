@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class EventStanza(ElementBase):  # type: ignore
+class EventStanza(ElementBase):
     name = "event"
     namespace = "pyobs:event"
 
@@ -126,7 +126,6 @@ class XmppComm(Comm):
         self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
-        self._module: Optional[Module] = None
 
         # build jid
         if jid:
@@ -188,10 +187,12 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("disconnected", self._disconnected)
 
         # server given?
-        server, port = None, None
+        server: str = "localhost"
+        port: int = 5222
         if self._server is not None:
             if ":" in self._server:
-                server, port = self._server.split(":")
+                server, sport = self._server.split(":")
+                port = int(sport)
             else:
                 server, port = self._server, 5222
         elif self._domain is not None:
@@ -213,7 +214,7 @@ class XmppComm(Comm):
             force_starttls=self._use_tls,
             disable_starttls=not self._use_tls,
         )
-        self._xmpp.init_plugins()
+        self._xmpp.init_plugins()  # type: ignore
 
         # wait for connected
         if not await self._xmpp.wait_connect():
@@ -232,14 +233,15 @@ class XmppComm(Comm):
         await Comm.close(self)
 
         # disconnect from sleekxmpp server
-        await self._xmpp.disconnect()
+        if self._xmpp is not None:
+            await self._xmpp.disconnect()
 
-    async def _reconnect(self):
+    async def _reconnect(self) -> None:
         """Sleep a little and reconnect"""
         await asyncio.sleep(2)
         await self._connect()
 
-    def _disconnected(self, event: Any):
+    def _disconnected(self, event: Any) -> None:
         """Reset connection after disconnect."""
         log.info("Disconnected from server, waiting for reconnect...")
 
@@ -309,7 +311,7 @@ class XmppComm(Comm):
 
         # request features
         try:
-            info = await self._safe_send(self._xmpp["xep_0030"].get_info, jid=jid, cached=False)
+            info = await self._safe_send(self.client["xep_0030"].get_info, jid=jid, cached=False)
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             return []
 
@@ -464,6 +466,8 @@ class XmppComm(Comm):
         Returns:
             The XMPP client.
         """
+        if self._xmpp is None:
+            raise ValueError("No XMPP client.")
         return self._xmpp
 
     async def send_event(self, event: Event) -> None:
@@ -484,14 +488,14 @@ class XmppComm(Comm):
 
         # send it
         await self._safe_send(
-            self._xmpp["xep_0163"].publish,
+            self.client["xep_0163"].publish,
             stanza,
             node="pyobs:event:%s" % event.__class__.__name__,
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
         # send it to local module
-        self._send_event_to_module(event, self._module.name)
+        self._send_event_to_module(event, self.module.name)
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
@@ -509,16 +513,16 @@ class XmppComm(Comm):
         # loop events
         for ev in events:
             # register event at XMPP
-            self._xmpp["xep_0030"].add_feature("pyobs:event:%s" % ev.__name__)
+            self.client["xep_0030"].add_feature("pyobs:event:%s" % ev.__name__)
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self._xmpp["xep_0163"].add_interest("pyobs:event:%s" % ev.__name__)
+                self.client["xep_0163"].add_interest("pyobs:event:%s" % ev.__name__)
 
         # update caps and send presence
-        await self._safe_send(self._xmpp["xep_0115"].update_caps)
-        self._xmpp.send_presence()
+        await self._safe_send(self.client["xep_0115"].update_caps)
+        self.client.send_presence()
 
     async def _handle_event(self, msg: Any) -> None:
         """Handles an event.
@@ -538,7 +542,7 @@ class XmppComm(Comm):
             return
 
         # did we send this?
-        if msg["from"] == self._xmpp.boundjid.bare:
+        if msg["from"] == self.client.boundjid.bare:
             return
 
         # create event and check timestamp
@@ -582,7 +586,7 @@ class XmppComm(Comm):
                 await asyncio.sleep(self._safe_send_wait)
 
         # never should reach this
-        raise slixmpp.exceptions.IqTimeout(iq)
+        raise slixmpp.exceptions.IqTimeout(iq)  # type: ignore
 
     def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.

@@ -11,16 +11,16 @@ class _CalibrationCache:
     def __init__(self, max_size: int):
         self._cache: deque[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = deque([], max_size)
 
-    def add_to_cache(self, image: Image, image_type: ImageType):
+    def add_to_cache(self, image: Image, image_type: ImageType) -> None:
         cache_keys = self._get_cache_keys(image, image_type)
         cache_entry = (cache_keys, image)
         self._cache.append(cache_entry)
 
-    def get_from_cache(self, image: Image, image_type: ImageType):
+    def get_from_cache(self, image: Image, image_type: ImageType) -> Image:
         cache_keys = self._get_cache_keys(image, image_type)
         return self._find_cache_entry(cache_keys)
 
-    def _find_cache_entry(self, keys: Tuple[ImageType, str, str, Optional[str]]):
+    def _find_cache_entry(self, keys: Tuple[ImageType, str, str, Optional[str]]) -> Image:
         for m, item in self._cache:
             if m == keys:
                 return item

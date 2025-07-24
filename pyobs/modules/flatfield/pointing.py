@@ -45,7 +45,7 @@ class FlatFieldPointing(Module, IRunnable):
         await pointing(telescope)
         log.info("Finished pointing telescope.")
 
-    def abort(self, **kwargs: Any) -> None:
+    async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         pass
 

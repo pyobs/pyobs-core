@@ -1,20 +1,17 @@
 import io
 import logging
-from typing import Dict, Any, AnyStr
+from typing import Any
 
-from .file import VFSFile
+from .bufferedfile import BufferedFile
 
 
 log = logging.getLogger(__name__)
 
 
-class MemoryFile(VFSFile):
+class MemoryFile(BufferedFile):
     """A file stored in memory."""
 
     __module__ = "pyobs.vfs"
-
-    """Global buffer."""
-    _buffer: Dict[str, AnyStr] = {}
 
     def __init__(self, name: str, mode: str = "r", **kwargs: Any):
         """Open/create a file in memory.
@@ -26,18 +23,19 @@ class MemoryFile(VFSFile):
 
         # init
         io.RawIOBase.__init__(self)
+        BufferedFile.__init__(self)
 
         # store
-        self._filename = name
-        self._mode = mode
+        self.filename = name
+        self.mode = mode
         self._pos = 0
         self._open = True
 
-        # overwrite?
-        if "w" in mode:
-            MemoryFile._buffer[name] = b"" if "b" in mode else ""
+        # clear cache on write?
+        if "w" in self.mode:
+            self._clear_buffer(self.filename)
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         """Read number of bytes from stream.
 
         Args:
@@ -49,23 +47,23 @@ class MemoryFile(VFSFile):
 
         # check size
         if n == -1:
-            data = MemoryFile._buffer[self._filename]
+            data = self._buffer(self.filename)
             self._pos = len(data) - 1
         else:
             # extract data to read
-            data = MemoryFile._buffer[self._filename][self._pos : self._pos + n]
+            data = self._buffer(self.filename)[self._pos: self._pos + n]
             self._pos += n
 
         # return data
         return data
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, buf: str | bytes) -> None:
         """Write data into the stream.
 
         Args:
-            s: Bytes of data to write.
+            buf: Bytes of data to write.
         """
-        MemoryFile._buffer[self._filename] += s
+        self._append_to_buffer(self.filename, buf)
 
     async def close(self) -> None:
         """Close stream."""

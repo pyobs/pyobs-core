@@ -1,8 +1,7 @@
 import asyncio
 import logging
 from functools import partial
-from typing import Tuple, TYPE_CHECKING, Any, Optional
-
+from typing import TYPE_CHECKING, Any, Optional, cast
 import numpy as np
 import numpy.typing as npt
 
@@ -109,23 +108,21 @@ class SepSourceDetection(SourceDetection):
         return output_image
 
     @staticmethod
-    def _get_mask_or_default(image: Image) -> np.ndarray:
-        if image.safe_mask is not None:
-            return image.mask
-
-        return np.zeros(image.data.shape, dtype=bool)
+    def _get_mask_or_default(image: Image) -> npt.NDArray[np.floating[Any]]:
+        return image.mask if image.safe_mask is not None else np.zeros(image.data.shape, dtype=bool)
 
     @staticmethod
     def _get_gain_or_default(image: Image) -> Optional[float]:
         if "DET-GAIN" in image.header:
-            return image.header["DET-GAIN"]
+            return cast(float, image.header["DET-GAIN"])
 
         return None
 
     @staticmethod
     def remove_background(
-        data: npt.NDArray[float], mask: Optional[npt.NDArray[float]] = None
-    ) -> Tuple[npt.NDArray[float], "Background"]:
+        data: npt.NDArray[np.floating[Any]],
+        mask: npt.NDArray[np.floating[Any]] | None = None,
+    ) -> tuple[npt.NDArray[np.floating[Any]], "Background"]:
         """Remove background from image in data.
 
         Args:
@@ -142,14 +139,19 @@ class SepSourceDetection(SourceDetection):
         try:
             background = sep.Background(continuous_data, mask=mask, bw=32, bh=32, fw=3, fh=3)
         except ValueError:
-            d = continuous_data.byteswap(True).newbyteorder()
+            d = continuous_data.view(continuous_data.dtype.newbyteorder()).byteswap()
             background = sep.Background(d, mask=mask, bw=32, bh=32, fw=3, fh=3)
 
         background.subfrom(continuous_data)
 
         return continuous_data, background
 
-    async def _extract_sources(self, data, bkg, mask):
+    async def _extract_sources(
+        self,
+        data: npt.NDArray[np.floating[Any]],
+        bkg: "Background",
+        mask: npt.NDArray[np.floating[Any]],
+    ) -> npt.NDArray[Any]:
         import sep
 
         loop = asyncio.get_running_loop()
@@ -169,7 +171,7 @@ class SepSourceDetection(SourceDetection):
             ),
         )
 
-        return sources
+        return cast(npt.NDArray[Any], sources)
 
 
 __all__ = ["SepSourceDetection"]

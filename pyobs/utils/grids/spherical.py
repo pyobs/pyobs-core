@@ -1,5 +1,5 @@
 import abc
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 import numpy as np
 
@@ -13,7 +13,7 @@ class SphericalGrid(Grid, metaclass=abc.ABCMeta):
 
 
 class RegularSphericalGrid(SphericalGrid):
-    def __init__(self, n_lon: int, n_lat: int, **kwargs):
+    def __init__(self, n_lon: int, n_lat: int, **kwargs: Any):
         """Creates a grid with points at the intersections of longitudinal and latitudinal lines.
 
         Params:
@@ -31,7 +31,7 @@ class RegularSphericalGrid(SphericalGrid):
 
 
 class GraticuleSphericalGrid(SphericalGrid):
-    def __init__(self, n: int, **kwargs):
+    def __init__(self, n: int, **kwargs: Any):
         """Creates equidistributed points on the surface of a sphere
 
         See https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf

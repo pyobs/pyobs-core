@@ -32,7 +32,7 @@ class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
         logging.root.addHandler(self)
         self.setFormatter(formatter)
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         # format entry
         log_entry = self.format(record)
 

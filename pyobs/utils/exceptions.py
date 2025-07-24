@@ -95,7 +95,7 @@ class InvocationError(RemoteError, metaclass=_Meta):
         self.module = module
 
         # never encapsulate a SevereError
-        self.exception = exception.exception if isinstance(exception, SevereError) else exception
+        self.exception: Exception = exception.exception if isinstance(exception, SevereError) else exception
 
     def __str__(self) -> str:
         msg = f"<InvocationError> ({self.exception.__class__.__name__})"
@@ -117,7 +117,7 @@ class SevereError(PyObsError):
         PyObsError.__init__(self, "A severe error has occurred.")
         self.module = module
         # never encapsulate a SevereError
-        self.exception = exception.exception if isinstance(exception, SevereError) else exception
+        self.exception: Exception = exception.exception if isinstance(exception, SevereError) else exception
 
 
 class LoggedException(NamedTuple):

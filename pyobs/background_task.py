@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Coroutine, Any, Callable
+from typing import Coroutine, Any, Callable
 
 from pyobs.utils.exceptions import SevereError
 
@@ -11,14 +11,16 @@ class BackgroundTask:
     def __init__(self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool) -> None:
         self._func: Callable[..., Coroutine[Any, Any, None]] = func
         self._restart: bool = restart
-        self._task: Optional[asyncio.Future] = None
+        self._task: asyncio.Future[Any] | None = None
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._func())
         self._task.add_done_callback(self._callback_function)
 
-    def _callback_function(self, args=None) -> None:
+    def _callback_function(self, args: Any | None = None) -> None:
         try:
+            if self._task is None:
+                raise ValueError("Task not started.")
             exception = self._task.exception()
         except asyncio.CancelledError:
             return

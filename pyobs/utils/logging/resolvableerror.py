@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 
 class ResolvableErrorLogger:
@@ -22,10 +23,10 @@ class ResolvableErrorLogger:
         self._error_level = error_level
         self._resolved_level = resolved_level
         self._min_interval = min_interval
-        self._time_of_last_error = 0
+        self._time_of_last_error = 0.0
         self._last_error_message = ""
 
-    def error(self, msg: str, *args, **kwargs) -> None:
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an error message."""
 
         # we log, if last message is old enough or text changed
@@ -36,7 +37,7 @@ class ResolvableErrorLogger:
         self._time_of_last_error = time.time()
         self._last_error_message = msg
 
-    def resolve(self, msg: str, *args, **kwargs):
+    def resolve(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Resolve an error."""
 
         # only log, if we had an actual error

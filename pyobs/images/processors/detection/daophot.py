@@ -1,8 +1,8 @@
 import asyncio
 import logging
 from typing import Tuple, Any
-
 import numpy as np
+import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 
@@ -47,7 +47,7 @@ class DaophotSourceDetection(SourceDetection):
 
         self._background_remover = _DaoBackgroundRemover(bkg_sigma, bkg_box_size, bkg_filter_size)
 
-    async def _find_stars(self, data: np.ndarray, std: int) -> Table:
+    async def _find_stars(self, data: npt.NDArray[np.floating[Any]], std: int) -> Table:
         from photutils.detection import DAOStarFinder
 
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)

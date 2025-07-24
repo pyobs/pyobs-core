@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING, Union
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -19,7 +19,7 @@ class CasesRunner(Script):
     def __init__(
         self,
         expression: str,
-        cases: Dict[Union[str, int, float], Any],
+        cases: dict[str | int | float, Any],
         **kwargs: Any,
     ):
         """Initialize a new CasesRunner.
@@ -50,9 +50,9 @@ class CasesRunner(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         script = self.__get_script()
         await script.run(task_runner, task_schedule, task_archive)

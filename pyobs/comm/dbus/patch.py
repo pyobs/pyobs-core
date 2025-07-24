@@ -1,9 +1,7 @@
 import inspect
 from functools import wraps
-
 import asyncio
 from typing import no_type_check_decorator
-
 from dbus_next import Message, SignatureTree
 from dbus_next._private.util import parse_annotation
 from dbus_next.service import ServiceInterface
@@ -18,24 +16,24 @@ def patch() -> None:
     Patches dbus-next to allow for a providing the sender name. Probably a bad idea, but better than using
     a fork of the project.
     """
-    MessageBus._make_method_handler = _aio_make_method_handler
-    BaseMessageBus._make_method_handler = _make_method_handler
-    dbus_next.service._Method.__init__ = _method__init__
+    MessageBus._make_method_handler = _aio_make_method_handler  # type: ignore
+    BaseMessageBus._make_method_handler = _make_method_handler  # type: ignore
+    dbus_next.service._Method.__init__ = _method__init__  # type: ignore
     dbus_next.service.method = _method
 
 
-def _aio_make_method_handler(self, interface, method):
+def _aio_make_method_handler(self, interface, method):  # type: ignore
     if not asyncio.iscoroutinefunction(method.fn):
-        return BaseMessageBus._make_method_handler(self, interface, method)
+        return BaseMessageBus._make_method_handler(self, interface, method)  # type: ignore
 
-    def handler(msg, send_reply):
-        def done(fut):
+    def handler(msg, send_reply):  # type: ignore
+        def done(fut):  # type: ignore
             with send_reply:
                 result = fut.result()
-                body, unix_fds = ServiceInterface._fn_result_to_body(result, method.out_signature_tree)
+                body, unix_fds = ServiceInterface._fn_result_to_body(result, method.out_signature_tree)  # type: ignore
                 send_reply(Message.new_method_return(msg, method.out_signature, body, unix_fds))
 
-        args = ServiceInterface._msg_body_to_args(msg)
+        args = ServiceInterface._msg_body_to_args(msg)  # type: ignore
         kwargs = {method.sender_keyword: msg.sender} if method.sender_keyword else {}
         fut = asyncio.ensure_future(method.fn(interface, *args, **kwargs))
         fut.add_done_callback(done)
@@ -43,18 +41,18 @@ def _aio_make_method_handler(self, interface, method):
     return handler
 
 
-def _make_method_handler(self, interface, method):
-    def handler(msg, send_reply):
-        args = ServiceInterface._msg_body_to_args(msg)
+def _make_method_handler(self, interface, method):  # type: ignore
+    def handler(msg, send_reply):  # type: ignore
+        args = ServiceInterface._msg_body_to_args(msg)  # type: ignore
         kwargs = {method.sender_keyword: msg.sender} if method.sender_keyword else {}
         result = method.fn(interface, *args, **kwargs)
-        body, fds = ServiceInterface._fn_result_to_body(result, signature_tree=method.out_signature_tree)
+        body, fds = ServiceInterface._fn_result_to_body(result, signature_tree=method.out_signature_tree)  # type: ignore
         send_reply(Message.new_method_return(msg, method.out_signature, body, fds))
 
     return handler
 
 
-def _method__init__(self, fn, name, disabled=False, sender_keyword=None):
+def _method__init__(self, fn, name, disabled=False, sender_keyword=None):  # type: ignore
     in_signature = ""
     out_signature = ""
 
@@ -70,13 +68,13 @@ def _method__init__(self, fn, name, disabled=False, sender_keyword=None):
         annotation = parse_annotation(param.annotation)
         if not annotation:
             raise ValueError("method parameters must specify the dbus type string as an annotation")
-        in_args.append(intr.Arg(annotation, intr.ArgDirection.IN, param.name))
+        in_args.append(intr.Arg(annotation, intr.ArgDirection.IN, param.name))  # type: ignore
         in_signature += annotation
     out_args = []
     out_signature = parse_annotation(inspection.return_annotation)
     if out_signature:
         for type_ in SignatureTree._get(out_signature).types:
-            out_args.append(intr.Arg(type_, intr.ArgDirection.OUT))
+            out_args.append(intr.Arg(type_, intr.ArgDirection.OUT))  # type: ignore
     self.name = name
     self.fn = fn
     self.disabled = disabled
@@ -88,20 +86,20 @@ def _method__init__(self, fn, name, disabled=False, sender_keyword=None):
     self.sender_keyword = sender_keyword
 
 
-def _method(name: str = None, disabled: bool = False, sender_keyword: str = None):
+def _method(name: str = None, disabled: bool = False, sender_keyword: str = None):  # type: ignore
     if name is not None and type(name) is not str:
         raise TypeError("name must be a string")
     if type(disabled) is not bool:
         raise TypeError("disabled must be a bool")
 
     @no_type_check_decorator
-    def decorator(fn):
+    def decorator(fn):  # type: ignore
         @wraps(fn)
-        def wrapped(*args, **kwargs):
+        def wrapped(*args, **kwargs):  # type: ignore
             fn(*args, **kwargs)
 
         fn_name = name if name else fn.__name__
-        wrapped.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(
+        wrapped.__dict__["__DBUS_METHOD"] = dbus_next.service._Method(  # type: ignore
             fn, fn_name, disabled=disabled, sender_keyword=sender_keyword
         )
 

@@ -119,7 +119,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
                 await self.comm.send_event(BadWeatherEvent())
 
     def _calc_system_init_eta(self) -> Time:
-        return Time.now() + self._system_init_time * u.second
+        return Time(Time.now() + self._system_init_time * u.second)
 
     async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""

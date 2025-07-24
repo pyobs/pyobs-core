@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Any
 
 import yaml
 from io import StringIO
@@ -10,9 +11,9 @@ def pre_process_yaml(config: str) -> str:
     Replaces blocks of the form {include <source.yaml> <key>} in the loaded config file.
     This allows to use (parts of) another config file.
     Args:
-        config: directory of the main yaml file
+        config: directory of the main YAML file
     Returns:
-        content: modified version of input config file with replaced include-blocks.
+        content: modified version of the input config file with replaced include-blocks.
     """
     path = os.path.dirname(os.path.abspath(config))
 
@@ -26,8 +27,8 @@ def pre_process_yaml(config: str) -> str:
     for match, indent, tick, filename, key in matches:
         with StringIO(pre_process_yaml(path + "/" + filename)) as f:
             include_full = yaml.safe_load(f)
-            include = include_parts(include_full, key)
-        include = yaml.dump(include, default_flow_style=False, indent=2)
+            include_dict = include_parts(include_full, key)
+        include = yaml.dump(include_dict, default_flow_style=False, indent=2)
 
         # ensure indentation level to be conserved
         if tick != "":
@@ -39,15 +40,15 @@ def pre_process_yaml(config: str) -> str:
         content = content.replace(match, include)
         content = replace_aliases(matches_anchor, path + "/" + filename, content)
 
-    # return new yaml
+    # return new YAML
     return content
 
 
-def include_parts(include: dict, keys: str) -> dict:
+def include_parts(include: dict[str, Any], keys: str) -> dict[str, Any]:
     """
-    Include nested contents from another yaml file.
+    Include nested contents from another YAML file.
     Args:
-        include: dictionary based on yaml file from which the content is included.
+        include: dictionary based on YAML file from which the content is included.
         keys: keys of the included dictionary, where dots indicate the layer
     Returns:
         include: only the aimed layer of the original dictionary
@@ -56,13 +57,12 @@ def include_parts(include: dict, keys: str) -> dict:
         return include
     # parse key and get corresponding part of config
     keys = keys.strip()
-    keys = keys.split(".")
-    for key in keys:
+    for key in keys.split("."):
         include = include[key]
     return include
 
 
-def reload_anchors(filename: str) -> list:
+def reload_anchors(filename: str) -> list[tuple[str, str]]:
     """
     Finds anchors ('&') in the included file.
     Args:
@@ -77,7 +77,7 @@ def reload_anchors(filename: str) -> list:
     return matches
 
 
-def replace_aliases(matches: list, anchor_filename: str, alias_string: str) -> str:
+def replace_aliases(matches: list[tuple[str, str]], anchor_filename: str, alias_string: str) -> str:
     """
     Replaces aliases ('<<: *...') in the main file by the anchor in the included file.
     Args:

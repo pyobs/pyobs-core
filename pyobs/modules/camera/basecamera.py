@@ -318,7 +318,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         log.info("Finished image %s.", filename)
         return image, filename
 
-    async def add_custom_fits_headers(self, image: Image):
+    async def add_custom_fits_headers(self, image: Image) -> None:
         """Add FITS headers in derived classes.
 
         Args:
@@ -451,7 +451,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             bottom_binned = np.ceil((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"])
             hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], bottom_binned), c1)
 
-    async def apply_meridian_flip(self, image: Image):
+    async def apply_meridian_flip(self, image: Image) -> None:
         """If the telescope has a meridian flip (MERIDIAN keyword in header), flip the image on both axes.
 
         Args:

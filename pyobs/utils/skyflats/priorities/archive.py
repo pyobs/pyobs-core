@@ -1,4 +1,4 @@
-from typing import Union, Dict, Tuple, List, Any
+from typing import Any
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -16,13 +16,13 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
 
     def __init__(
         self,
-        archive: Union[Dict[str, Any], Archive],
+        archive: dict[str, Any] | Archive,
         site: str,
         instrument: str,
-        filter_names: List[str],
-        binnings: List[int],
-        *args,
-        **kwargs,
+        filter_names: list[str],
+        binnings: list[int],
+        *args: Any,
+        **kwargs: Any,
     ):
         SkyflatPriorities.__init__(self)
         self._archive = get_object(archive, Archive)
@@ -31,7 +31,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         self._site = site
         self._instrument = instrument
 
-    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
+    async def __call__(self) -> dict[tuple[str, tuple[int, int]], float]:
         # get all reduced skyflat frames of the last 100 days
         now = Time.now()
         frames = await self._archive.list_frames(
@@ -44,7 +44,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
         )
 
         # get priorities
-        from_archive: Dict[Tuple[str, int], float] = {}
+        from_archive: dict[tuple[str | None, int | None], float] = {}
         for f in frames:
             # get number of days since flat was taken, which is our priority
             prio = (now - f.dateobs).sec / 86400.0
@@ -57,7 +57,7 @@ class ArchiveSkyflatPriorities(SkyflatPriorities):
                 from_archive[key] = prio
 
         # create priorities
-        priorities: Dict[Tuple[str, Tuple[int, int]], float] = {}
+        priorities: dict[tuple[str, tuple[int, int]], float] = {}
         for fn in self._filter_names:
             for b in self._binnings:
                 priorities[fn, (b, b)] = from_archive[fn, b] if (fn, b) in from_archive else 100.0

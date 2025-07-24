@@ -1,13 +1,13 @@
 from datetime import datetime
-from typing import List, Dict, Tuple, Any
+from typing import Any
 
 from pyobs.modules.pointing.guidingstatistics.guidingstatistics import GuidingStatistics
 
 
-class GuidingStatisticsUptime(GuidingStatistics):
+class GuidingStatisticsUptime(GuidingStatistics[bool, tuple[bool | None, datetime]]):
     @staticmethod
-    def _calc_uptime(states: List[Tuple[bool, datetime]]) -> int:
-        uptimes: List[int] = []
+    def _calc_uptime(states: list[tuple[bool | None, datetime]]) -> int:
+        uptimes: list[int] = []
         for i, entry in enumerate(states):
             state, timestamp = entry
             # is not closed?
@@ -20,13 +20,13 @@ class GuidingStatisticsUptime(GuidingStatistics):
         return sum(uptimes)
 
     @staticmethod
-    def _calc_total_time(states: List[Tuple[bool, datetime]]) -> int:
+    def _calc_total_time(states: list[tuple[bool | None, datetime]]) -> int:
         initial_time = states[0][1]
         end_time = states[-1][1]
         return (end_time - initial_time).seconds
 
     @staticmethod
-    def _calc_uptime_percentage(states: List[Tuple[bool, datetime]]) -> float:
+    def _calc_uptime_percentage(states: list[tuple[bool | None, datetime]]) -> float:
         uptime = GuidingStatisticsUptime._calc_uptime(states)
         total_time = GuidingStatisticsUptime._calc_total_time(states)
 
@@ -35,18 +35,18 @@ class GuidingStatisticsUptime(GuidingStatistics):
         We have to take the second last value in the state array, since the last value is the stop value.
         """
         if total_time == 0:
-            return int(states[-2][0]) * 100.0
+            return int(states[-2][0]) * 100.0 if states[-2][0] is not None else 0.0
 
         return uptime / total_time * 100.0
 
-    def _build_header(self, data: List[Tuple[bool, datetime]]) -> Dict[str, Tuple[Any, str]]:
+    def _build_header(self, data: list[tuple[bool | None, datetime]]) -> dict[str, tuple[Any, str]]:
         now = datetime.now()
         data.append((None, now))
 
         uptime_percentage = self._calc_uptime_percentage(data)
         return {"GUIDING UPTIME": (uptime_percentage, "Time the guiding loop was closed [%]")}
 
-    def _get_session_data(self, input_data: bool) -> Tuple[bool, datetime]:
+    def _get_session_data(self, input_data: bool) -> tuple[bool | None, datetime]:
         now = datetime.now()
         return input_data, now
 

@@ -52,7 +52,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         """
         return list(self._mode_options.keys())
 
-    def _group_name(self, group: int):
+    def _group_name(self, group: int) -> str:
         try:
             return list(self._mode_options.keys())[group]
         except IndexError:

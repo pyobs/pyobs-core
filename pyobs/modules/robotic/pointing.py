@@ -1,7 +1,6 @@
 import logging
 import random
-from typing import Tuple, Any, Optional, List, Dict, Union
-
+from typing import Any
 import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -25,12 +24,12 @@ class PointingSeries(Module, IAutonomous):
 
     def __init__(
         self,
-        grid: List[Union[Grid, GridFilter, dict]],
-        dec_range: Tuple[float, float] = (-80.0, 80.0),
+        grid: list[Grid | GridFilter | dict[str, Any]],
+        dec_range: tuple[float, float] = (-80.0, 80.0),
         min_moon_dist: float = 15.0,
         finish: int = 90,
         exp_time: float = 1.0,
-        acquisition: Optional[str] = None,
+        acquisition: str | None = None,
         telescope: str = "telescope",
         **kwargs: Any,
     ):
@@ -75,7 +74,7 @@ class PointingSeries(Module, IAutonomous):
         """Run a pointing series."""
 
         # create grid
-        grid: Dict[str, List[Any]] = {"alt": [], "az": [], "done": []}
+        grid: dict[str, list[float | bool]] = {"alt": [], "az": [], "done": []}
         for az, alt in self._grid:
             grid["alt"] += [alt]
             grid["az"] += [az]
@@ -163,10 +162,10 @@ class PointingSeries(Module, IAutonomous):
         dec: float,
         alt: float,
         az: float,
-        off_ra: Optional[float] = None,
-        off_dec: Optional[float] = None,
-        off_alt: Optional[float] = None,
-        off_az: Optional[float] = None,
+        off_ra: float | None = None,
+        off_dec: float | None = None,
+        off_alt: float | None = None,
+        off_az: float | None = None,
     ) -> None:
         """Process the result of the acquisition. Either ra_off/dec_off or alt_off/az_off must be given.
 

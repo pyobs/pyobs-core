@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Any, Dict, TYPE_CHECKING, cast, Union, List
+from typing import Any, TYPE_CHECKING, cast
 from py_expression_eval import Parser
 import pandas as pd
 import numpy as np
@@ -60,21 +60,21 @@ class FocusModel(Module, IFocusModel):
 
     def __init__(
         self,
-        focuser: Optional[str] = None,
-        weather: Optional[str] = None,
+        focuser: str | None = None,
+        weather: str | None = None,
         interval: int = 300,
-        temperatures: Optional[Dict[str, Dict[str, float]]] = None,
-        model: Optional[str] = None,
-        coefficients: Optional[Dict[str, float]] = None,
+        temperatures: dict[str, dict[str, float]] | None = None,
+        model: str | None = None,
+        coefficients: dict[str, float] | None = None,
         update: bool = False,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
         min_measurements: int = 10,
         enabled: bool = True,
         temp_sensor: str = "average.temp",
-        default_filter: Optional[str] = None,
-        filter_offsets: Optional[Dict[str, float]] = None,
-        filter_wheel: Optional[str] = None,
-        auto_focus: Optional[Union[str, List[str]]] = None,
+        default_filter: str | None = None,
+        filter_offsets: dict[str, float] | None = None,
+        filter_wheel: str | None = None,
+        auto_focus: str | list[str] | None = None,
         **kwargs: Any,
     ):
         """Initialize a focus model.
@@ -110,7 +110,7 @@ class FocusModel(Module, IFocusModel):
         self._focuser = focuser
         self._weather = weather
         self._interval = interval
-        self._temperatures: Dict[str, Dict[str, float]] = {} if temperatures is None else temperatures
+        self._temperatures: dict[str, dict[str, float]] = {} if temperatures is None else temperatures
         self._focuser_ready = True
         self._coefficients = {} if coefficients is None else coefficients
         self._update_model = update
@@ -204,7 +204,7 @@ class FocusModel(Module, IFocusModel):
             log.info("Going to sleep for %d seconds...", self._interval)
             await asyncio.sleep(self._interval)
 
-    async def _get_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> float:
+    async def _get_optimal_focus(self, filter_name: str | None = None, **kwargs: Any) -> float:
         """Returns the optimal focus.
 
         Args:
@@ -258,7 +258,7 @@ class FocusModel(Module, IFocusModel):
         """
         return await self._get_optimal_focus()
 
-    async def _get_values(self) -> Dict[str, Any]:
+    async def _get_values(self) -> dict[str, Any]:
         """Retrieve all required values for the model.
 
         Returns:
@@ -316,7 +316,7 @@ class FocusModel(Module, IFocusModel):
         log.info("Found values for model: %s", vals)
         return variables
 
-    async def _set_optimal_focus(self, filter_name: Optional[str] = None, **kwargs: Any) -> None:
+    async def _set_optimal_focus(self, filter_name: str | None = None, **kwargs: Any) -> None:
         """Sets optimal focus.
 
         Args:
@@ -453,7 +453,7 @@ class FocusModel(Module, IFocusModel):
                 self._coefficients = {k: v for k, v in d.items() if not k.startswith("off_")}
                 self._filter_offsets = {k[4:]: v for k, v in d.items() if k.startswith("off_")}
 
-    def _model(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[float]:
+    def _model(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[np.floating[Any]]:
         # calc model
         model = []
         for _, row in data.iterrows():
@@ -483,7 +483,7 @@ class FocusModel(Module, IFocusModel):
         # finished
         return np.array(model)
 
-    def _residuals(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[float]:
+    def _residuals(self, x: "lmfit.Parameters", data: pd.DataFrame) -> npt.NDArray[np.floating[Any]]:
         """Fit method for model
 
         Args:
@@ -500,7 +500,7 @@ class FocusModel(Module, IFocusModel):
         error = data["error"]
 
         # return residuals
-        return cast(npt.NDArray[float], (focus - model) / error)
+        return cast(npt.NDArray[np.floating[Any]], (focus - model) / error)
 
     async def _on_filter_changed(self, event: Event, sender: str) -> bool:
         """Receive FilterChangedEvent and set focus.

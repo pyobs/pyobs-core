@@ -10,7 +10,7 @@ from .guidingstatistics import GuidingStatistics
 log = logging.getLogger(__name__)
 
 
-class GuidingStatisticsSkyOffset(GuidingStatistics):
+class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
     @staticmethod
     def _calc_rms(data: List[float]) -> Optional[float]:
         """

@@ -31,7 +31,7 @@ class ImageWriter(Module):
         # variables
         self._filename = filename
         self._sources = [sources] if isinstance(sources, str) else sources
-        self._queue = asyncio.Queue()
+        self._queue = asyncio.Queue[str]()
 
     async def open(self) -> None:
         """Open image writer."""

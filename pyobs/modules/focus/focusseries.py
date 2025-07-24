@@ -1,10 +1,9 @@
 import logging
-from typing import Union, Tuple, Dict, Any, Optional
+from typing import Any
 import threading
 import numpy as np
-from numpy.typing import NDArray
 
-from pyobs.interfaces import IAutoFocus
+from pyobs.interfaces import IAutoFocus, ICamera
 from pyobs.events import FocusFoundEvent, BadWeatherEvent, Event
 from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
 from pyobs.object import get_object
@@ -24,14 +23,14 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
     def __init__(
         self,
-        focuser: Union[str, IFocuser],
-        camera: Union[str, IData],
-        series: Union[Dict[str, Any], FocusSeries],
+        focuser: str | IFocuser,
+        camera: str | IData,
+        series: dict[str, Any] | FocusSeries,
         offset: bool = False,
         init_offset_to_zero: bool = True,
-        filters: Optional[Union[str, IFilters]] = None,
-        filter_name: Optional[str] = None,
-        binning: Optional[int] = None,
+        filters: str | IFilters | None = None,
+        filter_name: str | None = None,
+        binning: int | None = None,
         broadcast: bool = False,
         final_image: bool = True,
         **kwargs: Any,
@@ -93,7 +92,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
     @timeout(600)
-    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -120,7 +119,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         finally:
             self._running = False
 
-    async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
+    async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         # get focuser
         log.info("Getting proxy for focuser...")
         focuser = await self.proxy(self._focuser, IFocuser)
@@ -154,7 +153,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             raise exceptions.GeneralError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
-        focus_values: NDArray[float] = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
+        focus_values = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
 
         # reset
         self._series.reset()
@@ -196,7 +195,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             # analyse
             log.info("Analysing picture...")
             try:
-                self._series.analyse_image(image, foc)
+                await self._series.analyse_image(image, foc)
             except:
                 # do nothing...
                 log.error("Could not analyse image.")
@@ -249,12 +248,12 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if isinstance(camera, IExposureTime):
                 await camera.set_exposure_time(exposure_time)
             if isinstance(camera, IData):
-                return await camera.grab_data()
+                await camera.grab_data()
 
         # return result
         return focus[0], focus[1]
 
-    async def _take_image(self, camera, exposure_time):
+    async def _take_image(self, camera: ICamera, exposure_time: float) -> str:
         if isinstance(camera, IExposureTime):
             await camera.set_exposure_time(exposure_time)
         if isinstance(camera, IData):
@@ -262,7 +261,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         else:
             raise exc.GeneralError("Cannot grab data from camera.")
 
-    async def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def auto_focus_status(self, **kwargs: Any) -> dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

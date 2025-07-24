@@ -46,12 +46,13 @@ class CatalogCircularMask(ImageProcessor):
         center_x, center_y = self._get_center(image)
 
         catalog = image.safe_catalog
-        mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
-        image.catalog = catalog[mask]
+        if catalog is not None:
+            mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
+            image.catalog = catalog[mask]
 
         return image
 
-    def _correct_radius_for_binning(self, image):
+    def _correct_radius_for_binning(self, image: Image) -> None:
         binning_x, binning_y = image.header["XBINNING"], image.header["YBINNING"]
         if binning_x == binning_y:
             self._radius /= binning_x
@@ -59,7 +60,7 @@ class CatalogCircularMask(ImageProcessor):
             log.warning("Binning factor is not the same for x and y axis. Filter radius remains uncorrected ...")
         self._radius_is_corrected = True
 
-    def _get_center(self, image):
+    def _get_center(self, image: Image) -> tuple[float, float]:
         if isinstance(self._center[0], str) and isinstance(self._center[1], str):
             return image.header[self._center[0]], image.header[self._center[1]]
         else:

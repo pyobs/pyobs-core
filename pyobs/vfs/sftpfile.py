@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Optional, Any, AnyStr, List
+from typing import Any
 import paramiko
 import paramiko.sftp
 
@@ -16,13 +16,12 @@ class SFTPFile(VFSFile):
         self,
         name: str,
         mode: str = "r",
-        bufsize: int = -1,
-        hostname: Optional[str] = None,
+        hostname: str | None = None,
         port: int = 22,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        keyfile: Optional[str] = None,
-        root: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
+        keyfile: str | None = None,
+        root: str | None = None,
         mkdir: bool = True,
         **kwargs: Any,
     ):
@@ -81,14 +80,14 @@ class SFTPFile(VFSFile):
         self._sftp.close()
         self._ssh.close()
 
-    async def read(self, n: int = -1) -> AnyStr:
+    async def read(self, n: int = -1) -> str | bytes:
         return self._fd.read(n)
 
-    async def write(self, s: AnyStr) -> None:
+    async def write(self, s: str | bytes) -> None:
         self._fd.write(s)
 
     @staticmethod
-    async def listdir(path: str, **kwargs: Any) -> List[str]:
+    async def listdir(path: str, **kwargs: Any) -> list[str]:
         """Returns content of given path.
 
         Args:

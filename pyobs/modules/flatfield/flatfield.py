@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from enum import Enum
-from typing import Union, Tuple, List, Optional, Any, Dict
+from typing import Any, cast
 
 from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
 from pyobs.interfaces import IFlatField, IFilters, IBinning, ITelescope, ICamera
@@ -33,11 +33,11 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
     def __init__(
         self,
-        telescope: Union[str, ITelescope],
-        camera: Union[str, ICamera],
-        flat_fielder: Optional[Union[Dict[str, Any], FlatFielder]],
-        filters: Optional[Union[str, IFilters]] = None,
-        log_file: Optional[str] = None,
+        telescope: str | ITelescope,
+        camera: str | ICamera,
+        flat_fielder: dict[str, Any] | FlatFielder,
+        filters: str | IFilters | None = None,
+        log_file: str | None = None,
         **kwargs: Any,
     ):
         """Initialize a new flat fielder.
@@ -66,7 +66,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
         # init binning and filter
         self._binning = (1, 1)
-        self._filter: Optional[str] = None
+        self._filter: str | None = None
 
         # need to add IFilters interface?
         if self._filter_wheel is not None:
@@ -114,7 +114,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         self._abort.set()
 
     async def callback(
-        self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str, binning: Tuple[int, int]
+        self, datetime: str, solalt: float, exptime: float, counts: float, filter_name: str, binning: tuple[int, int]
     ) -> None:
         """Callback for flat-field class to call with statistics."""
         # write log
@@ -123,14 +123,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                 datetime=datetime, solalt=solalt, exptime=exptime, counts=counts, filter=filter_name, binning=binning[0]
             )
 
-    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
         """List available binnings.
 
         Returns:
             List of available binnings as (x, y) tuples.
         """
         proxy = await self.proxy(self._camera, IBinning)
-        return await proxy.list_binnings()
+        # for whatever reason mypy needs this cast...
+        return cast(list[tuple[int, int]], await proxy.list_binnings())
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -144,7 +145,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         self._binning = (x, y)
 
-    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -152,14 +153,15 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         """
         return self._binning
 
-    async def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> list[str]:
         """List available filters.
 
         Returns:
             List of available filters.
         """
         proxy = await self.proxy(self._filter_wheel, IFilters)
-        return await proxy.list_filters()
+        # for whatever reason mypy needs this cast...
+        return cast(list[str], await proxy.list_filters())
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -181,7 +183,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         return "" if self._filter is None else self._filter
 
     @timeout(3600)
-    async def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
+    async def flat_field(self, count: int = 20, **kwargs: Any) -> tuple[int, float]:
         """Do a series of flat fields in the given filter.
 
         Args:
@@ -210,7 +212,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             camera = await self.proxy(self._camera, ICamera)
 
             # get filter wheel
-            filters: Optional[IFilters] = None
+            filters: IFilters | None = None
             if self._filter_wheel is not None:
                 log.info("Getting proxy for filter wheel...")
                 filters = await self.proxy(self._filter_wheel, IFilters)
@@ -261,10 +263,10 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
     async def park(self, **kwargs: Any) -> None:
         pass
 
-    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
         return MotionStatus.IDLE
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
 
     async def is_ready(self, **kwargs: Any) -> bool:

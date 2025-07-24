@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Any, Dict, Optional, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -18,7 +18,7 @@ class ParallelRunner(Script):
 
     def __init__(
         self,
-        scripts: List[Dict[str, Any]],
+        scripts: list[dict[str, Any]],
         check_all_can_run: bool = True,
         **kwargs: Any,
     ):
@@ -37,9 +37,9 @@ class ParallelRunner(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         scripts = [self.get_object(s, Script) for s in self.scripts]
         tasks = [

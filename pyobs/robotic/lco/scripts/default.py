@@ -16,9 +16,11 @@ from pyobs.interfaces import (
     ICamera,
     IFilters,
     IImageType,
+    IPointingRaDec,
 )
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
+import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
 from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -151,9 +153,9 @@ class LcoDefaultScript(Script):
 
     async def run(
         self,
-        task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
+        task_runner: TaskRunner | None = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
 
@@ -171,7 +173,10 @@ class LcoDefaultScript(Script):
             if telescope is None:
                 raise ValueError("No telescope given.")
             log.info("Moving to target %s...", target["name"])
-            track = asyncio.create_task(telescope.move_radec(target["ra"], target["dec"]))
+            if isinstance(telescope, IPointingRaDec):
+                track = asyncio.create_task(telescope.move_radec(target["ra"], target["dec"]))
+            else:
+                raise exc.MotionError("Telescope can't move to RA/Dec.")
 
         # acquisition?
         if (

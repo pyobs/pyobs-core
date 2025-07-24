@@ -1,15 +1,16 @@
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
-from typing import List, Dict, Tuple, Any
+from typing import Any, TypeVar, Generic
 
-from pyobs.images import Image
+IN = TypeVar("IN")
+OUT = TypeVar("OUT")
 
 
-class GuidingStatistics(object, metaclass=ABCMeta):
+class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
     """Calculates statistics for guiding."""
 
     def __init__(self) -> None:
-        self._sessions: Dict[str, List[Any]] = defaultdict(list)
+        self._sessions: dict[str, list[Any]] = defaultdict(list)
 
     def init_stats(self, client: str, default: Any = None) -> None:
         """
@@ -26,10 +27,10 @@ class GuidingStatistics(object, metaclass=ABCMeta):
             self._sessions[client].append(self._get_session_data(default))
 
     @abstractmethod
-    def _build_header(self, data: Any) -> Dict[str, Tuple[Any, str]]:
+    def _build_header(self, data: Any) -> dict[str, tuple[Any, str]]:
         raise NotImplementedError
 
-    def add_to_header(self, client: str, header: Dict[str, Tuple[Any, str]]) -> Dict[str, Tuple[Any, str]]:
+    def add_to_header(self, client: str, header: dict[str, tuple[Any, str]]) -> dict[str, tuple[Any, str]]:
         """
         Add statistics to given header.
 
@@ -44,10 +45,10 @@ class GuidingStatistics(object, metaclass=ABCMeta):
         return header | session_header
 
     @abstractmethod
-    def _get_session_data(self, input_data: Image) -> Any:
+    def _get_session_data(self, input_data: IN) -> OUT:
         raise NotImplementedError
 
-    def add_data(self, input_data: Image) -> None:
+    def add_data(self, input_data: IN) -> None:
         """
         Adds data to all client measurement sessions.
         Args:

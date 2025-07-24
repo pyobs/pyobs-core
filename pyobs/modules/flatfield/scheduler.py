@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Any, Union
+from typing import Any
 
 from pyobs.interfaces import IRunnable
 from pyobs.interfaces import IFlatField, IFilters, IBinning
@@ -22,9 +22,9 @@ class FlatFieldScheduler(Module, IRunnable):
 
     def __init__(
         self,
-        flatfield: Union[str, IFlatField],
-        functions: Dict[str, str],
-        priorities: Union[Dict[str, Any], SkyflatPriorities],
+        flatfield: str | IFlatField,
+        functions: str | dict[str, str | dict[str, str]],
+        priorities: dict[str, Any] | SkyflatPriorities,
         min_exptime: float = 0.5,
         max_exptime: float = 5,
         timespan: float = 7200,

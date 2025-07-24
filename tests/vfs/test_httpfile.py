@@ -1,49 +1,35 @@
-import requests
+import pytest
+from aioresponses import aioresponses
 
 from pyobs.vfs import HttpFile
-
-
-"""
-class Response:
-    def __init__(self, status_code, content):
-        self.status_code = status_code
-        self.content = content
 
 
 uploaded = None
 
 
-class Session:
-    def mount(self, *args, **kwargs):
-        pass
-
-    def get(self, url, params=None, **kwargs):
-        global uploaded
-        return Response(200, uploaded)
-
-    def post(self, url, data=None, json=None, **kwargs):
-        global uploaded
-        uploaded = data
-        return Response(200, None)
+@pytest.fixture
+def mocked():
+    with aioresponses() as m:
+        yield m
 
 
-def test_upload_download(monkeypatch):
-    # mock it
-    global uploaded
-    monkeypatch.setattr(requests, 'Session', lambda: Session())
-
+@pytest.mark.asyncio
+async def test_upload_download(mocked) -> None:
     # create config
-    upload = 'http://localhost:37075/'
-    download = 'http://localhost:37075/'
+    upload = "http://localhost:37075/"
+    download = "http://localhost:37075/"
 
     # test data
-    test = b'Hello world'
+    test = "Hello world"
+
+    # mock
+    mocked.post(upload, status=200)
+    mocked.get(download, status=200, body=test)
 
     # write file
-    with HttpFile('test.txt', 'w', upload=upload, download=download) as f:
-        f.write(test)
+    async with HttpFile("test.txt", "w", upload=upload, download=download) as f:
+        await f.write(test)
 
     # read data
-    with HttpFile('test.txt', 'r', upload=upload, download=download) as f:
-        assert test == f.read()
-"""
+    async with HttpFile("test.txt", "r", upload=upload, download=download) as f:
+        assert test == await f.read()

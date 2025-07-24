@@ -32,7 +32,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info("Subscribing to new image events...")
         await self.comm.register_event(NewImageEvent, self.add_image)
 
-    def set_exposure_time(self, exposure_time: float, **kwargs: Any):
+    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time for the auto-guider.
 
         Args:

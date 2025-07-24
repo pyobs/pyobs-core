@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Tuple, List, Dict, Any, TYPE_CHECKING, Optional
+from typing import Any, TYPE_CHECKING
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -44,7 +44,7 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: Optional[SimWorld] = None, **kwargs: Any):
+    def __init__(self, world: SimWorld | None = None, **kwargs: Any):
         """Creates a new dummy telescope.
 
         Args:
@@ -56,7 +56,7 @@ class DummyTelescope(
         # init world and get telescope
         from pyobs.utils.simulation import SimWorld
 
-        self._world = world if world is not None else self.add_child_object(SimWorld)
+        self._world = world if world is not None else self.add_child_object(SimWorld, None)
         self._telescope = self._world.telescope
 
         # automatically send status updates
@@ -170,7 +170,7 @@ class DummyTelescope(
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
             self._telescope.focus = focus
 
-    async def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> list[str]:
         """List available filters.
 
         Returns:
@@ -258,7 +258,7 @@ class DummyTelescope(
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
 
-    async def get_offsets_radec(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_offsets_radec(self, **kwargs: Any) -> tuple[float, float]:
         """Get RA/Dec offset.
 
         Returns:
@@ -266,7 +266,7 @@ class DummyTelescope(
         """
         return self._telescope.offsets
 
-    async def get_radec(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_radec(self, **kwargs: Any) -> tuple[float, float]:
         """Returns current RA and Dec.
 
         Returns:
@@ -274,7 +274,7 @@ class DummyTelescope(
         """
         return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
 
-    async def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_altaz(self, **kwargs: Any) -> tuple[float, float]:
         """Returns current Alt and Az.
 
         Returns:
@@ -287,8 +287,8 @@ class DummyTelescope(
             raise ValueError("No observer given.")
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -307,7 +307,7 @@ class DummyTelescope(
         # finished
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:
@@ -323,7 +323,7 @@ class DummyTelescope(
         """
         return 0
 
-    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

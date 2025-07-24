@@ -33,7 +33,7 @@ class PhotometryFocusSeries(FocusSeries):
         """Reset focus series."""
         self._data = []
 
-    def analyse_image(self, image: Image, focus_value: float) -> None:
+    async def analyse_image(self, image: Image, focus_value: float) -> None:
         """Analyse given image.
 
         Args:
@@ -42,7 +42,7 @@ class PhotometryFocusSeries(FocusSeries):
         """
 
         # do photometry
-        self._source_detection(image)
+        image = await self._source_detection(image)
 
         # filter
         sources = image.safe_catalog

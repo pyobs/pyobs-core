@@ -31,7 +31,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics]] = None,
+        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics[Any, Any]]] = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -149,7 +149,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
             # if image is given, process it
             await self.run_pipeline(image)
 
-    def _set_loop_state(self, state: bool):
+    def _set_loop_state(self, state: bool) -> None:
         self._uptime.add_data(state)
         self._loop_closed = state
 

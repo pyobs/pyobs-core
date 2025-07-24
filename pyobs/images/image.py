@@ -1,9 +1,9 @@
 from __future__ import annotations
 import copy
 import io
-from typing import TypeVar, Optional, Type, Dict, Any, cast
-
+from typing import TypeVar, Optional, Type, Any, cast
 import numpy as np
+import numpy.typing as npt
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu, ImageHDU
 from astropy.table import Table
@@ -23,13 +23,13 @@ class Image:
 
     def __init__(
         self,
-        data: Optional[NDArray[Any]] = None,
-        header: Optional[fits.Header] = None,
-        mask: Optional[NDArray[Any]] = None,
-        uncertainty: Optional[NDArray[Any]] = None,
-        catalog: Optional[Table] = None,
-        raw: Optional[NDArray[Any]] = None,
-        meta: Optional[Dict[Any, Any]] = None,
+        data: npt.NDArray[np.floating[Any]] | None = None,
+        header: fits.Header | None = None,
+        mask: npt.NDArray[np.floating[Any]] | None = None,
+        uncertainty: npt.NDArray[np.floating[Any]] | None = None,
+        catalog: Table | None = None,
+        raw: npt.NDArray[np.floating[Any]] | None = None,
+        meta: dict[Any, Any] | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -46,12 +46,14 @@ class Image:
         """
 
         # store
-        self._data = data
+        self._data: npt.NDArray[np.floating[Any]] | None = data
         self._header = fits.Header() if header is None else header.copy()
-        self._mask = None if mask is None else mask.copy()
-        self._uncertainty = None if uncertainty is None else uncertainty.copy()
+        self._mask: npt.NDArray[np.floating[Any]] | None = None if mask is None else mask.copy()
+        self._uncertainty: npt.NDArray[np.floating[Any]] | None = (
+            None if uncertainty is None else uncertainty.copy()
+        )
         self._catalog = None if catalog is None else catalog.copy()
-        self._raw = None if raw is None else raw.copy()
+        self._raw: npt.NDArray[np.floating[Any]] | None = None if raw is None else raw.copy()
         self._meta = {} if meta is None else copy.deepcopy(meta)
 
         # add basic header stuff
@@ -142,8 +144,8 @@ class Image:
             raise ValueError("Could not find HDU with main image.")
 
         # get data
-        image.data = image_hdu.data
-        image.header = image_hdu.header
+        image._data = image_hdu.data
+        image._header = image_hdu.header
 
         # mask
         if "MASK" in data:
@@ -191,10 +193,11 @@ class Image:
     def __truediv__(self, other: Image) -> Image:
         """Divides this image by other."""
         img = self.copy()
-        if img._data is None or other._data is None:
+        if img._data is not None and other._data is not None:
+            img._data = img._data / other._data
+            return img
+        else:
             raise ValueError("One image in division is None.")
-        img._data /= other._data
-        return img
 
     def writeto(self, f: Any, *args: Any, **kwargs: Any) -> None:
         """Write image as FITS to given file object.
@@ -365,18 +368,22 @@ class Image:
             return default
 
     @property
-    def data(self) -> NDArray[Any]:
+    def safe_data(self) -> Optional[npt.NDArray[np.floating[Any]]]:
+        return self._data
+
+    @property
+    def data(self) -> npt.NDArray[np.floating[Any]]:
         if self._data is None:
             raise exc.ImageError("No data found in image.")
         return self._data
 
-    @property
-    def safe_data(self) -> Optional[NDArray[Any]]:
-        return self._data
-
     @data.setter
-    def data(self, val: Optional[NDArray[Any]]):
+    def data(self, val: Optional[npt.NDArray[np.floating[Any]]]) -> None:
         self._data = val
+
+    @property
+    def safe_header(self) -> Optional[fits.Header]:
+        return self._header
 
     @property
     def header(self) -> fits.Header:
@@ -384,41 +391,42 @@ class Image:
             raise exc.ImageError("No header found in image.")
         return self._header
 
-    @property
-    def safe_header(self) -> Optional[fits.Header]:
-        return self._header
-
     @header.setter
-    def header(self, val: Optional[fits.Header]):
+    def header(self, val: Optional[fits.Header]) -> None:
         self._header = val
 
     @property
-    def mask(self) -> NDArray[Any]:
-        if self._mask is None:
-            raise exc.ImageError("No mask found in image.")
+    def safe_mask(self) -> npt.NDArray[np.floating[Any]] | None:
         return self._mask
 
     @property
-    def safe_mask(self) -> Optional[NDArray[Any]]:
-        return self._mask
+    def mask(self) -> npt.NDArray[np.floating[Any]]:
+        if self._mask is not None:
+            return self._mask
+        else:
+            raise exc.ImageError("No mask found in image.")
 
     @mask.setter
-    def mask(self, val: Optional[NDArray[Any]]):
+    def mask(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
         self._mask = val
 
     @property
-    def uncertainty(self) -> NDArray[Any]:
+    def safe_uncertainty(self) -> npt.NDArray[np.floating[Any]] | None:
+        return self._uncertainty
+
+    @property
+    def uncertainty(self) -> npt.NDArray[np.floating[Any]]:
         if self._uncertainty is None:
             raise exc.ImageError("No uncertainties found in image.")
         return self._uncertainty
 
-    @property
-    def safe_uncertainty(self) -> Optional[NDArray[Any]]:
-        return self._uncertainty
-
     @uncertainty.setter
-    def uncertainty(self, val: Optional[NDArray[Any]]):
+    def uncertainty(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
         self._uncertainty = val
+
+    @property
+    def safe_catalog(self) -> Table | None:
+        return self._catalog
 
     @property
     def catalog(self) -> Table:
@@ -426,37 +434,33 @@ class Image:
             raise exc.ImageError("No catalog found in image.")
         return self._catalog
 
-    @property
-    def safe_catalog(self) -> Optional[Table]:
-        return self._catalog
-
     @catalog.setter
-    def catalog(self, val: Optional[Table]):
+    def catalog(self, val: Table | None) -> None:
         self._catalog = val
 
     @property
-    def raw(self) -> NDArray[Any]:
+    def safe_raw(self) -> npt.NDArray[np.floating[Any]] | None:
+        return self._raw
+
+    @property
+    def raw(self) -> npt.NDArray[np.floating[Any]]:
         if self._raw is None:
             raise exc.ImageError("No raw data found in image.")
         return self._raw
 
-    @property
-    def safe_raw(self) -> Optional[NDArray[Any]]:
-        return self._raw
-
     @raw.setter
-    def raw(self, val: Optional[NDArray[Any]]):
+    def raw(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
         self._raw = val
 
     @property
-    def meta(self) -> Dict[Any, Any]:
+    def meta(self) -> dict[Any, Any]:
         if self._meta is None:
-            self._meta: Dict[Any, Any] = {}
+            self._meta = {}
         return self._meta
 
     @meta.setter
-    def meta(self, val: Optional[Dict[Any, Any]]):
-        self._meta = val
+    def meta(self, val: Optional[dict[Any, Any]]) -> None:
+        self._meta = {} if val is None else val
 
 
 __all__ = ["Image"]

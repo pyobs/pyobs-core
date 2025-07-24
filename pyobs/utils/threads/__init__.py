@@ -1,2 +1,2 @@
 from .lockwithabort import LockWithAbort, AcquireLockFailed
-from .threadwithreturnvalue import ThreadWithReturnValue
+from .checkabort import check_abort

@@ -1,5 +1,4 @@
 from typing import List, Tuple
-import matplotlib.pyplot as plt
 import numpy as np
 from typing_extensions import deprecated
 
@@ -90,15 +89,3 @@ class SphericalGrid:
             )
             for lon, lat in grid
         ]
-
-    @staticmethod
-    def plot_cartesian(grid: List[Tuple[float, float, float]]) -> None:
-        """Plot cartesian grid.
-
-        Params:
-            grid: Cartesian grid to plot.
-        """
-        fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
-        x, y, z = list(zip(*grid))
-        ax.scatter(x, z, y)

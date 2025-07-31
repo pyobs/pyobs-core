@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.26.1"
+version = "1.26.2"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -19,7 +19,7 @@ dependencies = [
     "astroplan>=0.10.1,<0.11",
     "py-expression-eval>=0.3.14,<0.4",
     "requests>=2.32.3,<3",
-    "matplotlib>=3.10.3,<4",
+    "matplotlib>=3.10.1,<4",
     "pandas>=2.2.3",
     "paramiko>=3.5.1",
     "aiohttp>=3.11.18,<4",

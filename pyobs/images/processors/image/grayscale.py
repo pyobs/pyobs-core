@@ -1,5 +1,6 @@
 import logging
 from typing import Any
+import numpy as np
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -41,7 +42,9 @@ class Grayscale(ImageProcessor):
         # 3D, i.e. color, image?
         data = image.data
         if len(data.shape) == 3 and data.shape[0] == 3:
-            image.data = self._r * data[0, :, :] + self._g * data[1, :, :] + self._b * data[2, :, :]
+            image.data = (self._r * data[0, :, :] + self._g * data[1, :, :] + self._b * data[2, :, :]).astype(
+                np.float32
+            )
 
         return image
 

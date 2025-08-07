@@ -2,6 +2,8 @@ from abc import ABCMeta
 from datetime import datetime, timezone
 import io
 import logging
+
+import aiohttp
 import time
 import asyncio
 from typing import Any, NamedTuple
@@ -224,7 +226,11 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # now send image!
             last_num = num
             last_time = time.time()
-            await response.write(b"--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n" + image + b"\r\n")
+            try:
+                await response.write(b"--jpgboundary\r\nContent-type: image/jpeg\r\n\r\n" + image + b"\r\n")
+            except aiohttp.client_exceptions.ClientConnectionResetError:
+                # end stream
+                break
 
         # return response
         return response

@@ -15,7 +15,7 @@ class Save(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, filename: str = "/cache/processed_{ORIGNAME}", broadcast: bool = False, **kwargs: Any):
+    def __init__(self, filename: str = "/pyobs/image.fits", broadcast: bool = False, **kwargs: Any):
         """Init an image processor that broadcasts an image
 
         Args:

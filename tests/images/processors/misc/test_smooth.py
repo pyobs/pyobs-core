@@ -6,7 +6,7 @@ import pytest
 import scipy.ndimage
 
 from pyobs.images import Image
-from pyobs.images.processors.misc import Smooth
+from pyobs.images.processors.image import Smooth
 
 
 def test_init():

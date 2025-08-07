@@ -5,7 +5,7 @@ import pytest
 from astropy.io.fits import Header
 
 from pyobs.images import Image
-from pyobs.images.processors.misc import SoftBin
+from pyobs.images.processors.image import SoftBin
 
 
 def test_init_default():

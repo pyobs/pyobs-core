@@ -4,7 +4,7 @@ import pyobs.utils.fits
 from pyobs.comm import Comm
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.images.processors.misc import Save
+from pyobs.images.processors.image import Save
 from pyobs.vfs import VirtualFileSystem
 
 

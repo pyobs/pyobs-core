@@ -50,9 +50,7 @@ class SoftBin(ImageProcessor):
 
         return output_image
 
-    def _reshape_image(
-        self, image_data: npt.NDArray[np.floating[Any]]
-    ) -> npt.NDArray[np.floating[Any]]:
+    def _reshape_image(self, image_data: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.floating[Any]]:
         shape = (image_data.shape[0] // self.binning, self.binning, image_data.shape[1] // self.binning, self.binning)
 
         return cast(npt.NDArray[np.floating[Any]], image_data.reshape(shape).mean(-1).mean(1))

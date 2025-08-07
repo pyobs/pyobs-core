@@ -8,7 +8,7 @@ from pyobs.modules.roof import BaseRoof
 from pyobs.utils.enums import MotionStatus
 
 
-class TestBaseRoof(BaseRoof):
+class MockBaseRoof(BaseRoof):
     async def init(self, **kwargs: Any) -> None:
         pass
 
@@ -25,7 +25,7 @@ async def test_open(mocker):
     mocker.patch("pyobs.mixins.MotionStatusMixin.open")
     mocker.patch("pyobs.modules.Module.open")
 
-    telescope = TestBaseRoof()
+    telescope = MockBaseRoof()
     await telescope.open()
 
     pyobs.mixins.WeatherAwareMixin.open.assert_called_once_with(telescope)
@@ -35,7 +35,7 @@ async def test_open(mocker):
 
 @pytest.mark.asyncio
 async def test_get_fits_header_before_open():
-    telescope = TestBaseRoof()
+    telescope = MockBaseRoof()
 
     telescope.get_motion_status = AsyncMock(return_value=MotionStatus.POSITIONED)
     header = await telescope.get_fits_header_before()
@@ -45,7 +45,7 @@ async def test_get_fits_header_before_open():
 
 @pytest.mark.asyncio
 async def test_get_fits_header_before_closed():
-    telescope = TestBaseRoof()
+    telescope = MockBaseRoof()
 
     telescope.get_motion_status = AsyncMock(return_value=MotionStatus.PARKED)
     header = await telescope.get_fits_header_before()
@@ -55,7 +55,7 @@ async def test_get_fits_header_before_closed():
 
 @pytest.mark.asyncio
 async def test_ready():
-    telescope = TestBaseRoof()
+    telescope = MockBaseRoof()
 
     telescope.get_motion_status = AsyncMock(return_value=MotionStatus.TRACKING)
     assert await telescope.is_ready() is True
@@ -63,7 +63,7 @@ async def test_ready():
 
 @pytest.mark.asyncio
 async def test_not_ready():
-    telescope = TestBaseRoof()
+    telescope = MockBaseRoof()
 
     telescope.get_motion_status = AsyncMock(return_value=MotionStatus.PARKING)
     assert await telescope.is_ready() is False

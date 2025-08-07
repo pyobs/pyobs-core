@@ -6,6 +6,8 @@ Misc
 from .addmask import AddMask
 from .calibration.calibration import Calibration
 from .createfilename import CreateFilename
+from .download import Download
+from .grayscale import Grayscale
 from .removebackground import RemoveBackground
 from .smooth import Smooth
 from .softbin import SoftBin

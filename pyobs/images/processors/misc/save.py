@@ -10,12 +10,12 @@ from pyobs.utils.fits import FilenameFormatter
 log = logging.getLogger(__name__)
 
 
-class Broadcast(ImageProcessor):
+class Save(ImageProcessor):
     """Broadcast image."""
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, filename: str = "/cache/processed_{ORIGNAME}", **kwargs: Any):
+    def __init__(self, filename: str = "/cache/processed_{ORIGNAME}", broadcast: bool = False, **kwargs: Any):
         """Init an image processor that broadcasts an image
 
         Args:
@@ -24,12 +24,13 @@ class Broadcast(ImageProcessor):
         ImageProcessor.__init__(self, **kwargs)
 
         self._formatter = FilenameFormatter(filename)
+        self._broadcast = broadcast
 
     async def open(self) -> None:
         """Initialize processor."""
         await ImageProcessor.open(self)
 
-        if self.comm is not None:
+        if self._broadcast and self.comm is not None:
             await self.comm.register_event(NewImageEvent)
 
     async def __call__(self, image: Image) -> Image:
@@ -44,8 +45,9 @@ class Broadcast(ImageProcessor):
 
         filename = image.format_filename(self._formatter)
         await self.vfs.write_image(filename, image)
-        await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header["IMAGETYP"])))
+        if self._broadcast:
+            await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header["IMAGETYP"])))
         return image
 
 
-__all__ = ["Broadcast"]
+__all__ = ["Save"]

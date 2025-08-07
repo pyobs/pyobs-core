@@ -1,3 +1,4 @@
+from .addfitsheaders import AddFitsHeaders
 from .download import Download
 from .grayscale import Grayscale
 from .save import Save

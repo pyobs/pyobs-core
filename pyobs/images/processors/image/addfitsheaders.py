@@ -51,7 +51,15 @@ class AddFitsHeaders(ImageProcessor):
                 for sub in susbtitutes:
                     py = sub[1:-1]
                     res = eval(py, imports)
-                    value = value.replace(sub, res)
+                    value = value.replace(sub, str(res))
+
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        try:
+                            value = float(value)
+                        except ValueError:
+                            pass
 
                 image.header[key] = value
             else:

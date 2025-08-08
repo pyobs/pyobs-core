@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Union, Any, Optional, Dict
+from typing import Any
 
 from pyobs.images import ImageProcessor, Image
 from pyobs.mixins.pipeline import PipelineMixin
@@ -17,8 +17,8 @@ class Pipeline(Module, PipelineMixin):
 
     def __init__(
         self,
-        pipeline: List[Union[Dict[str, Any], ImageProcessor]],
-        sources: Optional[Union[str, List[str]]] = None,
+        pipeline: list[dict[str, Any] | ImageProcessor],
+        sources: str | list[str] | None = None,
         interval: int | None = None,
         **kwargs: Any,
     ):
@@ -41,7 +41,7 @@ class Pipeline(Module, PipelineMixin):
         self._interval = interval
 
         # background task
-        self.add_background_task(self._interval_processing, autostart=False)
+        self.add_background_task(self._interval_processing)
 
     async def open(self) -> None:
         """Open module."""
@@ -58,14 +58,13 @@ class Pipeline(Module, PipelineMixin):
             await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def _interval_processing(self) -> None:
-        if self._interval is None:
-            return
-
         while True:
             try:
-                image = Image()
-                await self.run_pipeline(image)
-                await asyncio.sleep(self._interval)
+                if self._interval is not None:
+                    image = Image()
+                    await self.run_pipeline(image)
+                await asyncio.sleep(1 if self._interval is None else self._interval)
+
             except:
                 log.exception("Error in pipeline:")
 

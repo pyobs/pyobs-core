@@ -49,9 +49,7 @@ class Image:
         self._data: npt.NDArray[np.floating[Any]] | None = data
         self._header = fits.Header() if header is None else header.copy()
         self._mask: npt.NDArray[np.floating[Any]] | None = None if mask is None else mask.copy()
-        self._uncertainty: npt.NDArray[np.floating[Any]] | None = (
-            None if uncertainty is None else uncertainty.copy()
-        )
+        self._uncertainty: npt.NDArray[np.floating[Any]] | None = None if uncertainty is None else uncertainty.copy()
         self._catalog = None if catalog is None else catalog.copy()
         self._raw: npt.NDArray[np.floating[Any]] | None = None if raw is None else raw.copy()
         self._meta = {} if meta is None else copy.deepcopy(meta)
@@ -461,6 +459,26 @@ class Image:
     @meta.setter
     def meta(self, val: Optional[dict[Any, Any]]) -> None:
         self._meta = {} if val is None else val
+
+    @property
+    def is_color(self) -> bool:
+        return len(self.data.shape) == 3 and self.data.shape[0] == 3
+
+    def to_grayscale(self, r: float = 0.2126, g: float = 0.7152, b: float = 0.0722, **kwargs: Any) -> Image:
+        """Convert RGB image to grayscale.
+
+        Args:
+            r: Weight for red.
+            g: Weight for green.
+            b: Weight for blue.
+        """
+        if not self.is_color:
+            return self
+
+        image = self.copy()
+        data = image.data
+        image.data = (r * data[0, :, :] + g * data[1, :, :] + b * data[2, :, :]).astype(np.float32)
+        return image
 
 
 __all__ = ["Image"]

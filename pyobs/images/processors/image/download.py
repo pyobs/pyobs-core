@@ -73,9 +73,6 @@ class Download(ImageProcessor):
         else:
             self._converter = EncodedImageConverter()
 
-        # get a new session
-        self._session = aiohttp.ClientSession()
-
     async def __call__(self, image: Image) -> Image:
         """Download an image.
 
@@ -86,7 +83,8 @@ class Download(ImageProcessor):
             Downloaded image.
         """
 
-        async with self._session.get(self._url) as response:
+        session = aiohttp.ClientSession()
+        async with session.get(self._url) as response:
             response.raise_for_status()
             image_data = await response.read()
             return self._converter(image_data)

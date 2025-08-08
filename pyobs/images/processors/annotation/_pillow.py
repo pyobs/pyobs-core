@@ -42,5 +42,11 @@ class PillowHelper:
         else:
             return x, y
 
+    @staticmethod
+    def color(
+        color: float | int | tuple[float | int, float | int, float | int] | None,
+    ) -> float | int | tuple[float | int, float | int, float | int] | None:
+        return tuple(color) if isinstance(color, list) else color
+
 
 __all__ = ["PillowHelper"]

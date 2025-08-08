@@ -52,7 +52,6 @@ class Circle(ImageProcessor):
         Returns:
             Output image.
         """
-        import PIL.Image
         import PIL.ImageDraw
 
         im = from_image(image)

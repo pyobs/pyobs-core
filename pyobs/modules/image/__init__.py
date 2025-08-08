@@ -7,4 +7,5 @@ __title__ = "Image operations"
 
 from .imagewatcher import ImageWatcher
 from .imagewriter import ImageWriter
+from .pipeline import Pipeline
 from .seeing import Seeing

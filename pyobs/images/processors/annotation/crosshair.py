@@ -3,7 +3,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from ._pil import from_image, to_image
+from ._pil import from_image, to_image, position
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ class Crosshair(ImageProcessor):
         y: float,
         radius: float,
         color: float | int | tuple[float | int, float | int, float | int] | None = None,
+        wcs: bool = False,
         **kwargs: Any,
     ):
         """Init a new crosshair processor.
@@ -28,6 +29,7 @@ class Crosshair(ImageProcessor):
             y: Center y coordinate.
             radius: Radius.
             color: Fill color.
+            wcs: Use WCS for position.
         """
         ImageProcessor.__init__(self, **kwargs)
 
@@ -36,6 +38,7 @@ class Crosshair(ImageProcessor):
         self._y = y
         self._radius = radius
         self._color = color
+        self._wcs = wcs
 
     async def __call__(self, image: Image) -> Image:
         """Drawn a crosshair on the image.
@@ -49,12 +52,13 @@ class Crosshair(ImageProcessor):
         import PIL.ImageDraw
 
         im = from_image(image)
+        x, y = position(image, self._x, self._y, self._wcs)
 
         draw = PIL.ImageDraw.Draw(im)
         width = int(self._radius / 10.0)
-        draw.circle([self._x, self._y], self._radius, outline=self._color, width=width)
-        draw.line([(self._x - self._radius, self._y), (self._x + self._radius), self._y], self._color, width=width)
-        draw.line([(self._x, self._y - self._radius), (self._x, self._y + self._radius)], self._color, width=width)
+        draw.circle([x, y], self._radius, outline=self._color, width=width)
+        draw.line([(x - self._radius, y), (x + self._radius), y], self._color, width=width)
+        draw.line([(x, y - self._radius), (x, y + self._radius)], self._color, width=width)
 
         return to_image(image, im)
 

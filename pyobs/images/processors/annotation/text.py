@@ -3,7 +3,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from ._pil import from_image, to_image
+from ._pil import from_image, to_image, position
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ class Text(ImageProcessor):
         spacing: int = 4,
         align: str = "left",
         direction: str | None = None,
+        wcs: bool = False,
         **kwargs: Any,
     ):
         """Init a new grayscale processor.
@@ -40,6 +41,7 @@ class Text(ImageProcessor):
             spacing: Number of pixels between lines.
             align: Text alignment.
             direction: Text direction.
+            wcs: Use WCS.
         """
         import PIL.ImageFont
 
@@ -54,6 +56,7 @@ class Text(ImageProcessor):
         self._spacing = spacing
         self._align = align
         self._direction = direction
+        self._wcs = wcs
 
         # font
         self._font_size = font_size
@@ -73,9 +76,10 @@ class Text(ImageProcessor):
         import PIL.ImageDraw
 
         im = from_image(image)
+        x, y = position(image, self._x, self._y, self._wcs)
         draw = PIL.ImageDraw.Draw(im)
         draw.text(
-            (self._x, self._y),
+            (x, y),
             self._text,
             fill=self._fill,
             font=self._font,

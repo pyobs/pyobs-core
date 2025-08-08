@@ -3,7 +3,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from ._pil import from_image, to_image
+from ._pil import from_image, to_image, position
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class Circle(ImageProcessor):
         fill: float | int | tuple[float | int, float | int, float | int] | None = None,
         outline: float | int | tuple[float | int, float | int, float | int] | None = None,
         width: int = 1,
+        wcs: bool = False,
         **kwargs: Any,
     ):
         """Init a new grayscale processor.
@@ -32,6 +33,7 @@ class Circle(ImageProcessor):
             fill: Fill color.
             outline: Outline color.
             width: Width of line.
+            wcs: Use WCS.
         """
         ImageProcessor.__init__(self, **kwargs)
 
@@ -42,6 +44,7 @@ class Circle(ImageProcessor):
         self._fill = fill
         self._outline = outline
         self._width = width
+        self._wcs = wcs
 
     async def __call__(self, image: Image) -> Image:
         """Drawn an ellipse on the image.
@@ -55,9 +58,10 @@ class Circle(ImageProcessor):
         import PIL.ImageDraw
 
         im = from_image(image)
+        x, y = position(image, self._x, self._y, self._wcs)
 
         draw = PIL.ImageDraw.Draw(im)
-        draw.circle([self._x, self._y], self._radius, fill=self._fill, outline=self._outline, width=self._width)
+        draw.circle([x, y], self._radius, fill=self._fill, outline=self._outline, width=self._width)
 
         return to_image(image, im)
 

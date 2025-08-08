@@ -61,9 +61,11 @@ class Circle(ImageProcessor):
 
         x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
         radius = PillowHelper.value(image, self._radius)
+        fill = PillowHelper.color(self._fill)
+        outline = PillowHelper.color(self._outline)
 
         draw = PIL.ImageDraw.Draw(im)
-        draw.circle([x, y], radius, fill=self._fill, outline=self._outline, width=self._width)
+        draw.circle([x, y], radius, fill=fill, outline=outline, width=self._width)
 
         return PillowHelper.to_image(image, im)
 

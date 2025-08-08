@@ -77,11 +77,13 @@ class Text(ImageProcessor):
 
         im = PillowHelper.from_image(image)
         x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
+        fill = PillowHelper.color(self._fill)
+
         draw = PIL.ImageDraw.Draw(im)
         draw.text(
             (x, y),
             self._text,
-            fill=self._fill,
+            fill=fill,
             font=self._font,
             anchor=self._anchor,
             spacing=self._spacing,

@@ -53,12 +53,13 @@ class Crosshair(ImageProcessor):
 
         im = PillowHelper.from_image(image)
         x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
+        color = PillowHelper.color(self._color)
 
         draw = PIL.ImageDraw.Draw(im)
         width = int(self._radius / 10.0)
-        draw.circle([x, y], self._radius, outline=self._color, width=width)
-        draw.line([(x - self._radius, y), (x + self._radius), y], self._color, width=width)
-        draw.line([(x, y - self._radius), (x, y + self._radius)], self._color, width=width)
+        draw.circle([x, y], self._radius, outline=color, width=width)
+        draw.line([(x - self._radius, y), (x + self._radius), y], color, width=width)
+        draw.line([(x, y - self._radius), (x, y + self._radius)], color, width=width)
 
         return PillowHelper.to_image(image, im)
 

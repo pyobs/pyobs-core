@@ -3,7 +3,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from ._pil import PILHelper
+from ._pillow import PillowHelper
 
 log = logging.getLogger(__name__)
 
@@ -57,15 +57,15 @@ class Circle(ImageProcessor):
         """
         import PIL.ImageDraw
 
-        im = PILHelper.from_image(image)
+        im = PillowHelper.from_image(image)
 
-        x, y = PILHelper.position(image, self._x, self._y, self._wcs)
-        radius = PILHelper.value(image, self._radius)
+        x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
+        radius = PillowHelper.value(image, self._radius)
 
         draw = PIL.ImageDraw.Draw(im)
         draw.circle([x, y], radius, fill=self._fill, outline=self._outline, width=self._width)
 
-        return PILHelper.to_image(image, im)
+        return PillowHelper.to_image(image, im)
 
 
 __all__ = ["Circle"]

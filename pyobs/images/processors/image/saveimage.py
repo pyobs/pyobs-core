@@ -5,7 +5,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from pyobs.images.processors.annotation._pil import PILHelper
+from pyobs.images.processors.annotation._pillow import PillowHelper
 from pyobs.utils.fits import FilenameFormatter
 
 log = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class SaveImage(ImageProcessor):
                 image_format = "JPEG"
         print(image_format)
 
-        im = PILHelper.from_image(image)
+        im = PillowHelper.from_image(image)
         with io.BytesIO() as bio:
             im.save(bio, format=image_format)
             await self.vfs.write_bytes(filename, bio.getvalue())

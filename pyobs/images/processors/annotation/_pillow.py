@@ -9,7 +9,7 @@ from pyobs.images import Image
 log = logging.getLogger(__name__)
 
 
-class PILHelper:
+class PillowHelper:
     @staticmethod
     def from_image(image: Image) -> PIL.Image.Image:
         data = image.data
@@ -33,8 +33,8 @@ class PILHelper:
 
     @staticmethod
     def position(image: Image, x: float | str, y: float | str, wcs: bool) -> tuple[float, float]:
-        x = PILHelper.value(image, x)
-        y = PILHelper.value(image, y)
+        x = PillowHelper.value(image, x)
+        y = PillowHelper.value(image, y)
 
         if wcs:
             w = WCS(image.header)
@@ -43,4 +43,4 @@ class PILHelper:
             return x, y
 
 
-__all__ = ["PILHelper"]
+__all__ = ["PillowHelper"]

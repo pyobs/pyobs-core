@@ -3,7 +3,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-from ._pil import from_image, to_image, position
+from ._pil import PILHelper
 
 log = logging.getLogger(__name__)
 
@@ -75,8 +75,8 @@ class Text(ImageProcessor):
         """
         import PIL.ImageDraw
 
-        im = from_image(image)
-        x, y = position(image, self._x, self._y, self._wcs)
+        im = PILHelper.from_image(image)
+        x, y = PILHelper.position(image, self._x, self._y, self._wcs)
         draw = PIL.ImageDraw.Draw(im)
         draw.text(
             (x, y),
@@ -90,7 +90,7 @@ class Text(ImageProcessor):
             font_size=self._font_size,
         )
 
-        return to_image(image, im)
+        return PILHelper.to_image(image, im)
 
 
 __all__ = ["Text"]

@@ -9,27 +9,38 @@ from pyobs.images import Image
 log = logging.getLogger(__name__)
 
 
-def from_image(image: Image) -> PIL.Image.Image:
-    data = image.data
-    if image.is_color:
-        data = np.moveaxis(data, 0, -1)
-    return PIL.Image.fromarray(data)
+class PILHelper:
+    @staticmethod
+    def from_image(image: Image) -> PIL.Image.Image:
+        data = image.data
+        if image.is_color:
+            data = np.moveaxis(data, 0, -1)
+        return PIL.Image.fromarray(data)
+
+    @staticmethod
+    def to_image(image: Image, im: PIL.Image.Image) -> Image:
+        out = image.copy()
+        out.data = np.array(im)
+        if image.is_color:
+            out.data = np.moveaxis(out.data, 2, 0)
+        return out
+
+    @staticmethod
+    def value(image: Image, value: float | int | str) -> float | int:
+        if isinstance(value, str):
+            return image.header[value]  # type: float | int
+        return value
+
+    @staticmethod
+    def position(image: Image, x: float | str, y: float | str, wcs: bool) -> tuple[float, float]:
+        x = PILHelper.value(image, x)
+        y = PILHelper.value(image, y)
+
+        if wcs:
+            w = WCS(image.header)
+            return w.all_world2pix(x, y, 1)
+        else:
+            return x, y
 
 
-def to_image(image: Image, im: PIL.Image.Image) -> Image:
-    out = image.copy()
-    out.data = np.array(im)
-    if image.is_color:
-        out.data = np.moveaxis(out.data, 2, 0)
-    return out
-
-
-def position(image: Image, x: float, y: float, wcs: bool) -> tuple[float, float]:
-    if wcs:
-        w = WCS(image.header)
-        return w.all_world2pix(x, y, 1)
-    else:
-        return x, y
-
-
-__all__ = ["from_image", "to_image"]
+__all__ = ["PILHelper"]

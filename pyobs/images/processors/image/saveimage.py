@@ -5,6 +5,7 @@ from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processors.annotation._pil import PILHelper
 from pyobs.utils.fits import FilenameFormatter
 
 log = logging.getLogger(__name__)
@@ -36,8 +37,6 @@ class SaveImage(ImageProcessor):
         Returns:
             Original image.
         """
-        from pyobs.images.processors.annotation._pil import from_image
-
         filename = image.format_filename(self._formatter)
 
         image_format = self._image_format
@@ -47,7 +46,7 @@ class SaveImage(ImageProcessor):
                 image_format = "JPEG"
         print(image_format)
 
-        im = from_image(image)
+        im = PILHelper.from_image(image)
         with io.BytesIO() as bio:
             im.save(bio, format=image_format)
             await self.vfs.write_bytes(filename, bio.getvalue())

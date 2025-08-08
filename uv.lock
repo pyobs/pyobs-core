@@ -1829,6 +1829,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "paramiko" },
+    { name = "pillow" },
     { name = "py-expression-eval" },
     { name = "pytz" },
     { name = "pyyaml" },
@@ -1892,6 +1893,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "paramiko", specifier = ">=3.5.1" },
     { name = "photutils", marker = "extra == 'full'", specifier = ">=2.2.0,<3" },
+    { name = "pillow", specifier = ">=11.3.0" },
     { name = "py-expression-eval", specifier = ">=0.3.14,<0.4" },
     { name = "python-daemon", marker = "extra == 'full'", specifier = ">=3.1.2,<4" },
     { name = "python-telegram-bot", marker = "extra == 'full'", specifier = "~=22.0" },
@@ -2234,7 +2236,7 @@ name = "sep"
 version = "1.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform != 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a5/34/14537815638e3878209ad14aa51099a5ec73aca7ef517ad49b2b85072241/sep-1.4.1.tar.gz", hash = "sha256:a0c8324ab66ee716080472cb212e4303e6c3e33b0d43763075b20d4cab793b25", size = 569714, upload-time = "2025-02-18T15:01:17.517Z" }
 wheels = [

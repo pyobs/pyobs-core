@@ -143,6 +143,18 @@ class VirtualFileSystem(object):
                 image.writeto(bio, *args, **kwargs)
                 await f.write(bio.getvalue())
 
+    async def write_bytes(self, filename: str, data: bytes, *args: Any, **kwargs: Any) -> None:
+        """Convenience function for writing bytes to a file.
+
+        Args:
+            filename: Name of file to write.
+            data: Bytes to write.
+        """
+
+        # open file
+        async with self.open_file(filename, "wb") as f:
+            await f.write(data)
+
     async def read_csv(self, filename: str, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Convenience function for reading a CSV file into a DataFrame.
 

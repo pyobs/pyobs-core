@@ -65,7 +65,7 @@ class Circle(ImageProcessor):
         outline = PillowHelper.color(self._outline)
 
         draw = PIL.ImageDraw.Draw(im)
-        draw.circle([x, y], radius, fill=fill, outline=outline, width=self._width)
+        draw.circle([x, y], radius, fill=fill, outline=outline, width=self._width)  # type: ignore
 
         return PillowHelper.to_image(image, im)
 

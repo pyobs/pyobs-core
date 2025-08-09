@@ -43,7 +43,7 @@ class SolarHelioprojective(ImageProcessor):
         Returns:
             Image with new WCS.
         """
-        import sunpy.coordinates
+        import sunpy.coordinates  # type: ignore
 
         cdelt = sunpy.coordinates.sun.angular_radius().degree / 470.0
 

@@ -83,7 +83,7 @@ class Text(ImageProcessor):
         draw.text(
             (x, y),
             self._text,
-            fill=fill,
+            fill=fill,  # type: ignore
             font=self._font,
             anchor=self._anchor,
             spacing=self._spacing,

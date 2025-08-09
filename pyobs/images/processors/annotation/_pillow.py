@@ -1,4 +1,6 @@
 import logging
+from typing import cast
+
 import PIL.Image
 import numpy as np
 from astropy.wcs import WCS
@@ -38,7 +40,7 @@ class PillowHelper:
 
         if wcs:
             w = WCS(image.header)
-            return w.all_world2pix(x, y, 1)
+            return cast(tuple[float, float], w.all_world2pix(x, y, 1))
         else:
             return x, y
 

@@ -51,7 +51,7 @@ class AddFitsHeaders(ImageProcessor):
                 for sub in susbtitutes:
                     py = sub[1:-1]
                     res = eval(py, imports)
-                    value = value.replace(sub, str(res))
+                    value = value.replace(sub, str(res))  # type: ignore
 
                     try:
                         value = int(value)

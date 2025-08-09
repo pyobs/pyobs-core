@@ -1,6 +1,7 @@
 from .addfitsheaders import AddFitsHeaders
 from .download import Download
 from .grayscale import Grayscale
+from .httpserver import HttpServer
 from .normalize import Normalize
 from .save import Save
 from .saveimage import SaveImage

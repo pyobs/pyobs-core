@@ -38,20 +38,21 @@ class SaveImage(ImageProcessor):
             Original image.
         """
         filename = image.format_filename(self._formatter)
+        data = self.encode_image(image, filename, self._image_format)
+        await self.vfs.write_bytes(filename, data)
+        return image
 
-        image_format = self._image_format
+    @staticmethod
+    def encode_image(image: Image, filename: str, image_format: str | None = None) -> bytes:
         if image_format is None:
             image_format = os.path.splitext(filename)[1][1:].upper()
             if image_format == "JPG":
                 image_format = "JPEG"
-        print(image_format)
 
         im = PillowHelper.from_image(image)
         with io.BytesIO() as bio:
             im.save(bio, format=image_format)
-            await self.vfs.write_bytes(filename, bio.getvalue())
-
-        return image
+            return bio.getvalue()
 
 
 __all__ = ["SaveImage"]

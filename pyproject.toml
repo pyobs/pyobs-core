@@ -37,6 +37,7 @@ full = [
     "python-telegram-bot~=22.0",
     "opencv-python-headless>=4.10.0.84",
     "pillow>=11.3.0",
+    "sunpy>=7.0.1",
 ]
 
 [project.scripts]

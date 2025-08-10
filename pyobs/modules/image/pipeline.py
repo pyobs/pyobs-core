@@ -63,10 +63,9 @@ class Pipeline(Module, PipelineMixin):
                 if self._interval is not None:
                     image = Image()
                     await self.run_pipeline(image)
-                await asyncio.sleep(1 if self._interval is None else self._interval)
-
             except:
                 log.exception("Error in pipeline:")
+            await asyncio.sleep(1 if self._interval is None else self._interval)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Runs a new image through the pipeline.

@@ -52,7 +52,12 @@ class GetFitsHeaders(ImageProcessor):
         # await all requests
         for request in requests:
             hdr = await request
-            out.header.extend(hdr)
+            for key, value in hdr.items():
+                if isinstance(value, list) and not isinstance(value, str):
+                    # convert list to tuple
+                    out.header[key] = tuple(value)
+                else:
+                    out.header[key] = value
         return out
 
 

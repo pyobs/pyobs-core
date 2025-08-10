@@ -9,7 +9,9 @@ from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
 from numpy.typing import NDArray
-from photutils.datasets import make_model_image, make_noise_image
+
+# todo: reactivate
+# from photutils.datasets import make_model_image, make_noise_image
 from astropy.modeling import models
 import logging
 

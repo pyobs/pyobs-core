@@ -5,7 +5,7 @@ import pytest
 from pyobs.modules.roof import BaseDome
 
 
-class TestBaseDome(BaseDome):
+class MockBaseDome(BaseDome):
 
     async def init(self, **kwargs: Any) -> None:
         pass
@@ -25,7 +25,7 @@ class TestBaseDome(BaseDome):
 
 @pytest.mark.asyncio
 async def test_get_fits_header_before(mocker):
-    dome = TestBaseDome()
+    dome = MockBaseDome()
 
     mocker.patch("pyobs.modules.roof.BaseRoof.get_fits_header_before", return_value={"ROOF-OPN": (True, "")})
 

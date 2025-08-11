@@ -78,11 +78,15 @@ class Text(ImageProcessor):
         im = PillowHelper.from_image(image)
         x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
         fill = PillowHelper.color(self._fill)
+        try:
+            text = self._text.format(**image.header)
+        except KeyError:
+            text = self._text
 
         draw = PIL.ImageDraw.Draw(im)
         draw.text(
             (x, y),
-            self._text,
+            text,
             fill=fill,  # type: ignore
             font=self._font,
             anchor=self._anchor,

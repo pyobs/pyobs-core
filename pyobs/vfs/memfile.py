@@ -68,9 +68,6 @@ class MemoryFile(BufferedFile):
     async def close(self) -> None:
         """Close stream."""
 
-        # clear buffer
-        self._clear_buffer(self.filename)
-
         # set flag
         self._open = False
 

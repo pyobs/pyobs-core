@@ -132,6 +132,9 @@ class SSHFile(BufferedFile):
         if "w" in self.mode and self._open:
             await self._upload()
 
+        # clear buffer
+        self._clear_buffer(self.filename)
+
         # set flag
         self._open = False
         self._ssh.close()

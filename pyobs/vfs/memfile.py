@@ -51,7 +51,7 @@ class MemoryFile(BufferedFile):
             self._pos = len(data) - 1
         else:
             # extract data to read
-            data = self._buffer(self.filename)[self._pos: self._pos + n]
+            data = self._buffer(self.filename)[self._pos : self._pos + n]
             self._pos += n
 
         # return data
@@ -67,6 +67,9 @@ class MemoryFile(BufferedFile):
 
     async def close(self) -> None:
         """Close stream."""
+
+        # clear buffer
+        self._clear_buffer(self.filename)
 
         # set flag
         self._open = False

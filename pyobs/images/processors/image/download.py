@@ -83,11 +83,11 @@ class Download(ImageProcessor):
             Downloaded image.
         """
 
-        session = aiohttp.ClientSession()
-        async with session.get(self._url) as response:
-            response.raise_for_status()
-            image_data = await response.read()
-            return self._converter(image_data)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self._url) as response:
+                response.raise_for_status()
+                image_data = await response.read()
+                return self._converter(image_data)
 
 
 __all__ = ["Download"]

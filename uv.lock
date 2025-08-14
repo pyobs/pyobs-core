@@ -1844,7 +1844,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.26.4"
+version = "1.27.4"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -1863,7 +1863,6 @@ dependencies = [
     { name = "scipy" },
     { name = "single-source" },
     { name = "slixmpp" },
-    { name = "sunpy" },
     { name = "typing-extensions" },
 ]
 
@@ -1878,6 +1877,7 @@ full = [
     { name = "python-daemon" },
     { name = "python-telegram-bot" },
     { name = "sep", marker = "sys_platform == 'linux'" },
+    { name = "sunpy" },
     { name = "tornado" },
 ]
 
@@ -1932,7 +1932,7 @@ requires-dist = [
     { name = "sep", marker = "sys_platform == 'linux' and extra == 'full'", specifier = ">=1.4.1,<2" },
     { name = "single-source", specifier = ">=0.4.0,<0.5" },
     { name = "slixmpp", specifier = "==1.8.4" },
-    { name = "sunpy", specifier = ">=7.0.1" },
+    { name = "sunpy", marker = "extra == 'full'", specifier = ">=7.0.1" },
     { name = "tornado", marker = "extra == 'full'", specifier = ">=6.4.2,<7" },
     { name = "typing-extensions", specifier = ">=4.13.2,<5" },
 ]

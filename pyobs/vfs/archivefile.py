@@ -48,7 +48,7 @@ class ArchiveFile(HttpFile):
             url = self._url + "frames/create/"
             data = aiohttp.FormData()
             data.add_field("csrfmiddlewaretoken", token)
-            data.add_field("file", self._buffer, filename=os.path.basename(self.filename))
+            data.add_field("file", self._buffer(self.filename), filename=os.path.basename(self.filename))
 
             # send data and return image ID
             async with session.post(url, auth=self._auth, data=data, timeout=10, headers=self._headers) as response:

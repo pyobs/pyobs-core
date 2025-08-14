@@ -3,6 +3,7 @@ import copy
 import inspect
 import logging
 from typing import Any, Callable, TYPE_CHECKING
+import slixmpp
 import slixmpp.exceptions
 
 from pyobs.modules import Module
@@ -75,9 +76,11 @@ class RPC(object):
         iq = self._client.plugin["xep_0009"].make_iq_method_call(target_jid, method, py2xml(*args))  # type: ignore
 
         # create a future for this
-        pid = iq["id"]
+        jid: str | slixmpp.JID = iq["id"]
+        if isinstance(jid, slixmpp.JID):
+            jid = jid.node
         future = Future(annotation=annotation, comm=self._comm)
-        self._futures[pid] = future
+        self._futures[jid] = future
 
         # send request
         await iq.send()
@@ -160,11 +163,13 @@ class RPC(object):
             return
 
         # get future
-        pid = iq["id"]
-        if pid not in self._futures:
+        jid: str | slixmpp.JID = iq["id"]
+        if isinstance(jid, slixmpp.JID):
+            jid = jid.node
+        if jid not in self._futures:
             return
-        future = self._futures[pid]
-        del self._futures[pid]
+        future = self._futures[jid]
+        del self._futures[jid]
 
         # set result of future, if it's not set already (probably with an exception)
         if not future.done():
@@ -181,8 +186,10 @@ class RPC(object):
         """
         iq.enable("rpc_query")
         timeout = iq["rpc_query"]["method_timeout"]["timeout"]
-        pid = iq["id"]
-        self._futures[pid].set_timeout(timeout)
+        jid: str | slixmpp.JID = iq["id"]
+        if isinstance(jid, slixmpp.JID):
+            jid = jid.node
+        self._futures[jid].set_timeout(timeout)
 
     async def _on_jabber_rpc_method_fault(self, iq: Any) -> None:
         """Communication to host failed.
@@ -196,7 +203,9 @@ class RPC(object):
         fault = xml2fault(iq["rpc_query"]["method_response"]["fault"])
 
         # get future
-        jid = iq["id"]
+        jid: str | slixmpp.JID = iq["id"]
+        if isinstance(jid, slixmpp.JID):
+            jid = jid.node
         future = self._futures[jid]
         del self._futures[jid]
 
@@ -210,7 +219,7 @@ class RPC(object):
 
         # and instantiate it
         if issubclass(exception_class, exc.RemoteError):
-            exception = exception_class(message=exception_message, module=jid.node)
+            exception = exception_class(message=exception_message, module=jid)
         else:
             exception = exception_class(message=exception_message)
 
@@ -233,9 +242,11 @@ class RPC(object):
         condition = iq["error"]["condition"]
 
         # get future
-        pid = iq["id"]
-        callback = self._futures[pid]
-        del self._futures[pid]
+        jid: str | slixmpp.JID = iq["id"]
+        if isinstance(jid, slixmpp.JID):
+            jid = jid.node
+        callback = self._futures[jid]
+        del self._futures[jid]
 
         # sender
         sender = iq["from"].node

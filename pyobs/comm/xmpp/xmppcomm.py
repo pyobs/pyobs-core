@@ -218,8 +218,8 @@ class XmppComm(Comm):
 
         # wait for connected
         if not await self._xmpp.wait_connect():
-            if self.module is not None:
-                self.module.quit()
+            if self._module is not None:
+                self._module.quit()
             return
 
         # wait a little and finished
@@ -495,7 +495,8 @@ class XmppComm(Comm):
         )
 
         # send it to local module
-        self._send_event_to_module(event, self.module.name)
+        if self._module is not None:
+            self._send_event_to_module(event, self._module.name)
 
     @staticmethod
     def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:

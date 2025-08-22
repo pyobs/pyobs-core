@@ -55,6 +55,10 @@ class Telegram(Module):
         # thread
         self.add_background_task(self._log_sender_thread)
 
+        # disable INFO logging for httpx
+        httpx_logger = logging.getLogger("httpx")
+        httpx_logger.setLevel(logging.WARNING)
+
     async def open(self) -> None:
         """Open module."""
         from telegram.ext import CommandHandler, MessageHandler, filters

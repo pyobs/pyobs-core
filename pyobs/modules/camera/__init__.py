@@ -10,3 +10,4 @@ from .basevideo import BaseVideo
 from .basespectrograph import BaseSpectrograph
 from .dummycamera import DummyCamera
 from .dummyspectrograph import DummySpectrograph
+from .pipelinecamera import PipelineCamera

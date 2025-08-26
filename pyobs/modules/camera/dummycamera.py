@@ -290,5 +290,11 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         return self._gain
 
+    async def set_offset(self, offset: float, **kwargs: Any) -> None:
+        pass
+
+    async def get_offset(self, **kwargs: Any) -> float:
+        return 0.0
+
 
 __all__ = ["DummyCamera"]

@@ -30,9 +30,7 @@ class CatalogCircularMask(ImageProcessor):
         """
         ImageProcessor.__init__(self, **kwargs)
 
-        # init
         self._radius = radius
-        self._radius_is_corrected = False
         self._center = center
         self._exclude_circle = exclude_circle
 
@@ -45,8 +43,6 @@ class CatalogCircularMask(ImageProcessor):
         Returns:
             Image with masked Catalog.
         """
-        if not self._radius_is_corrected:
-            self._correct_radius_for_binning(image)
 
         catalog = image.safe_catalog
         if catalog is not None:
@@ -54,14 +50,6 @@ class CatalogCircularMask(ImageProcessor):
             image.catalog = catalog[mask]
 
         return image
-
-    def _correct_radius_for_binning(self, image: Image) -> None:
-        binning_x, binning_y = image.header["XBINNING"], image.header["YBINNING"]
-        if binning_x == binning_y:
-            self._radius /= binning_x
-        else:
-            log.warning("Binning factor is not the same for x and y axis. Filter radius remains uncorrected ...")
-        self._radius_is_corrected = True
 
     def _get_mask(self, image: Image, catalog: Table) -> np.ndarray:
         center_x, center_y = self._get_center(image)

@@ -10,8 +10,7 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from numpy.typing import NDArray
 
-# todo: reactivate
-# from photutils.datasets import make_model_image, make_noise_image
+from photutils.datasets import make_model_image, make_noise_image
 from astropy.modeling import models
 import logging
 

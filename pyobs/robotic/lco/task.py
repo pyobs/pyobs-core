@@ -7,6 +7,7 @@ from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
+import pyobs.utils.exceptions as exc
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -280,6 +281,18 @@ class LcoTask(Task):
             config_status.finish(
                 state="FAILED", reason="Task execution was interrupted.", time_completed=script.exptime_done
             )
+
+        except exc.InvocationError as e:
+            if isinstance(e.exception, exc.AbortedError):
+                log.warning(f"Task execution was aborted: {e.exception}")
+                config_status.finish(
+                    state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
+                )
+            else:
+                log.warning(f"Error during task execution: {e.exception}")
+                config_status.finish(
+                    state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
+                )
 
         except Exception:
             log.exception("Something went wrong.")

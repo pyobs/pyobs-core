@@ -1,6 +1,8 @@
 import logging
 from typing import Any, Tuple, Union
 
+import numpy as np
+from astropy.table import Table
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 
@@ -16,6 +18,7 @@ class CatalogCircularMask(ImageProcessor):
         self,
         radius: float,
         center: Union[Tuple[int, int], Tuple[float, float], Tuple[str, str]] = ("CRPIX1", "CRPIX2"),
+        exclude_circle: bool = False,
         **kwargs: Any,
     ):
         """Init an image processor that masks out everything except for a central circle.
@@ -23,13 +26,13 @@ class CatalogCircularMask(ImageProcessor):
         Args:
             radius: radius of the central circle in pixels
             center: fits-header keywords or pixel coordinates defining the center of the circle
+            exclude_circle: whether to exclude the central circle from the catalog
         """
         ImageProcessor.__init__(self, **kwargs)
 
-        # init
         self._radius = radius
-        self._radius_is_corrected = False
         self._center = center
+        self._exclude_circle = exclude_circle
 
     async def __call__(self, image: Image) -> Image:
         """Remove everything outside the given radius from the image.
@@ -40,25 +43,20 @@ class CatalogCircularMask(ImageProcessor):
         Returns:
             Image with masked Catalog.
         """
-        if not self._radius_is_corrected:
-            self._correct_radius_for_binning(image)
-
-        center_x, center_y = self._get_center(image)
 
         catalog = image.safe_catalog
         if catalog is not None:
-            mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
+            mask = self._get_mask(image, catalog)
             image.catalog = catalog[mask]
 
         return image
 
-    def _correct_radius_for_binning(self, image: Image) -> None:
-        binning_x, binning_y = image.header["XBINNING"], image.header["YBINNING"]
-        if binning_x == binning_y:
-            self._radius /= binning_x
+    def _get_mask(self, image: Image, catalog: Table) -> np.ndarray:
+        center_x, center_y = self._get_center(image)
+        if self._exclude_circle:
+            return (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 >= self._radius**2
         else:
-            log.warning("Binning factor is not the same for x and y axis. Filter radius remains uncorrected ...")
-        self._radius_is_corrected = True
+            return (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
 
     def _get_center(self, image: Image) -> tuple[float, float]:
         if isinstance(self._center[0], str) and isinstance(self._center[1], str):

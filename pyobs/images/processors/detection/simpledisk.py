@@ -53,7 +53,7 @@ class SimpleDisk(ImageProcessor):
         mask = data > self._threshold
 
         # Keep largest connected component
-        lab, nlab = ndi.label(mask)  # type: ignore
+        lab, nlab = ndi.label(mask)
         if nlab == 0:
             return image
         counts = np.bincount(lab.ravel())
@@ -66,8 +66,8 @@ class SimpleDisk(ImageProcessor):
         dist = ndi.distance_transform_edt(comp)
 
         # get max
-        y, x = np.unravel_index(np.argmax(dist), dist.shape)  # type: ignore
-        r = float(dist[y, x])  # type: ignore
+        y, x = np.unravel_index(np.argmax(dist), dist.shape)
+        r = float(dist[y, x])
 
         # set it
         out = image.copy()

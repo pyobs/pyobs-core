@@ -16,8 +16,8 @@ def mocked():
 @pytest.mark.asyncio
 async def test_upload_download(mocked) -> None:
     # create config
-    upload = "http://localhost:37075/"
-    download = "http://localhost:37075/"
+    upload = "http://localhost:37075/test.txt"
+    download = "http://localhost:37075/test.txt"
 
     # test data
     test = "Hello world"
@@ -32,4 +32,4 @@ async def test_upload_download(mocked) -> None:
 
     # read data
     async with HttpFile("test.txt", "r", upload=upload, download=download) as f:
-        assert test == await f.read()
+        assert test == (await f.read()).decode()

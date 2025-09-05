@@ -151,7 +151,7 @@ class ProjectedOffsets(Offsets):
         guesses = [np.max(y), mean, variance]
 
         # perform fit
-        result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)  # type: ignore
+        result = fmin(ProjectedOffsets._gaussian_fit, guesses, args=(y, x), disp=False)
 
         # sanity check and finish up
         shift = float(result[1])

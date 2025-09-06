@@ -53,7 +53,10 @@ class ScriptRunner(Module, IRunnable):
 
     async def _run_thread(self) -> None:
         """Run the script."""
-        await self.run()
+        try:
+            await self.run()
+        except:
+            log.exception("Script failed.")
 
 
 __all__ = ["ScriptRunner"]

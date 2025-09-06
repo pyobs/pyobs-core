@@ -43,6 +43,8 @@ class SequentialRunner(Script):
             script = self.get_object(s, Script)
             if await script.can_run():
                 await script.run(task_runner, task_schedule, task_archive)
+            else:
+                log.info(f"Script {s['class']} cannot run.")
 
 
 __all__ = ["SequentialRunner"]

@@ -39,6 +39,9 @@ class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
             header: Header dict to add statistics to.
         """
 
+        if client not in self._sessions:
+            return header
+
         data = self._sessions.pop(client)
         session_header = self._build_header(data)
 

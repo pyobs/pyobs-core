@@ -114,7 +114,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
                 await asyncio.sleep(self._min_interval)
 
             except:
-                log.exception("An error occurred: ", e)
+                log.exception("An error occurred: ")
                 await asyncio.sleep(5)
 
 

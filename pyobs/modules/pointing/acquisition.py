@@ -1,12 +1,12 @@
 import asyncio
 import logging
 import numpy as np
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, cast
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
-from pyobs.interfaces import IAcquisition
+from pyobs.interfaces import IAcquisition, IPointingAltAz, IPointingRaDec
 from pyobs.modules import Module
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
@@ -33,6 +33,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         tolerance: float = 1,
         max_offset: float = 120,
         log_file: Optional[str] = None,
+        oneshot: bool = False,
         broadcast: bool = False,
         **kwargs: Any,
     ):
@@ -45,6 +46,8 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             tolerance: Tolerance in position to reach in arcsec.
             max_offset: Maximum offset to move in arcsec.
             log_file: Name of file to write log to.
+            oneshot: For a oneshot the number of attempts is automatically set to 1 and the method finishes whether
+                     successful or not.
             broadcast: Whether to broadcast acquisition images.
         """
         BasePointing.__init__(self, **kwargs)
@@ -57,6 +60,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         self._tolerance = tolerance * u.arcsec
         self._max_offset = max_offset * u.arcsec
         self._abort_event = asyncio.Event()
+        self._oneshot = oneshot
         self._broadcast = broadcast
 
         # init log file
@@ -164,26 +168,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if osd.distance < self._tolerance:
                 # we're finished!
                 log.info("Target successfully acquired.")
-
-                # get current Alt/Az
-                cur_alt, cur_az = await telescope.get_altaz()
-                cur_ra, cur_dec = await telescope.get_radec()
-
-                # prepare log entry
-                log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
-
-                # Alt/Az or RA/Dec?
-                if isinstance(telescope, IOffsetsRaDec):
-                    log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
-                elif isinstance(telescope, IOffsetsAltAz):
-                    log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
-
-                # write log
-                if self._publisher is not None:
-                    await self._publisher(**log_entry)
-
-                # finished
-                return log_entry
+                return await self._create_log_and_return(telescope)
 
             # abort?
             if osd.distance > self._max_offset:
@@ -196,12 +181,38 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             else:
                 log.warning("Could not apply offsets.")
 
+            if self._oneshot:
+                # we're finished!
+                log.info("Finishing acquisition after oneshot.")
+                return await self._create_log_and_return(telescope)
+
             # new exposure time?
             if image.has_meta(ExpTime):
                 exposure_time = image.get_meta(ExpTime).exptime
 
         # could not acquire target
         raise exc.ImageError("Could not acquire target within given tolerance.")
+
+    async def _create_log_and_return(self, telescope: ITelescope) -> dict[str, Any]:
+        # get current Alt/Az
+        cur_alt, cur_az = await cast(IPointingAltAz, telescope).get_altaz()
+        cur_ra, cur_dec = await cast(IPointingRaDec, telescope).get_radec()
+
+        # prepare log entry
+        log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
+
+        # Alt/Az or RA/Dec?
+        if isinstance(telescope, IOffsetsRaDec):
+            log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
+        elif isinstance(telescope, IOffsetsAltAz):
+            log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
+
+        # write log
+        if self._publisher is not None:
+            await self._publisher(**log_entry)
+
+        # finished
+        return log_entry
 
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""

@@ -1,7 +1,8 @@
 import logging
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, Union, cast
 
 import numpy as np
+import numpy.typing as npt
 from astropy.table import Table
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -51,12 +52,14 @@ class CatalogCircularMask(ImageProcessor):
 
         return image
 
-    def _get_mask(self, image: Image, catalog: Table) -> np.ndarray:
+    def _get_mask(self, image: Image, catalog: Table) -> npt.NDArray[np.bool]:
         center_x, center_y = self._get_center(image)
+        # TODO: what??
         if self._exclude_circle:
-            return (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 >= self._radius**2
+            mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 >= self._radius**2
         else:
-            return (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
+            mask = (catalog["x"] - center_x) ** 2 + (catalog["y"] - center_y) ** 2 <= self._radius**2
+        return cast(npt.NDArray[np.bool], mask)
 
     def _get_center(self, image: Image) -> tuple[float, float]:
         if isinstance(self._center[0], str) and isinstance(self._center[1], str):

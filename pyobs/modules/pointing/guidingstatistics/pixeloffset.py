@@ -40,11 +40,10 @@ class GuidingStatisticsPixelOffset(GuidingStatistics[Image, tuple[float, float]]
 
         return header
 
-    def _get_session_data(self, data: Image) -> tuple[float, float]:
+    def _get_session_data(self, data: Image) -> tuple[float, float] | None:
         if data.has_meta(PixelOffsets):
             meta = data.get_meta(PixelOffsets)
             primitive = tuple(meta.__dict__.values())
             return primitive
         else:
-            log.warning("Image is missing the necessary meta information!")
-            raise KeyError("Unknown meta.")
+            return None

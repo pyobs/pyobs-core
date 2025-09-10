@@ -38,10 +38,9 @@ class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
 
         return header
 
-    def _get_session_data(self, data: Image) -> float:
+    def _get_session_data(self, data: Image) -> float | None:
         if data.has_meta(SkyOffsets):
             sky_offset = data.get_meta(SkyOffsets)
             return float(sky_offset.separation().deg)
         else:
-            log.warning("Image is missing the necessary meta information!")
-            raise KeyError("Unknown meta.")
+            return None

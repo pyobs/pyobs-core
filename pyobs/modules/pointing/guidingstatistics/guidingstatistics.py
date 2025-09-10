@@ -48,7 +48,7 @@ class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
         return header | session_header
 
     @abstractmethod
-    def _get_session_data(self, input_data: IN) -> OUT:
+    def _get_session_data(self, input_data: IN) -> OUT | None:
         raise NotImplementedError
 
     def add_data(self, input_data: IN) -> None:
@@ -59,6 +59,6 @@ class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
         """
 
         data = self._get_session_data(input_data)
-
-        for k in self._sessions.keys():
-            self._sessions[k].append(data)
+        if data is not None:
+            for k in self._sessions.keys():
+                self._sessions[k].append(data)

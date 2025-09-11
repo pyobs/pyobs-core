@@ -43,5 +43,4 @@ def test_get_session_data() -> None:
     image = Image()
     guiding_stat = GuidingStatisticsSkyOffset()
 
-    with pytest.raises(KeyError):
-        guiding_stat._get_session_data(image)
+    assert guiding_stat._get_session_data(image) is None

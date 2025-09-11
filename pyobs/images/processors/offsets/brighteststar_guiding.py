@@ -63,6 +63,11 @@ class BrightestStarGuiding(Offsets):
     def _reference_initialized(self) -> bool:
         return self._ref_pos is not None
 
+    async def reset(self) -> None:
+        """Resets guiding."""
+        log.info("Reset auto-guiding.")
+        self._ref_pos = None
+
     @staticmethod
     def _get_brightest_star_position(catalog: Table) -> tuple[float, float]:
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])

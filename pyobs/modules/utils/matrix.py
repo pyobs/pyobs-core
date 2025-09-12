@@ -60,11 +60,11 @@ class Matrix(Module):
         await Module.open(self)
 
         # log in
-        resp = await self.client.login(token=self._password)
+        resp = await self.client.login(self._password)
         if isinstance(resp, LoginResponse):
             log.info("Login to Matrix server successful.")
         else:
-            raise RuntimeError("Failed to log in: {resp}")
+            raise RuntimeError(f"Failed to log in: {resp}")
 
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)

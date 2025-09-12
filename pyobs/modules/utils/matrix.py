@@ -53,8 +53,6 @@ class Matrix(Module):
         # disable INFO logging for nio
         logging.getLogger("nio").setLevel(logging.WARNING)
 
-        self.add_background_task(self._sync_matrix)
-
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -90,19 +88,6 @@ class Matrix(Module):
         # stop matrix client
         self.client.stop_sync_forever()
         await self.client.close()
-
-    async def _sync_matrix(self) -> None:
-        while True:
-            if not self.client.logged_in:
-                await asyncio.sleep(1)
-                continue
-
-            try:
-                # await self.client.sync(timeout=30000)
-                pass
-            except:
-                log.exception("Error")
-            await asyncio.sleep(10)
 
     async def _process_log_entry(self, entry: Event, sender: str) -> bool:
         """Process a new log entry.

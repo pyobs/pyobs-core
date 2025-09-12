@@ -51,8 +51,7 @@ class Matrix(Module):
         }
 
         # disable INFO logging for nio
-        httpx_logger = logging.getLogger("nio")
-        httpx_logger.setLevel(logging.WARNING)
+        logging.getLogger("nio").setLevel(logging.WARNING)
 
         self.add_background_task(self._sync_matrix)
 

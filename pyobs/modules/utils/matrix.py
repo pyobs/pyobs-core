@@ -61,13 +61,13 @@ class Matrix(Module):
 
         # self.client.add_event_callback(message_callback, RoomMessageText)
         await self.client.login(self._password)
-        await self.client.set_displayname(self._name)
 
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)
 
         # do initial sync
         await self.client.sync()
+        await self.client.set_displayname(self._name)
 
         # join invited room if it is the given room id
         for room_id, room in self.client.invited_rooms.items():

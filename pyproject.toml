@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.29.8"
+version = "1.30.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -38,6 +38,7 @@ full = [
     "opencv-python-headless>=4.10.0.84",
     "pillow>=11.3.0",
     "sunpy>=7.0.1",
+    "matrix-nio>=0.25.2",
 ]
 
 [project.scripts]

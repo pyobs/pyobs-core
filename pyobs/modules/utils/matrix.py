@@ -2,11 +2,62 @@ import asyncio
 import logging
 from asyncio import Task
 from typing import Any
+from nio import AsyncClient, MatrixRoom, RoomMessageText, InviteEvent
 
 from pyobs.modules import Module
 from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
+
+
+class MatrixClient(AsyncClient):
+    def __init__(
+        self,
+        homeserver,
+        user="",
+        device_id="",
+        config=None,
+        ssl=None,
+        proxy=None,
+    ):
+        super().__init__(
+            homeserver,
+            user=user,
+            device_id=device_id,
+            config=config,
+            ssl=ssl,
+            proxy=proxy,
+        )
+
+        # auto-join room invites
+        self.add_event_callback(self.cb_autojoin_room, InviteEvent)
+
+        # print all the messages we receive
+        self.add_event_callback(self.cb_print_messages, RoomMessageText)
+
+    def cb_autojoin_room(self, room: MatrixRoom, event: InviteEvent):
+        """Callback to automatically joins a Matrix room on invite.
+
+        Arguments:
+            room {MatrixRoom} -- Provided by nio
+            event {InviteEvent} -- Provided by nio
+        """
+        self.join(room.room_id)
+        room = self.rooms["ROOM_ID"]
+        print(f"Room {room.name} is encrypted: {room.encrypted}")
+
+    async def cb_print_messages(self, room: MatrixRoom, event: RoomMessageText):
+        """Callback to print all received messages to stdout.
+
+        Arguments:
+            room {MatrixRoom} -- Provided by nio
+            event {RoomMessageText} -- Provided by nio
+        """
+        if event.decrypted:
+            encrypted_symbol = "🛡 "
+        else:
+            encrypted_symbol = "⚠️ "
+        print(f"{room.display_name} |{encrypted_symbol}| {room.user_name(event.sender)}: {event.body}")
 
 
 class Matrix(Module):

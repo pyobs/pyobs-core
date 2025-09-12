@@ -61,7 +61,9 @@ class Matrix(Module):
 
         # log in
         resp = await self.client.login(token=self._password)
-        if not isinstance(resp, LoginResponse):
+        if isinstance(resp, LoginResponse):
+            log.info("Login to Matrix server successful.")
+        else:
             raise RuntimeError("Failed to log in: {resp}")
 
         # listen to log events

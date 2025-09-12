@@ -55,10 +55,14 @@ class Matrix(Module):
 
     async def open(self) -> None:
         """Open module."""
+        from nio import LoginResponse
+
         await Module.open(self)
 
-        # self.client.add_event_callback(message_callback, RoomMessageText)
-        await self.client.login(self._password)
+        # log in
+        resp = await self.client.login(token=self._password)
+        if not isinstance(resp, LoginResponse):
+            raise RuntimeError("Failed to log in: {resp}")
 
         # listen to log events
         await self.comm.register_event(LogEvent, self._process_log_entry)

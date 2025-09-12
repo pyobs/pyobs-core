@@ -37,5 +37,4 @@ def test_get_session_data() -> None:
     image = Image()
     gspo = GuidingStatisticsPixelOffset()
 
-    with pytest.raises(KeyError):
-        gspo._get_session_data(image)
+    assert gspo._get_session_data(image) is None

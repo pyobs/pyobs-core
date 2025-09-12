@@ -198,7 +198,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 await self._series.analyse_image(image, foc)
             except:
                 # do nothing...
-                log.error("Could not analyse image.")
+                log.info("Could not analyse image.")
                 continue
 
         # fit focus

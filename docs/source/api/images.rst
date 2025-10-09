@@ -35,17 +35,16 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.misc.AddMask
 
-.. autoclass:: pyobs.images.processors.misc.Broadcast
-
 .. autoclass:: pyobs.images.processors.misc.Calibration
 
 .. autoclass:: pyobs.images.processors.misc.CreateFilename
 
 .. autoclass:: pyobs.images.processors.misc.RemoveBackground
 
-.. autoclass:: pyobs.images.processors.misc.Smooth
+.. autoclass:: pyobs.images.processors.image.AddFitsHeaders
+.. autoclass:: pyobs.images.processors.image.Smooth
+.. autoclass:: pyobs.images.processors.image.SoftBin
 
-.. autoclass:: pyobs.images.processors.misc.SoftBin
 
 .. automodule:: pyobs.images.processors.offsets
 
@@ -63,3 +62,6 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.photometry.SepPhotometry
 
+.. automodule:: pyobs.images.processors.image
+
+.. autoclass:: pyobs.images.processors.image.Flip

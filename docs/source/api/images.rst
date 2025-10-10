@@ -42,6 +42,8 @@ Image Processors (pyobs.images.processors)
 .. autoclass:: pyobs.images.processors.misc.RemoveBackground
 
 .. autoclass:: pyobs.images.processors.image.AddFitsHeaders
+    :class-doc-from: class
+
 .. autoclass:: pyobs.images.processors.image.Smooth
 .. autoclass:: pyobs.images.processors.image.SoftBin
 

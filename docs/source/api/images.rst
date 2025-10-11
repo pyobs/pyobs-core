@@ -41,12 +41,25 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.misc.RemoveBackground
 
+.. automodule:: pyobs.images.processors.image
 .. autoclass:: pyobs.images.processors.image.AddFitsHeaders
     :class-doc-from: class
-
+.. autoclass:: pyobs.images.processors.image.Download
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.image.Flip
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.image.Grayscale
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.image.HttpServer
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.image.Normalize
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.image.Save
+    :class-doc-from: class
 .. autoclass:: pyobs.images.processors.image.Smooth
+    :class-doc-from: class
 .. autoclass:: pyobs.images.processors.image.SoftBin
-
+    :class-doc-from: class
 
 .. automodule:: pyobs.images.processors.offsets
 
@@ -64,6 +77,4 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.photometry.SepPhotometry
 
-.. automodule:: pyobs.images.processors.image
 
-.. autoclass:: pyobs.images.processors.image.Flip

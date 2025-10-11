@@ -10,7 +10,91 @@ log = logging.getLogger(__name__)
 
 
 class HttpServer(ImageProcessor):
-    """Serve image via HTTP."""
+    """
+    Serve the latest processed image via a minimal HTTP server.
+
+    This asynchronous processor starts an :mod:`aiohttp` web server on first invocation and
+    serves the most recently processed image at two endpoints:
+
+    - ``GET /``: A simple HTML page embedding the image.
+    - ``GET /<filename>``: The raw encoded image bytes.
+
+    Images are encoded using :func:`pyobs.images.processors.image.saveimage.SaveImage.encode_image`
+    based on the configured ``filename`` extension or an explicitly provided ``format``.
+
+    :param str filename: The filename to serve the image as, which also determines the path
+                         (e.g., ``"image.jpg"`` served at ``/image.jpg``) and, if ``format`` is not
+                         given, the encoding derived from its extension. Default: ``"image.jpg"``.
+    :param str format: Explicit image format to use for encoding (e.g., ``"jpeg"``, ``"png"``,
+                       ``"tiff"``). If ``None``, the format is inferred from ``filename``.
+                       Default: ``None``.
+    :param str url: Host/interface to bind the HTTP server to (e.g., ``"localhost"`` or
+                    ``"0.0.0.0"``). Default: ``"localhost"``.
+    :param int port: TCP port to serve on. Default: ``9400``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processor.ImageProcessor`.
+
+    :class:`pyobs.images.Image`
+        The original image, unmodified.
+
+    Behavior
+    --------
+    - On the first call, starts an :class:`aiohttp.web.TCPSite` bound to ``url:port`` and
+      registers two routes:
+      - ``GET /<filename>`` returns the currently stored image bytes with content type ``image/*``.
+      - ``GET /`` returns a minimal HTML page embedding the image via ``<img src="<filename>">``.
+    - Encodes the input image using
+      :func:`pyobs.images.processors.image.saveimage.SaveImage.encode_image(image, filename, format)`
+      and stores it as the "current" image to be served by the endpoints.
+    - Subsequent calls update the stored image; clients fetching ``/<filename>`` will receive
+      the latest version.
+    - If no image has been processed yet, ``GET /<filename>`` responds with 404 Not Found.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image`
+    - Output: :class:`pyobs.images.Image` (unchanged), while the encoded bytes are exposed via HTTP.
+
+    Configuration (YAML)
+    --------------------
+    Serve a JPEG on localhost:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.HttpServer
+       filename: "image.jpg"
+       url: "localhost"
+       port: 9400
+
+    Serve a PNG on all interfaces:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.HttpServer
+       filename: "latest.png"
+       url: "0.0.0.0"
+       port: 8080
+
+    Explicitly set the format (overrides filename extension):
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.HttpServer
+       filename: "image.out"
+       format: "png"
+
+    Notes
+    -----
+    - This processor is asynchronous; it should be used within an event loop (``await``).
+    - Binding to ``"localhost"`` exposes the server only on the local machine. Use ``"0.0.0.0"``
+      to accept external connections, but be mindful of security implications.
+    - No authentication or TLS is implemented; do not expose this endpoint on untrusted networks
+      without additional protection.
+    - The response content type is ``image/*``; some clients may expect a specific MIME type
+      if the chosen format is known (e.g., ``image/jpeg`` or ``image/png``).
+    - If the encoding fails (e.g., due to unsupported format), the underlying encoder may raise
+      an exception; those propagate from :func:`SaveImage.encode_image`.
+    """
 
     __module__ = "pyobs.images.processors.misc"
 

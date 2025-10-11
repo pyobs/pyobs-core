@@ -41,6 +41,15 @@ Image Processors (pyobs.images.processors)
 
 .. autoclass:: pyobs.images.processors.misc.RemoveBackground
 
+.. automodule:: pyobs.images.processors.annotation
+.. autoclass:: pyobs.images.processors.annotation.Circle
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.annotation.Crosshair
+    :class-doc-from: class
+.. autoclass:: pyobs.images.processors.annotation.Text
+    :class-doc-from: class
+
+
 .. automodule:: pyobs.images.processors.image
 .. autoclass:: pyobs.images.processors.image.AddFitsHeaders
     :class-doc-from: class

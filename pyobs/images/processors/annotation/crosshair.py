@@ -9,7 +9,80 @@ log = logging.getLogger(__name__)
 
 
 class Crosshair(ImageProcessor):
-    """Draw a crosshair."""
+    """
+    Draw a crosshair (circle plus orthogonal lines) on an image, optionally using WCS coordinates.
+
+    This asynchronous processor uses Pillow to render a crosshair symbol on a
+    :class:`pyobs.images.Image`. The crosshair consists of a circular outline of the given
+    ``radius`` centered at ``(x, y)`` and horizontal/vertical lines crossing the center,
+    each extending to the circle’s radius. The center coordinates may be specified in pixel
+    space or, if ``wcs=True``, interpreted as world coordinates and transformed to pixels
+    via the image’s WCS.
+
+    :param float x: X coordinate of the crosshair center. If ``wcs=True``, interpreted as a
+                    world-coordinate value and converted to pixel coordinates.
+    :param float y: Y coordinate of the crosshair center. Same rules as for ``x``.
+    :param float radius: Crosshair radius in pixels. Determines both the circle size and the
+                         half-length of the crosshair lines.
+    :param float | int | tuple[float | int, float | int, float | int] | None color:
+        Color used for the circle outline and the crosshair lines. Can be a single-channel
+        value (grayscale) or a 3-tuple (RGB). If ``None``, the library’s default color is used.
+        Default: ``None``.
+    :param bool wcs: If ``True``, interpret ``x`` and ``y`` as world coordinates and convert
+                     them to pixel coordinates using the image’s WCS. Default: ``False``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processor.ImageProcessor`.
+
+    Behavior
+    --------
+    - Converts the input to a Pillow image via :class:`pyobs.utils.image.PillowHelper.from_image`.
+    - Resolves the center position with ``PillowHelper.position(image, x, y, wcs)`` and the color
+      with ``PillowHelper.color(color)``.
+    - Draws:
+      - A circle centered at ``(x, y)`` with radius ``radius`` and outline ``color``.
+      - A horizontal line from ``x - radius`` to ``x + radius`` at ``y``.
+      - A vertical line from ``y - radius`` to ``y + radius`` at ``x``.
+    - The line width is set to ``int(radius / 10.0)``.
+    - Converts the Pillow image back to a :class:`pyobs.images.Image` via
+      ``PillowHelper.to_image(image, im)``.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image`
+    - Output: :class:`pyobs.images.Image` (copied) with the crosshair drawn onto the pixel data.
+
+    Configuration (YAML)
+    --------------------
+    Pixel coordinates:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.Crosshair
+       x: 250
+       y: 300
+       radius: 40
+       color: [255, 255, 0]   # yellow
+
+    WCS coordinates for the center (requires valid WCS in the image):
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.Crosshair
+       x: 150.1234          # example RA/longitude-like value resolvable by PillowHelper
+       y: -20.5678          # example Dec/latitude-like value resolvable by PillowHelper
+       radius: 25
+       color: [0, 255, 0]
+       wcs: true
+
+    Notes
+    -----
+    - When ``wcs=True``, only ``x`` and ``y`` are interpreted in world coordinates; ``radius``
+      is treated as a pixel length.
+    - Color representation and supported coordinate/value formats depend on
+      :class:`pyobs.utils.image.PillowHelper`.
+    - The line width scales with radius and is not independently configurable.
+    - This processor is asynchronous; use it within an event loop (``await``).
+    """
 
     __module__ = "pyobs.images.processors.misc"
 

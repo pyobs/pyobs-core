@@ -74,7 +74,7 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
     return timeout_decorator
 
 
-def raises(exceptions: type[exc.PyObsError] | list[type[exc.PyObsError]]) -> Callable[[F], F]:
+def raises(*exceptions: type[exc.PyObsError]) -> Callable[[F], F]:
     """
     Decorates a method with information about which pyobs exceptions it raises. These exceptions are
     logged in this module, but as INFO without stacktrace.
@@ -83,10 +83,6 @@ def raises(exceptions: type[exc.PyObsError] | list[type[exc.PyObsError]]) -> Cal
     """
 
     def raises_decorator(func: F) -> F:
-        nonlocal exceptions
-        if isinstance(exceptions, exc.PyObsError):
-            exceptions = [exceptions]
-
         # decorate method
         setattr(func, "raises", exceptions)
         return func
@@ -303,12 +299,17 @@ class Module(Object, IModule, IConfig):
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as e:
             # something else went wrong, but only log if not a ModuleError
-            if not isinstance(e, exc.ModuleError):
+            if isinstance(e, exc.PyObsError) and not isinstance(e, exc.ModuleError):
                 # in list of named exceptions?
-                if hasattr(func, "raises") and type(e) in getattr(func, "raises"):
-                    log.info(f"Error during call to {method}: {e}")
-                else:
-                    log.exception(f"Error during call to {method}: {e}")
+                level = (
+                    "INFO"
+                    if hasattr(func, "raises")
+                    and isinstance(getattr(func, "raises"), tuple)
+                    and type(e) in getattr(func, "raises")
+                    else "ERROR"
+                )
+                exc_info = level == "ERROR"
+                e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
             raise e
 
         # finished

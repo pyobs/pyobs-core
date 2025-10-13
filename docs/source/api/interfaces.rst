@@ -4,7 +4,7 @@ Interfaces (pyobs.interfaces)
 .. automodule:: pyobs.interfaces
 
 IAbortable
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IAbortable
    :members:
@@ -12,7 +12,7 @@ IAbortable
    :undoc-members:
 
 IAcquisition
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IAcquisition
    :members:
@@ -20,7 +20,7 @@ IAcquisition
    :undoc-members:
 
 IAutoFocus
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IAutoFocus
    :members:
@@ -28,7 +28,7 @@ IAutoFocus
    :undoc-members:
 
 IAutoGuiding
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IAutoGuiding
    :members:
@@ -36,7 +36,7 @@ IAutoGuiding
    :undoc-members:
 
 IAutonomous
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IAutonomous
    :members:
@@ -44,7 +44,7 @@ IAutonomous
    :undoc-members:
 
 IBinning
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IBinning
    :members:
@@ -52,7 +52,7 @@ IBinning
    :undoc-members:
 
 ICalibrate
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ICalibrate
    :members:
@@ -60,7 +60,7 @@ ICalibrate
    :undoc-members:
 
 ICamera
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ICamera
    :members:
@@ -68,7 +68,7 @@ ICamera
    :undoc-members:
 
 IConfig
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IConfig
    :members:
@@ -76,7 +76,7 @@ IConfig
    :undoc-members:
 
 ICooling
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ICooling
    :members:
@@ -84,7 +84,7 @@ ICooling
    :undoc-members:
 
 IData
-~~~~~
+^^^^^
 
 .. autoclass:: pyobs.interfaces.IData
    :members:
@@ -92,7 +92,7 @@ IData
    :undoc-members:
 
 IDome
-~~~~~
+^^^^^
 
 .. autoclass:: pyobs.interfaces.IDome
    :members:
@@ -100,7 +100,7 @@ IDome
    :undoc-members:
 
 IExposure
-~~~~~~~~~
+^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IExposure
    :members:
@@ -108,7 +108,7 @@ IExposure
    :undoc-members:
 
 IExposureTime
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IExposureTime
    :members:
@@ -116,7 +116,7 @@ IExposureTime
    :undoc-members:
 
 IFilters
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFilters
    :members:
@@ -124,7 +124,7 @@ IFilters
    :undoc-members:
 
 IFitsHeaderAfter
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFitsHeaderAfter
    :members:
@@ -132,7 +132,7 @@ IFitsHeaderAfter
    :undoc-members:
 
 IFitsHeaderBefore
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFitsHeaderBefore
    :members:
@@ -140,7 +140,7 @@ IFitsHeaderBefore
    :undoc-members:
 
 IFlatField
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFlatField
    :members:
@@ -148,7 +148,7 @@ IFlatField
    :undoc-members:
 
 IFocusModel
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFocusModel
    :members:
@@ -156,7 +156,7 @@ IFocusModel
    :undoc-members:
 
 IFocuser
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IFocuser
    :members:
@@ -164,7 +164,7 @@ IFocuser
    :undoc-members:
 
 IGain
-~~~~~
+^^^^^
 
 .. autoclass:: pyobs.interfaces.IGain
    :members:
@@ -172,7 +172,7 @@ IGain
    :undoc-members:
 
 IImageFormat
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IImageFormat
    :members:
@@ -180,7 +180,7 @@ IImageFormat
    :undoc-members:
 
 IImageType
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IImageType
    :members:
@@ -188,7 +188,7 @@ IImageType
    :undoc-members:
 
 ILatLon
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ILatLon
    :members:
@@ -196,7 +196,7 @@ ILatLon
    :undoc-members:
 
 IMode
-~~~~~
+^^^^^
 
 .. autoclass:: pyobs.interfaces.IMode
    :members:
@@ -204,7 +204,7 @@ IMode
    :undoc-members:
 
 IModule
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IModule
    :members:
@@ -212,7 +212,7 @@ IModule
    :undoc-members:
 
 IMotion
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IMotion
    :members:
@@ -220,7 +220,7 @@ IMotion
    :undoc-members:
 
 IMultiFiber
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IMultiFiber
    :members:
@@ -228,7 +228,7 @@ IMultiFiber
    :undoc-members:
 
 IOffsetsAltAz
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IOffsetsAltAz
    :members:
@@ -236,7 +236,7 @@ IOffsetsAltAz
    :undoc-members:
 
 IOffsetsRaDec
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IOffsetsRaDec
    :members:
@@ -244,7 +244,7 @@ IOffsetsRaDec
    :undoc-members:
 
 IPointingAltAz
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingAltAz
    :members:
@@ -252,7 +252,7 @@ IPointingAltAz
    :undoc-members:
 
 IPointingHGS
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingHGS
    :members:
@@ -260,7 +260,7 @@ IPointingHGS
    :undoc-members:
 
 IPointingHelioprojective
-~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingHelioprojective
    :members:
@@ -268,7 +268,7 @@ IPointingHelioprojective
    :undoc-members:
 
 IPointingRaDec
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingRaDec
    :members:
@@ -276,7 +276,7 @@ IPointingRaDec
    :undoc-members:
 
 IPointingSeries
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IPointingSeries
    :members:
@@ -284,7 +284,7 @@ IPointingSeries
    :undoc-members:
 
 IReady
-~~~~~~
+^^^^^^
 
 .. autoclass:: pyobs.interfaces.IReady
    :members:
@@ -292,7 +292,7 @@ IReady
    :undoc-members:
 
 IRoof
-~~~~~
+^^^^^
 
 .. autoclass:: pyobs.interfaces.IRoof
    :members:
@@ -300,7 +300,7 @@ IRoof
    :undoc-members:
 
 IRotation
-~~~~~~~~~
+^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IRotation
    :members:
@@ -308,7 +308,7 @@ IRotation
    :undoc-members:
 
 IRunnable
-~~~~~~~~~
+^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IRunnable
    :members:
@@ -316,7 +316,7 @@ IRunnable
    :undoc-members:
 
 IRunning
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IRunning
    :members:
@@ -324,7 +324,7 @@ IRunning
    :undoc-members:
 
 IScriptRunner
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IScriptRunner
    :members:
@@ -332,7 +332,7 @@ IScriptRunner
    :undoc-members:
 
 ISpectrograph
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ISpectrograph
    :members:
@@ -340,7 +340,7 @@ ISpectrograph
    :undoc-members:
 
 IStartStop
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IStartStop
    :members:
@@ -348,7 +348,7 @@ IStartStop
    :undoc-members:
 
 ISyncTarget
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ISyncTarget
    :members:
@@ -356,7 +356,7 @@ ISyncTarget
    :undoc-members:
 
 ITelescope
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ITelescope
    :members:
@@ -364,7 +364,7 @@ ITelescope
    :undoc-members:
 
 ITemperatures
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.ITemperatures
    :members:
@@ -372,7 +372,7 @@ ITemperatures
    :undoc-members:
 
 IVideo
-~~~~~~
+^^^^^^
 
 .. autoclass:: pyobs.interfaces.IVideo
    :members:
@@ -380,7 +380,7 @@ IVideo
    :undoc-members:
 
 IWeather
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IWeather
    :members:
@@ -388,7 +388,7 @@ IWeather
    :undoc-members:
 
 IWindow
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.interfaces.IWindow
    :members:

@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 class SolarHelioprojective(ImageProcessor):
     """Add solar helioprojective WCS to image."""
 
-    __module__ = "pyobs.images.processors.disk"
+    __module__ = "pyobs.images.processors.wcs"
 
     def __init__(
         self,

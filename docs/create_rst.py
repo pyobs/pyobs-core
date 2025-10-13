@@ -106,7 +106,7 @@ def write_class(
 
 def write_title(rst, title, header_level):
     rst.write("%s\n" % title)
-    c = ["=", "-", "~", "^"][header_level]
+    c = ["=", "-", "^", '"'][header_level]
     rst.write(c * len(title) + "\n\n")
 
 
@@ -303,7 +303,7 @@ def create_image_processors_rst():
             "source/api/image_processors/%s.rst" % module.__name__,
             module,
             classes=True,
-            class_kwargs=dict(members=True, inheritance=True),
+            class_kwargs=dict(members=True, undoc_members=True),
         )
     write_index_file("source/api/image_processors/", title="Image processors", relative_title=False)
 

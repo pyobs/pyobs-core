@@ -1,16 +1,19 @@
+Image (pyobs.images.processors.image)
+-------------------------------------
+
 .. automodule:: pyobs.images.processors.image
 
 Download
-~~~~~~~~
+^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.image.Download
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 Smooth
-~~~~~~
+^^^^^^
 
 .. autoclass:: pyobs.images.processors.image.Smooth
    :members:
-   :show-inheritance:
+   :undoc-members:
 

@@ -1,16 +1,19 @@
+Astrometry (pyobs.images.processors.astrometry)
+-----------------------------------------------
+
 .. automodule:: pyobs.images.processors.astrometry
 
 Astrometry
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.astrometry.Astrometry
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 AstrometryDotNet
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.astrometry.AstrometryDotNet
    :members:
-   :show-inheritance:
+   :undoc-members:
 

@@ -1,7 +1,4 @@
-"""
-Source Detection
-----------------
-"""
+__title__ = "Source Detection"
 
 from .sourcedetection import SourceDetection
 from .pysep import SepSourceDetection

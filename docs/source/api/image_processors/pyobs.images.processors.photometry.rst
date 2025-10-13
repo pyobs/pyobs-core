@@ -1,23 +1,26 @@
+Photometry (pyobs.images.processors.photometry)
+-----------------------------------------------
+
 .. automodule:: pyobs.images.processors.photometry
 
 PhotUtilsPhotometry
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.photometry.PhotUtilsPhotometry
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 Photometry
-~~~~~~~~~~
+^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.photometry.Photometry
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 SepPhotometry
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.photometry.SepPhotometry
    :members:
-   :show-inheritance:
+   :undoc-members:
 

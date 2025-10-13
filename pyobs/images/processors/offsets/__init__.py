@@ -1,7 +1,4 @@
-"""
-Offsets
--------
-"""
+__title__ = "Offsets"
 
 from .brighteststar_guiding import BrightestStarGuiding
 from .offsets import Offsets

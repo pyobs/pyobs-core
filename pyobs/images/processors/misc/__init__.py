@@ -1,7 +1,4 @@
-"""
-Misc
-----
-"""
+__title__ = "Misc"
 
 from .addmask import AddMask
 from .createfilename import CreateFilename

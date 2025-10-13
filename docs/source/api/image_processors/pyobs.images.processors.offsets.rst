@@ -1,44 +1,47 @@
+Offsets (pyobs.images.processors.offsets)
+-----------------------------------------
+
 .. automodule:: pyobs.images.processors.offsets
 
 AddPixelOffset
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.AddPixelOffset
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 BrightestStarGuiding
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.BrightestStarGuiding
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 BrightestStarOffsets
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.BrightestStarOffsets
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 Offsets
-~~~~~~~
+^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.Offsets
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 ProjectedOffsets
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.ProjectedOffsets
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 SpilledLightGuiding
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.SpilledLightGuiding
    :members:
-   :show-inheritance:
+   :undoc-members:
 

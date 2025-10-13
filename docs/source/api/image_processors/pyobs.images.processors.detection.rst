@@ -1,23 +1,26 @@
+Source Detection (pyobs.images.processors.detection)
+----------------------------------------------------
+
 .. automodule:: pyobs.images.processors.detection
 
 DaophotSourceDetection
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.detection.DaophotSourceDetection
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 SepSourceDetection
-~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.detection.SepSourceDetection
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 SourceDetection
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.detection.SourceDetection
    :members:
-   :show-inheritance:
+   :undoc-members:
 

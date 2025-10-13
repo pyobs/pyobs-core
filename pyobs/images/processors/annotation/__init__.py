@@ -1,7 +1,4 @@
-"""
-Annotation
-----------
-"""
+__title__ = "Annotation"
 
 from .circle import Circle
 from .crosshair import Crosshair

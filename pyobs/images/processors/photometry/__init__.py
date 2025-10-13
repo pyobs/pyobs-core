@@ -1,7 +1,4 @@
-"""
-Source extraction
------------------
-"""
+__title__ = "Photometry"
 
 from .photometry import Photometry
 from .photutil import PhotUtilsPhotometry

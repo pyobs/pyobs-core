@@ -1,16 +1,19 @@
+Exposure Time estimators (pyobs.images.processors.exptime)
+----------------------------------------------------------
+
 .. automodule:: pyobs.images.processors.exptime
 
 ExpTimeEstimator
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.exptime.ExpTimeEstimator
    :members:
-   :show-inheritance:
+   :undoc-members:
 
 StarExpTimeEstimator
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pyobs.images.processors.exptime.StarExpTimeEstimator
    :members:
-   :show-inheritance:
+   :undoc-members:
 

@@ -99,7 +99,7 @@ class Circle(ImageProcessor):
     - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.annotation"
 
     def __init__(
         self,

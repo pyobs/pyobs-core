@@ -120,7 +120,7 @@ class Text(ImageProcessor):
     - This processor is asynchronous; use it within an event loop (``await``).
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.annotation"
 
     def __init__(
         self,

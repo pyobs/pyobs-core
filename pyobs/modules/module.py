@@ -74,6 +74,26 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
     return timeout_decorator
 
 
+def raises(exceptions: type[exc.PyObsError] | list[type[exc.PyObsError]]) -> Callable[[F], F]:
+    """
+    Decorates a method with information about which pyobs exceptions it raises. These exceptions are
+    logged in this module, but as INFO without stacktrace.
+
+    :param exceptions:  One or more exceptions.
+    """
+
+    def raises_decorator(func: F) -> F:
+        nonlocal exceptions
+        if isinstance(exceptions, exc.PyObsError):
+            exceptions = [exceptions]
+
+        # decorate method
+        setattr(func, "raises", exceptions)
+        return func
+
+    return raises_decorator
+
+
 class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
 
@@ -279,7 +299,17 @@ class Module(Object, IModule, IConfig):
         cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
         # call method
-        response = await func(*func_args, **ba.arguments, **func_kwargs)
+        try:
+            response = await func(*func_args, **ba.arguments, **func_kwargs)
+        except Exception as e:
+            # something else went wrong, but only log if not a ModuleError
+            if not isinstance(e, exc.ModuleError):
+                # in list of named exceptions?
+                if hasattr(func, "raises") and type(e) in getattr(func, "raises"):
+                    log.info(f"Error during call to {method}: {e}")
+                else:
+                    log.exception(f"Error during call to {method}: {e}")
+            raise e
 
         # finished
         return cast_response_to_simple(

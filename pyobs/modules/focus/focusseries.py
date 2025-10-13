@@ -8,7 +8,7 @@ from pyobs.events import FocusFoundEvent, BadWeatherEvent, Event
 from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import timeout, Module
+from pyobs.modules import Module, timeout, raises
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
 from pyobs.utils import exceptions as exc, exceptions
@@ -91,6 +91,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         except ValueError:
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
+    @raises(exc.GrabImageError, exc.AbortedError)
     @timeout(600)
     async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         """Perform an auto-focus series.

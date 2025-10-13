@@ -4,7 +4,6 @@ Misc
 """
 
 from .addmask import AddMask
-from .calibration.calibration import Calibration
 from .createfilename import CreateFilename
 from .removebackground import RemoveBackground
 from .circular_mask import CircularMask

@@ -15,3 +15,4 @@ API
    events
    images
    utils/index
+   image_processors/index

@@ -17,7 +17,101 @@ log = logging.getLogger(__name__)
 
 
 class SepSourceDetection(SourceDetection):
-    """Detect sources using SEP."""
+    """
+    Detect astronomical sources using SEP (Source Extractor for Python).
+
+    This asynchronous processor performs background estimation and subtraction on a
+    :class:`pyobs.images.Image`, then extracts sources with :func:`sep.extract`.
+    It converts the resulting array into a pyobs catalog, augments it with additional
+    statistics, and attaches it to the image. Pixel data are not modified in the
+    returned image.
+
+    :param float threshold: Detection threshold in units of the background RMS
+                            (sigma). Passed to :func:`sep.extract` as ``thresh``,
+                            with per-pixel error set to the global background RMS.
+                            Default: ``1.5``.
+    :param int minarea: Minimum number of connected pixels above threshold required
+                        for a detection. Default: ``5``.
+    :param int deblend_nthresh: Number of sub-thresholds used in multi-threshold
+                                deblending. Default: ``32``.
+    :param float deblend_cont: Minimum contrast ratio for deblending; lower values
+                               produce more aggressive splitting of blended objects.
+                               Default: ``0.005``.
+    :param bool clean: Whether to perform cleaning of spurious detections (as in
+                       SExtractor). Default: ``True``.
+    :param float clean_param: Cleaning parameter controlling how aggressively
+                              detections are merged/removed. See SExtractor manual.
+                              Default: ``1.0``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.detection.SourceDetection`.
+
+    Behavior
+    --------
+    - If the input image has no data (``image.safe_data is None``), a warning is logged
+      and the image is returned unchanged.
+    - A mask is obtained from ``image.mask`` if available; otherwise a zero-valued
+      boolean mask is created.
+    - Background is estimated with :class:`sep.Background` using a grid of
+      ``bw=32``, ``bh=32`` and smoothing ``fw=3``, ``fh=3``; the estimated background
+      is subtracted from the image. If SEP raises an endianness-related ``ValueError``,
+      the data are byte-swapped and background estimation retried.
+    - Sources are extracted via :func:`sep.extract` with:
+      ``thresh=self.threshold``, ``err=bkg.globalrms``, ``minarea=self.minarea``,
+      ``deblend_nthresh=self.deblend_nthresh``, ``deblend_cont=self.deblend_cont``,
+      ``clean=self.clean``, ``clean_param=self.clean_param``, and the computed mask.
+      Extraction is offloaded to a thread executor to avoid blocking the event loop.
+    - The resulting array is converted to a pyobs :class:`_SourceCatalog`, initial
+      detection flags are filtered, and additional SEP-based measurements are computed
+      via :class:`PySepStatsCalculator`. The detector gain is taken from the FITS
+      header key ``DET-GAIN`` if present; otherwise gain-dependent metrics may be
+      limited or use defaults.
+    - Post-processing includes filtering by detection flags, wrapping rotation angles
+      at 90 degrees, converting angles to degrees, and applying FITS 1-based origin
+      conventions.
+    - The catalog is attached to the image using the keys:
+      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity",
+        "tnpix", "kronrad", "fluxrad25", "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with 2D pixel data; optional mask and header.
+    - Output: :class:`pyobs.images.Image` with a source catalog attached. Pixel data
+      are unchanged; the FITS header may be read for gain (``DET-GAIN``).
+
+    Configuration (YAML)
+    --------------------
+    Minimal example:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.detection.SepSourceDetection
+       threshold: 1.5
+       minarea: 5
+
+    Aggressive deblending and cleaning:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.detection.SepSourceDetection
+       threshold: 1.8
+       minarea: 9
+       deblend_nthresh: 64
+       deblend_cont: 0.001
+       clean: true
+       clean_param: 1.2
+
+    Notes
+    -----
+    - ``threshold`` is in sigma units relative to the background RMS. Very low values
+      increase completeness but may raise false detections.
+    - Provide a meaningful mask to exclude saturated stars, cosmic rays, and artifacts
+      from background estimation and extraction.
+    - Background parameters (``bw``, ``bh``, ``fw``, ``fh``) are fixed in this wrapper;
+      adjust here if you need finer control for highly structured backgrounds.
+    - If ``DET-GAIN`` is absent, gain-dependent uncertainties and radii may be limited
+      or use defaults in :class:`PySepStatsCalculator`.
+    - This processor is asynchronous; call it within an event loop (using ``await``).
+    """
 
     __module__ = "pyobs.images.processors.detection"
 

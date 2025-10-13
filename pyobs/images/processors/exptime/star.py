@@ -12,7 +12,79 @@ log = logging.getLogger(__name__)
 
 
 class StarExpTimeEstimator(ExpTimeEstimator):
-    """Estimate exposure time from a star."""
+    """
+    Estimate a new exposure time from the brightest unsaturated star in the image.
+
+    This asynchronous processor inspects a source catalog attached to a
+    :class:`pyobs.images.Image`, filters out saturated and edge-affected stars, selects
+    the brightest remaining star, and scales the current exposure time so that the
+    star would reach a configurable fraction of the detector saturation. The scaling
+    uses a bias-corrected linear relation. The recommended exposure time is returned
+    as a float; pixel data are not modified.
+
+    :param float edge: Fraction of the image to ignore at each border (on both sides
+                       of x and y). A value of 0.1 excludes the outer 10% of the image
+                       width and height. Default: ``0.0``.
+    :param float bias: Bias level in ADU to subtract from measured peaks in the
+                       exposure-time scaling formula. Default: ``0.0``.
+    :param float saturated: Target fraction of the detector saturation to aim for
+                            with the brightest star (e.g., ``0.7`` for 70% of saturation).
+                            Default: ``0.7``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.exptime.ExpTimeEstimator`.
+
+    Behavior
+    --------
+    - Reads the current exposure time from ``image.header["EXPTIME"]``.
+    - If the image has no source catalog (``image.safe_catalog is None``), returns the
+      current exposure time unchanged.
+    - Determines the detector saturation level in ADU:
+      - If both ``DET-SATU`` (saturation in electrons) and ``DET-GAIN`` (e⁻/ADU) are
+        present in the header, uses ``DET-SATU / DET-GAIN``.
+      - Otherwise, uses a default saturation of ``50000`` ADU.
+    - Removes saturated stars from the catalog by keeping entries with
+      ``peak <= saturation``.
+    - Excludes stars near the image borders on both axes:
+      - The axis lengths are read from ``NAXIS0`` (x) and ``NAXIS1`` (y) in the header.
+      - Stars must satisfy ``x >= 1 + edge_size`` and ``x <= axis_len - edge_size``
+        (analogously for ``y``), where ``edge_size = edge * axis_len``.
+      - Coordinates are expected to use FITS 1-based convention.
+    - Selects the brightest remaining star by the ``peak`` column and computes the
+      target peak as ``target = saturated * saturation``.
+    - Computes the new exposure time with bias correction:
+      ``t_new = (target - bias) / (peak - bias) * t_old``.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with a source catalog containing at least
+      ``x``, ``y``, and ``peak`` columns, and a FITS header with ``EXPTIME``. Optional
+      ``DET-SATU`` and ``DET-GAIN`` improve saturation estimation.
+    - Output: ``float`` recommended exposure time. Pixel data and headers are unchanged.
+
+    Configuration (YAML)
+    --------------------
+    Aim for 70% of saturation and ignore 5% borders:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.exptime.StarExpTimeEstimator
+       edge: 0.05
+       saturated: 0.7
+       bias: 0.0
+
+    Notes
+    -----
+    - The formula assumes linear detector response in ADU after bias correction.
+      If ``peak <= bias``, the scaling becomes ill-defined; ensure peaks are above
+      the bias level.
+    - Accurate gain (``DET-GAIN``) and saturation (``DET-SATU``) metadata yield more
+      reliable targets; otherwise the default saturation of 50000 ADU is used.
+    - Edge filtering helps avoid truncated or aberrant stars near the borders that
+      would bias the estimate.
+    - If all stars are filtered out, the brightest-star selection may fail; ensure
+      reasonable detection and filtering parameters or handle empty catalogs upstream.
+    - This processor is asynchronous; call it within an event loop (using ``await``).
+    """
 
     __module__ = "pyobs.images.processors.exptime"
 

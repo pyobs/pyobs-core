@@ -3,7 +3,7 @@ from collections import deque
 import pytest
 
 from pyobs.images import Image
-from pyobs.images.processors.misc.calibration._calibration_cache import _CalibrationCache
+from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
 from pyobs.utils.enums import ImageType
 
 

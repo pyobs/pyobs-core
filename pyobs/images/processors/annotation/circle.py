@@ -112,7 +112,7 @@ class Circle(ImageProcessor):
         wcs: bool = False,
         **kwargs: Any,
     ):
-        """Init a new grayscale processor.
+        """Init a new circle processor.
 
         Args:
             x: Center x coordinate.
@@ -135,7 +135,7 @@ class Circle(ImageProcessor):
         self._wcs = wcs
 
     async def __call__(self, image: Image) -> Image:
-        """Drawn an ellipse on the image.
+        """Draws a circle on the image.
 
         Args:
             image: Image to draw on.

@@ -14,7 +14,74 @@ log = logging.getLogger(__name__)
 
 
 class ProjectedOffsets(Offsets):
-    """An auto-guiding system based on comparing collapsed images along the x&y axes with a reference image."""
+    """
+    Compute pixel offsets for guiding by correlating 1D projections of the current image with a reference frame.
+
+    This asynchronous processor implements an auto-guiding method based on collapsing
+    images along the x and y axes and cross-correlating these 1D profiles against a
+    stored reference. On the first invocation, it initializes by storing the reference
+    projections from the input image and returns. On subsequent calls, it computes the
+    current projections, performs background (sky) subtraction, estimates sub-pixel
+    shifts via cross-correlation and Gaussian peak fitting, and stores the resulting
+    PixelOffsets(dx, dy) in the image metadata. Pixel data and FITS headers are not
+    modified.
+
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.offsets.Offsets`.
+
+    Behavior
+    --------
+    - Reference initialization:
+      - If no reference is set, processes the input image to obtain sky-subtracted
+        1D projections along x and y, stores them as the reference, and returns.
+    - Per-image guiding update:
+      - Processes the current image to obtain sky-subtracted 1D projections.
+      - Computes dx and dy by cross-correlating current vs. reference projections
+        and fitting a Gaussian to the correlation peak within a small window to obtain
+        sub-pixel offsets.
+      - If either axis fails to produce a valid offset, logs a warning and returns
+        the image unchanged.
+      - Otherwise, attaches PixelOffsets(dx, dy) to image metadata.
+    - Cropping via TRIMSEC:
+      - If the FITS header contains TRIMSEC in the form "[x0:x1,y0:y1]" (1-based, inclusive),
+        the image is cropped to that rectangle before projection.
+    - Projection and sky subtraction:
+      - Collapses the image by summing rows and columns with NaN-safe summation.
+      - Subtracts a smooth sky continuum from each 1D projection:
+        - Divides the projection into sbin=10 bins.
+        - For each bin, estimates the continuum level as the median of the upper
+          fraction (frac=0.15) of values.
+        - Fits a spline (UnivariateSpline) through these bin medians and subtracts
+          the fitted continuum from the projection.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with 2D pixel data; optional TRIMSEC header
+      for cropping prior to projection.
+    - Output: :class:`pyobs.images.Image` with PixelOffsets(dx, dy) set in metadata
+      after the reference is initialized; otherwise unchanged.
+
+    Configuration (YAML)
+    --------------------
+    Initialize on first frame, then report offsets on subsequent frames:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.offsets.ProjectedOffsets
+
+    Notes
+    -----
+    - Offset sign convention: positive dx indicates that the current image’s x-profile
+      is shifted to larger pixel indices relative to the reference; similarly for dy.
+      Ensure this matches the downstream module that applies the offsets.
+    - The Gaussian fit is performed around the cross-correlation peak within a window
+      of width fit_width=10 by default; failed fits or peaks outside the window result
+      in no offset update.
+    - Sky subtraction parameters (frac=0.15, sbin=10) are fixed in this implementation;
+      adjust the code if your background structure requires different settings.
+    - Call reset() to clear the stored reference projections and reinitialize on the
+      next image.
+    """
 
     __module__ = "pyobs.images.processors.offsets"
 

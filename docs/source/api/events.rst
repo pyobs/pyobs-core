@@ -38,6 +38,11 @@ LogEvent
 
 .. autoclass:: pyobs.events.LogEvent
 
+ModeChangedEvent
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: pyobs.events.ModeChangedEvent
+
 ModuleClosedEvent
 ~~~~~~~~~~~~~~~~~
 

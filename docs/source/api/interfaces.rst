@@ -219,6 +219,14 @@ IMotion
    :show-inheritance:
    :undoc-members:
 
+IMultiFiber
+~~~~~~~~~~~
+
+.. autoclass:: pyobs.interfaces.IMultiFiber
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 IOffsetsAltAz
 ~~~~~~~~~~~~~
 

@@ -6,7 +6,6 @@ import os
 
 import pyobs
 import pyobs.vfs
-from pyobs.modules import Module
 
 
 def find_python_modules(pkg, ignore_init=True):
@@ -86,6 +85,7 @@ def write_class(
     private=False,
     header_level=1,
     autotype: str = "autoclass",
+    class_doc_from: str | None = None,
 ):
     name, module = cls.__name__, cls.__module__
     if title:
@@ -99,6 +99,8 @@ def write_class(
         rst.write("   :undoc-members:\n")
     if private:
         rst.write("   :private-members:\n")
+    if class_doc_from is not None:
+        rst.write("   :class-doc-from: {class_doc_from}\n")
     rst.write("\n")
 
 
@@ -274,6 +276,8 @@ def create_modules_rst():
     os.system("rm -rf source/modules/*")
 
     # first do pyobs.modules, since that's the more complicated case
+    import pyobs.modules
+
     for module in find_submodules(pyobs.modules):
         # module
         write_module_rst(
@@ -286,6 +290,25 @@ def create_modules_rst():
 
     # add to git
     os.system("git add source/modules/")
+
+
+def create_image_processors_rst():
+    # clean up
+    os.system("rm -rf source/api/image_processors/*")
+
+    # first do pyobs.modules, since that's the more complicated case
+    for module in find_submodules(pyobs.images.processors):
+        # module
+        write_module_rst(
+            "source/api/image_processors/%s.rst" % module.__name__,
+            module,
+            classes=True,
+            class_kwargs=dict(members=True, inheritance=True),
+        )
+    write_index_file("source/api/image_processors/", title="Image processors", relative_title=False)
+
+    # add to git
+    os.system("git add source/api/image_processors/")
 
 
 if __name__ == "__main__":
@@ -328,10 +351,7 @@ if __name__ == "__main__":
             write_module(rst, pyobs.images, header_level=1)
             write_class(rst, pyobs.images.Image, header_level=2)
 
-            # Processors
-            write_title(rst, "Image Processors (pyobs.images.processors)", 2)
-            for mod in find_submodules(pyobs.images.processors):
-                write_module(rst, mod, classes=True, class_kwargs=dict(title=False, header_level=3))
+        create_image_processors_rst()
 
     if args.all or args.vfs:
         with open("source/api/vfs.rst", "w") as rst:

@@ -13,7 +13,71 @@ log = logging.getLogger(__name__)
 
 
 class BrightestStarOffsets(Offsets):
-    """Calculates offsets from the center of the image to the brightest star."""
+    """
+    Compute pixel offsets from the image center to the brightest star and store them in metadata.
+
+    This asynchronous processor reads the image center from FITS header keywords
+    (default CRPIX1/CRPIX2), finds the brightest star in the attached source catalog
+    (by maximum flux), computes the pixel offset between the center and that star,
+    and stores the result as a PixelOffsets metadata entry. It also computes the
+    on-sky angular separation between the two positions using the image WCS and
+    stores it as OnSkyDistance. Pixel data and standard headers are not modified.
+
+    :param tuple[str, str] center_header_cards: Names of the FITS header keywords
+        that give the x and y pixel coordinates of the image center
+        (default: ("CRPIX1", "CRPIX2")).
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.offsets.Offsets`.
+
+    Behavior
+    --------
+    - If the image has no catalog or the catalog is empty, logs a warning and returns
+      the image unchanged.
+    - Selects the brightest star as the catalog row with the largest "flux" value
+      and reads its "x" and "y" pixel coordinates.
+    - Reads the image center pixel coordinates from the specified header keywords.
+    - Computes pixel offsets:
+      - dx = x_star - x_center
+      - dy = y_star - y_center
+    - Uses WCS from the image header to convert both positions to sky coordinates and
+      computes their angular separation.
+    - Stores results in image metadata:
+      - PixelOffsets(dx, dy)
+      - OnSkyDistance(angle)
+    - Returns the same image object with updated metadata.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with:
+      - a source catalog containing "x", "y", and "flux" columns
+      - FITS header keys for the center (e.g., CRPIX1/CRPIX2)
+      - a valid WCS solution in the header for sky separation
+    - Output: :class:`pyobs.images.Image` with PixelOffsets and OnSkyDistance set in metadata.
+
+    Configuration (YAML)
+    --------------------
+    Use CRPIX center:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.offsets.BrightestStarOffsets
+
+    Use custom center keywords:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.offsets.BrightestStarOffsets
+       center_header_cards: ["CX", "CY"]
+
+    Notes
+    -----
+    - The sign convention for offsets is star minus center:
+      positive dx means the star lies to the right of the center, positive dy means
+      it lies above the center, assuming standard image axes.
+    - Ensure catalog coordinates and center header values use the same pixel origin
+      and units (pyobs catalogs often use FITS-like 1-based coordinates).
+    - A valid WCS in the header is required to compute on-sky separation.
+    """
 
     __module__ = "pyobs.images.processors.offsets"
 

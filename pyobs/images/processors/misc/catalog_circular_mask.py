@@ -11,7 +11,77 @@ log = logging.getLogger(__name__)
 
 
 class CatalogCircularMask(ImageProcessor):
-    """Mask catalog for central circle with given radius."""
+    """
+    Filter a source catalog by keeping only entries inside a central circle (or outside it).
+
+    This asynchronous processor applies a circular spatial filter to the catalog attached
+    to a :class:`pyobs.images.Image`. It either retains sources whose positions fall
+    within a specified radius of a chosen center, or excludes them if ``exclude_circle``
+    is set. Pixel data are not modified; only the image catalog is filtered in place.
+
+    :param float radius: Radius of the circle in pixels used for filtering. Default: required.
+    :param tuple[int, int] | tuple[float, float] | tuple[str, str] center:
+        Center of the circle. Either a pair of numeric pixel coordinates
+        ``(x, y)``, or a pair of FITS header keywords whose values define the center
+        (default: ``("CRPIX1", "CRPIX2")``). The center must use the same coordinate
+        convention as the catalog (typically FITS 1-based indices in pyobs catalogs).
+    :param bool exclude_circle: If ``False``, keep only sources inside the circle.
+        If ``True``, exclude sources inside the circle and keep those outside.
+        Default: ``False``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processor.ImageProcessor`.
+
+    Behavior
+    --------
+    - If the image has no catalog (``image.safe_catalog is None``), the image is returned
+      unchanged.
+    - Determines the circle center:
+      - If ``center`` is a pair of strings, reads their values from the FITS header.
+      - If ``center`` is numeric, uses those pixel coordinates directly.
+    - Builds a boolean mask on the catalog using Euclidean distance in pixel units:
+      - Inside selection: ``(x - cx)^2 + (y - cy)^2 <= radius^2``.
+      - Outside selection (if ``exclude_circle``): the inequality is reversed.
+    - Applies the mask to the catalog and assigns the filtered catalog back to
+      ``image.catalog``.
+    - Returns the original image object with a filtered catalog; pixel data and header
+      are unchanged.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with a source catalog containing ``x`` and
+      ``y`` columns, and optionally header keys for the center if ``center`` is given
+      as strings.
+    - Output: :class:`pyobs.images.Image` with its catalog filtered by the circular
+      criterion. Pixel data are unchanged.
+
+    Configuration (YAML)
+    --------------------
+    Keep sources within 300 pixels of CRPIX center:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.CatalogCircularMask
+       radius: 300
+       center: ["CRPIX1", "CRPIX2"]
+       exclude_circle: false
+
+    Exclude a 100-pixel radius around a specified pixel center:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.misc.CatalogCircularMask
+       radius: 100
+       center: [1024, 1024]
+       exclude_circle: true
+
+    Notes
+    -----
+    - Ensure the center coordinates and catalog positions use the same origin and
+      units. Pyobs catalogs often store positions in FITS 1-based convention.
+    - ``radius`` is interpreted in pixel units of the catalog/image.
+    - The filtering operates solely on the catalog; it does not mask pixels in the
+      image data.
+    """
 
     __module__ = "pyobs.images.processors.misc"
 

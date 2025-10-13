@@ -115,7 +115,104 @@ class Ring:
 
 
 class SpilledLightGuiding(Offsets):
-    """Calculates offsets from the light in a ring around a fibre."""
+    """
+    Estimate pixel guiding offsets from asymmetry of spilled light around a fiber using a ring analysis.
+
+    This asynchronous processor analyzes the distribution of light in an annulus
+    around a selected fiber to infer the direction and magnitude of a pointing
+    offset. It queries an IMultiFiber provider for the current fiber’s pixel
+    position and radius, builds a ring (inner = fiber radius, outer = radius_ratio ×
+    inner), divides the ring into angular sections, and evaluates their brightness.
+    If the ring brightness is sufficiently non-uniform, the brightest direction and a
+    contrast-derived relative shift are used to compute a pixel offset, which is
+    stored in the image metadata as PixelOffsets.
+
+    Note: This processor subtracts the global mean from the image data in place
+    before analysis.
+
+    :param str fibers: Name/address of an IMultiFiber module that provides the
+                       currently selected fiber’s pixel position and radius via
+                       get_pixel_position() and get_radius().
+    :param float radius_ratio: Ratio of the ring’s outer radius to the inner radius
+                               (the fiber radius). The ring is defined on
+                               [inner_radius, inner_radius × radius_ratio].
+                               Default: 2.0.
+    :param float max_relative_sigma: Threshold on the ratio (std/median) of ring
+                                     intensities used by the Ring object to decide
+                                     whether the ring is "uniform." If uniform, no
+                                     offset is applied. Default: 0.1.
+    :param float section_angular_width: Angular width of each ring section in
+                                        degrees for directional analysis.
+                                        Default: 36.
+    :param float section_angular_shift: Angular offset (phase) in degrees applied to
+                                        the ring sections. Default: 18.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.offsets.Offsets`.
+
+    Behavior
+    --------
+    - Retrieve fiber geometry:
+      - Acquires fiber pixel position (x, y) and inner radius from the IMultiFiber
+        module.
+      - Corrects both by the detector binning factor read from FITS header
+        DET-BIN1 (assumes square binning).
+    - Background leveling:
+      - Subtracts the global mean of image.data in place to reduce background bias.
+    - Subimage trimming:
+      - Extracts a rectangular subimage centered on the fiber with half-size
+        radius_ratio × inner_radius in both axes for focused analysis.
+      - Re-expresses the fiber position in the trimmed subimage’s coordinates.
+    - Ring construction and analysis:
+      - Builds a Ring with inner_radius, outer_radius = inner_radius × radius_ratio,
+        section_angular_width, section_angular_shift, and max_relative_sigma.
+      - If the ring is_uniform(), sets offset to (0, 0).
+      - Otherwise:
+        - Determines the brightest direction (default: brightest section).
+        - Computes a relative shift from the brightness ratio of the brightest and
+          opposite sections using a logistic mapping, capped at 1.
+        - Converts to pixel offset: total_offset = relative_shift × inner_radius,
+          with components
+            x = total_offset × sin(angle_deg),
+            y = − total_offset × cos(angle_deg).
+    - Metadata:
+      - Stores PixelOffsets(dx, dy) in the image metadata.
+    - Returns the same image object; note that image.data has been mean-subtracted.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with:
+      - FITS header key DET-BIN1 (integer binning factor),
+      - access to an IMultiFiber module named by fibers.
+    - Output: :class:`pyobs.images.Image` with PixelOffsets set in metadata.
+      Pixel data are modified in place by global mean subtraction.
+
+    Configuration (YAML)
+    --------------------
+    Example with default ring parameters:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.offsets.SpilledLightGuiding
+       fibers: "FiberModuleName"
+       radius_ratio: 2.0
+       max_relative_sigma: 0.1
+       section_angular_width: 36
+       section_angular_shift: 18
+
+    Notes
+    -----
+    - Sign convention: Offsets are reported in image pixel axes with
+      x = total_offset × sin(angle), y = − total_offset × cos(angle),
+      where angle is the azimuth of the brightest section in degrees.
+    - The logistic mapping from section brightness ratio to relative shift is
+      relative_shift = 1 / (1 + exp(−(ratio − 0.8) × 5)), capped at 1.0.
+    - The trimming window is computed from the fiber position and radius to restrict
+      analysis to the neighborhood of the fiber; the fiber position is converted to
+      the trimmed subimage’s coordinates internally.
+    - The Ring object is expected to provide methods such as:
+      is_uniform(), get_brightest_section_angle(), get_brightest_point(),
+      get_angle_from_position(), and get_opposite_section_normalized_counts_ratio().
+    """
 
     __module__ = "pyobs.images.processors.offsets"
 

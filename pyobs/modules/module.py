@@ -541,4 +541,4 @@ class MultiModule(Module):
         return self._modules[name]
 
 
-__all__ = ["Module", "MultiModule", "timeout"]
+__all__ = ["Module", "MultiModule", "timeout", "raises"]

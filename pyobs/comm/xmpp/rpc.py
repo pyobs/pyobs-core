@@ -137,7 +137,10 @@ class RPC(object):
 
         except Exception as e:
             # an exception was raised
-            log.exception("Something unexpected happened.")
+            if isinstance(e, exc.PyObsError):
+                e.log(log, "ERROR", f"Exception was raised in call to {pmethod}: {e}", exc_info=True)
+            else:
+                log.exception("Something unexpected happened.")
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:

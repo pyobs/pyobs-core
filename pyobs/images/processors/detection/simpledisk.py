@@ -12,9 +12,82 @@ log = logging.getLogger(__name__)
 
 
 class SimpleDisk(ImageProcessor):
-    """Simple disc detection in images."""
+    """
+    Detect a roughly circular bright disk by thresholding and distance transform.
 
-    __module__ = "pyobs.images.processors.disk"
+    This processor segments the image by a fixed intensity threshold,
+    selects the largest connected component, fills internal holes, and computes the
+    Euclidean distance transform to find the pixel farthest from the component
+    boundary. That pixel is taken as the disk center, and its distance to the
+    boundary as the disk radius (both in pixels). The results are written into the
+    FITS header under configurable keyword names. Pixel data are not modified.
+
+    :param float | int threshold: Intensity threshold used to decide whether a pixel
+                                  belongs to the disk (strictly ``data > threshold``).
+                                  Units must match the image pixel values. Default: ``10.0``.
+    :param str keyword_x: FITS header keyword to store the x-coordinate (column) of the
+                          detected disk center (zero-based pixel index). Default: ``"DISKPOS1"``.
+    :param str keyword_y: FITS header keyword to store the y-coordinate (row) of the
+                          detected disk center (zero-based pixel index). Default: ``"DISKPOS2"``.
+    :param str keyword_radius: FITS header keyword to store the disk radius in pixels.
+                               Default: ``"DISKRAD"``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processor.ImageProcessor`.
+
+    Behavior
+    --------
+    - Chooses the image plane: uses the first channel (``image.data[0, :, :]``) if the
+      image is color, otherwise uses the full 2D array.
+    - Creates a binary mask with ``mask = data > threshold``.
+    - Labels connected components in the mask and keeps the largest one; if none are
+      found, returns the original image unchanged.
+    - Fills holes within the selected component and computes the Euclidean distance
+      transform of the filled mask.
+    - Finds the pixel ``(y, x)`` with maximum distance; sets ``radius = dist[y, x]``.
+    - Returns a copy of the input image with the FITS header fields:
+
+      - ``keyword_y`` = y (row index, zero-based)
+      - ``keyword_x`` = x (column index, zero-based)
+      - ``keyword_radius`` = radius (float, pixels)
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image`
+    - Output: :class:`pyobs.images.Image` (copied) with new FITS header entries for
+      center coordinates and radius; pixel data are unchanged.
+
+    Configuration (YAML)
+    --------------------
+    Basic detection with a custom threshold:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.disk.SimpleDisk
+       threshold: 25.0
+
+    Customize FITS header keywords:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.disk.SimpleDisk
+       threshold: 15.0
+       keyword_x: CX
+       keyword_y: CY
+       keyword_radius: CRAD
+
+    Notes
+    -----
+    - The algorithm assumes the disk is the largest bright connected region above the
+      threshold. Choose ``threshold`` to robustly isolate the disk from background and
+      other structures; pre-filtering or masking may help in noisy images.
+    - The estimated radius is the in-mask inscribed-circle radius; for non-circular
+      or partially occulted disks it represents the maximum interior distance to the
+      boundary, not a best-fit circle.
+    - Connectivity and hole filling use SciPy ndimage defaults; results may vary with
+      image topology.
+    """
+
+    __module__ = "pyobs.images.processors.detection"
 
     def __init__(
         self,
@@ -71,8 +144,8 @@ class SimpleDisk(ImageProcessor):
 
         # set it
         out = image.copy()
-        out.header[self._keyword_y] = y
-        out.header[self._keyword_x] = x
+        out.header[self._keyword_y] = y + 1
+        out.header[self._keyword_x] = x + 1
         out.header[self._keyword_radius] = r
         return out
 

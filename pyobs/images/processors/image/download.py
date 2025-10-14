@@ -50,9 +50,66 @@ class FitsImageConverter(ImageConverter):
 
 
 class Download(ImageProcessor):
-    """Download an image from a URL."""
+    """
+    Download an image from an HTTP(S) URL and return it as a :class:`pyobs.images.Image`.
 
-    __module__ = "pyobs.images.processors.misc"
+    This processor uses :mod:`aiohttp` to fetch image bytes from the configured
+    ``url`` and converts them into a :class:`pyobs.images.Image`. The conversion is chosen
+    automatically based on the URL's filename extension:
+
+    - ``.fits`` files are parsed with :meth:`pyobs.images.Image.from_bytes`, preserving their FITS header.
+    - Other common image formats (e.g., PNG, JPEG) are decoded via OpenCV and converted to RGB.
+      For 3-channel color images, the channel axis is moved to the front (``C, H, W``) and basic
+      header cards are set (``DATE-OBS`` and ``EXPTIME=0``).
+
+    The input argument to ``__call__`` is ignored; the processor always downloads and returns a new image.
+
+    :param str url:
+        The HTTP(S) URL to download. The file type is inferred from the URL's extension
+        using :func:`os.path.splitext`; ``.fits`` triggers FITS parsing, all other extensions
+        are treated as encoded images to be decoded via OpenCV.
+    :param kwargs:
+        Additional keyword arguments forwarded to :class:`pyobs.images.processor.ImageProcessor`.
+
+    Behavior
+    --------
+    - Performs an HTTP GET request to ``url`` using :class:`aiohttp.ClientSession`.
+    - If the URL ends with ``.fits``, the image is constructed with :meth:`pyobs.images.Image.from_bytes`,
+      preserving existing FITS headers.
+    - Otherwise, the image is decoded with OpenCV:
+      - Bytes are passed to ``cv2.imdecode`` (with ``cv2.IMREAD_UNCHANGED``), then converted from BGR to RGB.
+      - For 3-channel color images, the channel axis is moved to the front (``C, H, W``).
+      - The processor sets ``DATE-OBS`` to the current ISO timestamp and ``EXPTIME`` to ``0`` in the header.
+    - The input parameter ``image`` to ``__call__`` is ignored (no-op); a new image object is returned.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` (ignored).
+    - Output: :class:`pyobs.images.Image` constructed from the downloaded bytes.
+
+    Configuration (YAML)
+    --------------------
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.image.Download
+       url: "https://example.org/data/image.fits"
+
+    Decoding a JPEG/PNG (requires OpenCV):
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.image.Download
+       url: "https://example.org/data/preview.jpg"
+
+    Notes
+    -----
+    - File type detection is based on the URL's extension. If the URL does not reflect the true format
+      (e.g., a FITS file served without a ``.fits`` suffix), decoding may fail or produce unintended results.
+    - For encoded images, only minimal FITS-like header information is set. If you need full metadata,
+      prefer FITS sources or augment headers downstream.
+    """
+
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(self, url: str, **kwargs: Any):
         """Init a new software binning pipeline step.

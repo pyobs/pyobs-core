@@ -49,6 +49,6 @@ Sometimes, multiple modules have to run in a single process, so that they can ac
 a :class:`~pyobs.modules.MultiModule` can contain multiple module descriptions.
 """
 
-from .module import Module, MultiModule, timeout
+from .module import Module, MultiModule, timeout, raises
 
-__all__ = ["Module", "MultiModule", "timeout"]
+__all__ = ["Module", "MultiModule", "timeout", "raises"]

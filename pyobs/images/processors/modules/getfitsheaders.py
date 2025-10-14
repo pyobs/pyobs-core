@@ -11,7 +11,68 @@ log = logging.getLogger(__name__)
 
 
 class GetFitsHeaders(ImageProcessor):
-    """Retrieves FITS headers from another module (or more)."""
+    """
+    Retrieve and merge FITS header entries from one or more external modules.
+
+    This processor requests FITS header key–value pairs from modules
+    implementing the ``IFitsHeaderBefore`` interface and merges them into a copy of
+    the input image’s header. Requests are issued concurrently to all configured
+    senders; results are applied in the order the senders are listed. If multiple
+    modules provide the same header key, later modules overwrite earlier ones. Pixel
+    data are not modified.
+
+    :param str | list[str] sender: Name or list of names of modules to query. Each
+                                   module must implement the ``IFitsHeaderBefore``
+                                   interface providing a ``get_fits_header_before(namespace)`` method.
+    :param str | None namespace: Optional namespace identifier forwarded to
+                                 ``get_fits_header_before`` to allow modules to return
+                                 context-specific headers (e.g., per pipeline stage).
+                                 Default: ``None``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processor.ImageProcessor`.
+
+    Behavior
+    --------
+    - For each sender, obtains a proxy and calls
+      ``proxy.get_fits_header_before(namespace)`` concurrently.
+    - Creates a copy of the input image and merges returned headers into
+      ``out.header`` in sender-list order.
+    - Values that are lists (but not strings) are converted to tuples before insertion,
+      ensuring FITS-header-friendly types. All other values are inserted as-is.
+    - Returns the modified copy; pixel data and catalog are unchanged.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image`.
+    - Output: :class:`pyobs.images.Image` (copied) with additional or updated FITS
+      header entries provided by the external modules.
+
+    Configuration (YAML)
+    --------------------
+    Single sender:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.modules.GetFitsHeaders
+       sender: "HeaderProviderA"
+
+    Multiple senders with a namespace:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.modules.GetFitsHeaders
+       sender: ["HeaderProviderA", "HeaderProviderB"]
+       namespace: "preproc"
+
+    Notes
+    -----
+    - Merging order follows the list of ``sender`` names; later senders overwrite
+      earlier values for duplicate keys.
+    - The modules must implement the ``IFitsHeaderBefore`` interface and be reachable
+      via the ``proxy`` mechanism in this environment.
+    - Converting lists to tuples helps store composite values in FITS headers; if a
+      module encodes a value/comment pair as a list, it will become a tuple on insert.
+    """
 
     __module__ = "pyobs.images.processors.modules"
 

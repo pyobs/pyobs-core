@@ -74,6 +74,22 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
     return timeout_decorator
 
 
+def raises(*exceptions: type[exc.PyObsError]) -> Callable[[F], F]:
+    """
+    Decorates a method with information about which pyobs exceptions it raises. These exceptions are
+    logged in this module, but as INFO without stacktrace.
+
+    :param exceptions:  One or more exceptions.
+    """
+
+    def raises_decorator(func: F) -> F:
+        # decorate method
+        setattr(func, "raises", exceptions)
+        return func
+
+    return raises_decorator
+
+
 class Module(Object, IModule, IConfig):
     """Base class for all pyobs modules."""
 
@@ -279,7 +295,22 @@ class Module(Object, IModule, IConfig):
         cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
         # call method
-        response = await func(*func_args, **ba.arguments, **func_kwargs)
+        try:
+            response = await func(*func_args, **ba.arguments, **func_kwargs)
+        except Exception as e:
+            # something else went wrong, but only log if not a ModuleError
+            if isinstance(e, exc.PyObsError) and not isinstance(e, exc.ModuleError):
+                # in list of named exceptions?
+                level = (
+                    "INFO"
+                    if hasattr(func, "raises")
+                    and isinstance(getattr(func, "raises"), tuple)
+                    and type(e) in getattr(func, "raises")
+                    else "ERROR"
+                )
+                exc_info = level == "ERROR"
+                e.log(log, level, f"Exception was raised in call to {method}: {e}", exc_info=exc_info)
+            raise e
 
         # finished
         return cast_response_to_simple(
@@ -510,4 +541,4 @@ class MultiModule(Module):
         return self._modules[name]
 
 
-__all__ = ["Module", "MultiModule", "timeout"]
+__all__ = ["Module", "MultiModule", "timeout", "raises"]

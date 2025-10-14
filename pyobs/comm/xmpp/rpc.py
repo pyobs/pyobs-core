@@ -135,16 +135,12 @@ class RPC(object):
             # send response
             self._client.plugin["xep_0009"].make_iq_method_response(iq["id"], iq["from"], py2xml(*return_value)).send()  # type: ignore
 
-        # except InvocationException as ie:
-        #    # could not invoke method
-        #    self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, ie.get_message()))
-
-        except exc.PyObsError as e:
-            # something else went wrong, but only log if not a ModuleError
-            if not isinstance(e, exc.ModuleError):
-                log.error("Error during call to %s: %s", pmethod, str(e), exc_info=True)
-
-            # send response
+        except Exception as e:
+            # an exception was raised
+            if isinstance(e, exc.PyObsError):
+                e.log(log, "ERROR", f"Exception was raised in call to {pmethod}: {e}", exc_info=True)
+            else:
+                log.exception("Something unexpected happened.")
             self._client.plugin["xep_0009"].send_fault(iq, fault2xml(500, str(e)))
 
     async def _on_jabber_rpc_method_response(self, iq: Any) -> None:

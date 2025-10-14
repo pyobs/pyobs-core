@@ -6,6 +6,7 @@ TODO: Write docs
 __title__ = "Exceptions"
 
 import asyncio
+import logging
 from collections.abc import Coroutine
 from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
 import time
@@ -14,14 +15,21 @@ import time
 class PyObsError(Exception):
     """Base class for all exceptions"""
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: Optional[str] = None, logged: bool = False):
         self.message = message
+        self.logged = logged
 
     def __str__(self) -> str:
         msg = f"<{self.__class__.__name__}>"
         if self.message is not None:
             msg += f" {self.message}"
         return msg
+
+    def log(self, log: logging.Logger, level: str, message: str, **kwargs: Any) -> None:
+        if self.logged:
+            return
+        log.log(logging.getLevelName(level), message, **kwargs)
+        self.logged = True
 
 
 class _Meta(type):

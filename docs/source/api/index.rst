@@ -14,4 +14,5 @@ API
    interfaces
    events
    images
+   image_processors/index
    utils/index

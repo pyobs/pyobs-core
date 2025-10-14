@@ -12,7 +12,7 @@ class RemoveBackground(ImageProcessor):
     """
     Estimate and subtract the background from an image using a DAOPhot-style method.
 
-    This asynchronous processor applies robust background estimation and removes it
+    This processor applies robust background estimation and removes it
     from the image, producing a background-corrected result. The background is
     estimated on a grid with sigma-clipping and optional smoothing, then subtracted
     from the pixel data. The implementation delegates to

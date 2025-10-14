@@ -14,7 +14,7 @@ class CatalogCircularMask(ImageProcessor):
     """
     Filter a source catalog by keeping only entries inside a central circle (or outside it).
 
-    This asynchronous processor applies a circular spatial filter to the catalog attached
+    This processor applies a circular spatial filter to the catalog attached
     to a :class:`pyobs.images.Image`. It either retains sources whose positions fall
     within a specified radius of a chosen center, or excludes them if ``exclude_circle``
     is set. Pixel data are not modified; only the image catalog is filtered in place.
@@ -36,11 +36,15 @@ class CatalogCircularMask(ImageProcessor):
     - If the image has no catalog (``image.safe_catalog is None``), the image is returned
       unchanged.
     - Determines the circle center:
+
       - If ``center`` is a pair of strings, reads their values from the FITS header.
       - If ``center`` is numeric, uses those pixel coordinates directly.
+
     - Builds a boolean mask on the catalog using Euclidean distance in pixel units:
+
       - Inside selection: ``(x - cx)^2 + (y - cy)^2 <= radius^2``.
       - Outside selection (if ``exclude_circle``): the inequality is reversed.
+
     - Applies the mask to the catalog and assigns the filtered catalog back to
       ``image.catalog``.
     - Returns the original image object with a filtered catalog; pixel data and header

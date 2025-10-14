@@ -19,7 +19,7 @@ class Calibration(ImageProcessor):
     """
     Calibrate an image using master bias, dark, and flat frames fetched from an archive.
 
-    This asynchronous processor locates appropriate master calibration frames
+    This processor locates appropriate master calibration frames
     (bias, dark, flat) based on the input image metadata, applies calibration to the
     image, and annotates the FITS header with provenance and reduction information.
     Calibration frames are looked up via an :class:`pyobs.archive.Archive` and are
@@ -61,19 +61,24 @@ class Calibration(ImageProcessor):
     - Attempts to retrieve required masters (bias, dark, flat) from a class-wide cache.
       On cache miss, queries the configured archive via
       :meth:`pyobs.pipeline.Pipeline.find_master`, matching:
+
       - Instrument: exact value of ``INSTRUME``.
       - Binning: string formatted as ``"{XBINNING}x{XBINNING}"`` (square binning assumed).
       - Filter: ``FILTER`` only for flats; biases and darks ignore filter.
       - Time constraint: centered on the image ``DATE-OBS`` with optional ``max_days_*``.
+
     - If any required master is missing, logs a warning and returns the original image
       unchanged.
     - Applies calibration using :class:`pyobs.images.processors.calibration._CCDDataCalibrator`
       with the found master frames (``None`` for any non-required step to be skipped).
     - Copies provenance into the output FITS header:
+
       - ``L1RAW`` set from the original ``ORIGNAME`` (file stem without ``.fits``).
       - ``L1BIAS``, ``L1DARK``, ``L1FLAT`` set from the respective master frame
         ``FNAME`` values (with common FITS extensions removed) and descriptive comments.
+
     - Sets calibration metadata in the output header:
+
       - ``BUNIT = "electron"`` to indicate calibrated pixel units.
       - ``RLEVEL = 1`` to indicate reduction level.
 
@@ -122,7 +127,6 @@ class Calibration(ImageProcessor):
       stem without the ``.fits`` suffix. Master frame names are copied from ``FNAME``.
     - Setting ``BUNIT = "electron"`` assumes calibrated units are electrons; ensure
       your calibration products and gains are consistent with this convention.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.calibration"

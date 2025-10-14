@@ -15,7 +15,7 @@ class SaveImage(ImageProcessor):
     """
     Save an image as an encoded byte stream (e.g., JPEG, PNG) via the virtual file system.
 
-    This asynchronous processor formats a destination filename using a
+    This processor formats a destination filename using a
     :class:`pyobs.utils.formatter.FilenameFormatter`, encodes the input
     :class:`pyobs.images.Image` to the desired image format using Pillow, and writes
     the resulting bytes to the pyobs virtual file system (``vfs``). The original image
@@ -35,10 +35,12 @@ class SaveImage(ImageProcessor):
     --------
     - Computes the target path via ``image.format_filename(self._formatter)``.
     - Encodes the image to bytes using :meth:`SaveImage.encode_image`, which leverages Pillow:
+
       - If ``format`` is ``None``, the format is inferred from the filename extension
         (uppercased) with a special case mapping ``JPG -> JPEG``.
       - Conversion from :class:`pyobs.images.Image` to a Pillow image is performed by
         :class:`pyobs.utils.image.PillowHelper`.
+
     - Writes the encoded bytes to the virtual file system using ``self.vfs.write_bytes(filename, data)``.
     - Returns the original image without modification.
 
@@ -73,10 +75,9 @@ class SaveImage(ImageProcessor):
       handling channel order and dtype conversions.
     - Errors from the virtual file system (e.g., write failures) or Pillow (unsupported format)
       propagate to the caller.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(self, filename: str = "/pyobs/image.jpg", format: str | None = None, **kwargs: Any):
         """Init an image processor that saves an image as jpeg

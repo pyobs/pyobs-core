@@ -12,7 +12,7 @@ class Circle(ImageProcessor):
     """
     Draw a circle on an image, optionally interpreting the center in WCS coordinates.
 
-    This asynchronous processor uses Pillow to render a circle on a
+    This processor uses Pillow to render a circle on a
     :class:`pyobs.images.Image`. The center coordinates ``(x, y)`` and the ``radius``
     can be provided as numbers or strings that are resolved by
     :class:`pyobs.utils.image.PillowHelper`. If ``wcs=True``, the center coordinates
@@ -96,7 +96,6 @@ class Circle(ImageProcessor):
       resolved to a pixel value (no angular conversion is applied).
     - Color values typically use 0–255 per channel for 8-bit images; PillowHelper handles
       mapping for different dtypes/layouts.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.annotation"

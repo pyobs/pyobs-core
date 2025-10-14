@@ -17,7 +17,7 @@ class ProjectedOffsets(Offsets):
     """
     Compute pixel offsets for guiding by correlating 1D projections of the current image with a reference frame.
 
-    This asynchronous processor implements an auto-guiding method based on collapsing
+    This processor implements an auto-guiding method based on collapsing
     images along the x and y axes and cross-correlating these 1D profiles against a
     stored reference. On the first invocation, it initializes by storing the reference
     projections from the input image and returns. On subsequent calls, it computes the
@@ -32,9 +32,12 @@ class ProjectedOffsets(Offsets):
     Behavior
     --------
     - Reference initialization:
+
       - If no reference is set, processes the input image to obtain sky-subtracted
         1D projections along x and y, stores them as the reference, and returns.
+
     - Per-image guiding update:
+
       - Processes the current image to obtain sky-subtracted 1D projections.
       - Computes dx and dy by cross-correlating current vs. reference projections
         and fitting a Gaussian to the correlation peak within a small window to obtain
@@ -42,12 +45,17 @@ class ProjectedOffsets(Offsets):
       - If either axis fails to produce a valid offset, logs a warning and returns
         the image unchanged.
       - Otherwise, attaches PixelOffsets(dx, dy) to image metadata.
+
     - Cropping via TRIMSEC:
+
       - If the FITS header contains TRIMSEC in the form "[x0:x1,y0:y1]" (1-based, inclusive),
         the image is cropped to that rectangle before projection.
+
     - Projection and sky subtraction:
+
       - Collapses the image by summing rows and columns with NaN-safe summation.
       - Subtracts a smooth sky continuum from each 1D projection:
+
         - Divides the projection into sbin=10 bins.
         - For each bin, estimates the continuum level as the median of the upper
           fraction (frac=0.15) of values.

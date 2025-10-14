@@ -20,7 +20,7 @@ class SepSourceDetection(SourceDetection):
     """
     Detect astronomical sources using SEP (Source Extractor for Python).
 
-    This asynchronous processor performs background estimation and subtraction on a
+    This processor performs background estimation and subtraction on a
     :class:`pyobs.images.Image`, then extracts sources with :func:`sep.extract`.
     It converts the resulting array into a pyobs catalog, augments it with additional
     statistics, and attaches it to the image. Pixel data are not modified in the
@@ -69,8 +69,7 @@ class SepSourceDetection(SourceDetection):
       at 90 degrees, converting angles to degrees, and applying FITS 1-based origin
       conventions.
     - The catalog is attached to the image using the keys:
-      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity",
-        "tnpix", "kronrad", "fluxrad25", "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
+      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25", "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
 
     Input/Output
     ------------
@@ -110,7 +109,6 @@ class SepSourceDetection(SourceDetection):
       adjust here if you need finer control for highly structured backgrounds.
     - If ``DET-GAIN`` is absent, gain-dependent uncertainties and radii may be limited
       or use defaults in :class:`PySepStatsCalculator`.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.detection"

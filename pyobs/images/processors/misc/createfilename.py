@@ -13,7 +13,7 @@ class CreateFilename(ImageProcessor):
     """
     Format and set a filename for the image using a pattern, storing it in the FNAME header.
 
-    This asynchronous processor uses a :class:`pyobs.utils.filenames.FilenameFormatter`
+    This processor uses a :class:`pyobs.utils.filenames.FilenameFormatter`
     to render a filename string from image metadata and writes it into the FITS header
     key ``FNAME`` on a copy of the image. If no pattern is provided, a built-in default
     pattern is used.
@@ -31,12 +31,14 @@ class CreateFilename(ImageProcessor):
                                ``{KEY|filter:params}``, where KEY is usually a FITS
                                header keyword and optional filters control formatting.
                                Common filters include:
-                               - ``date:...``: format a date/time value (e.g., from
-                                 ``DATE-OBS`` or ``DAY-OBS``) according to formatter
-                                 defaults or supplied parameters.
-                               - ``string:fmt``: format using a Python-style format
-                                 specification (e.g., ``04d`` to zero-pad integers).
-                               - ``type``: map image type values to standardized tokens.
+
+                                   - ``date:...``: format a date/time value (e.g., from
+                                     ``DATE-OBS`` or ``DAY-OBS``) according to formatter
+                                     defaults or supplied parameters.
+                                   - ``string:fmt``: format using a Python-style format
+                                     specification (e.g., ``04d`` to zero-pad integers).
+                                   - ``type``: map image type values to standardized tokens.
+
                                See the FilenameFormatter documentation for the full set
                                of supported filters and parameters.
     :param kwargs: Additional keyword arguments forwarded to
@@ -81,7 +83,6 @@ class CreateFilename(ImageProcessor):
       the formatter may raise an error or leave fields empty, depending on its behavior.
     - The exact syntax and capabilities of filters (``date``, ``string``, ``type``,
       etc.) are defined by :class:`FilenameFormatter`.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.misc"

@@ -13,7 +13,7 @@ class CircularMask(ImageProcessor):
     """
     Mask an image by keeping only pixels inside a central circle of a given radius.
 
-    This asynchronous processor reads the circle center from two FITS header keywords
+    This processor reads the circle center from two FITS header keywords
     (e.g., CRPIX1/CRPIX2) and constructs a circular mask in pixel coordinates. Pixels
     outside the circle are set to zero by in-place multiplication; pixels inside the
     circle are preserved. The modified image is returned.

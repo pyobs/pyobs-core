@@ -12,7 +12,7 @@ class Normalize(ImageProcessor):
     """
     Normalize image pixel values to the 8-bit range [0, 255].
 
-    This asynchronous processor linearly rescales the input image data to ``uint8`` using
+    This processor linearly rescales the input image data to ``uint8`` using
     user-specified or automatically determined bounds:
 
     ``normalized = ((data - vmin) / (vmax - vmin) * 255).astype(uint8)``
@@ -65,8 +65,6 @@ class Normalize(ImageProcessor):
     -----
     - Precision loss: Converting to 8-bit discards dynamic range; use only when appropriate
       for visualization or downstream tools that require ``uint8``.
-    - Division by zero: If ``vmin == vmax``, normalization is undefined and will result
-      in NaNs/Infs before casting; consider guarding against identical bounds upstream.
     - Out-of-range values: If you specify ``vmin``/``vmax`` that do not bracket the data,
       values below/above the range will map outside [0, 255]; when cast to ``uint8``,
       such values wrap modulo 256 rather than clip. If clipping is desired, pre-clip
@@ -77,7 +75,7 @@ class Normalize(ImageProcessor):
     - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(
         self,
@@ -114,6 +112,9 @@ class Normalize(ImageProcessor):
             vmin = np.min(image.data)
         if vmax is None:
             vmax = np.max(image.data)
+
+        if vmin >= vmax:
+            return image
 
         output_image = image.copy()
         output_image.data = ((output_image.data - vmin) / (vmax - vmin) * 255.0).astype(np.uint8)

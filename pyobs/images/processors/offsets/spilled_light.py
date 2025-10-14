@@ -118,7 +118,7 @@ class SpilledLightGuiding(Offsets):
     """
     Estimate pixel guiding offsets from asymmetry of spilled light around a fiber using a ring analysis.
 
-    This asynchronous processor analyzes the distribution of light in an annulus
+    This processor analyzes the distribution of light in an annulus
     around a selected fiber to infer the direction and magnitude of a pointing
     offset. It queries an IMultiFiber provider for the current fiber’s pixel
     position and radius, builds a ring (inner = fiber radius, outer = radius_ratio ×
@@ -152,21 +152,29 @@ class SpilledLightGuiding(Offsets):
     Behavior
     --------
     - Retrieve fiber geometry:
+
       - Acquires fiber pixel position (x, y) and inner radius from the IMultiFiber
         module.
       - Corrects both by the detector binning factor read from FITS header
         DET-BIN1 (assumes square binning).
+
     - Background leveling:
+
       - Subtracts the global mean of image.data in place to reduce background bias.
+
     - Subimage trimming:
+
       - Extracts a rectangular subimage centered on the fiber with half-size
         radius_ratio × inner_radius in both axes for focused analysis.
       - Re-expresses the fiber position in the trimmed subimage’s coordinates.
+
     - Ring construction and analysis:
+
       - Builds a Ring with inner_radius, outer_radius = inner_radius × radius_ratio,
         section_angular_width, section_angular_shift, and max_relative_sigma.
       - If the ring is_uniform(), sets offset to (0, 0).
       - Otherwise:
+
         - Determines the brightest direction (default: brightest section).
         - Computes a relative shift from the brightness ratio of the brightest and
           opposite sections using a logistic mapping, capped at 1.
@@ -174,8 +182,11 @@ class SpilledLightGuiding(Offsets):
           with components
             x = total_offset × sin(angle_deg),
             y = − total_offset × cos(angle_deg).
+
     - Metadata:
+
       - Stores PixelOffsets(dx, dy) in the image metadata.
+
     - Returns the same image object; note that image.data has been mean-subtracted.
 
     Input/Output

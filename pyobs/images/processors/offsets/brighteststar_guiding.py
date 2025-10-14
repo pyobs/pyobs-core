@@ -17,7 +17,7 @@ class BrightestStarGuiding(Offsets):
     """
     Compute guiding offsets by tracking the brightest star relative to an initial reference frame.
 
-    This asynchronous processor implements a simple auto-guiding strategy based on the
+    This processor implements a simple auto-guiding strategy based on the
     brightest detected star. On the first call, it initializes a reference position
     from the brightest star in the image catalog and returns without setting offsets.
     On subsequent calls, it finds the current brightest star, computes the pixel offset
@@ -37,14 +37,18 @@ class BrightestStarGuiding(Offsets):
     - If the image has no catalog or the catalog is empty, logs a warning and returns
       the image unchanged.
     - Initialization:
+
       - If no reference is set yet, selects the brightest star by the largest "flux"
         and stores its (x, y) pixel position as the reference. Returns the image.
+
     - Guiding update:
+
       - Selects the brightest star in the current catalog and computes pixel offsets
         relative to the stored reference:
           dx = x_current - x_ref, dy = y_current - y_ref
       - Stores PixelOffsets(dx, dy) in the image metadata.
       - Computes Alt/Az offsets:
+
         - Uses WCS from the FITS header to convert the reference and current star
           pixel positions to sky coordinates (RA/Dec).
         - Builds an observer frame using FITS header location/time:
@@ -52,16 +56,20 @@ class BrightestStarGuiding(Offsets):
         - Transforms both positions to AltAz and computes spherical offsets from the
           reference to the current position.
         - Stores AltAzOffsets(dAlt_arcsec, dAz_arcsec) in metadata.
+
     - Returns the same image object with updated metadata.
 
     Input/Output
     ------------
     - Input: :class:`pyobs.images.Image` with
+
       - a source catalog containing "x", "y", and "flux" columns,
       - a valid WCS solution in the header (for Alt/Az offsets),
       - site metadata: LATITUDE [deg], LONGITUD [deg], HEIGHT [m],
       - observation time: DATE-OBS.
+
     - Output: :class:`pyobs.images.Image` with metadata entries set:
+
       - PixelOffsets(dx, dy) after reference initialization,
       - AltAzOffsets(dAlt_arcsec, dAz_arcsec) likewise.
 

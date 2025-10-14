@@ -64,7 +64,7 @@ class Flip(ImageProcessor):
          flip_y: true
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(
         self,

@@ -13,7 +13,7 @@ class Smooth(ImageProcessor):
     """
     Gaussian smoothing of image data using SciPy’s ndimage.gaussian_filter.
 
-    This asynchronous processor applies a Gaussian filter to the pixel data of a
+    This processor applies a Gaussian filter to the pixel data of a
     :class:`pyobs.images.Image` to reduce noise or gently blur features. The operation
     is performed with :func:`scipy.ndimage.gaussian_filter` and affects all axes of the
     image array.
@@ -84,7 +84,6 @@ class Smooth(ImageProcessor):
       standard smoothing, while ``order>0`` computes Gaussian derivatives and may enhance edges.
     - For multi-channel images where you do not want cross-channel blurring, split channels and
       smooth each channel independently before recombining.
-    - This processor is asynchronous; ensure it is used within an event loop (via ``await``).
 
     See also
     --------

@@ -9,6 +9,7 @@ ExpTimeEstimator
 .. autoclass:: pyobs.images.processors.exptime.ExpTimeEstimator
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 StarExpTimeEstimator
 ^^^^^^^^^^^^^^^^^^^^
@@ -16,4 +17,5 @@ StarExpTimeEstimator
 .. autoclass:: pyobs.images.processors.exptime.StarExpTimeEstimator
    :members:
    :undoc-members:
+   :class-doc-from: class
 

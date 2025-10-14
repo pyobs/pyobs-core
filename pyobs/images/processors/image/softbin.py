@@ -14,7 +14,7 @@ class SoftBin(ImageProcessor):
     """
     Bin a 2D image by averaging non-overlapping blocks, updating relevant FITS headers.
 
-    This asynchronous processor performs software binning on a 2D :class:`pyobs.images.Image`
+    This processor performs software binning on a 2D :class:`pyobs.images.Image`
     by partitioning the array into ``binning × binning`` blocks and replacing each block with
     its arithmetic mean. The result is a downsampled image of shape ``(H // binning, W // binning)``.
     After binning, common FITS/WCS header keywords are updated to reflect the new pixel grid.
@@ -31,10 +31,11 @@ class SoftBin(ImageProcessor):
       over both block dimensions:
       ``image.reshape(H//b, b, W//b, b).mean(-1).mean(1)``.
     - Updates FITS header keywords:
+
       - ``NAXIS1``, ``NAXIS2`` are set to the new image dimensions.
       - ``CRPIX1``, ``CRPIX2`` are divided by ``binning`` (reference pixel scales with binning).
-      - ``DET-BIN1``, ``DET-BIN2``, ``XBINNING``, ``YBINNING``, ``CDELT1``, ``CDELT2`` are multiplied by ``binning``
-        (detector binning and pixel scale increase).
+      - ``DET-BIN1``, ``DET-BIN2``, ``XBINNING``, ``YBINNING``, ``CDELT1``, ``CDELT2`` are multiplied by ``binning`` (detector binning and pixel scale increase).
+
     - Header values not listed above (e.g., ``CRVAL*``, ``CTYPE*``) are left unchanged.
 
     Requirements and limitations
@@ -75,13 +76,12 @@ class SoftBin(ImageProcessor):
 
     Notes
     -----
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     - If any of the updated header keys are absent, they are skipped; only present keys
       are modified.
     - The processor logs a warning and returns the original image if no data are available.
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(self, binning: int = 2, **kwargs: Any):
         """Init a new software binning pipeline step.

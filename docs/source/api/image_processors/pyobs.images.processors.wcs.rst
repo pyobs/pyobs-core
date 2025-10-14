@@ -9,4 +9,5 @@ SolarHelioprojective
 .. autoclass:: pyobs.images.processors.wcs.SolarHelioprojective
    :members:
    :undoc-members:
+   :class-doc-from: class
 

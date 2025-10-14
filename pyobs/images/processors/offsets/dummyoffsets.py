@@ -9,7 +9,7 @@ class DummyOffsets(Offsets):
     """
     Attach a dummy offset metadata entry using a class resolved from its name, for testing or simple workflows.
 
-    This asynchronous processor resolves an offset class from a string and instantiates
+    This processor resolves an offset class from a string and instantiates
     it with the same offset value for both components, then attaches the instance to
     the image metadata via ``image.set_meta(...)``. Typical use cases include testing
     pipelines that consume offsets (e.g., PixelOffsets, AltAzOffsets) without running
@@ -67,6 +67,8 @@ class DummyOffsets(Offsets):
     - This processor is intended for testing or simple workflows; for measured offsets,
       use dedicated processors that compute offsets from catalogs, WCS, or other data.
     """
+
+    __module__ = "pyobs.images.processors.offsets"
 
     def __init__(self, offset_class: str, offset: float = 1.0, **kwargs: Any) -> None:
         super().__init__(**kwargs)

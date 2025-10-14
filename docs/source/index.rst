@@ -42,7 +42,6 @@ API Reference
    api/index
    modules/index
    addmod/index
-   image_processors/index
 
 
 Affiliated projects

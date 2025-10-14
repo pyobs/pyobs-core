@@ -12,7 +12,7 @@ class Crosshair(ImageProcessor):
     """
     Draw a crosshair (circle plus orthogonal lines) on an image, optionally using WCS coordinates.
 
-    This asynchronous processor uses Pillow to render a crosshair symbol on a
+    This processor uses Pillow to render a crosshair symbol on a
     :class:`pyobs.images.Image`. The crosshair consists of a circular outline of the given
     ``radius`` centered at ``(x, y)`` and horizontal/vertical lines crossing the center,
     each extending to the circle’s radius. The center coordinates may be specified in pixel
@@ -81,7 +81,6 @@ class Crosshair(ImageProcessor):
     - Color representation and supported coordinate/value formats depend on
       :class:`pyobs.utils.image.PillowHelper`.
     - The line width scales with radius and is not independently configurable.
-    - This processor is asynchronous; use it within an event loop (``await``).
     """
 
     __module__ = "pyobs.images.processors.annotation"

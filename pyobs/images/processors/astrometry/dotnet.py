@@ -15,14 +15,13 @@ class AstrometryDotNet(Astrometry):
     """
     Perform astrometric solving using an astrometry.net-compatible service.
 
-    This asynchronous processor submits sources extracted from a
+    This processor submits sources extracted from a
     :class:`pyobs.images.Image` to an astrometry.net service, obtains a WCS solution,
     and writes it back to the image’s FITS header. The solver endpoint is configured
     via ``url`` and the request content is built by
     :class:`pyobs.images.processors.astrometry._DotNetRequestBuilder`.
 
-    :param str url: Base URL of the astrometry.net service endpoint
-                    (e.g., a local server or https://nova.astrometry.net/api).
+    :param str url: Base URL of the astrometry.net service endpoint.
     :param int source_count: Number of detected sources to include in the request
                              payload. The source selection strategy is defined by
                              ``_DotNetRequestBuilder``. Default: ``50``.
@@ -49,10 +48,10 @@ class AstrometryDotNet(Astrometry):
       the input image using :class:`pyobs.images.processors.astrometry._ResponseImageWriter`.
     - Logs the outcome, including WCS information, and returns the result image.
     - On failure:
-      - If ``exceptions=True``, raises the underlying
-        :class:`pyobs.images.exceptions.ImageError`.
-      - If ``exceptions=False``, sets ``WCSERR=1`` in the FITS header, logs a warning,
-        and returns the original image unchanged.
+
+        - If ``exceptions=True``, raises the underlying :class:`pyobs.images.exceptions.ImageError`.
+        - If ``exceptions=False``, sets ``WCSERR=1`` in the FITS header, logs a warning, and returns the original
+          image unchanged.
 
     Input/Output
     ------------
@@ -69,22 +68,12 @@ class AstrometryDotNet(Astrometry):
        class: pyobs.images.processors.astrometry.AstrometryDotNet
        url: "http://localhost:8080/api"
 
-    Use the public nova service and adjust source selection and timeout:
-
-    .. code-block:: yaml
-
-       class: pyobs.images.processors.astrometry.AstrometryDotNet
-       url: "https://nova.astrometry.net/api"
-       source_count: 100
-       radius: 2.0
-       timeout: 30
-
     Handle failures without raising exceptions:
 
     .. code-block:: yaml
 
        class: pyobs.images.processors.astrometry.AstrometryDotNet
-       url: "https://nova.astrometry.net/api"
+       url: "http://localhost:8080/api"
        exceptions: false
 
     Notes
@@ -92,18 +81,7 @@ class AstrometryDotNet(Astrometry):
     - The ``_DotNetRequestBuilder`` determines how sources are extracted and how the
       request is formed (including any unit conventions for ``radius``). Consult its
       documentation for details.
-    - If authentication or API keys are required by the service, ensure they are
-      handled by the builder or included in the service configuration.
     - ``WCSERR`` is used as a failure marker in the FITS header when ``exceptions=False``.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
-
-    Raises
-    ------
-    - :class:`pyobs.images.exceptions.ImageError`: When processing fails and
-      ``exceptions=True``.
-    - :class:`RuntimeError`: If the request completes without a response
-      (``request.response_data is None``). Note that this specific error is not
-      caught by :meth:`__call__` and will propagate unless handled externally.
     """
 
     __module__ = "pyobs.images.processors.astrometry"

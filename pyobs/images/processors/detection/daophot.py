@@ -18,7 +18,7 @@ class DaophotSourceDetection(SourceDetection):
     """
     Detect astronomical point sources using a DAOPhot-style algorithm via photutils.
 
-    This asynchronous processor estimates and removes the background of a
+    This processor estimates and removes the background of a
     :class:`pyobs.images.Image`, computes robust image statistics, and then detects
     point-like sources using :class:`photutils.detection.DAOStarFinder`. The resulting
     source table is converted into a pyobs catalog and attached to the image. Pixel
@@ -100,7 +100,6 @@ class DaophotSourceDetection(SourceDetection):
       :class:`pyobs.images.processors.detection._DaoBackgroundRemover`.
     - Very bright/saturated sources or artifacts (cosmic rays, bleed trails) may
       produce spurious detections; consider pre-masking if necessary.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.detection"

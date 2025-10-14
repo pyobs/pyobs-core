@@ -12,7 +12,7 @@ class AddPixelOffset(Offsets):
     """
     Attach desired pixel offsets to the image metadata for later application by an acquisition module.
 
-    This asynchronous processor stores a pixel-offset request in the image metadata as
+    This processor stores a pixel-offset request in the image metadata as
     a :class:`pyobs.images.processors.offsets.PixelOffsets` object. Downstream modules
     (e.g., acquisition/guiding) can read these offsets and apply the corresponding
     pointing shift. Pixel data and FITS headers are not modified.

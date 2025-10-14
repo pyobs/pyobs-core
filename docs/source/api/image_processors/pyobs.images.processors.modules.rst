@@ -9,4 +9,5 @@ GetFitsHeaders
 .. autoclass:: pyobs.images.processors.modules.GetFitsHeaders
    :members:
    :undoc-members:
+   :class-doc-from: class
 

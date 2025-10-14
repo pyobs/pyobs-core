@@ -19,7 +19,7 @@ class AstrometryOffsets(Offsets):
     """
     Compute pixel offsets from WCS by comparing image reference coordinates to telescope pointing.
 
-    This asynchronous processor requires a valid WCS in the FITS header (run an
+    This processor requires a valid WCS in the FITS header (run an
     astrometry solver beforehand). It reads two sky-coordinate pairs from the header:
     the image/WCS reference sky position (CRVAL1/CRVAL2) and the telescope’s current
     sky position (TEL-RA/TEL-DEC), converts both to pixel coordinates using the WCS,
@@ -76,6 +76,8 @@ class AstrometryOffsets(Offsets):
     - TEL-RA/TEL-DEC must be in ICRS degrees; adjust or convert if your system uses a
       different frame or units.
     """
+
+    __module__ = "pyobs.images.processors.offsets"
 
     def __init__(self, **kwargs: Any):
         """Initializes new astrometry offsets.

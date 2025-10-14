@@ -14,7 +14,7 @@ class GetFitsHeaders(ImageProcessor):
     """
     Retrieve and merge FITS header entries from one or more external modules.
 
-    This asynchronous processor requests FITS header key–value pairs from modules
+    This processor requests FITS header key–value pairs from modules
     implementing the ``IFitsHeaderBefore`` interface and merges them into a copy of
     the input image’s header. Requests are issued concurrently to all configured
     senders; results are applied in the order the senders are listed. If multiple

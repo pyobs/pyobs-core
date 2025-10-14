@@ -11,7 +11,7 @@ class ImageSourceFilter(ImageProcessor):
     """
     Filter a source catalog by border distance, quality metrics, and brightness, selecting the top N stars.
 
-    This asynchronous processor operates on the source catalog attached to a
+    This processor operates on the source catalog attached to a
     :class:`pyobs.images.Image` after SEP-based detection. It removes sources too close
     to the image borders, rejects saturated or low-quality detections based on several
     criteria, and then keeps the brightest remaining sources by flux. Pixel data are
@@ -44,10 +44,13 @@ class ImageSourceFilter(ImageProcessor):
     --------
     - Works on a copy of the input image and its catalog.
     - Removes sources near the borders:
+
       - Computes distance to the nearest border along both axes from the catalog
         coordinates ``x`` and ``y`` and the image shape.
       - Keeps sources whose minimum border distance exceeds ``min_dist_to_border``.
+
     - Removes low-quality sources using these criteria:
+
       - Saturation: ``peak >= max_saturation``.
       - Too small: ``tnpix < min_pixels``.
       - Too large: ``tnpix > median(tnpix) + 2 * std(tnpix)`` (to reject extended artifacts).
@@ -55,6 +58,7 @@ class ImageSourceFilter(ImageProcessor):
       - Non-positive background: ``background <= 0``.
       - Low contrast: Weber contrast
         ``(peak - background) / background <= min_weber_contrast``.
+
     - Selects the brightest sources by sorting on ``flux`` in descending order and
       truncating to ``num_stars`` if positive and less than the number of remaining sources.
     - Returns the modified copy with the filtered catalog assigned.
@@ -93,8 +97,9 @@ class ImageSourceFilter(ImageProcessor):
       and standard deviation to reject extended artifacts or blends.
     - Weber contrast requires a positive background; sources with non-positive
       background are removed prior to contrast evaluation.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
+
+    __module__ = "pyobs.images.processors.misc"
 
     def __init__(
         self,

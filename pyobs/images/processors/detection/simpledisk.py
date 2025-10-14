@@ -15,7 +15,7 @@ class SimpleDisk(ImageProcessor):
     """
     Detect a roughly circular bright disk by thresholding and distance transform.
 
-    This asynchronous processor segments the image by a fixed intensity threshold,
+    This processor segments the image by a fixed intensity threshold,
     selects the largest connected component, fills internal holes, and computes the
     Euclidean distance transform to find the pixel farthest from the component
     boundary. That pixel is taken as the disk center, and its distance to the
@@ -45,6 +45,7 @@ class SimpleDisk(ImageProcessor):
       transform of the filled mask.
     - Finds the pixel ``(y, x)`` with maximum distance; sets ``radius = dist[y, x]``.
     - Returns a copy of the input image with the FITS header fields:
+
       - ``keyword_y`` = y (row index, zero-based)
       - ``keyword_x`` = x (column index, zero-based)
       - ``keyword_radius`` = radius (float, pixels)
@@ -76,8 +77,6 @@ class SimpleDisk(ImageProcessor):
 
     Notes
     -----
-    - Coordinates are reported as zero-based NumPy indices: ``(y, x) = (row, column)``.
-      If you need FITS 1-based convention, add 1 when interpreting the values.
     - The algorithm assumes the disk is the largest bright connected region above the
       threshold. Choose ``threshold`` to robustly isolate the disk from background and
       other structures; pre-filtering or masking may help in noisy images.
@@ -88,7 +87,7 @@ class SimpleDisk(ImageProcessor):
       image topology.
     """
 
-    __module__ = "pyobs.images.processors.disk"
+    __module__ = "pyobs.images.processors.detection"
 
     def __init__(
         self,
@@ -145,8 +144,8 @@ class SimpleDisk(ImageProcessor):
 
         # set it
         out = image.copy()
-        out.header[self._keyword_y] = y
-        out.header[self._keyword_x] = x
+        out.header[self._keyword_y] = y + 1
+        out.header[self._keyword_x] = x + 1
         out.header[self._keyword_radius] = r
         return out
 

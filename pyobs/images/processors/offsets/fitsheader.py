@@ -13,7 +13,7 @@ class FitsHeaderOffsets(Offsets):
     """
     Compute a 2D offset from FITS header coordinates and store it in image metadata.
 
-    This asynchronous processor reads two pairs of FITS header keywords representing a
+    This processor reads two pairs of FITS header keywords representing a
     target position and a reference (center) position, computes the component-wise
     difference target − center, and stores the result as a GenericOffset metadata
     entry on a copy of the image. Pixel data and standard headers are not modified.
@@ -70,6 +70,8 @@ class FitsHeaderOffsets(Offsets):
     - ``GenericOffset`` is a unit-agnostic offset container; downstream consumers must
       interpret the units appropriately.
     """
+
+    __module__ = "pyobs.images.processors.offsets"
 
     def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ("DET-CPX1", "DET-CPX2"), **kwargs: Any):
         """Initializes new fits header offsets."""

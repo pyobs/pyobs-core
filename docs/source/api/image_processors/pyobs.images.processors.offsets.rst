@@ -9,6 +9,15 @@ AddPixelOffset
 .. autoclass:: pyobs.images.processors.offsets.AddPixelOffset
    :members:
    :undoc-members:
+   :class-doc-from: class
+
+AstrometryOffsets
+^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.images.processors.offsets.AstrometryOffsets
+   :members:
+   :undoc-members:
+   :class-doc-from: class
 
 BrightestStarGuiding
 ^^^^^^^^^^^^^^^^^^^^
@@ -16,6 +25,7 @@ BrightestStarGuiding
 .. autoclass:: pyobs.images.processors.offsets.BrightestStarGuiding
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 BrightestStarOffsets
 ^^^^^^^^^^^^^^^^^^^^
@@ -23,6 +33,31 @@ BrightestStarOffsets
 .. autoclass:: pyobs.images.processors.offsets.BrightestStarOffsets
    :members:
    :undoc-members:
+   :class-doc-from: class
+
+DummyOffsets
+^^^^^^^^^^^^
+
+.. autoclass:: pyobs.images.processors.offsets.DummyOffsets
+   :members:
+   :undoc-members:
+   :class-doc-from: class
+
+DummySkyOffsets
+^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.images.processors.offsets.DummySkyOffsets
+   :members:
+   :undoc-members:
+   :class-doc-from: class
+
+FitsHeaderOffsets
+^^^^^^^^^^^^^^^^^
+
+.. autoclass:: pyobs.images.processors.offsets.FitsHeaderOffsets
+   :members:
+   :undoc-members:
+   :class-doc-from: class
 
 Offsets
 ^^^^^^^
@@ -30,6 +65,7 @@ Offsets
 .. autoclass:: pyobs.images.processors.offsets.Offsets
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 ProjectedOffsets
 ^^^^^^^^^^^^^^^^
@@ -37,6 +73,7 @@ ProjectedOffsets
 .. autoclass:: pyobs.images.processors.offsets.ProjectedOffsets
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 SpilledLightGuiding
 ^^^^^^^^^^^^^^^^^^^
@@ -44,4 +81,5 @@ SpilledLightGuiding
 .. autoclass:: pyobs.images.processors.offsets.SpilledLightGuiding
    :members:
    :undoc-members:
+   :class-doc-from: class
 

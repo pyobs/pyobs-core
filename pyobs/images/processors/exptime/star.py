@@ -15,7 +15,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
     """
     Estimate a new exposure time from the brightest unsaturated star in the image.
 
-    This asynchronous processor inspects a source catalog attached to a
+    This processor inspects a source catalog attached to a
     :class:`pyobs.images.Image`, filters out saturated and edge-affected stars, selects
     the brightest remaining star, and scales the current exposure time so that the
     star would reach a configurable fraction of the detector saturation. The scaling
@@ -39,16 +39,20 @@ class StarExpTimeEstimator(ExpTimeEstimator):
     - If the image has no source catalog (``image.safe_catalog is None``), returns the
       current exposure time unchanged.
     - Determines the detector saturation level in ADU:
+
       - If both ``DET-SATU`` (saturation in electrons) and ``DET-GAIN`` (e⁻/ADU) are
         present in the header, uses ``DET-SATU / DET-GAIN``.
       - Otherwise, uses a default saturation of ``50000`` ADU.
+
     - Removes saturated stars from the catalog by keeping entries with
       ``peak <= saturation``.
     - Excludes stars near the image borders on both axes:
+
       - The axis lengths are read from ``NAXIS0`` (x) and ``NAXIS1`` (y) in the header.
       - Stars must satisfy ``x >= 1 + edge_size`` and ``x <= axis_len - edge_size``
         (analogously for ``y``), where ``edge_size = edge * axis_len``.
       - Coordinates are expected to use FITS 1-based convention.
+
     - Selects the brightest remaining star by the ``peak`` column and computes the
       target peak as ``target = saturated * saturation``.
     - Computes the new exposure time with bias correction:
@@ -83,7 +87,6 @@ class StarExpTimeEstimator(ExpTimeEstimator):
       would bias the estimate.
     - If all stars are filtered out, the brightest-star selection may fail; ensure
       reasonable detection and filtering parameters or handle empty catalogs upstream.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
     __module__ = "pyobs.images.processors.exptime"

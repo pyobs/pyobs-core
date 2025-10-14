@@ -13,7 +13,7 @@ class DummySkyOffsets(Offsets):
     """
     Attach a precomputed sky-coordinate offset to image metadata for testing or simple workflows.
 
-    This asynchronous processor constructs a :class:`SkyOffsets` object from two sky
+    This processor constructs a :class:`SkyOffsets` object from two sky
     coordinates and attaches a copy of it to the image metadata via ``image.set_meta``.
     Coordinates can be provided directly as :class:`astropy.coordinates.SkyCoord`
     instances or as configuration dictionaries that are instantiated via
@@ -70,6 +70,8 @@ class DummySkyOffsets(Offsets):
       provided offset object in metadata.
     - A copy of the SkyOffsets is stored to avoid shared state across images.
     """
+
+    __module__ = "pyobs.images.processors.offsets"
 
     def __init__(
         self, coord0: Union[SkyCoord, Dict[str, Any]], coord1: Union[SkyCoord, Dict[str, Any]], **kwargs: Any

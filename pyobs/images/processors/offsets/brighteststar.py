@@ -16,7 +16,7 @@ class BrightestStarOffsets(Offsets):
     """
     Compute pixel offsets from the image center to the brightest star and store them in metadata.
 
-    This asynchronous processor reads the image center from FITS header keywords
+    This processor reads the image center from FITS header keywords
     (default CRPIX1/CRPIX2), finds the brightest star in the attached source catalog
     (by maximum flux), computes the pixel offset between the center and that star,
     and stores the result as a PixelOffsets metadata entry. It also computes the
@@ -37,21 +37,27 @@ class BrightestStarOffsets(Offsets):
       and reads its "x" and "y" pixel coordinates.
     - Reads the image center pixel coordinates from the specified header keywords.
     - Computes pixel offsets:
+
       - dx = x_star - x_center
       - dy = y_star - y_center
+
     - Uses WCS from the image header to convert both positions to sky coordinates and
       computes their angular separation.
     - Stores results in image metadata:
+
       - PixelOffsets(dx, dy)
       - OnSkyDistance(angle)
+
     - Returns the same image object with updated metadata.
 
     Input/Output
     ------------
     - Input: :class:`pyobs.images.Image` with:
+
       - a source catalog containing "x", "y", and "flux" columns
       - FITS header keys for the center (e.g., CRPIX1/CRPIX2)
       - a valid WCS solution in the header for sky separation
+
     - Output: :class:`pyobs.images.Image` with PixelOffsets and OnSkyDistance set in metadata.
 
     Configuration (YAML)

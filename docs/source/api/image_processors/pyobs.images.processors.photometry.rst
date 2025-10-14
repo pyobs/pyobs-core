@@ -9,6 +9,7 @@ PhotUtilsPhotometry
 .. autoclass:: pyobs.images.processors.photometry.PhotUtilsPhotometry
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 Photometry
 ^^^^^^^^^^
@@ -16,6 +17,7 @@ Photometry
 .. autoclass:: pyobs.images.processors.photometry.Photometry
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 SepPhotometry
 ^^^^^^^^^^^^^
@@ -23,4 +25,5 @@ SepPhotometry
 .. autoclass:: pyobs.images.processors.photometry.SepPhotometry
    :members:
    :undoc-members:
+   :class-doc-from: class
 

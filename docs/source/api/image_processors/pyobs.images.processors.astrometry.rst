@@ -9,6 +9,7 @@ Astrometry
 .. autoclass:: pyobs.images.processors.astrometry.Astrometry
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 AstrometryDotNet
 ^^^^^^^^^^^^^^^^
@@ -16,4 +17,5 @@ AstrometryDotNet
 .. autoclass:: pyobs.images.processors.astrometry.AstrometryDotNet
    :members:
    :undoc-members:
+   :class-doc-from: class
 

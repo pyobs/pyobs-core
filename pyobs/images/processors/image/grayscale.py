@@ -12,7 +12,7 @@ class Grayscale(ImageProcessor):
     """
     Convert a color image to grayscale using weighted RGB channels.
 
-    This asynchronous processor converts a 3-channel color :class:`pyobs.images.Image`
+    This processor converts a 3-channel color :class:`pyobs.images.Image`
     to grayscale by forming a weighted linear combination of the red, green, and blue
     channels:
 
@@ -27,9 +27,6 @@ class Grayscale(ImageProcessor):
     :param float b: Weight for the blue channel. Default: ``0.0722``.
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
-
-    :class:`pyobs.images.Image`
-        The grayscaled image.
 
     Behavior
     --------
@@ -71,10 +68,9 @@ class Grayscale(ImageProcessor):
       conversion may be a no-op or raise an error, depending on implementation.
     - The default weights correspond to BT.709 luma; other choices (e.g., BT.601)
       may be preferable depending on your imaging pipeline.
-    - This processor is asynchronous; call it within an event loop (using ``await``).
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(self, r: float = 0.2126, g: float = 0.7152, b: float = 0.0722, **kwargs: Any):
         """Init a new grayscale processor.

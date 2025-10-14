@@ -13,7 +13,7 @@ class HttpServer(ImageProcessor):
     """
     Serve the latest processed image via a minimal HTTP server.
 
-    This asynchronous processor starts an :mod:`aiohttp` web server on first invocation and
+    This processor starts an :mod:`aiohttp` web server on first invocation and
     serves the most recently processed image at two endpoints:
 
     - ``GET /``: A simple HTML page embedding the image.
@@ -33,9 +33,6 @@ class HttpServer(ImageProcessor):
     :param int port: TCP port to serve on. Default: ``9400``.
     :param kwargs: Additional keyword arguments forwarded to
                    :class:`pyobs.images.processor.ImageProcessor`.
-
-    :class:`pyobs.images.Image`
-        The original image, unmodified.
 
     Behavior
     --------
@@ -85,7 +82,6 @@ class HttpServer(ImageProcessor):
 
     Notes
     -----
-    - This processor is asynchronous; it should be used within an event loop (``await``).
     - Binding to ``"localhost"`` exposes the server only on the local machine. Use ``"0.0.0.0"``
       to accept external connections, but be mindful of security implications.
     - No authentication or TLS is implemented; do not expose this endpoint on untrusted networks
@@ -96,7 +92,7 @@ class HttpServer(ImageProcessor):
       an exception; those propagate from :func:`SaveImage.encode_image`.
     """
 
-    __module__ = "pyobs.images.processors.misc"
+    __module__ = "pyobs.images.processors.image"
 
     def __init__(
         self,

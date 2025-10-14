@@ -12,7 +12,7 @@ class Text(ImageProcessor):
     """
     Draw text on an image at a specified position, optionally using WCS coordinates and header-based formatting.
 
-    This asynchronous processor uses Pillow to render text onto a
+    This processor uses Pillow to render text onto a
     :class:`pyobs.images.Image`. The text string may include Python ``str.format``
     placeholders that are filled from the image’s FITS header. The position can be
     given in pixel coordinates or, if ``wcs=True``, interpreted as world coordinates
@@ -117,7 +117,6 @@ class Text(ImageProcessor):
     - If no font is provided, Pillow’s default font is used. When a TrueType font is specified,
       ``font_size`` sets the size at loading time; some Pillow versions may also support a
       ``font_size`` parameter to ``draw.text``.
-    - This processor is asynchronous; use it within an event loop (``await``).
     """
 
     __module__ = "pyobs.images.processors.annotation"

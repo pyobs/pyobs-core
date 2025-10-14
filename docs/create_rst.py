@@ -103,7 +103,7 @@ def write_class(
     if private:
         rst.write("   :private-members:\n")
     if class_doc_from is not None:
-        rst.write("   :class-doc-from: {class_doc_from}\n")
+        rst.write(f"   :class-doc-from: {class_doc_from}\n")
     rst.write("\n")
 
 
@@ -323,7 +323,7 @@ def create_image_processors_rst() -> None:
             "source/api/image_processors/%s.rst" % module.__name__,
             module,
             classes=True,
-            class_kwargs=dict(members=True, undoc_members=True),
+            class_kwargs=dict(members=True, undoc_members=True, class_doc_from="class"),
         )
     write_index_file(
         "source/api/image_processors/",

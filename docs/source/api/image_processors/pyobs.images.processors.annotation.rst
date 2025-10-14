@@ -9,6 +9,7 @@ Circle
 .. autoclass:: pyobs.images.processors.annotation.Circle
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 Crosshair
 ^^^^^^^^^
@@ -16,6 +17,7 @@ Crosshair
 .. autoclass:: pyobs.images.processors.annotation.Crosshair
    :members:
    :undoc-members:
+   :class-doc-from: class
 
 Text
 ^^^^
@@ -23,4 +25,5 @@ Text
 .. autoclass:: pyobs.images.processors.annotation.Text
    :members:
    :undoc-members:
+   :class-doc-from: class
 

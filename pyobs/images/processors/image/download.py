@@ -53,7 +53,7 @@ class Download(ImageProcessor):
     """
     Download an image from an HTTP(S) URL and return it as a :class:`pyobs.images.Image`.
 
-    This asynchronous processor uses :mod:`aiohttp` to fetch image bytes from the configured
+    This processor uses :mod:`aiohttp` to fetch image bytes from the configured
     ``url`` and converts them into a :class:`pyobs.images.Image`. The conversion is chosen
     automatically based on the URL's filename extension:
 
@@ -70,9 +70,6 @@ class Download(ImageProcessor):
         are treated as encoded images to be decoded via OpenCV.
     :param kwargs:
         Additional keyword arguments forwarded to :class:`pyobs.images.processor.ImageProcessor`.
-
-    :class:`pyobs.images.Image`
-        The downloaded image.
 
     Behavior
     --------
@@ -106,7 +103,6 @@ class Download(ImageProcessor):
 
     Notes
     -----
-    - This processor is asynchronous; ensure it is called within an event loop (e.g., using ``await``).
     - File type detection is based on the URL's extension. If the URL does not reflect the true format
       (e.g., a FITS file served without a ``.fits`` suffix), decoding may fail or produce unintended results.
     - For encoded images, only minimal FITS-like header information is set. If you need full metadata,

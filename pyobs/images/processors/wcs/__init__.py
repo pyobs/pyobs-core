@@ -1,1 +1,3 @@
-from .solar_helioprojective import SolarHelioprojective
+__title__ = "WCS"
+
+from .solarhelioprojective import SolarHelioprojective

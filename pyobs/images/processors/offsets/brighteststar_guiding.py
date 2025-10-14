@@ -14,7 +14,89 @@ log = logging.getLogger(__name__)
 
 
 class BrightestStarGuiding(Offsets):
-    """Calculates offsets from the center of the image to the brightest star."""
+    """
+    Compute guiding offsets by tracking the brightest star relative to an initial reference frame.
+
+    This processor implements a simple auto-guiding strategy based on the
+    brightest detected star. On the first call, it initializes a reference position
+    from the brightest star in the image catalog and returns without setting offsets.
+    On subsequent calls, it finds the current brightest star, computes the pixel offset
+    relative to the reference, stores it as PixelOffsets in metadata, and also computes
+    the corresponding Alt/Az offsets (in arcseconds) using the image WCS and observer
+    location/time. Pixel data and FITS headers are not modified.
+
+    :param tuple[str, str] center_header_cards: Names of FITS header keywords for the
+        image center (default: ("CRPIX1", "CRPIX2")). Provided for compatibility; the
+        current implementation determines the reference from the brightest star and
+        does not use these values directly.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.offsets.Offsets`.
+
+    Behavior
+    --------
+    - If the image has no catalog or the catalog is empty, logs a warning and returns
+      the image unchanged.
+    - Initialization:
+
+      - If no reference is set yet, selects the brightest star by the largest "flux"
+        and stores its (x, y) pixel position as the reference. Returns the image.
+
+    - Guiding update:
+
+      - Selects the brightest star in the current catalog and computes pixel offsets
+        relative to the stored reference:
+          dx = x_current - x_ref, dy = y_current - y_ref
+      - Stores PixelOffsets(dx, dy) in the image metadata.
+      - Computes Alt/Az offsets:
+
+        - Uses WCS from the FITS header to convert the reference and current star
+          pixel positions to sky coordinates (RA/Dec).
+        - Builds an observer frame using FITS header location/time:
+          LATITUDE [deg], LONGITUD [deg], HEIGHT [m], DATE-OBS.
+        - Transforms both positions to AltAz and computes spherical offsets from the
+          reference to the current position.
+        - Stores AltAzOffsets(dAlt_arcsec, dAz_arcsec) in metadata.
+
+    - Returns the same image object with updated metadata.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image` with
+
+      - a source catalog containing "x", "y", and "flux" columns,
+      - a valid WCS solution in the header (for Alt/Az offsets),
+      - site metadata: LATITUDE [deg], LONGITUD [deg], HEIGHT [m],
+      - observation time: DATE-OBS.
+
+    - Output: :class:`pyobs.images.Image` with metadata entries set:
+
+      - PixelOffsets(dx, dy) after reference initialization,
+      - AltAzOffsets(dAlt_arcsec, dAz_arcsec) likewise.
+
+    Configuration (YAML)
+    --------------------
+    Initialize guiding on first frame, then report offsets on subsequent frames:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.offsets.BrightestStarGuiding
+       center_header_cards: ["CRPIX1", "CRPIX2"]  # optional, not used directly
+
+    Notes
+    -----
+    - Offset sign convention:
+      - PixelOffsets are star minus reference (positive dx means the star is to the
+        right of the reference; positive dy means above, in the usual image axis sense).
+      - AltAzOffsets are returned as (dAlt, dAz) in arcseconds; positive dAlt means
+        the target is at higher altitude than the reference; positive dAz means
+        larger azimuth (Astropy’s AltAz azimuth increases east of north).
+    - Reference management:
+      - The first invocation sets the reference star and does not emit offsets.
+      - Call reset() to clear the reference and reinitialize on the next image.
+    - Catalog coordinates should use the same origin and units consistently across
+      images; pyobs catalogs often adopt FITS-like 1-based pixel conventions.
+    - Accurate WCS and site/time metadata are required for reliable Alt/Az offsets.
+    """
 
     __module__ = "pyobs.images.processors.offsets"
 

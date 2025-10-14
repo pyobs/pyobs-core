@@ -12,7 +12,77 @@ log = logging.getLogger(__name__)
 
 
 class AstrometryDotNet(Astrometry):
-    """Perform astrometry using astrometry.net"""
+    """
+    Perform astrometric solving using an astrometry.net-compatible service.
+
+    This processor submits sources extracted from a
+    :class:`pyobs.images.Image` to an astrometry.net service, obtains a WCS solution,
+    and writes it back to the image’s FITS header. The solver endpoint is configured
+    via ``url`` and the request content is built by
+    :class:`pyobs.images.processors.astrometry._DotNetRequestBuilder`.
+
+    :param str url: Base URL of the astrometry.net service endpoint.
+    :param int source_count: Number of detected sources to include in the request
+                             payload. The source selection strategy is defined by
+                             ``_DotNetRequestBuilder``. Default: ``50``.
+    :param float radius: Search radius constraint passed to the request builder.
+                         Units and semantics are defined by ``_DotNetRequestBuilder``
+                         (commonly degrees for astrometry.net). Default: ``3.0``.
+    :param int timeout: Timeout in seconds for the network call to the astrometry
+                        web service. Default: ``10``.
+    :param bool exceptions: Whether to raise exceptions on failure. If ``True``,
+                            processing errors are raised (typically as
+                            :class:`pyobs.images.exceptions.ImageError`). If ``False``,
+                            errors are handled by marking the image header and returning
+                            the original image. Default: ``True``.
+    :param kwargs: Additional keyword arguments forwarded to
+                   :class:`pyobs.images.processors.astrometry.Astrometry`.
+
+    Behavior
+    --------
+    - Constructs a request from the input image using
+      :class:`pyobs.images.processors.astrometry._DotNetRequestBuilder(source_count, radius)`.
+    - Logs request metadata via :class:`pyobs.images.processors.astrometry._RequestLogger`.
+    - Sends the request to the configured service with ``request.send(url, timeout)``.
+    - On success, receives solver output and writes the resulting WCS into a copy of
+      the input image using :class:`pyobs.images.processors.astrometry._ResponseImageWriter`.
+    - Logs the outcome, including WCS information, and returns the result image.
+    - On failure:
+
+        - If ``exceptions=True``, raises the underlying :class:`pyobs.images.exceptions.ImageError`.
+        - If ``exceptions=False``, sets ``WCSERR=1`` in the FITS header, logs a warning, and returns the original
+          image unchanged.
+
+    Input/Output
+    ------------
+    - Input: :class:`pyobs.images.Image`
+    - Output: :class:`pyobs.images.Image` (copied) with WCS solution written to the
+      FITS header. Pixel data are typically unchanged.
+
+    Configuration (YAML)
+    --------------------
+    Minimal local solver:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.astrometry.AstrometryDotNet
+       url: "http://localhost:8080/api"
+
+    Handle failures without raising exceptions:
+
+    .. code-block:: yaml
+
+       class: pyobs.images.processors.astrometry.AstrometryDotNet
+       url: "http://localhost:8080/api"
+       exceptions: false
+
+    Notes
+    -----
+    - The ``_DotNetRequestBuilder`` determines how sources are extracted and how the
+      request is formed (including any unit conventions for ``radius``). Consult its
+      documentation for details.
+    - ``WCSERR`` is used as a failure marker in the FITS header when ``exceptions=False``.
+    """
 
     __module__ = "pyobs.images.processors.astrometry"
 

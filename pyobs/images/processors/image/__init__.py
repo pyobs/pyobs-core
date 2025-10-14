@@ -1,3 +1,5 @@
+__title__ = "Image"
+
 from .addfitsheaders import AddFitsHeaders
 from .download import Download
 from .flip import Flip

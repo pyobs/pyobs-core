@@ -145,6 +145,7 @@ def write_module(
     ignore_classes: list[str] | None = None,
     classes: bool = False,
     class_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
 ) -> None:
 
     # does module have a title?
@@ -217,11 +218,13 @@ def write_index_file(
         write_index(rst, path, **kwargs)
 
 
-def write_index(rst: TextIO, path: str, topics: list[str] | None = None, **kwargs: Any) -> None:
+def write_index(
+    rst: TextIO, path: str, topics: list[str] | None = None, index_header: str = "Contents", **kwargs: Any
+) -> None:
     # TOC
     rst.write(".. toctree::\n")
     rst.write("   :maxdepth: 2\n")
-    rst.write("   :caption: Contents:\n\n")
+    rst.write(f"   :caption: {index_header}:\n\n")
 
     # topics or files?
     if topics:
@@ -322,7 +325,13 @@ def create_image_processors_rst() -> None:
             classes=True,
             class_kwargs=dict(members=True, undoc_members=True),
         )
-    write_index_file("source/api/image_processors/", title="Image processors", relative_title=False)
+    write_index_file(
+        "source/api/image_processors/",
+        title="Image processors",
+        relative_title=False,
+        module=pyobs.images.processors,
+        index_header="List of image processors",
+    )
 
     # add to git
     os.system("git add source/api/image_processors/")

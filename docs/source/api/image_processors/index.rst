@@ -1,9 +1,11 @@
 Image processors
 ----------------
 
+.. automodule:: pyobs.images.processors
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: List of image processors:
 
    pyobs.images.processors.annotation
    pyobs.images.processors.astrometry

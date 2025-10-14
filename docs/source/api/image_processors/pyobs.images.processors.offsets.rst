@@ -3,14 +3,6 @@ Offsets (pyobs.images.processors.offsets)
 
 .. automodule:: pyobs.images.processors.offsets
 
-AddPixelOffset
-^^^^^^^^^^^^^^
-
-.. autoclass:: pyobs.images.processors.offsets.AddPixelOffset
-   :members:
-   :undoc-members:
-   :class-doc-from: class
-
 AstrometryOffsets
 ^^^^^^^^^^^^^^^^^
 
@@ -63,6 +55,14 @@ Offsets
 ^^^^^^^
 
 .. autoclass:: pyobs.images.processors.offsets.Offsets
+   :members:
+   :undoc-members:
+   :class-doc-from: class
+
+PixelOffset
+^^^^^^^^^^^
+
+.. autoclass:: pyobs.images.processors.offsets.PixelOffset
    :members:
    :undoc-members:
    :class-doc-from: class

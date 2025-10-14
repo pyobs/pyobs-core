@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 
 class AperturePhotometry(Photometry):
+    __module__ = "pyobs.images.processors.photometry"
+
     APERTURE_RADII = range(1, 9)
 
     def __init__(self, calculator: _PhotometryCalculator, **kwargs: Any) -> None:

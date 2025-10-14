@@ -2,13 +2,13 @@ import logging
 from typing import Any
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets
+import pyobs.images.meta as meta
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
 
 
-class AddPixelOffset(Offsets):
+class PixelOffset(Offsets):
     """
     Attach desired pixel offsets to the image metadata for later application by an acquisition module.
 
@@ -59,8 +59,8 @@ class AddPixelOffset(Offsets):
         self._pixel_offset_y = pixel_offset_y
 
     async def __call__(self, image: Image) -> Image:
-        image.set_meta(PixelOffsets(dx=self._pixel_offset_x, dy=self._pixel_offset_y))
+        image.set_meta(meta.PixelOffsets(dx=self._pixel_offset_x, dy=self._pixel_offset_y))
         return image
 
 
-__all__ = ["AddPixelOffset"]
+__all__ = ["PixelOffset"]

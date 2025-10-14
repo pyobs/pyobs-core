@@ -3,15 +3,16 @@ import glob
 import importlib
 import inspect
 import os
+from types import ModuleType
+from typing import TextIO, Any
 
-import pyobs
 import pyobs.vfs
 
 
-def find_python_modules(pkg, ignore_init=True):
+def find_python_modules(pkg: type[Any], ignore_init: bool = True) -> list[ModuleType]:
     path = os.path.dirname(pkg.__file__)
     basename = pkg.__name__
-    modules = []
+    modules: list[ModuleType] = []
     for dirpath, dirnames, filenames in os.walk(path):
         for filename in [f for f in filenames if f.endswith(".py")]:
             # ignore inits?
@@ -35,14 +36,16 @@ def find_python_modules(pkg, ignore_init=True):
     return modules
 
 
-def find_submodules(mod):
+def find_submodules(mod: ModuleType) -> list[ModuleType]:
+    if mod.__file__ is None:
+        return []
     path = os.path.dirname(mod.__file__)
     content = [os.path.basename(c) for c in sorted(glob.glob(os.path.join(path, "*"))) if os.path.isdir(c)]
     names = [c for c in content if c[0] not in [".", "_"]]
     return [importlib.import_module(mod.__name__ + "." + n) for n in names]
 
 
-def find_classes_in_modules(modules):
+def find_classes_in_modules(modules: ModuleType | list[ModuleType]) -> list[type[Any]]:
     # make it a list
     if not isinstance(modules, list):
         modules = [modules]
@@ -70,23 +73,23 @@ def find_classes_in_modules(modules):
     return classes
 
 
-def write_class_rst(filename, cls, **kwargs):
+def write_class_rst(filename: str, cls: type[Any], **kwargs: Any) -> None:
     with open(filename, "w") as rst:
         write_class(rst, cls, **kwargs)
 
 
 def write_class(
-    rst,
-    cls,
-    title=True,
-    members=False,
-    inheritance=False,
-    undoc_members=False,
-    private=False,
-    header_level=1,
+    rst: TextIO,
+    cls: type[Any],
+    title: bool = True,
+    members: bool = False,
+    inheritance: bool = False,
+    undoc_members: bool = False,
+    private: bool = False,
+    header_level: int = 1,
     autotype: str = "autoclass",
     class_doc_from: str | None = None,
-):
+) -> None:
     name, module = cls.__name__, cls.__module__
     if title:
         write_title(rst, name, header_level)
@@ -104,13 +107,13 @@ def write_class(
     rst.write("\n")
 
 
-def write_title(rst, title, header_level):
+def write_title(rst: TextIO, title: str, header_level: int) -> None:
     rst.write("%s\n" % title)
     c = ["=", "-", "^", '"'][header_level]
     rst.write(c * len(title) + "\n\n")
 
 
-def write_module_rst(filename, mod, header_level=1, **kwargs):
+def write_module_rst(filename: str, mod: ModuleType | list[ModuleType], header_level: int = 1, **kwargs: Any) -> None:
     # create path
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
@@ -132,20 +135,20 @@ def write_module_rst(filename, mod, header_level=1, **kwargs):
 
 
 def write_module(
-    rst,
-    mod,
-    title=None,
-    members=False,
-    imported=False,
-    header_level=1,
-    undoc_members=False,
-    ignore_classes=None,
-    classes=False,
-    class_kwargs=None,
-):
+    rst: TextIO,
+    mod: ModuleType,
+    title: str | None = None,
+    members: bool = False,
+    imported: bool = False,
+    header_level: int = 1,
+    undoc_members: bool = False,
+    ignore_classes: list[str] | None = None,
+    classes: bool = False,
+    class_kwargs: dict[str, Any] | None = None,
+) -> None:
 
     # does module have a title?
-    if hasattr(mod, "__title__") and not title:
+    if hasattr(mod, "__title__") and title is None:
         title = "%s (%s)" % (mod.__title__, mod.__name__)
     if title:
         write_title(rst, title, header_level)
@@ -161,14 +164,16 @@ def write_module(
         write_module_classes(rst, mod, ignore_classes=ignore_classes, **class_kwargs)
 
 
-def write_module_classes(rst, mod, ignore_classes=None, **kwargs):
+def write_module_classes(rst: TextIO, mod: ModuleType, ignore_classes: list[str] | None = None, **kwargs: Any) -> None:
     for _, c in inspect.getmembers(mod, lambda x: inspect.isclass(x) and x.__module__ == mod.__name__):
         if ignore_classes and c.__name__ in ignore_classes:
             continue
         write_class(rst, c, **kwargs)
 
 
-def create_rst_overview(filename, title, package, base_class=None, **kwargs):
+def create_rst_overview(
+    filename: str, title: str, package: ModuleType, base_class: type[Any] | None = None, **kwargs: Any
+) -> None:
     # get all classes
     classes = sorted(list(filter(lambda m: inspect.isclass(m[1]), inspect.getmembers(package))))
 
@@ -196,7 +201,9 @@ def create_rst_overview(filename, title, package, base_class=None, **kwargs):
             write_class(rst, cls, **kwargs)
 
 
-def write_index_file(path, title=None, header_level=1, module=None, **kwargs):
+def write_index_file(
+    path: str, title: str | None = None, header_level: int = 1, module: ModuleType | None = None, **kwargs: Any
+) -> None:
     with open(os.path.join(path, "index.rst"), "w") as rst:
         # write title
         if title:
@@ -210,7 +217,7 @@ def write_index_file(path, title=None, header_level=1, module=None, **kwargs):
         write_index(rst, path, **kwargs)
 
 
-def write_index(rst, path, topics=None, **kwargs):
+def write_index(rst: TextIO, path: str, topics: list[str] | None = None, **kwargs: Any) -> None:
     # TOC
     rst.write(".. toctree::\n")
     rst.write("   :maxdepth: 2\n")
@@ -229,10 +236,18 @@ def write_index(rst, path, topics=None, **kwargs):
             rst.write("   %s\n" % filename[:-4])
 
 
-def create_utils_rst():
+def create_utils_rst() -> None:
     import pyobs.utils.focusseries
     import pyobs.utils.simulation
     import pyobs.utils.skyflats
+    import pyobs.utils.enums
+    import pyobs.utils.time
+    import pyobs.utils.archive
+    import pyobs.utils.fits
+    import pyobs.utils.exceptions
+    import pyobs.utils.parallel
+    import pyobs.utils.skyflats.pointing
+    import pyobs.utils.skyflats.priorities
 
     # clean up
     os.system("rm -rf source/api/utils/*")
@@ -271,7 +286,7 @@ def create_utils_rst():
     write_index_file("source/api/utils/", title="Utilities (pyobs.utils)", header_level=1)
 
 
-def create_modules_rst():
+def create_modules_rst() -> None:
     # clean up
     os.system("rm -rf source/modules/*")
 
@@ -292,7 +307,9 @@ def create_modules_rst():
     os.system("git add source/modules/")
 
 
-def create_image_processors_rst():
+def create_image_processors_rst() -> None:
+    import pyobs.images.processors
+
     # clean up
     os.system("rm -rf source/api/image_processors/*")
 
@@ -312,6 +329,10 @@ def create_image_processors_rst():
 
 
 if __name__ == "__main__":
+    import pyobs.events
+    import pyobs.interfaces
+    import pyobs.images
+
     # command line parser
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", help="Re-create all", action="store_true")
@@ -327,7 +348,7 @@ if __name__ == "__main__":
     # run it
     if args.all or args.events:
         with open("source/api/events.rst", "w") as rst:
-            write_module(rst, pyobs.events, title=False, classes=True)
+            write_module(rst, pyobs.events, title=None, classes=True)
 
     if args.all or args.interfaces:
         with open("source/api/interfaces.rst", "w") as rst:
@@ -362,4 +383,6 @@ if __name__ == "__main__":
 
     if args.all or args.mixins:
         with open("source/api/mixins.rst", "w") as rst:
+            import pyobs.mixins
+
             write_module(rst, pyobs.mixins, header_level=1, classes=True, class_kwargs=dict(members=True, private=True))

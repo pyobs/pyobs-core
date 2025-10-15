@@ -17,7 +17,121 @@ MetaClass = TypeVar("MetaClass")
 
 
 class Image:
-    """Image class."""
+    """
+    A container class for astronomical image data and associated metadata.
+
+    This class represents a two-dimensional astronomical image, typically loaded
+    from or saved to a FITS file. It provides unified access to image data, mask,
+    uncertainty, catalogs, raw calibration frames, and meta information. The
+    `Image` class serves as the fundamental data structure within the `pyobs`
+    imaging pipeline, enabling reading, writing, and conversion between FITS,
+    `astropy.CCDData`, and in-memory representations.
+
+    The image may optionally contain:
+      - **data**: 2D array of pixel values.
+      - **mask**: Boolean or integer mask indicating invalid or excluded pixels.
+      - **uncertainty**: Per-pixel uncertainty values.
+      - **catalog**: Source catalog (as an `astropy.table.Table`).
+      - **raw**: Reference to the unprocessed raw image data.
+      - **meta**: Arbitrary metadata dictionary, typically used to store runtime
+        or class-based contextual information (not preserved in FITS I/O).
+
+    The class supports deep/shallow copying, FITS serialization, arithmetic
+    operations (e.g., division), and format conversions (e.g., to JPEG or
+    `astropy.CCDData`). It is designed to be interoperable with the `pyobs.images`
+    processing framework, and compatible with source detection and photometry
+    tools such as SEP or Source Extractor.
+
+    Parameters
+    ----------
+    data : numpy.ndarray[float], optional
+        2D array containing the image pixel data.
+    header : astropy.io.fits.Header, optional
+        FITS header containing image metadata. If omitted, a new empty header is created.
+    mask : numpy.ndarray[float] or numpy.ndarray[bool], optional
+        Image mask. Pixels marked True or non-zero are ignored during processing.
+    uncertainty : numpy.ndarray[float], optional
+        Per-pixel uncertainty array.
+    catalog : astropy.table.Table, optional
+        Source catalog table associated with the image.
+    raw : numpy.ndarray[float], optional
+        Raw image data before calibration.
+    meta : dict, optional
+        Dictionary of additional metadata. Not serialized in I/O operations.
+    *args, **kwargs : Any
+        Additional positional or keyword arguments for subclass compatibility.
+
+    Behavior
+    --------
+    - If `data` is provided, the FITS header keywords ``NAXIS1`` and ``NAXIS2`` are
+      automatically set to match the array shape.
+    - The `Image` can be created from FITS files (`from_file`), byte arrays
+      (`from_bytes`), or `astropy.CCDData` objects (`from_ccddata`).
+    - The `writeto()` method saves the image to a FITS file, including associated
+      mask, uncertainty, raw, and catalog extensions when present.
+    - The `to_bytes()` method serializes the image into an in-memory FITS byte stream.
+    - Metadata entries can be managed via `set_meta()`, `get_meta()`, and
+      `get_meta_safe()` for safe retrieval of class-based meta objects.
+    - Supports lightweight arithmetic, such as division via `__truediv__`.
+
+    Input/Output
+    ------------
+    - **Input**:
+        - FITS file or HDU list
+        - In-memory bytes (FITS format)
+        - `astropy.CCDData` object
+    - **Output**:
+        - `Image` instance
+        - FITS file or bytes
+        - `astropy.CCDData` object
+        - JPEG bytes (grayscale representation)
+
+    Examples
+    --------
+    Load an image from a FITS file and convert it to JPEG:
+
+    .. code-block:: python
+
+        from pyobs.images import Image
+
+        image = Image.from_file("science_frame.fits")
+        jpeg_data = image.to_jpeg()
+
+    Create an image from CCDData and write it back to disk:
+
+    .. code-block:: python
+
+        from astropy.nddata import CCDData
+
+        ccd = CCDData.read("flat_field.fits")
+        image = Image.from_ccddata(ccd)
+        image.writeto("flat_field_copy.fits")
+
+    Access image data safely:
+
+    .. code-block:: python
+
+        if image.safe_data is not None:
+            print(f"Mean value: {image.data.mean():.3f}")
+
+    Notes
+    -----
+    - Header keywords such as ``BUNIT`` and ``CD1_1`` / ``CDELT1`` are used to
+      infer pixel units and scale (in arcsec/pixel).
+    - The `meta` dictionary is **not persisted** in FITS I/O; it is intended for
+      runtime information storage.
+    - JPEG conversion (`to_jpeg`) automatically determines display scaling
+      based on 5th–95th percentile clipping unless explicit limits are provided.
+    - For color images (3×H×W arrays), `to_grayscale()` converts to a single
+      channel using ITU-R BT.709 luminance coefficients by default.
+
+    See Also
+    --------
+    astropy.io.fits : For FITS file I/O.
+    astropy.nddata.CCDData : For conversion to/from standard CCD image structures.
+    pyobs.images.processors.detection.SepSourceDetection : For source extraction
+        using SEP on `Image` objects.
+    """
 
     __module__ = "pyobs.images"
 

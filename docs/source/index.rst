@@ -89,10 +89,13 @@ Telescopes
 - **MONET/North** (McDonald Observatory, Texas) and **MONET/South** (SAAO, South Africa)
 - **IAG 50cm** (Göttingen, Germany)
 - **IAG VTT** (Göttingen, Germany)
+- **ROTSE Namibia** (Hess site, Namibia)
 
 .. image:: /_static/monet.png
    :height: 100px
 .. image:: /_static/IAG_LogoRGB_small.gif
+   :height: 100px
+.. image:: /_static/rotse.png
    :height: 100px
 
 Further Reading

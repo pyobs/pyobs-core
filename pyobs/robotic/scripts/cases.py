@@ -57,5 +57,17 @@ class CasesRunner(Script):
         script = self.__get_script()
         await script.run(task_runner, task_schedule, task_archive)
 
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
+        """Returns FITS header for the current status of this module.
+
+        Args:
+            namespaces: If given, only return FITS headers for the given namespaces.
+
+        Returns:
+            Dictionary containing FITS headers.
+        """
+        script = self.__get_script()
+        return script.get_fits_headers(namespaces)
+
 
 __all__ = ["CasesRunner"]

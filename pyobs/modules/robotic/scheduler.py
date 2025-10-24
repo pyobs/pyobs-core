@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import multiprocessing as mp
+import time
 from typing import Union, List, Tuple, Any, Optional, Dict
 import astroplan
 from astroplan import ObservingBlock
@@ -32,7 +33,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         tasks: Union[Dict[str, Any], TaskArchive],
         schedule: Union[Dict[str, Any], TaskSchedule],
         schedule_range: int = 24,
-        safety_time: int = 60,
+        safety_time: float = 60,
         twilight: str = "astronomical",
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
@@ -211,6 +212,9 @@ class Scheduler(Module, IStartStop, IRunnable):
                 self._need_update = False
 
                 try:
+                    # start time
+                    start_time = time.time()
+
                     # prepare scheduler
                     blocks, start, end, constraints = await self._prepare_schedule()
 
@@ -220,8 +224,11 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # finish schedule
                     await self._finish_schedule(scheduled_blocks, start)
 
-                except ValueError as e:
-                    log.warning(str(e))
+                    # set new safety_time as duration + 20%
+                    self._safety_time = (time.time() - start_time) * 1.2
+
+                except:
+                    log.exception("Something went wrong")
 
             # sleep a little
             await asyncio.sleep(1)
@@ -324,7 +331,7 @@ class Scheduler(Module, IStartStop, IRunnable):
     ) -> List[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
-        queue_out = mp.Queue[ObservingBlock]()
+        queue_out: mp.Queue[ObservingBlock] = mp.Queue()
         p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, queue_out))
         p.start()
 
@@ -377,8 +384,10 @@ class Scheduler(Module, IStartStop, IRunnable):
         scheduler = astroplan.PriorityScheduler(constraints, self.observer, transitioner=transitioner)
 
         # run scheduler
+        logging.disable(logging.WARNING)
         time_range = astroplan.Schedule(start, end)
         schedule = scheduler(blocks, time_range)
+        logging.disable(logging.NOTSET)
 
         # put scheduled blocks in queue
         scheduled_blocks.put(schedule.scheduled_blocks)

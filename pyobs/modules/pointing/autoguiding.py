@@ -7,7 +7,7 @@ from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
 from pyobs.interfaces import IExposureTime, IImageType, IData, ICamera
-from pyobs.utils.enums import ImageType, MotionStatus
+from pyobs.utils.enums import ImageType, ExposureStatus
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         """Stops auto-guiding."""
         log.info("Stopping auto-guiding...")
         camera = await self.proxy(self._camera, ICamera)
-        while await camera.get_exposure_status() != MotionStatus.IDLE:
+        while await camera.get_exposure_status() != ExposureStatus.IDLE:
             await asyncio.sleep(1)
         await BaseGuiding.stop(self)
 

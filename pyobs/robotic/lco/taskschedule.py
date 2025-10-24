@@ -363,6 +363,7 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # loop blocks
+        # TODO: get site, enclosure, telescope and instrument from obsportal using the instrument type
         observations = []
         for block in blocks:
             # get request

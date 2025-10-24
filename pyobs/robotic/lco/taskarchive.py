@@ -27,7 +27,7 @@ class LcoTaskArchive(TaskArchive):
         self,
         url: str,
         token: str,
-        instrument_type: str,
+        instrument_type: str | list[str],
         **kwargs: Any,
     ):
         """Creates a new LCO scheduler.
@@ -46,7 +46,8 @@ class LcoTaskArchive(TaskArchive):
         # store stuff
         self._url = url
         self._token = token
-        self._instrument_type = instrument_type
+        instrument_type = [instrument_type] if isinstance(instrument_type, str) else instrument_type
+        self._instrument_type = [it.lower() for it in instrument_type]
 
         # buffers in case of errors
         self._last_changed: Optional[Time] = None
@@ -106,7 +107,7 @@ class LcoTaskArchive(TaskArchive):
                 for cfg in req["configurations"]:
                     # get instrument and check, whether we schedule it
                     instrument = cfg["instrument_type"]
-                    if instrument.lower() != self._instrument_type.lower():
+                    if instrument.lower() not in self._instrument_type:
                         continue
 
                     # target

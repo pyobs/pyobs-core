@@ -12,6 +12,7 @@ from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
+from .configdb import ConfigDB
 from .task import LcoTask
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
@@ -30,6 +31,7 @@ class LcoTaskSchedule(TaskSchedule):
     def __init__(
         self,
         url: str,
+        configdb: str,
         site: str,
         token: str,
         enclosure: str | None = None,
@@ -42,6 +44,7 @@ class LcoTaskSchedule(TaskSchedule):
 
         Args:
             url: URL to portal
+            configdb: URL to configdb
             site: Site filter for fetching requests
             token: Authorization token for portal
             portal_enclosure: Enclosure for new schedules.
@@ -53,6 +56,7 @@ class LcoTaskSchedule(TaskSchedule):
 
         # portal
         self._portal = Portal(url, token)
+        self._configdb = ConfigDB(configdb)
 
         # store stuff
         self._url = url

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from dataclasses import dataclass
 from typing import Any
 
@@ -146,6 +147,9 @@ class Site:
     enclosure_set: list[Enclosure]
 
 
+InstrumentLocation = namedtuple("InstrumentLocation", ["site", "enclosure", "telescope", "instrument"])
+
+
 class ConfigDB:
     def __init__(self, url: str):
         self.url = url
@@ -155,16 +159,22 @@ class ConfigDB:
         json = requests.get(urljoin(self.url, "sites")).json()
         return [dacite.from_dict(Site, site) for site in json["results"]]
 
-    def get_instrument_type_locations(
-        self, instrument_type: str
-    ) -> list[tuple[Site, Enclosure, Telescope, Instrument]]:
+    def get_instrument_by_type(
+        self, instrument_type: str, site: str | None = None, enclosure: str | None = None, telescope: str | None = None
+    ) -> list[InstrumentLocation]:
         locations: list[tuple[Site, Enclosure, Telescope, Instrument]] = []
-        for site in self.config:
-            for enclosure in site.enclosure_set:
-                for telescope in enclosure.telescope_set:
-                    for instrument in telescope.instrument_set:
-                        if instrument.instrument_type.code == instrument_type:
-                            locations.append((site, enclosure, telescope, instrument))
+        for site_it in self.config:
+            if site is not None and site.lower() != site_it.code.lower():
+                continue
+            for enclosure_it in site_it.enclosure_set:
+                if enclosure is not None and enclosure.lower() != enclosure_it.code.lower():
+                    continue
+                for telescope_it in enclosure_it.telescope_set:
+                    if telescope is not None and telescope.lower() != telescope_it.code.lower():
+                        continue
+                    for instrument_it in telescope_it.instrument_set:
+                        if instrument_it.instrument_type.code.lower() == instrument_type.lower():
+                            locations.append(InstrumentLocation(site_it, enclosure_it, telescope_it, instrument_it))
         return locations
 
 

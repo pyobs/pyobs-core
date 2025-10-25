@@ -142,6 +142,7 @@ class LcoTaskArchive(TaskArchive):
                         priority,
                         constraints=[*constraints, *time_constraints],
                         configuration={"request": req},
+                        name=group["name"],
                     )
                     blocks.append(block)
 

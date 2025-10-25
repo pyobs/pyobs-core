@@ -222,7 +222,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
 
                     # finish schedule
-                    await self._finish_schedule(scheduled_blocks, start)
+                    await self._finish_schedule(scheduled_blocks, blocks, start)
 
                     # set new safety_time as duration + 20%
                     self._safety_time = (time.time() - start_time) * 1.2
@@ -343,7 +343,9 @@ class Scheduler(Module, IStartStop, IRunnable):
         await loop.run_in_executor(None, p.join)
         return scheduled_blocks
 
-    async def _finish_schedule(self, scheduled_blocks: List[ObservingBlock], start: Time) -> None:
+    async def _finish_schedule(
+        self, scheduled_blocks: List[ObservingBlock], blocks: List[ObservingBlock], start: Time
+    ) -> None:
         # if need new update, skip here
         if self._need_update:
             log.info("Not using scheduler results, since update was requested.")
@@ -355,11 +357,11 @@ class Scheduler(Module, IStartStop, IRunnable):
             log.info("Finished calculating schedule for %d block(s):", len(scheduled_blocks))
             for i, block in enumerate(scheduled_blocks, 1):
                 log.info(
-                    "  #%d: %s to %s (%.1f)",
-                    block.configuration["request"]["id"],
+                    "  - %s to %s: %s (%d)",
                     block.start_time.strftime("%H:%M:%S"),
                     block.end_time.strftime("%H:%M:%S"),
-                    block.priority,
+                    block.name,
+                    block.configuration["request"]["id"],
                 )
         else:
             log.info("Finished calculating schedule for 0 blocks.")

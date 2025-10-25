@@ -12,6 +12,7 @@ from pyobs.robotic.task import Task
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
+from .configdb import ConfigDB
 from .task import LcoTask
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
@@ -30,11 +31,11 @@ class LcoTaskSchedule(TaskSchedule):
     def __init__(
         self,
         url: str,
+        configdb: str,
         site: str,
         token: str,
         enclosure: str | None = None,
         telescope: str | None = None,
-        instrument: str | None = None,
         period: int = 24,
         **kwargs: Any,
     ):
@@ -42,6 +43,7 @@ class LcoTaskSchedule(TaskSchedule):
 
         Args:
             url: URL to portal
+            configdb: URL to configdb
             site: Site filter for fetching requests
             token: Authorization token for portal
             portal_enclosure: Enclosure for new schedules.
@@ -53,13 +55,13 @@ class LcoTaskSchedule(TaskSchedule):
 
         # portal
         self._portal = Portal(url, token)
+        self._configdb = ConfigDB(configdb)
 
         # store stuff
         self._url = url
         self._site = site
         self._enclosure = enclosure
         self._telescope = telescope
-        self._instrument = instrument
         self._period = TimeDelta(period * u.hour)
         self.instruments: dict[str, Any] = {}
         self._last_schedule_time: Time | None = None
@@ -363,29 +365,47 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # loop blocks
+        # TODO: get site, enclosure, telescope and instrument from obsportal using the instrument type
         observations = []
         for block in blocks:
             # get request
             request = block.configuration["request"]
 
-            # add observation
-            observations.append(
-                {
-                    "site": self._site,
-                    "enclosure": self._enclosure,
-                    "telescope": self._telescope,
-                    "start": block.start_time.isot,
-                    "end": block.end_time.isot,
-                    "request": request["id"],
-                    "configuration_statuses": [
-                        {
-                            "configuration": request["configurations"][0]["id"],
-                            "instrument_name": self._instrument,
-                            "guide_camera_name": self._instrument,
-                        }
-                    ],
-                }
-            )
+            # create observation
+            obs = {
+                "site": self._site,
+                "enclosure": self._enclosure,
+                "telescope": self._telescope,
+                "start": block.start_time.isot,
+                "end": block.end_time.isot,
+                "request": request["id"],
+                "configuration_statuses": [],
+            }
+
+            # add configuration statuses
+            for config in request["configurations"]:
+                # get instrument
+                instruments = self._configdb.get_instrument_by_type(
+                    config["instrument_type"], site=self._site, enclosure=self._enclosure, telescope=self._telescope
+                )
+                if len(instruments) == 0:
+                    log.warning(f"Instrument type {config['instrument_type']} not found. Skipping configuration.")
+                    continue
+                if len(instruments) > 1:
+                    log.warning(f"More than one instrument of type {config['instrument_type']} found. Using first one.")
+                instrument = instruments[0].instrument
+
+                # add configuration status
+                obs["configuration_statuses"].append(
+                    {
+                        "configuration": config["id"],
+                        "instrument_name": instrument.code,
+                        "guide_camera_name": instrument.autoguider_camera.code,
+                    }
+                )
+
+            # add it
+            observations.append(obs)
 
         # return list
         return observations
@@ -418,7 +438,7 @@ class LcoTaskSchedule(TaskSchedule):
         # errors?
         if "errors" in data and len(data["errors"]) > 0:
             for err in data["errors"].values():
-                log.warning("Error from portal: " + str(err["non_field_errors"]))
+                log.warning(f"Error from portal: {err}")
 
 
 __all__ = ["LcoTaskSchedule"]

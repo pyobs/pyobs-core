@@ -216,7 +216,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 await focuser.set_focus_offset(float(guess))
             else:
                 await focuser.set_focus(float(guess))
-            raise exc.GeneralError(f"Could not calculate best focus: {e}")
+            raise FocusError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?
         if focus is None or focus[0] is None or np.isnan(focus[0]):

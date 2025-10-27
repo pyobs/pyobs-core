@@ -7,7 +7,7 @@ import astropy.units as u
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import IAcquisition, IPointingAltAz, IPointingRaDec
-from pyobs.modules import Module
+from pyobs.modules import Module, raises
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.utils.enums import ImageType
@@ -18,6 +18,10 @@ from ._base import BasePointing
 from ...interfaces import IExposureTime, IImageType, ITelescope, IData, IOffsetsRaDec, IOffsetsAltAz, ICamera
 
 log = logging.getLogger(__name__)
+
+
+class AcquisitionError(exc.GeneralError):
+    pass
 
 
 class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
@@ -84,6 +88,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         """Whether a service is running."""
         return self._is_running
 
+    @raises(exc.AbortedError, AcquisitionError)
     @timeout(120)
     async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
@@ -191,7 +196,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 exposure_time = image.get_meta(ExpTime).exptime
 
         # could not acquire target
-        raise exc.ImageError("Could not acquire target within given tolerance.")
+        raise AcquisitionError("Could not acquire target within given tolerance.")
 
     async def _create_log_and_return(self, telescope: ITelescope) -> dict[str, Any]:
         # get current Alt/Az

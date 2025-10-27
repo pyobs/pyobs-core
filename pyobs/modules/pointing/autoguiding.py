@@ -6,8 +6,8 @@ from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.interfaces import IExposureTime, IImageType, IData
-from pyobs.utils.enums import ImageType
+from pyobs.interfaces import IExposureTime, IImageType, IData, ICamera
+from pyobs.utils.enums import ImageType, ExposureStatus
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +68,14 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         """Starts/resets auto-guiding."""
         await BaseGuiding.start(self)
         self._exposure_time = self._default_exposure_time
+
+    async def stop(self, **kwargs: Any) -> None:
+        """Stops auto-guiding."""
+        log.info("Stopping auto-guiding...")
+        camera = await self.proxy(self._camera, ICamera)
+        while await camera.get_exposure_status() != ExposureStatus.IDLE:
+            await asyncio.sleep(1)
+        await BaseGuiding.stop(self)
 
     async def _auto_guiding(self) -> None:
         # exposure time

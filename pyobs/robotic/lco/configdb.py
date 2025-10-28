@@ -162,7 +162,7 @@ class ConfigDB:
     def get_instrument_by_type(
         self, instrument_type: str, site: str | None = None, enclosure: str | None = None, telescope: str | None = None
     ) -> list[InstrumentLocation]:
-        locations: list[tuple[Site, Enclosure, Telescope, Instrument]] = []
+        locations: list[InstrumentLocation] = []
         for site_it in self.config:
             if site is not None and site.lower() != site_it.code.lower():
                 continue

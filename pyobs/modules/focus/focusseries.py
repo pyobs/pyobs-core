@@ -8,15 +8,12 @@ from pyobs.events import FocusFoundEvent, BadWeatherEvent, Event
 from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
 from pyobs.object import get_object
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import Module, timeout
+from pyobs.modules import Module, timeout, raises
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
 from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
-
-
-class FocusError(exc.PyObsError): ...
 
 
 class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
@@ -94,6 +91,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         except ValueError:
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
+    @raises(exc.AbortedError, exc.FocusError)
     @timeout(600)
     async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         """Perform an auto-focus series.
@@ -153,7 +151,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 guess = await focuser.get_focus()
                 log.info("Using current focus of %.2fmm as initial guess.", guess)
         except exc.RemoteError:
-            raise FocusError("Could not fetch current focus value.")
+            raise exc.FocusError("Could not fetch current focus value.")
 
         # define array of focus values to iterate
         focus_values = np.linspace(guess - count * step, guess + count * step, 2 * count + 1)
@@ -179,7 +177,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                     await focuser.set_focus(float(foc))
 
             except exc.RemoteError:
-                raise FocusError("Could not set new focus value.")
+                raise exc.FocusError("Could not set new focus value.")
 
             # do exposure
             log.info("Taking picture...")
@@ -215,7 +213,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 await focuser.set_focus_offset(float(guess))
             else:
                 await focuser.set_focus(float(guess))
-            raise FocusError(f"Could not calculate best focus: {e}")
+            raise exc.FocusError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?
         if focus is None or focus[0] is None or np.isnan(focus[0]):
@@ -230,7 +228,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
                 await focuser.set_focus(guess)
 
             # raise error
-            raise FocusError("Could not find best focus.")
+            raise exc.FocusError("Could not find best focus.")
 
         # log and set focus
         if self._offset:

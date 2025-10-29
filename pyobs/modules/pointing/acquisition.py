@@ -20,10 +20,6 @@ from ...interfaces import IExposureTime, IImageType, ITelescope, IData, IOffsets
 log = logging.getLogger(__name__)
 
 
-class AcquisitionError(exc.GeneralError):
-    pass
-
-
 class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     """Class for telescope acquisition."""
 
@@ -88,7 +84,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         """Whether a service is running."""
         return self._is_running
 
-    @raises(exc.AbortedError, AcquisitionError)
+    @raises(exc.AbortedError, exc.AcquisitionError)
     @timeout(120)
     async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
         """Acquire target at given coordinates.
@@ -196,7 +192,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 exposure_time = image.get_meta(ExpTime).exptime
 
         # could not acquire target
-        raise AcquisitionError("Could not acquire target within given tolerance.")
+        raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
     async def _create_log_and_return(self, telescope: ITelescope) -> dict[str, Any]:
         # get current Alt/Az

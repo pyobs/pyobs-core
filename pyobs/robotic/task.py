@@ -3,7 +3,6 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import Object
-from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
@@ -12,6 +11,7 @@ if TYPE_CHECKING:
     from pyobs.robotic.taskschedule import TaskSchedule
     from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
+    from pyobs.robotic.scheduler.constraints import Constraint
 
 
 class Task(Object, metaclass=ABCMeta):
@@ -68,7 +68,7 @@ class Task(Object, metaclass=ABCMeta):
     @property
     def target(self) -> Target | None:
         """Returns target."""
-        return self.target
+        return self._target
 
     @abstractmethod
     async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:

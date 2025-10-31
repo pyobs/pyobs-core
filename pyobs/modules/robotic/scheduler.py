@@ -102,69 +102,75 @@ class Scheduler(Module, IStartStop, IRunnable):
             # not running?
             if not self._running:
                 await asyncio.sleep(1)
-                continue
+                return
 
             # got new time of last change?
             t = await self._task_archive.last_changed()
             if last_change is None or last_change < t:
-                # get schedulable tasks and sort them
-                log.info("Found update in schedulable tasks, downloading them...")
-                tasks = sorted(
-                    await self._task_archive.get_schedulable_tasks(),
-                    key=lambda x: json.dumps(x.id, sort_keys=True),
-                )
-                log.info("Downloaded %d schedulable tasks(s).", len(tasks))
-
-                # compare new and old lists
-                removed, added = self._compare_task_lists(self._tasks, tasks)
-
-                # schedule update
-                self._need_update = True
-
-                # no changes?
-                if len(removed) == 0 and len(added) == 0:
-                    # no need to re-schedule
-                    log.info("No change in list of blocks detected.")
-                    self._need_update = False
-
-                # has only the current block been removed?
-                log.info("Removed: %d, added: %d", len(removed), len(added))
-                if len(removed) == 1:
-                    log.info(
-                        "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
-                        removed[0].id,
-                        str(self._last_task_id),
-                        str(self._current_task_id),
-                    )
-                if len(removed) == 1 and len(added) == 0 and removed[0].id == self._last_task_id:
-                    # no need to re-schedule
-                    log.info("Only one removed block detected, which is the one currently running.")
-                    self._need_update = False
-
-                # check, if one of the removed blocks was actually in schedule
-                if len(removed) > 0 and self._need_update:
-                    schedule = await self._schedule.get_schedule()
-                    removed_from_schedule = [r for r in removed if r in schedule]
-                    if len(removed_from_schedule) == 0:
-                        log.info(f"Found {len(removed)} blocks, but none of them was scheduled.")
-                        self._need_update = False
-
-                # store blocks
-                self._tasks = tasks
-
-                # schedule update
-                if self._need_update:
-                    log.info("Triggering scheduler run...")
-
-                # remember now
-                last_change = Time.now()
-                self._initial_update_done = True
+                try:
+                    await self._update_schedule()
+                    last_change = t
+                except:
+                    log.exception("Something went wrong when updating schedule.")
 
             # sleep a little
             await asyncio.sleep(5)
 
+    async def _update_schedule(self) -> None:
+        # get schedulable tasks and sort them
+        log.info("Found update in schedulable tasks, downloading them...")
+        tasks = sorted(
+            await self._task_archive.get_schedulable_tasks(),
+            key=lambda x: json.dumps(x.id, sort_keys=True),
+        )
+        log.info("Downloaded %d schedulable tasks(s).", len(tasks))
+
+        # compare new and old lists
+        removed, added = self._compare_task_lists(self._tasks, tasks)
+
+        # schedule update
+        self._need_update = True
+
+        # no changes?
+        if len(removed) == 0 and len(added) == 0:
+            # no need to re-schedule
+            log.info("No change in list of blocks detected.")
+            self._need_update = False
+
+        # has only the current block been removed?
+        log.info("Removed: %d, added: %d", len(removed), len(added))
+        if len(removed) == 1:
+            log.info(
+                "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
+                removed[0].id,
+                str(self._last_task_id),
+                str(self._current_task_id),
+            )
+        if len(removed) == 1 and len(added) == 0 and removed[0].id == self._last_task_id:
+            # no need to re-schedule
+            log.info("Only one removed block detected, which is the one currently running.")
+            self._need_update = False
+
+        # check, if one of the removed blocks was actually in schedule
+        if len(removed) > 0 and self._need_update:
+            schedule = await self._schedule.get_schedule()
+            removed_from_schedule = [s for s in schedule if s.task.id in removed]
+            if len(removed_from_schedule) == 0:
+                log.info(f"Found {len(removed)} tasks, but none of them was scheduled.")
+                self._need_update = False
+
+        # store blocks
+        self._tasks = tasks
+
+        # schedule update
+        if self._need_update:
+            log.info("Triggering scheduler run...")
+
+        # remember now
+        self._initial_update_done = True
+
     @staticmethod
-    def _compare_task_lists(tasks1: list[Task], tasks2: list[Task]) -> tuple[list[Task], list[Task]]:
+    def _compare_task_lists(tasks1: list[Task], tasks2: list[Task]) -> tuple[list[Any], list[Any]]:
         """Compares two lists of tasks and returns two lists, containing those that are missing in list 1
         and list 2, respectively.
 
@@ -183,13 +189,10 @@ class Scheduler(Module, IStartStop, IRunnable):
         names2 = {t.id: t for t in tasks2}
 
         # find elements in names1 that are missing in names2 and vice versa
-        additional1 = set(names1.keys()).difference(names2.keys())
-        additional2 = set(names2.keys()).difference(names1.keys())
+        additional1 = list(set(names1.keys()).difference(names2.keys()))
+        additional2 = list(set(names2.keys()).difference(names1.keys()))
 
-        # get blocks for names and return them
-        unique1 = [names1[n] for n in additional1]
-        unique2 = [names2[n] for n in additional2]
-        return unique1, unique2
+        return additional1, additional2
 
     async def _schedule_worker(self) -> None:
         # run forever
@@ -209,7 +212,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     scheduled_tasks = await self._scheduler.schedule(self._tasks, self._schedule_start)
 
                     # upload schedule
-                    await self._finish_schedule(scheduled_tasks)
+                    await self._finish_schedule(scheduled_tasks, self._schedule_start)
 
                     # set new safety_time as duration + 20%
                     self._safety_time = (time.time() - start_time) * 1.2
@@ -220,14 +223,14 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    async def _finish_schedule(self, scheduled_tasks: list[ScheduledTask]) -> None:
+    async def _finish_schedule(self, scheduled_tasks: list[ScheduledTask], start: Time) -> None:
         # if need new update, skip here
         if self._need_update:
             log.info("Not using scheduler results, since update was requested.")
             return
 
         # update
-        # await self._schedule.set_schedule(scheduled_tasks, start)
+        await self._schedule.set_schedule(scheduled_tasks, start)
 
         # log
         if len(scheduled_tasks) > 0:

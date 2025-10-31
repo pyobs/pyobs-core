@@ -16,7 +16,7 @@ from ..scheduler.constraints import (
     TimeConstraint,
     SolarElevationConstraint,
 )
-from ..scheduler.targets import SideralTarget
+from ..scheduler.targets import SiderealTarget
 
 log = logging.getLogger(__name__)
 
@@ -140,12 +140,12 @@ class LcoTaskArchive(TaskArchive):
                     # create task
                     task = LcoTask(
                         id=req["id"],
-                        name=req["name"],
+                        name=group["name"],
                         duration=duration,
                         priority=priority,
                         constraints=[*constraints, *time_constraints],
                         config={"request": req},
-                        target=SideralTarget(target_name, target),
+                        target=SiderealTarget(target_name, target),
                     )
                     tasks.append(task)
 

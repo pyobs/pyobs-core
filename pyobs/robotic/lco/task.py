@@ -65,18 +65,33 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, config: Dict[str, Any], priority: float, **kwargs: Any):
+    def __init__(
+        self,
+        config: dict[str, Any],
+        id: Any | None = None,
+        name: str | None = None,
+        duration: float | None = None,
+        **kwargs: Any,
+    ):
         """Init LCO task (called request there).
 
         Args:
             config: Configuration for task
         """
+
+        if id is None:
+            id = config["request"]["id"]
+        if name is None:
+            name = config["request"]["id"]
+        if duration is None:
+            duration = float(config["request"]["duration"])
+
         Task.__init__(
             self,
-            id=config["request"]["id"],
-            name=config["name"],
-            duration=float(config["request"]["duration"]),
-            priority=config["priority"],
+            id=id,
+            name=name,
+            duration=duration,
+            config=config,
             **kwargs,
         )
 

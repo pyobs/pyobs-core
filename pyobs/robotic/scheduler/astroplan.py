@@ -2,21 +2,24 @@ from __future__ import annotations
 import asyncio
 import logging
 import multiprocessing as mp
-from typing import Any
+from typing import Any, TYPE_CHECKING
 import astroplan
 from astroplan import ObservingBlock, FixedTarget
 from astropy.time import TimeDelta
 import astropy.units as u
 
 from pyobs.object import Object
-from pyobs.robotic.scheduler.targets import SiderealTarget
+from .taskscheduler import TaskScheduler
+from .targets import SiderealTarget
 from pyobs.utils.time import Time
-from pyobs.robotic import ScheduledTask, Task
+
+if TYPE_CHECKING:
+    from pyobs.robotic import ScheduledTask, Task
 
 log = logging.getLogger(__name__)
 
 
-class AstroplanScheduler(Object):
+class AstroplanScheduler(TaskScheduler):
     """Scheduler based on astroplan."""
 
     __module__ = "pyobs.modules.robotic"
@@ -43,18 +46,28 @@ class AstroplanScheduler(Object):
         self._schedule_range = schedule_range
         self._safety_time = safety_time
         self._twilight = twilight
+        self._lock = asyncio.Lock()
+        self._abort: asyncio.Event = asyncio.Event()
+        self._is_running: bool = False
 
     async def schedule(self, tasks: list[Task], start: Time) -> list[ScheduledTask]:
-        # prepare scheduler
-        blocks, start, end, constraints = await self._prepare_schedule(tasks, start)
+        # is lock acquired? send abort signal
+        if self._lock.locked():
+            await self.abort()
 
-        # schedule
-        scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints)
-        scheduled_blocks.sort(key=lambda b: b.time)  # remove
+        # get lock
+        async with self._lock:
+            # prepare scheduler
+            blocks, start, end, constraints = await self._prepare_schedule(tasks, start)
 
-        # TODO: add abort (see old robotic/scheduler.py)
+            # schedule
+            scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints, self._abort)
 
-        return []
+            # convert
+            return await self._convert_blocks(scheduled_blocks, tasks)
+
+    async def abort(self) -> None:
+        self._abort.set()
 
     async def _prepare_schedule(
         self, tasks: list[Task], start: Time
@@ -91,7 +104,7 @@ class AstroplanScheduler(Object):
                     priority,
                     constraints=[c.to_astroplan() for c in task.constraints] if task.constraints else None,
                     configuration={"request": task.config},
-                    name=task.name,
+                    name=task.id,
                 )
             )
 
@@ -99,7 +112,7 @@ class AstroplanScheduler(Object):
         return blocks, start, end, constraints
 
     async def _schedule_blocks(
-        self, blocks: list[ObservingBlock], start: Time, end: Time, constraints: list[Any]
+        self, blocks: list[ObservingBlock], start: Time, end: Time, constraints: list[Any], abort: asyncio.Event
     ) -> list[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
@@ -111,8 +124,16 @@ class AstroplanScheduler(Object):
         # note that the process only finishes, when the queue is empty! so we have to poll the queue first
         # and then the process.
         loop = asyncio.get_running_loop()
-        scheduled_blocks: list[ObservingBlock] = await loop.run_in_executor(None, queue_out.get, True)
+        future = loop.run_in_executor(None, queue_out.get, True)
+        while not future.done():
+            if abort.is_set():
+                p.kill()
+                return []
+            else:
+                await asyncio.sleep(0.1)
+        scheduled_blocks: list[ObservingBlock] = await future
         await loop.run_in_executor(None, p.join)
+
         return scheduled_blocks
 
     def _schedule_process(
@@ -142,6 +163,24 @@ class AstroplanScheduler(Object):
 
         # put scheduled blocks in queue
         scheduled_blocks.put(schedule.scheduled_blocks)
+
+    async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> list[ScheduledTask]:
+        from pyobs.robotic import ScheduledTask
+
+        scheduled_tasks: list[ScheduledTask] = []
+        for block in blocks:
+            # find task
+            task_id = block.name
+            for task in tasks:
+                if task.id == task_id:
+                    break
+            else:
+                raise ValueError(f"Could not find task with id '{task_id}'")
+
+            # create scheduled task
+            scheduled_tasks.append(ScheduledTask(task, block.start_time, block.end_time))
+
+        return scheduled_tasks
 
 
 __all__ = ["AstroplanScheduler"]

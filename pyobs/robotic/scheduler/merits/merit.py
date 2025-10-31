@@ -1,9 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any
-
 from astropy.time import Time
 
-from pyobs.robotic.scheduler.dataprovider import DataProvider
+from ..dataprovider import DataProvider
 from pyobs.robotic import Task
 
 

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Optional, Any
+from typing import Dict, Optional, Any
 from astroplan import (
     TimeConstraint,
     AirmassConstraint,
@@ -16,6 +16,7 @@ from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from .portal import Portal
 from .task import LcoTask
+from .. import Task
 
 log = logging.getLogger(__name__)
 
@@ -67,11 +68,11 @@ class LcoTaskArchive(TaskArchive):
             # even in case of errors, return last time
             return self._last_changed
 
-    async def get_schedulable_blocks(self) -> List[ObservingBlock]:
-        """Returns list of schedulable blocks.
+    async def get_schedulable_tasks(self) -> list[Task]:
+        """Returns list of schedulable tasks.
 
         Returns:
-            List of schedulable blocks
+            List of schedulable tasks
         """
 
         # get data
@@ -82,7 +83,7 @@ class LcoTaskArchive(TaskArchive):
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
         # loop all request groups
-        blocks = []
+        tasks = []
         for group in schedulable:
             # get base priority, which is tac_priority * ipp_value
             proposal = group["proposal"]
@@ -144,10 +145,10 @@ class LcoTaskArchive(TaskArchive):
                         configuration={"request": req},
                         name=group["name"],
                     )
-                    blocks.append(block)
+                    tasks.append(block)
 
         # return blocks
-        return blocks
+        return tasks
 
 
 __all__ = ["LcoTaskArchive"]

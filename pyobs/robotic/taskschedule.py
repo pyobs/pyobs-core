@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Type
-from astroplan import ObservingBlock
 
 from pyobs.utils.time import Time
 from .task import Task, ScheduledTask
@@ -12,11 +11,11 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         Object.__init__(self, **kwargs)
 
     @abstractmethod
-    async def set_schedule(self, blocks: list[ObservingBlock], start_time: Time) -> None:
-        """Set the list of scheduled blocks.
+    async def set_schedule(self, tasks: list[ScheduledTask], start_time: Time) -> None:
+        """Set the list of scheduled tasks.
 
         Args:
-            blocks: Scheduled blocks.
+            tasks: Scheduled tasks.
             start_time: Start time for schedule.
         """
         ...

@@ -1,5 +1,3 @@
-import time
-
 from astroplan import ObservingBlock, FixedTarget
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -22,7 +20,7 @@ def test_compare_block_lists():
     blocks2 = blocks[5:]
 
     # compare
-    unique1, unique2 = Scheduler._compare_block_lists(blocks1, blocks2)
+    unique1, unique2 = Scheduler._compare_task_lists(blocks1, blocks2)
 
     # get names
     names1 = [int(b.target.name) for b in unique1]
@@ -39,7 +37,7 @@ def test_compare_block_lists():
     blocks2 = blocks[5:]
 
     # compare
-    unique1, unique2 = Scheduler._compare_block_lists(blocks1, blocks2)
+    unique1, unique2 = Scheduler._compare_task_lists(blocks1, blocks2)
 
     # get names
     names1 = [int(b.target.name) for b in unique1]
@@ -56,7 +54,7 @@ def test_compare_block_lists():
     blocks2 = blocks
 
     # compare
-    unique1, unique2 = Scheduler._compare_block_lists(blocks1, blocks2)
+    unique1, unique2 = Scheduler._compare_task_lists(blocks1, blocks2)
 
     # get names
     names1 = [int(b.target.name) for b in unique1]

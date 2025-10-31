@@ -2,9 +2,8 @@ import asyncio
 import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
-from typing import Any
+from typing import Any, cast
 import aiohttp as aiohttp
-from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -316,16 +315,16 @@ class LcoTaskSchedule(TaskSchedule):
         # re-send
         await self.send_update(status_id, status)
 
-    async def set_schedule(self, blocks: list[ObservingBlock], start_time: Time) -> None:
-        """Update the list of scheduled blocks.
+    async def set_schedule(self, tasks: list[ScheduledTask], start_time: Time) -> None:
+        """Set the list of scheduled tasks.
 
         Args:
-            blocks: Scheduled blocks.
+            tasks: Scheduled tasks.
             start_time: Start time for schedule.
         """
 
         # create observations
-        observations = self._create_observations(blocks)
+        observations = self._create_observations(tasks)
 
         # cancel schedule
         await self._cancel_schedule(start_time)
@@ -356,30 +355,30 @@ class LcoTaskSchedule(TaskSchedule):
                 if response.status != 200:
                     log.error("Could not cancel schedule: %s", await response.text())
 
-    def _create_observations(self, blocks: list[ObservingBlock]) -> list[dict[str, Any]]:
+    def _create_observations(self, scheduled_tasks: list[ScheduledTask]) -> list[dict[str, Any]]:
         """Create observations from schedule.
 
         Args:
-            blocks: List of scheduled blocks
+            scheduled_tasks: List of scheduled tasks
 
         Returns:
             List with observations.
         """
 
-        # loop blocks
+        # loop tasks
         # TODO: get site, enclosure, telescope and instrument from obsportal using the instrument type
         observations = []
-        for block in blocks:
+        for scheduled_task in scheduled_tasks:
             # get request
-            request = block.configuration["request"]
+            request = cast(LcoTask, scheduled_task.task).config["request"]
 
             # create observation
             obs = {
                 "site": self._site,
                 "enclosure": self._enclosure,
                 "telescope": self._telescope,
-                "start": block.start_time.isot,
-                "end": block.end_time.isot,
+                "start": scheduled_task.start.isot,
+                "end": scheduled_task.end.isot,
                 "request": request["id"],
                 "configuration_statuses": [],
             }

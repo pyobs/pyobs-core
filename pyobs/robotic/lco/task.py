@@ -65,45 +65,23 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, config: Dict[str, Any], **kwargs: Any):
+    def __init__(self, config: Dict[str, Any], priority: float, **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
             config: Configuration for task
         """
-        Task.__init__(self, **kwargs)
+        Task.__init__(
+            self,
+            id=config["request"]["id"],
+            name=config["name"],
+            duration=float(config["request"]["duration"]),
+            priority=config["priority"],
+            **kwargs,
+        )
 
         # store stuff
-        self.config = config
         self.cur_script: Optional[Script] = None
-
-    @property
-    def id(self) -> Any:
-        """ID of task."""
-        if "request" in self.config and "id" in self.config["request"]:
-            return self.config["request"]["id"]
-        else:
-            raise ValueError("No id found in request.")
-
-    @property
-    def name(self) -> str:
-        """Returns name of task."""
-        if "name" in self.config and isinstance(self.config["name"], str):
-            return self.config["name"]
-        else:
-            raise ValueError("No name found in request group.")
-
-    @property
-    def duration(self) -> float:
-        """Returns estimated duration of task in seconds."""
-        if (
-            "request" in self.config
-            and "duration" in self.config["request"]
-            and isinstance(self.config["request"]["duration"], int)
-        ):
-            return float(self.config["request"]["duration"])
-        else:
-            raise ValueError("No duration found in request.")
 
     def __eq__(self, other: object) -> bool:
         """Compares to tasks."""
@@ -111,22 +89,6 @@ class LcoTask(Task):
             return self.config == other.config
         else:
             return False
-
-    @property
-    def start(self) -> Time:
-        """Start time for task"""
-        if "start" in self.config and isinstance(self.config["start"], Time):
-            return self.config["start"]
-        else:
-            raise ValueError("No start time found in request group.")
-
-    @property
-    def end(self) -> Time:
-        """End time for task"""
-        if "end" in self.config and isinstance(self.config["end"], Time):
-            return self.config["end"]
-        else:
-            raise ValueError("No end time found in request group.")
 
     @property
     def observation_type(self) -> str:

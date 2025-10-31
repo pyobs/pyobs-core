@@ -3,6 +3,8 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import Object
+from pyobs.robotic.scheduler.constraints import Constraint
+from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
@@ -13,23 +15,60 @@ if TYPE_CHECKING:
 
 
 class Task(Object, metaclass=ABCMeta):
+    def __init__(
+        self,
+        id: Any,
+        name: str,
+        duration: float,
+        priority: float | None = None,
+        config: dict[str, Any] | None = None,
+        constraints: list[Constraint] | None = None,
+        target: Target | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
+        self._id = id
+        self._name = name
+        self._duration = duration
+        self._priority = priority
+        self._config = config
+        self._constraints = constraints
+        self._target = target
+
     @property
-    @abstractmethod
     def id(self) -> Any:
         """ID of task."""
-        ...
+        return self._id
 
     @property
-    @abstractmethod
     def name(self) -> str:
         """Returns name of task."""
-        ...
+        return self._name
 
     @property
-    @abstractmethod
     def duration(self) -> float:
         """Returns estimated duration of task in seconds."""
-        ...
+        return self._duration
+
+    @property
+    def priority(self) -> float:
+        """Returns priority."""
+        return self._priority if self._priority is not None else 0.0
+
+    @property
+    def config(self) -> dict[str, Any]:
+        """Returns configuration."""
+        return self._config if self._config is not None else {}
+
+    @property
+    def constraints(self) -> list[Constraint] | None:
+        """Returns constraints."""
+        return self._constraints
+
+    @property
+    def target(self) -> Target | None:
+        """Returns target."""
+        return self.target
 
     @abstractmethod
     async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:

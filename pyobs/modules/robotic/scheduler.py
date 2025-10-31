@@ -200,6 +200,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 self._need_update = False
 
                 try:
+                    # TODO: add abort (see old robotic/scheduler.py)
 
                     # start time
                     start_time = time.time()

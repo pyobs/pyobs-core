@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 from functools import cache
+
+import astropy
 from astroplan import Observer
+from astropy.coordinates import SkyCoord
 from astropy.time import Time, TimeDelta
 import astropy.units as u
+from astropy.units import Quantity
 
 from pyobs.robotic import Task
 
@@ -40,6 +44,14 @@ class DataProvider:
     def get_task_success(self, task: Task, number: int = -1) -> TaskSuccess | None:
         """Return the number of successful runs for task."""
         return None
+
+    @cache
+    def get_distance(self, target: SkyCoord, avoid: SkyCoord) -> Quantity:
+        return target.distance_to(avoid)
+
+    @cache
+    def get_moon(self, time: Time) -> SkyCoord:
+        return astropy.coordinates.get_body("moon", time, self.observer.location)
 
 
 __all__ = ["DataProvider"]

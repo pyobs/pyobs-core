@@ -1,5 +1,6 @@
 from astropy.coordinates import SkyCoord
 
+from pyobs.utils.time import Time
 from .target import Target
 
 
@@ -15,6 +16,9 @@ class SiderealTarget(Target):
 
     @property
     def coord(self) -> SkyCoord:
+        return self._coord
+
+    def coordinates(self, time: Time) -> SkyCoord:
         return self._coord
 
 

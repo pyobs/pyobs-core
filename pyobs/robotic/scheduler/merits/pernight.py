@@ -1,19 +1,20 @@
 from typing import Any
-
 from astropy.time import Time
 
 from pyobs.robotic import Task
-from ..dataprovider import DataProvider
-from ..merit import Merit
+from .merit import Merit
 
 
 class PerNightMerit(Merit):
     """Merit functions for defining a max number of observations per night."""
 
     def __init__(self, count: int, **kwargs: Any):
+        super().__init__(**kwargs)
         self._count = count
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    def __call__(self, time: Time, task: Task) -> float:
+        data = self._data_provider
+
         # get number of successful task runs
         successes = data.get_task_success_count(task)
 

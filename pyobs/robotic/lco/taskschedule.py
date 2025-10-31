@@ -2,13 +2,13 @@ import asyncio
 import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
-from typing import Any, cast
+from typing import Any
 import aiohttp as aiohttp
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import Task, ScheduledTask
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
@@ -76,7 +76,7 @@ class LcoTaskSchedule(TaskSchedule):
         self._header = {"Authorization": "Token " + token}
 
         # task list
-        self._tasks: dict[str, LcoTask] = {}
+        self._scheduled_tasks: list[ScheduledTask] = []
 
         # error logging for regular updates
         self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
@@ -164,7 +164,7 @@ class LcoTaskSchedule(TaskSchedule):
 
             # need update!
             try:
-                tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
+                scheduled_tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
                 self._update_error_log.resolve("Successfully updated schedule.")
             except TimeoutError:
                 self._update_error_log.error("Request for updating schedule timed out.")
@@ -175,13 +175,15 @@ class LcoTaskSchedule(TaskSchedule):
                 return
 
             # any changes?
-            if sorted(tasks) != sorted(self._tasks):
-                log.info("Task list changed, found %d task(s) to run.", len(tasks))
-                for task_id, task in sorted(tasks.items(), key=lambda x: x[1].start):
-                    log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
+            if sorted(scheduled_tasks, key=lambda x: x.start) != sorted(self._scheduled_tasks, key=lambda x: x.start):
+                log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
+                for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
+                    log.info(
+                        f"  - {scheduled_task.start} to {scheduled_task.end}: {scheduled_task.task.name} (#{scheduled_task.task.id})"
+                    )
 
                 # update
-                self._tasks = cast(dict[str, LcoTask], tasks)
+                self._scheduled_tasks = scheduled_tasks
 
                 # finished
                 self._last_schedule_time = now
@@ -190,7 +192,7 @@ class LcoTaskSchedule(TaskSchedule):
             # release lock
             self._update_lock.release()
 
-    async def get_schedule(self) -> dict[str, Task]:
+    async def get_schedule(self) -> list[ScheduledTask]:
         """Fetch schedule from portal.
 
         Returns:
@@ -200,18 +202,17 @@ class LcoTaskSchedule(TaskSchedule):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return cast(dict[str, Task], self._tasks)
+        return self._scheduled_tasks
 
-    async def _get_schedule(self, start_before: Time, end_after: Time) -> dict[str, Task]:
+    async def _get_schedule(self, start_before: Time, end_after: Time) -> list[ScheduledTask]:
         """Fetch schedule from portal.
 
         Args:
             start_before: Task must start before this time.
             end_after: Task must end after this time.
-            include_running: Whether to include a currently running task.
 
         Returns:
-            Dictionary with tasks.
+            List with tasks.
 
         Raises:
             Timeout: If request timed out.
@@ -242,20 +243,21 @@ class LcoTaskSchedule(TaskSchedule):
                 schedules = data["results"]
 
                 # create tasks
-                tasks = {}
+                scheduled_tasks: list[ScheduledTask] = []
                 for sched in schedules:
-                    # parse start and end
-                    sched["start"] = Time(sched["start"])
-                    sched["end"] = Time(sched["end"])
-
                     # create task
                     task = self._create_task(LcoTask, config=sched)
-                    tasks[sched["request"]["id"]] = task
+
+                    # create scheduled task
+                    scheduled_task = ScheduledTask(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
+
+                    # add it
+                    scheduled_tasks.append(scheduled_task)
 
                 # finished
-                return tasks
+                return scheduled_tasks
 
-    async def get_task(self, time: Time) -> LcoTask | None:
+    async def get_task(self, time: Time) -> Task | None:
         """Returns the active task at the given time.
 
         Args:
@@ -266,10 +268,10 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # loop all tasks
-        for task in self._tasks.values():
+        for scheduled_task in self._scheduled_tasks:
             # running now?
-            if task.start <= time < task.end and not task.is_finished():
-                return task
+            if scheduled_task.start <= time < scheduled_task.end and not scheduled_task.task.is_finished():
+                return scheduled_task.task
 
         # nothing found
         return None

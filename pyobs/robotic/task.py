@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, TYPE_CHECKING, Any, Optional, List, Dict
+from typing import TYPE_CHECKING, Any
 
 from pyobs.object import Object
 from pyobs.robotic.scripts import Script
@@ -31,20 +31,8 @@ class Task(Object, metaclass=ABCMeta):
         """Returns estimated duration of task in seconds."""
         ...
 
-    @property
     @abstractmethod
-    def start(self) -> Time:
-        """Start time for task"""
-        ...
-
-    @property
-    @abstractmethod
-    def end(self) -> Time:
-        """End time for task"""
-        ...
-
-    @abstractmethod
-    async def can_run(self, scripts: Optional[Dict[str, Script]] = None) -> bool:
+    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -66,9 +54,9 @@ class Task(Object, metaclass=ABCMeta):
     async def run(
         self,
         task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
-        scripts: Optional[Dict[str, Script]] = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
+        scripts: dict[str, Script] | None = None,
     ) -> None:
         """Run a task"""
         ...
@@ -78,7 +66,7 @@ class Task(Object, metaclass=ABCMeta):
         """Whether task is finished."""
         ...
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -90,4 +78,28 @@ class Task(Object, metaclass=ABCMeta):
         return {}
 
 
-__all__ = ["Task"]
+class ScheduledTask:
+    """A scheduled task."""
+
+    def __init__(self, task: Task, start: Time, end: Time):
+        self._task = task
+        self._start = start
+        self._end = end
+
+    @property
+    def task(self) -> Task:
+        """Returns the task."""
+        return self._task
+
+    @property
+    def start(self) -> Time:
+        """Start time for task"""
+        return self._start
+
+    @property
+    def end(self) -> Time:
+        """End time for task"""
+        return self._end
+
+
+__all__ = ["Task", "ScheduledTask"]

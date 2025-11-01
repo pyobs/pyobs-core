@@ -11,9 +11,10 @@ from pyobs.object import Object
 from . import DataProvider
 from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
+from pyobs.robotic import ScheduledTask
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ScheduledTask, Task
+    from pyobs.robotic import Task
 
 log = logging.getLogger(__name__)
 
@@ -49,23 +50,24 @@ class MeritScheduler(TaskScheduler):
 
     async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
         data = DataProvider(self.observer)
-        task = await self._find_next_best_task(tasks, start, data)
+        task = await find_next_best_task(tasks, start, data)
         yield task
-
-    async def _find_next_best_task(self, tasks: list[Task], time: Time, data: DataProvider) -> ScheduledTask:
-        # evaluate all merit functions at given time
-        merits: list[float] = []
-        for task in tasks:
-            merit = float(np.prod([m(time, task, data) for m in task.merits]))
-            merits.append(merit)
-
-        # find max one
-        idx = np.argmax(merits)
-        task = tasks[idx]
-        return ScheduledTask(task, time, time + TimeDelta(task.duration * u.sec))
 
     async def abort(self) -> None:
         self._abort.set()
+
+
+async def find_next_best_task(tasks: list[Task], time: Time, data: DataProvider) -> ScheduledTask:
+    # evaluate all merit functions at given time
+    merits: list[float] = []
+    for task in tasks:
+        merit = float(np.prod([m(time, task, data) for m in task.merits]))
+        merits.append(merit)
+
+    # find max one
+    idx = np.argmax(merits)
+    task = tasks[idx]
+    return ScheduledTask(task, time, time + TimeDelta(task.duration * u.second))
 
 
 __all__ = ["MeritScheduler"]

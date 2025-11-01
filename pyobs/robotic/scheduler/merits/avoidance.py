@@ -1,11 +1,13 @@
+from __future__ import annotations
 import abc
-from typing import Any
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
-
-from pyobs.robotic import Task
+from typing import Any, TYPE_CHECKING
 from .merit import Merit
-from ..dataprovider import DataProvider
+
+if TYPE_CHECKING:
+    from astropy.coordinates import SkyCoord
+    from astropy.time import Time
+    from pyobs.robotic import Task
+    from ..dataprovider import DataProvider
 
 
 class AvoidanceMerit(Merit, metaclass=abc.ABCMeta):
@@ -24,16 +26,16 @@ class AvoidanceMerit(Merit, metaclass=abc.ABCMeta):
         target = task.target.coordinates(time)
 
         # position to avoid
-        avoid = self._avoidance_position(time)
+        avoid = self._avoidance_position(time, data)
 
         # calculate distance
-        dist = self._data_provider.get_distance(target, avoid)
+        dist = data.get_distance(target, avoid)
 
         # calculate merit
         return float(self._impact * dist.degree**self._stretch)
 
     @abc.abstractmethod
-    def _avoidance_position(self, time: Time) -> SkyCoord: ...
+    def _avoidance_position(self, time: Time, data: DataProvider) -> SkyCoord: ...
 
 
 __all__ = ["AvoidanceMerit"]

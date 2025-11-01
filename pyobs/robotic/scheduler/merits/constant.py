@@ -1,9 +1,11 @@
-from typing import Any
-from astropy.time import Time
-
-from pyobs.robotic import Task
+from __future__ import annotations
+from typing import Any, TYPE_CHECKING
 from .merit import Merit
-from ..dataprovider import DataProvider
+
+if TYPE_CHECKING:
+    from astropy.time import Time
+    from pyobs.robotic import Task
+    from ..dataprovider import DataProvider
 
 
 class ConstantMerit(Merit):

@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Dict, Optional, Any
 from astropy.coordinates import SkyCoord
@@ -68,6 +69,25 @@ class LcoTaskArchive(TaskArchive):
             # even in case of errors, return last time
             return self._last_changed
 
+    @staticmethod
+    def create_constraints_for_configuration(config: dict[str, Any]) -> list[Constraint]:
+        # time constraints
+        constraints: list[Constraint] = []
+
+        # constraints
+        c = config["constraints"]
+        if "max_airmass" in c and c["max_airmass"] is not None:
+            constraints.append(AirmassConstraint(c["max_airmass"]))
+        if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
+            constraints.append(MoonSeparationConstraint(c["min_lunar_distance"]))
+        if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
+            constraints.append(MoonIlluminationConstraint(c["max_lunar_phase"]))
+            # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
+            if c["max_lunar_phase"] <= 0.4:
+                constraints.append(SolarElevationConstraint(-18.0))
+
+        return constraints
+
     async def get_schedulable_tasks(self) -> list[Task]:
         """Returns list of schedulable tasks.
 
@@ -101,7 +121,7 @@ class LcoTaskArchive(TaskArchive):
                 # duration
                 duration = req["duration"] * u.second
 
-                # time constraints
+                # get constraints
                 time_constraints = [TimeConstraint(Time(wnd["start"]), Time(wnd["end"])) for wnd in req["windows"]]
 
                 # loop configs
@@ -121,21 +141,15 @@ class LcoTaskArchive(TaskArchive):
                         continue
 
                     # constraints
-                    c = cfg["constraints"]
-                    constraints: list[Constraint] = []
-                    if "max_airmass" in c and c["max_airmass"] is not None:
-                        constraints.append(AirmassConstraint(c["max_airmass"]))
-                    if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
-                        constraints.append(MoonSeparationConstraint(c["min_lunar_distance"]))
-                    if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
-                        constraints.append(MoonIlluminationConstraint(c["max_lunar_phase"]))
-                        # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
-                        if c["max_lunar_phase"] <= 0.4:
-                            constraints.append(SolarElevationConstraint(-18.0))
+                    constraints = self.create_constraints_for_configuration(cfg) + time_constraints
 
                     # priority is base_priority times duration in minutes
                     # priority = base_priority * duration.value / 60.
                     priority = base_priority
+
+                    # create request with only this config
+                    new_req = copy.deepcopy(req)
+                    new_req["configurations"] = [cfg]
 
                     # create task
                     task = LcoTask(
@@ -143,8 +157,8 @@ class LcoTaskArchive(TaskArchive):
                         name=group["name"],
                         duration=duration,
                         priority=priority,
-                        constraints=[*constraints, *time_constraints],
-                        config={"request": req},
+                        constraints=constraints,
+                        config={"request": new_req},
                         target=SiderealTarget(target_name, target),
                     )
                     tasks.append(task)

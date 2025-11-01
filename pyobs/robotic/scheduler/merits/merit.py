@@ -13,7 +13,7 @@ class Merit(metaclass=ABCMeta):
         self._data_provider = data_provider
 
     @abstractmethod
-    def __call__(self, time: Time, task: Task) -> float: ...
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> float: ...
 
 
 __all__ = ["Merit"]

@@ -1,9 +1,9 @@
 from typing import Any
-
 from astropy.time import Time
 
 from pyobs.robotic import Task
 from .merit import Merit
+from ..dataprovider import DataProvider
 
 
 class ConstantMerit(Merit):
@@ -13,7 +13,7 @@ class ConstantMerit(Merit):
         super().__init__(**kwargs)
         self._merit = merit
 
-    def __call__(self, time: Time, task: Task) -> float:
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return self._merit
 
 

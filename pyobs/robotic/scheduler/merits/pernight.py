@@ -3,6 +3,7 @@ from astropy.time import Time
 
 from pyobs.robotic import Task
 from .merit import Merit
+from ..dataprovider import DataProvider
 
 
 class PerNightMerit(Merit):
@@ -12,9 +13,7 @@ class PerNightMerit(Merit):
         super().__init__(**kwargs)
         self._count = count
 
-    def __call__(self, time: Time, task: Task) -> float:
-        data = self._data_provider
-
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         # get number of successful task runs
         successes = data.get_task_success_count(task)
 

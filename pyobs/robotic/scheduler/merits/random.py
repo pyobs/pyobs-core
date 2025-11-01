@@ -4,6 +4,7 @@ import numpy as np
 
 from pyobs.robotic import Task
 from .merit import Merit
+from ..dataprovider import DataProvider
 
 
 class RandomMerit(Merit):
@@ -13,7 +14,7 @@ class RandomMerit(Merit):
         super().__init__(**kwargs)
         self._std = std
 
-    def __call__(self, time: Time, task: Task) -> float:
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return np.random.normal(0.0, self._std)
 
 

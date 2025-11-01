@@ -3,8 +3,12 @@ import asyncio
 import logging
 from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncIterator
+import numpy as np
+from astropy.time import TimeDelta
+import astropy.units as u
 
 from pyobs.object import Object
+from . import DataProvider
 from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
 
@@ -44,7 +48,21 @@ class MeritScheduler(TaskScheduler):
         self._abort: asyncio.Event = asyncio.Event()
 
     async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
-        yield ScheduledTask(tasks[0], Time.now(), Time.now())
+        data = DataProvider(self.observer)
+        task = await self._find_next_best_task(tasks, start, data)
+        yield task
+
+    async def _find_next_best_task(self, tasks: list[Task], time: Time, data: DataProvider) -> ScheduledTask:
+        # evaluate all merit functions at given time
+        merits: list[float] = []
+        for task in tasks:
+            merit = float(np.prod([m(time, task, data) for m in task.merits]))
+            merits.append(merit)
+
+        # find max one
+        idx = np.argmax(merits)
+        task = tasks[idx]
+        return ScheduledTask(task, time, time + TimeDelta(task.duration * u.sec))
 
     async def abort(self) -> None:
         self._abort.set()

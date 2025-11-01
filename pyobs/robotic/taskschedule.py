@@ -11,12 +11,20 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         Object.__init__(self, **kwargs)
 
     @abstractmethod
-    async def set_schedule(self, tasks: list[ScheduledTask], start_time: Time) -> None:
-        """Set the list of scheduled tasks.
+    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+        """Add the list of scheduled tasks to the schedule.
 
         Args:
             tasks: Scheduled tasks.
-            start_time: Start time for schedule.
+        """
+        ...
+
+    @abstractmethod
+    async def clear_schedule(self, start_time: Time) -> None:
+        """Clear schedule after given start time.
+
+        Args:
+            start_time: Start time to clear from.
         """
         ...
 

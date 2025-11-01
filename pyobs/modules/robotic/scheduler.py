@@ -209,13 +209,33 @@ class Scheduler(Module, IStartStop, IRunnable):
                     start_time = time.time()
 
                     # schedule
-                    # TODO: process all scheduled tasks one by one
                     scheduled_tasks: list[ScheduledTask] = []
+                    first = True
                     async for scheduled_task in self._scheduler.schedule(self._tasks, self._schedule_start):
+                        # remember for later
                         scheduled_tasks.append(scheduled_task)
 
-                    # upload schedule
-                    await self._finish_schedule(scheduled_tasks, self._schedule_start)
+                        if self._need_update:
+                            log.info("Not using scheduler results, since update was requested.")
+                            break
+
+                        # on first task, we have to clear the schedule
+                        if first:
+                            log.info("Finished calculating next task:")
+                            self._log_scheduled_task([scheduled_task])
+                            await self._schedule.clear_schedule(self._schedule_start)
+                            first = False
+
+                        # submit it
+                        await self._schedule.add_schedule([scheduled_task])
+
+                    if self._need_update:
+                        log.info("Not using scheduler results, since update was requested.")
+                        continue
+
+                    # log it
+                    log.info("Finished calculating schedule for %d block(s):", len(scheduled_tasks))
+                    self._log_scheduled_task(scheduled_tasks)
 
                     # set new safety_time as duration + 20%
                     self._safety_time = (time.time() - start_time) * 1.2
@@ -226,28 +246,15 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    async def _finish_schedule(self, scheduled_tasks: list[ScheduledTask], start: Time) -> None:
-        # if need new update, skip here
-        if self._need_update:
-            log.info("Not using scheduler results, since update was requested.")
-            return
-
-        # update
-        await self._schedule.set_schedule(scheduled_tasks, start)
-
-        # log
-        if len(scheduled_tasks) > 0:
-            log.info("Finished calculating schedule for %d block(s):", len(scheduled_tasks))
-            for i, scheduled_task in enumerate(scheduled_tasks, 1):
-                log.info(
-                    "  - %s to %s: %s (%d)",
-                    scheduled_task.start.strftime("%H:%M:%S"),
-                    scheduled_task.end.strftime("%H:%M:%S"),
-                    scheduled_task.task.name,
-                    scheduled_task.task.id,
-                )
-        else:
-            log.info("Finished calculating schedule for 0 blocks.")
+    def _log_scheduled_task(self, scheduled_tasks: list[ScheduledTask]) -> None:
+        for scheduled_task in scheduled_tasks:
+            log.info(
+                "  - %s to %s: %s (%d)",
+                scheduled_task.start.strftime("%H:%M:%S"),
+                scheduled_task.end.strftime("%H:%M:%S"),
+                scheduled_task.task.name,
+                scheduled_task.task.id,
+            )
 
     async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""

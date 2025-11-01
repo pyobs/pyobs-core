@@ -315,33 +315,33 @@ class LcoTaskSchedule(TaskSchedule):
         # re-send
         await self.send_update(status_id, status)
 
-    async def set_schedule(self, tasks: list[ScheduledTask], start_time: Time) -> None:
-        """Set the list of scheduled tasks.
+    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+        """Add the list of scheduled tasks to the schedule.
 
         Args:
             tasks: Scheduled tasks.
-            start_time: Start time for schedule.
         """
 
         # create observations
         observations = self._create_observations(tasks)
 
-        # cancel schedule
-        await self._cancel_schedule(start_time)
-
         # send new schedule
         await self._submit_observations(observations)
 
-    async def _cancel_schedule(self, now: Time) -> None:
-        """Cancel future schedule."""
+    async def clear_schedule(self, start_time: Time) -> None:
+        """Clear schedule after given start time.
+
+        Args:
+            start_time: Start time to clear from.
+        """
 
         # define parameters
         params = {
             "site": self._site,
             "enclosure": self._enclosure,
             "telescope": self._telescope,
-            "start": now.isot,
-            "end": (now + self._period).isot,
+            "start": start_time.isot,
+            "end": (start_time + self._period).isot,
         }
 
         # url and headers
@@ -349,7 +349,7 @@ class LcoTaskSchedule(TaskSchedule):
         headers = {"Authorization": "Token " + self._token, "Content-Type": "application/json; charset=utf8"}
 
         # cancel schedule
-        log.info("Deleting all scheduled tasks after %s...", now.isot)
+        log.info("Deleting all scheduled tasks after %s...", start_time.isot)
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=params, headers=headers, timeout=10) as response:
                 if response.status != 200:

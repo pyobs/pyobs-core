@@ -209,7 +209,10 @@ class Scheduler(Module, IStartStop, IRunnable):
                     start_time = time.time()
 
                     # schedule
-                    scheduled_tasks = await self._scheduler.schedule(self._tasks, self._schedule_start)
+                    # TODO: process all scheduled tasks one by one
+                    scheduled_tasks: list[ScheduledTask] = []
+                    async for scheduled_task in self._scheduler.schedule(self._tasks, self._schedule_start):
+                        scheduled_tasks.append(scheduled_task)
 
                     # upload schedule
                     await self._finish_schedule(scheduled_tasks, self._schedule_start)

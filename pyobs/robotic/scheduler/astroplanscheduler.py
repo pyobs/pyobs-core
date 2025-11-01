@@ -3,6 +3,7 @@ import asyncio
 import logging
 import multiprocessing as mp
 from typing import Any, TYPE_CHECKING
+from collections.abc import AsyncIterator
 import astroplan
 from astroplan import ObservingBlock, FixedTarget
 from astropy.time import TimeDelta
@@ -50,7 +51,7 @@ class AstroplanScheduler(TaskScheduler):
         self._abort: asyncio.Event = asyncio.Event()
         self._is_running: bool = False
 
-    async def schedule(self, tasks: list[Task], start: Time) -> list[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
         # is lock acquired? send abort signal
         if self._lock.locked():
             await self.abort()
@@ -64,7 +65,11 @@ class AstroplanScheduler(TaskScheduler):
             scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints, self._abort)
 
             # convert
-            return await self._convert_blocks(scheduled_blocks, tasks)
+            scheduled_tasks = await self._convert_blocks(scheduled_blocks, tasks)
+
+            # yield them
+            for scheduled_task in scheduled_tasks:
+                yield scheduled_task
 
     async def abort(self) -> None:
         self._abort.set()

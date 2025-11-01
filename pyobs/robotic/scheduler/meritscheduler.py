@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any, TYPE_CHECKING
+from collections.abc import AsyncIterator
 
 from pyobs.object import Object
 from .taskscheduler import TaskScheduler
@@ -42,8 +43,8 @@ class MeritScheduler(TaskScheduler):
         self._twilight = twilight
         self._abort: asyncio.Event = asyncio.Event()
 
-    async def schedule(self, tasks: list[Task], start: Time) -> list[ScheduledTask]:
-        return []
+    async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
+        yield ScheduledTask(tasks[0], Time.now(), Time.now())
 
     async def abort(self) -> None:
         self._abort.set()

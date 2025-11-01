@@ -1,6 +1,7 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
-
+from typing import TYPE_CHECKING
 import astropy
 from astroplan import Observer
 from astropy.coordinates import SkyCoord
@@ -8,7 +9,8 @@ from astropy.time import Time, TimeDelta
 import astropy.units as u
 from astropy.units import Quantity
 
-from pyobs.robotic import Task
+if TYPE_CHECKING:
+    from pyobs.robotic import Task
 
 
 @dataclass

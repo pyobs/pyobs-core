@@ -184,15 +184,15 @@ class Scheduler(Module, IStartStop, IRunnable):
                 unique2:  Blocks that exist in tasks2, but not in tasks1.
         """
 
-        # get dictionaries with block names
-        names1 = {t.id: t for t in tasks1}
-        names2 = {t.id: t for t in tasks2}
+        # get dictionaries with block ids
+        ids1 = {t.id: t for t in tasks1}
+        ids2 = {t.id: t for t in tasks2}
 
-        # find elements in names1 that are missing in names2 and vice versa
-        additional1 = list(set(names1.keys()).difference(names2.keys()))
-        additional2 = list(set(names2.keys()).difference(names1.keys()))
+        # find elements in ids1 that are missing in ids2 and vice versa
+        additional1 = list(set(ids1.keys()).difference(ids2.keys()))
+        additional2 = list(set(ids2.keys()).difference(ids1.keys()))
 
-        return additional1, additional2
+        return sorted(additional1), sorted(additional2)
 
     async def _schedule_worker(self) -> None:
         # run forever
@@ -223,11 +223,11 @@ class Scheduler(Module, IStartStop, IRunnable):
                         if first:
                             log.info("Finished calculating next task:")
                             self._log_scheduled_task([scheduled_task])
-                            await self._schedule.clear_schedule(self._schedule_start)
+                            # await self._schedule.clear_schedule(self._schedule_start)
                             first = False
 
                         # submit it
-                        await self._schedule.add_schedule([scheduled_task])
+                        # await self._schedule.add_schedule([scheduled_task])
 
                     if self._need_update:
                         log.info("Not using scheduler results, since update was requested.")

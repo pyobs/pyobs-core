@@ -17,6 +17,7 @@ from ..scheduler.constraints import (
     TimeConstraint,
     SolarElevationConstraint,
 )
+from ..scheduler.merits import Merit
 from ..scheduler.targets import SiderealTarget
 
 log = logging.getLogger(__name__)
@@ -143,6 +144,9 @@ class LcoTaskArchive(TaskArchive):
                     # constraints
                     constraints = self.create_constraints_for_configuration(cfg) + time_constraints
 
+                    # merits
+                    merits: list[Merit] = [self.get_object(m) for m in cfg["merits"]] if "merits" in cfg else []
+
                     # priority is base_priority times duration in minutes
                     # priority = base_priority * duration.value / 60.
                     priority = base_priority
@@ -158,6 +162,7 @@ class LcoTaskArchive(TaskArchive):
                         duration=duration,
                         priority=priority,
                         constraints=constraints,
+                        merits=merits,
                         config={"request": new_req},
                         target=SiderealTarget(target_name, target),
                     )

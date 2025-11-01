@@ -12,9 +12,11 @@ if TYPE_CHECKING:
     from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
     from pyobs.robotic.scheduler.constraints import Constraint
+    from pyobs.robotic.scheduler.merits import Merit
 
 
 class Task(Object, metaclass=ABCMeta):
+
     def __init__(
         self,
         id: Any,
@@ -23,6 +25,7 @@ class Task(Object, metaclass=ABCMeta):
         priority: float | None = None,
         config: dict[str, Any] | None = None,
         constraints: list[Constraint] | None = None,
+        merits: list[Merit] | None = None,
         target: Target | None = None,
         **kwargs: Any,
     ):
@@ -33,6 +36,7 @@ class Task(Object, metaclass=ABCMeta):
         self._priority = priority
         self._config = config
         self._constraints = constraints
+        self._merits = merits
         self._target = target
 
     @property
@@ -61,9 +65,14 @@ class Task(Object, metaclass=ABCMeta):
         return self._config if self._config is not None else {}
 
     @property
-    def constraints(self) -> list[Constraint] | None:
+    def constraints(self) -> list[Constraint]:
         """Returns constraints."""
-        return self._constraints
+        return self._constraints if self._constraints is not None else []
+
+    @property
+    def merits(self) -> list[Merit]:
+        """Returns merits."""
+        return self._merits if self._merits is not None else []
 
     @property
     def target(self) -> Target | None:

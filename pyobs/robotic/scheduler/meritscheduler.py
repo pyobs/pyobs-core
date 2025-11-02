@@ -65,7 +65,7 @@ async def schedule_in_interval(
             # we found a better task, so we can just schedule it
             yield create_scheduled_task(better_task, better_time)
 
-            # and find other tasks for in between
+            # and find other tasks for in between, new end time is better_time
             async for between_task in schedule_in_interval(tasks, start, better_time, data):
                 yield between_task
 

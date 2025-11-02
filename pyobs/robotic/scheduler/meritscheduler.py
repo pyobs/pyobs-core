@@ -52,14 +52,14 @@ class MeritScheduler(TaskScheduler):
 
 
 async def schedule_in_interval(
-    tasks: list[Task], start: Time, end: Time, data: DataProvider
+    tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
 ) -> AsyncIterator[ScheduledTask]:
     # find current best task
     task, merit = find_next_best_task(tasks, start, end, data)
 
     if task is not None and merit is not None:
         # check, whether there is another task within its duration that  will have a higher merit
-        better_task, better_time = check_for_better_task(task, merit, tasks, start, end, data)
+        better_task, better_time = check_for_better_task(task, merit, tasks, start, end, data, step=step)
 
         if better_task is not None and better_time is not None:
             # we found a better task, so we can just schedule it
@@ -91,14 +91,16 @@ def evaluate_merits(tasks: list[Task], start: Time, end: Time, data: DataProvide
     return merits
 
 
-def find_next_best_task(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> tuple[Task, float]:
+def find_next_best_task(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> tuple[Task | None, float]:
     # evaluate all merit functions at given time
     merits = evaluate_merits(tasks, start, end, data)
 
     # find max one
     idx = np.argmax(merits)
     task = tasks[idx]
-    return task, merits[idx]
+
+    # if merit is zero, return nothing
+    return None if merits[idx] == 0.0 else task, merits[idx]
 
 
 def check_for_better_task(

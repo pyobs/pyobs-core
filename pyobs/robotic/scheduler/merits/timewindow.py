@@ -28,8 +28,6 @@ class TimeWindowMerit(Merit):
             if window["start"] <= time <= window["end"]:
                 in_window = True
 
-        print(time, in_window, self._windows)
-
         # invert?
         if not self._inverse:
             return 1.0 if in_window else 0.0

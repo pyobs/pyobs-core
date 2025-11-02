@@ -47,9 +47,9 @@ class DataProvider:
         """Return the number of successful runs for task."""
         return None
 
-    @cache
     def get_distance(self, target: SkyCoord, avoid: SkyCoord) -> Quantity:
-        return target.distance_to(avoid)
+        # TODO: figure out something else, since SkyCoord is not hashable, so @cache doesn't work
+        return target.separation(avoid)
 
     @cache
     def get_moon(self, time: Time) -> SkyCoord:

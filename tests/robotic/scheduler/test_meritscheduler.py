@@ -4,33 +4,12 @@ from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic import Task, TaskRunner, TaskSchedule, TaskArchive
+from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.meritscheduler import find_next_best_task, evaluate_merits, check_for_better_task
-from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
-
-
-class TestTask(Task):
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
-        return True
-
-    @property
-    def can_start_late(self) -> bool:
-        return False
-
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
-        pass
-
-    def is_finished(self) -> bool:
-        return False
+from .task import TestTask
 
 
 def test_evaluate_merits() -> None:

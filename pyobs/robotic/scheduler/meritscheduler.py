@@ -44,14 +44,16 @@ class MeritScheduler(TaskScheduler):
         data = DataProvider(self.observer)
 
         # schedule from
-        async for task in schedule_until(tasks, start, end, data):
+        async for task in schedule_in_interval(tasks, start, end, data):
             yield task
 
     async def abort(self) -> None:
         self._abort.set()
 
 
-async def schedule_until(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> AsyncIterator[ScheduledTask]:
+async def schedule_in_interval(
+    tasks: list[Task], start: Time, end: Time, data: DataProvider
+) -> AsyncIterator[ScheduledTask]:
     # find current best task
     task, merit = find_next_best_task(tasks, start, end, data)
 
@@ -60,9 +62,16 @@ async def schedule_until(tasks: list[Task], start: Time, end: Time, data: DataPr
         better_task, better_time = check_for_better_task(task, merit, tasks, start, end, data)
 
         if better_task is not None and better_time is not None:
-            pass
+            # we found a better task, so we can just schedule it
+            yield create_scheduled_task(better_task, better_time)
 
-        yield create_scheduled_task(task, start)
+            # and find other tasks for in between
+            async for between_task in schedule_in_interval(tasks, start, better_time, data):
+                yield between_task
+
+        else:
+            # this seems to be the best task for now, schedule it
+            yield create_scheduled_task(task, start)
 
 
 def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:

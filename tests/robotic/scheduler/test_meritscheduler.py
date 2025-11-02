@@ -36,11 +36,14 @@ class TestTask(Task):
 def test_evaluate_merits() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
+    start = Time.now()
+    end = start + TimeDelta(5000)
+
     tasks: list[Task] = [
         TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
         TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    merits = evaluate_merits(tasks, Time.now(), data)
+    merits = evaluate_merits(tasks, start, end, data)
 
     assert merits == [10.0, 5.0]
 
@@ -49,15 +52,16 @@ def test_evaluate_merits() -> None:
 async def test_next_best_task() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    now = Time.now()
+    start = Time.now()
+    end = start + TimeDelta(5000)
 
     # two constant merits
     tasks: list[Task] = [
         TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
         TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    best, merit = find_next_best_task(tasks, now, data)
-    assert best.task == tasks[0]
+    best, merit = find_next_best_task(tasks, start, end, data)
+    assert best == tasks[0]
     assert merit == 10.0
 
     # one merit will increase and beat the first best
@@ -68,20 +72,23 @@ async def test_next_best_task() -> None:
             4000,
             merits=[
                 ConstantMerit(10),
-                TimeWindowMerit([{"start": now + TimeDelta(1000 * u.second), "end": now + TimeDelta(2000 * u.second)}]),
+                TimeWindowMerit(
+                    [{"start": start + TimeDelta(1000 * u.second), "end": start + TimeDelta(2000 * u.second)}]
+                ),
             ],
         ),
         TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    best, merit = find_next_best_task(tasks, Time.now(), data)
-    assert best.task == tasks[1]
+    best, merit = find_next_best_task(tasks, start, end, data)
+    assert best == tasks[1]
     assert merit == 5.0
 
 
 def test_check_for_better_task() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    now = Time.now()
+    start = Time.now()
+    end = start + TimeDelta(5000)
 
     # at the beginning, tasks[1] will be better (5), but after 1000 seconds tasks[0] will beat it (10)
     tasks: list[Task] = [
@@ -91,11 +98,13 @@ def test_check_for_better_task() -> None:
             4000,
             merits=[
                 ConstantMerit(10),
-                TimeWindowMerit([{"start": now + TimeDelta(1000 * u.second), "end": now + TimeDelta(2000 * u.second)}]),
+                TimeWindowMerit(
+                    [{"start": start + TimeDelta(1000 * u.second), "end": start + TimeDelta(2000 * u.second)}]
+                ),
             ],
         ),
         TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    better, time = check_for_better_task(tasks[1], 5.0, tasks, now, data)
+    better, time = check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
-    assert time >= now + TimeDelta(1000 * u.second)
+    assert time >= start + TimeDelta(1000 * u.second)

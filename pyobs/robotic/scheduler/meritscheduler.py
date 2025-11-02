@@ -50,24 +50,56 @@ class MeritScheduler(TaskScheduler):
 
     async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
         data = DataProvider(self.observer)
-        task = await find_next_best_task(tasks, start, data)
-        yield task
+
+        # find current best task
+        task, merit = find_next_best_task(tasks, start, data)
+
+        if task is not None and merit is not None:
+            # check, whether there is another task within its duration that  will have a higher merit
+            better_task, better_time = check_for_better_task(task, merit, tasks, start, data)
+
+            # if better_task is not None and better_time is not None:
+
+            yield create_scheduled_task(task, start)
 
     async def abort(self) -> None:
         self._abort.set()
 
 
-async def find_next_best_task(tasks: list[Task], time: Time, data: DataProvider) -> ScheduledTask:
+def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
+    return ScheduledTask(task, time, time + TimeDelta(task.duration * u.second))
+
+
+def evaluate_merits(tasks: list[Task], time: Time, data: DataProvider) -> list[float]:
     # evaluate all merit functions at given time
     merits: list[float] = []
     for task in tasks:
         merit = float(np.prod([m(time, task, data) for m in task.merits]))
         merits.append(merit)
+    return merits
+
+
+def find_next_best_task(tasks: list[Task], time: Time, data: DataProvider) -> tuple[Task, float]:
+    # evaluate all merit functions at given time
+    merits = evaluate_merits(tasks, time, data)
 
     # find max one
     idx = np.argmax(merits)
     task = tasks[idx]
-    return ScheduledTask(task, time, time + TimeDelta(task.duration * u.second))
+    return task, merits[idx]
+
+
+def check_for_better_task(
+    task: Task, merit: float, tasks: list[Task], time: Time, data: DataProvider, step: float = 300
+) -> tuple[Task | None, Time | None]:
+    t = time + TimeDelta(step * u.second)
+    while t < time + TimeDelta(task.duration * u.second):
+        merits = evaluate_merits(tasks, t, data)
+        for i, m in enumerate(merits):
+            if m > merit:
+                return tasks[i], t
+        t += TimeDelta(step * u.second)
+    return None, None
 
 
 __all__ = ["MeritScheduler"]

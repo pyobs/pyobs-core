@@ -17,11 +17,11 @@ class TaskScheduler(Object, metaclass=abc.ABCMeta):
     """Abstract base class for tasks scheduler."""
 
     @abc.abstractmethod
-    async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
         # if we don't yield once here, mypy doesn't like this, see:
         # https://github.com/python/mypy/issues/5385
         # https://github.com/python/mypy/issues/5070
-        yield ScheduledTask(tasks[0], Time.now(), Time.now())
+        yield ScheduledTask(tasks[0], start, end)
 
     @abc.abstractmethod
     async def abort(self) -> None: ...

@@ -6,8 +6,6 @@ from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncIterator
 import astroplan
 from astroplan import ObservingBlock, FixedTarget
-from astropy.time import TimeDelta
-import astropy.units as u
 
 from pyobs.object import Object
 from .taskscheduler import TaskScheduler
@@ -27,31 +25,23 @@ class AstroplanScheduler(TaskScheduler):
 
     def __init__(
         self,
-        schedule_range: int = 24,
-        safety_time: float = 60,
         twilight: str = "astronomical",
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
 
         Args:
-            schedule_range: Number of hours to schedule into the future
-            safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
-                         this time in seconds to make sure that we don't schedule for a time when the scheduler is
-                         still running
             twilight: astronomical or nautical
         """
         Object.__init__(self, **kwargs)
 
         # store
-        self._schedule_range = schedule_range
-        self._safety_time = safety_time
         self._twilight = twilight
         self._lock = asyncio.Lock()
         self._abort: asyncio.Event = asyncio.Event()
         self._is_running: bool = False
 
-    async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
         # is lock acquired? send abort signal
         if self._lock.locked():
             await self.abort()
@@ -59,7 +49,7 @@ class AstroplanScheduler(TaskScheduler):
         # get lock
         async with self._lock:
             # prepare scheduler
-            blocks, start, end, constraints = await self._prepare_schedule(tasks, start)
+            blocks, start, end, constraints = await self._prepare_schedule(tasks, start, end)
 
             # schedule
             scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints, self._abort)
@@ -75,7 +65,7 @@ class AstroplanScheduler(TaskScheduler):
         self._abort.set()
 
     async def _prepare_schedule(
-        self, tasks: list[Task], start: Time
+        self, tasks: list[Task], start: Time, end: Time
     ) -> tuple[list[ObservingBlock], Time, Time, list[Any]]:
         """TaskSchedule blocks."""
 
@@ -86,9 +76,6 @@ class AstroplanScheduler(TaskScheduler):
             constraints = [astroplan.AtNightConstraint.twilight_nautical()]
         else:
             raise ValueError("Unknown twilight type.")
-
-        # calculate end time
-        end = start + TimeDelta(self._schedule_range * u.hour)
 
         # create blocks from tasks
         blocks: list[ObservingBlock] = []

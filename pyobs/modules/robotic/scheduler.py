@@ -4,6 +4,8 @@ import json
 import logging
 import time
 from typing import Union, Any, Dict
+import astropy.units as u
+from astropy.time import TimeDelta
 
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
@@ -29,19 +31,22 @@ class Scheduler(Module, IStartStop, IRunnable):
         schedule: Union[Dict[str, Any], TaskSchedule],
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
+        schedule_range: float = 24.0,
+        safety_time: float = 300,
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
 
         Args:
-            scheduler: Scheduler to use
+            scheduler: Scheduler to use.
+            tasks: Task archive to use.
+            schedule: Task schedule to use.
+            trigger_on_task_started: Whether to trigger a re-calculation of schedule, when task has started.
+            trigger_on_task_finishes: Whether to trigger a re-calculation of schedule, when task has finished.
             schedule_range: Number of hours to schedule into the future
             safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
                          this time in seconds to make sure that we don't schedule for a time when the scheduler is
                          still running
-            twilight: astronomical or nautical
-            trigger_on_task_started: Whether to trigger a re-calculation of schedule, when task has started.
-            trigger_on_task_finishes: Whether to trigger a re-calculation of schedule, when task has finished.
         """
         Module.__init__(self, **kwargs)
 
@@ -56,6 +61,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._need_update = False
         self._trigger_on_task_started = trigger_on_task_started
         self._trigger_on_task_finished = trigger_on_task_finished
+        self._schedule_range = schedule_range * u.hour
+        self._safety_time = safety_time * u.second
 
         # time to start next schedule from
         self._schedule_start: Time = Time.now()
@@ -208,10 +215,16 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # start time
                     start_time = time.time()
 
+                    # schedule start must be at least safety_time in the future
+                    start = self._schedule_start
+                    if start - Time.now() < self._safety_time:
+                        start = Time.now() + TimeDelta(self._safety_time)
+                    end = start + TimeDelta(self._schedule_range)
+
                     # schedule
                     scheduled_tasks: list[ScheduledTask] = []
                     first = True
-                    async for scheduled_task in self._scheduler.schedule(self._tasks, self._schedule_start):
+                    async for scheduled_task in self._scheduler.schedule(self._tasks, start, end):
                         # remember for later
                         scheduled_tasks.append(scheduled_task)
 

@@ -26,44 +26,42 @@ class MeritScheduler(TaskScheduler):
 
     def __init__(
         self,
-        schedule_range: int = 24,
-        safety_time: float = 60,
         twilight: str = "astronomical",
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
 
         Args:
-            schedule_range: Number of hours to schedule into the future
-            safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
-                         this time in seconds to make sure that we don't schedule for a time when the scheduler is
-                         still running
             twilight: astronomical or nautical
         """
         Object.__init__(self, **kwargs)
 
         # store
-        self._schedule_range = schedule_range
-        self._safety_time = safety_time
         self._twilight = twilight
         self._abort: asyncio.Event = asyncio.Event()
 
-    async def schedule(self, tasks: list[Task], start: Time) -> AsyncIterator[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
         data = DataProvider(self.observer)
 
-        # find current best task
-        task, merit = find_next_best_task(tasks, start, data)
-
-        if task is not None and merit is not None:
-            # check, whether there is another task within its duration that  will have a higher merit
-            better_task, better_time = check_for_better_task(task, merit, tasks, start, data)
-
-            # if better_task is not None and better_time is not None:
-
-            yield create_scheduled_task(task, start)
+        # schedule from
+        async for task in schedule_until(tasks, start, end, data):
+            yield task
 
     async def abort(self) -> None:
         self._abort.set()
+
+
+async def schedule_until(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> AsyncIterator[ScheduledTask]:
+    # find current best task
+    task, merit = find_next_best_task(tasks, start, data)
+
+    if task is not None and merit is not None:
+        # check, whether there is another task within its duration that  will have a higher merit
+        better_task, better_time = check_for_better_task(task, merit, tasks, start, data)
+
+        # if better_task is not None and better_time is not None:
+
+        yield create_scheduled_task(task, start)
 
 
 def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:

@@ -9,7 +9,7 @@ from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.meritscheduler import (
     find_next_best_task,
-    evaluate_merits,
+    evaluate_constraints_and_merits,
     check_for_better_task,
     schedule_first_in_interval,
 )
@@ -27,7 +27,7 @@ def test_evaluate_merits() -> None:
         TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
         TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    merits = evaluate_merits(tasks, start, end, data)
+    merits = evaluate_constraints_and_merits(tasks, start, end, data)
 
     assert merits == [10.0, 5.0]
 

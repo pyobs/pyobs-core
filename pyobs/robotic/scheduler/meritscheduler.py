@@ -109,7 +109,7 @@ def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
     return ScheduledTask(task, time, time + TimeDelta(task.duration))
 
 
-def evaluate_merits(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> list[float]:
+def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> list[float]:
     # evaluate all merit functions at given time
     merits: list[float] = []
     for task in tasks:
@@ -128,7 +128,7 @@ def evaluate_merits(tasks: list[Task], start: Time, end: Time, data: DataProvide
 
 def find_next_best_task(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> tuple[Task | None, float]:
     # evaluate all merit functions at given time
-    merits = evaluate_merits(tasks, start, end, data)
+    merits = evaluate_constraints_and_merits(tasks, start, end, data)
 
     # find max one
     idx = np.argmax(merits)
@@ -143,7 +143,7 @@ def check_for_better_task(
 ) -> tuple[Task | None, Time | None, float | None]:
     t = start + TimeDelta(step * u.second)
     while t < start + TimeDelta(task.duration):
-        merits = evaluate_merits(tasks, t, end, data)
+        merits = evaluate_constraints_and_merits(tasks, t, end, data)
         for i, m in enumerate(merits):
             if m > merit:
                 return tasks[i], t, m
@@ -158,7 +158,7 @@ def can_postpone_task(
     better_start: Time = start + TimeDelta(task.duration)
 
     # evaluate merit of better_task at new start time
-    merit = evaluate_merits([better_task], better_start, end, data)[0]
+    merit = evaluate_constraints_and_merits([better_task], better_start, end, data)[0]
 
     # if it got better, return it, otherwise return Nones
     if merit >= better_merit:

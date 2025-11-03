@@ -1,9 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Any, List, Dict, Type
-from astroplan import ObservingBlock
+from typing import Any, Type
 
 from pyobs.utils.time import Time
-from .task import Task
+from .task import Task, ScheduledTask
 from pyobs.object import Object
 
 
@@ -12,22 +11,30 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         Object.__init__(self, **kwargs)
 
     @abstractmethod
-    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
-        """Set the list of scheduled blocks.
+    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+        """Add the list of scheduled tasks to the schedule.
 
         Args:
-            blocks: Scheduled blocks.
-            start_time: Start time for schedule.
+            tasks: Scheduled tasks.
         """
         ...
 
     @abstractmethod
-    async def last_scheduled(self) -> Optional[Time]:
+    async def clear_schedule(self, start_time: Time) -> None:
+        """Clear schedule after given start time.
+
+        Args:
+            start_time: Start time to clear from.
+        """
+        ...
+
+    @abstractmethod
+    async def last_scheduled(self) -> Time | None:
         """Returns time of last scheduler run."""
         ...
 
     @abstractmethod
-    async def get_schedule(self) -> Dict[str, Task]:
+    async def get_schedule(self) -> list[ScheduledTask]:
         """Fetch schedule from portal.
 
         Returns:
@@ -40,7 +47,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, time: Time) -> Optional[Task]:
+    async def get_task(self, time: Time) -> Task | None:
         """Returns the active task at the given time.
 
         Args:

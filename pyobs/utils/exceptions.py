@@ -80,6 +80,14 @@ class AbortedError(PyObsError, metaclass=_Meta):
     pass
 
 
+class FocusError(PyObsError, metaclass=_Meta):
+    pass
+
+
+class AcquisitionError(PyObsError, metaclass=_Meta):
+    pass
+
+
 #######################################
 
 

@@ -1,10 +1,16 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
+from typing import TYPE_CHECKING
+import astropy
 from astroplan import Observer
+from astropy.coordinates import SkyCoord
 from astropy.time import Time, TimeDelta
 import astropy.units as u
+from astropy.units import Quantity
 
-from pyobs.robotic import Task
+if TYPE_CHECKING:
+    from pyobs.robotic import Task
 
 
 @dataclass
@@ -40,6 +46,14 @@ class DataProvider:
     def get_task_success(self, task: Task, number: int = -1) -> TaskSuccess | None:
         """Return the number of successful runs for task."""
         return None
+
+    def get_distance(self, target: SkyCoord, avoid: SkyCoord) -> Quantity:
+        # TODO: figure out something else, since SkyCoord is not hashable, so @cache doesn't work
+        return target.separation(avoid)
+
+    @cache
+    def get_moon(self, time: Time) -> SkyCoord:
+        return astropy.coordinates.get_body("moon", time, self.observer.location)
 
 
 __all__ = ["DataProvider"]

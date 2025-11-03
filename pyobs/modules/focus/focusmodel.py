@@ -140,7 +140,7 @@ class FocusModel(Module, IFocusModel):
         log.info("Found variables: %s", ", ".join(variables))
 
         # init log file
-        self._publisher = None if log_file is None else CsvPublisher(log_file)
+        self._publisher = None if log_file is None else self.get_object(CsvPublisher, CsvPublisher, filename=log_file)
 
     async def open(self) -> None:
         """Open module."""

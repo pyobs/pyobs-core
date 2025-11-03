@@ -4,11 +4,10 @@ from urllib.parse import urljoin
 import logging
 from typing import Any, cast
 import aiohttp as aiohttp
-from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import Task, ScheduledTask
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
@@ -76,7 +75,7 @@ class LcoTaskSchedule(TaskSchedule):
         self._header = {"Authorization": "Token " + token}
 
         # task list
-        self._tasks: dict[str, LcoTask] = {}
+        self._scheduled_tasks: list[ScheduledTask] = []
 
         # error logging for regular updates
         self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
@@ -164,7 +163,7 @@ class LcoTaskSchedule(TaskSchedule):
 
             # need update!
             try:
-                tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
+                scheduled_tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
                 self._update_error_log.resolve("Successfully updated schedule.")
             except TimeoutError:
                 self._update_error_log.error("Request for updating schedule timed out.")
@@ -175,13 +174,15 @@ class LcoTaskSchedule(TaskSchedule):
                 return
 
             # any changes?
-            if sorted(tasks) != sorted(self._tasks):
-                log.info("Task list changed, found %d task(s) to run.", len(tasks))
-                for task_id, task in sorted(tasks.items(), key=lambda x: x[1].start):
-                    log.info(f"  - {task.start} to {task.end}: {task.name} (#{task_id})")
+            if sorted(scheduled_tasks, key=lambda x: x.start) != sorted(self._scheduled_tasks, key=lambda x: x.start):
+                log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
+                for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
+                    log.info(
+                        f"  - {scheduled_task.start} to {scheduled_task.end}: {scheduled_task.task.name} (#{scheduled_task.task.id})"
+                    )
 
                 # update
-                self._tasks = cast(dict[str, LcoTask], tasks)
+                self._scheduled_tasks = scheduled_tasks
 
                 # finished
                 self._last_schedule_time = now
@@ -190,7 +191,7 @@ class LcoTaskSchedule(TaskSchedule):
             # release lock
             self._update_lock.release()
 
-    async def get_schedule(self) -> dict[str, Task]:
+    async def get_schedule(self) -> list[ScheduledTask]:
         """Fetch schedule from portal.
 
         Returns:
@@ -200,18 +201,17 @@ class LcoTaskSchedule(TaskSchedule):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return cast(dict[str, Task], self._tasks)
+        return self._scheduled_tasks
 
-    async def _get_schedule(self, start_before: Time, end_after: Time) -> dict[str, Task]:
+    async def _get_schedule(self, start_before: Time, end_after: Time) -> list[ScheduledTask]:
         """Fetch schedule from portal.
 
         Args:
             start_before: Task must start before this time.
             end_after: Task must end after this time.
-            include_running: Whether to include a currently running task.
 
         Returns:
-            Dictionary with tasks.
+            List with tasks.
 
         Raises:
             Timeout: If request timed out.
@@ -242,20 +242,21 @@ class LcoTaskSchedule(TaskSchedule):
                 schedules = data["results"]
 
                 # create tasks
-                tasks = {}
+                scheduled_tasks: list[ScheduledTask] = []
                 for sched in schedules:
-                    # parse start and end
-                    sched["start"] = Time(sched["start"])
-                    sched["end"] = Time(sched["end"])
-
                     # create task
                     task = self._create_task(LcoTask, config=sched)
-                    tasks[sched["request"]["id"]] = task
+
+                    # create scheduled task
+                    scheduled_task = ScheduledTask(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
+
+                    # add it
+                    scheduled_tasks.append(scheduled_task)
 
                 # finished
-                return tasks
+                return scheduled_tasks
 
-    async def get_task(self, time: Time) -> LcoTask | None:
+    async def get_task(self, time: Time) -> Task | None:
         """Returns the active task at the given time.
 
         Args:
@@ -266,10 +267,10 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # loop all tasks
-        for task in self._tasks.values():
+        for scheduled_task in self._scheduled_tasks:
             # running now?
-            if task.start <= time < task.end and not task.is_finished():
-                return task
+            if scheduled_task.start <= time < scheduled_task.end and not scheduled_task.task.is_finished():
+                return scheduled_task.task
 
         # nothing found
         return None
@@ -314,33 +315,33 @@ class LcoTaskSchedule(TaskSchedule):
         # re-send
         await self.send_update(status_id, status)
 
-    async def set_schedule(self, blocks: list[ObservingBlock], start_time: Time) -> None:
-        """Update the list of scheduled blocks.
+    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+        """Add the list of scheduled tasks to the schedule.
 
         Args:
-            blocks: Scheduled blocks.
-            start_time: Start time for schedule.
+            tasks: Scheduled tasks.
         """
 
         # create observations
-        observations = self._create_observations(blocks)
-
-        # cancel schedule
-        await self._cancel_schedule(start_time)
+        observations = self._create_observations(tasks)
 
         # send new schedule
         await self._submit_observations(observations)
 
-    async def _cancel_schedule(self, now: Time) -> None:
-        """Cancel future schedule."""
+    async def clear_schedule(self, start_time: Time) -> None:
+        """Clear schedule after given start time.
+
+        Args:
+            start_time: Start time to clear from.
+        """
 
         # define parameters
         params = {
             "site": self._site,
             "enclosure": self._enclosure,
             "telescope": self._telescope,
-            "start": now.isot,
-            "end": (now + self._period).isot,
+            "start": start_time.isot,
+            "end": (start_time + self._period).isot,
         }
 
         # url and headers
@@ -348,36 +349,36 @@ class LcoTaskSchedule(TaskSchedule):
         headers = {"Authorization": "Token " + self._token, "Content-Type": "application/json; charset=utf8"}
 
         # cancel schedule
-        log.info("Deleting all scheduled tasks after %s...", now.isot)
+        log.info("Deleting all scheduled tasks after %s...", start_time.isot)
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=params, headers=headers, timeout=10) as response:
                 if response.status != 200:
                     log.error("Could not cancel schedule: %s", await response.text())
 
-    def _create_observations(self, blocks: list[ObservingBlock]) -> list[dict[str, Any]]:
+    def _create_observations(self, scheduled_tasks: list[ScheduledTask]) -> list[dict[str, Any]]:
         """Create observations from schedule.
 
         Args:
-            blocks: List of scheduled blocks
+            scheduled_tasks: List of scheduled tasks
 
         Returns:
             List with observations.
         """
 
-        # loop blocks
+        # loop tasks
         # TODO: get site, enclosure, telescope and instrument from obsportal using the instrument type
         observations = []
-        for block in blocks:
+        for scheduled_task in scheduled_tasks:
             # get request
-            request = block.configuration["request"]
+            request = cast(LcoTask, scheduled_task.task).config["request"]
 
             # create observation
             obs = {
                 "site": self._site,
                 "enclosure": self._enclosure,
                 "telescope": self._telescope,
-                "start": block.start_time.isot,
-                "end": block.end_time.isot,
+                "start": scheduled_task.start.isot,
+                "end": scheduled_task.end.isot,
                 "request": request["id"],
                 "configuration_statuses": [],
             }

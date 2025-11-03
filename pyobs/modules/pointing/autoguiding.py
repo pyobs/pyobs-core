@@ -3,6 +3,7 @@ import logging
 from typing import Any, Optional
 
 from pyobs.mixins import CameraSettingsMixin
+from pyobs.modules import timeout
 from pyobs.modules.pointing._baseguiding import BaseGuiding
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processors.detection import SepSourceDetection
@@ -69,6 +70,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         await BaseGuiding.start(self)
         self._exposure_time = self._default_exposure_time
 
+    @timeout(60)
     async def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
         log.info("Stopping auto-guiding...")

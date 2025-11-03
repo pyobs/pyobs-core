@@ -93,7 +93,11 @@ def evaluate_merits(tasks: list[Task], start: Time, end: Time, data: DataProvide
         if start + TimeDelta(task.duration) > end:
             merit = 0.0
         else:
-            merit = float(np.prod([m(start, task, data) for m in task.merits]))
+            # if no merits are present, we evaluate it to 1
+            if len(task.merits) == 0:
+                merit = 1.0
+            else:
+                merit = float(np.prod([m(start, task, data) for m in task.merits]))
         merits.append(merit)
     return merits
 

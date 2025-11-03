@@ -89,9 +89,10 @@ def test_check_for_better_task() -> None:
         ),
         TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    better, time = check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
+    better, time, merit = check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
     assert time >= start + TimeDelta(1000 * u.second)
+    assert merit == 10.0
 
 
 @pytest.mark.asyncio
@@ -105,7 +106,7 @@ async def test_fill_for_better_task() -> None:
 
     # at the beginning, tasks 2 will be better (5), but after 600 seconds tasks 1 will beat it (10)
     # then the scheduler tries to fill the hole and should schedule task 3 first
-    # task 2 will only be scheduled afterwards
+    # task 2 will only be scheduled afterward
     tasks: list[Task] = [
         TestTask(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
         TestTask(2, "2", 1800, merits=[ConstantMerit(5)]),
@@ -122,3 +123,38 @@ async def test_fill_for_better_task() -> None:
     scheduled_task = await anext(schedule)
     assert scheduled_task.task.id == 3
     assert scheduled_task.start == start
+
+
+@pytest.mark.asyncio
+async def test_postpone_task() -> None:
+    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    data = DataProvider(observer)
+    start = Time("2025-11-01 00:00:00")
+    end = start + TimeDelta(3600 * u.second)
+    after_start = start + TimeDelta(600 * u.second)
+    after_end = start + TimeDelta(1800 * u.second)
+
+    # at the beginning, tasks 2 will be better (5), but after 600 seconds tasks 1 will beat it (10)
+    # in contrast to test_fill_for_better_task the after_end time here is longer, so the scheduler should just
+    # postpone task 1 by a bit, then schedule task 2 afterward
+    tasks: list[Task] = [
+        TestTask(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
+        TestTask(2, "2", 1800, merits=[ConstantMerit(5)]),
+        TestTask(3, "3", 300, merits=[ConstantMerit(1)]),
+    ]
+    schedule = schedule_in_interval(tasks, start, end, data, step=10)
+
+    # task 2 will be scheduled exactly at its start time
+    scheduled_task = await anext(schedule)
+    assert scheduled_task.task.id == 2
+    assert scheduled_task.start == start
+
+    # task 1 after that
+    scheduled_task = await anext(schedule)
+    assert scheduled_task.task.id == 1
+    assert scheduled_task.start >= after_start
+
+    # let's try this again with a sorted list
+    schedule2 = sorted([i async for i in schedule_in_interval(tasks, start, end, data, step=10)], key=lambda x: x.start)
+    assert schedule2[0].task.id == 2
+    assert schedule2[1].task.id == 1

@@ -109,20 +109,75 @@ def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
     return ScheduledTask(task, time, time + TimeDelta(task.duration))
 
 
+async def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider) -> bool:
+    """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.
+
+    Args:
+        task: Task to evaluate.
+        start: Start time.
+        end: End time.
+        data: Data provider.
+
+    Returns:
+        True if all constraints evaluate True, False otherwise.
+    """
+    for constraint in task.constraints:
+        if not constraint(start, task, data):
+            return False
+    return True
+
+
+def evaluate_merits(task: Task, start: Time, end: Time, data: DataProvider) -> float:
+    """Loop all merits, evaluate them and multiply the results. If any evaluates to 0, abort and return 0.
+
+    Args:
+        task: Task to evaluate.
+        start: Start time.
+        end: End time.
+        data: Data provider.
+
+    Returns:
+        The final merit for this task.
+    """
+
+    # loop merits
+    total_merit = 1.0
+    for merit in task.merits:
+        total_merit *= merit(start, task, data)
+
+        # if zero, abort and return it
+        if total_merit == 0.0:
+            return 0.0
+
+    # done
+    return total_merit
+
+
 def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> list[float]:
     # evaluate all merit functions at given time
     merits: list[float] = []
     for task in tasks:
-        # if task is too long for the given slot, we evaluate its merits to zero
-        if start + TimeDelta(task.duration) > end:
+        if len(task.merits) == 0:
+            # no merits? evaluate to 1
+            merit = 1.0
+
+        elif start + TimeDelta(task.duration) > end:
+            # if task is too long for the given slot, we evaluate its merits to zero
             merit = 0.0
+
         else:
-            # if no merits are present, we evaluate it to 1
-            if len(task.merits) == 0:
-                merit = 1.0
+            # evaluate constraints
+            if evaluate_constraints(task, start, end, data):
+                # now we can evaluate the merits
+                merit = evaluate_merits(task, start, end, data)
+
             else:
-                merit = float(np.prod([m(start, task, data) for m in task.merits]))
+                # some constraint failed...
+                merit = 0.0
+
+        # store it
         merits.append(merit)
+
     return merits
 
 

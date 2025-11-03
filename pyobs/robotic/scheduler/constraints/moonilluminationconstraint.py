@@ -1,8 +1,12 @@
-from typing import Any
-
+from __future__ import annotations
+from typing import Any, TYPE_CHECKING
 import astroplan
-
 from .constraint import Constraint
+
+if TYPE_CHECKING:
+    from astropy.time import Time
+    from ..dataprovider import DataProvider
+    from pyobs.robotic import Task
 
 
 class MoonIlluminationConstraint(Constraint):
@@ -14,6 +18,10 @@ class MoonIlluminationConstraint(Constraint):
 
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:
         return astroplan.MoonIlluminationConstraint(max=self.max_phase)
+
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+        moon_illumination = float(data.observer.moon_illumination(time))
+        return moon_illumination <= self.max_phase
 
 
 __all__ = ["MoonIlluminationConstraint"]

@@ -44,11 +44,35 @@ class MeritScheduler(TaskScheduler):
         data = DataProvider(self.observer)
 
         # schedule from
-        async for task in schedule_first_in_interval(tasks, start, end, data):
+        async for task in schedule_in_interval(tasks, start, end, data):
             yield task
 
     async def abort(self) -> None:
         self._abort.set()
+
+
+async def schedule_in_interval(
+    tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
+) -> AsyncIterator[ScheduledTask]:
+    time = start
+    while time < end:
+        latest_end = start
+
+        # schedule first in this interval, could be one or two
+        async for scheduled_task in schedule_first_in_interval(tasks, time, end, data):
+            # yield it to caller
+            yield scheduled_task
+
+            # check end
+            if scheduled_task.end > latest_end:
+                latest_end = scheduled_task.end
+
+        if latest_end == start:
+            # no task found, so we're finished
+            return
+
+        # set new time
+        time = latest_end
 
 
 async def schedule_first_in_interval(
@@ -73,7 +97,7 @@ async def schedule_first_in_interval(
                 yield create_scheduled_task(better_task, better_time)
 
                 # and find other tasks for in between, new end time is better_time
-                async for between_task in schedule_first_in_interval(tasks, start, better_time, data):
+                async for between_task in schedule_in_interval(tasks, start, better_time, data):
                     yield between_task
 
         else:

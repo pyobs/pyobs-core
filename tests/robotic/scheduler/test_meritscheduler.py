@@ -11,7 +11,7 @@ from pyobs.robotic.scheduler.meritscheduler import (
     find_next_best_task,
     evaluate_merits,
     check_for_better_task,
-    schedule_in_interval,
+    schedule_first_in_interval,
 )
 from pyobs.utils.time import Time
 from .task import TestTask
@@ -114,7 +114,7 @@ async def test_fill_for_better_task() -> None:
     ]
 
     # note that task 1 will not be scheduled exactly at its start time
-    schedule = schedule_in_interval(tasks, start, end, data, step=10)
+    schedule = schedule_first_in_interval(tasks, start, end, data, step=10)
     scheduled_task = await anext(schedule)
     assert scheduled_task.task.id == 1
     assert scheduled_task.start >= after_start
@@ -142,7 +142,7 @@ async def test_postpone_task() -> None:
         TestTask(2, "2", 1800, merits=[ConstantMerit(5)]),
         TestTask(3, "3", 300, merits=[ConstantMerit(1)]),
     ]
-    schedule = schedule_in_interval(tasks, start, end, data, step=10)
+    schedule = schedule_first_in_interval(tasks, start, end, data, step=10)
 
     # task 2 will be scheduled exactly at its start time
     scheduled_task = await anext(schedule)
@@ -155,6 +155,8 @@ async def test_postpone_task() -> None:
     assert scheduled_task.start >= after_start
 
     # let's try this again with a sorted list
-    schedule2 = sorted([i async for i in schedule_in_interval(tasks, start, end, data, step=10)], key=lambda x: x.start)
+    schedule2 = sorted(
+        [i async for i in schedule_first_in_interval(tasks, start, end, data, step=10)], key=lambda x: x.start
+    )
     assert schedule2[0].task.id == 2
     assert schedule2[1].task.id == 1

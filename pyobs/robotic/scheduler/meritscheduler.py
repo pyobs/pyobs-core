@@ -44,14 +44,14 @@ class MeritScheduler(TaskScheduler):
         data = DataProvider(self.observer)
 
         # schedule from
-        async for task in schedule_in_interval(tasks, start, end, data):
+        async for task in schedule_first_in_interval(tasks, start, end, data):
             yield task
 
     async def abort(self) -> None:
         self._abort.set()
 
 
-async def schedule_in_interval(
+async def schedule_first_in_interval(
     tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
 ) -> AsyncIterator[ScheduledTask]:
     # find current best task
@@ -73,7 +73,7 @@ async def schedule_in_interval(
                 yield create_scheduled_task(better_task, better_time)
 
                 # and find other tasks for in between, new end time is better_time
-                async for between_task in schedule_in_interval(tasks, start, better_time, data):
+                async for between_task in schedule_first_in_interval(tasks, start, better_time, data):
                     yield between_task
 
         else:

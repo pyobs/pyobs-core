@@ -68,11 +68,11 @@ async def schedule_in_interval(
                 latest_end = scheduled_task.end
 
         if latest_end == start:
-            # no task found, so we're finished
-            return
-
-        # set new time
-        time = latest_end
+            # no task found, try 5 minutes later
+            time += TimeDelta(step * u.second)
+        else:
+            # set new time from scheduled task
+            time = latest_end
 
 
 async def schedule_first_in_interval(

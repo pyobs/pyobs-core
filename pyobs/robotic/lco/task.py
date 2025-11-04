@@ -1,8 +1,20 @@
 from __future__ import annotations
 import logging
-from typing import Union, Dict, Tuple, Optional, List, Any, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING, cast
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from pyobs.object import get_object
+from pyobs.robotic.scheduler.constraints import (
+    TimeConstraint,
+    Constraint,
+    AirmassConstraint,
+    MoonSeparationConstraint,
+    MoonIlluminationConstraint,
+    SolarElevationConstraint,
+)
+from pyobs.robotic.scheduler.merits import Merit
+from pyobs.robotic.scheduler.targets import Target, SiderealTarget
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task
 from pyobs.utils.logger import DuplicateFilter
@@ -25,13 +37,13 @@ class ConfigStatus:
     def __init__(self, state: str = "ATTEMPTED", reason: str = ""):
         """Initializes a new Status with an ATTEMPTED."""
         self.start: Time = Time.now()
-        self.end: Optional[Time] = None
+        self.end: Time | None = None
         self.state: str = state
         self.reason: str = reason
         self.time_completed: float = 0.0
 
     def finish(
-        self, state: Optional[str] = None, reason: Optional[str] = None, time_completed: float = 0.0
+        self, state: str | None = None, reason: str | None = None, time_completed: float = 0.0
     ) -> "ConfigStatus":
         """Finish this status with the given values and the current time.
 
@@ -48,7 +60,7 @@ class ConfigStatus:
         self.end = Time.now()
         return self
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """Convert status to JSON for sending to portal."""
         return {
             "state": self.state,
@@ -79,12 +91,20 @@ class LcoTask(Task):
             config: Configuration for task
         """
 
+        req = config["request"]
         if id is None:
-            id = config["request"]["id"]
+            id = req["id"]
         if name is None:
-            name = config["request"]["id"]
+            name = req["id"]
         if duration is None:
-            duration = float(config["request"]["duration"])
+            duration = float(req["duration"])
+
+        if "constraints" not in kwargs:
+            kwargs["constraints"] = self._create_constraints(req)
+        if "merits" not in kwargs:
+            kwargs["merits"] = self._create_merits(req)
+        if "target" not in kwargs:
+            kwargs["target"] = self._create_target(req)
 
         Task.__init__(
             self,
@@ -96,7 +116,50 @@ class LcoTask(Task):
         )
 
         # store stuff
-        self.cur_script: Optional[Script] = None
+        self.cur_script: Script | None = None
+
+    @staticmethod
+    def _create_constraints(req: dict[str, Any]) -> list[Constraint]:
+        # get constraints
+        constraints: list[Constraint] = []
+
+        # time constraints?
+        if "windows" in req:
+            constraints.extend([TimeConstraint(Time(wnd["start"]), Time(wnd["end"])) for wnd in req["windows"]])
+
+        # take first config
+        cfg = req["configurations"][0]
+
+        # constraints
+        if "constraints" in cfg:
+            c = cfg["constraints"]
+            if "max_airmass" in c and c["max_airmass"] is not None:
+                constraints.append(AirmassConstraint(c["max_airmass"]))
+            if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
+                constraints.append(MoonSeparationConstraint(c["min_lunar_distance"]))
+            if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
+                constraints.append(MoonIlluminationConstraint(c["max_lunar_phase"]))
+                # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
+                if c["max_lunar_phase"] <= 0.4:
+                    constraints.append(SolarElevationConstraint(-18.0))
+
+        return constraints
+
+    def _create_merits(self, req: dict[str, Any]) -> list[Merit]:
+        # take merits from first config
+        cfg = req["configurations"][0]
+        return [self.get_object(m) for m in cfg["merits"]] if "merits" in cfg else []
+
+    def _create_target(self, req: dict[str, Any]) -> Target | None:
+        # target
+        target = req["configurations"][0]["target"]
+        if "ra" in target and "dec" in target:
+            coord = SkyCoord(target["ra"] * u.deg, target["dec"] * u.deg, frame=target["type"].lower())
+            name = target["name"]
+            return SiderealTarget(name, coord)
+        else:
+            log.warning("Unsupported coordinate type.")
+            return None
 
     def __eq__(self, other: object) -> bool:
         """Compares to tasks."""
@@ -126,7 +189,7 @@ class LcoTask(Task):
         """
         return self.observation_type == "DIRECT"
 
-    def _get_config_script(self, config: Dict[str, Any], scripts: Optional[Dict[str, Script]] = None) -> Script:
+    def _get_config_script(self, config: dict[str, Any], scripts: dict[str, Script] | None = None) -> Script:
         """Get config script for given configuration.
 
         Args:
@@ -153,7 +216,7 @@ class LcoTask(Task):
             observer=self.observer,
         )
 
-    async def can_run(self, scripts: Optional[Dict[str, Script]] = None) -> bool:
+    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -183,9 +246,9 @@ class LcoTask(Task):
     async def run(
         self,
         task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
-        scripts: Optional[Dict[str, Script]] = None,
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
+        scripts: dict[str, Script] | None = None,
     ) -> None:
         """Run a task"""
         from pyobs.robotic.lco import LcoTaskSchedule
@@ -194,7 +257,7 @@ class LcoTask(Task):
         req = self.config["request"]
 
         # loop configurations
-        status: Optional[ConfigStatus]
+        status: ConfigStatus | None
         for config in req["configurations"]:
             # send an ATTEMPTED status
             if isinstance(task_schedule, LcoTaskSchedule):
@@ -230,9 +293,9 @@ class LcoTask(Task):
         self,
         script: Script,
         task_runner: TaskRunner,
-        task_schedule: Optional[TaskSchedule] = None,
-        task_archive: Optional[TaskArchive] = None,
-    ) -> Union[ConfigStatus, None]:
+        task_schedule: TaskSchedule | None = None,
+        task_archive: TaskArchive | None = None,
+    ) -> ConfigStatus | None:
         """Run a config
 
         Args:
@@ -285,7 +348,7 @@ class LcoTask(Task):
         else:
             return False
 
-    def get_fits_headers(self, namespaces: Optional[List[str]] = None) -> Dict[str, Tuple[Any, str]]:
+    def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

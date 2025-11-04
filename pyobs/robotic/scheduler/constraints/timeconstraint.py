@@ -1,8 +1,12 @@
-from typing import Any
+from __future__ import annotations
+from typing import Any, TYPE_CHECKING
 import astroplan
-
-from pyobs.utils.time import Time
 from .constraint import Constraint
+
+if TYPE_CHECKING:
+    from astropy.time import Time
+    from ..dataprovider import DataProvider
+    from pyobs.robotic import Task
 
 
 class TimeConstraint(Constraint):
@@ -15,6 +19,9 @@ class TimeConstraint(Constraint):
 
     def to_astroplan(self) -> astroplan.TimeConstraint:
         return astroplan.TimeConstraint(min=self.start, max=self.end)
+
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+        return bool(self.start <= time <= self.end)
 
 
 __all__ = ["TimeConstraint"]

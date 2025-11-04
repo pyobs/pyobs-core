@@ -1,6 +1,5 @@
 from .airmassconstraint import AirmassConstraint
 from .constraint import Constraint
-from .moonconstraint import MoonCondition, MoonConstraint
 from .moonilluminationconstraint import MoonIlluminationConstraint
 from .moonseparationconstraint import MoonSeparationConstraint
 from .solarelevationconstraint import SolarElevationConstraint

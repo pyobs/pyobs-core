@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
+from astropy.units import Quantity
+import astropy.units as u
 
 from pyobs.object import Object
 from pyobs.robotic.scheduler.targets import Target
@@ -50,9 +52,9 @@ class Task(Object, metaclass=ABCMeta):
         return self._name
 
     @property
-    def duration(self) -> float:
+    def duration(self) -> Quantity:
         """Returns estimated duration of task in seconds."""
-        return self._duration
+        return self._duration * u.second
 
     @property
     def priority(self) -> float:

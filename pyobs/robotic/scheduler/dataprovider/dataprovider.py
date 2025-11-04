@@ -55,5 +55,9 @@ class DataProvider:
     def get_moon(self, time: Time) -> SkyCoord:
         return astropy.coordinates.get_body("moon", time, self.observer.location)
 
+    @cache
+    def get_sun(self, time: Time) -> SkyCoord:
+        return astropy.coordinates.get_body("sun", time, self.observer.location)
+
 
 __all__ = ["DataProvider"]

@@ -236,11 +236,11 @@ class Scheduler(Module, IStartStop, IRunnable):
                         if first:
                             log.info("Finished calculating next task:")
                             self._log_scheduled_task([scheduled_task])
-                            # await self._schedule.clear_schedule(self._schedule_start)
+                            await self._schedule.clear_schedule(self._schedule_start)
                             first = False
 
                         # submit it
-                        # await self._schedule.add_schedule([scheduled_task])
+                        await self._schedule.add_schedule([scheduled_task])
 
                     if self._need_update:
                         log.info("Not using scheduler results, since update was requested.")

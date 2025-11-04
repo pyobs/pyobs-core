@@ -1,10 +1,17 @@
-import abc
-from abc import ABCMeta
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
 import astroplan
+from typing import TYPE_CHECKING
 
-from pyobs.object import Object
+if TYPE_CHECKING:
+    from astropy.time import Time
+    from ..dataprovider import DataProvider
+    from pyobs.robotic import Task
 
 
-class Constraint(Object, metaclass=ABCMeta):
-    @abc.abstractmethod
+class Constraint(metaclass=ABCMeta):
+    @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...
+
+    @abstractmethod
+    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool: ...

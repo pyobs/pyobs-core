@@ -109,7 +109,7 @@ def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
     return ScheduledTask(task, time, time + TimeDelta(task.duration))
 
 
-async def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider) -> bool:
+def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider) -> bool:
     """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.
 
     Args:
@@ -157,23 +157,23 @@ def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, d
     # evaluate all merit functions at given time
     merits: list[float] = []
     for task in tasks:
-        if len(task.merits) == 0:
-            # no merits? evaluate to 1
-            merit = 1.0
+        # evaluate constraints
+        if evaluate_constraints(task, start, end, data):
+            # now we can evaluate the merits
+            if len(task.merits) == 0:
+                # no merits? evaluate to 1
+                merit = 1.0
 
-        elif start + TimeDelta(task.duration) > end:
-            # if task is too long for the given slot, we evaluate its merits to zero
-            merit = 0.0
-
-        else:
-            # evaluate constraints
-            if evaluate_constraints(task, start, end, data):
-                # now we can evaluate the merits
-                merit = evaluate_merits(task, start, end, data)
+            elif start + TimeDelta(task.duration) > end:
+                # if task is too long for the given slot, we evaluate its merits to zero
+                merit = 0.0
 
             else:
-                # some constraint failed...
-                merit = 0.0
+                merit = evaluate_merits(task, start, end, data)
+
+        else:
+            # some constraint failed...
+            merit = 0.0
 
         # store it
         merits.append(merit)

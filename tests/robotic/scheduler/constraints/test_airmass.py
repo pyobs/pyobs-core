@@ -1,0 +1,33 @@
+from __future__ import annotations
+from astroplan import Observer
+from astropy.coordinates import EarthLocation, SkyCoord
+
+from pyobs.robotic.scheduler.dataprovider import DataProvider
+from pyobs.robotic.scheduler.constraints import AirmassConstraint
+from pyobs.robotic.scheduler.targets import SiderealTarget
+from ..task import TestTask
+from astropy.time import Time
+
+
+def test_airmass_constraint() -> None:
+    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    data = DataProvider(observer)
+    task = TestTask(1, "Canopus", 100)
+    task._target = SiderealTarget("Canopus", SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs"))
+
+    constraint = AirmassConstraint(1.3)
+
+    time = Time("2025-11-03T17:00:00", scale="utc")
+    assert constraint(time, task, data) is False
+
+    time = Time("2025-11-03T19:00:00", scale="utc")
+    assert constraint(time, task, data) is False
+
+    time = Time("2025-11-03T21:00:00", scale="utc")
+    assert constraint(time, task, data) is False
+
+    time = Time("2025-11-03T23:00:00", scale="utc")
+    assert constraint(time, task, data) is True
+
+    time = Time("2025-11-04T01:00:00", scale="utc")
+    assert constraint(time, task, data) is True

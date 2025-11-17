@@ -1,9 +1,6 @@
 import logging
-import random
 from typing import Any
-import pandas as pd
 from astropy.coordinates import SkyCoord
-import astropy.units as u
 
 from pyobs.interfaces import IAcquisition, ITelescope
 from pyobs.modules import Module
@@ -25,7 +22,6 @@ class PointingSeries(Module, IAutonomous):
     def __init__(
         self,
         grid: list[Grid | GridFilter | dict[str, Any]],
-        dec_range: tuple[float, float] = (-80.0, 80.0),
         min_moon_dist: float = 15.0,
         finish: int = 90,
         exp_time: float = 1.0,
@@ -37,7 +33,6 @@ class PointingSeries(Module, IAutonomous):
 
         Args:
             grid: Grid to use for pointing series.
-            dec_range: Range in declination in degrees to use.
             min_moon_dist: Minimum moon distance in degrees.
             finish: When this number in percent of points have been finished, terminate mastermind.
             exp_time: Exposure time in secs.
@@ -48,7 +43,6 @@ class PointingSeries(Module, IAutonomous):
 
         # store
         self._grid = GridPipeline(steps=grid)
-        self._dec_range = dec_range
         self._min_moon_dist = min_moon_dist
         self._finish = 1.0 - finish / 100.0
         self._exp_time = exp_time
@@ -73,16 +67,6 @@ class PointingSeries(Module, IAutonomous):
     async def _run_thread(self) -> None:
         """Run a pointing series."""
 
-        # create grid
-        grid: dict[str, list[float | bool]] = {"alt": [], "az": [], "done": []}
-        for az, alt in self._grid:
-            grid["alt"] += [alt]
-            grid["az"] += [az]
-            grid["done"] += [False]
-
-        # to dataframe
-        pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
-
         # get acquisition and telescope units
         acquisition = None if self._acquisition is None else await self.proxy(self._acquisition, IAcquisition)
         telescope = await self.proxy(self._telescope, ITelescope)
@@ -93,23 +77,16 @@ class PointingSeries(Module, IAutonomous):
 
         # loop until finished
         while True:
-            # get all entries without offset measurements
-            todo = list(pd_grid[~pd_grid["done"]].index)
-            if len(todo) / len(pd_grid) < self._finish:
-                log.info("Finished.")
-                break
-            log.info("Grid points left to do: %d", len(todo))
-
             # get moon
             moon = self.observer.moon_altaz(Time.now())
 
-            # try to find a good point
-            while True:
-                # pick a random index and remove from list
-                alt, az = random.sample(todo, 1)[0]
-                todo.remove((alt, az))
+            # iterate over all grid points
+            for coord in self._grid:
+                if not isinstance(coord, SkyCoord):
+                    raise ValueError("Coordinate given is not a SkyCoord.")
+
                 altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, frame="altaz", obstime=Time.now(), location=self.observer.location
+                    alt=coord.alt, az=coord.az, frame="altaz", obstime=Time.now(), location=self.observer.location
                 )
 
                 # get RA/Dec
@@ -117,10 +94,8 @@ class PointingSeries(Module, IAutonomous):
 
                 # moon far enough away?
                 if altaz.separation(moon).degree >= self._min_moon_dist:
-                    # yep, are we in declination range?
-                    if self._dec_range[0] <= radec.dec.degree < self._dec_range[1]:
-                        # yep, break here, we found our target
-                        break
+                    # yep, break here, we found our target
+                    break
 
                 # to do list empty?
                 if len(todo) == 0:

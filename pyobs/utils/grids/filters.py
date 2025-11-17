@@ -1,16 +1,18 @@
-from typing import Tuple, Union, Optional
+from __future__ import annotations
+
+from astropy.coordinates import SkyCoord
 
 from .grid import Grid
 
 
 class GridFilter:
-    def __init__(self, grid: Union[Grid, "GridFilter"], **kwargs: object):
+    def __init__(self, grid: Grid | GridFilter, **kwargs: object):
         self._grid = grid
 
-    def __iter__(self) -> "GridFilter":
+    def __iter__(self) -> GridFilter:
         return self
 
-    def __next__(self) -> Tuple[float, float]:
+    def __next__(self) -> tuple[float, float] | SkyCoord:
         """Returns the points of a new grid."""
         return next(self._grid)
 
@@ -24,15 +26,15 @@ class GridFilter:
 class GridFilterValue(GridFilter):
     def __init__(
         self,
-        grid: Union[Grid, "GridFilter"],
-        x_gt: Optional[int] = None,
-        x_gte: Optional[int] = None,
-        x_lt: Optional[int] = None,
-        x_lte: Optional[int] = None,
-        y_gt: Optional[int] = None,
-        y_gte: Optional[int] = None,
-        y_lt: Optional[int] = None,
-        y_lte: Optional[int] = None,
+        grid: Grid | GridFilter,
+        x_gt: int | None = None,
+        x_gte: int | None = None,
+        x_lt: int | None = None,
+        x_lte: int | None = None,
+        y_gt: int | None = None,
+        y_gte: int | None = None,
+        y_lt: int | None = None,
+        y_lte: int | None = None,
         **kwargs: object,
     ):
         GridFilter.__init__(self, grid, **kwargs)
@@ -45,7 +47,7 @@ class GridFilterValue(GridFilter):
         self._y_lt = y_lt
         self._y_lte = y_lte
 
-    def __next__(self) -> Tuple[float, float]:
+    def __next__(self) -> tuple[float, float] | SkyCoord:
         """Returns the points of a new grid."""
 
         while True:
@@ -67,3 +69,6 @@ class GridFilterValue(GridFilter):
             if self._y_lte is not None and point[1] > self._y_lte:
                 continue
             return point
+
+
+__all__ = ["GridFilter", "GridFilterValue"]

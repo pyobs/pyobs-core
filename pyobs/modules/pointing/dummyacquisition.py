@@ -14,11 +14,12 @@ class DummyAcquisition(Module, IAcquisition):
 
     __module__ = "pyobs.modules.acquisition"
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, wait_secs: float = 5.0, **kwargs: Any):
         """Create a new dummy acquisition."""
         Module.__init__(self, **kwargs)
 
         # store
+        self._wait_secs = wait_secs
         self._is_running = False
 
     async def is_running(self, **kwargs: Any) -> bool:
@@ -48,7 +49,7 @@ class DummyAcquisition(Module, IAcquisition):
     async def _acquire(self) -> Dict[str, Any]:
         """Actually acquire target."""
         log.info("Acquiring target.")
-        await asyncio.sleep(5)
+        await asyncio.sleep(self._wait_secs)
         log.info("Finished.")
         return {}
 

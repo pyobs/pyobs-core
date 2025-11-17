@@ -1,18 +1,19 @@
 import abc
-from typing import List, Tuple, Optional
+
+from astropy.coordinates import SkyCoord
 
 
 class Grid(metaclass=abc.ABCMeta):
     """Abstract base class for grids."""
 
-    def __init__(self, points: List[Tuple[float, float]], **kwargs: object):
-        self._points: List[Tuple[float, float]] = points
-        self._last: Optional[Tuple[float, float]] = None
+    def __init__(self, points: list[tuple[float, float] | SkyCoord], **kwargs: object):
+        self._points = points
+        self._last: tuple[float, float] | SkyCoord | None = None
 
     def __iter__(self) -> "Grid":
         return self
 
-    def __next__(self) -> Tuple[float, float]:
+    def __next__(self) -> tuple[float, float]:
         """Returns the points of a new grid."""
         if len(self._points) > 0:
             self._last = self._points.pop(0)

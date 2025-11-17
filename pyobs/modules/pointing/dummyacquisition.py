@@ -53,5 +53,8 @@ class DummyAcquisition(Module, IAcquisition):
         log.info("Finished.")
         return {}
 
+    async def abort(self, **kwargs: Any) -> None:
+        pass
+
 
 __all__ = ["DummyAcquisition"]

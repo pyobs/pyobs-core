@@ -1,6 +1,5 @@
 import abc
-from typing import List, Tuple, Any
-
+from typing import Any
 import numpy as np
 
 from .grid import Grid
@@ -23,7 +22,7 @@ class RegularSphericalGrid(SphericalGrid):
         Returns:
             Lat/lon grid.
         """
-        points = []
+        points: list[tuple[float, float]] = []
         for lon in np.linspace(0.0, 360.0 - 360.0 / n_lon, n_lon):
             for lat in np.linspace(-90.0, 90.0, n_lat):
                 points.append((float(lon), float(lat)))
@@ -49,7 +48,7 @@ class GraticuleSphericalGrid(SphericalGrid):
         m_phi = round(np.pi / d)
         d_phi = np.pi / m_phi
         d_varphi = a / d_phi
-        points: List[Tuple[float, float]] = []
+        points: list[tuple[float, float]] = []
 
         # conversion radians -> degrees
         r2d = 180.0 / np.pi

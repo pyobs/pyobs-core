@@ -1,15 +1,17 @@
 from typing import Any, cast
 from typing_extensions import Self
 
-from pyobs.object import get_object
+from pyobs.object import Object
 from pyobs.utils.grids.filters import GridFilter
 from pyobs.utils.grids.grid import Grid
 
 
-class GridPipeline:
+class GridPipeline(Object):
     """A pipeline for a grid and filters. Accepts a Grid as first element in the input list plus 0-N filters"""
 
-    def __init__(self, steps: list[Grid | GridFilter | dict[str, Any]]):
+    def __init__(self, steps: list[Grid | GridFilter | dict[str, Any]], **kwargs: Any):
+        Object.__init__(self, **kwargs)
+
         # variables
         self._grid_pipeline: Grid | GridFilter | None = None
 
@@ -18,11 +20,11 @@ class GridPipeline:
             return
 
         # create grid
-        self._grid_pipeline = cast(Grid, get_object(steps[0], Grid))
+        self._grid_pipeline = cast(Grid, self.get_object(steps[0], Grid))
 
         # create steps
         for step in steps[1:]:
-            self._grid_pipeline = cast(GridFilter, get_object(step, GridFilter, grid=self._grid_pipeline))
+            self._grid_pipeline = cast(GridFilter, self.get_object(step, GridFilter, grid=self._grid_pipeline))
 
     def __iter__(self) -> Self:
         return self

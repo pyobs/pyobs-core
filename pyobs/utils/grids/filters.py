@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from typing import Any
+
 from astropy.coordinates import SkyCoord
 
 from .grid import Grid
+from ...object import Object
 
 
-class GridFilter:
-    def __init__(self, grid: Grid | GridFilter, **kwargs: object):
+class GridFilter(Object):
+    def __init__(self, grid: Grid | GridFilter, **kwargs: Any):
+        Object.__init__(self, **kwargs)
         self._grid = grid
 
     def __iter__(self) -> GridFilter:

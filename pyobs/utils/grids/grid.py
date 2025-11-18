@@ -1,12 +1,16 @@
 import abc
+from typing import Any
 
 from astropy.coordinates import SkyCoord
 
+from pyobs.object import Object
 
-class Grid(metaclass=abc.ABCMeta):
+
+class Grid(Object, metaclass=abc.ABCMeta):
     """Abstract base class for grids."""
 
-    def __init__(self, points: list[tuple[float, float] | SkyCoord], **kwargs: object):
+    def __init__(self, points: list[tuple[float, float] | SkyCoord], **kwargs: Any):
+        Object.__init__(self, **kwargs)
         self._points = points
         self._last: tuple[float, float] | SkyCoord | None = None
 

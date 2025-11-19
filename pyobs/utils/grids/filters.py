@@ -1,22 +1,18 @@
 from __future__ import annotations
-
+import abc
 from typing import Any
-
 from astropy.coordinates import SkyCoord
 
+from .gridnode import GridNode
 from .grid import Grid
-from ...object import Object
 
 
-class GridFilter(Object):
-    def __init__(self, grid: Grid | GridFilter, **kwargs: Any):
-        Object.__init__(self, **kwargs)
+class GridFilter(GridNode, metaclass=abc.ABCMeta):
+    def __init__(self, grid: GridNode, **kwargs: Any):
+        GridNode.__init__(self, **kwargs)
         self._grid = grid
 
-    def __iter__(self) -> GridFilter:
-        return self
-
-    def __next__(self) -> tuple[float, float] | SkyCoord:
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
         """Returns the points of a new grid."""
         return next(self._grid)
 
@@ -25,6 +21,10 @@ class GridFilter(Object):
 
     def append_last(self) -> None:
         self._grid.append_last()
+
+    def log_last(self) -> None:
+        self._grid.log_last()
+        self.log(self._last)
 
 
 class GridFilterValue(GridFilter):
@@ -51,27 +51,38 @@ class GridFilterValue(GridFilter):
         self._y_lt = y_lt
         self._y_lte = y_lte
 
-    def __next__(self) -> tuple[float, float] | SkyCoord:
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
         """Returns the points of a new grid."""
 
         while True:
+            # what do we have?
             point = next(self._grid)
-            if self._x_gt is not None and point[0] <= self._x_gt:
+            if isinstance(point, tuple):
+                x, y = point[0], point[1]
+            elif isinstance(point, SkyCoord) and hasattr(point, "ra") and hasattr(point, "dec"):
+                x, y = point.ra.degree, point.dec.degree
+            elif isinstance(point, SkyCoord) and hasattr(point, "az") and hasattr(point, "alt"):
+                x, y = point.az.degree, point.alt.degree
+            else:
+                raise TypeError("Unknown point type.")
+
+            if self._x_gt is not None and x <= self._x_gt:
                 continue
-            if self._x_gte is not None and point[0] < self._x_gte:
+            if self._x_gte is not None and x < self._x_gte:
                 continue
-            if self._x_lt is not None and point[0] >= self._x_lt:
+            if self._x_lt is not None and x >= self._x_lt:
                 continue
-            if self._x_lte is not None and point[0] > self._x_lte:
+            if self._x_lte is not None and x > self._x_lte:
                 continue
-            if self._y_gt is not None and point[1] <= self._y_gt:
+            if self._y_gt is not None and y <= self._y_gt:
                 continue
-            if self._y_gte is not None and point[1] < self._y_gte:
+            if self._y_gte is not None and y < self._y_gte:
                 continue
-            if self._y_lt is not None and point[1] >= self._y_lt:
+            if self._y_lt is not None and y >= self._y_lt:
                 continue
-            if self._y_lte is not None and point[1] > self._y_lte:
+            if self._y_lte is not None and y > self._y_lte:
                 continue
+
             return point
 
 

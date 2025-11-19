@@ -8,6 +8,7 @@ from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
 from pyobs.utils.grids.filters import GridFilter
 from pyobs.utils.grids.grid import Grid
+from pyobs.utils.grids.gridnode import GridNode
 from pyobs.utils.grids.pipeline import GridPipeline
 
 log = logging.getLogger(__name__)
@@ -72,24 +73,28 @@ class PointingSeries(Module, IAutonomous):
 
     async def _run_pointing_series(self) -> None:
         # get grid and get count
-        grid = self.get_object(GridPipeline, GridPipeline, steps=self._grid)
+        grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
         count = len([coord for coord in grid])
         log.info(f"Found {count} grid points.")
 
         # iterate over all grid points
-        grid = self.get_object(GridPipeline, GridPipeline, steps=self._grid)
+        grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
+        finished = 0
         for coord in grid:
             if not isinstance(coord, SkyCoord):
                 raise ValueError("Coordinate given is not a SkyCoord.")
 
-            print(coord)
+            # log finding
+            grid.log_last()
 
-            ## log finding
-            # log.info("Picked grid point at Alt=%.2f, Az=%.2f (%s).", alt, az, radec.to_string("hmsdms"))
-
-            if not self._process_point(coord):
-                # put point back
+            # perform acquisition on given coordinates
+            if not await self._process_point(coord):
                 grid.append_last()
+                continue
+
+            # got it
+            finished += 1
+            log.info(f"Finished {finished} of {count} grid points.")
 
         # finished
         log.info("Pointing series finished.")
@@ -112,7 +117,7 @@ class PointingSeries(Module, IAutonomous):
             return True
 
         except (ValueError, exc.RemoteError):
-            log.info("Could not acquire target.")
+            log.info("Could not acquire position.")
             return False
 
     async def _process_acquisition(

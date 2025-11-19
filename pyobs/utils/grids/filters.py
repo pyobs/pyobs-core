@@ -1,5 +1,6 @@
 from __future__ import annotations
 import abc
+import random
 from typing import Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -120,4 +121,16 @@ class ConvertGridFrame(GridFilter):
         return point.transform_to(frame=self._frame)
 
 
-__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord"]
+class RandomizeGrid(GridFilter):
+    def __init__(self, grid: Grid | GridFilter, iterations: int = 50, **kwargs: object):
+        GridFilter.__init__(self, grid, **kwargs)
+        self._iterations = iterations
+
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
+        for i in range(random.randrange(self._iterations)):
+            next(self._grid)
+            self._grid.append_last()
+        return next(self._grid)
+
+
+__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord", "RandomizeGrid"]

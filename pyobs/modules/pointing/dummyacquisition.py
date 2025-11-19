@@ -5,6 +5,7 @@ from typing import Any, Dict
 from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
 from pyobs.modules import timeout
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +52,17 @@ class DummyAcquisition(Module, IAcquisition):
         log.info("Acquiring target.")
         await asyncio.sleep(self._wait_secs)
         log.info("Finished.")
-        return {}
+        return {
+            "datetime": Time.now().isot,
+            "ra": 0.0,
+            "dec": 0.0,
+            "alt": 0.0,
+            "az": 0.0,
+            "off_ra": 0.0,
+            "off_dec": 0.0,
+            "off_alt": 0.0,
+            "off_az": 0.0,
+        }
 
     async def abort(self, **kwargs: Any) -> None:
         pass

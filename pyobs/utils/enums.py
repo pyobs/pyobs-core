@@ -104,6 +104,7 @@ class MotionStatus(Enum):
     POSITIONED = "positioned"
     SLEWING = "slewing"
     TRACKING = "tracking"
+    CALIBRATING = "calibrating"
     UNKNOWN = "unknown"
 
 

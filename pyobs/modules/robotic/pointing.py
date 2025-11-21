@@ -1,18 +1,15 @@
 import logging
-import random
 from typing import Any
-import pandas as pd
 from astropy.coordinates import SkyCoord
-import astropy.units as u
 
-from pyobs.interfaces import IAcquisition, ITelescope
+from pyobs.interfaces import IAcquisition, IPointingRaDec
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
 from pyobs.utils.grids.filters import GridFilter
 from pyobs.utils.grids.grid import Grid
+from pyobs.utils.grids.gridnode import GridNode
 from pyobs.utils.grids.pipeline import GridPipeline
-from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -25,10 +22,7 @@ class PointingSeries(Module, IAutonomous):
     def __init__(
         self,
         grid: list[Grid | GridFilter | dict[str, Any]],
-        dec_range: tuple[float, float] = (-80.0, 80.0),
-        min_moon_dist: float = 15.0,
         finish: int = 90,
-        exp_time: float = 1.0,
         acquisition: str | None = None,
         telescope: str = "telescope",
         **kwargs: Any,
@@ -37,21 +31,15 @@ class PointingSeries(Module, IAutonomous):
 
         Args:
             grid: Grid to use for pointing series.
-            dec_range: Range in declination in degrees to use.
-            min_moon_dist: Minimum moon distance in degrees.
             finish: When this number in percent of points have been finished, terminate mastermind.
-            exp_time: Exposure time in secs.
             acquisition: IAcquisition unit to use.
             telescope: ITelescope unit to use.
         """
         Module.__init__(self, **kwargs)
 
         # store
-        self._grid = GridPipeline(steps=grid)
-        self._dec_range = dec_range
-        self._min_moon_dist = min_moon_dist
+        self._grid = grid
         self._finish = 1.0 - finish / 100.0
-        self._exp_time = exp_time
         self._acquisition = acquisition
         self._telescope = telescope
 
@@ -73,87 +61,64 @@ class PointingSeries(Module, IAutonomous):
     async def _run_thread(self) -> None:
         """Run a pointing series."""
 
-        # create grid
-        grid: dict[str, list[float | bool]] = {"alt": [], "az": [], "done": []}
-        for az, alt in self._grid:
-            grid["alt"] += [alt]
-            grid["az"] += [az]
-            grid["done"] += [False]
-
-        # to dataframe
-        pd_grid = pd.DataFrame(grid).set_index(["alt", "az"])
-
-        # get acquisition and telescope units
-        acquisition = None if self._acquisition is None else await self.proxy(self._acquisition, IAcquisition)
-        telescope = await self.proxy(self._telescope, ITelescope)
-
         # check observer
         if self.observer is None:
             raise ValueError("No observer given.")
 
-        # loop until finished
-        while True:
-            # get all entries without offset measurements
-            todo = list(pd_grid[~pd_grid["done"]].index)
-            if len(todo) / len(pd_grid) < self._finish:
-                log.info("Finished.")
-                break
-            log.info("Grid points left to do: %d", len(todo))
+        try:
+            await self._run_pointing_series()
+        except:
+            log.exception("Error running series.")
+            raise
 
-            # get moon
-            moon = self.observer.moon_altaz(Time.now())
+    async def _run_pointing_series(self) -> None:
+        # get grid and get count
+        grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
+        count = len([coord for coord in grid])
+        log.info(f"Found {count} grid points.")
 
-            # try to find a good point
-            while True:
-                # pick a random index and remove from list
-                alt, az = random.sample(todo, 1)[0]
-                todo.remove((alt, az))
-                altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, frame="altaz", obstime=Time.now(), location=self.observer.location
-                )
-
-                # get RA/Dec
-                radec = altaz.icrs
-
-                # moon far enough away?
-                if altaz.separation(moon).degree >= self._min_moon_dist:
-                    # yep, are we in declination range?
-                    if self._dec_range[0] <= radec.dec.degree < self._dec_range[1]:
-                        # yep, break here, we found our target
-                        break
-
-                # to do list empty?
-                if len(todo) == 0:
-                    # could not find a grid point
-                    log.info("Could not find a suitable grid point, resetting todo list for next entry...")
-                    todo = list(pd_grid.index)
-                    continue
+        # iterate over all grid points
+        grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
+        finished = 0
+        for coord in grid:
+            if not isinstance(coord, SkyCoord):
+                raise ValueError("Coordinate given is not a SkyCoord.")
 
             # log finding
-            log.info("Picked grid point at Alt=%.2f, Az=%.2f (%s).", alt, az, radec.to_string("hmsdms"))
+            grid.log_last()
 
-            # acquire target and process result
-            try:
-                # move telescope
-                await telescope.move_radec(float(radec.ra.degree), float(radec.dec.degree))
-
-                # acquire target
-                if acquisition is not None:
-                    acq = await acquisition.acquire_target()
-
-                    #  process result
-                    if acq is not None:
-                        await self._process_acquisition(**acq)
-
-            except (ValueError, exc.RemoteError):
-                log.info("Could not acquire target.")
+            # perform acquisition on given coordinates
+            if not await self._process_point(coord):
+                grid.append_last()
                 continue
 
-            # finished
-            pd_grid.loc[alt, az] = True
+            # got it
+            finished += 1
+            log.info(f"Finished {finished} of {count} grid points.")
 
         # finished
         log.info("Pointing series finished.")
+
+    async def _process_point(self, coord: SkyCoord) -> bool:
+        # get acquisition and telescope units
+        acquisition = await self.proxy(self._acquisition, IAcquisition)
+        telescope = await self.proxy(self._telescope, IPointingRaDec)
+
+        # acquire target and process result
+        try:
+            # move telescope
+            await telescope.move_radec(float(coord.ra.degree), float(coord.dec.degree))
+
+            # acquire target
+            acq = await acquisition.acquire_target()
+
+            #  process result
+            await self._process_acquisition(**acq)
+            return True
+
+        except (ValueError, exc.RemoteError):
+            log.info("Could not acquire position.")
+            return False
 
     async def _process_acquisition(
         self,

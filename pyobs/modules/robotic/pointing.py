@@ -2,7 +2,7 @@ import logging
 from typing import Any
 from astropy.coordinates import SkyCoord
 
-from pyobs.interfaces import IAcquisition, IPointingRaDec
+from pyobs.interfaces import IAcquisition, IPointingRaDec, IPointingSeries
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 from pyobs.interfaces import IAutonomous
@@ -114,6 +114,11 @@ class PointingSeries(Module, IAutonomous):
 
             #  process result
             await self._process_acquisition(**acq)
+
+            # if telescope implements IPointingSeries, let it know
+            if isinstance(telescope, IPointingSeries):
+                await telescope.add_pointing_measurement()
+
             return True
 
         except (ValueError, exc.RemoteError):

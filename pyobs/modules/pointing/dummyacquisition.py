@@ -5,6 +5,7 @@ from typing import Any, Dict
 from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
 from pyobs.modules import timeout
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -14,11 +15,12 @@ class DummyAcquisition(Module, IAcquisition):
 
     __module__ = "pyobs.modules.acquisition"
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, wait_secs: float = 5.0, **kwargs: Any):
         """Create a new dummy acquisition."""
         Module.__init__(self, **kwargs)
 
         # store
+        self._wait_secs = wait_secs
         self._is_running = False
 
     async def is_running(self, **kwargs: Any) -> bool:
@@ -48,9 +50,22 @@ class DummyAcquisition(Module, IAcquisition):
     async def _acquire(self) -> Dict[str, Any]:
         """Actually acquire target."""
         log.info("Acquiring target.")
-        await asyncio.sleep(5)
+        await asyncio.sleep(self._wait_secs)
         log.info("Finished.")
-        return {}
+        return {
+            "datetime": Time.now().isot,
+            "ra": 0.0,
+            "dec": 0.0,
+            "alt": 0.0,
+            "az": 0.0,
+            "off_ra": 0.0,
+            "off_dec": 0.0,
+            "off_alt": 0.0,
+            "off_az": 0.0,
+        }
+
+    async def abort(self, **kwargs: Any) -> None:
+        pass
 
 
 __all__ = ["DummyAcquisition"]

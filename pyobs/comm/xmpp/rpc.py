@@ -207,6 +207,7 @@ class RPC(object):
 
         # get exception and error
         s: str = fault["string"]
+        print(s)
         exception_name = s[1 : s.index(">")]
         exception_message = s[s.index(">") + 1 :].strip()
 

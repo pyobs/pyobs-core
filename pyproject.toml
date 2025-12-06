@@ -13,7 +13,7 @@ dependencies = [
     "PyYAML>=6.0.2,<7",
     "typing-extensions>=4.13.2,<5",
     "astroquery>=0.4.10,<0.5",
-    "slixmpp==1.8.4",
+    "slixmpp==1.12.0",
     "single-source>=0.4.0,<0.5",
     "dbus-next>=0.2.3,<0.3",
     "astroplan>=0.10.1,<0.11",

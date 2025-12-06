@@ -4,7 +4,7 @@ from pyobs.utils.grids.pipeline import GridPipeline
 def test_pipeline() -> None:
     pipeline = GridPipeline(
         [
-            {"class": "pyobs.utils.grids.spherical.RegularSphericalGrid", "n_lat": 5, "n_lon": 5},
+            {"class": "pyobs.utils.grids.grid.RegularSphericalGrid", "n_lat": 5, "n_lon": 5},
             {"class": "pyobs.utils.grids.filters.GridFilterValue", "y_gte": 0},
         ]
     )

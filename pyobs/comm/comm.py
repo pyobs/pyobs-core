@@ -35,6 +35,7 @@ class Comm:
         self._cache_proxies = cache_proxies
         self._logging_task: Optional[asyncio.Task[Any]] = None
         self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._closing = asyncio.Event()
 
         # add handler to global logger
         handler = CommLoggingHandler(self)
@@ -70,6 +71,8 @@ class Comm:
 
     async def close(self) -> None:
         """Close module."""
+
+        self._closing.set()
 
         # close thread
         if self._logging_task:

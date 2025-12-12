@@ -44,7 +44,7 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: SimWorld | None = None, **kwargs: Any):
+    def __init__(self, world: SimWorld | None = None, wait_secs: float = 1.0, **kwargs: Any):
         """Creates a new dummy telescope.
 
         Args:
@@ -58,6 +58,7 @@ class DummyTelescope(
 
         self._world = world if world is not None else self.add_child_object(SimWorld, None)
         self._telescope = self._world.telescope
+        self._wait_secs = wait_secs
 
         # automatically send status updates
         self._telescope.status_callback = self._change_motion_status
@@ -128,7 +129,7 @@ class DummyTelescope(
 
         # wait for it
         while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
-            await asyncio.sleep(1)
+            await asyncio.sleep(self._wait_secs)
 
     async def get_focus(self, **kwargs: Any) -> float:
         """Return current focus.

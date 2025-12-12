@@ -207,11 +207,17 @@ class RPC(object):
 
         # get exception and error
         s: str = fault["string"]
-        exception_name = s[1 : s.index(">")]
-        exception_message = s[s.index(">") + 1 :].strip()
 
-        # get class of exception
-        exception_class = getattr(exc, exception_name)
+        if ">" in s:
+            # a pyobs exception
+            exception_name = s[1 : s.index(">")]
+            exception_message = s[s.index(">") + 1 :].strip()
+            exception_class = getattr(exc, exception_name)
+
+        else:
+            # some generic error, wrap it into a remote error
+            exception_class = exc.RemoteError
+            exception_message = s
 
         # and instantiate it
         if issubclass(exception_class, exc.RemoteError):

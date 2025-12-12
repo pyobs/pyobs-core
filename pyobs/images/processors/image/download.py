@@ -111,7 +111,7 @@ class Download(ImageProcessor):
 
     __module__ = "pyobs.images.processors.image"
 
-    def __init__(self, url: str, **kwargs: Any):
+    def __init__(self, url: str, ssl_check: bool = True, **kwargs: Any):
         """Init a new software binning pipeline step.
 
         Args:
@@ -121,6 +121,7 @@ class Download(ImageProcessor):
 
         # store
         self._url = url
+        self._ssl_check = ssl_check
 
         # what file do we have?
         file_type = os.path.splitext(url)[1]
@@ -141,7 +142,7 @@ class Download(ImageProcessor):
         """
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(self._url) as response:
+            async with session.get(self._url, ssl=self._ssl_check) as response:
                 response.raise_for_status()
                 image_data = await response.read()
                 return self._converter(image_data)

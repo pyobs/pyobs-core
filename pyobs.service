@@ -1,0 +1,10 @@
+[Unit]
+Description=pyobsd
+
+[Service]
+ExecStart=/usr/local/bin/pyobsd start
+ExecStop=/usr/local/bin/pyobsd stop
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

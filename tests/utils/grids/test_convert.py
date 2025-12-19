@@ -1,7 +1,7 @@
 from astropy.coordinates import SkyCoord
 
-from pyobs.utils.grids.convert import ConvertGridToSkyCoord
-from pyobs.utils.grids.spherical import RegularSphericalGrid, GraticuleSphericalGrid
+from pyobs.utils.grids.filters import ConvertGridToSkyCoord
+from pyobs.utils.grids.grid import RegularSphericalGrid
 
 
 def test_convertgridtoskycoord() -> None:

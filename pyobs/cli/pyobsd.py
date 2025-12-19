@@ -22,6 +22,7 @@ class PyobsDaemon(object):
         log_level: str = "info",
         chuid: Optional[str] = None,
         start_stop_daemon: str = "start-stop-daemon",
+        verbose: bool = False,
     ):
         self._config_path = config_path
         self._run_path = run_path
@@ -29,6 +30,7 @@ class PyobsDaemon(object):
         self._log_level = log_level
         self._chuid = chuid
         self._start_stop_daemon = start_stop_daemon
+        self._verbose = verbose
 
         # find pyobs executable
         filenames = [
@@ -40,12 +42,16 @@ class PyobsDaemon(object):
             if os.path.exists(filename):
                 self._pyobs_exec = filename
                 break
-        # else:
-        #    raise ValueError("Could not find pyobs executable.")
+        else:
+            self._error("Could not find pyobs executable.")
 
         # get configs and running
         self._configs = self._get_configs()
         self._running = self._get_running()
+
+    def _error(self, message: str) -> None:
+        print(message)
+        sys.exit(1)
 
     def _get_configs(self) -> List[str]:
         # get configuration files, ignore those ending on .shared.yaml
@@ -170,8 +176,15 @@ class PyobsDaemon(object):
             ]
         )
 
+        if self._verbose:
+            print(f"[DEBUG] Executing command: {' '.join(cmd)}.")
+
         # execute
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if self._verbose:
+            print(f"[DEBUG] stdout: {res.stdout.decode('utf-8')}")
+            print(f"[DEBUG] stderr: {res.stderr.decode('utf-8')}")
 
     def _stop_service(self, module: str) -> None:
         # get module name and PID
@@ -235,6 +248,7 @@ def main() -> None:
     parser.add_argument(
         "--start-stop-daemon", type=str, default=config.get("start-stop-daemon", "/sbin/start-stop-daemon")
     )
+    parser.add_argument("-v", "--verbose", action="store_true")
 
     # commands
     sp = parser.add_subparsers(dest="command")
@@ -255,6 +269,7 @@ def main() -> None:
         log_level=args.log_level,
         chuid=args.chuid,
         start_stop_daemon=args.start_stop_daemon,
+        verbose=args.verbose,
     )
 
     # run

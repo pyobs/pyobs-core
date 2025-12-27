@@ -88,6 +88,10 @@ class AcquisitionError(PyObsError, metaclass=_Meta):
     pass
 
 
+class AccessDeniedError(PyObsError, metaclass=_Meta):
+    pass
+
+
 #######################################
 
 

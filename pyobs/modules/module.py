@@ -10,6 +10,7 @@ import packaging.version
 from pyobs.events import ModuleOpenedEvent, Event
 from pyobs.object import Object
 from pyobs.interfaces import IModule, IConfig, Interface
+from pyobs.utils.accesscontrol import AccessControl
 from pyobs.utils.enums import ModuleState
 from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
@@ -101,6 +102,7 @@ class Module(Object, IModule, IConfig):
         label: str | None = None,
         own_comm: bool = True,
         additional_config_variables: list[str] | None = None,
+        access_control: AccessControl | dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -131,6 +133,9 @@ class Module(Object, IModule, IConfig):
 
         # own?
         self._own_comm = own_comm
+
+        # do we have some access control?
+        self._access_control = self.get_safe_object(access_control, AccessControl)
 
         # close
         self._closing = asyncio.Event()
@@ -249,7 +254,7 @@ class Module(Object, IModule, IConfig):
         self._closing.set()
         asyncio.get_event_loop().stop()
 
-    async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
+    async def execute(self, method: str, caller: str | None = None, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
 
         All incoming variables in args and kwargs must be of simple type (i.e. int, float, str, bool, tuple) and will
@@ -258,6 +263,7 @@ class Module(Object, IModule, IConfig):
 
         Args:
             method: Name of method to execute.
+            caller: Name of client that called the method.
             *args: Parameters for method.
             **kwargs: Parameters for method.
 
@@ -273,6 +279,14 @@ class Module(Object, IModule, IConfig):
             # if called method is not from IModule, raise error
             if not hasattr(IModule, method):
                 raise exc.ModuleError("Module is in error state, please reset it.")
+
+        # check access control
+        if (
+            self._access_control is not None
+            and caller is not None
+            and not self._access_control.has_access(caller, self.name, method)
+        ):
+            raise exc.AccessDeniedError(f"{caller} is not permitted to call the method {method} of module {self.name}.")
 
         # get method and signature (may raise KeyError)
         func, signature, type_hints = self._methods[method]

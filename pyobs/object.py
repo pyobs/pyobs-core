@@ -464,7 +464,6 @@ class Object:
         try:
             return self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
         except Exception:
-            log.exception("test")
             return None
 
     @overload

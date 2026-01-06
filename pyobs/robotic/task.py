@@ -151,5 +151,8 @@ class ScheduledTask:
         """End time for task"""
         return self._end
 
+    def __eq__(self, other: ScheduledTask) -> bool:
+        return self.task.id == other.task.id and self.start == other.start and self.end == other.end
+
 
 __all__ = ["Task", "ScheduledTask"]

@@ -154,5 +154,20 @@ class ScheduledTask:
     def __eq__(self, other: ScheduledTask) -> bool:
         return self.task.id == other.task.id and self.start == other.start and self.end == other.end
 
+    def __ne__(self, other: ScheduledTask) -> bool:
+        return self.task.id != other.task.id or self.start != other.start or self.end != other.end
+
+    def __lt__(self, other: ScheduledTask) -> bool:
+        return self.start < other.start
+
+    def __gt__(self, other: ScheduledTask) -> bool:
+        return self.start > other.start
+
+    def __le__(self, other: ScheduledTask) -> bool:
+        return self.start <= other.start
+
+    def __ge__(self, other: ScheduledTask) -> bool:
+        return self.start >= other.start
+
 
 __all__ = ["Task", "ScheduledTask"]

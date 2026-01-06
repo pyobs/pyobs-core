@@ -174,7 +174,7 @@ class LcoTaskSchedule(TaskSchedule):
                 return
 
             # any changes?
-            if sorted(scheduled_tasks, key=lambda x: x.start) != sorted(self._scheduled_tasks, key=lambda x: x.start):
+            if sorted(scheduled_tasks) != sorted(self._scheduled_tasks):
                 log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
                 for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
                     log.info(

@@ -251,7 +251,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     self._log_scheduled_task(scheduled_tasks)
 
                     # set new safety_time as duration + 20%
-                    self._safety_time = (time.time() - start_time) * 1.2
+                    self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
                 except:
                     log.exception("Something went wrong")

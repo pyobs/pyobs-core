@@ -149,11 +149,11 @@ class Scheduler(Module, IStartStop, IRunnable):
         if len(removed) == 1:
             log.info(
                 "Found 1 removed block with ID %d. Last task ID was %s, current is %s.",
-                removed[0].id,
+                removed[0],
                 str(self._last_task_id),
                 str(self._current_task_id),
             )
-        if len(removed) == 1 and len(added) == 0 and removed[0].id == self._last_task_id:
+        if len(removed) == 1 and len(added) == 0 and removed[0] == self._last_task_id:
             # no need to re-schedule
             log.info("Only one removed block detected, which is the one currently running.")
             self._need_update = False

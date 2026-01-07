@@ -1,10 +1,13 @@
 import asyncio
 import logging
 from typing import Coroutine, Any, Callable
-
-from pyobs.utils.exceptions import SevereError
+import time
 
 log = logging.getLogger(__name__)
+
+
+MAX_FINISH_INTERVAL_SECONDS = 10
+MAX_FINISH_COUNT = 3
 
 
 class BackgroundTask:
@@ -14,27 +17,41 @@ class BackgroundTask:
         self._task: asyncio.Future[Any] | None = None
 
     def start(self) -> None:
-        self._task = asyncio.create_task(self._func())
-        self._task.add_done_callback(self._callback_function)
+        self._task = asyncio.create_task(self._func_wrapper())
 
-    def _callback_function(self, args: Any | None = None) -> None:
-        try:
-            if self._task is None:
-                raise ValueError("Task not started.")
-            exception = self._task.exception()
-        except asyncio.CancelledError:
-            return
+    async def _func_wrapper(self):
+        start = time.time()
+        finish_count = 0
 
-        if isinstance(exception, SevereError):
-            raise exception
-        elif exception is not None:
-            log.exception("Exception in task %s.", self._func.__name__)
+        while True:
+            try:
+                await self._func()
+            except asyncio.CancelledError:
+                log.info(f"Task {self._func.__name__} was cancelled.")
+                return
+            except:
+                log.exception(f"Exception in task {self._func.__name__}.")
 
-        if self._restart:
-            log.error("Background task for %s has died, restarting...", self._func.__name__)
-            self.start()
-        else:
-            log.error("Background task for %s has died, quitting...", self._func.__name__)
+            # check time since last exit
+            if time.time() - start < MAX_FINISH_INTERVAL_SECONDS:
+                finish_count += 1
+                if finish_count > MAX_FINISH_COUNT:
+                    log.error(f"Succession of failure for background task {self._func.__name__} too fast, quitting...")
+                    if self._restart:
+                        # todo: quit pyobs here
+                        return
+                    else:
+                        return
+            else:
+                start = time.time()
+                finish_count = 0
+
+            # don't restart?
+            if self._restart:
+                log.info(f"Background task for {self._func.__name__} has died, restarting...")
+            else:
+                log.info(f"Background task for {self._func.__name__} has died, quitting...")
+                return
 
     def stop(self) -> None:
         if self._task is not None:

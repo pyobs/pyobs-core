@@ -1,7 +1,11 @@
+from __future__ import annotations
 import asyncio
 import logging
-from typing import Coroutine, Any, Callable
+from typing import Coroutine, Any, Callable, TYPE_CHECKING
 import time
+
+if TYPE_CHECKING:
+    from pyobs.object import Object
 
 log = logging.getLogger(__name__)
 
@@ -11,9 +15,10 @@ MAX_FINISH_COUNT = 3
 
 
 class BackgroundTask:
-    def __init__(self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool) -> None:
+    def __init__(self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool, parent: Object) -> None:
         self._func: Callable[..., Coroutine[Any, Any, None]] = func
         self._restart: bool = restart
+        self._parent = parent
         self._task: asyncio.Future[Any] | None = None
 
     def start(self) -> None:
@@ -38,7 +43,7 @@ class BackgroundTask:
                 if finish_count > MAX_FINISH_COUNT:
                     log.error(f"Succession of failure for background task {self._func.__name__} too fast, quitting...")
                     if self._restart:
-                        # todo: quit pyobs here
+                        self._parent.quit()
                         return
                     else:
                         return

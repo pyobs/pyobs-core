@@ -6,7 +6,7 @@ import signal
 import warnings
 import threading
 from io import StringIO
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict, List, TypedDict
 import yaml
 
 from pyobs.object import get_object, get_class_from_string
@@ -17,17 +17,31 @@ from pyobs.utils.config import pre_process_yaml
 log = logging.getLogger(__name__)
 
 
+class InfluxLogConfig(TypedDict):
+    url: str
+    token: str
+    org: str
+    bucket: str
+
+
 class Application:
     """Class for initializing and shutting down a pyobs process."""
 
-    def __init__(self, config: str, log_file: Optional[str] = None, log_level: str = "info", **kwargs: Any):
+    def __init__(
+        self,
+        config: str,
+        log_file: Optional[str] = None,
+        log_level: str = "info",
+        influx_log: InfluxLogConfig | None = None,
+        **kwargs: Any,
+    ):
         """Initializes a pyobs application.
 
         Args:
             config: Name of config file.
             log_file: Name of log file, if any.
             log_level: Logging level.
-            log_rotate: Whether to rotate the log files.
+            influx_log: Log to influx DB.
         """
 
         # get config name without path and extension
@@ -53,6 +67,13 @@ class Application:
             # add log file handler
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
+
+        # influx handler?
+        if influx_log is not None:
+            from pyobs.utils.influxdb import InfluxHandler
+
+            influx_logging_handler = InfluxHandler(**influx_log)
+            handlers.append(influx_logging_handler)
 
         # basic setup
         logging.basicConfig(handlers=handlers, level=logging.getLevelName(log_level.upper()))

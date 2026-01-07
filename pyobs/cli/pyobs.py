@@ -22,6 +22,7 @@ def init_cli() -> argparse.ArgumentParser:
         "--log-level", type=str, choices=["critical", "error", "warning", "info", "debug"], default="info"
     )
     parser.add_argument("-l", "--log-file", type=str, help="file to write log into")
+    parser.add_argument("--influx-log", type=str, nargs=4, help="send to influx log: <host> <token> <org> <bucket>")
 
     # debug stuff
     parser.add_argument("--debug-time", type=str, help="Fake time at start for pyobs to use")
@@ -48,6 +49,15 @@ def parse_cli(parser: argparse.ArgumentParser) -> dict[str, Any]:
     # get full path of config
     if args.config:
         args.config = os.path.abspath(args.config)
+
+    # influx?
+    if args.influx_log:
+        args.influx_log = {
+            "url": args.influx_log[0],
+            "token": args.influx_log[1],
+            "org": args.influx_log[2],
+            "bucket": args.influx_log[3],
+        }
 
     # finished
     return vars(args)

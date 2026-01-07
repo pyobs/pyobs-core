@@ -6,8 +6,8 @@ import time
 log = logging.getLogger(__name__)
 
 
-MAX_QUIT_INTERVAL_SECONDS = 10
-MAX_QUIT_COUNT = 3
+MAX_FINISH_INTERVAL_SECONDS = 10
+MAX_Finish_COUNT = 3
 
 
 class BackgroundTask:
@@ -21,7 +21,7 @@ class BackgroundTask:
 
     async def _func_wrapper(self):
         start = time.time()
-        exit_count = 0
+        finish_count = 0
 
         while True:
             try:
@@ -33,9 +33,9 @@ class BackgroundTask:
                 log.exception(f"Exception in task {self._func.__name__}.")
 
             # check time since last exit
-            if time.time() - start < MAX_QUIT_INTERVAL_SECONDS:
-                exit_count += 1
-                if exit_count > MAX_QUIT_COUNT:
+            if time.time() - start < MAX_FINISH_INTERVAL_SECONDS:
+                finish_count += 1
+                if finish_count > MAX_Finish_COUNT:
                     log.error(f"Succession of failure for background task {self._func.__name__} too fast, quitting...")
                     if self._restart:
                         # todo: quit pyobs here
@@ -44,7 +44,7 @@ class BackgroundTask:
                         return
             else:
                 start = time.time()
-                exit_count = 0
+                finish_count = 0
 
             # don't restart?
             if self._restart:

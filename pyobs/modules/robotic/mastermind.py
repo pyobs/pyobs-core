@@ -126,7 +126,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             self._task = task
 
             # ETA
-            eta = now + self._task.duration * u.second
+            eta = now + self._task.duration
 
             # send event
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))

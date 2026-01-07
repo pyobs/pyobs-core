@@ -204,6 +204,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         return unique1, unique2
 
     async def _schedule_worker(self) -> None:
+
+        raise ValueError()
         # run forever
         while True:
             # need update?

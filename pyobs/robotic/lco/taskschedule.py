@@ -121,6 +121,9 @@ class LcoTaskSchedule(TaskSchedule):
                 await self.update_now()
                 error_logger.info("Successfully updated schedule.")
 
+            except asyncio.CancelledError:
+                return
+
             except asyncio.TimeoutError:
                 # do nothing
                 error_logger.warning("Could not retrieve schedule.")

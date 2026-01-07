@@ -296,7 +296,7 @@ class Object:
             Background task
         """
 
-        background_task = BackgroundTask(func, restart)
+        background_task = BackgroundTask(func, restart, self)
         self._background_tasks.append((background_task, autostart))
 
         return background_task

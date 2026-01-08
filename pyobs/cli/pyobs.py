@@ -12,9 +12,9 @@ from pyobs import version
 
 
 def load_config(section: str) -> dict[str, Any]:
-    config_file = os.path.expanduser(os.path.join("~", "config", "pyobs.yaml"))
+    config_file = os.path.expanduser(os.path.join("~", ".config", "pyobs.yaml"))
     if not os.path.exists(config_file):
-        config_file = os.path.expanduser(os.path.join("etc", "pyobs.yaml"))
+        config_file = os.path.expanduser(os.path.join("/", "etc", "pyobs.yaml"))
         if not os.path.exists(config_file):
             return {}
     with open(config_file, "r") as f:

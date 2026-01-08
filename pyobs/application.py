@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import logging.handlers
+import os
 import platform
 import signal
 import warnings
@@ -46,6 +47,7 @@ class Application:
 
         # get config name without path and extension
         self._config = config
+        config_base = os.path.splitext(os.path.basename(config))[0]
 
         # formatter for logging, and list of logging handlers
         formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
@@ -72,7 +74,7 @@ class Application:
         if influx_log is not None:
             from pyobs.utils.influxdb import InfluxHandler
 
-            influx_logging_handler = InfluxHandler(**influx_log)
+            influx_logging_handler = InfluxHandler(**influx_log, module=config_base)
             handlers.append(influx_logging_handler)
 
         # basic setup

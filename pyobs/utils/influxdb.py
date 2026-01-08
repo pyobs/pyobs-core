@@ -6,6 +6,8 @@ from typing import Any, Iterator, Tuple
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, WriteOptions
 
+from pyobs.utils.time import Time
+
 
 class InfluxHandler(logging.Handler):
     def __init__(  # pylint: disable=too-many-arguments
@@ -14,6 +16,7 @@ class InfluxHandler(logging.Handler):
         org: str,
         bucket: str,
         token: str,
+        module: str,
         measurement: str = "logging",
         write_options: WriteOptions = SYNCHRONOUS,
     ) -> None:
@@ -23,6 +26,7 @@ class InfluxHandler(logging.Handler):
         self.org = org
         self.bucket = bucket
         self.measurement = measurement
+        self.module = module
         super().__init__()
 
     @staticmethod
@@ -34,6 +38,8 @@ class InfluxHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         point = (
             Point(self.measurement)  # type: ignore
+            .tag("timestamp", Time.now().isot)
+            .tag("module", self.module)
             .tag("logger", record.name)
             .tag("level", record.levelname)
             .tag("level_number", record.levelno)

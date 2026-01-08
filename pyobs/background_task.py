@@ -24,7 +24,7 @@ class BackgroundTask:
     def start(self) -> None:
         self._task = asyncio.create_task(self._func_wrapper())
 
-    async def _func_wrapper(self):
+    async def _func_wrapper(self) -> None:
         start = time.time()
         finish_count = 0
 

@@ -10,6 +10,12 @@ if TYPE_CHECKING:
 
 from pyobs import version
 
+GLOBAL_CONFIG_KEYS = [
+    "log_level",
+    "influx_log",
+    "debug_time",
+]
+
 
 def load_config(section: str) -> dict[str, Any]:
     config_file = os.path.expanduser(os.path.join("~", ".config", "pyobs.yaml"))
@@ -19,7 +25,15 @@ def load_config(section: str) -> dict[str, Any]:
             return {}
     with open(config_file, "r") as f:
         cfg = yaml.safe_load(f)
-        return {} if cfg is None else cfg[section]
+        return {} if cfg is None else {k: v for k, v in cfg[section].items() if k in GLOBAL_CONFIG_KEYS}
+
+
+def load_env(config: dict[str, Any]) -> dict[str, Any]:
+    for key in GLOBAL_CONFIG_KEYS:
+        env_key = "PYOBS_" + key.upper()
+        if env_key in os.environ:
+            config[key] = os.environ[env_key]
+    return config
 
 
 def init_cli(config: dict[str, Any]) -> argparse.ArgumentParser:

@@ -1,6 +1,6 @@
 from typing import Any
 
-from PyQt5 import QtWidgets, QtGui
+from PySide6 import QtWidgets, QtGui
 import logging
 
 

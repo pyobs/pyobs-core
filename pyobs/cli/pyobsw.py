@@ -1,16 +1,31 @@
-from .pyobs import init_cli, parse_cli, run
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pyobs.application import Application
+
+from .pyobs import PyobsCLI
 
 
-def main() -> None:
-    from pyobs.application import GuiApplication
+class PyobsWinCLI(PyobsCLI):
+    """Class for initializing and running pyobs CLI."""
 
-    # init argument parsing and parse it
-    parser = init_cli()
-    args = parse_cli(parser)
+    # name of section in configuration file
+    CONFIG_SECTION = "pyobs"
 
-    # run app
-    run(app_class=GuiApplication, **args)
+    # list of parameters that can be defined in the config file
+    GLOBAL_CONFIG_KEYS = [
+        "log_level",
+        "influx_log",
+        "debug_time",
+    ]
+
+    def application(self, **kwargs: Any) -> Application:
+        from pyobs.application import GuiApplication
+
+        return GuiApplication(**kwargs)
 
 
 if __name__ == "__main__":
-    main()
+    cli = PyobsWinCLI()
+    cli()

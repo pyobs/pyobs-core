@@ -47,14 +47,14 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, time: Time) -> Task | None:
-        """Returns the active task at the given time.
+    async def get_task(self, time: Time) -> ScheduledTask | None:
+        """Returns the active scheduled task at the given time.
 
         Args:
             time: Time to return task for.
 
         Returns:
-            Task at the given time.
+            Scheduled task at the given time.
         """
         ...
 

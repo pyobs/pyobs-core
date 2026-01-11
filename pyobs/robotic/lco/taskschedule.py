@@ -7,7 +7,7 @@ import aiohttp as aiohttp
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task, ScheduledTask
+from pyobs.robotic.task import ScheduledTask
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
@@ -259,21 +259,21 @@ class LcoTaskSchedule(TaskSchedule):
                 # finished
                 return scheduled_tasks
 
-    async def get_task(self, time: Time) -> Task | None:
-        """Returns the active task at the given time.
+    async def get_task(self, time: Time) -> ScheduledTask | None:
+        """Returns the active scheduled task at the given time.
 
         Args:
             time: Time to return task for.
 
         Returns:
-            Task at the given time or None.
+            Scheduled task at the given time.
         """
 
         # loop all tasks
         for scheduled_task in self._scheduled_tasks:
             # running now?
             if scheduled_task.start <= time < scheduled_task.end and not scheduled_task.task.is_finished():
-                return scheduled_task.task
+                return scheduled_task
 
         # nothing found
         return None

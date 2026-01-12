@@ -115,8 +115,8 @@ class Scheduler(Module, IStartStop, IRunnable):
             t = await self._task_archive.last_changed()
             if last_change is None or last_change < t:
                 try:
-                    await self._update_schedule()
                     last_change = t
+                    await self._update_schedule()
                 except:
                     log.exception("Something went wrong when updating schedule.")
 
@@ -125,6 +125,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def _update_schedule(self) -> None:
         # get schedulable tasks and sort them
+        log.info("Found update in schedulable block, downloading them...")
         tasks = sorted(
             await self._task_archive.get_schedulable_tasks(),
             key=lambda x: json.dumps(x.id, sort_keys=True),

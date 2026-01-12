@@ -61,6 +61,9 @@ class AstroplanScheduler(TaskScheduler):
             for scheduled_task in scheduled_tasks:
                 yield scheduled_task
 
+            # clean up
+            del blocks, constraints, scheduled_blocks, scheduled_tasks
+
     async def abort(self) -> None:
         self._abort.set()
 
@@ -155,6 +158,9 @@ class AstroplanScheduler(TaskScheduler):
 
         # put scheduled blocks in queue
         scheduled_blocks.put(schedule.scheduled_blocks)
+
+        # clean up
+        del transitioner, scheduler, schedule
 
     async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> list[ScheduledTask]:
         from pyobs.robotic import ScheduledTask

@@ -249,6 +249,9 @@ class Scheduler(Module, IStartStop, IRunnable):
                     log.info("Finished calculating schedule for %d block(s):", len(scheduled_tasks))
                     self._log_scheduled_task(scheduled_tasks)
 
+                    # clean up
+                    del scheduled_tasks
+
                     # set new safety_time as duration + 20%
                     self._safety_time = (time.time() - start_time) * 1.2 * u.second
 

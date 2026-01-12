@@ -125,7 +125,6 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     async def _update_schedule(self) -> None:
         # get schedulable tasks and sort them
-        log.info("Found update in schedulable tasks, downloading them...")
         tasks = sorted(
             await self._task_archive.get_schedulable_tasks(),
             key=lambda x: json.dumps(x.id, sort_keys=True),

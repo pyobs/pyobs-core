@@ -24,6 +24,8 @@ dependencies = [
     "aiohttp>=3.11.18,<4",
     "colour>=0.1.5,<0.2",
     "dacite>=1.9.2",
+    "pydantic>=2.12.5",
+    "astropydantic>=0.0.5",
 ]
 
 [project.optional-dependencies]

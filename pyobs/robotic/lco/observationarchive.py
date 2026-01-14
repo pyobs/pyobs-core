@@ -27,7 +27,7 @@ class LcoObservationArchive(ObservationArchive):
         # portal
         self._portal = Portal(url, token)
 
-    async def observations(self, task: Task) -> list[Observation]:
+    async def observations_for_task(self, task: Task) -> list[Observation]:
         """Returns list of observations for the given task.
 
         Args:

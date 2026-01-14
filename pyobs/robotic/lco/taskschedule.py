@@ -269,6 +269,9 @@ class LcoTaskSchedule(TaskSchedule):
             Scheduled task at the given time.
         """
 
+        # update schedule
+        await self.update_now()
+
         # loop all tasks
         for scheduled_task in self._scheduled_tasks:
             # running now?

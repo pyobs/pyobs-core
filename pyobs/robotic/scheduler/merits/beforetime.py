@@ -15,7 +15,7 @@ class BeforeTimeMerit(Merit):
         super().__init__(**kwargs)
         self._before = before
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return 1.0 if time <= self._before else 0.0
 
 

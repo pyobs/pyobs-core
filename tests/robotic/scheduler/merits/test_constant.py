@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 
@@ -8,11 +9,12 @@ from ..task import TestTask
 from astropy.time import Time
 
 
-def test_constant_merit() -> None:
+@pytest.mark.asyncio
+async def test_constant_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
     task = TestTask(1, "1", 100)
 
     merit = ConstantMerit(10)
-    assert merit(time, task, data) == 10
+    assert await merit(time, task, data) == 10

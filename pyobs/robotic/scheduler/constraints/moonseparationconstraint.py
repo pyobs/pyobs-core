@@ -21,7 +21,7 @@ class MoonSeparationConstraint(Constraint):
     def to_astroplan(self) -> astroplan.MoonSeparationConstraint:
         return astroplan.MoonSeparationConstraint(min=self.min_distance * u.deg)
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
         target = task.target
         if target is None:
             return True

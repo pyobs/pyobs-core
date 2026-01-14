@@ -21,7 +21,7 @@ class TimeWindowMerit(Merit):
         self._windows = windows
         self._inverse = inverse
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         # is time in any of the windows?
         in_window = False
         for window in self._windows:

@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 from astropy.time import Time, TimeDelta
@@ -10,7 +10,8 @@ from pyobs.robotic.scheduler.merits import TimeWindowMerit
 from ..task import TestTask
 
 
-def test_timewindow_merit() -> None:
+@pytest.mark.asyncio
+async def test_timewindow_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
@@ -19,11 +20,11 @@ def test_timewindow_merit() -> None:
     task = TestTask(1, "1", 100)
 
     merit = TimeWindowMerit([{"start": time - min5, "end": time + min5}, {"start": time2 - min5, "end": time2 + min5}])
-    assert merit(time, task, data) == 1.0
-    assert merit(time + min5 + min5, task, data) == 0.0
+    assert await merit(time, task, data) == 1.0
+    assert await merit(time + min5 + min5, task, data) == 0.0
 
     merit = TimeWindowMerit(
         [{"start": time - min5, "end": time + min5}, {"start": time2 - min5, "end": time2 + min5}], inverse=True
     )
-    assert merit(time, task, data) == 0.0
-    assert merit(time + min5 + min5, task, data) == 1.0
+    assert await merit(time, task, data) == 0.0
+    assert await merit(time + min5 + min5, task, data) == 1.0

@@ -19,7 +19,7 @@ class MoonIlluminationConstraint(Constraint):
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:
         return astroplan.MoonIlluminationConstraint(max=self.max_phase)
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
         moon_illumination = float(data.observer.moon_illumination(time))
         return moon_illumination <= self.max_phase
 

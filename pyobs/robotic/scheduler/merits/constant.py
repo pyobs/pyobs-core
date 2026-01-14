@@ -15,7 +15,7 @@ class ConstantMerit(Merit):
         super().__init__(**kwargs)
         self._merit = merit
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return self._merit
 
 

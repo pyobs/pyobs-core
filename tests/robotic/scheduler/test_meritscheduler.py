@@ -17,7 +17,8 @@ from pyobs.utils.time import Time
 from .task import TestTask
 
 
-def test_evaluate_merits() -> None:
+@pytest.mark.asyncio
+async def test_evaluate_merits() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -27,7 +28,7 @@ def test_evaluate_merits() -> None:
         TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
         TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    merits = evaluate_constraints_and_merits(tasks, start, end, data)
+    merits = await evaluate_constraints_and_merits(tasks, start, end, data)
 
     assert merits == [10.0, 5.0]
 
@@ -44,7 +45,7 @@ async def test_next_best_task() -> None:
         TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
         TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    best, merit = find_next_best_task(tasks, start, end, data)
+    best, merit = await find_next_best_task(tasks, start, end, data)
     assert best == tasks[0]
     assert merit == 10.0
 
@@ -63,12 +64,13 @@ async def test_next_best_task() -> None:
         ),
         TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    best, merit = find_next_best_task(tasks, start, end, data)
+    best, merit = await find_next_best_task(tasks, start, end, data)
     assert best == tasks[1]
     assert merit == 5.0
 
 
-def test_check_for_better_task() -> None:
+@pytest.mark.asyncio
+async def test_check_for_better_task() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -89,7 +91,7 @@ def test_check_for_better_task() -> None:
         ),
         TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    better, time, merit = check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
+    better, time, merit = await check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
     assert time >= start + TimeDelta(1000 * u.second)
     assert merit == 10.0

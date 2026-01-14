@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 
@@ -8,7 +9,8 @@ from ..task import TestTask
 from astropy.time import Time
 
 
-def test_random_merit() -> None:
+@pytest.mark.asyncio
+async def test_random_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
@@ -16,4 +18,4 @@ def test_random_merit() -> None:
 
     # let somebody have fun when this fails
     merit = RandomMerit()
-    assert -100.0 <= merit(time, task, data) <= 100.0
+    assert -100.0 <= await merit(time, task, data) <= 100.0

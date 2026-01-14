@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation, SkyCoord
 
@@ -9,7 +10,8 @@ from ..task import TestTask
 from astropy.time import Time
 
 
-def test_time_constraint() -> None:
+@pytest.mark.asyncio
+async def test_time_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     task = TestTask(1, "Canopus", 100)
@@ -18,13 +20,13 @@ def test_time_constraint() -> None:
     constraint = TimeConstraint(Time("2025-11-03T20:00:00", scale="utc"), Time("2025-11-03T23:00:00", scale="utc"))
 
     time = Time("2025-11-03T19:30:00", scale="utc")
-    assert constraint(time, task, data) is False
+    assert await constraint(time, task, data) is False
 
     time = Time("2025-11-03T20:30:00", scale="utc")
-    assert constraint(time, task, data) is True
+    assert await constraint(time, task, data) is True
 
     time = Time("2025-11-03T22:30:00", scale="utc")
-    assert constraint(time, task, data) is True
+    assert await constraint(time, task, data) is True
 
     time = Time("2025-11-03T23:30:00", scale="utc")
-    assert constraint(time, task, data) is False
+    assert await constraint(time, task, data) is False

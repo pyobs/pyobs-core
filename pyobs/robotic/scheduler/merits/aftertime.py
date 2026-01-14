@@ -15,7 +15,7 @@ class AfterTimeMerit(Merit):
         super().__init__(**kwargs)
         self._after = after
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return 1.0 if time >= self._after else 0.0
 
 

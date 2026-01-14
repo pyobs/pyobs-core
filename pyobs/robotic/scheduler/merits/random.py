@@ -16,7 +16,7 @@ class RandomMerit(Merit):
         super().__init__(**kwargs)
         self._std = std
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return np.random.normal(0.0, self._std)
 
 

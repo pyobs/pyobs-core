@@ -12,7 +12,7 @@ class Merit(metaclass=ABCMeta):
     """Merit class."""
 
     @abstractmethod
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> float: ...
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> float: ...
 
 
 __all__ = ["Merit"]

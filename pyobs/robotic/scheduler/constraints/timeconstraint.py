@@ -20,7 +20,7 @@ class TimeConstraint(Constraint):
     def to_astroplan(self) -> astroplan.TimeConstraint:
         return astroplan.TimeConstraint(min=self.start, max=self.end)
 
-    def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
         return bool(self.start <= time <= self.end)
 
 

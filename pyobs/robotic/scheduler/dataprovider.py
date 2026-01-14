@@ -1,4 +1,5 @@
 from __future__ import annotations
+import datetime
 from dataclasses import dataclass
 from functools import cache
 from astroplan import Observer
@@ -18,7 +19,7 @@ class DataProvider:
 
     def __init__(self, observer: Observer, archive: ObservationArchiveEvolution | None = None):
         self.observer = observer
-        self.archive = archive if archive else ObservationArchiveEvolution()
+        self.archive = archive if archive else ObservationArchiveEvolution(observer)
 
     @cache
     def last_sunset(self, time: Time) -> Time:
@@ -26,6 +27,12 @@ class DataProvider:
 
         # get last sunset
         return self.observer.sun_set_time(time, which="previous")
+
+    @cache
+    def night(self, time: Time) -> datetime.date:
+        """Returns the time of the last sunset."""
+        sunset = self.last_sunset(time)
+        return sunset.to_datetime().date()  # type: ignore
 
 
 __all__ = ["DataProvider"]

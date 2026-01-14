@@ -92,15 +92,17 @@ async def schedule_first_in_interval(
     tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
 ) -> AsyncIterator[ScheduledTask]:
     # find current best task
-    task, merit = find_next_best_task(tasks, start, end, data)
+    task, merit = await find_next_best_task(tasks, start, end, data)
 
     if task is not None and merit is not None:
         # check, whether there is another task within its duration that  will have a higher merit
-        better_task, better_time, better_merit = check_for_better_task(task, merit, tasks, start, end, data, step=step)
+        better_task, better_time, better_merit = await check_for_better_task(
+            task, merit, tasks, start, end, data, step=step
+        )
 
         if better_task is not None and better_time is not None and better_merit is not None:
             # can we maybe postpone the better task to run both?
-            postpone_time = can_postpone_task(task, better_task, better_merit, start, end, data)
+            postpone_time = await can_postpone_task(task, better_task, better_merit, start, end, data)
             if postpone_time is not None:
                 # yes, we can! schedule both
                 yield create_scheduled_task(task, start)
@@ -122,7 +124,7 @@ def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
     return ScheduledTask(task, time, time + TimeDelta(task.duration))
 
 
-def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider) -> bool:
+async def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider) -> bool:
     """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.
 
     Args:
@@ -135,12 +137,12 @@ def evaluate_constraints(task: Task, start: Time, end: Time, data: DataProvider)
         True if all constraints evaluate True, False otherwise.
     """
     for constraint in task.constraints:
-        if not constraint(start, task, data):
+        if not await constraint(start, task, data):
             return False
     return True
 
 
-def evaluate_merits(task: Task, start: Time, end: Time, data: DataProvider) -> float:
+async def evaluate_merits(task: Task, start: Time, end: Time, data: DataProvider) -> float:
     """Loop all merits, evaluate them and multiply the results. If any evaluates to 0, abort and return 0.
 
     Args:
@@ -156,7 +158,7 @@ def evaluate_merits(task: Task, start: Time, end: Time, data: DataProvider) -> f
     # loop merits
     total_merit = 1.0
     for merit in task.merits:
-        total_merit *= merit(start, task, data)
+        total_merit *= await merit(start, task, data)
 
         # if zero, abort and return it
         if total_merit == 0.0:
@@ -166,7 +168,7 @@ def evaluate_merits(task: Task, start: Time, end: Time, data: DataProvider) -> f
     return total_merit
 
 
-def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> list[float]:
+async def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> list[float]:
     # evaluate all merit functions at given time
     merits: list[float] = []
     for task in tasks:
@@ -182,7 +184,7 @@ def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, d
                 merit = 0.0
 
             else:
-                merit = evaluate_merits(task, start, end, data)
+                merit = await evaluate_merits(task, start, end, data)
 
         else:
             # some constraint failed...
@@ -194,9 +196,11 @@ def evaluate_constraints_and_merits(tasks: list[Task], start: Time, end: Time, d
     return merits
 
 
-def find_next_best_task(tasks: list[Task], start: Time, end: Time, data: DataProvider) -> tuple[Task | None, float]:
+async def find_next_best_task(
+    tasks: list[Task], start: Time, end: Time, data: DataProvider
+) -> tuple[Task | None, float]:
     # evaluate all merit functions at given time
-    merits = evaluate_constraints_and_merits(tasks, start, end, data)
+    merits = await evaluate_constraints_and_merits(tasks, start, end, data)
 
     # find max one
     idx = np.argmax(merits)
@@ -206,12 +210,12 @@ def find_next_best_task(tasks: list[Task], start: Time, end: Time, data: DataPro
     return None if merits[idx] == 0.0 else task, merits[idx]
 
 
-def check_for_better_task(
+async def check_for_better_task(
     task: Task, merit: float, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
 ) -> tuple[Task | None, Time | None, float | None]:
     t = start + TimeDelta(step * u.second)
     while t < start + TimeDelta(task.duration):
-        merits = evaluate_constraints_and_merits(tasks, t, end, data)
+        merits = await evaluate_constraints_and_merits(tasks, t, end, data)
         for i, m in enumerate(merits):
             if m > merit:
                 return tasks[i], t, m
@@ -219,14 +223,14 @@ def check_for_better_task(
     return None, None, None
 
 
-def can_postpone_task(
+async def can_postpone_task(
     task: Task, better_task: Task, better_merit: float, start: Time, end: Time, data: DataProvider
 ) -> Time | None:
     # new start time of better_task would be after the execution of task
     better_start: Time = start + TimeDelta(task.duration)
 
     # evaluate merit of better_task at new start time
-    merit = evaluate_constraints_and_merits([better_task], better_start, end, data)[0]
+    merit = (await evaluate_constraints_and_merits([better_task], better_start, end, data))[0]
 
     # if it got better, return it, otherwise return Nones
     if merit >= better_merit:

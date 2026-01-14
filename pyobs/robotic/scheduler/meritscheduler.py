@@ -49,7 +49,7 @@ class MeritScheduler(TaskScheduler):
         self._abort: asyncio.Event = asyncio.Event()
 
     async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
-        archive = ObservationArchiveEvolution(self._obs_archive)
+        archive = ObservationArchiveEvolution(self.observer, self._obs_archive)
         data = DataProvider(self.observer, archive)
 
         # schedule from start to end

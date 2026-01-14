@@ -12,6 +12,8 @@ from . import DataProvider
 from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
 from pyobs.robotic import ScheduledTask
+from ..observationarchive import ObservationArchive
+from .observationarchiveevolution import ObservationArchiveEvolution
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -27,6 +29,7 @@ class MeritScheduler(TaskScheduler):
     def __init__(
         self,
         twilight: str = "astronomical",
+        observation_archive: ObservationArchive | dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
@@ -36,15 +39,25 @@ class MeritScheduler(TaskScheduler):
         """
         Object.__init__(self, **kwargs)
 
+        # get obs archive
+        self._obs_archive = (
+            self.add_child_object(observation_archive, ObservationArchive) if observation_archive is not None else None
+        )
+
         # store
         self._twilight = twilight
         self._abort: asyncio.Event = asyncio.Event()
 
     async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
-        data = DataProvider(self.observer)
+        archive = ObservationArchiveEvolution(self._obs_archive)
+        data = DataProvider(self.observer, archive)
 
-        # schedule from
+        # schedule from start to end
         async for task in schedule_in_interval(tasks, start, end, data):
+            # evolve archive
+            await data.archive.evolve(task)
+
+            # yield to caller
             yield task
 
     async def abort(self) -> None:

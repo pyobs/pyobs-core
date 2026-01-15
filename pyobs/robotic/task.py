@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 from astropy.units import Quantity
 import astropy.units as u
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
     from pyobs.robotic.scheduler.merits import Merit
 
 
-class Task(Object, metaclass=ABCMeta):
+class Task(Object):
 
     def __init__(
         self,
@@ -81,26 +80,23 @@ class Task(Object, metaclass=ABCMeta):
         """Returns target."""
         return self._target
 
-    @abstractmethod
     async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
             True, if task can run now.
         """
-        ...
+        return True
 
     @property
-    @abstractmethod
     def can_start_late(self) -> bool:
         """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.
 
         Returns:
             True, if task can start late.
         """
-        ...
+        return False
 
-    @abstractmethod
     async def run(
         self,
         task_runner: TaskRunner,
@@ -111,10 +107,9 @@ class Task(Object, metaclass=ABCMeta):
         """Run a task"""
         ...
 
-    @abstractmethod
     def is_finished(self) -> bool:
         """Whether task is finished."""
-        ...
+        return False
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.

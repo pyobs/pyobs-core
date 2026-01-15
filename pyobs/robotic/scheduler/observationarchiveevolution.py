@@ -8,7 +8,7 @@ from pyobs.robotic.observation import ObservationState, ObservationList
 from ...utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ScheduledTask, Task, Observation
+    from pyobs.robotic import ScheduledTask, Task
     from pyobs.robotic.observationarchive import ObservationArchive
 
 
@@ -20,6 +20,8 @@ class ObservationArchiveEvolution:
         self._observer = observer
 
     async def evolve(self, scheduled_task: ScheduledTask) -> None:
+        from pyobs.robotic import Observation
+
         obs = Observation(
             id=str(uuid4()),
             task_id=scheduled_task.task.id,

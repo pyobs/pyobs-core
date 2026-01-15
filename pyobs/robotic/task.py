@@ -151,23 +151,35 @@ class ScheduledTask:
         """End time for task"""
         return self._end
 
-    def __eq__(self, other: ScheduledTask) -> bool:
-        return self.task.id == other.task.id and self.start == other.start and self.end == other.end
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return self.task.id == other.task.id and self.start == other.start and self.end == other.end
+        return super().__eq__(other)
 
-    def __ne__(self, other: ScheduledTask) -> bool:
-        return self.task.id != other.task.id or self.start != other.start or self.end != other.end
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return self.task.id != other.task.id or self.start != other.start or self.end != other.end
+        return super().__ne__(other)
 
-    def __lt__(self, other: ScheduledTask) -> bool:
-        return self.start < other.start
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return any(self.start < other.start)
+        raise NotImplementedError
 
-    def __gt__(self, other: ScheduledTask) -> bool:
-        return self.start > other.start
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return any(self.start > other.start)
+        raise NotImplementedError
 
-    def __le__(self, other: ScheduledTask) -> bool:
-        return self.start <= other.start
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return any(self.start <= other.start)
+        raise NotImplementedError
 
-    def __ge__(self, other: ScheduledTask) -> bool:
-        return self.start >= other.start
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, ScheduledTask):
+            return any(self.start >= other.start)
+        raise NotImplementedError
 
 
 __all__ = ["Task", "ScheduledTask"]

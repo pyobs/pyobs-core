@@ -24,7 +24,7 @@ class PerNightMerit(Merit):
         observations = observations.filter(after=data.last_sunset(time), state=ObservationState.COMPLETED)
 
         # compare to count
-        return len(observations) < self._count
+        return 1.0 if len(observations) < self._count else 0.0
 
 
 __all__ = ["PerNightMerit"]

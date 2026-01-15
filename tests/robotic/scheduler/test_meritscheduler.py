@@ -14,7 +14,6 @@ from pyobs.robotic.scheduler.meritscheduler import (
     schedule_first_in_interval,
 )
 from pyobs.utils.time import Time
-from .task import TestTask
 
 
 @pytest.mark.asyncio
@@ -25,8 +24,8 @@ async def test_evaluate_merits() -> None:
     end = start + TimeDelta(5000 * u.second)
 
     tasks: list[Task] = [
-        TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
-        TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
+        Task(1, "1", 100, merits=[ConstantMerit(10)]),
+        Task(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
     merits = await evaluate_constraints_and_merits(tasks, start, end, data)
 
@@ -42,8 +41,8 @@ async def test_next_best_task() -> None:
 
     # two constant merits
     tasks: list[Task] = [
-        TestTask(1, "1", 100, merits=[ConstantMerit(10)]),
-        TestTask(1, "1", 100, merits=[ConstantMerit(5)]),
+        Task(1, "1", 100, merits=[ConstantMerit(10)]),
+        Task(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
     best, merit = await find_next_best_task(tasks, start, end, data)
     assert best == tasks[0]
@@ -51,7 +50,7 @@ async def test_next_best_task() -> None:
 
     # one merit will increase and beat the first best
     tasks = [
-        TestTask(
+        Task(
             1,
             "1",
             4000,
@@ -62,7 +61,7 @@ async def test_next_best_task() -> None:
                 ),
             ],
         ),
-        TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
+        Task(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
     best, merit = await find_next_best_task(tasks, start, end, data)
     assert best == tasks[1]
@@ -78,7 +77,7 @@ async def test_check_for_better_task() -> None:
 
     # at the beginning, tasks[1] will be better (5), but after 1000 seconds tasks[0] will beat it (10)
     tasks: list[Task] = [
-        TestTask(
+        Task(
             1,
             "1",
             4000,
@@ -89,7 +88,7 @@ async def test_check_for_better_task() -> None:
                 ),
             ],
         ),
-        TestTask(1, "1", 4000, merits=[ConstantMerit(5)]),
+        Task(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
     better, time, merit = await check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
@@ -110,9 +109,9 @@ async def test_fill_for_better_task() -> None:
     # then the scheduler tries to fill the hole and should schedule task 3 first
     # task 2 will only be scheduled afterward
     tasks: list[Task] = [
-        TestTask(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
-        TestTask(2, "2", 1800, merits=[ConstantMerit(5)]),
-        TestTask(3, "3", 300, merits=[ConstantMerit(1)]),
+        Task(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
+        Task(2, "2", 1800, merits=[ConstantMerit(5)]),
+        Task(3, "3", 300, merits=[ConstantMerit(1)]),
     ]
 
     # note that task 1 will not be scheduled exactly at its start time
@@ -140,9 +139,9 @@ async def test_postpone_task() -> None:
     # in contrast to test_fill_for_better_task the after_end time here is longer, so the scheduler should just
     # postpone task 1 by a bit, then schedule task 2 afterward
     tasks: list[Task] = [
-        TestTask(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
-        TestTask(2, "2", 1800, merits=[ConstantMerit(5)]),
-        TestTask(3, "3", 300, merits=[ConstantMerit(1)]),
+        Task(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
+        Task(2, "2", 1800, merits=[ConstantMerit(5)]),
+        Task(3, "3", 300, merits=[ConstantMerit(1)]),
     ]
     schedule = schedule_first_in_interval(tasks, start, end, data, step=10)
 

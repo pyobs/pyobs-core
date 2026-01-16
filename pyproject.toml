@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.36.1"
+version = "1.37.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -24,6 +24,7 @@ dependencies = [
     "aiohttp>=3.11.18,<4",
     "colour>=0.1.5,<0.2",
     "dacite>=1.9.2",
+    "influxdb-client>=1.49.0",
     "pydantic>=2.12.5",
     "astropydantic>=0.0.5",
 ]

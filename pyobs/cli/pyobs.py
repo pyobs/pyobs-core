@@ -87,7 +87,7 @@ class PyobsCLI(CLI):
         else:
             self.application(**self._config).run()
 
-    def _start_daemon(self, pid_file: str) -> None:
+    def _start_daemon(self, pid_file: str, **kwargs: Any) -> None:
         """Start process as a daemon.
 
         Args:

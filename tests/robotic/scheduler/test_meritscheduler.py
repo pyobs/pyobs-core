@@ -7,17 +7,13 @@ import astropy.units as u
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
-from pyobs.robotic.scheduler.meritscheduler import (
-    find_next_best_task,
-    evaluate_constraints_and_merits,
-    check_for_better_task,
-    schedule_first_in_interval,
-)
+from pyobs.robotic.scheduler.meritscheduler import MeritScheduler
 from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio
 async def test_evaluate_merits() -> None:
+    scheduler = MeritScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -27,13 +23,14 @@ async def test_evaluate_merits() -> None:
         Task(1, "1", 100, merits=[ConstantMerit(10)]),
         Task(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    merits = await evaluate_constraints_and_merits(tasks, start, end, data)
+    merits = await scheduler.evaluate_constraints_and_merits(tasks, start, end, data)
 
     assert merits == [10.0, 5.0]
 
 
 @pytest.mark.asyncio
 async def test_next_best_task() -> None:
+    scheduler = MeritScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -44,7 +41,7 @@ async def test_next_best_task() -> None:
         Task(1, "1", 100, merits=[ConstantMerit(10)]),
         Task(1, "1", 100, merits=[ConstantMerit(5)]),
     ]
-    best, merit = await find_next_best_task(tasks, start, end, data)
+    best, merit = await scheduler.find_next_best_task(tasks, start, end, data)
     assert best == tasks[0]
     assert merit == 10.0
 
@@ -63,13 +60,14 @@ async def test_next_best_task() -> None:
         ),
         Task(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    best, merit = await find_next_best_task(tasks, start, end, data)
+    best, merit = await scheduler.find_next_best_task(tasks, start, end, data)
     assert best == tasks[1]
     assert merit == 5.0
 
 
 @pytest.mark.asyncio
 async def test_check_for_better_task() -> None:
+    scheduler = MeritScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -90,7 +88,7 @@ async def test_check_for_better_task() -> None:
         ),
         Task(1, "1", 4000, merits=[ConstantMerit(5)]),
     ]
-    better, time, merit = await check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
+    better, time, merit = await scheduler.check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
     assert time >= start + TimeDelta(1000 * u.second)
     assert merit == 10.0
@@ -98,6 +96,7 @@ async def test_check_for_better_task() -> None:
 
 @pytest.mark.asyncio
 async def test_fill_for_better_task() -> None:
+    scheduler = MeritScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")
@@ -115,7 +114,7 @@ async def test_fill_for_better_task() -> None:
     ]
 
     # note that task 1 will not be scheduled exactly at its start time
-    schedule = schedule_first_in_interval(tasks, start, end, data, step=10)
+    schedule = scheduler.schedule_first_in_interval(tasks, start, end, data, step=10)
     scheduled_task = await anext(schedule)
     assert scheduled_task.task.id == 1
     assert scheduled_task.start >= after_start
@@ -128,6 +127,7 @@ async def test_fill_for_better_task() -> None:
 
 @pytest.mark.asyncio
 async def test_postpone_task() -> None:
+    scheduler = MeritScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")
@@ -143,7 +143,7 @@ async def test_postpone_task() -> None:
         Task(2, "2", 1800, merits=[ConstantMerit(5)]),
         Task(3, "3", 300, merits=[ConstantMerit(1)]),
     ]
-    schedule = schedule_first_in_interval(tasks, start, end, data, step=10)
+    schedule = scheduler.schedule_first_in_interval(tasks, start, end, data, step=10)
 
     # task 2 will be scheduled exactly at its start time
     scheduled_task = await anext(schedule)
@@ -157,7 +157,7 @@ async def test_postpone_task() -> None:
 
     # let's try this again with a sorted list
     schedule2 = sorted(
-        [i async for i in schedule_first_in_interval(tasks, start, end, data, step=10)], key=lambda x: x.start
+        [i async for i in scheduler.schedule_first_in_interval(tasks, start, end, data, step=10)], key=lambda x: x.start
     )
     assert schedule2[0].task.id == 2
     assert schedule2[1].task.id == 1

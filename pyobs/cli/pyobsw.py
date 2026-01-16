@@ -26,6 +26,10 @@ class PyobsWinCLI(PyobsCLI):
         return GuiApplication(**kwargs)
 
 
-if __name__ == "__main__":
+def main() -> None:
     cli = PyobsWinCLI()
     cli()
+
+
+if __name__ == "__main__":
+    main()

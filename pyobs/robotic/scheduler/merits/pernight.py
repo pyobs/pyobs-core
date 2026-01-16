@@ -13,7 +13,7 @@ class PerNightMerit(Merit):
     """Merit functions for defining a max number of observations per night."""
 
     def __init__(self, count: int, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._count = count
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

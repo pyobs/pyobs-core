@@ -13,7 +13,7 @@ class TimeConstraint(Constraint):
     """Time constraint."""
 
     def __init__(self, start: Time, end: Time, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self.start = start
         self.end = end
 

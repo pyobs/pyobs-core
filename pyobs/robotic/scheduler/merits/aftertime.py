@@ -12,7 +12,7 @@ class AfterTimeMerit(Merit):
     """Merit function that gives 1 after a given time."""
 
     def __init__(self, after: Time, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._after = after
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

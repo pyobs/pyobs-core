@@ -13,7 +13,7 @@ class AirmassConstraint(Constraint):
     """Airmass constraint."""
 
     def __init__(self, max_airmass: float, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self.max_airmass = max_airmass
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:

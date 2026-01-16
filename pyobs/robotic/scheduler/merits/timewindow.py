@@ -17,7 +17,7 @@ class TimeWindowMerit(Merit):
     """Merit function that uses time windows."""
 
     def __init__(self, windows: list[TimeWindow], inverse: bool = False, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._windows = windows
         self._inverse = inverse
 

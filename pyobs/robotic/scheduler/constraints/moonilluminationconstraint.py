@@ -13,7 +13,7 @@ class MoonIlluminationConstraint(Constraint):
     """Moon illumination constraint."""
 
     def __init__(self, max_phase: float, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self.max_phase = max_phase
 
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:

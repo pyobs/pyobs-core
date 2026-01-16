@@ -12,7 +12,7 @@ class BeforeTimeMerit(Merit):
     """Merit function that gives 1 before a given time."""
 
     def __init__(self, before: Time, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._before = before
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

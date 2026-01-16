@@ -13,7 +13,7 @@ class FollowMerit(Merit):
     """Merit functions that only returns after another given task has run this night."""
 
     def __init__(self, task_id: Any, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._task_id = task_id
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

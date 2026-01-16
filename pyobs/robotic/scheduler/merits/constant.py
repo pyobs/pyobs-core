@@ -12,7 +12,7 @@ class ConstantMerit(Merit):
     """Merit function that returns a constant value."""
 
     def __init__(self, merit: float, **kwargs: Any):
-        super().__init__(**kwargs)
+        super().__init__()
         self._merit = merit
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

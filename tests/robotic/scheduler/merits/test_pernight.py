@@ -27,7 +27,7 @@ async def test_pernight_merit() -> None:
     assert await merit(time, task, data) == 1.0
 
     await archive.evolve(scheduled_task)
-    assert await merit(time, task, data) == 1.0
+    assert await merit(time, task, data) == 0.0
 
     await archive.evolve(scheduled_task)
     assert await merit(time, task, data) == 0.0

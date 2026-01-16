@@ -228,6 +228,7 @@ class LcoTaskSchedule(TaskSchedule):
         url = urljoin(self._url, "/api/observations/")
         params = {
             "site": self._site,
+            "telescope": self._telescope,
             "end_after": end_after.isot,
             "start_before": start_before.isot,
             "state": states,

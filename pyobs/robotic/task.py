@@ -158,22 +158,22 @@ class ScheduledTask:
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, ScheduledTask):
-            return any(self.start < other.start)
+            return self.start < other.start
         raise NotImplementedError
 
     def __gt__(self, other: object) -> bool:
         if isinstance(other, ScheduledTask):
-            return any(self.start > other.start)
+            return self.start > other.start
         raise NotImplementedError
 
     def __le__(self, other: object) -> bool:
         if isinstance(other, ScheduledTask):
-            return any(self.start <= other.start)
+            return self.start <= other.start
         raise NotImplementedError
 
     def __ge__(self, other: object) -> bool:
         if isinstance(other, ScheduledTask):
-            return any(self.start >= other.start)
+            return self.start >= other.start
         raise NotImplementedError
 
 

@@ -37,11 +37,6 @@ class Comm:
         self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._closing = asyncio.Event()
 
-        # add handler to global logger
-        handler = CommLoggingHandler(self)
-        handler.setLevel(logging.INFO)
-        logging.getLogger().addHandler(handler)
-
     @property
     def module(self) -> Module:
         """The module that this Comm object is attached to."""
@@ -62,6 +57,11 @@ class Comm:
 
     async def open(self) -> None:
         """Open module."""
+
+        # add handler to global logger
+        handler = CommLoggingHandler(self)
+        handler.setLevel(logging.INFO)
+        logging.getLogger().addHandler(handler)
 
         # start logging thread
         self._logging_task = asyncio.create_task(self._logging())

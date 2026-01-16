@@ -106,6 +106,10 @@ class PyobsCLI(CLI):
             self.application(**self._config).run()
 
 
-if __name__ == "__main__":
+def main() -> None:
     cli = PyobsCLI()
     cli()
+
+
+if __name__ == "__main__":
+    main()

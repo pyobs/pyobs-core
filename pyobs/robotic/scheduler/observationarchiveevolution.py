@@ -1,6 +1,6 @@
 from __future__ import annotations
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 from astroplan import Observer
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class ObservationArchiveEvolution:
     def __init__(self, observer: Observer, obs_archive: ObservationArchive | None = None):
         self._obs_archive = obs_archive
-        self._obs_for_task: dict[Task, ObservationList] = {}
+        self._obs_for_task: dict[Any, ObservationList] = {}
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
         self._observer = observer
 
@@ -31,18 +31,18 @@ class ObservationArchiveEvolution:
         )
 
         await self.observations_for_task(scheduled_task.task)
-        self._obs_for_task[scheduled_task.task].append(obs)
+        self._obs_for_task[scheduled_task.task.id].append(obs)
 
         night = Time.now().night_obs(self._observer)
         await self.observations_for_night(night)
         self._obs_for_night[night].append(obs)
 
     async def observations_for_task(self, task: Task) -> ObservationList:
-        if task not in self._obs_for_task:
-            self._obs_for_task[task] = (
+        if task.id not in self._obs_for_task:
+            self._obs_for_task[task.id] = (
                 ObservationList() if self._obs_archive is None else await self._obs_archive.observations_for_task(task)
             )
-        return self._obs_for_task[task]
+        return self._obs_for_task[task.id]
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.

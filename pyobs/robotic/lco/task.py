@@ -148,7 +148,14 @@ class LcoTask(Task):
     def _create_merits(self, req: dict[str, Any]) -> list[Merit]:
         # take merits from first config
         cfg = req["configurations"][0]
-        return [self.get_object(m) for m in cfg["merits"]] if "merits" in cfg else []
+        merits: list[Merit] = []
+        if "merits" in cfg:
+            for merit in cfg["merits"]:
+                config = {"class": merit["type"]}
+                if "params" in merit:
+                    config.update(**merit["params"])
+                merits.append(Merit.create(config))
+        return merits
 
     def _create_target(self, req: dict[str, Any]) -> Target | None:
         # target

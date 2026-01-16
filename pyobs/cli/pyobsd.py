@@ -294,6 +294,10 @@ class PyobsDaemon(object):
             return int(f.read())
 
 
-if __name__ == "__main__":
+def main() -> None:
     cli = PyobsDaemonCLI()
     cli()
+
+
+if __name__ == "__main__":
+    main()

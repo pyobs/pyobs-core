@@ -1,4 +1,3 @@
-import argparse
 import glob
 import json
 import logging
@@ -32,25 +31,24 @@ class PyobsDaemonCLI(CLI):
 
     def init_cli(self) -> None:
         # init parser
-        parser = argparse.ArgumentParser(description="Daemon for pyobs")
-        parser.add_argument("-p", "--path", type=str, default=self._config.get("path", "/opt/pyobs"))
-        parser.add_argument("-c", "--config-path", type=str, default=self._config.get("config_path", "config"))
-        parser.add_argument("-r", "--run-path", type=str, default=self._config.get("run_path", "run"))
-        parser.add_argument("-l", "--log-path", type=str, default=self._config.get("log_path", "log"))
-        parser.add_argument(
+        self._parser.add_argument("-p", "--path", type=str, default=self._config.get("path", "/opt/pyobs"))
+        self._parser.add_argument("-c", "--config-path", type=str, default=self._config.get("config_path", "config"))
+        self._parser.add_argument("-r", "--run-path", type=str, default=self._config.get("run_path", "run"))
+        self._parser.add_argument("-l", "--log-path", type=str, default=self._config.get("log_path", "log"))
+        self._parser.add_argument(
             "--log-level",
             type=str,
             choices=["critical", "error", "warning", "info", "debug"],
             default=self._config.get("log-level", "info"),
         )
-        parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
-        parser.add_argument(
+        self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
+        self._parser.add_argument(
             "--start-stop-daemon", type=str, default=self._config.get("start_stop_daemon", "/sbin/start-stop-daemon")
         )
-        parser.add_argument("-v", "--verbose", action="store_true")
+        self._parser.add_argument("-v", "--verbose", action="store_true")
 
         # commands
-        sp = parser.add_subparsers(dest="command")
+        sp = self._parser.add_subparsers(dest="command")
         sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
         sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
         sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")

@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from ._cli import CLI
 
@@ -91,6 +91,7 @@ class PyobsDaemon(object):
         chuid: Optional[str] = None,
         start_stop_daemon: str = "start-stop-daemon",
         verbose: bool = False,
+        **kwargs: Any,
     ):
         self._config_path = config_path
         self._run_path = run_path

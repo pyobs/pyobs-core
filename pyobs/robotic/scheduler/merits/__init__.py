@@ -5,3 +5,14 @@ from .constant import ConstantMerit
 from .pernight import PerNightMerit
 from .random import RandomMerit
 from .timewindow import TimeWindowMerit
+
+
+__all__ = [
+    "Merit",
+    "AfterTimeMerit",
+    "BeforeTimeMerit",
+    "ConstantMerit",
+    "PerNightMerit",
+    "RandomMerit",
+    "TimeWindowMerit",
+]

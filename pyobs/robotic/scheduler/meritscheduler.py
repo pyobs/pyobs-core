@@ -11,12 +11,12 @@ from pyobs.object import Object
 from . import DataProvider
 from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
-from pyobs.robotic import ScheduledTask
 from ..observationarchive import ObservationArchive
 from .observationarchiveevolution import ObservationArchiveEvolution
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
+    from pyobs.robotic import ScheduledTask
 
 log = logging.getLogger(__name__)
 
@@ -121,6 +121,8 @@ async def schedule_first_in_interval(
 
 
 def create_scheduled_task(task: Task, time: Time) -> ScheduledTask:
+    from pyobs.robotic import ScheduledTask
+
     return ScheduledTask(task, time, time + TimeDelta(task.duration))
 
 

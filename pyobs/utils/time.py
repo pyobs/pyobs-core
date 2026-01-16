@@ -4,12 +4,11 @@ TODO: write doc
 
 __title__ = "Time"
 
-from datetime import datetime, timezone, date, timedelta
+from datetime import datetime, timezone, date
 from typing import cast
 
 import astropy.time
 import astropy.units as u
-import pytz
 from astroplan import Observer
 
 
@@ -57,17 +56,9 @@ class Time(astropy.time.Time):  # type: ignore
             Night for this time.
         """
 
-        # convert to datetime
-        time = self.datetime
-
-        # get local datetime
-        utc_dt = pytz.utc.localize(time)
-        loc_dt = utc_dt.astimezone(observer.timezone)
-
-        # get night
-        if loc_dt.hour < 15:
-            loc_dt += timedelta(days=-1)
-        return loc_dt.date()
+        # get closest sunset
+        sunset = observer.sun_set_time(self, which="nearest")
+        return sunset.to_datetime().date()  # type: ignore
 
 
 __all__ = ["Time"]

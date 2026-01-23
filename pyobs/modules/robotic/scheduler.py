@@ -117,6 +117,8 @@ class Scheduler(Module, IStartStop, IRunnable):
                 try:
                     last_change = t
                     await self._update_schedule()
+                except asyncio.CancelledError:
+                    return
                 except:
                     log.exception("Something went wrong when updating schedule.")
 
@@ -260,6 +262,9 @@ class Scheduler(Module, IStartStop, IRunnable):
 
                     # clean up
                     del scheduled_tasks
+
+                except asyncio.CancelledError:
+                    return
 
                 except:
                     log.exception("Something went wrong")

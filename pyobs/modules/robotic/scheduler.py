@@ -215,6 +215,9 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # start time
                     start_time = time.time()
 
+                    # clear future schedule
+                    await self._schedule.clear_schedule(self._schedule_start)
+
                     # schedule start must be at least safety_time in the future
                     start = self._schedule_start
                     if start - Time.now() < self._safety_time:

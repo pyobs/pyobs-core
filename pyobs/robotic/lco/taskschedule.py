@@ -2,7 +2,7 @@ import asyncio
 import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
-from typing import Any, cast
+from typing import Any, cast, Literal
 import aiohttp as aiohttp
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -36,6 +36,7 @@ class LcoTaskSchedule(TaskSchedule):
         enclosure: str | None = None,
         telescope: str | None = None,
         period: int = 24,
+        mode: Literal["read", "write", "readwrite"] = "readwrite",
         **kwargs: Any,
     ):
         """Creates a new LCO scheduler.
@@ -80,16 +81,9 @@ class LcoTaskSchedule(TaskSchedule):
         # error logging for regular updates
         self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
 
-    async def open(self) -> None:
-        """Open scheduler."""
-        await TaskSchedule.open(self)
-
-        # get stuff from portal and do initial update
-        await self._init_from_portal()
-        await self.update_now()
-
-        # start update thread
-        asyncio.ensure_future(asyncio.create_task(self._update_schedule()))
+        # background task
+        if mode in ["read", "readwrite"]:
+            self.add_background_task(self._update_schedule)
 
     async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
@@ -115,6 +109,10 @@ class LcoTaskSchedule(TaskSchedule):
 
     async def _update_schedule(self) -> None:
         """Update thread."""
+
+        # get stuff from portal and do initial update
+        await self._init_from_portal()
+
         while True:
             # do actual update
             try:

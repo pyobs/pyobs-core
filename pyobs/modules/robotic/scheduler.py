@@ -113,7 +113,8 @@ class Scheduler(Module, IStartStop, IRunnable):
 
             # got new time of last change?
             t = await self._task_archive.last_changed()
-            if last_change is None or last_change < t:
+            more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
+            if last_change is None or last_change < t and not more_1day:
                 try:
                     last_change = t
                     await self._update_schedule()

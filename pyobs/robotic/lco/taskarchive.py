@@ -50,12 +50,12 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            # get data
             self._last_changed = await self._portal.last_changed()
+        except:
+            log.error("Could not get last changed time")
 
-        finally:
-            # even in case of errors, return last time
-            return self._last_changed
+        # even in case of errors, return last time
+        return self._last_changed
 
     async def get_schedulable_tasks(self) -> list[Task]:
         """Returns list of schedulable tasks.

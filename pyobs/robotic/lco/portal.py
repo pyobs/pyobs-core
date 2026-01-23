@@ -34,7 +34,7 @@ class Portal:
         self.url = url
         self.token = token
 
-    async def _get(self, path: str, timeout: int = 10, params: Optional[Dict[str, Any]] = None) -> Any:
+    async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
         """Do a GET request on the portal.
 
         Args:

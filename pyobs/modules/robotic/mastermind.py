@@ -25,6 +25,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         runner: TaskRunner | dict[str, Any],
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
+        after_task_sleep: int = 0,
         **kwargs: Any,
     ):
         """Initialize a new auto focus system.
@@ -40,6 +41,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._allowed_late_start = allowed_late_start
         self._allowed_overrun = allowed_overrun
         self._running = False
+        self._after_task_sleep = after_task_sleep
 
         # add thread func
         self.add_background_task(self._run_thread, True)
@@ -147,6 +149,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # finish
             log.info("Finished task %s.", self._task.name)
             self._task = None
+
+            # sleep?
+            await asyncio.sleep(self._after_task_sleep)
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

@@ -3,7 +3,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Union, Any, Dict
+from typing import Union, Any, Dict, Literal
 import astropy.units as u
 from astropy.time import TimeDelta
 
@@ -33,6 +33,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         trigger_on_task_finished: bool = False,
         schedule_range: float = 24.0,
         safety_time: float = 300,
+        mode: Literal["read", "write", "readwrite"] = "readwrite",
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
@@ -75,8 +76,10 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._tasks: list[Task] = []
 
         # update thread
-        self.add_background_task(self._schedule_worker)
-        self.add_background_task(self._update_worker)
+        if mode in ["read", "readwrite"]:
+            self.add_background_task(self._schedule_worker)
+        if mode in ["write", "readwrite"]:
+            self.add_background_task(self._update_worker)
 
     async def open(self) -> None:
         """Open module."""

@@ -237,10 +237,12 @@ class Scheduler(Module, IStartStop, IRunnable):
 
                         # on first task, we have to clear the schedule
                         if first:
+                            first = False
                             log.info("Finished calculating next task:")
                             self._log_scheduled_task([scheduled_task])
-                            await self._schedule.clear_schedule(self._schedule_start)
-                            first = False
+
+                            # set new safety_time as duration + 20%
+                            self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
                         # submit it
                         await self._schedule.add_schedule([scheduled_task])
@@ -255,9 +257,6 @@ class Scheduler(Module, IStartStop, IRunnable):
 
                     # clean up
                     del scheduled_tasks
-
-                    # set new safety_time as duration + 20%
-                    self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
                 except:
                     log.exception("Something went wrong")

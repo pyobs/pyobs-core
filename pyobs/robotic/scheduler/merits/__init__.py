@@ -3,6 +3,7 @@ from .aftertime import AfterTimeMerit
 from .beforetime import BeforeTimeMerit
 from .constant import ConstantMerit
 from .interval import IntervalMerit
+from .follow import FollowMerit
 from .pernight import PerNightMerit
 from .random import RandomMerit
 from .timewindow import TimeWindowMerit
@@ -14,6 +15,7 @@ __all__ = [
     "BeforeTimeMerit",
     "ConstantMerit",
     "IntervalMerit",
+    "FollowMerit",
     "PerNightMerit",
     "RandomMerit",
     "TimeWindowMerit",

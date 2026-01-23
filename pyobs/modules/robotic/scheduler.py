@@ -244,8 +244,8 @@ class Scheduler(Module, IStartStop, IRunnable):
                             # set new safety_time as duration + 20%
                             self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
-                        # submit it
-                        await self._schedule.add_schedule([scheduled_task])
+                            # submit it
+                            await self._schedule.add_schedule([scheduled_task])
 
                     if self._need_update:
                         log.info("Not using scheduler results, since update was requested.")
@@ -254,6 +254,9 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # log it
                     log.info("Finished calculating schedule for %d block(s):", len(scheduled_tasks))
                     self._log_scheduled_task(scheduled_tasks)
+
+                    # submit it
+                    await self._schedule.add_schedule(scheduled_tasks[1:])
 
                     # clean up
                     del scheduled_tasks

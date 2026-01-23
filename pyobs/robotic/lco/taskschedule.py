@@ -118,9 +118,6 @@ class LcoTaskSchedule(TaskSchedule):
     async def _update_schedule(self) -> None:
         """Update thread."""
 
-        # wait for init
-        await self._initialized.wait()
-
         while True:
             # do actual update
             try:
@@ -146,6 +143,9 @@ class LcoTaskSchedule(TaskSchedule):
         Args:
             force: Force update.
         """
+
+        # wait for init
+        await self._initialized.wait()
 
         # acquire lock
         if not await acquire_lock(self._update_lock, 20):

@@ -66,6 +66,7 @@ class LcoTaskSchedule(TaskSchedule):
         self.instruments: dict[str, Any] = {}
         self._last_schedule_time: Time | None = None
         self._update_lock = asyncio.Lock()
+        self._initialized = asyncio.Event()
 
         # buffers in case of errors
         self._last_scheduled: Time | None = None
@@ -85,6 +86,12 @@ class LcoTaskSchedule(TaskSchedule):
         if mode in ["read", "readwrite"]:
             self.add_background_task(self._update_schedule)
 
+    async def open(self) -> None:
+        await TaskSchedule.open(self)
+
+        # get stuff from portal and do initial update
+        await self._init_from_portal()
+
     async def _init_from_portal(self) -> None:
         """Initialize scheduler from portal."""
 
@@ -94,6 +101,7 @@ class LcoTaskSchedule(TaskSchedule):
 
         # and store
         self.instruments = {k.lower(): v for k, v in data.items()}
+        self._initialized.set()
 
     async def last_scheduled(self) -> Time | None:
         """Returns time of last scheduler run."""
@@ -110,8 +118,8 @@ class LcoTaskSchedule(TaskSchedule):
     async def _update_schedule(self) -> None:
         """Update thread."""
 
-        # get stuff from portal and do initial update
-        await self._init_from_portal()
+        # wait for init
+        await self._initialized.wait()
 
         while True:
             # do actual update

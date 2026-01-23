@@ -76,9 +76,9 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._tasks: list[Task] = []
 
         # update thread
-        if mode in ["read", "readwrite"]:
-            self.add_background_task(self._schedule_worker)
         if mode in ["write", "readwrite"]:
+            self.add_background_task(self._schedule_worker)
+        if mode in ["read", "readwrite"]:
             self.add_background_task(self._update_worker)
 
     async def open(self) -> None:

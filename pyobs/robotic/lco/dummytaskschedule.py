@@ -1,11 +1,11 @@
 import copy
 import logging
-from typing import List, Dict, Optional, Any, cast, TypedDict
+from typing import List, Dict, Optional, Any, TypedDict
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import Task, ScheduledTask
 from pyobs.utils.time import Time
 from .task import LcoTask
 from .taskschedule import LcoTaskSchedule
@@ -170,13 +170,15 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def update_now(self, force: bool = False) -> None:
         pass
 
-    async def get_schedule(self) -> Dict[str, Task]:
-        return {} if self._task is None else {"task": self._task}
+    async def get_schedule(self) -> list[ScheduledTask]:
+        if self._task is None:
+            return []
+        return [ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))]
 
-    async def get_task(self, time: Time) -> Optional[LcoTask]:
-        task = self._task
-        self._task = None
-        return cast(LcoTask, task)
+    async def get_task(self, time: Time) -> ScheduledTask | None:
+        if self._task is None:
+            return None
+        return ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
 
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         pass

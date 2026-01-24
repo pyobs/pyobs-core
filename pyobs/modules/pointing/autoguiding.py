@@ -74,10 +74,10 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
     async def stop(self, **kwargs: Any) -> None:
         """Stops auto-guiding."""
         log.info("Stopping auto-guiding...")
+        await BaseGuiding.stop(self)
         camera = await self.proxy(self._camera, ICamera)
         while await camera.get_exposure_status() != ExposureStatus.IDLE:
             await asyncio.sleep(1)
-        await BaseGuiding.stop(self)
 
     async def _auto_guiding(self) -> None:
         # exposure time

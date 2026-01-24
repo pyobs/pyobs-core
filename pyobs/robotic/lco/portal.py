@@ -1,9 +1,32 @@
 from typing import Any, Dict, List, cast, Tuple, Optional
 from urllib.parse import urljoin
-
+from pydantic import BaseModel
+from astropydantic import AstroPydanticTime  # type: ignore
 import aiohttp
 
 from pyobs.utils.time import Time
+
+
+class ConfigurationStatus(BaseModel):
+    id: int
+    configuration: int
+    instrument_name: str
+    guide_camera_name: str
+    state: str
+    summary: dict[str, str]
+
+
+class Observation(BaseModel):
+    id: int
+    request: int
+    site: str
+    enclosure: str
+    telescope: str
+    start: AstroPydanticTime
+    end: AstroPydanticTime
+    priority: int
+    state: str
+    configuration_statuses: list[ConfigurationStatus]
 
 
 class Portal:
@@ -11,7 +34,7 @@ class Portal:
         self.url = url
         self.token = token
 
-    async def _get(self, path: str, timeout: int = 10, params: Optional[Dict[str, Any]] = None) -> Any:
+    async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
         """Do a GET request on the portal.
 
         Args:
@@ -77,3 +100,7 @@ class Portal:
     async def instruments(self) -> Dict[str, Any]:
         req = await self._get("/api/instruments/")
         return cast(Dict[str, Any], req)
+
+    async def observations(self, request_id: int) -> list[Observation]:
+        req = await self._get(f"/api/requests/{request_id}/observations/")
+        return [Observation.model_validate(r) for r in req]

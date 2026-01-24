@@ -309,7 +309,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
             # set it
             self._need_update = True
-            self._schedule_start = event.eta
+            self._schedule_start = event.eta if event.eta is not None else Time.now()
 
         return True
 
@@ -353,7 +353,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # set it
         self._need_update = True
-        self._schedule_start = event.eta
+        self._schedule_start = event.eta if event.eta is not None else Time.now()
         return True
 
     async def abort(self, **kwargs: Any) -> None:

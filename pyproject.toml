@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.38.3"
+version = "1.39.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"

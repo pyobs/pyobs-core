@@ -3,6 +3,7 @@ import asyncio.exceptions
 from urllib.parse import urljoin
 import logging
 from typing import Any, cast, Literal
+import aiodns
 import aiohttp as aiohttp
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -174,8 +175,8 @@ class LcoTaskSchedule(TaskSchedule):
             try:
                 scheduled_tasks = await self._get_schedule(end_after=now, start_before=now + TimeDelta(24 * u.hour))
                 self._update_error_log.resolve("Successfully updated schedule.")
-            except TimeoutError:
-                self._update_error_log.error("Request for updating schedule timed out.")
+            except (TimeoutError, aiodns.error.DNSError):
+                self._update_error_log.error("Network error in request for updating schedule.")
                 await asyncio.sleep(60)
                 return
             except RuntimeError:

@@ -278,7 +278,7 @@ class LcoTaskSchedule(TaskSchedule):
         """
 
         # update schedule
-        await self.update_now()
+        await self.update_now(force=True)
 
         # loop all tasks
         for scheduled_task in self._scheduled_tasks:

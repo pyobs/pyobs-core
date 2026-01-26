@@ -13,6 +13,7 @@ STATE_MAP = {
     "PENDING": ObservationState.PENDING,
     "ABORTED": ObservationState.ABORTED,
     "IN_PROGRESS": ObservationState.IN_PROGRESS,
+    "FAILED": ObservationState.FAILED,
 }
 
 

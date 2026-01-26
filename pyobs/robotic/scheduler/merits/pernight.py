@@ -21,7 +21,7 @@ class PerNightMerit(Merit):
         observations = await data.archive.observations_for_task(task)
 
         # filter for those after last sunset that were successful
-        observations = observations.filter(after=data.last_sunset(time), state=ObservationState.COMPLETED)
+        observations = observations.filter(after=data.last_sunrise(time), state=ObservationState.COMPLETED)
 
         # compare to count
         return 1.0 if len(observations) < self._count else 0.0

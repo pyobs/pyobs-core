@@ -1,10 +1,20 @@
 from typing import Any, Dict, List, cast, Tuple, Optional
 from urllib.parse import urljoin
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from astropydantic import AstroPydanticTime  # type: ignore
 import aiohttp
 
 from pyobs.utils.time import Time
+
+
+class ConfigurationSummary(BaseModel):
+    end: str = ""
+    events: dict[str, str] = Field(default_factory=dict)
+    id: Any = 0
+    reason: str = ""
+    start: str = ""
+    state: str = ""
+    time_completed: float = 0.0
 
 
 class ConfigurationStatus(BaseModel):
@@ -13,7 +23,7 @@ class ConfigurationStatus(BaseModel):
     instrument_name: str
     guide_camera_name: str
     state: str
-    summary: dict[str, str]
+    summary: ConfigurationSummary
 
 
 class Observation(BaseModel):

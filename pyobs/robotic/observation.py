@@ -15,6 +15,7 @@ class ObservationState(str, Enum):
     IN_PROGRESS = "in_progress"
     ABORTED = "aborted"
     CANCELED = "canceled"
+    FAILED = "failed"
 
 
 class Observation(BaseModel):

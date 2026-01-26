@@ -2,7 +2,6 @@ import datetime
 from typing import Any
 
 from .portal import Portal
-from .task import LcoTask
 from ..task import Task
 from ..observation import Observation, ObservationState, ObservationList
 from ..observationarchive import ObservationArchive
@@ -39,9 +38,6 @@ class LcoObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-
-        if not isinstance(task, LcoTask):
-            raise TypeError("Task must be of type LcoTask.")
 
         portal_observations = await self._portal.observations(task.id)
         observations: list[Observation] = []

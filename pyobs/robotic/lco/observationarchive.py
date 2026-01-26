@@ -12,6 +12,8 @@ STATE_MAP = {
     "CANCELED": ObservationState.CANCELED,
     "COMPLETED": ObservationState.COMPLETED,
     "PENDING": ObservationState.PENDING,
+    "ABORTED": ObservationState.ABORTED,
+    "IN_PROGRESS": ObservationState.IN_PROGRESS,
 }
 
 

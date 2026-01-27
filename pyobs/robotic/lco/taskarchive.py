@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Dict, Optional, Any
 
@@ -99,14 +100,14 @@ class LcoTaskArchive(TaskArchive):
                 # priority = base_priority * duration.value / 60.
                 priority = base_priority
 
+                # copy group with just one request
+                group_request = copy.deepcopy(group)
+                del group_request["requests"]
+                group_request["request"] = req
+                group_request["priority"] = priority
+
                 # create task
-                task = LcoTask(
-                    id=req["id"],
-                    name=group["name"],
-                    priority=priority,
-                    config={"request": req},
-                )
-                tasks.append(task)
+                tasks.append(LcoTask.from_lco_request(group_request))
 
         # return blocks
         return tasks

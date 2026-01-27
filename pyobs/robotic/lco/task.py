@@ -77,46 +77,29 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(
-        self,
-        config: dict[str, Any],
-        id: Any | None = None,
-        name: str | None = None,
-        duration: float | None = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
             config: Configuration for task
         """
-
-        req = config["request"]
-        if id is None:
-            id = req["id"]
-        if name is None:
-            name = req["id"]
-        if duration is None:
-            duration = float(req["duration"])
-
-        if "constraints" not in kwargs:
-            kwargs["constraints"] = self._create_constraints(req)
-        if "merits" not in kwargs:
-            kwargs["merits"] = self._create_merits(req)
-        if "target" not in kwargs:
-            kwargs["target"] = self._create_target(req)
-
-        Task.__init__(
-            self,
-            id=id,
-            name=name,
-            duration=duration,
-            config=config,
-            **kwargs,
-        )
+        Task.__init__(self, **kwargs)
 
         # store stuff
         self.cur_script: Script | None = None
+
+    @staticmethod
+    def from_lco_request(config: dict[str, Any]) -> LcoTask:
+        request = config["request"]
+        return LcoTask(
+            id=request["id"],
+            name=request["id"],
+            duration=float(request["duration"]),
+            constraints=LcoTask._create_constraints(request),
+            merits=LcoTask._create_merits(request),
+            target=LcoTask._create_target(request),
+            config=config,
+        )
 
     @staticmethod
     def _create_constraints(req: dict[str, Any]) -> list[Constraint]:
@@ -145,7 +128,8 @@ class LcoTask(Task):
 
         return constraints
 
-    def _create_merits(self, req: dict[str, Any]) -> list[Merit]:
+    @staticmethod
+    def _create_merits(req: dict[str, Any]) -> list[Merit]:
         # take merits from first config
         cfg = req["configurations"][0]
         merits: list[Merit] = []
@@ -157,13 +141,14 @@ class LcoTask(Task):
                 merits.append(Merit.create(config))
         return merits
 
-    def _create_target(self, req: dict[str, Any]) -> Target | None:
+    @staticmethod
+    def _create_target(req: dict[str, Any]) -> Target | None:
         # target
         target = req["configurations"][0]["target"]
         if "ra" in target and "dec" in target:
             coord = SkyCoord(target["ra"] * u.deg, target["dec"] * u.deg, frame=target["type"].lower())
             name = target["name"]
-            return SiderealTarget(name, coord)
+            return SiderealTarget(name=name, coord=coord)
         else:
             log.warning("Unsupported coordinate type.")
             return None

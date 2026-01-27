@@ -44,7 +44,7 @@ class Task(Object):
         self._script = script
 
     @staticmethod
-    def _params_from_dict(data: dict[str, Any]) -> dict[str, Any]:
+    def from_dict(data: dict[str, Any]) -> Task:
         # get constraints
         constraints: list[Constraint] = []
         if "constraints" in data and data["constraints"] is not None:
@@ -67,7 +67,7 @@ class Task(Object):
         if "script" in data and data["script"] is not None:
             script = get_object(data["script"], Script)  # noqa: F821
 
-        return dict(
+        return Task(
             id=data["id"],
             name=data["name"],
             duration=data["duration"],

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 from astropy.units import Quantity
 import astropy.units as u
 
-from pyobs.object import Object
+from pyobs.object import Object, get_object
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
@@ -12,8 +12,9 @@ if TYPE_CHECKING:
     from pyobs.robotic.taskschedule import TaskSchedule
     from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
-    from pyobs.robotic.scheduler.constraints import Constraint
-    from pyobs.robotic.scheduler.merits import Merit
+
+from pyobs.robotic.scheduler.constraints import Constraint
+from pyobs.robotic.scheduler.merits import Merit
 
 
 class Task(Object):

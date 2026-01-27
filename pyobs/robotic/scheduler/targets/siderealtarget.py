@@ -1,3 +1,5 @@
+from typing import Any
+
 from astropy.coordinates import SkyCoord
 
 from pyobs.utils.time import Time
@@ -5,14 +7,9 @@ from .target import Target
 
 
 class SiderealTarget(Target):
-    def __init__(self, name: str, coord: SkyCoord):
-        super().__init__()
-        self._name = name
+    def __init__(self, coord: SkyCoord, **kwargs: Any) -> None:
+        Target.__init__(self, **kwargs)
         self._coord = coord
-
-    @property
-    def name(self) -> str:
-        return self._name
 
     @property
     def coord(self) -> SkyCoord:

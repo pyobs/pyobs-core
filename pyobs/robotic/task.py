@@ -28,6 +28,7 @@ class Task(Object):
         constraints: list[Constraint] | None = None,
         merits: list[Merit] | None = None,
         target: Target | None = None,
+        script: Script | None = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -39,6 +40,43 @@ class Task(Object):
         self._constraints = constraints
         self._merits = merits
         self._target = target
+        self._script = script
+
+    @staticmethod
+    def _params_from_dict(data: dict[str, Any]) -> dict[str, Any]:
+        # get constraints
+        constraints: list[Constraint] = []
+        if "constraints" in data and data["constraints"] is not None:
+            for constraint in data["constraints"]:
+                constraints.append(get_object(constraint, Constraint))  # noqa: F821
+
+        # get merits
+        merits: list[Merit] = []
+        if "merits" in data and data["merits"] is not None:
+            for merit in data["merits"]:
+                merits.append(get_object(merit, Merit))  # noqa: F821
+
+        # get target
+        target: Target | None = None
+        if "target" in data and data["target"] is not None:
+            target = get_object(data["target"], Target)  # noqa: F821
+
+        # get script
+        script: Script | None = None
+        if "script" in data and data["script"] is not None:
+            script = get_object(data["script"], Script)  # noqa: F821
+
+        return dict(
+            id=data["id"],
+            name=data["name"],
+            duration=data["duration"],
+            priority=data["priority"] if "priority" in data else None,
+            config=data["config"] if "config" in data else None,
+            constraints=constraints,
+            merits=merits,
+            target=target,
+            script=script,
+        )
 
     def __str__(self) -> str:
         s = f"Task {self._id}: {self._name} (duration: {self._duration}"
@@ -88,6 +126,11 @@ class Task(Object):
     def target(self) -> Target | None:
         """Returns target."""
         return self._target
+
+    @property
+    def script(self) -> Script | None:
+        """Returns script."""
+        return self._script
 
     async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
         """Checks, whether this task could run now.

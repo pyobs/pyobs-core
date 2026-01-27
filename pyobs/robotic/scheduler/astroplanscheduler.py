@@ -13,7 +13,7 @@ from .targets import SiderealTarget
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ScheduledTask, Task
+    from pyobs.robotic import Observation, Task, ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class AstroplanScheduler(TaskScheduler):
         self._abort: asyncio.Event = asyncio.Event()
         self._is_running: bool = False
 
-    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
         # is lock acquired? send abort signal
         if self._lock.locked():
             await self.abort()
@@ -162,10 +162,10 @@ class AstroplanScheduler(TaskScheduler):
         # clean up
         del transitioner, scheduler, schedule
 
-    async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> list[ScheduledTask]:
-        from pyobs.robotic import ScheduledTask
+    async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> ObservationList:
+        from pyobs.robotic import Observation
 
-        scheduled_tasks: list[ScheduledTask] = []
+        scheduled_tasks = ObservationList()
         for block in blocks:
             # find task
             task_id = block.name
@@ -176,7 +176,7 @@ class AstroplanScheduler(TaskScheduler):
                 raise ValueError(f"Could not find task with id '{task_id}'")
 
             # create scheduled task
-            scheduled_tasks.append(ScheduledTask(task, block.start_time, block.end_time))
+            scheduled_tasks.append(Observation(task, block.start_time, block.end_time))
 
         return scheduled_tasks
 

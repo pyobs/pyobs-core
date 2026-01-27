@@ -26,7 +26,7 @@ class ConfigurationStatus(BaseModel):
     summary: ConfigurationSummary
 
 
-class Observation(BaseModel):
+class LcoObservation(BaseModel):
     id: int
     request: int
     site: str
@@ -111,6 +111,6 @@ class Portal:
         req = await self._get("/api/instruments/")
         return cast(Dict[str, Any], req)
 
-    async def observations(self, request_id: int) -> list[Observation]:
+    async def observations(self, request_id: int) -> list[LcoObservation]:
         req = await self._get(f"/api/requests/{request_id}/observations/")
-        return [Observation.model_validate(r) for r in req]
+        return [LcoObservation.model_validate(r) for r in req]

@@ -14,7 +14,7 @@ from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, TaskSchedule, ScheduledTask, Task
+from pyobs.robotic import TaskArchive, TaskSchedule, Task, ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     end = start + TimeDelta(self._schedule_range)
 
                     # schedule
-                    scheduled_tasks: list[ScheduledTask] = []
+                    scheduled_tasks = ObservationList()
                     first = True
                     async for scheduled_task in self._scheduler.schedule(self._tasks, start, end):
                         # remember for later
@@ -273,7 +273,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    def _log_scheduled_task(self, scheduled_tasks: list[ScheduledTask]) -> None:
+    def _log_scheduled_task(self, scheduled_tasks: ObservationList) -> None:
         for scheduled_task in scheduled_tasks:
             log.info(
                 "  - %s to %s: %s (%d)",

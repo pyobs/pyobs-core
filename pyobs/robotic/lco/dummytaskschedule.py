@@ -5,10 +5,11 @@ from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task, ScheduledTask
+from pyobs.robotic.task import Task, Observation
 from pyobs.utils.time import Time
 from .task import LcoTask
 from .taskschedule import LcoTaskSchedule
+from .. import ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -170,15 +171,15 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def update_now(self, force: bool = False) -> None:
         pass
 
-    async def get_schedule(self) -> list[ScheduledTask]:
+    async def get_schedule(self) -> ObservationList:
         if self._task is None:
-            return []
-        return [ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))]
+            return ObservationList()
+        return ObservationList([Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))])
 
-    async def get_task(self, time: Time) -> ScheduledTask | None:
+    async def get_task(self, time: Time) -> Observation | None:
         if self._task is None:
             return None
-        return ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
+        return Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
 
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         pass

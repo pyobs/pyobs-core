@@ -7,7 +7,7 @@ from pyobs.modules import Module
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic.task import Task, ScheduledTask
+from pyobs.robotic import Task, Observation
 from pyobs.utils.time import Time
 from pyobs.robotic import TaskRunner, TaskSchedule
 
@@ -98,7 +98,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            scheduled_task: ScheduledTask | None = await self._task_schedule.get_task(now)
+            scheduled_task: Observation | None = await self._task_schedule.get_task(now)
             if scheduled_task is None or not await self._task_runner.can_run(scheduled_task.task):
                 # no task found
                 await asyncio.sleep(10)

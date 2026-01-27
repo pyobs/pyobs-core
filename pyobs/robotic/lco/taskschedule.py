@@ -8,7 +8,7 @@ import aiohttp as aiohttp
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import ScheduledTask
+from pyobs.robotic.observation import Observation, ObservationList
 from pyobs.utils.time import Time
 from pyobs.robotic.taskschedule import TaskSchedule
 from .portal import Portal
@@ -78,7 +78,7 @@ class LcoTaskSchedule(TaskSchedule):
         self._header = {"Authorization": "Token " + token}
 
         # task list
-        self._scheduled_tasks: list[ScheduledTask] = []
+        self._scheduled_tasks = ObservationList()
 
         # error logging for regular updates
         self._update_error_log = ResolvableErrorLogger(log, error_level=logging.WARNING)
@@ -201,7 +201,7 @@ class LcoTaskSchedule(TaskSchedule):
             # release lock
             self._update_lock.release()
 
-    async def get_schedule(self) -> list[ScheduledTask]:
+    async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
 
         Returns:
@@ -213,7 +213,7 @@ class LcoTaskSchedule(TaskSchedule):
         """
         return self._scheduled_tasks
 
-    async def _get_schedule(self, start_before: Time, end_after: Time) -> list[ScheduledTask]:
+    async def _get_schedule(self, start_before: Time, end_after: Time) -> ObservationList:
         """Fetch schedule from portal.
 
         Args:
@@ -253,13 +253,13 @@ class LcoTaskSchedule(TaskSchedule):
                 schedules = data["results"]
 
                 # create tasks
-                scheduled_tasks: list[ScheduledTask] = []
+                scheduled_tasks = ObservationList()
                 for sched in schedules:
                     # create task
                     task = self._create_task(LcoTask, config=sched)
 
                     # create scheduled task
-                    scheduled_task = ScheduledTask(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
+                    scheduled_task = Observation(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
 
                     # add it
                     scheduled_tasks.append(scheduled_task)
@@ -267,7 +267,7 @@ class LcoTaskSchedule(TaskSchedule):
                 # finished
                 return scheduled_tasks
 
-    async def get_task(self, time: Time) -> ScheduledTask | None:
+    async def get_task(self, time: Time) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:
@@ -329,7 +329,7 @@ class LcoTaskSchedule(TaskSchedule):
         # re-send
         await self.send_update(status_id, status)
 
-    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+    async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
 
         Args:
@@ -369,7 +369,7 @@ class LcoTaskSchedule(TaskSchedule):
                 if response.status != 200:
                     log.error("Could not cancel schedule: %s", await response.text())
 
-    def _create_observations(self, scheduled_tasks: list[ScheduledTask]) -> list[dict[str, Any]]:
+    def _create_observations(self, scheduled_tasks: ObservationList) -> list[dict[str, Any]]:
         """Create observations from schedule.
 
         Args:

@@ -2,7 +2,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Type, cast
 
 from pyobs.utils.time import Time
-from .task import Task, ScheduledTask
+from .task import Task
+from .observation import ObservationList, Observation
 from pyobs.object import Object
 
 
@@ -11,7 +12,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         Object.__init__(self, **kwargs)
 
     @abstractmethod
-    async def add_schedule(self, tasks: list[ScheduledTask]) -> None:
+    async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
 
         Args:
@@ -34,7 +35,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_schedule(self) -> list[ScheduledTask]:
+    async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
 
         Returns:
@@ -47,7 +48,7 @@ class TaskSchedule(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, time: Time) -> ScheduledTask | None:
+    async def get_task(self, time: Time) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:

@@ -1,6 +1,5 @@
 from .taskschedule import TaskSchedule
 from .task import Task
-from .scheduledtask import ScheduledTask
-from .observation import Observation
+from .observation import Observation, ObservationList, ObservationState
 from .taskarchive import TaskArchive
 from .taskrunner import TaskRunner

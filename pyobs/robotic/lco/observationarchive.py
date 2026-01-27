@@ -41,7 +41,7 @@ class LcoObservationArchive(ObservationArchive):
         """
 
         portal_observations = await self._portal.observations(task.id)
-        observations: list[Observation] = []
+        observations = ObservationList()
         for obs in portal_observations:
             observations.append(
                 Observation(
@@ -52,7 +52,7 @@ class LcoObservationArchive(ObservationArchive):
                     state=STATE_MAP[obs.state],
                 )
             )
-        return ObservationList(observations)
+        return observations
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.

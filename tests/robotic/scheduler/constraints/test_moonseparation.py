@@ -15,7 +15,8 @@ async def test_moonseparation_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     task = Task(1, "Antares", 100)
-    task._target = SiderealTarget("Antares", SkyCoord("16h29m22.94s -26d25m53.0s", frame="icrs"))
+    coord = SkyCoord("16h29m22.94s -26d25m53.0s", frame="icrs")
+    task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Antares")
 
     constraint = MoonSeparationConstraint(20.0)
 

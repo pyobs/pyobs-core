@@ -1,8 +1,6 @@
 from __future__ import annotations
 import logging
 from typing import Any, TYPE_CHECKING, cast
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 
 from pyobs.object import get_object
 from pyobs.robotic.scheduler.constraints import (
@@ -146,9 +144,7 @@ class LcoTask(Task):
         # target
         target = req["configurations"][0]["target"]
         if "ra" in target and "dec" in target:
-            coord = SkyCoord(target["ra"] * u.deg, target["dec"] * u.deg, frame=target["type"].lower())
-            name = target["name"]
-            return SiderealTarget(name=name, coord=coord)
+            return SiderealTarget(name=target["name"], ra=target["ra"], dec=target["dec"])
         else:
             log.warning("Unsupported coordinate type.")
             return None

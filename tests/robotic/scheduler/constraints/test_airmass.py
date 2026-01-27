@@ -15,7 +15,8 @@ async def test_airmass_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     task = Task(1, "Canopus", 100)
-    task._target = SiderealTarget("Canopus", SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs"))
+    coord = SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs")
+    task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Canopus")
 
     constraint = AirmassConstraint(1.3)
 

@@ -40,6 +40,15 @@ class Task(Object):
         self._merits = merits
         self._target = target
 
+    def __str__(self) -> str:
+        s = f"Task {self._id}: {self._name} (duration: {self._duration}"
+        if self.priority is not None:
+            s += f", priority: {self.priority}"
+        if self.target is not None:
+            s += f", target: {self.target.name}"
+        s += ")"
+        return s
+
     @property
     def id(self) -> Any:
         """ID of task."""

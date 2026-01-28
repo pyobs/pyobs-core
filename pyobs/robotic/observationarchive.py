@@ -34,11 +34,6 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def last_scheduled(self) -> Time | None:
-        """Returns time of last scheduler run."""
-        ...
-
-    @abstractmethod
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
 

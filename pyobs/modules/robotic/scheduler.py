@@ -242,13 +242,13 @@ class Scheduler(Module, IStartStop, IRunnable):
                         if first:
                             first = False
                             log.info("Finished calculating next task:")
-                            self._log_scheduled_task([scheduled_task])
+                            self._log_scheduled_task(ObservationList([scheduled_task]))
 
                             # set new safety_time as duration + 20%
                             self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
                             # submit it
-                            await self._schedule.add_schedule([scheduled_task])
+                            await self._schedule.add_schedule(ObservationList([scheduled_task]))
 
                     if self._need_update:
                         log.info("Not using scheduler results, since update was requested.")

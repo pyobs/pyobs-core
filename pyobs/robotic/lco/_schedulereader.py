@@ -1,10 +1,8 @@
 import asyncio
 import asyncio.exceptions
-from urllib.parse import urljoin
 import logging
 from typing import Any
 import aiodns
-import aiohttp as aiohttp
 from astropy.time import TimeDelta
 import astropy.units as u
 
@@ -179,44 +177,23 @@ class LcoScheduleReader(Object):
             RuntimeError: If something goes wrong.
         """
 
-        # define states
-        states = ["PENDING", "IN_PROGRESS"]
+        # download schedule
+        schedules = await self._portal.download_schedule(start_before, end_after)
 
-        # get url and params
-        url = urljoin(self._url, "/api/observations/")
-        params = {
-            "site": self._site,
-            "telescope": self._telescope,
-            "end_after": end_after.isot,
-            "start_before": start_before.isot,
-            "state": states,
-            "limit": 1000,
-        }
+        # create tasks
+        scheduled_tasks = ObservationList()
+        for sched in schedules:
+            # create task
+            task = LcoTask.from_lco_request(sched)
 
-        # do request
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self._header, params=params, timeout=10) as response:
-                if response.status != 200:
-                    raise RuntimeError("Invalid response from portal.")
-                data = await response.json()
+            # create scheduled task
+            scheduled_task = Observation(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
 
-                # get schedule
-                schedules = data["results"]
+            # add it
+            scheduled_tasks.append(scheduled_task)
 
-                # create tasks
-                scheduled_tasks = ObservationList()
-                for sched in schedules:
-                    # create task
-                    task = self.get_object(LcoTask, LcoTask, tasks=self, config=sched)
-
-                    # create scheduled task
-                    scheduled_task = Observation(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
-
-                    # add it
-                    scheduled_tasks.append(scheduled_task)
-
-                # finished
-                return scheduled_tasks
+        # finished
+        return scheduled_tasks
 
     async def get_task(self, time: Time) -> Observation | None:
         """Returns the active scheduled task at the given time.

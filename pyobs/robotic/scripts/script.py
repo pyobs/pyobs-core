@@ -5,7 +5,7 @@ from typing import Any, TypeVar, TYPE_CHECKING
 from pyobs.object import Object
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskSchedule, TaskRunner, TaskArchive
+    from pyobs.robotic import ObservationArchive, TaskRunner, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class Script(Object):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.

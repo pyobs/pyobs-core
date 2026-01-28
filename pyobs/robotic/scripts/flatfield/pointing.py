@@ -7,7 +7,7 @@ from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.pointing import SkyFlatsBasePointing
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
+    from pyobs.robotic import ObservationArchive, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class Pointing(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.

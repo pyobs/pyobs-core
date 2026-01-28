@@ -1,5 +1,5 @@
 from pyobs.modules.robotic import Scheduler
-from pyobs.robotic import Task, TaskRunner, TaskSchedule, TaskArchive
+from pyobs.robotic import Task, TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 
@@ -14,7 +14,7 @@ class TestTask(Task):
     async def run(
         self,
         task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
         scripts: dict[str, Script] | None = None,
     ) -> None:

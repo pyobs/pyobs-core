@@ -8,7 +8,7 @@ from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
 
 if TYPE_CHECKING:
-    from pyobs.robotic.taskschedule import TaskSchedule
+    from pyobs.robotic.observationarchive import ObservationArchive
     from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
 
@@ -152,7 +152,7 @@ class Task(Object):
     async def run(
         self,
         task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
         scripts: dict[str, Script] | None = None,
     ) -> None:

@@ -14,7 +14,7 @@ from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, TaskSchedule, Task, ObservationList
+from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self,
         scheduler: dict[str, Any] | TaskScheduler,
         tasks: Union[Dict[str, Any], TaskArchive],
-        schedule: Union[Dict[str, Any], TaskSchedule],
+        schedule: Union[Dict[str, Any], ObservationArchive],
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
         schedule_range: float = 24.0,
@@ -53,7 +53,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # get scheduler
         self._scheduler = self.add_child_object(scheduler, TaskScheduler)
         self._task_archive = self.add_child_object(tasks, TaskArchive)
-        self._schedule = self.add_child_object(schedule, TaskSchedule)
+        self._schedule = self.add_child_object(schedule, ObservationArchive)
 
         # store
         self._running = True

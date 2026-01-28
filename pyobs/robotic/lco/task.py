@@ -20,7 +20,7 @@ from pyobs.utils.time import Time
 import pyobs.utils.exceptions as exc
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -234,12 +234,12 @@ class LcoTask(Task):
     async def run(
         self,
         task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
         scripts: dict[str, Script] | None = None,
     ) -> None:
         """Run a task"""
-        from pyobs.robotic.lco import LcoTaskSchedule
+        from pyobs.robotic.lco import LcoObservationArchive
 
         # get request
         req = self.config["request"]
@@ -248,10 +248,10 @@ class LcoTask(Task):
         status: ConfigStatus | None
         for config in req["configurations"]:
             # send an ATTEMPTED status
-            if isinstance(task_schedule, LcoTaskSchedule):
+            if isinstance(observation_archive, LcoObservationArchive):
                 status = ConfigStatus()
                 self.config["state"] = "ATTEMPTED"
-                await task_schedule.send_update(config["configuration_status"], status.finish().to_json())
+                await observation_archive.send_update(config["configuration_status"], status.finish().to_json())
 
             # get config runner
             script = self._get_config_script(config, scripts)
@@ -265,14 +265,14 @@ class LcoTask(Task):
             log.info("Running config...")
             self.cur_script = script
             status = await self._run_script(
-                script, task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive
+                script, task_runner=task_runner, observation_archive=observation_archive, task_archive=task_archive
             )
             self.cur_script = None
 
             # send status
-            if status is not None and isinstance(task_schedule, LcoTaskSchedule):
+            if status is not None and isinstance(observation_archive, LcoObservationArchive):
                 self.config["state"] = status.state
-                await task_schedule.send_update(config["configuration_status"], status.to_json())
+                await observation_archive.send_update(config["configuration_status"], status.to_json())
 
         # finished task
         log.info("Finished task.")
@@ -281,7 +281,7 @@ class LcoTask(Task):
         self,
         script: Script,
         task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> ConfigStatus | None:
         """Run a config
@@ -299,7 +299,9 @@ class LcoTask(Task):
         try:
             # run it
             log.info("Running task %d: %s...", self.id, self.config["name"])
-            await script.run(task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive)
+            await script.run(
+                task_runner=task_runner, observation_archive=observation_archive, task_archive=task_archive
+            )
 
             # finished config
             config_status.finish(state="COMPLETED", time_completed=script.exptime_done)

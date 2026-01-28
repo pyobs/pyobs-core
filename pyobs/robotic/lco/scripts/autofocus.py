@@ -6,7 +6,7 @@ from pyobs.robotic import TaskRunner
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.logger import DuplicateFilter
-from pyobs.robotic import TaskSchedule, TaskArchive
+from pyobs.robotic import ObservationArchive, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class LcoAutoFocusScript(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.

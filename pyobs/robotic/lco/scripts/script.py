@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from pyobs.robotic.scripts import Script
-from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
+from pyobs.robotic import ObservationArchive, TaskArchive, TaskRunner
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class LcoScript(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         """Run script.
@@ -71,7 +71,7 @@ class LcoScript(Script):
         runner = self._get_config_script(self.configuration)
 
         # run it
-        await runner.run(task_runner=task_runner, task_schedule=task_schedule, task_archive=task_archive)
+        await runner.run(task_runner=task_runner, observation_archive=observation_archive, task_archive=task_archive)
 
 
 __all__ = ["LcoScript"]

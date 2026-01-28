@@ -8,7 +8,7 @@ import astropy.units as u
 from pyobs.robotic.observation import Observation
 from pyobs.utils.time import Time
 from .task import LcoTask
-from .taskschedule import LcoTaskSchedule
+from .observationarchive import LcoObservationArchive
 from .. import ObservationList
 
 log = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ REQUEST: RequestGroup = {
 }
 
 
-class LcoDummyTaskSchedule(LcoTaskSchedule):
+class MockLcoObservationArchive(LcoObservationArchive):
     """Dummy scheduler for using the LCO portal"""
 
     def __init__(
@@ -127,7 +127,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
             mode: Instrument mode
             instrument_type: Instrument type
         """
-        LcoTaskSchedule.__init__(self, **kwargs)
+        LcoObservationArchive.__init__(self, **kwargs)
 
         # set some stuff
         self._last_schedule_time = Time.now()
@@ -188,4 +188,4 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         pass
 
 
-__all__ = ["LcoDummyTaskSchedule"]
+__all__ = ["MockLcoObservationArchive"]

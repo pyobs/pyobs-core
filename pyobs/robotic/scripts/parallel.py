@@ -4,7 +4,7 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 
@@ -38,12 +38,12 @@ class ParallelRunner(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         scripts = [self.get_object(s, Script) for s in self.scripts]
         tasks = [
-            asyncio.create_task(self._run_script(s, task_runner, task_schedule, task_archive))
+            asyncio.create_task(self._run_script(s, task_runner, observation_archive, task_archive))
             for s in scripts
             if await s.can_run()
         ]
@@ -53,11 +53,11 @@ class ParallelRunner(Script):
         self,
         script: Script,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         try:
-            await script.run(task_runner, task_schedule, task_archive)
+            await script.run(task_runner, observation_archive, task_archive)
         except:
             log.exception("Script failed.")
 

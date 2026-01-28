@@ -3,7 +3,7 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -36,13 +36,13 @@ class SequentialRunner(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         for s in self.scripts:
             script = self.get_object(s, Script)
             if await script.can_run():
-                await script.run(task_runner, task_schedule, task_archive)
+                await script.run(task_runner, observation_archive, task_archive)
             else:
                 log.info(f"Script {s['class']} cannot run.")
 

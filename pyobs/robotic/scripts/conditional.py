@@ -5,7 +5,7 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -54,12 +54,12 @@ class ConditionalRunner(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         script = self.__get_script()
         if script is not None:
-            await script.run(task_runner, task_schedule, task_archive)
+            await script.run(task_runner, observation_archive, task_archive)
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

@@ -3,7 +3,7 @@ import logging
 from typing import Any, Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class CallModule(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         proxy = await self.comm.proxy(self.module)

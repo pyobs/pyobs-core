@@ -5,7 +5,7 @@ from typing import Any, TYPE_CHECKING
 from pyobs.interfaces import IWindow
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class CameraTest(Script):
     async def run(
         self,
         task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
+        observation_archive: ObservationArchive | None = None,
         task_archive: TaskArchive | None = None,
     ) -> None:
         proxy = await self.comm.proxy(self.camera, IWindow)

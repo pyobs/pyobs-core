@@ -5,7 +5,7 @@ from pyobs.object import Object
 from .task import Task
 
 if TYPE_CHECKING:
-    from .taskschedule import TaskSchedule
+    from .observationarchive import ObservationArchive
     from .taskarchive import TaskArchive
 
 
@@ -34,13 +34,16 @@ class TaskRunner(Object):
         return await task.can_run(self.scripts)
 
     async def run_task(
-        self, task: Task, task_schedule: Optional[TaskSchedule] = None, task_archive: Optional[TaskArchive] = None
+        self,
+        task: Task,
+        observation_archive: ObservationArchive | None = None,
+        task_archive: TaskArchive | None = None,
     ) -> bool:
         """Run a task.
 
         Args:
             task: Task to run
-            task_schedule: Schedule.
+            observation_archive: Schedule.
             task_archive: Archive.
 
         Returns:
@@ -48,7 +51,9 @@ class TaskRunner(Object):
         """
 
         # run task
-        await task.run(task_runner=self, task_schedule=task_schedule, task_archive=task_archive, scripts=self.scripts)
+        await task.run(
+            task_runner=self, observation_archive=observation_archive, task_archive=task_archive, scripts=self.scripts
+        )
 
         # finish
         return True

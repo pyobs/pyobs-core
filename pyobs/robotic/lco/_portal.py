@@ -224,3 +224,29 @@ class Portal:
 
         # re-send
         await self.update_configuration_status(status_id, status)
+
+    async def download_schedule(self, start_before: Time, end_after: Time) -> list[dict[str, Any]]:
+        """Fetch schedule from portal.
+
+        Args:
+            start_before: Task must start before this time.
+            end_after: Task must end after this time.
+
+        Returns:
+            List with tasks.
+
+        Raises:
+            Timeout: If request timed out.
+            RuntimeError: If something goes wrong.
+        """
+        states = ["PENDING", "IN_PROGRESS"]
+        params = {
+            "site": self.site,
+            "telescope": self.telescope,
+            "end_after": end_after.isot,
+            "start_before": start_before.isot,
+            "state": states,
+            "limit": 1000,
+        }
+        data = await self._get("/api/observations/", params=params)
+        return cast(list[dict[str, Any]], data["results"])

@@ -50,7 +50,6 @@ class LcoScheduleReader(Object):
         self._telescope = telescope
         self._last_schedule_time: Time | None = None
         self._update_lock = asyncio.Lock()
-        self._initialized = asyncio.Event()
         self._auto_updates = auto_updates
 
         # buffers in case of errors
@@ -106,9 +105,6 @@ class LcoScheduleReader(Object):
         Args:
             force: Force update.
         """
-
-        # wait for init
-        await self._initialized.wait()
 
         # acquire lock
         if not await acquire_lock(self._update_lock, 20):

@@ -4,7 +4,7 @@ from typing import Dict, Optional, Any
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from .portal import Portal
+from ._portal import Portal
 from .task import LcoTask
 from .. import Task
 
@@ -32,11 +32,9 @@ class LcoTaskArchive(TaskArchive):
         TaskArchive.__init__(self, **kwargs)
 
         # portal
-        self._portal = Portal(url, token)
+        self._portal = Portal(url, token, "", "", "")
 
         # store stuff
-        self._url = url
-        self._token = token
         instrument_type = [instrument_type] if isinstance(instrument_type, str) else instrument_type
         self._instrument_type = [it.lower() for it in instrument_type]
 

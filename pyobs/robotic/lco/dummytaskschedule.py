@@ -5,7 +5,7 @@ from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task, Observation
+from pyobs.robotic.observation import Observation
 from pyobs.utils.time import Time
 from .task import LcoTask
 from .taskschedule import LcoTaskSchedule
@@ -157,7 +157,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         cfg["end"] = Time.now() + TimeDelta(5.0 * u.minute)
 
         # create task
-        self._task: Task | None = self._create_task(LcoTask, config=cfg)
+        self._task = self.get_object(LcoTask, LcoTask, tasks=self, **kwargs)
 
     async def _init_from_portal(self) -> None:
         pass

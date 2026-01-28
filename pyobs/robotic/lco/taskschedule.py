@@ -256,7 +256,7 @@ class LcoTaskSchedule(TaskSchedule):
                 scheduled_tasks = ObservationList()
                 for sched in schedules:
                     # create task
-                    task = self._create_task(LcoTask, config=sched)
+                    task = self.get_object(LcoTask, LcoTask, tasks=self, config=sched)
 
                     # create scheduled task
                     scheduled_task = Observation(task=task, start=Time(sched["start"]), end=Time(sched["end"]))

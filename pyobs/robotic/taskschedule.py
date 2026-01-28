@@ -1,8 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Type, cast
+from typing import Any
 
 from pyobs.utils.time import Time
-from .task import Task
 from .observation import ObservationList, Observation
 from pyobs.object import Object
 
@@ -58,9 +57,6 @@ class TaskSchedule(Object, metaclass=ABCMeta):
             Scheduled task at the given time.
         """
         ...
-
-    def _create_task(self, klass: Type[Task], **kwargs: Any) -> Task:
-        return cast(Task, self.get_object(klass, Task, tasks=self, **kwargs))
 
 
 __all__ = ["TaskSchedule"]

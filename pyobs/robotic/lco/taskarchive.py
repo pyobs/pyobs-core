@@ -1,6 +1,9 @@
+import asyncio
 import copy
 import logging
+import astropy.units as u
 from typing import Dict, Optional, Any
+from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
@@ -43,6 +46,31 @@ class LcoTaskArchive(TaskArchive):
 
         # task list
         self._tasks: Dict[str, LcoTask] = {}
+
+        # update task
+        self.add_background_task(self._update_worker)
+
+    async def _update_worker(self) -> None:
+        # time of last change in blocks
+        last_change = None
+
+        # run forever
+        while True:
+            # got new time of last change?
+            t = await self._portal.last_changed()
+            more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
+            if last_change is None or last_change < t and not more_1day:
+                try:
+                    last_change = t
+                    if self._on_tasks_changed is not None:
+                        asyncio.create_task(self._on_tasks_changed())
+                except asyncio.CancelledError:
+                    return
+                except:
+                    log.exception("Something went wrong when updating schedule.")
+
+            # sleep a little
+            await asyncio.sleep(5)
 
     async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""

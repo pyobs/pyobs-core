@@ -30,6 +30,33 @@ class Observation:
         self._id = id
         self._state = state
 
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> Observation:
+        from .task import Task
+
+        return Observation(
+            task=Task.from_dict(data["task"]),
+            start=Time(data["start"]),
+            end=Time(data["end"]),
+            id=data["id"],
+            state=ObservationState(data["state"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return dict(
+            task=self.task.to_dict(),
+            start=self._start.isot,
+            end=self._end.isot,
+            id=self._id,
+            state=self._state.value,
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"Observation {self._id} of {self.task.name} (#{self.task.id}) "
+            f"from {self.start} to {self.end} [{self.state.value}]"
+        )
+
     @property
     def id(self) -> Any:
         """Returns the id."""

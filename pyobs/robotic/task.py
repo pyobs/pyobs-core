@@ -78,6 +78,20 @@ class Task(Object):
             script=script,
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        # TODO: finish this! Maybe using pydantic?
+        return dict(
+            id=self._id,
+            name=self._name,
+            duration=self._duration,
+            priority=self._priority,
+            config=self._config,
+            # constraints=constraints,
+            # merits=merits,
+            # target=target,
+            # script=script,
+        )
+
     def __str__(self) -> str:
         s = f"Task {self._id}: {self._name} (duration: {self._duration}"
         if self.priority is not None:

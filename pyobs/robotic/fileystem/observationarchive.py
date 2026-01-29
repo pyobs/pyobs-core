@@ -94,7 +94,9 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Args:
             start_time: Start time to clear from.
         """
-        ...
+        schedule = await self._load_observations(start_time)
+        cleared = ObservationList([obs for obs in schedule if obs.end <= start_time])
+        await self._save_observations(start_time, cleared)
 
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.

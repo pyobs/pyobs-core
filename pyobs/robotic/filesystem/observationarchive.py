@@ -119,7 +119,18 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Returns:
             Scheduled task at the given time.
         """
-        ...
+
+        # get schedule
+        schedule = await self._load_observations(time)
+
+        # loop all tasks
+        for obs in schedule:
+            # running now?
+            if obs.start <= time < obs.end and not obs.task.is_finished():
+                return obs
+
+        # nothing found
+        return None
 
     async def observations_for_task(self, task: Task) -> ObservationList:
         """Returns list of observations for the given task.

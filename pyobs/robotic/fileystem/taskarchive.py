@@ -27,7 +27,7 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
 
     @classmethod
     @abc.abstractmethod
-    async def from_file(cls, path: str, vfs: VirtualFileSystem) -> Task: ...
+    async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task: ...
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any blocks changed."""
@@ -40,7 +40,7 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
             List of schedulable tasks
         """
         files = await self.vfs.find(self._path, f"*.{self._extension}")
-        return [await self.from_file(os.path.join(self._path, f), self.vfs) for f in files]
+        return [await self._load_task_from_file(os.path.join(self._path, f), self.vfs) for f in files]
 
 
 class YamlTaskArchive(FileSystemTaskArchive):
@@ -48,7 +48,7 @@ class YamlTaskArchive(FileSystemTaskArchive):
         FileSystemTaskArchive.__init__(self, path, "yaml", **kwargs)
 
     @classmethod
-    async def from_file(cls, path: str, vfs: VirtualFileSystem) -> Task:
+    async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task:
         config = await vfs.read_yaml(path)
         return Task.from_dict(config)
 

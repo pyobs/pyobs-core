@@ -20,7 +20,7 @@ async def test_pernight_merit() -> None:
     task = Task(1, "1", 100)
     scheduled_task = Observation(task, time, time + TimeDelta(5.0 * u.minute))
 
-    merit = PerNightMerit(2)
+    merit = PerNightMerit(count=2)
     assert await merit(time, task, data) == 1.0
 
     await archive.evolve(scheduled_task)

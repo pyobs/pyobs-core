@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 class BeforeTimeMerit(Merit):
     """Merit function that gives 1 before a given time."""
 
-    after: AstroPydanticTime
+    time: AstroPydanticTime
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
-        return 1.0 if time <= self.before else 0.0
+        return 1.0 if time <= self.time else 0.0
 
 
 __all__ = ["BeforeTimeMerit"]

@@ -17,11 +17,11 @@ async def test_beforetime_merit() -> None:
     time = Time.now()
     task = Task(1, "1", 100)
 
-    merit = BeforeTimeMerit(time)
+    merit = BeforeTimeMerit(time=time)
     assert await merit(time, task, data) == 1.0
 
-    merit = BeforeTimeMerit(time)
+    merit = BeforeTimeMerit(time=time)
     assert await merit(time - TimeDelta(5.0 * u.second), task, data) == 1.0
 
-    merit = BeforeTimeMerit(time)
+    merit = BeforeTimeMerit(time=time)
     assert await merit(time + TimeDelta(5.0 * u.second), task, data) == 0.0

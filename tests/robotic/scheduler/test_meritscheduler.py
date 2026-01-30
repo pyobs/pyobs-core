@@ -7,6 +7,7 @@ import astropy.units as u
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
+from pyobs.robotic.scheduler.merits.timewindow import TimeWindow
 from pyobs.robotic.scheduler.meritscheduler import MeritScheduler
 from pyobs.utils.time import Time
 
@@ -20,8 +21,8 @@ async def test_evaluate_merits() -> None:
     end = start + TimeDelta(5000 * u.second)
 
     tasks: list[Task] = [
-        Task(1, "1", 100, merits=[ConstantMerit(10)]),
-        Task(1, "1", 100, merits=[ConstantMerit(5)]),
+        Task(1, "1", 100, merits=[ConstantMerit(merit=10)]),
+        Task(1, "1", 100, merits=[ConstantMerit(merit=5)]),
     ]
     merits = await scheduler.evaluate_constraints_and_merits(tasks, start, end, data)
 
@@ -38,8 +39,8 @@ async def test_next_best_task() -> None:
 
     # two constant merits
     tasks: list[Task] = [
-        Task(1, "1", 100, merits=[ConstantMerit(10)]),
-        Task(1, "1", 100, merits=[ConstantMerit(5)]),
+        Task(1, "1", 100, merits=[ConstantMerit(merit=10)]),
+        Task(1, "1", 100, merits=[ConstantMerit(merit=5)]),
     ]
     best, merit = await scheduler.find_next_best_task(tasks, start, end, data)
     assert best == tasks[0]
@@ -52,13 +53,15 @@ async def test_next_best_task() -> None:
             "1",
             4000,
             merits=[
-                ConstantMerit(10),
+                ConstantMerit(merit=10),
                 TimeWindowMerit(
-                    [{"start": start + TimeDelta(1000 * u.second), "end": start + TimeDelta(2000 * u.second)}]
+                    windows=[
+                        TimeWindow(start=start + TimeDelta(1000 * u.second), end=start + TimeDelta(2000 * u.second))
+                    ]
                 ),
             ],
         ),
-        Task(1, "1", 4000, merits=[ConstantMerit(5)]),
+        Task(1, "1", 4000, merits=[ConstantMerit(merit=5)]),
     ]
     best, merit = await scheduler.find_next_best_task(tasks, start, end, data)
     assert best == tasks[1]
@@ -80,13 +83,15 @@ async def test_check_for_better_task() -> None:
             "1",
             4000,
             merits=[
-                ConstantMerit(10),
+                ConstantMerit(merit=10),
                 TimeWindowMerit(
-                    [{"start": start + TimeDelta(1000 * u.second), "end": start + TimeDelta(2000 * u.second)}]
+                    windows=[
+                        TimeWindow(start=start + TimeDelta(1000 * u.second), end=start + TimeDelta(2000 * u.second))
+                    ]
                 ),
             ],
         ),
-        Task(1, "1", 4000, merits=[ConstantMerit(5)]),
+        Task(1, "1", 4000, merits=[ConstantMerit(merit=5)]),
     ]
     better, time, merit = await scheduler.check_for_better_task(tasks[1], 5.0, tasks, start, end, data)
     assert better == tasks[0]
@@ -108,9 +113,14 @@ async def test_fill_for_better_task() -> None:
     # then the scheduler tries to fill the hole and should schedule task 3 first
     # task 2 will only be scheduled afterward
     tasks: list[Task] = [
-        Task(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
-        Task(2, "2", 1800, merits=[ConstantMerit(5)]),
-        Task(3, "3", 300, merits=[ConstantMerit(1)]),
+        Task(
+            1,
+            "1",
+            1800,
+            merits=[ConstantMerit(merit=10), TimeWindowMerit(windows=[TimeWindow(start=after_start, end=after_end)])],
+        ),
+        Task(2, "2", 1800, merits=[ConstantMerit(merit=5)]),
+        Task(3, "3", 300, merits=[ConstantMerit(merit=1)]),
     ]
 
     # note that task 1 will not be scheduled exactly at its start time
@@ -139,9 +149,14 @@ async def test_postpone_task() -> None:
     # in contrast to test_fill_for_better_task the after_end time here is longer, so the scheduler should just
     # postpone task 1 by a bit, then schedule task 2 afterward
     tasks: list[Task] = [
-        Task(1, "1", 1800, merits=[ConstantMerit(10), TimeWindowMerit([{"start": after_start, "end": after_end}])]),
-        Task(2, "2", 1800, merits=[ConstantMerit(5)]),
-        Task(3, "3", 300, merits=[ConstantMerit(1)]),
+        Task(
+            1,
+            "1",
+            1800,
+            merits=[ConstantMerit(merit=10), TimeWindowMerit(windows=[TimeWindow(start=after_start, end=after_end)])],
+        ),
+        Task(2, "2", 1800, merits=[ConstantMerit(merit=5)]),
+        Task(3, "3", 300, merits=[ConstantMerit(merit=1)]),
     ]
     schedule = scheduler.schedule_first_in_interval(tasks, start, end, data, step=10)
 

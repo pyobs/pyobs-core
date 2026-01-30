@@ -16,5 +16,5 @@ async def test_constant_merit() -> None:
     time = Time.now()
     task = Task(1, "1", 100)
 
-    merit = ConstantMerit(10)
+    merit = ConstantMerit(merit=10)
     assert await merit(time, task, data) == 10

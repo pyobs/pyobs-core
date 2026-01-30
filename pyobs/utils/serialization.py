@@ -26,7 +26,6 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
             # WARNING2: `sub_cls(**modified_value)` will trigger a recursion, and thus we need to remove `class`
             modified_value = value.copy()
             sub_cls_name = modified_value.pop("class", None)
-            print("sub_cls_name", sub_cls_name)
             if sub_cls_name is not None:
                 klass = get_class_from_string(sub_cls_name)
                 return klass(**modified_value)

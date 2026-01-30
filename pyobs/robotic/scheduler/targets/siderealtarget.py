@@ -1,5 +1,3 @@
-from typing import Any
-
 from astropy.coordinates import SkyCoord
 
 from pyobs.utils.time import Time
@@ -7,16 +5,15 @@ from .target import Target
 
 
 class SiderealTarget(Target):
-    def __init__(self, ra: float, dec: float, **kwargs: Any) -> None:
-        Target.__init__(self, **kwargs)
-        self._coord = SkyCoord(ra=ra, dec=dec, frame="icrs", unit="deg")
+    ra: float
+    dec: float
 
     @property
     def coord(self) -> SkyCoord:
-        return self._coord
+        return SkyCoord(ra=self.ra, dec=self.dec, frame="icrs", unit="deg")
 
     def coordinates(self, time: Time) -> SkyCoord:
-        return self._coord
+        return SkyCoord(ra=self.ra, dec=self.dec, frame="icrs", unit="deg")
 
 
 __all__ = ["SiderealTarget"]

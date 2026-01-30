@@ -18,7 +18,7 @@ async def test_moonseparation_constraint() -> None:
     coord = SkyCoord("16h29m22.94s -26d25m53.0s", frame="icrs")
     task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Antares")
 
-    constraint = MoonSeparationConstraint(20.0)
+    constraint = MoonSeparationConstraint(min_distance=20.0)
 
     time = Time("2025-11-18T15:00:00", scale="utc")
     assert await constraint(time, task, data) is True

@@ -15,7 +15,7 @@ async def test_solarelevation_constraint() -> None:
     data = DataProvider(observer)
     task = Task(1, "1", 100)
 
-    constraint = SolarElevationConstraint(-18.0)
+    constraint = SolarElevationConstraint(max_elevation=-18.0)
 
     time = Time("2025-11-03T16:00:00", scale="utc")
     assert await constraint(time, task, data) is False

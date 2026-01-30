@@ -18,7 +18,7 @@ async def test_airmass_constraint() -> None:
     coord = SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs")
     task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Canopus")
 
-    constraint = AirmassConstraint(1.3)
+    constraint = AirmassConstraint(max_airmass=1.3)
 
     time = Time("2025-11-03T17:00:00", scale="utc")
     assert await constraint(time, task, data) is False

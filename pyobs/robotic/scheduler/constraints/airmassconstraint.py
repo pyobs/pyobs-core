@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import astroplan
 from .constraint import Constraint
 
@@ -12,9 +12,7 @@ if TYPE_CHECKING:
 class AirmassConstraint(Constraint):
     """Airmass constraint."""
 
-    def __init__(self, max_airmass: float, **kwargs: Any):
-        super().__init__()
-        self.max_airmass = max_airmass
+    max_airmass: float
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:
         return astroplan.AirmassConstraint(max=self.max_airmass)

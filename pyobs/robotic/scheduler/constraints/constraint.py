@@ -4,6 +4,7 @@ import astroplan
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import create_object
+from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from pyobs.robotic import Task
 
 
-class Constraint(metaclass=ABCMeta):
+class Constraint(SubClassBaseModel, metaclass=ABCMeta):
     @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...
 

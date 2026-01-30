@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import create_object
+from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from pyobs.robotic import Task
 
 
-class Merit(metaclass=ABCMeta):
+class Merit(SubClassBaseModel, metaclass=ABCMeta):
     """Merit class."""
 
     @abstractmethod

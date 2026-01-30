@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from .merit import Merit
 from ...observation import ObservationState
 
@@ -12,9 +12,7 @@ if TYPE_CHECKING:
 class PerNightMerit(Merit):
     """Merit functions for defining a max number of observations per night."""
 
-    def __init__(self, count: int, **kwargs: Any):
-        super().__init__()
-        self._count = count
+    count: int
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         # get all observations for task
@@ -24,7 +22,7 @@ class PerNightMerit(Merit):
         observations = observations.filter(after=data.last_sunrise(time), state=ObservationState.COMPLETED)
 
         # compare to count
-        return 1.0 if len(observations) < self._count else 0.0
+        return 1.0 if len(observations) < self.count else 0.0
 
 
 __all__ = ["PerNightMerit"]

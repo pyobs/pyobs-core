@@ -1,5 +1,9 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
+
+from astropydantic import AstroPydanticTime
+from pydantic import BaseModel
+
 from .merit import Merit
 
 if TYPE_CHECKING:
@@ -8,31 +12,29 @@ if TYPE_CHECKING:
     from ..dataprovider import DataProvider
 
 
-class TimeWindow(TypedDict):
-    start: str
-    end: int
+class TimeWindow(BaseModel):
+    start: AstroPydanticTime
+    end: AstroPydanticTime
 
 
 class TimeWindowMerit(Merit):
     """Merit function that uses time windows."""
 
-    def __init__(self, windows: list[TimeWindow], inverse: bool = False, **kwargs: Any):
-        super().__init__()
-        self._windows = windows
-        self._inverse = inverse
+    windows: list[TimeWindow]
+    inverse: bool = False
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         # is time in any of the windows?
         in_window = False
-        for window in self._windows:
-            if window["start"] <= time <= window["end"]:
+        for window in self.windows:
+            if window.start <= time <= window.end:
                 in_window = True
 
         # invert?
-        if not self._inverse:
+        if not self.inverse:
             return 1.0 if in_window else 0.0
         else:
             return 0.0 if in_window else 1.0
 
 
-__all__ = ["TimeWindowMerit"]
+__all__ = ["TimeWindowMerit", "TimeWindow"]

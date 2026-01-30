@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from astropydantic import AstroPydanticTime  # type: ignore
+
 from .merit import Merit
 
 if TYPE_CHECKING:
@@ -11,12 +13,10 @@ if TYPE_CHECKING:
 class AfterTimeMerit(Merit):
     """Merit function that gives 1 after a given time."""
 
-    def __init__(self, after: Time, **kwargs: Any):
-        super().__init__()
-        self._after = after
+    after: AstroPydanticTime
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
-        return 1.0 if time >= self._after else 0.0
+        return 1.0 if time >= self.after else 0.0
 
 
 __all__ = ["AfterTimeMerit"]

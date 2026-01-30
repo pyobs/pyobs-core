@@ -136,7 +136,7 @@ class LcoTask(Task):
                 config = {"class": merit["type"]}
                 if "params" in merit:
                     config.update(**merit["params"])
-                merits.append(Merit.create(config))
+                merits.append(Merit.model_validate(config, by_alias=True))
         return merits
 
     @staticmethod

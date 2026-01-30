@@ -106,7 +106,9 @@ class LcoTask(Task):
 
         # time constraints?
         if "windows" in req:
-            constraints.extend([TimeConstraint(Time(wnd["start"]), Time(wnd["end"])) for wnd in req["windows"]])
+            constraints.extend(
+                [TimeConstraint(start=Time(wnd["start"]), end=Time(wnd["end"])) for wnd in req["windows"]]
+            )
 
         # take first config
         cfg = req["configurations"][0]
@@ -115,14 +117,14 @@ class LcoTask(Task):
         if "constraints" in cfg:
             c = cfg["constraints"]
             if "max_airmass" in c and c["max_airmass"] is not None:
-                constraints.append(AirmassConstraint(c["max_airmass"]))
+                constraints.append(AirmassConstraint(max_airmass=c["max_airmass"]))
             if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
-                constraints.append(MoonSeparationConstraint(c["min_lunar_distance"]))
+                constraints.append(MoonSeparationConstraint(min_distance=c["min_lunar_distance"]))
             if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
-                constraints.append(MoonIlluminationConstraint(c["max_lunar_phase"]))
+                constraints.append(MoonIlluminationConstraint(max_phase=c["max_lunar_phase"]))
                 # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
                 if c["max_lunar_phase"] <= 0.4:
-                    constraints.append(SolarElevationConstraint(-18.0))
+                    constraints.append(SolarElevationConstraint(max_elevation=-18.0))
 
         return constraints
 

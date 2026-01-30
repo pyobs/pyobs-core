@@ -47,19 +47,17 @@ class Task(Object):
         # get constraints
         constraints: list[Constraint] = []
         if "constraints" in data and data["constraints"] is not None:
-            for constraint in data["constraints"]:
-                constraints.append(get_object(constraint, Constraint))  # noqa: F821
+            constraints = [Constraint.model_validate(constraint, by_alias=True) for constraint in data["constraints"]]
 
         # get merits
         merits: list[Merit] = []
         if "merits" in data and data["merits"] is not None:
-            for merit in data["merits"]:
-                merits.append(get_object(merit, Merit))  # noqa: F821
+            merits = [Merit.model_validate(merit, by_alias=True) for merit in data["merits"]]
 
         # get target
         target: Target | None = None
         if "target" in data and data["target"] is not None:
-            target = get_object(data["target"], Target)  # noqa: F821
+            target = Target.model_validate(data["target"], by_alias=True)
 
         # get script
         script: Script | None = None

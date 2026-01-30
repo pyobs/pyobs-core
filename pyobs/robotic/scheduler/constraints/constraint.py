@@ -23,7 +23,7 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
     def create(config: Constraint | dict[str, Any]) -> Constraint:
         if isinstance(config, Constraint):
             return config
-        else:
+        elif "type" in config:
             from . import __all__ as constraints
 
             constraints_lower = [c.lower() for c in constraints]
@@ -38,3 +38,5 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
                 return obj
             else:
                 raise ValueError(f"Invalid constraint config: {config}")
+        else:
+            return Constraint.model_validate(config, by_alias=True)

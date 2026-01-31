@@ -17,8 +17,8 @@ async def test_pernight_merit() -> None:
     archive = ObservationArchiveEvolution(observer)
     data = DataProvider(observer, archive)
     time = Time.now()
-    task = Task(1, "1", 100)
-    scheduled_task = Observation(task, time, time + TimeDelta(5.0 * u.minute))
+    task = Task(id=1, name="1", duration=100 * u.second)
+    scheduled_task = Observation(task=task, start=time, end=time + TimeDelta(5.0 * u.minute))
 
     merit = PerNightMerit(count=2)
     assert await merit(time, task, data) == 1.0

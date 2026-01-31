@@ -48,7 +48,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # get schedule and runner
         self._observation_archive = self.add_child_object(schedule, ObservationArchive)
-        self._task_runner = self.add_child_object(runner, TaskRunner)
+        self._task_runner = self.add_child_object(runner, TaskRunner, observation_archive=self._observation_archive)
 
         # observation name and exposure number
         self._task: Task | None = None
@@ -128,7 +128,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             self._task = scheduled_task.task
 
             # ETA
-            eta = now + self._task.duration
+            eta = now + self._task.duration * u.second
 
             # send event
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
@@ -136,7 +136,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # run task in thread
             log.info("Running task %s...", self._task.name)
             try:
-                await self._task_runner.run_task(self._task, observation_archive=self._observation_archive)
+                await self._task_runner.run_task(self._task)
             except:
                 # something went wrong
                 log.warning("Task %s failed.", self._task.name)

@@ -4,7 +4,7 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
+    from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
 
@@ -14,50 +14,21 @@ log = logging.getLogger(__name__)
 class ParallelRunner(Script):
     """Script for running other scripts in parallel."""
 
-    __module__ = "pyobs.modules.robotic"
+    scripts: list[dict[str, Any]]
+    check_all_can_run: bool = True
 
-    def __init__(
-        self,
-        scripts: list[dict[str, Any]],
-        check_all_can_run: bool = True,
-        **kwargs: Any,
-    ):
-        """Initialize a new ParallelRunner.
-
-        Args:
-            scripts: list or dict of scripts to run in parallel.
-        """
-        Script.__init__(self, **kwargs)
-        self.scripts = scripts
-        self.check_all_can_run = check_all_can_run
-
-    async def can_run(self) -> bool:
-        check_all = [await self.get_object(s, Script).can_run() for s in self.scripts]
+    async def can_run(self, data: TaskData) -> bool:
+        check_all = [await Script.model_validate(s).can_run(data) for s in self.scripts]
         return all(check_all) if self.check_all_can_run else any(check_all)
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
-        scripts = [self.get_object(s, Script) for s in self.scripts]
-        tasks = [
-            asyncio.create_task(self._run_script(s, task_runner, observation_archive, task_archive))
-            for s in scripts
-            if await s.can_run()
-        ]
+    async def run(self, data: TaskData) -> None:
+        scripts = [Script.model_validate(s) for s in self.scripts]
+        tasks = [asyncio.create_task(self._run_script(s, data)) for s in scripts if await s.can_run()]
         await asyncio.gather(*tasks)
 
-    async def _run_script(
-        self,
-        script: Script,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def _run_script(self, script: Script, data: TaskData) -> None:
         try:
-            await script.run(task_runner, observation_archive, task_archive)
+            await script.run(data)
         except:
             log.exception("Script failed.")
 

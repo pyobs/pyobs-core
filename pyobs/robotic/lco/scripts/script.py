@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Any
 
@@ -10,16 +11,9 @@ log = logging.getLogger(__name__)
 class LcoScript(Script):
     """Auto SCRIPT script for LCO configs."""
 
-    def __init__(self, scripts: dict[str, Script], **kwargs: Any):
-        """Initialize a new LCO auto focus script.
-
-        Args:
-            scripts: External scripts to run
-        """
-        Script.__init__(self, **kwargs)
-
-        # store
-        self.scripts = scripts
+    exptime_done: float = 0.0
+    configuration: dict[str, Any]
+    scripts: dict[str, Script]
 
     def _get_config_script(self, config: dict[str, Any]) -> Script:
         """Get config script for given configuration.
@@ -39,8 +33,12 @@ class LcoScript(Script):
         if config_type not in self.scripts:
             raise ValueError('No script found for script type "%s".' % config_type)
 
+        # copy
+        script = copy.deepcopy(self.scripts[config_type])
+        script.configuration = self.configuration
+
         # create script handler
-        return self.get_object(self.scripts[config_type], Script, configuration=config)
+        return LcoScript.model_validate(self.scripts[config_type])
 
     async def can_run(self) -> bool:
         """Checks, whether this task could run now.

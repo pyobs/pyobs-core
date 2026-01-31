@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
+import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -13,7 +14,7 @@ from astropy.time import Time
 async def test_moonillumination_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    task = Task(1, "1", 100)
+    task = Task(id=1, name="1", duration=100 * u.second)
     constraint = MoonIlluminationConstraint(max_phase=0.5)
 
     time = Time("2025-11-05T13:00:00", scale="utc")

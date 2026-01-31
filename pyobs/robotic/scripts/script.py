@@ -2,10 +2,11 @@ from __future__ import annotations
 import logging
 from typing import Any, TypeVar, TYPE_CHECKING
 
-from pyobs.object import Object
+from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ObservationArchive, TaskRunner, TaskArchive
+    from pyobs.robotic.task import TaskData
+    from pyobs.comm import Comm
 
 log = logging.getLogger(__name__)
 
@@ -13,30 +14,17 @@ log = logging.getLogger(__name__)
 ProxyClass = TypeVar("ProxyClass")
 
 
-class Script(Object):
-    def __init__(self, configuration: dict[str, Any] | None = None, **kwargs: Any):
-        """Init Script.
+class Script(SubClassBaseModel):
 
-        Args:
-            comm: Comm object to use
-            observer: Observer to use
+    async def can_run(self, data: TaskData) -> bool:
+        """Checks, whether this task could run now.
+
+        Returns:
+            True, if task can run now.
         """
-        Object.__init__(self, **kwargs)
+        return True
 
-        # store
-        self.exptime_done: float = 0.0
-        self.configuration = {} if configuration is None else configuration
-
-    async def can_run(self) -> bool:
-        """Whether this config can currently run."""
-        raise NotImplementedError
-
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run script.
 
         Raises:
@@ -54,6 +42,12 @@ class Script(Object):
             Dictionary containing FITS headers.
         """
         return {}
+
+    @staticmethod
+    def __comm(data: TaskData) -> Comm:
+        if data.comm is None:
+            raise ValueError("No communication module found")
+        return data.comm
 
 
 __all__ = ["Script"]

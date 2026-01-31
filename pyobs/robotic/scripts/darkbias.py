@@ -1,13 +1,13 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pyobs.interfaces import IBinning, ICamera, IWindow, IExposureTime, IImageType, IData
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ObservationArchive, TaskArchive, TaskRunner
+    from pyobs.robotic.task import TaskData
 
 log = logging.getLogger(__name__)
 
@@ -15,39 +15,12 @@ log = logging.getLogger(__name__)
 class DarkBias(Script):
     """Script for running darks or biases."""
 
-    def __init__(
-        self,
-        camera: str | ICamera,
-        count: int = 20,
-        exptime: float = 0,
-        binning: tuple[int, int] = (1, 1),
-        **kwargs: Any,
-    ):
-        """Init a new DarkBias script.
-        Args:
-            camera: name of ICamera that takes the dark or bias
-            count: aimed number of darks or biases
-            exptime: exposure time [s], exptime=0 -> Bias
-            binning: binning for dark or bias
-        """
-        if "configuration" not in kwargs:
-            kwargs["configuration"] = {}
-        Script.__init__(self, **kwargs)
+    camera: str
+    count: int = 20
+    exptime: float = 0
+    binning: tuple[int, int] = (1, 1)
 
-        # store modules
-        self._camera = camera
-
-        # stuff
-        self._count = count
-        self._binning = binning
-        self._exptime = exptime
-
-        if self._exptime == 0:
-            self._ImageType = ImageType.BIAS
-        else:
-            self._ImageType = ImageType.DARK
-
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -55,28 +28,26 @@ class DarkBias(Script):
 
         # we need a camera
         try:
-            await self.comm.proxy(self._camera, IData)
+            await self.__comm(data).proxy(self.camera, IData)
         except ValueError:
             return False
 
         # seems alright
         return True
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
         """
+
+        image_type = ImageType.BIAS if self.exptime == 0 else ImageType.DARK
+
         # get modules
-        camera = await self.comm.proxy(self._camera, ICamera)
+        camera = await self.__comm(data).proxy(self.camera, ICamera)
 
         if isinstance(camera, IBinning):
-            await camera.set_binning(*self._binning)
+            await camera.set_binning(*self.binning)
 
         # set full frame
         if isinstance(camera, IWindow):
@@ -85,21 +56,21 @@ class DarkBias(Script):
 
         # take image
         if isinstance(camera, IExposureTime):
-            await camera.set_exposure_time(self._exptime)
+            await camera.set_exposure_time(self.exptime)
         if isinstance(camera, IImageType):
-            await camera.set_image_type(self._ImageType)
+            await camera.set_image_type(image_type)
 
         # image type for logger
-        if self._exptime == 0:
-            im_type = "%d biases" % self._count
+        if self.exptime == 0:
+            im_type = "%d biases" % self.count
 
         else:
-            im_type = "%d darks (%d s)" % (self._count, self._exptime)
+            im_type = "%d darks (%d s)" % (self.count, self.exptime)
 
-        log.info("Starting a series of %s with %s..." % (im_type, self._camera))
-        for i in range(self._count):
+        log.info("Starting a series of %s with %s..." % (im_type, self.camera))
+        for i in range(self.count):
             await camera.grab_data()
-        log.info("Finished series of %s with %s." % (im_type, self._camera))
+        log.info("Finished series of %s with %s." % (im_type, self.camera))
         return
 
 

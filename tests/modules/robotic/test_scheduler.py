@@ -1,23 +1,19 @@
+import astropy.units as u
+
 from pyobs.modules.robotic import Scheduler
-from pyobs.robotic import Task, TaskRunner, ObservationArchive, TaskArchive
-from pyobs.robotic.scripts import Script
+from pyobs.robotic import Task
+from pyobs.robotic.task import TaskData
 
 
 class TestTask(Task):
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         return True
 
     @property
     def can_start_late(self) -> bool:
         return False
 
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         pass
 
     def is_finished(self) -> bool:
@@ -28,7 +24,7 @@ def test_compare_block_lists() -> None:
     # create lists of tasks
     tasks: list[Task] = []
     for i in range(10):
-        tasks.append(TestTask(i, str(i), 100))
+        tasks.append(TestTask(id=i, name=str(i), duration=100 * u.second))
 
     # create two lists from these with some overlap
     tasks1 = tasks[:7]

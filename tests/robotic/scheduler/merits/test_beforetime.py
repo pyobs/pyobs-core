@@ -15,7 +15,7 @@ async def test_beforetime_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
-    task = Task(1, "1", 100)
+    task = Task(id=1, name="1", duration=100 * u.second)
 
     merit = BeforeTimeMerit(time=time)
     assert await merit(time, task, data) == 1.0

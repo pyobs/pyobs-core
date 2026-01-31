@@ -4,7 +4,6 @@ from astropy.time import Time, TimeDelta
 import astropy.units as u
 
 from .merit import Merit
-from ...observation import ObservationState
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -17,6 +16,8 @@ class IntervalMerit(Merit):
     interval: float
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+        from ...observation import ObservationState
+
         # get all observations for task
         observations = await data.archive.observations_for_task(task)
 

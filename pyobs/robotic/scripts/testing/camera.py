@@ -1,11 +1,11 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pyobs.interfaces import IWindow
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
+    from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -14,35 +14,17 @@ log = logging.getLogger(__name__)
 class CameraTest(Script):
     """Test script for a camera module."""
 
-    __module__ = "pyobs.modules.robotic"
+    camera: str
 
-    def __init__(
-        self,
-        camera: str,
-        **kwargs: Any,
-    ):
-        """Initialize a new camera test script..
-
-        Args:
-            camera: name of camera module.
-        """
-        Script.__init__(self, **kwargs)
-        self.camera = camera
-
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         try:
-            await self.comm.proxy(self.camera)
+            await self.__comm(data).proxy(self.camera)
             return True
         except ValueError:
             return False
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
-        proxy = await self.comm.proxy(self.camera, IWindow)
+    async def run(self, data: TaskData) -> None:
+        proxy = await self.__comm(data).proxy(self.camera, IWindow)
         wnd = await proxy.get_full_frame()
         print(wnd)
 

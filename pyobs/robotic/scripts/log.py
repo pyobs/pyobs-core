@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, ObservationArchive, TaskArchive
+    from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -14,30 +14,12 @@ log = logging.getLogger(__name__)
 class LogRunner(Script):
     """Script for logging something."""
 
-    __module__ = "pyobs.modules.robotic"
+    expression: str
 
-    def __init__(
-        self,
-        expression: str,
-        **kwargs: Any,
-    ):
-        """Initialize a new LogRunner.
-
-        Args:
-            expression: expression to check
-        """
-        Script.__init__(self, **kwargs)
-        self.expression = expression
-
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         return True
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         # evaluate condition
         value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
 

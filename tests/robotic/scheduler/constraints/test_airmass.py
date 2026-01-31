@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation, SkyCoord
+import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -14,9 +15,13 @@ from astropy.time import Time
 async def test_airmass_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    task = Task(1, "Canopus", 100)
     coord = SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs")
-    task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Canopus")
+    task = Task(
+        id=1,
+        name="Canopus",
+        duration=100 * u.second,
+        target=SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Canopus"),
+    )
 
     constraint = AirmassConstraint(max_airmass=1.3)
 

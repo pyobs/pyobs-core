@@ -1,97 +1,45 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from astropy.units import Quantity
+from astroplan import Observer
+from astropydantic import AstroPydanticQuantity  # type: ignore
+from pydantic import BaseModel
 import astropy.units as u
 
-from pyobs.object import Object, get_object
+from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
 
 if TYPE_CHECKING:
     from pyobs.robotic.observationarchive import ObservationArchive
-    from pyobs.robotic.taskrunner import TaskRunner
     from pyobs.robotic.taskarchive import TaskArchive
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit
 
 
-class Task(Object):
+@dataclass
+class TaskData:
+    task: Task
+    observation_archive: ObservationArchive | None = None
+    task_archive: TaskArchive | None = None
+    observer: Observer | None = None
+    comm: Comm | None = None
 
-    def __init__(
-        self,
-        id: Any,
-        name: str,
-        duration: float,
-        priority: float | None = None,
-        config: dict[str, Any] | None = None,
-        constraints: list[Constraint] | None = None,
-        merits: list[Merit] | None = None,
-        target: Target | None = None,
-        script: Script | None = None,
-        **kwargs: Any,
-    ):
-        super().__init__(**kwargs)
-        self._id = id
-        self._name = name
-        self._duration = duration
-        self._priority = priority
-        self._config = config
-        self._constraints = constraints
-        self._merits = merits
-        self._target = target
-        self._script = script
 
-    @staticmethod
-    def from_dict(data: dict[str, Any]) -> Task:
-        # get constraints
-        constraints: list[Constraint] = []
-        if "constraints" in data and data["constraints"] is not None:
-            constraints = [Constraint.model_validate(constraint, by_alias=True) for constraint in data["constraints"]]
-
-        # get merits
-        merits: list[Merit] = []
-        if "merits" in data and data["merits"] is not None:
-            merits = [Merit.model_validate(merit, by_alias=True) for merit in data["merits"]]
-
-        # get target
-        target: Target | None = None
-        if "target" in data and data["target"] is not None:
-            target = Target.model_validate(data["target"], by_alias=True)
-
-        # get script
-        script: Script | None = None
-        if "script" in data and data["script"] is not None:
-            script = get_object(data["script"], Script)  # noqa: F821
-
-        return Task(
-            id=data["id"],
-            name=data["name"],
-            duration=data["duration"],
-            priority=data["priority"] if "priority" in data else None,
-            config=data["config"] if "config" in data else None,
-            constraints=constraints,
-            merits=merits,
-            target=target,
-            script=script,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        # TODO: finish this! Maybe using pydantic?
-        return dict(
-            id=self._id,
-            name=self._name,
-            duration=self._duration,
-            priority=self._priority,
-            config=self._config,
-            # constraints=constraints,
-            # merits=merits,
-            # target=target,
-            # script=script,
-        )
+class Task(BaseModel):
+    id: Any
+    name: str
+    duration: AstroPydanticQuantity[u.second]
+    priority: float | None = None
+    config: dict[str, Any] = {}
+    constraints: list[Constraint] = []
+    merits: list[Merit] = []
+    target: Target | None = None
+    script: Script | None = None
 
     def __str__(self) -> str:
-        s = f"Task {self._id}: {self._name} (duration: {self._duration}"
+        s = f"Task {self.id}: {self.name} (duration: {self.duration}"
         if self.priority is not None:
             s += f", priority: {self.priority}"
         if self.target is not None:
@@ -99,52 +47,7 @@ class Task(Object):
         s += ")"
         return s
 
-    @property
-    def id(self) -> Any:
-        """ID of task."""
-        return self._id
-
-    @property
-    def name(self) -> str:
-        """Returns name of task."""
-        return self._name
-
-    @property
-    def duration(self) -> Quantity:
-        """Returns estimated duration of task in seconds."""
-        return self._duration * u.second
-
-    @property
-    def priority(self) -> float:
-        """Returns priority."""
-        return self._priority if self._priority is not None else 0.0
-
-    @property
-    def config(self) -> dict[str, Any]:
-        """Returns configuration."""
-        return self._config if self._config is not None else {}
-
-    @property
-    def constraints(self) -> list[Constraint]:
-        """Returns constraints."""
-        return self._constraints if self._constraints is not None else []
-
-    @property
-    def merits(self) -> list[Merit]:
-        """Returns merits."""
-        return self._merits if self._merits is not None else []
-
-    @property
-    def target(self) -> Target | None:
-        """Returns target."""
-        return self._target
-
-    @property
-    def script(self) -> Script | None:
-        """Returns script."""
-        return self._script
-
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         """Checks, whether this task could run now.
 
         Returns:
@@ -161,13 +64,7 @@ class Task(Object):
         """
         return False
 
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run a task"""
         ...
 
@@ -187,4 +84,4 @@ class Task(Object):
         return {}
 
 
-__all__ = ["Task"]
+__all__ = ["Task", "TaskData"]

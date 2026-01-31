@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from .merit import Merit
-from ...observation import ObservationState
 
 if TYPE_CHECKING:
     from astropy.time import Time
@@ -15,6 +14,8 @@ class FollowMerit(Merit):
     task_id: Any
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+        from ...observation import ObservationState
+
         # get all observations for tonight
         night = data.night(time)
         observations = await data.archive.observations_for_night(night)

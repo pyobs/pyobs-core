@@ -50,7 +50,7 @@ class YamlTaskArchive(FileSystemTaskArchive):
     @classmethod
     async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task:
         config = await vfs.read_yaml(path)
-        return Task.from_dict(config)
+        return Task.model_validate(config)
 
 
 __all__ = ["FileSystemTaskArchive", "YamlTaskArchive"]

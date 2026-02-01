@@ -1,4 +1,3 @@
-import argparse
 import glob
 import json
 import logging
@@ -6,11 +5,80 @@ import os
 import subprocess
 import sys
 import time
-from typing import Optional, List
+from typing import Optional, List, Any
 
-import yaml
+from ._cli import CLI
 
 log = logging.getLogger("pyobs")
+
+
+class PyobsDaemonCLI(CLI):
+    """Class for initializing and running pyobsd CLI."""
+
+    # name of section in configuration file
+    CONFIG_SECTION = "pyobsd"
+
+    # list of parameters that can be defined in the config file
+    GLOBAL_CONFIG_KEYS = [
+        "path",
+        "config_path",
+        "run_path",
+        "log_path",
+        "log_level",
+        "chuid",
+        "start_stop_daemon",
+    ]
+
+    def init_cli(self) -> None:
+        # init parser
+        self._parser.add_argument("-p", "--path", type=str, default=self._config.get("path", "/opt/pyobs"))
+        self._parser.add_argument("-c", "--config-path", type=str, default=self._config.get("config_path", "config"))
+        self._parser.add_argument("-r", "--run-path", type=str, default=self._config.get("run_path", "run"))
+        self._parser.add_argument("-l", "--log-path", type=str, default=self._config.get("log_path", "log"))
+        self._parser.add_argument(
+            "--log-level",
+            type=str,
+            choices=["critical", "error", "warning", "info", "debug"],
+            default=self._config.get("log-level", "info"),
+        )
+        self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
+        self._parser.add_argument(
+            "--start-stop-daemon", type=str, default=self._config.get("start_stop_daemon", "/sbin/start-stop-daemon")
+        )
+        self._parser.add_argument("-v", "--verbose", action="store_true")
+
+        # commands
+        sp = self._parser.add_subparsers(dest="command")
+        sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
+        sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
+        sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
+        sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
+        sp.add_parser("list", help="list of modules")
+
+    def run(self) -> None:
+        # init daemon
+        daemon = PyobsDaemon(
+            str(os.path.join(self._config["path"], self._config["config_path"])),
+            str(os.path.join(self._config["path"], self._config["run_path"])),
+            str(os.path.join(self._config["path"], self._config["log_path"])),
+            log_level=self._config["log_level"],
+            chuid=self._config["chuid"],
+            start_stop_daemon=self._config["start_stop_daemon"],
+            verbose=self._config["verbose"],
+        )
+
+        # run
+        match self._config["command"]:
+            case "start":
+                daemon.start(modules=self._config["modules"])
+            case "stop":
+                daemon.stop(modules=self._config["modules"])
+            case "restart":
+                daemon.restart(modules=self._config["modules"])
+            case "status":
+                daemon.status(print_json=self._config["json"])
+            case "list":
+                daemon.list()
 
 
 class PyobsDaemon(object):
@@ -22,6 +90,8 @@ class PyobsDaemon(object):
         log_level: str = "info",
         chuid: Optional[str] = None,
         start_stop_daemon: str = "start-stop-daemon",
+        verbose: bool = False,
+        **kwargs: Any,
     ):
         self._config_path = config_path
         self._run_path = run_path
@@ -29,6 +99,7 @@ class PyobsDaemon(object):
         self._log_level = log_level
         self._chuid = chuid
         self._start_stop_daemon = start_stop_daemon
+        self._verbose = verbose
 
         # find pyobs executable
         filenames = [
@@ -40,12 +111,16 @@ class PyobsDaemon(object):
             if os.path.exists(filename):
                 self._pyobs_exec = filename
                 break
-        # else:
-        #    raise ValueError("Could not find pyobs executable.")
+        else:
+            self._error("Could not find pyobs executable.")
 
         # get configs and running
         self._configs = self._get_configs()
         self._running = self._get_running()
+
+    def _error(self, message: str) -> None:
+        print(message)
+        sys.exit(1)
 
     def _get_configs(self) -> List[str]:
         # get configuration files, ignore those ending on .shared.yaml
@@ -170,8 +245,15 @@ class PyobsDaemon(object):
             ]
         )
 
+        if self._verbose:
+            print(f"[DEBUG] Executing command: {' '.join(cmd)}.")
+
         # execute
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if self._verbose:
+            print(f"[DEBUG] stdout: {res.stdout.decode('utf-8')}")
+            print(f"[DEBUG] stderr: {res.stderr.decode('utf-8')}")
 
     def _stop_service(self, module: str) -> None:
         # get module name and PID
@@ -212,63 +294,8 @@ class PyobsDaemon(object):
 
 
 def main() -> None:
-    # try to load config file
-    config_filename = os.path.expanduser("~/.pyobs/pyobsd.yaml")
-    config = {}
-    if os.path.exists(config_filename):
-        with open(config_filename, "r") as f:
-            config = yaml.safe_load(f)
-
-    # init parser
-    parser = argparse.ArgumentParser(description="Daemon for pyobs")
-    parser.add_argument("-p", "--path", type=str, default=config.get("path", "/opt/pyobs"))
-    parser.add_argument("-c", "--config-path", type=str, default=config.get("config-path", "config"))
-    parser.add_argument("-r", "--run-path", type=str, default=config.get("run-path", "run"))
-    parser.add_argument("-l", "--log-path", type=str, default=config.get("log-path", "log"))
-    parser.add_argument(
-        "--log-level",
-        type=str,
-        choices=["critical", "error", "warning", "info", "debug"],
-        default=config.get("log-level", "info"),
-    )
-    parser.add_argument("--chuid", type=str, default=config.get("chuid", "pyobs:pyobs"))
-    parser.add_argument(
-        "--start-stop-daemon", type=str, default=config.get("start-stop-daemon", "/sbin/start-stop-daemon")
-    )
-
-    # commands
-    sp = parser.add_subparsers(dest="command")
-    sp.add_parser("start", help="start modules").add_argument("modules", type=str, nargs="*")
-    sp.add_parser("stop", help="stop modules").add_argument("modules", type=str, nargs="*")
-    sp.add_parser("restart", help="restart modules").add_argument("modules", type=str, nargs="*")
-    sp.add_parser("status", help="status of modules").add_argument("--json", action="store_true")
-    sp.add_parser("list", help="list of modules")
-
-    # parse
-    args = parser.parse_args()
-
-    # init daemon
-    daemon = PyobsDaemon(
-        str(os.path.join(args.path, args.config_path)),
-        str(os.path.join(args.path, args.run_path)),
-        str(os.path.join(args.path, args.log_path)),
-        log_level=args.log_level,
-        chuid=args.chuid,
-        start_stop_daemon=args.start_stop_daemon,
-    )
-
-    # run
-    match args.command:
-        case "start":
-            daemon.start(modules=args.modules)
-        case "stop":
-            daemon.stop(modules=args.modules)
-        case "restart":
-            daemon.restart(modules=args.modules)
-        case "status":
-            daemon.status(print_json=args.json)
-        case "list":
-            daemon.list()
+    cli = PyobsDaemonCLI()
+    cli()
 
 
 if __name__ == "__main__":

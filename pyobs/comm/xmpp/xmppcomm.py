@@ -243,6 +243,8 @@ class XmppComm(Comm):
 
     def _disconnected(self, event: Any) -> None:
         """Reset connection after disconnect."""
+        if self._closing.is_set():
+            return
         log.info("Disconnected from server, waiting for reconnect...")
 
         # disconnect all clients

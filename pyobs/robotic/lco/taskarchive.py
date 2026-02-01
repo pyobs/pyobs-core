@@ -1,21 +1,11 @@
 import logging
-from typing import List, Dict, Optional, Any
-from astroplan import (
-    TimeConstraint,
-    AirmassConstraint,
-    ObservingBlock,
-    FixedTarget,
-    MoonSeparationConstraint,
-    MoonIlluminationConstraint,
-    AtNightConstraint,
-)
-from astropy.coordinates import SkyCoord
-import astropy.units as u
+from typing import Dict, Optional, Any
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from .portal import Portal
 from .task import LcoTask
+from .. import Task
 
 log = logging.getLogger(__name__)
 
@@ -60,18 +50,18 @@ class LcoTaskArchive(TaskArchive):
 
         # try to update time
         try:
-            # get data
             self._last_changed = await self._portal.last_changed()
+        except:
+            log.error("Could not get last changed time")
 
-        finally:
-            # even in case of errors, return last time
-            return self._last_changed
+        # even in case of errors, return last time
+        return self._last_changed
 
-    async def get_schedulable_blocks(self) -> List[ObservingBlock]:
-        """Returns list of schedulable blocks.
+    async def get_schedulable_tasks(self) -> list[Task]:
+        """Returns list of schedulable tasks.
 
         Returns:
-            List of schedulable blocks
+            List of schedulable tasks
         """
 
         # get data
@@ -82,7 +72,7 @@ class LcoTaskArchive(TaskArchive):
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
         # loop all request groups
-        blocks = []
+        tasks: list[Task] = []
         for group in schedulable:
             # get base priority, which is tac_priority * ipp_value
             proposal = group["proposal"]
@@ -97,57 +87,29 @@ class LcoTaskArchive(TaskArchive):
                 if req["state"] != "PENDING":
                     continue
 
-                # duration
-                duration = req["duration"] * u.second
+                # just take first config and ignore the rest
+                cfg = req["configurations"][0]
 
-                # time constraints
-                time_constraints = [TimeConstraint(Time(wnd["start"]), Time(wnd["end"])) for wnd in req["windows"]]
+                # get instrument and check, whether we schedule it
+                instrument = cfg["instrument_type"]
+                if instrument.lower() not in self._instrument_type:
+                    continue
 
-                # loop configs
-                for cfg in req["configurations"]:
-                    # get instrument and check, whether we schedule it
-                    instrument = cfg["instrument_type"]
-                    if instrument.lower() not in self._instrument_type:
-                        continue
+                # priority is base_priority times duration in minutes
+                # priority = base_priority * duration.value / 60.
+                priority = base_priority
 
-                    # target
-                    t = cfg["target"]
-                    if "ra" in t and "dec" in t:
-                        target = SkyCoord(t["ra"] * u.deg, t["dec"] * u.deg, frame=t["type"].lower())
-                    else:
-                        log.warning("Unsupported coordinate type.")
-                        continue
-
-                    # constraints
-                    c = cfg["constraints"]
-                    constraints = []
-                    if "max_airmass" in c and c["max_airmass"] is not None:
-                        constraints.append(AirmassConstraint(max=c["max_airmass"], boolean_constraint=False))
-                    if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
-                        constraints.append(MoonSeparationConstraint(min=c["min_lunar_distance"] * u.deg))
-                    if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
-                        constraints.append(MoonIlluminationConstraint(max=c["max_lunar_phase"]))
-                        # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
-                        if c["max_lunar_phase"] <= 0.4:
-                            constraints.append(AtNightConstraint.twilight_astronomical())
-
-                    # priority is base_priority times duration in minutes
-                    # priority = base_priority * duration.value / 60.
-                    priority = base_priority
-
-                    # create block
-                    block = ObservingBlock(
-                        FixedTarget(target, name=req["id"]),
-                        duration,
-                        priority,
-                        constraints=[*constraints, *time_constraints],
-                        configuration={"request": req},
-                        name=group["name"],
-                    )
-                    blocks.append(block)
+                # create task
+                task = LcoTask(
+                    id=req["id"],
+                    name=group["name"],
+                    priority=priority,
+                    config={"request": req},
+                )
+                tasks.append(task)
 
         # return blocks
-        return blocks
+        return tasks
 
 
 __all__ = ["LcoTaskArchive"]

@@ -1,5 +1,5 @@
 from pyobs.utils.grids.filters import GridFilterValue
-from pyobs.utils.grids.spherical import RegularSphericalGrid
+from pyobs.utils.grids.grid import RegularSphericalGrid
 
 
 def test_valuefilter() -> None:

@@ -194,20 +194,16 @@ class ImageSourceFilter(ImageProcessor):
 
         elliptic_sources = sources["ellipticity"] > self._max_ellipticity
 
-        background_sources = sources["background"] <= 0
+        bad_sources = saturated_sources | small_sources | large_sources | elliptic_sources
 
-        low_contrast_sources = (
-            self._calc_weber_contrast(sources["peak"], sources["background"]) <= self._min_weber_contrast
-        )
+        if "background" in sources.keys():
+            background_sources = sources["background"] <= 0
 
-        bad_sources = (
-            saturated_sources
-            | small_sources
-            | large_sources
-            | elliptic_sources
-            | background_sources
-            | low_contrast_sources
-        )
+            low_contrast_sources = (
+                self._calc_weber_contrast(sources["peak"], sources["background"]) <= self._min_weber_contrast
+            )
+
+            bad_sources = bad_sources | background_sources | low_contrast_sources
 
         filtered_sources = sources[~bad_sources]  # keep sources that are not bad
         return filtered_sources

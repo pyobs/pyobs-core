@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.39.4"
+version = "1.39.5"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -55,7 +55,7 @@ dev = [
     "types-cryptography>=3.3.23.2,<4",
     "types-enum34>=1.1.8,<2",
     "types-ipaddress>=1.0.8,<2",
-    "types-paramiko>=3.5.0.20240928,<4",
+    "types-paramiko>=3.5.0.20240928,<5",
     "types-pytz>=2025.2.0.20250326,<2026",
     "types-PyYAML>=6.0.12.20250402,<7",
     "types-requests>=2.32.0.20250328,<3",
@@ -63,9 +63,9 @@ dev = [
     "types-toml>=0.10.8.20240310,<0.11",
     "types-tornado>=5.1.1,<6",
     "mypy>=1.15.0,<2",
-    "pytest>=8.3.5,<9",
-    "pytest-asyncio>=0.26.0,<0.27",
-    "pytest-cov>=6.1.1,<7",
+    "pytest>=8.3.5,<10",
+    "pytest-asyncio>=0.26.0,<1.4",
+    "pytest-cov>=6.1.1,<8",
     "pytest-mock>=3.14.0,<4",
     "black>=25.1.0,<26",
     "pre-commit>=4.2.0,<5",

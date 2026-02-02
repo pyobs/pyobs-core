@@ -2,7 +2,7 @@ from __future__ import annotations
 import abc
 import random
 from typing import Any
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, get_body
 import astropy.units as u
 from astropy.time import Time
 
@@ -275,4 +275,48 @@ class RandomizeGrid(GridFilter):
         return next(self._grid)
 
 
-__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord", "RandomizeGrid"]
+class AvoidMoon(GridFilter):
+    """Remove points too close to the moon.
+
+    If the next point in the underlying grid is too close to the moon, skip it.
+    """
+
+    def __init__(self, grid: Grid | GridFilter, min_moon_distance: int = 20, **kwargs: object):
+        """Initialize the moon avoider.
+
+        Args:
+            grid: Upstream grid or filter.
+            min_moon_distance: Minimum distance to avoid the moon in degrees..
+            **kwargs: Additional keyword arguments forwarded to GridFilter.__init__().
+
+        Raises:
+            ValueError: If iterations < 0.
+        """
+        GridFilter.__init__(self, grid, **kwargs)
+        self._min_moon_distance = min_moon_distance
+
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
+        """Yield a point after rotating the underlying grid a random number of times.
+
+        Returns:
+            The next point in the underlying grid, except it is too close to the moon.
+
+        Raises:
+            StopIteration: If the underlying grid is exhausted.
+        """
+
+        while True:
+            next_point = next(self._grid)
+            if not isinstance(next_point, SkyCoord):
+                raise TypeError("Expected a SkyCoord.")
+            moon = get_body("moon", Time.now())
+            dist = moon.separation(next_point)
+            if dist > self._min_moon_distance * u.degree:
+                return next_point
+            elif len(self._grid) == 0:
+                raise StopIteration
+            else:
+                self._grid.append_last()
+
+
+__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord", "RandomizeGrid", "AvoidMoon"]

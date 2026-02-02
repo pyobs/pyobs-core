@@ -162,11 +162,11 @@ class YamlObservationArchive(FileSystemObservationArchive):
     @classmethod
     async def _load_observations_from_file(cls, path: str, vfs: VirtualFileSystem) -> ObservationList:
         observations = await vfs.read_yaml(path)
-        return ObservationList([Observation.from_dict(obs) for obs in observations])
+        return ObservationList([Observation.model_validate(obs) for obs in observations])
 
     @classmethod
     async def _save_observations_to_file(cls, path: str, observations: ObservationList, vfs: VirtualFileSystem) -> None:
-        data = [Observation.to_dict(obs) for obs in observations]
+        data = [obs.model_dump() for obs in observations]
         await vfs.write_yaml(path, data)
 
 

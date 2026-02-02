@@ -88,7 +88,7 @@ class AstroplanScheduler(TaskScheduler):
                 log.warning("Non-sidereal targets not supported.")
                 continue
 
-            priority = 1000.0 - task.priority
+            priority = (1000.0 - task.priority) if task.priority is not None else 1000.0
             if priority < 0:
                 priority = 0
 

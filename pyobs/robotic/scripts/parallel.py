@@ -23,7 +23,7 @@ class ParallelRunner(Script):
 
     async def run(self, data: TaskData) -> None:
         scripts = [Script.model_validate(s) for s in self.scripts]
-        tasks = [asyncio.create_task(self._run_script(s, data)) for s in scripts if await s.can_run()]
+        tasks = [asyncio.create_task(self._run_script(s, data)) for s in scripts if await s.can_run(data)]
         await asyncio.gather(*tasks)
 
     async def _run_script(self, script: Script, data: TaskData) -> None:

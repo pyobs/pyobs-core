@@ -189,22 +189,18 @@ class LcoTask(Task):
         status: ConfigStatus | None
         for config in req["configurations"]:
             # send an ATTEMPTED status
-            if isinstance(observation_archive, LcoObservationArchive):
+            if isinstance(data.observation_archive, LcoObservationArchive):
                 status = ConfigStatus()
                 self.config["state"] = "ATTEMPTED"
-                await observation_archive.send_update(config["configuration_status"], status.finish().to_json())
-
-            # get config runner
-            script = self._get_config_script(config, scripts)
+                await data.observation_archive.send_update(config["configuration_status"], status.finish().to_json())
 
             # can run?
-            if not await script.can_run():
+            if not await self.script.can_run(data):
                 log.warning("Cannot run config.")
                 continue
 
             # run config
             log.info("Running config...")
-            self.cur_script = script
             status = await self._run_script(
                 script, task_runner=task_runner, observation_archive=observation_archive, task_archive=task_archive
             )

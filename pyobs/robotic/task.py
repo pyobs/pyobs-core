@@ -48,11 +48,13 @@ class Task(BaseModel):
         return s
 
     async def can_run(self, data: TaskData) -> bool:
-        """Checks, whether this task could run now.
+        """Checks whether this task could run now.
 
         Returns:
-            True, if task can run now.
+            True, if the task can run now.
         """
+        if self.script is not None:
+            return await self.script.can_run(data)
         return True
 
     @property

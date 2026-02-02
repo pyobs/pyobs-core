@@ -17,7 +17,7 @@ ProxyClass = TypeVar("ProxyClass")
 class Script(SubClassBaseModel):
 
     async def can_run(self, data: TaskData) -> bool:
-        """Checks, whether this script could run now.
+        """Checks whether this script could run now.
 
         Returns:
             True, if the script can run now.

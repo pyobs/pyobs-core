@@ -14,7 +14,7 @@ from pyobs.robotic.scheduler.constraints import (
 from pyobs.robotic.scheduler.merits import Merit
 from pyobs.robotic.scheduler.targets import Target, SiderealTarget
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import Task, TaskData
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
 import pyobs.utils.exceptions as exc
@@ -75,15 +75,14 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, config: dict[str, Any], **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
-            config: Configuration for task
+            config: Configuration for LcoTask
         """
         Task.__init__(self, **kwargs)
-
-        # store stuff
+        self.config = config
         self.cur_script: Script | None = None
 
     @staticmethod
@@ -179,67 +178,7 @@ class LcoTask(Task):
         """
         return self.observation_type == "DIRECT"
 
-    def _get_config_script(self, config: dict[str, Any], scripts: dict[str, Script] | None = None) -> Script:
-        """Get config script for given configuration.
-
-        Args:
-            config: Config to create runner for.
-
-        Returns:
-            Script for running config
-
-        Raises:
-            ValueError: If could not create runner.
-        """
-
-        # what do we run?
-        config_type = config["type"]
-        if scripts is None or config_type not in scripts:
-            raise ValueError('No script found for configuration type "%s".' % config_type)
-
-        # create script handler
-        return get_object(
-            scripts[config_type],
-            Script,
-            configuration=config,
-            comm=self.comm,
-            observer=self.observer,
-        )
-
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
-        """Checks, whether this task could run now.
-
-        Returns:
-            True, if task can run now.
-        """
-
-        # get logger for task name and log
-        task_name_logger.info(f"Checking whether task {self.name} can run...")
-
-        # loop configurations
-        req = self.config["request"]
-        for config in req["configurations"]:
-            # get config runner
-            runner = self._get_config_script(config, scripts)
-
-            # if any runner can run, we proceed
-            try:
-                if await runner.can_run():
-                    return True
-            except Exception:
-                log.exception("Error on evaluating whether task can run.")
-                return False
-
-        # no config found that could run
-        return False
-
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run a task"""
         from pyobs.robotic.lco import LcoObservationArchive
 

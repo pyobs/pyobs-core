@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation, SkyCoord
+import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -14,11 +15,15 @@ from astropy.time import Time
 async def test_moonseparation_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    task = Task(1, "Antares", 100)
     coord = SkyCoord("16h29m22.94s -26d25m53.0s", frame="icrs")
-    task._target = SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Antares")
+    task = Task(
+        id=1,
+        name="Antares",
+        duration=100 * u.second,
+        target=SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Antares"),
+    )
 
-    constraint = MoonSeparationConstraint(20.0)
+    constraint = MoonSeparationConstraint(min_distance=20.0)
 
     time = Time("2025-11-18T15:00:00", scale="utc")
     assert await constraint(time, task, data) is True

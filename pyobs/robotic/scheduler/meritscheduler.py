@@ -126,7 +126,7 @@ class MeritScheduler(TaskScheduler):
     def create_scheduled_task(self, task: Task, time: Time) -> Observation:
         from pyobs.robotic import Observation
 
-        return Observation(task, time, time + TimeDelta(task.duration))
+        return Observation(task=task, start=time, end=time + TimeDelta(task.duration))
 
     async def evaluate_constraints(self, task: Task, start: Time, end: Time, data: DataProvider) -> bool:
         """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.

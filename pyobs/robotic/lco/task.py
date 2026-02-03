@@ -14,7 +14,7 @@ from pyobs.robotic.scheduler.constraints import (
 from pyobs.robotic.scheduler.merits import Merit
 from pyobs.robotic.scheduler.targets import Target, SiderealTarget
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.task import Task
+from pyobs.robotic.task import Task, TaskData
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
 import pyobs.utils.exceptions as exc
@@ -75,15 +75,14 @@ class ConfigStatus:
 class LcoTask(Task):
     """A task from the LCO portal."""
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, config: dict[str, Any], **kwargs: Any):
         """Init LCO task (called request there).
 
         Args:
-            config: Configuration for task
+            config: Configuration for LcoTask
         """
         Task.__init__(self, **kwargs)
-
-        # store stuff
+        self.config = config
         self.cur_script: Script | None = None
 
     @staticmethod
@@ -106,7 +105,9 @@ class LcoTask(Task):
 
         # time constraints?
         if "windows" in req:
-            constraints.extend([TimeConstraint(Time(wnd["start"]), Time(wnd["end"])) for wnd in req["windows"]])
+            constraints.extend(
+                [TimeConstraint(start=Time(wnd["start"]), end=Time(wnd["end"])) for wnd in req["windows"]]
+            )
 
         # take first config
         cfg = req["configurations"][0]
@@ -115,14 +116,14 @@ class LcoTask(Task):
         if "constraints" in cfg:
             c = cfg["constraints"]
             if "max_airmass" in c and c["max_airmass"] is not None:
-                constraints.append(AirmassConstraint(c["max_airmass"]))
+                constraints.append(AirmassConstraint(max_airmass=c["max_airmass"]))
             if "min_lunar_distance" in c and c["min_lunar_distance"] is not None:
-                constraints.append(MoonSeparationConstraint(c["min_lunar_distance"]))
+                constraints.append(MoonSeparationConstraint(min_distance=c["min_lunar_distance"]))
             if "max_lunar_phase" in c and c["max_lunar_phase"] is not None:
-                constraints.append(MoonIlluminationConstraint(c["max_lunar_phase"]))
+                constraints.append(MoonIlluminationConstraint(max_phase=c["max_lunar_phase"]))
                 # if max lunar phase <= 0.4 (which would be DARK), we also enforce the sun to be <-18 degrees
                 if c["max_lunar_phase"] <= 0.4:
-                    constraints.append(SolarElevationConstraint(-18.0))
+                    constraints.append(SolarElevationConstraint(max_elevation=-18.0))
 
         return constraints
 
@@ -136,7 +137,7 @@ class LcoTask(Task):
                 config = {"class": merit["type"]}
                 if "params" in merit:
                     config.update(**merit["params"])
-                merits.append(Merit.create(config))
+                merits.append(Merit.model_validate(config, by_alias=True))
         return merits
 
     @staticmethod
@@ -177,67 +178,7 @@ class LcoTask(Task):
         """
         return self.observation_type == "DIRECT"
 
-    def _get_config_script(self, config: dict[str, Any], scripts: dict[str, Script] | None = None) -> Script:
-        """Get config script for given configuration.
-
-        Args:
-            config: Config to create runner for.
-
-        Returns:
-            Script for running config
-
-        Raises:
-            ValueError: If could not create runner.
-        """
-
-        # what do we run?
-        config_type = config["type"]
-        if scripts is None or config_type not in scripts:
-            raise ValueError('No script found for configuration type "%s".' % config_type)
-
-        # create script handler
-        return get_object(
-            scripts[config_type],
-            Script,
-            configuration=config,
-            comm=self.comm,
-            observer=self.observer,
-        )
-
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
-        """Checks, whether this task could run now.
-
-        Returns:
-            True, if task can run now.
-        """
-
-        # get logger for task name and log
-        task_name_logger.info(f"Checking whether task {self.name} can run...")
-
-        # loop configurations
-        req = self.config["request"]
-        for config in req["configurations"]:
-            # get config runner
-            runner = self._get_config_script(config, scripts)
-
-            # if any runner can run, we proceed
-            try:
-                if await runner.can_run():
-                    return True
-            except Exception:
-                log.exception("Error on evaluating whether task can run.")
-                return False
-
-        # no config found that could run
-        return False
-
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        observation_archive: ObservationArchive | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run a task"""
         from pyobs.robotic.lco import LcoObservationArchive
 
@@ -248,22 +189,18 @@ class LcoTask(Task):
         status: ConfigStatus | None
         for config in req["configurations"]:
             # send an ATTEMPTED status
-            if isinstance(observation_archive, LcoObservationArchive):
+            if isinstance(data.observation_archive, LcoObservationArchive):
                 status = ConfigStatus()
                 self.config["state"] = "ATTEMPTED"
-                await observation_archive.send_update(config["configuration_status"], status.finish().to_json())
-
-            # get config runner
-            script = self._get_config_script(config, scripts)
+                await data.observation_archive.send_update(config["configuration_status"], status.finish().to_json())
 
             # can run?
-            if not await script.can_run():
+            if not await self.script.can_run(data):
                 log.warning("Cannot run config.")
                 continue
 
             # run config
             log.info("Running config...")
-            self.cur_script = script
             status = await self._run_script(
                 script, task_runner=task_runner, observation_archive=observation_archive, task_archive=task_archive
             )

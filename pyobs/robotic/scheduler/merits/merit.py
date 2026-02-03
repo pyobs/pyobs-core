@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import create_object
+from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from pyobs.robotic import Task
 
 
-class Merit(metaclass=ABCMeta):
+class Merit(SubClassBaseModel, metaclass=ABCMeta):
     """Merit class."""
 
     @abstractmethod
@@ -20,7 +21,7 @@ class Merit(metaclass=ABCMeta):
     def create(config: Merit | dict[str, Any]) -> Merit:
         if isinstance(config, Merit):
             return config
-        else:
+        elif "type" in config:
             from . import __all__ as constraints
 
             if "." not in config["class"]:
@@ -37,6 +38,8 @@ class Merit(metaclass=ABCMeta):
                 return obj
             else:
                 raise ValueError(f"Invalid merit config: {config}")
+        else:
+            return Merit.model_validate(config, by_alias=True)
 
 
 __all__ = ["Merit"]

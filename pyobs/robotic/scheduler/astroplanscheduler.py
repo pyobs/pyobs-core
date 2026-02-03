@@ -88,7 +88,7 @@ class AstroplanScheduler(TaskScheduler):
                 log.warning("Non-sidereal targets not supported.")
                 continue
 
-            priority = 1000.0 - task.priority
+            priority = (1000.0 - task.priority) if task.priority is not None else 1000.0
             if priority < 0:
                 priority = 0
 
@@ -176,7 +176,7 @@ class AstroplanScheduler(TaskScheduler):
                 raise ValueError(f"Could not find task with id '{task_id}'")
 
             # create scheduled task
-            scheduled_tasks.append(Observation(task, block.start_time, block.end_time))
+            scheduled_tasks.append(Observation(task=task, start=block.start_time, end=block.end_time))
 
         return scheduled_tasks
 

@@ -21,7 +21,7 @@ class TaskScheduler(Object, metaclass=abc.ABCMeta):
         # if we don't yield once here, mypy doesn't like this, see:
         # https://github.com/python/mypy/issues/5385
         # https://github.com/python/mypy/issues/5070
-        yield Observation(tasks[0], start, end)
+        yield Observation(task=tasks[0], start=start, end=end)
 
     @abc.abstractmethod
     async def abort(self) -> None: ...

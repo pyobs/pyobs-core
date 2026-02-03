@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
+import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -13,9 +14,9 @@ from astropy.time import Time
 async def test_solarelevation_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    task = Task(1, "1", 100)
+    task = Task(id=1, name="1", duration=100 * u.second)
 
-    constraint = SolarElevationConstraint(-18.0)
+    constraint = SolarElevationConstraint(max_elevation=-18.0)
 
     time = Time("2025-11-03T16:00:00", scale="utc")
     assert await constraint(time, task, data) is False

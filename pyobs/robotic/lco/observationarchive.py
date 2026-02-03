@@ -122,6 +122,11 @@ class LcoObservationArchive(ObservationArchive):
             List of observations for the given task.
         """
 
+        from pyobs.robotic.lco import LcoTask
+
+        if not isinstance(task, LcoTask) or task.id is None or not isinstance(task.id, int):
+            raise ValueError("Task is not a LCO task.")
+
         portal_observations = await self._portal.observations(task.id)
         observations = ObservationList()
         for obs in portal_observations:

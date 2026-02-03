@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
-from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoRequest
+from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoRequest, LcoObservation
 from pyobs.robotic.scheduler.constraints import (
     TimeConstraint,
     Constraint,
@@ -32,22 +32,31 @@ class LcoTask(Task):
     request: LcoRequest
 
     @staticmethod
+    def __lco_task(request: LcoRequest, name: str, script: Script) -> LcoTask:
+        return LcoTask(
+            id=request.id,
+            name=name,
+            duration=request.duration,
+            constraints=LcoTask._create_constraints(request),
+            merits=LcoTask._create_merits(request),
+            target=LcoTask._create_target(request),
+            request=request,
+            script=script,
+        )
+
+    @staticmethod
     def from_schedulable_request(schedulable_request: LcoSchedulableRequest, script: Script) -> list[LcoTask]:
         tasks: list[LcoTask] = []
         for request in schedulable_request.requests:
-            tasks.append(
-                LcoTask(
-                    id=request.id,
-                    name=schedulable_request.name,
-                    duration=request.duration,
-                    constraints=LcoTask._create_constraints(request),
-                    merits=LcoTask._create_merits(request),
-                    target=LcoTask._create_target(request),
-                    request=request,
-                    script=script,
-                )
-            )
+            tasks.append(LcoTask.__lco_task(request, schedulable_request.name, script))
         return tasks
+
+    @staticmethod
+    def from_observation(observation: LcoObservation, script: Script) -> LcoTask:
+        request = observation.request
+        if not isinstance(request, LcoRequest):
+            raise ValueError("Observation does not contain a fully defined request.")
+        return LcoTask.__lco_task(request, str(request.id), script)
 
     @staticmethod
     def _create_constraints(request: LcoRequest) -> list[Constraint]:

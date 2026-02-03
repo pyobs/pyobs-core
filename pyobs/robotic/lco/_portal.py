@@ -75,11 +75,14 @@ class LcoTarget(BaseModel):
     type: str
     ra: float
     dec: float
-    epoch: float = 2000.0
+    epoch: float | None = None
     hour_angle: float | None = None
     parallax: float = 0.0
     proper_motion_dec: float = 0.0
     proper_motion_ra: float = 0.0
+    parallax: float | None = None
+    proper_motion_dec: float | None = None
+    proper_motion_ra: float | None = None
     extra_params: dict[str, Any] = {}
 
 
@@ -110,7 +113,7 @@ class LcoRequest(BaseModel):
     modified: AstroPydanticTime
     acceptability_threshold: float
     duration: int
-    location: LcoLocation
+    location: LcoLocation | None = None
     optimization_type: str
     state: str
     configurations: list[LcoConfiguration]

@@ -31,19 +31,6 @@ class ConfigurationStatus(BaseModel):
     summary: ConfigurationSummary
 
 
-class LcoObservation(BaseModel):
-    id: int
-    request: int
-    site: str
-    enclosure: str
-    telescope: str
-    start: AstroPydanticTime
-    end: AstroPydanticTime
-    priority: int
-    state: str
-    configuration_statuses: list[ConfigurationStatus]
-
-
 class LcoLocation(BaseModel):
     telescope_class: str
 
@@ -131,6 +118,19 @@ class LcoRequest(BaseModel):
     configuration_repeats: int = 1
     windows: list[LcoWindow] = []
     extra_params: dict[str, Any]
+
+
+class LcoObservation(BaseModel):
+    id: int
+    request: int | LcoRequest
+    site: str
+    enclosure: str
+    telescope: str
+    start: AstroPydanticTime
+    end: AstroPydanticTime
+    priority: int
+    state: str
+    configuration_statuses: list[ConfigurationStatus] = []
 
 
 class LcoSchedulableRequest(BaseModel):

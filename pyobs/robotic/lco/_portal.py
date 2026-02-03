@@ -77,9 +77,6 @@ class LcoTarget(BaseModel):
     dec: float
     epoch: float | None = None
     hour_angle: float | None = None
-    parallax: float = 0.0
-    proper_motion_dec: float = 0.0
-    proper_motion_ra: float = 0.0
     parallax: float | None = None
     proper_motion_dec: float | None = None
     proper_motion_ra: float | None = None

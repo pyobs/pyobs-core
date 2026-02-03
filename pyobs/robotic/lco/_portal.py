@@ -327,7 +327,7 @@ class Portal:
         # re-send
         await self.update_configuration_status(status_id, status)
 
-    async def download_schedule(self, start_before: Time, end_after: Time) -> list[dict[str, Any]]:
+    async def download_schedule(self, start_before: Time, end_after: Time) -> list[LcoObservation]:
         """Fetch schedule from portal.
 
         Args:
@@ -351,4 +351,4 @@ class Portal:
             "limit": 1000,
         }
         data = await self._get("/api/observations/", params=params)
-        return cast(list[dict[str, Any]], data["results"])
+        return [LcoObservation.model_validate(o) for o in data["results"]]

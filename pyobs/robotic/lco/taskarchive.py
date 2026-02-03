@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import logging
 import astropy.units as u
 from typing import Dict, Optional, Any
@@ -10,6 +9,7 @@ from pyobs.robotic.taskarchive import TaskArchive
 from ._portal import Portal
 from .task import LcoTask
 from .. import Task
+from ..scripts import Script
 
 log = logging.getLogger(__name__)
 
@@ -85,58 +85,33 @@ class LcoTaskArchive(TaskArchive):
         return self._last_changed
 
     async def get_schedulable_tasks(self) -> list[Task]:
-        """Returns list of schedulable tasks.
+        """Returns a list of schedulable tasks.
 
         Returns:
             List of schedulable tasks
         """
 
         # get data
-        schedulable = await self._portal.schedulable_requests()
+        schedulable_requests = await self._portal.schedulable_requests()
 
         # get proposal priorities
         proposals = await self._portal.proposals()
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
-        # loop all request groups
-        tasks: list[Task] = []
-        for group in schedulable:
-            # get base priority, which is tac_priority * ipp_value
-            proposal = group["proposal"]
-            if proposal not in tac_priorities:
-                log.error('Could not find proposal "%s".', proposal)
-                continue
-            base_priority = group["ipp_value"] * tac_priorities[proposal]
-
-            # loop all requests in group
-            for req in group["requests"]:
-                # still pending?
-                if req["state"] != "PENDING":
+        # to LcoTasks
+        all_tasks: list[Task] = []
+        for schedulable_request in schedulable_requests:
+            tasks = LcoTask.from_schedulable_request(schedulable_request, Script())
+            for task in tasks:
+                task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
+                if task.request.state == "PENDING":
                     continue
-
-                # just take first config and ignore the rest
-                cfg = req["configurations"][0]
-
-                # get instrument and check, whether we schedule it
-                instrument = cfg["instrument_type"]
-                if instrument.lower() not in self._instrument_type:
+                if task.request.configurations[0].instrument_type.lower() not in self._instrument_type:
                     continue
+                all_tasks.append(task)
 
-                # priority is base_priority times duration in minutes
-                # priority = base_priority * duration.value / 60.
-                priority = base_priority
-
-                # copy group with just one request
-                group_request = copy.deepcopy(group)
-                del group_request["requests"]
-                group_request["request"] = req
-                group_request["priority"] = priority
-
-                # create task
-                tasks.append(LcoTask.from_lco_request(group_request))
-
-        # return blocks
-        return tasks
+        # return tasks
+        return all_tasks
 
 
 __all__ = ["LcoTaskArchive"]

@@ -44,6 +44,108 @@ class LcoObservation(BaseModel):
     configuration_statuses: list[ConfigurationStatus]
 
 
+class LcoLocation(BaseModel):
+    telescope_class: str
+
+
+class LcoAcquisitionConfig(BaseModel):
+    mode: str
+    extra_params: dict[str, Any] = {}
+
+
+class LcoGuidingConfig(BaseModel):
+    exposure_time: float | None = None
+    mode: str
+    optical_elements: dict[str, Any] = {}
+    optional: bool
+    extra_params: dict[str, Any] = {}
+
+
+class LcoConstraints(BaseModel):
+    max_airmass: float | None = None
+    max_lunar_phase: float | None = None
+    min_lunar_distance: float | None = None
+    extra_params: dict[str, Any] = {}
+
+
+class LcoInstrumentConfig(BaseModel):
+    exposure_count: int
+    exposure_time: float
+    mode: str
+    optical_elements: dict[str, Any] = {}
+    rois: list[Any]
+    rotator_mode: str
+    extra_params: dict[str, Any] = {}
+
+
+class LcoMerit(BaseModel):
+    type: str
+    params: dict[str, Any] = {}
+
+
+class LcoTarget(BaseModel):
+    name: str
+    type: str
+    ra: float
+    dec: float
+    epoch: float = 2000.0
+    hour_angle: float | None = None
+    parallax: float = 0.0
+    proper_motion_dec: float = 0.0
+    proper_motion_ra: float = 0.0
+    extra_params: dict[str, Any] = {}
+
+
+class LcoConfiguration(BaseModel):
+    id: int
+    acquisition_config: LcoAcquisitionConfig
+    guiding_config: LcoGuidingConfig
+    constraints: LcoConstraints
+    extra_params: dict[str, Any] = {}
+    instrument_configs: list[LcoInstrumentConfig]
+    instrument_type: str
+    merits: list[LcoMerit] = []
+    priority: float
+    repeat_duration: float | None = None
+    target: LcoTarget
+    type: str
+    state: str = ""
+    configuration_status: int | None = None
+
+
+class LcoWindow(BaseModel):
+    start: AstroPydanticTime
+    end: AstroPydanticTime
+
+
+class LcoRequest(BaseModel):
+    id: int
+    modified: AstroPydanticTime
+    acceptability_threshold: float
+    duration: int
+    location: LcoLocation
+    optimization_type: str
+    state: str
+    configurations: list[LcoConfiguration]
+    observation_note: str = ""
+    configuration_repeats: int = 1
+    windows: list[LcoWindow] = []
+    extra_params: dict[str, Any]
+
+
+class LcoSchedulableRequest(BaseModel):
+    created: AstroPydanticTime
+    id: int
+    ipp_value: float
+    is_staff: bool
+    modified: AstroPydanticTime
+    name: str
+    observation_type: str
+    operator: str
+    proposal: str
+    requests: list[LcoRequest]
+
+
 class Portal:
     def __init__(
         self,
@@ -90,9 +192,9 @@ class Portal:
         t = await self._get("/api/last_scheduled/")
         return Time(t["last_schedule_time"])
 
-    async def schedulable_requests(self) -> List[Dict[str, Any]]:
-        req = await self._get("/api/requestgroups/schedulable_requests/")
-        return cast(List[Dict[str, Any]], req)
+    async def schedulable_requests(self) -> list[LcoSchedulableRequest]:
+        requests = await self._get("/api/requestgroups/schedulable_requests/")
+        return [LcoSchedulableRequest.model_validate(request) for request in requests]
 
     async def proposals(self) -> List[Dict[str, Any]]:
         # init

@@ -86,13 +86,15 @@ class LcoObservationArchive(ObservationArchive):
         """
         return await self._schedule_reader.get_task(time)
 
-    async def send_update(self, status_id: int, status: dict[str, Any]) -> None:
-        """Send report to LCO portal
+    async def send_update(self, status_id: int | None, status: dict[str, Any]) -> None:
+        """Send a report to the LCO portal
 
         Args:
             status_id: id of config status
             status: Status dictionary
         """
+        if status_id is None:
+            return
         await self._portal.update_configuration_status(status_id, status)
         # await self._schedule_reader.update_now()
 

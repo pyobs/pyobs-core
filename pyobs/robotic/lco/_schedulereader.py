@@ -10,6 +10,7 @@ from pyobs.robotic.observation import Observation, ObservationList
 from pyobs.utils.time import Time
 from ._portal import Portal
 from .task import LcoTask
+from ..scripts import Script
 from ...object import Object
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
@@ -178,14 +179,9 @@ class LcoScheduleReader(Object):
 
         # create tasks
         scheduled_tasks = ObservationList()
-        for sched in schedules:
-            # create task
-            task = LcoTask.from_lco_request(sched)
-
-            # create scheduled task
-            scheduled_task = Observation(task=task, start=Time(sched["start"]), end=Time(sched["end"]))
-
-            # add it
+        for obs in schedules:
+            task = LcoTask.from_observation(obs, Script())
+            scheduled_task = Observation(task=task, start=obs.start, end=obs.end)
             scheduled_tasks.append(scheduled_task)
 
         # finished

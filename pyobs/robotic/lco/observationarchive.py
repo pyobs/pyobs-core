@@ -64,7 +64,7 @@ class LcoObservationArchive(ObservationArchive):
         )
 
     async def get_schedule(self) -> ObservationList:
-        """Fetch schedule from portal.
+        """Fetch schedule from the portal.
 
         Returns:
             Dictionary with tasks.
@@ -79,7 +79,7 @@ class LcoObservationArchive(ObservationArchive):
         """Returns the active scheduled task at the given time.
 
         Args:
-            time: Time to return task for.
+            time: Time to return an observation for.
 
         Returns:
             Scheduled task at the given time.
@@ -115,7 +115,7 @@ class LcoObservationArchive(ObservationArchive):
         await self._schedule_writer.clear_schedule(start_time)
 
     async def observations_for_task(self, task: Task) -> ObservationList:
-        """Returns list of observations for the given task.
+        """Returns a list of observations for the given task.
 
         Args:
             task: Task to get observations for.
@@ -144,7 +144,7 @@ class LcoObservationArchive(ObservationArchive):
         return observations
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
-        """Returns list of observations for the given task.
+        """Returns a list of observations for the given task.
 
         Args:
             date: Date of night to get observations for.

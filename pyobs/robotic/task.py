@@ -2,9 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from astroplan import Observer
-from astropydantic import AstroPydanticQuantity  # type: ignore
 from pydantic import BaseModel
-import astropy.units as u
 
 from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
@@ -28,9 +26,9 @@ class TaskData:
 
 
 class Task(BaseModel):
-    id: Any
+    id: Any | None = None
     name: str
-    duration: AstroPydanticQuantity[u.second]
+    duration: float
     priority: float | None = None
     config: dict[str, Any] = {}
     constraints: list[Constraint] = []
@@ -39,7 +37,7 @@ class Task(BaseModel):
     script: Script | None = None
 
     def __str__(self) -> str:
-        s = f"Task {self.id}: {self.name} (duration: {self.duration}"
+        s = f"Task {self.id}: {self.name} (duration: {self.duration}s"
         if self.priority is not None:
             s += f", priority: {self.priority}"
         if self.target is not None:

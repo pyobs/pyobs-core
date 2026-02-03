@@ -5,6 +5,7 @@ import multiprocessing as mp
 from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncIterator
 import astroplan
+import astropy.units as u
 from astroplan import ObservingBlock, FixedTarget
 
 from pyobs.object import Object
@@ -95,7 +96,7 @@ class AstroplanScheduler(TaskScheduler):
             blocks.append(
                 ObservingBlock(
                     FixedTarget(target.coord, name=target.name),
-                    task.duration,
+                    task.duration * u.second,
                     priority,
                     constraints=[c.to_astroplan() for c in task.constraints] if task.constraints else None,
                     configuration={"request": task.config},

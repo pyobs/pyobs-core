@@ -1,9 +1,9 @@
 from __future__ import annotations
 import logging
-from typing import Any, Optional, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -12,39 +12,19 @@ log = logging.getLogger(__name__)
 class CallModule(Script):
     """Script for calling method on a module."""
 
-    __module__ = "pyobs.modules.robotic"
+    module: str
+    method: str
+    params: list[Any] | None = [None]
 
-    def __init__(
-        self,
-        module: str,
-        method: str,
-        params: Optional[List[Any]] = None,
-        **kwargs: Any,
-    ):
-        """Initialize a new SequentialRunner.
-
-        Args:
-            script: list or dict of scripts to run in a sequence.
-        """
-        Script.__init__(self, **kwargs)
-        self.module = module
-        self.method = method
-        self.params = params or []
-
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         try:
-            await self.comm.proxy(self.module)
+            await self.__comm(data).proxy(self.module)
             return True
         except ValueError:
             return False
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
-        proxy = await self.comm.proxy(self.module)
+    async def run(self, data: TaskData) -> None:
+        proxy = await self.__comm(data).proxy(self.module)
         await proxy.execute(self.method, *self.params)
 
 

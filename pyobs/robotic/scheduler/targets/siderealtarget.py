@@ -5,21 +5,15 @@ from .target import Target
 
 
 class SiderealTarget(Target):
-    def __init__(self, name: str, coord: SkyCoord):
-        super().__init__()
-        self._name = name
-        self._coord = coord
-
-    @property
-    def name(self) -> str:
-        return self._name
+    ra: float
+    dec: float
 
     @property
     def coord(self) -> SkyCoord:
-        return self._coord
+        return SkyCoord(ra=self.ra, dec=self.dec, frame="icrs", unit="deg")
 
     def coordinates(self, time: Time) -> SkyCoord:
-        return self._coord
+        return SkyCoord(ra=self.ra, dec=self.dec, frame="icrs", unit="deg")
 
 
 __all__ = ["SiderealTarget"]

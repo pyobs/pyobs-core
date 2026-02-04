@@ -4,6 +4,7 @@ import astroplan
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import create_object
+from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from pyobs.robotic import Task
 
 
-class Constraint(metaclass=ABCMeta):
+class Constraint(SubClassBaseModel, metaclass=ABCMeta):
     @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...
 
@@ -22,7 +23,7 @@ class Constraint(metaclass=ABCMeta):
     def create(config: Constraint | dict[str, Any]) -> Constraint:
         if isinstance(config, Constraint):
             return config
-        else:
+        elif "type" in config:
             from . import __all__ as constraints
 
             constraints_lower = [c.lower() for c in constraints]
@@ -37,3 +38,5 @@ class Constraint(metaclass=ABCMeta):
                 return obj
             else:
                 raise ValueError(f"Invalid constraint config: {config}")
+        else:
+            return Constraint.model_validate(config, by_alias=True)

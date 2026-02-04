@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from .merit import Merit
 
 if TYPE_CHECKING:
@@ -11,12 +11,10 @@ if TYPE_CHECKING:
 class ConstantMerit(Merit):
     """Merit function that returns a constant value."""
 
-    def __init__(self, merit: float, **kwargs: Any):
-        super().__init__()
-        self._merit = merit
+    merit: float
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
-        return self._merit
+        return self.merit
 
 
 __all__ = ["ConstantMerit"]

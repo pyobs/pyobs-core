@@ -14,7 +14,7 @@ from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, TaskSchedule, ScheduledTask, Task
+from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self,
         scheduler: dict[str, Any] | TaskScheduler,
         tasks: Union[Dict[str, Any], TaskArchive],
-        schedule: Union[Dict[str, Any], TaskSchedule],
+        schedule: Union[Dict[str, Any], ObservationArchive],
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
         schedule_range: float = 24.0,
@@ -52,8 +52,8 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._scheduler = self.add_child_object(scheduler, TaskScheduler)
-        self._task_archive = self.add_child_object(tasks, TaskArchive)
-        self._schedule = self.add_child_object(schedule, TaskSchedule)
+        self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
+        self._schedule = self.add_child_object(schedule, ObservationArchive)
 
         # store
         self._running = True
@@ -76,7 +76,6 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # update threads
         self.add_background_task(self._schedule_worker)
-        self.add_background_task(self._update_worker)
 
     async def open(self) -> None:
         """Open module."""
@@ -87,6 +86,9 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self.comm.register_event(TaskStartedEvent, self._on_task_started)
             await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
+
+        # schedule an update run
+        asyncio.create_task(self._update_schedule())
 
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""
@@ -99,32 +101,6 @@ class Scheduler(Module, IStartStop, IRunnable):
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether scheduler is running."""
         return self._running
-
-    async def _update_worker(self) -> None:
-        # time of last change in blocks
-        last_change = None
-
-        # run forever
-        while True:
-            # not running?
-            if not self._running:
-                await asyncio.sleep(1)
-                return
-
-            # got new time of last change?
-            t = await self._task_archive.last_changed()
-            more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
-            if last_change is None or last_change < t and not more_1day:
-                try:
-                    last_change = t
-                    await self._update_schedule()
-                except asyncio.CancelledError:
-                    return
-                except:
-                    log.exception("Something went wrong when updating schedule.")
-
-            # sleep a little
-            await asyncio.sleep(5)
 
     async def _update_schedule(self) -> None:
         # get schedulable tasks and sort them
@@ -228,7 +204,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     end = start + TimeDelta(self._schedule_range)
 
                     # schedule
-                    scheduled_tasks: list[ScheduledTask] = []
+                    scheduled_tasks = ObservationList()
                     first = True
                     async for scheduled_task in self._scheduler.schedule(self._tasks, start, end):
                         # remember for later
@@ -242,13 +218,13 @@ class Scheduler(Module, IStartStop, IRunnable):
                         if first:
                             first = False
                             log.info("Finished calculating next task:")
-                            self._log_scheduled_task([scheduled_task])
+                            self._log_scheduled_task(ObservationList([scheduled_task]))
 
                             # set new safety_time as duration + 20%
                             self._safety_time = (time.time() - start_time) * 1.2 * u.second
 
                             # submit it
-                            await self._schedule.add_schedule([scheduled_task])
+                            await self._schedule.add_schedule(ObservationList([scheduled_task]))
 
                     if self._need_update:
                         log.info("Not using scheduler results, since update was requested.")
@@ -273,8 +249,9 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    def _log_scheduled_task(self, scheduled_tasks: list[ScheduledTask]) -> None:
+    def _log_scheduled_task(self, scheduled_tasks: ObservationList) -> None:
         for scheduled_task in scheduled_tasks:
+            print(scheduled_task)
             log.info(
                 "  - %s to %s: %s (%d)",
                 scheduled_task.start.strftime("%H:%M:%S"),

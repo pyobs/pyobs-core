@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 from astroplan import Observer
 
-from pyobs.robotic.observation import ObservationState, ObservationList
 from ...utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import ScheduledTask, Task
+    from pyobs.robotic import Observation, Task
     from pyobs.robotic.observationarchive import ObservationArchive
+    from pyobs.robotic.observation import ObservationList
 
 
 class ObservationArchiveEvolution:
@@ -19,12 +19,12 @@ class ObservationArchiveEvolution:
         self._obs_for_night: dict[datetime.date, ObservationList] = {}
         self._observer = observer
 
-    async def evolve(self, scheduled_task: ScheduledTask) -> None:
-        from pyobs.robotic import Observation
+    async def evolve(self, scheduled_task: Observation) -> None:
+        from pyobs.robotic import Observation, ObservationState
 
         obs = Observation(
             id=str(uuid4()),
-            task_id=scheduled_task.task.id,
+            task=scheduled_task.task,
             start=scheduled_task.start,
             end=scheduled_task.end,
             state=ObservationState.COMPLETED,
@@ -38,6 +38,8 @@ class ObservationArchiveEvolution:
         self._obs_for_night[night].append(obs)
 
     async def observations_for_task(self, task: Task) -> ObservationList:
+        from pyobs.robotic.observation import ObservationList
+
         if task.id not in self._obs_for_task:
             self._obs_for_task[task.id] = (
                 ObservationList() if self._obs_archive is None else await self._obs_archive.observations_for_task(task)
@@ -53,6 +55,8 @@ class ObservationArchiveEvolution:
         Returns:
             List of observations for the given task.
         """
+        from pyobs.robotic.observation import ObservationList
+
         if date not in self._obs_for_night:
             self._obs_for_night[date] = (
                 ObservationList() if self._obs_archive is None else await self._obs_archive.observations_for_night(date)

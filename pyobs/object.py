@@ -478,6 +478,13 @@ class Object:
     @overload
     def add_child_object(
         self,
+        config_or_object: ObjectClass,
+        **kwargs: Any,
+    ) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(
+        self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
         object_class: Literal[None],
         copy_comm: bool = True,

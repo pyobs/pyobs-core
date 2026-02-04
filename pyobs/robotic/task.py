@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from astroplan import Observer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
@@ -34,7 +34,7 @@ class Task(BaseModel):
     constraints: list[Constraint] = []
     merits: list[Merit] = []
     target: Target | None = None
-    script: Script
+    script: Script = Field(default_factory=Script)
 
     def __str__(self) -> str:
         s = f"Task {self.id}: {self.name} (duration: {self.duration}s"

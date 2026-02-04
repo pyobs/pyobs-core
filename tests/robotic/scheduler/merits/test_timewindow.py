@@ -17,7 +17,7 @@ async def test_timewindow_merit() -> None:
     time = Time.now()
     time2 = time + TimeDelta(1.0 * u.hour)
     min5 = TimeDelta(5.0 * u.minute)
-    task = Task(id=1, name="1", duration=100 * u.second)
+    task = Task(id=1, name="1", duration=100)
 
     merit = TimeWindowMerit(
         windows=[TimeWindow(start=time - min5, end=time + min5), TimeWindow(start=time2 - min5, end=time2 + min5)]

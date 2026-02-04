@@ -2,7 +2,6 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -15,7 +14,7 @@ async def test_random_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
-    task = Task(id=1, name="1", duration=100 * u.second)
+    task = Task(id=1, name="1", duration=100)
 
     # let somebody have fun when this fails
     merit = RandomMerit()

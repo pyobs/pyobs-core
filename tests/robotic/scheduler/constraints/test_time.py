@@ -14,10 +14,17 @@ from astropy.time import Time
 async def test_time_constraint() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
-    task = Task(1, "Canopus", 100)
-    task._target = SiderealTarget("Canopus", SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs"))
+    coord = SkyCoord("6h23m58.2s -52d41m27.2s", frame="icrs")
+    task = Task(
+        id=1,
+        name="Canopus",
+        duration=100,
+        target=SiderealTarget(ra=float(coord.ra.degree), dec=float(coord.dec.degree), name="Canopus"),
+    )
 
-    constraint = TimeConstraint(Time("2025-11-03T20:00:00", scale="utc"), Time("2025-11-03T23:00:00", scale="utc"))
+    constraint = TimeConstraint(
+        start=Time("2025-11-03T20:00:00", scale="utc"), end=Time("2025-11-03T23:00:00", scale="utc")
+    )
 
     time = Time("2025-11-03T19:30:00", scale="utc")
     assert await constraint(time, task, data) is False

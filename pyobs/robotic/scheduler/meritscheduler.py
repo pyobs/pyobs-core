@@ -17,7 +17,7 @@ from .observationarchiveevolution import ObservationArchiveEvolution
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
-    from pyobs.robotic import ScheduledTask
+    from pyobs.robotic import Observation
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class MeritScheduler(TaskScheduler):
         constraints = constraints or []
         self._global_constraints: list[Constraint] = [Constraint.create(c) for c in constraints]
 
-    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[ScheduledTask]:
+    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
         archive = ObservationArchiveEvolution(self.observer, self._obs_archive)
         data = DataProvider(self.observer, archive)
 
@@ -71,7 +71,7 @@ class MeritScheduler(TaskScheduler):
 
     async def schedule_in_interval(
         self, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
-    ) -> AsyncIterator[ScheduledTask]:
+    ) -> AsyncIterator[Observation]:
         time = start
         while time < end:
             latest_end = start
@@ -94,7 +94,7 @@ class MeritScheduler(TaskScheduler):
 
     async def schedule_first_in_interval(
         self, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
-    ) -> AsyncIterator[ScheduledTask]:
+    ) -> AsyncIterator[Observation]:
         # find current best task
         task, merit = await self.find_next_best_task(tasks, start, end, data)
 
@@ -123,10 +123,10 @@ class MeritScheduler(TaskScheduler):
                 # this seems to be the best task for now, schedule it
                 yield self.create_scheduled_task(task, start)
 
-    def create_scheduled_task(self, task: Task, time: Time) -> ScheduledTask:
-        from pyobs.robotic import ScheduledTask
+    def create_scheduled_task(self, task: Task, time: Time) -> Observation:
+        from pyobs.robotic import Observation
 
-        return ScheduledTask(task, time, time + TimeDelta(task.duration))
+        return Observation(task=task, start=time, end=time + TimeDelta(task.duration * u.second))
 
     async def evaluate_constraints(self, task: Task, start: Time, end: Time, data: DataProvider) -> bool:
         """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.
@@ -183,7 +183,7 @@ class MeritScheduler(TaskScheduler):
                     # no merits? evaluate to 1
                     merit = 1.0
 
-                elif start + TimeDelta(task.duration) > end:
+                elif start + TimeDelta(task.duration * u.second) > end:
                     # if task is too long for the given slot, we evaluate its merits to zero
                     merit = 0.0
 
@@ -216,7 +216,7 @@ class MeritScheduler(TaskScheduler):
         self, task: Task, merit: float, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
     ) -> tuple[Task | None, Time | None, float | None]:
         t = start + TimeDelta(step * u.second)
-        while t < start + TimeDelta(task.duration):
+        while t < start + TimeDelta(task.duration * u.second):
             merits = await self.evaluate_constraints_and_merits(tasks, t, end, data)
             for i, m in enumerate(merits):
                 if m > merit:
@@ -228,7 +228,7 @@ class MeritScheduler(TaskScheduler):
         self, task: Task, better_task: Task, better_merit: float, start: Time, end: Time, data: DataProvider
     ) -> Time | None:
         # new start time of better_task would be after the execution of task
-        better_start: Time = start + TimeDelta(task.duration)
+        better_start: Time = start + TimeDelta(task.duration * u.second)
 
         # evaluate merit of better_task at new start time
         merit = (await self.evaluate_constraints_and_merits([better_task], better_start, end, data))[0]

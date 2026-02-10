@@ -1,13 +1,14 @@
 import abc
 from abc import ABCMeta
-
 from astropy.coordinates import SkyCoord
 
-from pyobs.object import Object
+from pyobs.utils.serialization import SubClassBaseModel
 from pyobs.utils.time import Time
 
 
-class Target(Object, metaclass=ABCMeta):
+class Target(SubClassBaseModel, metaclass=ABCMeta):
+    name: str
+
     @abc.abstractmethod
     def coordinates(self, time: Time) -> SkyCoord: ...
 

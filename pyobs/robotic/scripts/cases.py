@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from datetime import datetime, timezone
 import logging
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
+    from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -14,23 +13,8 @@ log = logging.getLogger(__name__)
 class CasesRunner(Script):
     """Script for distinguishing cases."""
 
-    __module__ = "pyobs.modules.robotic"
-
-    def __init__(
-        self,
-        expression: str,
-        cases: dict[str | int | float, Any],
-        **kwargs: Any,
-    ):
-        """Initialize a new CasesRunner.
-
-        Args:
-            expression: expression to check
-            cases: dictionary with cases
-        """
-        Script.__init__(self, **kwargs)
-        self.expression = expression
-        self.cases = cases
+    expression: str
+    cases: dict[str | int | float, Any]
 
     def __get_script(self) -> Script:
         # evaluate condition
@@ -38,24 +22,19 @@ class CasesRunner(Script):
 
         # check in cases
         if value in self.cases:
-            return self.get_object(self.cases[value], Script, configuration=self.configuration)
+            return Script.model_validate(self.cases[value])
         elif "else" in self.cases:
-            return self.get_object(self.cases["else"], Script, configuration=self.configuration)
+            return Script.model_validate(self.cases["else"])
         else:
             raise ValueError("Invalid choice")
 
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         script = self.__get_script()
-        return await script.can_run()
+        return await script.can_run(data)
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         script = self.__get_script()
-        await script.run(task_runner, task_schedule, task_archive)
+        await script.run(data)
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

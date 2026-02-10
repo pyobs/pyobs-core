@@ -2,12 +2,12 @@ from __future__ import annotations
 import logging
 from typing import Any, TYPE_CHECKING
 
-from pyobs.interfaces import ITelescope
+from pyobs.interfaces import IPointingAltAz
+from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
-from pyobs.utils.skyflats.pointing import SkyFlatsBasePointing
 
 if TYPE_CHECKING:
-    from pyobs.robotic import TaskSchedule, TaskArchive, TaskRunner
+    from pyobs.robotic.task import TaskData
 
 log = logging.getLogger(__name__)
 
@@ -15,26 +15,10 @@ log = logging.getLogger(__name__)
 class Pointing(Script):
     """Script for pointing the telescope for flats."""
 
-    def __init__(
-        self,
-        telescope: str | ITelescope,
-        pointing: dict[str, Any] | SkyFlatsBasePointing,
-        **kwargs: Any,
-    ):
-        """Init a new Pointing script.
-        Args:
-            telescope: telescope to move.
-            pointing: pointing class to use.
-        """
-        if "configuration" not in kwargs:
-            kwargs["configuration"] = {}
-        Script.__init__(self, **kwargs)
+    telescope: str
+    pointing: dict[str, Any]
 
-        # store modules
-        self._telescope = telescope
-        self._pointing = self.get_object(pointing)
-
-    async def can_run(self) -> bool:
+    async def can_run(self, data: TaskData) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -42,7 +26,7 @@ class Pointing(Script):
 
         # get modules
         try:
-            tel = await self.comm.proxy(self._telescope, ITelescope)
+            tel = await self.__comm(data).proxy(self.telescope, IPointingAltAz)
         except ValueError:
             return False
 
@@ -53,22 +37,18 @@ class Pointing(Script):
         # seems alright
         return True
 
-    async def run(
-        self,
-        task_runner: TaskRunner | None = None,
-        task_schedule: TaskSchedule | None = None,
-        task_archive: TaskArchive | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
         """
         # get modules
         log.info("Getting proxy for telescope...")
-        telescope = await self.comm.proxy(self._telescope, ITelescope)
+        telescope = await self.__comm(data).proxy(self.telescope, IPointingAltAz)
 
         # point
-        await self._pointing(telescope)
+        pointing = get_object(self.pointing)
+        await pointing(telescope)
         log.info("Finished pointing telescope.")
 
 

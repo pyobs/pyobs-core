@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import astroplan
 import astropy.units as u
 import astropy.coordinates
@@ -14,9 +14,7 @@ if TYPE_CHECKING:
 class MoonSeparationConstraint(Constraint):
     """Moon separation constraint."""
 
-    def __init__(self, min_distance: float, **kwargs: Any):
-        super().__init__()
-        self.min_distance = min_distance
+    min_distance: float
 
     def to_astroplan(self) -> astroplan.MoonSeparationConstraint:
         return astroplan.MoonSeparationConstraint(min=self.min_distance * u.deg)

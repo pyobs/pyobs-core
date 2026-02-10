@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import inspect
 from abc import ABCMeta, abstractmethod
 import astroplan
 from typing import TYPE_CHECKING, Any
@@ -18,6 +20,10 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
 
     @abstractmethod
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool: ...
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
 
     @staticmethod
     def create(config: Constraint | dict[str, Any]) -> Constraint:
@@ -40,3 +46,9 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
                 raise ValueError(f"Invalid constraint config: {config}")
         else:
             return Constraint.model_validate(config, by_alias=True)
+
+    @staticmethod
+    def list() -> list[str]:
+        from pyobs.robotic.scheduler import constraints
+
+        return [name for name, obj in inspect.getmembers(constraints) if inspect.isclass(obj)]

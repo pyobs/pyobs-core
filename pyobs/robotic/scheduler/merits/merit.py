@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import inspect
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 from astropy.time import Time
@@ -15,6 +17,10 @@ class Merit(SubClassBaseModel, metaclass=ABCMeta):
 
     @abstractmethod
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float: ...
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
 
     @staticmethod
     def create(config: Merit | dict[str, Any]) -> Merit:
@@ -39,6 +45,12 @@ class Merit(SubClassBaseModel, metaclass=ABCMeta):
                 raise ValueError(f"Invalid merit config: {config}")
         else:
             return Merit.model_validate(config, by_alias=True)
+
+    @staticmethod
+    def list() -> list[str]:
+        from pyobs.robotic.scheduler import merits
+
+        return [name for name, obj in inspect.getmembers(merits) if inspect.isclass(obj)]
 
 
 __all__ = ["Merit"]

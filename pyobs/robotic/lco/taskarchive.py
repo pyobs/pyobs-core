@@ -52,7 +52,7 @@ class LcoTaskArchive(TaskArchive):
         try:
             self._last_changed = await self._portal.last_changed()
         except:
-            log.error("Could not get last changed time")
+            log.debug("Could not get last changed time")
 
         # even in case of errors, return last time
         return self._last_changed

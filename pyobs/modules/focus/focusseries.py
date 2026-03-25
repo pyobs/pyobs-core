@@ -193,10 +193,16 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             log.info("Downloading image...")
             image = await self.vfs.read_image(filename)
 
+            # get actual focus
+            if self._offset:
+                actual_focus = await focuser.get_focus_offset()
+            else:
+                actual_focus = await focuser.get_focus()
+
             # analyse
             log.info("Analysing picture...")
             try:
-                await self._series.analyse_image(image, foc)
+                await self._series.analyse_image(image, actual_focus)
             except:
                 # do nothing...
                 log.info("Could not analyse image.")

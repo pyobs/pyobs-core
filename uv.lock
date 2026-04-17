@@ -2254,7 +2254,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.39.9"
+version = "1.39.10"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -2269,6 +2269,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "paramiko" },
+    { name = "pillow" },
     { name = "py-expression-eval" },
     { name = "pydantic" },
     { name = "pytz" },
@@ -2288,7 +2289,6 @@ full = [
     { name = "matrix-nio" },
     { name = "opencv-python-headless" },
     { name = "photutils" },
-    { name = "pillow" },
     { name = "python-daemon" },
     { name = "python-telegram-bot" },
     { name = "sep", marker = "sys_platform == 'linux'" },
@@ -2342,7 +2342,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "paramiko", specifier = ">=3.5.1" },
     { name = "photutils", marker = "extra == 'full'", specifier = ">=2.2.0,<3" },
-    { name = "pillow", marker = "extra == 'full'", specifier = ">=11.3.0" },
+    { name = "pillow", specifier = ">=11.3.0" },
     { name = "py-expression-eval", specifier = ">=0.3.14,<0.4" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-daemon", marker = "extra == 'full'", specifier = ">=3.1.2,<4" },

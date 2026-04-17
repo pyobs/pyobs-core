@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.39.9"
+version = "1.39.10"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -27,6 +27,7 @@ dependencies = [
     "influxdb-client>=1.49.0",
     "pydantic>=2.12.5",
     "astropydantic>=0.0.5",
+    "pillow>=11.3.0",
 ]
 
 [project.optional-dependencies]
@@ -40,7 +41,6 @@ full = [
     "tornado>=6.4.2,<7",
     "python-telegram-bot~=22.0",
     "opencv-python-headless>=4.10.0.84",
-    "pillow>=11.3.0",
     "sunpy>=7.0.1",
     "matrix-nio>=0.25.2",
 ]

@@ -490,7 +490,7 @@ class Object:
         object_class: type[ObjectClass] | None = None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> ObjectClass:
+    ) -> ObjectClass | Any:
         """Create a new sub-module, which will automatically be opened and closed.
 
         Args:

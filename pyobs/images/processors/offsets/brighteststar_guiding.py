@@ -171,7 +171,7 @@ class BrightestStarGuiding(Offsets):
 
     def _get_radec_ref_target(self, image: Image, star_pos: tuple[float, float]) -> tuple[SkyCoord, SkyCoord]:
         wcs = WCS(image.header)
-        ref = wcs.pixel_to_world(*self._ref_pos)
+        ref = wcs.pixel_to_world(*self._ref_pos)  # type: ignore
         target = wcs.pixel_to_world(*star_pos)
         return ref, target
 

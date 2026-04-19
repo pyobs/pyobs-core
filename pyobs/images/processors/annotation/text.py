@@ -195,7 +195,7 @@ class Text(ImageProcessor):
         draw.text(
             (x, y),
             text,
-            fill=fill,  # type: ignore
+            fill=fill,
             font=self._font,
             anchor=self._anchor,
             spacing=self._spacing,

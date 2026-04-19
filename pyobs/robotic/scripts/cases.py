@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskRunner, TaskSchedule, TaskArchive
@@ -38,9 +38,9 @@ class CasesRunner(Script):
 
         # check in cases
         if value in self.cases:
-            return self.get_object(self.cases[value], Script, configuration=self.configuration)
+            return cast(Script, self.get_object(self.cases[value], Script, configuration=self.configuration))
         elif "else" in self.cases:
-            return self.get_object(self.cases["else"], Script, configuration=self.configuration)
+            return cast(Script, self.get_object(self.cases["else"], Script, configuration=self.configuration))
         else:
             raise ValueError("Invalid choice")
 

@@ -11,7 +11,6 @@ from pyobs.object import get_class_from_string
 from pyobs.images import Image
 from .file import VFSFile
 
-
 log = logging.getLogger(__name__)
 
 
@@ -84,7 +83,7 @@ class VirtualFileSystem(object):
         fd = get_object(self._roots[root], object_class=VFSFile, name=filename, mode=mode)
 
         # return it
-        return fd
+        return cast(VFSFile, fd)
 
     async def read_fits(self, filename: str) -> fits.HDUList:
         """Convenience function that wraps around open_file() to read a FITS file and put it into a astropy FITS

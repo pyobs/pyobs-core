@@ -5,8 +5,8 @@ from enum import Enum
 from inspect import Parameter
 from pprint import pprint
 from typing import Any
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackQueryHandler, CallbackContext, Application
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update  # type: ignore
+from telegram.ext import CallbackQueryHandler, CallbackContext, Application  # type: ignore
 
 from pyobs.modules import Module
 from pyobs.events import LogEvent, Event
@@ -45,7 +45,7 @@ class Telegram(Module):
         self._allow_new_users = allow_new_users
         self._message_queue: asyncio.Queue[Any] = asyncio.Queue()
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._application: Application | None = None  # type: ignore
+        self._application: Application | None = None
 
         # get log levels
         self._log_levels = {

@@ -8,7 +8,6 @@ from slixmpp.xmlstream import StanzaBase
 from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
 from pyobs.comm.xmpp.xep_0009_timeout import XEP_0009_timeout
 
-
 log = logging.getLogger(__name__)
 
 
@@ -26,8 +25,6 @@ class XmppClient(slixmpp.ClientXMPP):
         """
 
         slixmpp.ClientXMPP.__init__(self, jid, password, **kwargs)
-        # self.enable_starttls = False
-        # self.enable_direct_tls = False
 
         # stuff
         self._connect_event = asyncio.Event()
@@ -56,6 +53,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("session_start", self.session_start)
         self.add_event_handler("auth_success", lambda ev: self._auth(True))
         self.add_event_handler("failed_auth", lambda ev: self._auth(False))
+        self.add_event_handler("failed_all_auth", self.failed_all_auth)
         self.add_filter("in", self._filter_messages)
 
     def _filter_messages(self, stanza: StanzaBase) -> Optional[StanzaBase]:
@@ -88,7 +86,7 @@ class XmppClient(slixmpp.ClientXMPP):
         # connected
         return True
 
-    def session_start(self, event: Any) -> None:
+    async def session_start(self, event: Any) -> None:
         """Session start event.
 
         Args:
@@ -98,7 +96,7 @@ class XmppClient(slixmpp.ClientXMPP):
 
         # send presence and get roster
         self.send_presence()
-        self.get_roster()  # type: ignore
+        await self.get_roster()
 
         # send connected event
         self._connect_event.set()
@@ -107,10 +105,16 @@ class XmppClient(slixmpp.ClientXMPP):
         """Called after authentication.
 
         Args:
-            success: Whether or not the authentication was successful.
+            success: Whether the authentication was successful.
         """
         # store and fire
-        self._auth_success = success
+        if success:
+            self._auth_success = True
+            self._auth_event.set()
+
+    def failed_all_auth(self, event: Any) -> None:
+        log.error("All authentication attempts failed.")
+        self._auth_success = False
         self._auth_event.set()
 
 

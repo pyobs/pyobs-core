@@ -129,9 +129,9 @@ class Crosshair(ImageProcessor):
 
         draw = PIL.ImageDraw.Draw(im)
         width = int(self._radius / 10.0)
-        draw.circle([x, y], self._radius, outline=color, width=width)  # type: ignore
-        draw.line([(x - self._radius, y), (x + self._radius), y], color, width=width)  # type: ignore
-        draw.line([(x, y - self._radius), (x, y + self._radius)], color, width=width)  # type: ignore
+        draw.circle([x, y], self._radius, outline=color, width=width)
+        draw.line([(x - self._radius, y), (x + self._radius), y], color, width=width)
+        draw.line([(x, y - self._radius), (x, y + self._radius)], color, width=width)
 
         return PillowHelper.to_image(image, im)
 

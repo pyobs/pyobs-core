@@ -50,16 +50,16 @@ class Ring:
         return bool(np.nanstd(self.data) < float(np.nanmedian(self.data)) * self._max_relative_sigma)
 
     @overload
-    def get_angle_from_position(self, x_coordinate: float, y_coordinate: float) -> float: ...
+    def get_angle_from_position(self, x_coordinate: int, y_coordinate: int) -> int: ...
 
     @overload
     def get_angle_from_position(
-        self, x_coordinate: npt.NDArray[np.floating[Any]], y_coordinate: npt.NDArray[np.floating[Any]]
-    ) -> npt.NDArray[np.floating[Any]]: ...
+        self, x_coordinate: npt.NDArray[np.integer[Any]], y_coordinate: npt.NDArray[np.integer[Any]]
+    ) -> npt.NDArray[np.integer[Any]]: ...
 
     def get_angle_from_position(
-        self, x_coordinate: float | npt.NDArray[np.floating[Any]], y_coordinate: float | npt.NDArray[np.floating[Any]]
-    ) -> float | npt.NDArray[np.floating[Any]]:
+        self, x_coordinate: int | npt.NDArray[np.integer[Any]], y_coordinate: int | npt.NDArray[np.integer[Any]]
+    ) -> int | npt.NDArray[np.integer[Any]]:
         x_fibre, y_fibre = self._fibre_position
         delta_x, delta_y = x_coordinate - x_fibre, y_coordinate - y_fibre
         angle = np.arctan2(delta_y, delta_x) * 180 / np.pi + 90
@@ -70,7 +70,7 @@ class Ring:
         index_brightest_point = np.nanargmax(self.data)
         return cast(tuple[int, int], np.unravel_index(index_brightest_point, self.data.shape))
 
-    def _get_section_angles(self) -> npt.NDArray[np.float32]:
+    def _get_section_angles(self) -> npt.NDArray[np.floating[Any]]:
         return np.arange(0, 360, self._section_angular_shift, dtype=float)
 
     def _apply_section_mask(self, min_angle: float, max_angle: float) -> npt.NDArray[np.floating[Any]]:

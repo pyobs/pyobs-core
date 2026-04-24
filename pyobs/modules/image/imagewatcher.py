@@ -74,7 +74,7 @@ class ImageWatcher(Module):
         self._destinations = destinations
 
     async def _watch_inotify(self) -> None:
-        from asyncinotify import Inotify, Mask
+        from asyncinotify import Inotify, Mask  # type: ignore
 
         # get local directory
         local = await self.vfs.local_path(self._watchpath)

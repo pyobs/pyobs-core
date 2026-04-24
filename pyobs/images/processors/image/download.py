@@ -9,7 +9,6 @@ import numpy as np
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 
-
 log = logging.getLogger(__name__)
 
 
@@ -23,7 +22,7 @@ class EncodedImageConverter(ImageConverter):
     def __call__(self, image_data: bytes) -> Image:
         img_array = np.asarray(bytearray(image_data), dtype=np.uint8)
 
-        import cv2
+        import cv2  # type: ignore
 
         bgr_data = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)
         data = cv2.cvtColor(bgr_data, cv2.COLOR_BGR2RGB)
@@ -37,7 +36,7 @@ class EncodedImageConverter(ImageConverter):
                 # move axis
                 data = np.moveaxis(data, 2, 0)
 
-        image = Image(data=data)  # type: ignore
+        image = Image(data=data)
         image.header["DATE-OBS"] = datetime.now().isoformat()
         image.header["EXPTIME"] = 0
 

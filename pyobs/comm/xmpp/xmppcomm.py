@@ -208,12 +208,11 @@ class XmppComm(Comm):
         self._rpc.set_handler(self._module)
 
         # connect
-        self._xmpp.connect(
-            address=(server, port),
-            # use_ssl=self._use_tls,
-            force_starttls=self._use_tls,
-            disable_starttls=not self._use_tls,
-        )
+        self._xmpp.enable_starttls = self._use_tls
+        self._xmpp.enable_direct_tls = self._use_tls
+        self._xmpp.enable_plaintext = not self._use_tls
+        self._xmpp["feature_mechanisms"].unencrypted_scram = not self._use_tls
+        await self._xmpp.connect(host=server, port=port)
         self._xmpp.init_plugins()  # type: ignore
 
         # wait for connected
@@ -412,7 +411,7 @@ class XmppComm(Comm):
         # if no interfaces are implemented (not even IModule), quit here
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
-            log.error(f"Module {module} does not seem to implement IModule, ignoring.")
+            log.debug(f"Module {module} does not seem to implement IModule, ignoring.")
             return
 
         # store interfaces

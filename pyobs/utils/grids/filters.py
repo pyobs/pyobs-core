@@ -2,7 +2,9 @@ from __future__ import annotations
 import abc
 import random
 from typing import Any
-from astropy.coordinates import SkyCoord
+
+import pandas as pd
+from astropy.coordinates import SkyCoord, get_body
 import astropy.units as u
 from astropy.time import Time
 
@@ -275,4 +277,109 @@ class RandomizeGrid(GridFilter):
         return next(self._grid)
 
 
-__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord", "RandomizeGrid"]
+class AvoidMoon(GridFilter):
+    """Remove points too close to the moon.
+
+    If the next point in the underlying grid is too close to the moon, skip it.
+    """
+
+    def __init__(self, grid: Grid | GridFilter, min_moon_distance: int = 20, **kwargs: object):
+        """Initialize the moon avoider.
+
+        Args:
+            grid: Upstream grid or filter.
+            min_moon_distance: Minimum distance to avoid the moon in degrees..
+            **kwargs: Additional keyword arguments forwarded to GridFilter.__init__().
+
+        Raises:
+            ValueError: If iterations < 0.
+        """
+        GridFilter.__init__(self, grid, **kwargs)
+        self._min_moon_distance = min_moon_distance
+
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
+        """Yield a point after rotating the underlying grid a random number of times.
+
+        Returns:
+            The next point in the underlying grid, except it is too close to the moon.
+
+        Raises:
+            StopIteration: If the underlying grid is exhausted.
+        """
+
+        while True:
+            next_point = next(self._grid)
+            if not isinstance(next_point, SkyCoord):
+                raise TypeError("Expected a SkyCoord.")
+            moon = get_body("moon", Time.now())
+            dist = moon.separation(next_point)
+            if dist > self._min_moon_distance * u.degree:
+                return next_point
+            elif len(self._grid) == 0:
+                raise StopIteration
+            else:
+                self._grid.append_last()
+
+
+class FromList(GridFilter):
+    """Select closest point from a list.
+
+    Only select points if they are closer than a given distance to the grid point.
+    """
+
+    def __init__(
+        self,
+        grid: Grid | GridFilter,
+        csv_file: str,
+        max_distance: float = 1.0,
+        field_ra: str = "RA_ICRS",
+        field_dec: str = "DE_ICRS",
+        **kwargs: object,
+    ):
+        """Initialize the moon avoider.
+
+        Args:
+            grid: Upstream grid or filter.
+            csv_file: Name of the csv file to read from.
+            max_distance: Maximum distance to grid point in degrees.
+            **kwargs: Additional keyword arguments forwarded to GridFilter.__init__().
+
+        Raises:
+            ValueError: If iterations < 0.
+        """
+        GridFilter.__init__(self, grid, **kwargs)
+        self._max_distance = max_distance
+        self._csv_file = csv_file
+        self._field_ra = field_ra
+        self._field_dec = field_dec
+        self._data: SkyCoord | None = None
+
+    def _get_next(self) -> tuple[float, float] | SkyCoord:
+        """Yield the point from the CSV closest to the next grid point.
+
+        Returns:
+            A point from the CSV file, except it is too far away.
+
+        Raises:
+            StopIteration: If the underlying grid is exhausted.
+        """
+
+        if self._data is None:
+            data = pd.read_csv(self._csv_file, index_col=None)
+            self._data = SkyCoord(data[self._field_ra], data[self._field_dec], unit="deg", frame="icrs")
+
+        while True:
+            next_point = next(self._grid)
+            if not isinstance(next_point, SkyCoord):
+                raise TypeError("Expected a SkyCoord.")
+            separation = next_point.separation(self._data)
+            min_dist_idx = separation.argmin()
+            if separation[min_dist_idx] < self._max_distance * u.degree:
+                return self._data[min_dist_idx]
+            elif len(self._grid) == 0:
+                raise StopIteration
+            else:
+                self._grid.append_last()
+
+
+__all__ = ["GridFilterValue", "ConvertGridFrame", "ConvertGridToSkyCoord", "RandomizeGrid", "AvoidMoon", "FromList"]

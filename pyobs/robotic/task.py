@@ -28,6 +28,7 @@ class TaskData:
 class Task(BaseModel):
     id: Any | None = None
     name: str
+    project: str
     duration: float
     priority: float | None = None
     config: dict[str, Any] = {}

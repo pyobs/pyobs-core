@@ -14,12 +14,12 @@ log = logging.getLogger(__name__)
 class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
     """Task archive based on files."""
 
-    def __init__(self, path: str, extension: str, **kwargs: Any):
+    def __init__(self, extension: str, path: str = "/robotic/tasks", **kwargs: Any):
         """Creates a new filesystem-based task archive.
 
         Args:
-            path: Path to filesystem-based task-archive.
             extension: Extension of filesystem-based task-archive.
+            path: Path to filesystem-based task-archive.
         """
         TaskArchive.__init__(self, **kwargs)
         self._path = path
@@ -44,8 +44,8 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
 
 
 class YamlTaskArchive(FileSystemTaskArchive):
-    def __init__(self, path: str, **kwargs: Any):
-        FileSystemTaskArchive.__init__(self, path, "yaml", **kwargs)
+    def __init__(self, **kwargs: Any):
+        FileSystemTaskArchive.__init__(self, "yaml", **kwargs)
 
     @classmethod
     async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task:

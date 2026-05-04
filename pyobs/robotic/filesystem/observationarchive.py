@@ -12,7 +12,13 @@ from ...vfs import VirtualFileSystem
 
 
 class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
-    def __init__(self, path: str, extension: str, mode: Literal["day", "night"], **kwargs: Any):
+    def __init__(
+        self,
+        extension: str,
+        path: str = "/robotic/observations/",
+        mode: Literal["day", "night"] = "night",
+        **kwargs: Any,
+    ):
         ObservationArchive.__init__(self, **kwargs)
         self._path = path
         self._extension = extension
@@ -156,8 +162,8 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
 
 
 class YamlObservationArchive(FileSystemObservationArchive):
-    def __init__(self, path: str, **kwargs: Any):
-        FileSystemObservationArchive.__init__(self, path, "yaml", **kwargs)
+    def __init__(self, **kwargs: Any):
+        FileSystemObservationArchive.__init__(self, "yaml", **kwargs)
 
     @classmethod
     async def _load_observations_from_file(cls, path: str, vfs: VirtualFileSystem) -> ObservationList:

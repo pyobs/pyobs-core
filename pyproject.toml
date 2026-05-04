@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.40.0"
+version = "1.41.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -44,6 +44,11 @@ full = [
     "sunpy>=7.0.1",
     "matrix-nio>=0.25.2",
 ]
+gui = [
+    "pyside6>=6.11.0",
+    "qfitswidget>=0.13.1",
+    "qtpy>=2.4.3",
+]
 
 [project.scripts]
 pyobs = "pyobs.cli.pyobs:main"
@@ -74,6 +79,7 @@ dev = [
     "coverage>=7.9.2",
     "sphinx>=8.2.3",
     "sphinx-rtd-theme>=3.0.2",
+    "pyside6-stubs>=6.7.3.0",
 ]
 
 [tool.hatch.build.targets.sdist]

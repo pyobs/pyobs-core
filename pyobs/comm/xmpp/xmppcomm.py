@@ -5,6 +5,8 @@ import functools
 import json
 import logging
 import re
+import ssl
+
 import time
 from collections.abc import Coroutine
 from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING, Tuple
@@ -95,6 +97,7 @@ class XmppComm(Comm):
         password: str = "",
         server: Optional[str] = None,
         use_tls: bool = False,
+        ignore_cert_errors: bool = False,
         *args: Any,
         **kwargs: Any,
     ):
@@ -123,6 +126,7 @@ class XmppComm(Comm):
         self._resource = resource
         self._server = server
         self._use_tls = use_tls
+        self._ignore_cert_errors = ignore_cert_errors
         self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
@@ -212,6 +216,11 @@ class XmppComm(Comm):
         self._xmpp.enable_direct_tls = self._use_tls
         self._xmpp.enable_plaintext = not self._use_tls
         self._xmpp["feature_mechanisms"].unencrypted_scram = not self._use_tls
+        if self._ignore_cert_errors:
+            self._xmpp.ssl_context.check_hostname = False
+            self._xmpp.ssl_context.verify_mode = ssl.CERT_NONE
+
+        # connect
         await self._xmpp.connect(host=server, port=port)
         self._xmpp.init_plugins()  # type: ignore
 

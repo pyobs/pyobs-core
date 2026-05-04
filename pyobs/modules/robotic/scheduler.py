@@ -253,7 +253,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         for scheduled_task in scheduled_tasks:
             print(scheduled_task)
             log.info(
-                "  - %s to %s: %s (%d)",
+                "  - %s to %s: %s (%s)",
                 scheduled_task.start.strftime("%H:%M:%S"),
                 scheduled_task.end.strftime("%H:%M:%S"),
                 scheduled_task.task.name,

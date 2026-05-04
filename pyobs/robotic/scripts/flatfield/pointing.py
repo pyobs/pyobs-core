@@ -26,7 +26,7 @@ class Pointing(Script):
 
         # get modules
         try:
-            tel = await self.__comm(data).proxy(self.telescope, IPointingAltAz)
+            tel = await self._comm(data).proxy(self.telescope, IPointingAltAz)
         except ValueError:
             return False
 
@@ -44,7 +44,7 @@ class Pointing(Script):
         """
         # get modules
         log.info("Getting proxy for telescope...")
-        telescope = await self.__comm(data).proxy(self.telescope, IPointingAltAz)
+        telescope = await self._comm(data).proxy(self.telescope, IPointingAltAz)
 
         # point
         pointing = get_object(self.pointing)

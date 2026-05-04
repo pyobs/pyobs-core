@@ -39,9 +39,9 @@ class SkyFlats(Script):
 
         # get modules
         try:
-            roof = await self.__comm(data).proxy(self.roof, IRoof)
-            telescope = await self.__comm(data).proxy(self.telescope, ITelescope)
-            await self.__comm(data).proxy(self.flatfield, IFlatField)
+            roof = await self._comm(data).proxy(self.roof, IRoof)
+            telescope = await self._comm(data).proxy(self.telescope, ITelescope)
+            await self._comm(data).proxy(self.flatfield, IFlatField)
         except ValueError:
             return False
 
@@ -76,7 +76,7 @@ class SkyFlats(Script):
         )
 
         # get proxy for flatfield
-        flatfield = await self.__comm(data).proxy(self.flatfield, IFlatField)
+        flatfield = await self._comm(data).proxy(self.flatfield, IFlatField)
 
         # schedule
         log.info("Scheduling flat-fields...")

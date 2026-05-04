@@ -28,7 +28,7 @@ class DarkBias(Script):
 
         # we need a camera
         try:
-            await self.__comm(data).proxy(self.camera, IData)
+            await self._comm(data).proxy(self.camera, IData)
         except ValueError:
             return False
 
@@ -44,7 +44,7 @@ class DarkBias(Script):
         image_type = ImageType.BIAS if self.exptime == 0 else ImageType.DARK
 
         # get modules
-        camera = await self.__comm(data).proxy(self.camera, ICamera)
+        camera = await self._comm(data).proxy(self.camera, ICamera)
 
         if isinstance(camera, IBinning):
             await camera.set_binning(*self.binning)

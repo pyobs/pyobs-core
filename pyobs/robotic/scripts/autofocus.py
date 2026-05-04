@@ -25,7 +25,7 @@ class AutoFocus(Script):
 
         # we need a camera
         try:
-            await self.__comm(data).proxy(self.autofocus, IAutoFocus)
+            await Script._comm(data).proxy(self.autofocus, IAutoFocus)
         except ValueError:
             return False
 

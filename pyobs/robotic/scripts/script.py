@@ -45,7 +45,7 @@ class Script(SubClassBaseModel):
         return {}
 
     @staticmethod
-    def __comm(data: TaskData) -> Comm:
+    def _comm(data: TaskData) -> Comm:
         if data.comm is None:
             raise ValueError("No communication module found")
         return data.comm

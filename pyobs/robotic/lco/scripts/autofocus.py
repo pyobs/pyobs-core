@@ -35,7 +35,7 @@ class LcoAutoFocusScript(LcoScript):
         Raises:
             ValueError: Could not get proxies for all modules
         """
-        comm = self.__comm(data)
+        comm = self._comm(data)
         roof = await comm.safe_proxy(self.roof, IRoof)
         telescope = await comm.safe_proxy(self.telescope, ITelescope)
         acquisition = await comm.safe_proxy(self.acquisition, IAcquisition)

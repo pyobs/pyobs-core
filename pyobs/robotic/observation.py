@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import UserList
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from astropydantic import AstroPydanticTime  # type: ignore
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
 
 
-class ObservationState(str, Enum):
+class ObservationState(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"
     IN_PROGRESS = "in_progress"

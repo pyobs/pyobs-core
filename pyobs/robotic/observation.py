@@ -22,7 +22,7 @@ class Observation(BaseModel):
     """A scheduled task."""
 
     id: Any = None
-    task: Task
+    task: Task | Any
     start: AstroPydanticTime
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING

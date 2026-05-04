@@ -7,7 +7,7 @@ from pyobs.modules import Module
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic import Task, Observation
+from pyobs.robotic import Task, Observation, TaskArchive
 from pyobs.utils.time import Time
 from pyobs.robotic import TaskRunner, ObservationArchive
 
@@ -23,6 +23,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self,
         schedule: ObservationArchive | dict[str, Any],
         runner: TaskRunner | dict[str, Any],
+        tasks: TaskArchive | dict[str, Any] | None = None,
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
         after_task_sleep: int = 0,
@@ -47,6 +48,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self.add_background_task(self._run_thread, True)
 
         # get schedule and runner
+        self._task_archive = self.add_child_object(tasks, TaskArchive)
         self._observation_archive = self.add_child_object(schedule, ObservationArchive)
         self._task_runner = self.add_child_object(runner, TaskRunner, observation_archive=self._observation_archive)
 
@@ -98,7 +100,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            scheduled_task: Observation | None = await self._observation_archive.get_task(now)
+            scheduled_task: Observation | None = await self._observation_archive.get_task(now, self._task_archive)
             if scheduled_task is None or not await self._task_runner.can_run(scheduled_task.task):
                 # no task found
                 await asyncio.sleep(10)

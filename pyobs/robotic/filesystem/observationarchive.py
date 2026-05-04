@@ -5,7 +5,7 @@ from typing import Any, Literal
 import abc
 
 from pyobs.utils.time import Time
-from .. import ObservationArchive
+from .. import ObservationArchive, TaskArchive
 from .. import Task
 from ..observation import ObservationList, Observation
 from ...vfs import VirtualFileSystem
@@ -116,11 +116,12 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         """
         return await self._load_observations(Time.now())
 
-    async def get_task(self, time: Time) -> Observation | None:
+    async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:
             time: Time to return task for.
+            task_archive: Task archive to get task from.
 
         Returns:
             Scheduled task at the given time.
@@ -131,6 +132,14 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
 
         # loop all tasks
         for obs in schedule:
+            # load task
+            if task_archive is not None:
+                await obs.fetch_task(task_archive)
+
+            # no task?
+            if obs.task is None:
+                raise ValueError("Task could not be loaded.")
+
             # running now?
             if obs.start <= time < obs.end and not obs.task.is_finished():
                 return obs

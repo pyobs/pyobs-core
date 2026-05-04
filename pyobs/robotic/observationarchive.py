@@ -7,7 +7,7 @@ from pyobs.utils.time import Time
 from pyobs.object import Object
 
 if TYPE_CHECKING:
-    from . import Task
+    from . import Task, TaskArchive
     from .observation import ObservationList, Observation
 
 
@@ -47,11 +47,12 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, time: Time) -> Observation | None:
+    async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:
             time: Time to return task for.
+            task_archive: Task archive to get task from.
 
         Returns:
             Scheduled task at the given time.

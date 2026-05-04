@@ -181,7 +181,7 @@ class YamlObservationArchive(FileSystemObservationArchive):
 
     @classmethod
     async def _save_observations_to_file(cls, path: str, observations: ObservationList, vfs: VirtualFileSystem) -> None:
-        data = [obs.model_dump(mode="json") for obs in observations]
+        data = [obs.model_dump(mode="json", exclude_defaults=True) for obs in observations]
         await vfs.write_yaml(path, data)
 
 

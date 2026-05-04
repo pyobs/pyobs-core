@@ -251,7 +251,6 @@ class Scheduler(Module, IStartStop, IRunnable):
 
     def _log_scheduled_task(self, scheduled_tasks: ObservationList) -> None:
         for scheduled_task in scheduled_tasks:
-            print(scheduled_task)
             log.info(
                 "  - %s to %s: %s (%s)",
                 scheduled_task.start.strftime("%H:%M:%S"),

@@ -1,12 +1,15 @@
 from __future__ import annotations
 from collections import UserList
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self, TYPE_CHECKING
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
+
+if TYPE_CHECKING:
+    from pyobs.robotic import TaskArchive
 
 
 class ObservationState(StrEnum):
@@ -22,7 +25,8 @@ class Observation(BaseModel):
     """A scheduled task."""
 
     id: Any = None
-    task: Task | Any
+    task: Task | None = None
+    task_id: Any | None = None
     start: AstroPydanticTime
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING
@@ -63,13 +67,28 @@ class Observation(BaseModel):
             return bool(self.start >= other.start)
         raise NotImplementedError
 
+    @model_validator(mode="after")
+    def validate_task(self) -> Self:
+        """Check that either task or task_id are given."""
+        task_is_none = self.task is None
+        id_is_none = self.task_id is None
+        if not (task_is_none ^ id_is_none):
+            raise ValueError("Either task or task_id must be given, not both.")
+        return self
+
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         if isinstance(self.task, Task):
             data = self.model_copy(deep=True)
-            data.task = self.task.id
+            data.task_id = self.task.id
+            data.task = None
             return data.model_dump(**kwargs)
         else:
             return super().model_dump(**kwargs)
+
+    async def fetch_task(self, task_archive: TaskArchive) -> None:
+        """Fetch a task from the task archive."""
+        if self.task is None:
+            self.task = await task_archive.get_task(self.task_id)
 
 
 class ObservationList(UserList[Observation]):

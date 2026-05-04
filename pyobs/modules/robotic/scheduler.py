@@ -233,6 +233,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # log it
                     log.info("Finished calculating schedule for %d block(s):", len(scheduled_tasks))
                     self._log_scheduled_task(scheduled_tasks)
+                    log.info("Done.")
 
                     # submit it
                     await self._schedule.add_schedule(scheduled_tasks[1:])

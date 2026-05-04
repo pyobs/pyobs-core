@@ -63,6 +63,14 @@ class Observation(BaseModel):
             return bool(self.start >= other.start)
         raise NotImplementedError
 
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        if isinstance(self.task, Task):
+            data = self.model_copy(deep=True)
+            data.task = self.task.id
+            return data.model_dump(**kwargs)
+        else:
+            return super().model_dump(**kwargs)
+
 
 class ObservationList(UserList[Observation]):
     def __init__(self, observations: list[Observation] | None = None):

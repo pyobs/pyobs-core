@@ -67,7 +67,8 @@ class Task(BaseModel):
 
     async def run(self, data: TaskData) -> None:
         """Run a task"""
-        ...
+        if self.script is not None:
+            await self.script.run(data)
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

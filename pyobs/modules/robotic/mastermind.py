@@ -100,15 +100,15 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            scheduled_task: Observation | None = await self._observation_archive.get_task(now, self._task_archive)
-            if scheduled_task is None or not await self._task_runner.can_run(scheduled_task.task):
+            observation: Observation | None = await self._observation_archive.get_task(now, self._task_archive)
+            if observation is None or not await self._task_runner.can_run(observation.task):
                 # no task found
                 await asyncio.sleep(10)
                 continue
 
             # starting too late?
-            if not scheduled_task.task.can_start_late:
-                late_start = now - scheduled_task.start
+            if not observation.task.can_start_late:
+                late_start = now - observation.start
                 if late_start > self._allowed_late_start * u.second:
                     # only warn once
                     if first_late_start_warning:
@@ -127,7 +127,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             first_late_start_warning = True
 
             # task is definitely not None here
-            self._task = scheduled_task.task
+            self._task = observation.task
 
             # ETA
             eta = now + self._task.duration * u.second

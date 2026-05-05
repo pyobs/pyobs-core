@@ -77,17 +77,15 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
 
         filename = self._get_filename(time)
         full_path = os.path.join(self._path, filename)
-        await self._save_observations_to_file(full_path, observations, self.vfs)
+        await self._save_observations_to_file(full_path, observations)
 
     @classmethod
     @abc.abstractmethod
-    async def _load_observations_from_file(cls, path: str, vfs: VirtualFileSystem) -> ObservationList: ...
+    async def _load_observations_from_file(cls, path: str) -> ObservationList: ...
 
     @classmethod
     @abc.abstractmethod
-    async def _save_observations_to_file(
-        cls, path: str, observations: ObservationList, vfs: VirtualFileSystem
-    ) -> None: ...
+    async def _save_observations_to_file(cls, path: str, observations: ObservationList) -> None: ...
 
     async def add_schedule(self, observations: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.

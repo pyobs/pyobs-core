@@ -2,8 +2,9 @@ from __future__ import annotations
 from collections import UserList
 from enum import StrEnum
 from typing import Any, Self, TYPE_CHECKING
+from uuid import uuid4
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, Field
 
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
@@ -24,7 +25,7 @@ class ObservationState(StrEnum):
 class Observation(BaseModel):
     """A scheduled task."""
 
-    id: Any = None
+    id: Any | None = Field(default_factory=uuid4)
     task: Task | None = None
     task_id: Any | None = None
     start: AstroPydanticTime

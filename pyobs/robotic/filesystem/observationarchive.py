@@ -10,7 +10,6 @@ from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
 from ..observation import ObservationList, Observation, ObservationState
-from ...vfs import VirtualFileSystem
 
 
 class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
@@ -208,13 +207,13 @@ class YamlObservationArchive(FileSystemObservationArchive):
         FileSystemObservationArchive.__init__(self, "yaml", **kwargs)
 
     @classmethod
-    async def _load_observations_from_file(cls, path: str, vfs: VirtualFileSystem) -> ObservationList:
+    async def _load_observations_from_file(cls, path: str) -> ObservationList:
         with open(path, "r") as f:
             observations = yaml.safe_load(f)
             return ObservationList([Observation.model_validate(obs) for obs in observations])
 
     @classmethod
-    async def _save_observations_to_file(cls, path: str, observations: ObservationList, vfs: VirtualFileSystem) -> None:
+    async def _save_observations_to_file(cls, path: str, observations: ObservationList) -> None:
         data = [obs.model_dump(mode="json", exclude_defaults=True) for obs in observations]
         with open(path, "w") as f:
             yaml.safe_dump(data, f)

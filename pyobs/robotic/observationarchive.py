@@ -8,7 +8,7 @@ from pyobs.object import Object
 
 if TYPE_CHECKING:
     from . import Task, TaskArchive
-    from .observation import ObservationList, Observation
+    from .observation import ObservationList, Observation, ObservationState
 
 
 class ObservationArchive(Object, metaclass=ABCMeta):

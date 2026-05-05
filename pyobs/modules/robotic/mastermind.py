@@ -7,7 +7,7 @@ from pyobs.modules import Module
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic import Task, Observation, TaskArchive
+from pyobs.robotic import Task, Observation, TaskArchive, ObservationState
 from pyobs.utils.time import Time
 from pyobs.robotic import TaskRunner, ObservationArchive
 
@@ -132,8 +132,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             # ETA
             eta = now + self._task.duration * u.second
 
-            # send event
+            # send event and change state
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self._observation_archive.update_observation_state(observation, ObservationState.IN_PROGRESS)
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
@@ -142,11 +143,13 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             except:
                 # something went wrong
                 log.warning("Task %s failed.", self._task.name)
+                await self._observation_archive.update_observation_state(observation, ObservationState.FAILED)
                 self._task = None
                 continue
 
-            # send event
+            # send event and change state
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self._observation_archive.update_observation_state(observation, ObservationState.COMPLETED)
 
             # finish
             log.info("Finished task %s.", self._task.name)

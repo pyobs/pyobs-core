@@ -1,5 +1,6 @@
 from __future__ import annotations
 import datetime
+import glob
 import os
 from typing import Any, Literal
 import abc
@@ -186,7 +187,13 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Returns:
             List of observations for the given task.
         """
-        return ObservationList()
+        observations: list[Observation] = []
+        with self._lock:
+            for filename in glob.glob(os.path.join(self._path, f"*.{self._extension}")):
+                night = await self._load_observations_from_file(filename)
+                for_task = [n for n in night if n.task_id == task.id]
+                observations.extend(for_task)
+        return ObservationList(observations)
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.
@@ -197,7 +204,8 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Returns:
             List of observations for the given task.
         """
-        return ObservationList()
+        with self._lock:
+            return await self._load_observations(date)
 
 
 class YamlObservationArchive(FileSystemObservationArchive):

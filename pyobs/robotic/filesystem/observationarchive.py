@@ -157,6 +157,29 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         # nothing found
         return None
 
+    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+        """Returns the currently running observation.
+
+        Args:
+            task_archive: Task archive to get task from.
+
+        Returns:
+            Currently running observation.
+        """
+
+        # get schedule
+        with self._lock:
+            observations = await self._load_observations(Time.now())
+
+        # find running one
+        for obs in observations:
+            if obs.state == ObservationState.IN_PROGRESS:
+                if task_archive is not None:
+                    await obs.fetch_task(task_archive)
+                return obs
+        else:
+            return None
+
     async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
         """Updates observation state to given status.
         Args:

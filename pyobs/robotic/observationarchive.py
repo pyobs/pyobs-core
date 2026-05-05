@@ -60,6 +60,18 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
+    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+        """Returns the currently running observation.
+
+        Args:
+            task_archive: Task archive to get task from.
+
+        Returns:
+            Currently running observation.
+        """
+        ...
+
+    @abstractmethod
     async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
         """Updates observation state to given status.
         Args:

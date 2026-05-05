@@ -63,7 +63,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         filename = self._get_filename(time)
         full_path = os.path.join(self._path, filename)
         try:
-            return await self._load_observations_from_file(full_path, self.vfs)
+            return await self._load_observations_from_file(full_path)
         except FileNotFoundError:
             return ObservationList()
 

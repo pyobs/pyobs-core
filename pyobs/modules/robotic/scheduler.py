@@ -51,9 +51,9 @@ class Scheduler(Module, IStartStop, IRunnable):
         Module.__init__(self, **kwargs)
 
         # get scheduler
-        self._scheduler = self.add_child_object(scheduler, TaskScheduler)
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
         self._schedule = self.add_child_object(schedule, ObservationArchive)
+        self._scheduler = self.add_child_object(scheduler, TaskScheduler, observation_archive=self._schedule)
 
         # store
         self._running = True

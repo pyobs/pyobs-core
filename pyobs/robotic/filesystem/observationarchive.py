@@ -3,6 +3,8 @@ import datetime
 import os
 from typing import Any, Literal
 import abc
+import yaml
+from filelock import FileLock
 
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
@@ -15,7 +17,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
     def __init__(
         self,
         extension: str,
-        path: str = "/robotic/observations/",
+        path: str = "/opt/pyobs/robotic/observations/",
         mode: Literal["day", "night"] = "night",
         **kwargs: Any,
     ):
@@ -23,6 +25,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         self._path = path
         self._extension = extension
         self._mode = mode
+        self._lock = FileLock(os.path.join(path, ".lock"))
 
     def _get_filename(self, time: Time) -> str:
         """Returns the filename associated with the given time. If mode==night, the last sunrise is used,
@@ -52,6 +55,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Returns:
             List of observations.
         """
+
         filename = self._get_filename(time)
         full_path = os.path.join(self._path, filename)
         try:
@@ -89,10 +93,11 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         """
         if len(observations) == 0:
             return
-        time = observations[0].start
-        schedule = await self._load_observations(time)
-        schedule += observations
-        await self._save_observations(time, schedule)
+        with self._lock:
+            time = observations[0].start
+            schedule = await self._load_observations(time)
+            schedule += observations
+            await self._save_observations(time, schedule)
 
     async def clear_schedule(self, start_time: Time) -> None:
         """Clear schedule after given start time.
@@ -100,9 +105,12 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Args:
             start_time: Start time to clear from.
         """
-        schedule = await self._load_observations(start_time)
-        cleared = ObservationList([obs for obs in schedule if obs.end <= start_time])
-        await self._save_observations(start_time, cleared)
+        with self._lock:
+            schedule = await self._load_observations(start_time)
+            cleared = ObservationList(
+                [obs for obs in schedule if obs.end <= start_time or obs.state != ObservationState.PENDING]
+            )
+            await self._save_observations(start_time, cleared)
 
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
@@ -114,7 +122,8 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return await self._load_observations(Time.now())
+        with self._lock:
+            return await self._load_observations(Time.now())
 
     async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
@@ -128,7 +137,8 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         """
 
         # get schedule
-        schedule = await self._load_observations(time)
+        with self._lock:
+            schedule = await self._load_observations(time)
 
         # loop all tasks
         for obs in schedule:
@@ -141,7 +151,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
                 raise ValueError("Task could not be loaded.")
 
             # running now?
-            if obs.start <= time < obs.end and not obs.task.is_finished():
+            if obs.start <= time < obs.end and obs.state == ObservationState.PENDING:
                 return obs
 
         # nothing found
@@ -194,13 +204,15 @@ class YamlObservationArchive(FileSystemObservationArchive):
 
     @classmethod
     async def _load_observations_from_file(cls, path: str, vfs: VirtualFileSystem) -> ObservationList:
-        observations = await vfs.read_yaml(path)
-        return ObservationList([Observation.model_validate(obs) for obs in observations])
+        with open(path, "r") as f:
+            observations = yaml.safe_load(f)
+            return ObservationList([Observation.model_validate(obs) for obs in observations])
 
     @classmethod
     async def _save_observations_to_file(cls, path: str, observations: ObservationList, vfs: VirtualFileSystem) -> None:
         data = [obs.model_dump(mode="json", exclude_defaults=True) for obs in observations]
-        await vfs.write_yaml(path, data)
+        with open(path, "w") as f:
+            yaml.safe_dump(data, f)
 
 
 __all__ = ["FileSystemObservationArchive", "YamlObservationArchive"]

@@ -7,7 +7,7 @@ import abc
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
-from ..observation import ObservationList, Observation
+from ..observation import ObservationList, Observation, ObservationState
 from ...vfs import VirtualFileSystem
 
 

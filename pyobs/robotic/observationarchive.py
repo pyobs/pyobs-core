@@ -60,6 +60,15 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
+    async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
+        """Updates observation state to given status.
+        Args:
+            observation: Observation to update.
+            state: Observation state.
+        """
+        ...
+
+    @abstractmethod
     async def observations_for_task(self, task: Task) -> ObservationList:
         """Returns list of observations for the given task.
 

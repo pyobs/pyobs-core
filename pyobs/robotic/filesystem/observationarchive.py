@@ -147,6 +147,24 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         # nothing found
         return None
 
+    async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
+        """Updates observation state to given status.
+        Args:
+            observation: Observation to update.
+            state: Observation state.
+        """
+
+        with self._lock:
+            observation.state = state
+            observations = await self._load_observations(observation.start)
+            for i in range(len(observations)):
+                if observations[i].id == observation.id:
+                    observations[i] = observation
+                    break
+            else:
+                observations.append(observation)
+            await self._save_observations(observation.start, observations)
+
     async def observations_for_task(self, task: Task) -> ObservationList:
         """Returns list of observations for the given task.
 

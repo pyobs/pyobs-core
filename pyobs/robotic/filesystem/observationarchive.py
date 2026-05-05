@@ -50,7 +50,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         else:
             raise ValueError(f"Unknown time type: {type(time)}")
 
-    async def _load_observations(self, time: Time) -> ObservationList:
+    async def _load_observations(self, time: Time | datetime.date) -> ObservationList:
         """Loads observations from file for given time.
 
         Args:

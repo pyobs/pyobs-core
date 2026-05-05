@@ -27,7 +27,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         self._mode = mode
         self._lock = FileLock(os.path.join(path, ".lock"))
 
-    def _get_filename(self, time: Time) -> str:
+    def _get_filename(self, time: Time | datetime.date) -> str:
         """Returns the filename associated with the given time. If mode==night, the last sunrise is used,
         otherwise the last sunset.
 
@@ -37,14 +37,19 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         Returns:
             Filename for schedule file.
         """
-        if self.observer is None:
-            raise ValueError("Observer is not set.")
-        day = (
-            self.observer.sun_rise_time(time, "previous")
-            if self._mode == "night"
-            else self.observer.sun_set_time(time, "previous")
-        )
-        return f"{day.isot[:10]}.{self._extension}"
+        if isinstance(time, Time):
+            if self.observer is None:
+                raise ValueError("Observer is not set.")
+            day = (
+                self.observer.sun_rise_time(time, "previous")
+                if self._mode == "night"
+                else self.observer.sun_set_time(time, "previous")
+            )
+            return f"{day.isot[:10]}.{self._extension}"
+        elif isinstance(time, datetime.date):
+            return time.isoformat() + self._extension
+        else:
+            raise ValueError(f"Unknown time type: {type(time)}")
 
     async def _load_observations(self, time: Time) -> ObservationList:
         """Loads observations from file for given time.

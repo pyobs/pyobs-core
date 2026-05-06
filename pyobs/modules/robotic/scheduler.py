@@ -194,14 +194,19 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # start time
                     start_time = time.time()
 
-                    # clear future schedule
-                    await self._schedule.clear_schedule(self._schedule_start)
-
                     # schedule start must be at least safety_time in the future
                     start = self._schedule_start
                     if start - Time.now() < self._safety_time:
                         start = Time.now() + TimeDelta(self._safety_time)
                     end = start + TimeDelta(self._schedule_range)
+
+                    # do we have an observation running?
+                    running_obs = await self._schedule.get_current_observation(self._task_archive)
+                    if running_obs is not None and running_obs.end < start:
+                        start = running_obs.end
+
+                    # clear future schedule
+                    await self._schedule.clear_schedule(start)
 
                     # schedule
                     scheduled_tasks = ObservationList()

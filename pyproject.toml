@@ -43,6 +43,7 @@ full = [
     "opencv-python-headless>=4.10.0.84",
     "sunpy>=7.0.1",
     "matrix-nio>=0.25.2",
+    "filelock>=3.28.0",
 ]
 gui = [
     "pyside6>=6.11.0",

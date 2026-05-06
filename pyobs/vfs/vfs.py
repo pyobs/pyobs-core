@@ -28,7 +28,8 @@ class VirtualFileSystem(object):
 
         # if no root for 'pyobs' is given, add one
         self._roots: dict[str, Any] = {
-            "pyobs": {"class": "pyobs.vfs.LocalFile", "root": os.path.expanduser("~/.pyobs/")}
+            "pyobs": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/storage/"},
+            "robotic": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/robotic/"},
         }
         if roots is not None:
             self._roots.update(roots)

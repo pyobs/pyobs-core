@@ -7,9 +7,9 @@ from pyobs.modules import Module
 from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic.task import Task, ScheduledTask
+from pyobs.robotic import Task, Observation, TaskArchive, ObservationState
 from pyobs.utils.time import Time
-from pyobs.robotic import TaskRunner, TaskSchedule
+from pyobs.robotic import TaskRunner, ObservationArchive
 
 log = logging.getLogger(__name__)
 
@@ -21,8 +21,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     def __init__(
         self,
-        schedule: TaskSchedule | dict[str, Any],
+        schedule: ObservationArchive | dict[str, Any],
         runner: TaskRunner | dict[str, Any],
+        tasks: TaskArchive | dict[str, Any] | None = None,
         allowed_late_start: int = 300,
         allowed_overrun: int = 300,
         after_task_sleep: int = 0,
@@ -47,8 +48,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self.add_background_task(self._run_thread, True)
 
         # get schedule and runner
-        self._task_schedule = self.add_child_object(schedule, TaskSchedule)
-        self._task_runner = self.add_child_object(runner, TaskRunner)
+        self._task_archive = self.add_child_object(tasks, TaskArchive)
+        self._observation_archive = self.add_child_object(schedule, ObservationArchive)
+        self._task_runner = self.add_child_object(runner, TaskRunner, observation_archive=self._observation_archive)
 
         # observation name and exposure number
         self._task: Task | None = None
@@ -98,15 +100,15 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             now = Time.now()
 
             # find task that we want to run now
-            scheduled_task: ScheduledTask | None = await self._task_schedule.get_task(now)
-            if scheduled_task is None or not await self._task_runner.can_run(scheduled_task.task):
+            observation: Observation | None = await self._observation_archive.get_task(now, self._task_archive)
+            if observation is None or not await self._task_runner.can_run(observation.task):
                 # no task found
                 await asyncio.sleep(10)
                 continue
 
             # starting too late?
-            if not scheduled_task.task.can_start_late:
-                late_start = now - scheduled_task.start
+            if not observation.task.can_start_late:
+                late_start = now - observation.start
                 if late_start > self._allowed_late_start * u.second:
                     # only warn once
                     if first_late_start_warning:
@@ -125,26 +127,29 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             first_late_start_warning = True
 
             # task is definitely not None here
-            self._task = scheduled_task.task
+            self._task = observation.task
 
             # ETA
-            eta = now + self._task.duration
+            eta = now + self._task.duration * u.second
 
-            # send event
+            # send event and change state
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self._observation_archive.update_observation_state(observation, ObservationState.IN_PROGRESS)
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
             try:
-                await self._task_runner.run_task(self._task, task_schedule=self._task_schedule)
+                await self._task_runner.run_task(self._task)
             except:
                 # something went wrong
                 log.warning("Task %s failed.", self._task.name)
+                await self._observation_archive.update_observation_state(observation, ObservationState.FAILED)
                 self._task = None
                 continue
 
-            # send event
+            # send event and change state
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self._observation_archive.update_observation_state(observation, ObservationState.COMPLETED)
 
             # finish
             log.info("Finished task %s.", self._task.name)

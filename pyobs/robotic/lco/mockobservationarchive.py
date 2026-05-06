@@ -5,10 +5,11 @@ from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.robotic.task import Task, ScheduledTask
+from pyobs.robotic.observation import Observation
 from pyobs.utils.time import Time
 from .task import LcoTask
-from .taskschedule import LcoTaskSchedule
+from .observationarchive import LcoObservationArchive
+from .. import ObservationList
 
 log = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ REQUEST: RequestGroup = {
 }
 
 
-class LcoDummyTaskSchedule(LcoTaskSchedule):
+class MockLcoObservationArchive(LcoObservationArchive):
     """Dummy scheduler for using the LCO portal"""
 
     def __init__(
@@ -126,7 +127,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
             mode: Instrument mode
             instrument_type: Instrument type
         """
-        LcoTaskSchedule.__init__(self, **kwargs)
+        LcoObservationArchive.__init__(self, **kwargs)
 
         # set some stuff
         self._last_schedule_time = Time.now()
@@ -156,7 +157,7 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         cfg["end"] = Time.now() + TimeDelta(5.0 * u.minute)
 
         # create task
-        self._task: Task | None = self._create_task(LcoTask, config=cfg)
+        self._task = self.get_object(LcoTask, LcoTask, tasks=self, **kwargs)
 
     async def _init_from_portal(self) -> None:
         pass
@@ -170,15 +171,15 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
     async def update_now(self, force: bool = False) -> None:
         pass
 
-    async def get_schedule(self) -> list[ScheduledTask]:
+    async def get_schedule(self) -> ObservationList:
         if self._task is None:
-            return []
-        return [ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))]
+            return ObservationList()
+        return ObservationList([Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))])
 
-    async def get_task(self, time: Time) -> ScheduledTask | None:
+    async def get_task(self, time: Time) -> Observation | None:
         if self._task is None:
             return None
-        return ScheduledTask(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
+        return Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
 
     async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
         pass
@@ -187,4 +188,4 @@ class LcoDummyTaskSchedule(LcoTaskSchedule):
         pass
 
 
-__all__ = ["LcoDummyTaskSchedule"]
+__all__ = ["MockLcoObservationArchive"]

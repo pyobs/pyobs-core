@@ -1,4 +1,5 @@
 from .script import Script
+from .autofocus import AutoFocus
 from .cases import CasesRunner
 from .callmodule import CallModule
 from .conditional import ConditionalRunner

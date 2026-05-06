@@ -12,9 +12,11 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
 
     @model_serializer(mode="wrap")
     def inject_class_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
-        result: dict[str, Any] = handler(self)
+        # result: dict[str, Any] = handler(self)
+        # TODO: why doesn't this work?
+        result: dict[str, Any] = self.__dict__.copy()
         if "class" in result:
-            raise ValueError('Cannot use field "type". It is reserved.')
+            raise ValueError('Cannot use field "class". It is reserved.')
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
         return result
 

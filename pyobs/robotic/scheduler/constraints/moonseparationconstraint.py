@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING
 import astroplan
 import astropy.units as u
 import astropy.coordinates
+from pydantic import Field
+
 from .constraint import Constraint
 
 if TYPE_CHECKING:
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class MoonSeparationConstraint(Constraint):
     """Moon separation constraint."""
 
-    min_distance: float
+    min_distance: float = Field(ge=0.0, le=180.0, default=30.0)
 
     def to_astroplan(self) -> astroplan.MoonSeparationConstraint:
         return astroplan.MoonSeparationConstraint(min=self.min_distance * u.deg)

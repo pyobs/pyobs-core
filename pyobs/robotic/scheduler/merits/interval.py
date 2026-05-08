@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from astropy.time import Time, TimeDelta
 import astropy.units as u
+from pydantic import Field
 
 from .merit import Merit
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 class IntervalMerit(Merit):
     """Merit function that enforces an interval between observations."""
 
-    interval: float
+    interval: float = Field(ge=0.0, le=31536000.0, default=0.0)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState

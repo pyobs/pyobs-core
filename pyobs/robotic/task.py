@@ -29,11 +29,11 @@ class Task(BaseModel):
     id: Any | None = None
     name: str
     project: str
-    duration: float
-    priority: float | None = None
-    config: dict[str, Any] = {}
-    constraints: list[Constraint] = []
-    merits: list[Merit] = []
+    duration: float = Field(ge=0.0, le=84000.0, default=0.0)
+    priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
+    config: dict[str, Any] = Field(default_factory=dict)
+    constraints: list[Constraint] = Field(default_factory=list)
+    merits: list[Merit] = Field(default_factory=list)
     target: Target | None = None
     script: Script = Field(default_factory=Script)
 

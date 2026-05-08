@@ -1,11 +1,12 @@
 from __future__ import annotations
+from astropy.time import Time
+from pydantic import Field
 from typing import TYPE_CHECKING
 from astropydantic import AstroPydanticTime  # type: ignore
 
 from .merit import Merit
 
 if TYPE_CHECKING:
-    from astropy.time import Time
     from pyobs.robotic import Task
     from ..dataprovider import DataProvider
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 class AfterTimeMerit(Merit):
     """Merit function that gives 1 after a given time."""
 
-    time: AstroPydanticTime
+    time: AstroPydanticTime = Field(default_factory=Time.now)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         return 1.0 if time >= self.time else 0.0

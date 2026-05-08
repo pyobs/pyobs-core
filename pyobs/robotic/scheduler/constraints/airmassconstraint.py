@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import astroplan
+from pydantic import Field
+
 from .constraint import Constraint
 
 if TYPE_CHECKING:
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 class AirmassConstraint(Constraint):
     """Airmass constraint."""
 
-    max_airmass: float
+    max_airmass: float = Field(ge=1.0, le=9.9, default=1.3)
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:
         return astroplan.AirmassConstraint(max=self.max_airmass)

@@ -1,5 +1,8 @@
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
+
+from pydantic import Field
+
 from .merit import Merit
 
 if TYPE_CHECKING:
@@ -11,7 +14,7 @@ if TYPE_CHECKING:
 class FollowMerit(Merit):
     """Merit functions that only returns after another given task has run this night."""
 
-    task_id: Any
+    task_id: Any = Field(default_factory=str)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState

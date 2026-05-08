@@ -1,20 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-
+from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .merit import Merit
 
 if TYPE_CHECKING:
-    from astropy.time import Time
     from pyobs.robotic import Task
     from ..dataprovider import DataProvider
 
 
 class TimeWindow(BaseModel):
-    start: AstroPydanticTime
-    end: AstroPydanticTime
+    start: AstroPydanticTime = Field(default_factory=Time.now)
+    end: AstroPydanticTime = Field(default_factory=Time.now)
 
 
 class TimeWindowMerit(Merit):

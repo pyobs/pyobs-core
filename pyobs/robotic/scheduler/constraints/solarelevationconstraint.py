@@ -3,6 +3,9 @@ from typing import TYPE_CHECKING
 import astroplan
 import astropy.units as u
 import logging
+
+from pydantic import Field
+
 from .constraint import Constraint
 
 if TYPE_CHECKING:
@@ -17,8 +20,8 @@ log = logging.getLogger(__name__)
 class SolarElevationConstraint(Constraint):
     """Solar elevation constraint."""
 
-    min_elevation: float = -90.0
-    max_elevation: float
+    min_elevation: float = Field(ge=-90, le=90, default=-90.0)
+    max_elevation: float = Field(ge=-90, le=90, default=-18.0)
 
     def to_astroplan(self) -> astroplan.AtNightConstraint:
         if self.min_elevation > -90.0:

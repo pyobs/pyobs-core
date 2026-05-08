@@ -2,11 +2,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import astroplan
 from astropydantic import AstroPydanticTime  # type: ignore
+from pydantic import Field
+from astropy.time import Time
 
 from .constraint import Constraint
 
 if TYPE_CHECKING:
-    from astropy.time import Time
     from ..dataprovider import DataProvider
     from pyobs.robotic import Task
 
@@ -14,8 +15,8 @@ if TYPE_CHECKING:
 class TimeConstraint(Constraint):
     """Time constraint."""
 
-    start: AstroPydanticTime
-    end: AstroPydanticTime
+    start: AstroPydanticTime = Field(default_factory=Time.now)
+    end: AstroPydanticTime = Field(default_factory=Time.now)
 
     def to_astroplan(self) -> astroplan.TimeConstraint:
         return astroplan.TimeConstraint(min=self.start, max=self.end)

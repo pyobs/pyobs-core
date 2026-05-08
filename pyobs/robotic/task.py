@@ -26,9 +26,9 @@ class TaskData:
 
 
 class Task(BaseModel):
-    id: Any | None = None
-    name: str
-    project: str
+    id: Any | None = Field(default=None)
+    name: str = Field(default="")
+    project: str = Field(default="")
     duration: float = Field(ge=0.0, le=84000.0, default=0.0)
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
     config: dict[str, Any] = Field(default_factory=dict)

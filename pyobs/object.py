@@ -412,13 +412,14 @@ class Object:
 
         # copy timezone, location, vfs, and observer, if not exists
         for p in ["timezone", "location", "vfs", "observer"]:
-            if self.__config_or_object_get_param(config_or_object, p) is None:
+            if self.config_or_object_get_param(config_or_object, p) is None:
                 params[p] = getattr(self, p)
 
         # get it
         return get_object(config_or_object, object_class, **params)
 
-    def __config_or_object_get_param(self, config_or_object: dict[str, Any] | Any, param: str) -> Any:
+    @staticmethod
+    def config_or_object_get_param(config_or_object: dict[str, Any] | Any, param: str) -> Any:
         """Checks, whether a config_or_object has the given parameter.
 
         Args:
@@ -548,6 +549,10 @@ class Object:
             ValueError: If proxy does not exist or wrong type.
         """
         return await self.comm.proxy(name_or_object, obj_type)
+
+    def pyobs_model_validate(self, cls: type[ObjectClass], *args, **kwargs) -> ObjectClass:
+        """Validate a pydantic model with additional fields."""
+        return cls.model_validate(*args, **kwargs, vfs=self.vfs, observer=self.observer)
 
 
 __all__ = ["get_object", "get_class_from_string", "create_object", "Object"]

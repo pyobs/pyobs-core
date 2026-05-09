@@ -2,12 +2,13 @@ import asyncio
 import logging
 from typing import Any, Dict, List, cast, Tuple, Optional
 from urllib.parse import urljoin
-from pydantic import BaseModel, Field
+from pydantic import Field
 from astropydantic import AstroPydanticTime  # type: ignore
 import aiohttp
 
+from pyobs.object import Object
 from pyobs.utils.time import Time
-
+from pyobs.utils.serialization import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -146,15 +147,9 @@ class LcoSchedulableRequest(BaseModel):
     requests: list[LcoRequest]
 
 
-class Portal:
-    def __init__(
-        self,
-        url: str,
-        token: str,
-        site: str,
-        enclosure: str,
-        telescope: str,
-    ):
+class Portal(Object):
+    def __init__(self, url: str, token: str, site: str, enclosure: str, telescope: str, **kwargs: Any):
+        Object.__init__(self, **kwargs)
         self.url = url
         self.token = token
         self.headers = {"Authorization": "Token " + self.token}
@@ -194,7 +189,7 @@ class Portal:
 
     async def schedulable_requests(self) -> list[LcoSchedulableRequest]:
         requests = await self._get("/api/requestgroups/schedulable_requests/")
-        return [LcoSchedulableRequest.model_validate(request) for request in requests]
+        return [self.pyobs_model_validate(LcoSchedulableRequest, request) for request in requests]
 
     async def proposals(self) -> List[Dict[str, Any]]:
         # init
@@ -228,7 +223,7 @@ class Portal:
 
     async def observations(self, request_id: int) -> list[LcoObservation]:
         req = await self._get(f"/api/requests/{request_id}/observations/")
-        return [LcoObservation.model_validate(r) for r in req]
+        return [self.pyobs_model_validate(LcoObservation, r) for r in req]
 
     async def clear_schedule(self, start: Time, end: Time) -> None:
         """Clear schedule after given start time.
@@ -351,4 +346,4 @@ class Portal:
             "limit": 1000,
         }
         data = await self._get("/api/observations/", params=params)
-        return [LcoObservation.model_validate(o) for o in data["results"]]
+        return [self.pyobs_model_validate(LcoObservation, o) for o in data["results"]]

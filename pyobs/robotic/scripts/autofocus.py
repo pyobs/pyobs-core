@@ -1,10 +1,13 @@
 from __future__ import annotations
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Self
+
+from pydantic import model_validator, ConfigDict
 
 from pyobs.interfaces import IBinning, ICamera, IWindow, IExposureTime, IImageType, IData, IAutoFocus
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
+from pyobs.utils.targetpicker import TargetPicker
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -15,7 +18,24 @@ log = logging.getLogger(__name__)
 class AutoFocus(Script):
     """Script for running autofocus series."""
 
-    autofocus: str
+    autofocus: str = "autofocus"
+    target: TargetPicker | dict[str, Any] | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def create_target_picker(self) -> Self:
+        if isinstance(self.target, dict):
+            self.target = self.get_object(self.target, TargetPicker)
+        return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def create_target_picker(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if isinstance(data["target"], dict):
+                data["target"] = TargetPicker(**data["target"])
+        return data
 
     async def can_run(self, data: TaskData) -> bool:
         """Whether this config can currently run.
@@ -30,7 +50,7 @@ class AutoFocus(Script):
             return False
 
         # seems alright
-        return True
+        return isinstance(self.target, TargetPicker)
 
     async def run(self, data: TaskData) -> None:
         """Run script.
@@ -38,7 +58,11 @@ class AutoFocus(Script):
             InterruptedError: If interrupted
         """
 
-        return
+        if not isinstance(self.target, TargetPicker):
+            return
+
+        target = await self.target(data.vfs, data.observer)
+        print(target)
 
 
 __all__ = ["AutoFocus"]

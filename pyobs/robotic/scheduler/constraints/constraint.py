@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 import astroplan
 from typing import TYPE_CHECKING, Any
 
-from pyobs.object import create_object
+from pyobs.object import create_object, Object
 from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
         return self.__class__.__name__
 
     @staticmethod
-    def create(config: Constraint | dict[str, Any]) -> Constraint:
+    def create(obj: Object, config: Constraint | dict[str, Any]) -> Constraint:
         if isinstance(config, Constraint):
             return config
         elif "type" in config:
@@ -45,7 +45,7 @@ class Constraint(SubClassBaseModel, metaclass=ABCMeta):
             else:
                 raise ValueError(f"Invalid constraint config: {config}")
         else:
-            return Constraint.model_validate(config, by_alias=True)
+            return obj.pyobs_model_validate(Constraint, config, by_alias=True)
 
     @staticmethod
     def list() -> list[str]:

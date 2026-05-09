@@ -80,13 +80,11 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         full_path = os.path.join(self._path, filename)
         await self._save_observations_to_file(full_path, observations)
 
-    @classmethod
     @abc.abstractmethod
-    async def _load_observations_from_file(cls, path: str) -> ObservationList: ...
+    async def _load_observations_from_file(self, path: str) -> ObservationList: ...
 
-    @classmethod
     @abc.abstractmethod
-    async def _save_observations_to_file(cls, path: str, observations: ObservationList) -> None: ...
+    async def _save_observations_to_file(self, path: str, observations: ObservationList) -> None: ...
 
     async def add_schedule(self, observations: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -235,14 +233,12 @@ class YamlObservationArchive(FileSystemObservationArchive):
     def __init__(self, **kwargs: Any):
         FileSystemObservationArchive.__init__(self, "yaml", **kwargs)
 
-    @classmethod
-    async def _load_observations_from_file(cls, path: str) -> ObservationList:
+    async def _load_observations_from_file(self, path: str) -> ObservationList:
         with open(path, "r") as f:
             observations = yaml.safe_load(f)
-            return ObservationList([Observation.model_validate(obs) for obs in observations])
+            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
-    @classmethod
-    async def _save_observations_to_file(cls, path: str, observations: ObservationList) -> None:
+    async def _save_observations_to_file(self, path: str, observations: ObservationList) -> None:
         data = [obs.model_dump(mode="json", exclude_defaults=True) for obs in observations]
         with open(path, "w") as f:
             yaml.safe_dump(data, f)

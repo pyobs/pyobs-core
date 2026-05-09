@@ -2,8 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from pyobs.utils.serialization import BaseModel
 from .merit import Merit
 
 if TYPE_CHECKING:

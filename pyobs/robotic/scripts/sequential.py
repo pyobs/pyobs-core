@@ -16,12 +16,12 @@ class SequentialRunner(Script):
     check_all_can_run: bool = True
 
     async def can_run(self, data: TaskData) -> bool:
-        check_all = [await Script.model_validate(s, by_alias=True).can_run(data) for s in self.scripts]
+        check_all = [await self.pyobs_model_validate(Script, s, by_alias=True).can_run(data) for s in self.scripts]
         return all(check_all) if self.check_all_can_run else check_all[0]
 
     async def run(self, data: TaskData) -> None:
         for s in self.scripts:
-            script = Script.model_validate(s)
+            script = self.pyobs_model_validate(Script, s)
             if await script.can_run(data):
                 await script.run(data)
             else:

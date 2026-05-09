@@ -2,11 +2,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from astroplan import Observer
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
+from pyobs.vfs import VirtualFileSystem
 
 if TYPE_CHECKING:
     from pyobs.robotic.observationarchive import ObservationArchive
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit
+from pyobs.utils.serialization import BaseModel
 
 
 @dataclass
@@ -22,6 +24,7 @@ class TaskData:
     observation_archive: ObservationArchive | None = None
     task_archive: TaskArchive | None = None
     observer: Observer | None = None
+    vfs: VirtualFileSystem | None = None
     comm: Comm | None = None
 
 

@@ -1,7 +1,4 @@
-import asyncio
 from typing import Any
-
-import pandas as pd
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 
@@ -34,32 +31,25 @@ class TargetPicker(Object):
         self._dec_col = dec_col
         self._frame = frame
 
-        self._data: pd.DataFrame = pd.DataFrame()
-        self._targets: SkyCoord = SkyCoord(0, 0, frame=frame, unit="deg")
-        asyncio.create_task(self._load_csv())
+    async def __call__(self, min_alt: float | None = None, max_alt: float | None = None) -> tuple[str, SkyCoord]:
+        data = await self.vfs.read_csv(self._csv)
+        targets = SkyCoord(ra=data[self._ra_col], dec=data[self._dec_col], frame=self._frame, unit="deg")
 
-    async def _load_csv(self):
-        self._data = await self.vfs.read_csv(self._csv)
-        self._targets = SkyCoord(
-            ra=self._data[self._ra_col], dec=self._data[self._dec_col], frame=self._frame, unit="deg"
-        )
-
-    def __call__(self, min_alt: float | None = None, max_alt: float | None = None) -> tuple[str, SkyCoord]:
         # calculate Alz/Az
         altaz_frame = AltAz(location=self.observer.location, obstime=Time.now())
-        altaz = self._targets.transform_to(altaz_frame)
-        self._data["alt"] = altaz.alt.deg
-        self._data["az"] = altaz.az.deg
+        altaz = targets.transform_to(altaz_frame)
+        data["alt"] = altaz.alt.deg
+        data["az"] = altaz.az.deg
 
         # filter
-        data = self._data
+        d = data
         if min_alt is not None:
-            data = data[data["alt"] >= min_alt]
+            d = d[d["alt"] >= min_alt]
         if max_alt is not None:
-            data = data[data["alt"] <= max_alt]
+            d = d[d["alt"] <= max_alt]
 
         # pick random row
-        row = data.sample()
+        row = d.sample()
         return row[self._name_col].values[0], SkyCoord(
             row[self._ra_col].values[0], row[self._dec_col].values[0], frame=self._frame, unit="deg"
         )

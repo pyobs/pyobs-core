@@ -24,9 +24,9 @@ class ConditionalRunner(Script):
 
         # run scripts
         if ret:
-            return Script.model_validate(self.true)
+            return self.pyobs_model_validate(Script, self.true)
         elif self.false is not None:
-            return Script.model_validate(self.false)
+            return self.pyobs_model_validate(Script, self.false)
         else:
             return None
 

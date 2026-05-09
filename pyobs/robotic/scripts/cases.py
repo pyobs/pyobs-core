@@ -22,9 +22,9 @@ class CasesRunner(Script):
 
         # check in cases
         if value in self.cases:
-            return Script.model_validate(self.cases[value])
+            return self.pyobs_model_validate(Script, self.cases[value])
         elif "else" in self.cases:
-            return Script.model_validate(self.cases["else"])
+            return self.pyobs_model_validate(Script, self.cases["else"])
         else:
             raise ValueError("Invalid choice")
 

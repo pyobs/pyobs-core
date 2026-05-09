@@ -54,7 +54,7 @@ class LcoTaskRunner(TaskRunner):
             raise ValueError('No script found for configuration type "%s".' % config_type)
 
         # create script handler
-        script = Script.model_validate(self.scripts[config_type], by_alias=True)
+        script = self.pyobs_model_validate(Script, self.scripts[config_type], by_alias=True)
         if isinstance(script, LcoScript):
             script.config = config
         return script

@@ -52,7 +52,7 @@ class MeritScheduler(TaskScheduler):
 
         # global constraints
         constraints = constraints or []
-        self._global_constraints: list[Constraint] = [Constraint.create(c) for c in constraints]
+        self._global_constraints: list[Constraint] = [Constraint.create(self, c) for c in constraints]
 
     async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
         archive = ObservationArchiveEvolution(self.observer, self._obs_archive)

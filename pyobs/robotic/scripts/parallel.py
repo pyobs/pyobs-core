@@ -7,7 +7,6 @@ if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
 
-
 log = logging.getLogger(__name__)
 
 
@@ -18,11 +17,11 @@ class ParallelRunner(Script):
     check_all_can_run: bool = True
 
     async def can_run(self, data: TaskData) -> bool:
-        check_all = [await Script.model_validate(s).can_run(data) for s in self.scripts]
+        check_all = [await self.pyobs_model_validate(Script, s).can_run(data) for s in self.scripts]
         return all(check_all) if self.check_all_can_run else any(check_all)
 
     async def run(self, data: TaskData) -> None:
-        scripts = [Script.model_validate(s) for s in self.scripts]
+        scripts = [self.pyobs_model_validate(Script, s) for s in self.scripts]
         tasks = [asyncio.create_task(self._run_script(s, data)) for s in scripts if await s.can_run(data)]
         await asyncio.gather(*tasks)
 

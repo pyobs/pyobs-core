@@ -4,10 +4,11 @@ from enum import StrEnum
 from typing import Any, Self, TYPE_CHECKING
 from uuid import uuid4
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import BaseModel, model_validator, Field
+from pydantic import model_validator, Field
 
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
+from pyobs.utils.serialization import BaseModel
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskArchive

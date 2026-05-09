@@ -25,9 +25,8 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
         self._path = path
         self._extension = extension
 
-    @classmethod
     @abc.abstractmethod
-    async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task: ...
+    async def _load_task_from_file(self, path: str, vfs: VirtualFileSystem) -> Task: ...
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any blocks changed."""
@@ -55,10 +54,9 @@ class YamlTaskArchive(FileSystemTaskArchive):
     def __init__(self, **kwargs: Any):
         FileSystemTaskArchive.__init__(self, "yaml", **kwargs)
 
-    @classmethod
-    async def _load_task_from_file(cls, path: str, vfs: VirtualFileSystem) -> Task:
+    async def _load_task_from_file(self, path: str, vfs: VirtualFileSystem) -> Task:
         config = await vfs.read_yaml(path)
-        return Task.model_validate(config)
+        return self.pyobs_model_validate(Task, config)
 
 
 __all__ = ["FileSystemTaskArchive", "YamlTaskArchive"]

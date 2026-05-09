@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import copy
+import datetime
 from abc import ABCMeta
 from typing import Any, TypeVar, overload, Literal
+
+from astropy.coordinates import EarthLocation
 from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, Field, ConfigDict
 from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
-
+from pyobs.comm import Comm
 from pyobs.vfs import VirtualFileSystem
 
 """Class of an Object."""
@@ -17,13 +20,24 @@ ObjectClass = TypeVar("ObjectClass")
 class BaseModel(PydanticBaseModel):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
+    timezone: datetime.tzinfo = Field(exclude=True)
+    location: EarthLocation = Field(exclude=True)
     vfs: VirtualFileSystem = Field(exclude=True)
     observer: Observer = Field(exclude=True)
+    comm: Comm | None = Field(exclude=True)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def pyobs_model_validate(self, cls: type[PydanticBaseModel], *args, **kwargs) -> BaseModel:
-        return cls.model_validate(*args, **kwargs, vfs=self.vfs, observer=self.observer)
+        return cls.model_validate(
+            *args,
+            **kwargs,
+            timezone=self.timezone,
+            location=self.location,
+            vfs=self.vfs,
+            observer=self.observer,
+            comm=self.comm,
+        )
 
     @overload
     def get_object(
@@ -82,7 +96,7 @@ class BaseModel(PydanticBaseModel):
         params = copy.copy(kwargs)
 
         # copy timezone, location, vfs, and observer, if not exists
-        for p in ["timezone", "location", "vfs", "observer"]:
+        for p in ["timezone", "location", "vfs", "observer", "comm"]:
             if Object.config_or_object_get_param(config_or_object, p) is None:
                 params[p] = getattr(self, p)
 

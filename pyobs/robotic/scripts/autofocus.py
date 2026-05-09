@@ -29,14 +29,6 @@ class AutoFocus(Script):
             self.target = self.get_object(self.target, TargetPicker)
         return self
 
-    @model_validator(mode="before")
-    @classmethod
-    def create_target_picker(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if isinstance(data["target"], dict):
-                data["target"] = TargetPicker(**data["target"])
-        return data
-
     async def can_run(self, data: TaskData) -> bool:
         """Whether this config can currently run.
         Returns:

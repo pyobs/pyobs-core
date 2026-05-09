@@ -15,6 +15,8 @@ class TargetPicker(Object):
         ra_col: str = "ra",
         dec_col: str = "dec",
         frame: str = "icrs",
+        min_alt: float | None = None,
+        max_alt: float | None = None,
         **kwargs: Any,
     ):
         """Create a new target picker.
@@ -30,8 +32,10 @@ class TargetPicker(Object):
         self._ra_col = ra_col
         self._dec_col = dec_col
         self._frame = frame
+        self._min_alt = min_alt
+        self._max_alt = max_alt
 
-    async def __call__(self, min_alt: float | None = None, max_alt: float | None = None) -> tuple[str, SkyCoord]:
+    async def __call__(self) -> tuple[str, SkyCoord]:
         data = await self.vfs.read_csv(self._csv)
         targets = SkyCoord(ra=data[self._ra_col], dec=data[self._dec_col], frame=self._frame, unit="deg")
 
@@ -43,10 +47,10 @@ class TargetPicker(Object):
 
         # filter
         d = data
-        if min_alt is not None:
-            d = d[d["alt"] >= min_alt]
-        if max_alt is not None:
-            d = d[d["alt"] <= max_alt]
+        if self._min_alt is not None:
+            d = d[d["alt"] >= self._min_alt]
+        if self._max_alt is not None:
+            d = d[d["alt"] <= self._max_alt]
 
         # pick random row
         row = d.sample()

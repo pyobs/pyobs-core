@@ -11,13 +11,14 @@ from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
 from pyobs.comm import Comm
+from pyobs.object import Object
 from pyobs.vfs import VirtualFileSystem
 
 """Class of an Object."""
 ObjectClass = TypeVar("ObjectClass")
 
 
-class BaseModel(PydanticBaseModel):
+class BaseModel(PydanticBaseModel, Object):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
     timezone: datetime.tzinfo = Field(exclude=True)
@@ -28,82 +29,8 @@ class BaseModel(PydanticBaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def pyobs_model_validate(self, cls: type[PydanticBaseModel], *args, **kwargs) -> BaseModel:
-        return cls.model_validate(
-            *args,
-            **kwargs,
-            timezone=self.timezone,
-            location=self.location,
-            vfs=self.vfs,
-            observer=self.observer,
-            comm=self.comm,
-        )
-
-    @overload
-    def get_object(
-        self,
-        config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: type[ObjectClass],
-        **kwargs: Any,
-    ) -> ObjectClass: ...
-
-    @overload
-    def get_object(
-        self,
-        config_or_object: dict[str, Any],
-        object_class: Literal[None],
-        **kwargs: Any,
-    ) -> Any: ...
-
-    @overload
-    def get_object(
-        self,
-        config_or_object: ObjectClass | type[ObjectClass],
-        object_class: Literal[None],
-        **kwargs: Any,
-    ) -> ObjectClass: ...
-
-    @overload
-    def get_object(
-        self,
-        config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: type[ObjectClass] | None = None,
-        **kwargs: Any,
-    ) -> ObjectClass | Any: ...
-
-    def get_object(
-        self,
-        config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass],
-        object_class: type[ObjectClass] | None = None,
-        **kwargs: Any,
-    ) -> ObjectClass | Any:
-        """Creates object from config or returns object directly, both optionally after check of type.
-
-        Args:
-            config_or_object: A configuration dict or an object itself to create/check. If a dict with a class key
-                is given, a new object is created.
-            object_class: Class to check object against.
-
-        Returns:
-            (New) object (created from config) that optionally passed class check.
-
-        Raises:
-            TypeError: If the object does not match the given class.
-        """
-        from pyobs.object import Object
-
-        # set parameters
-        params = copy.copy(kwargs)
-
-        # copy timezone, location, vfs, and observer, if not exists
-        for p in ["timezone", "location", "vfs", "observer", "comm"]:
-            if Object.config_or_object_get_param(config_or_object, p) is None:
-                params[p] = getattr(self, p)
-
-        # get it
-        from pyobs.object import get_object
-
-        return get_object(config_or_object, object_class, **params)
+    def __init__(self, **kwargs):
+        PydanticBaseModel.__init__(self, **kwargs)
 
 
 class SubClassBaseModel(BaseModel, metaclass=ABCMeta):

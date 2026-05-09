@@ -7,7 +7,7 @@ import yaml
 from astropy.io import fits
 import pandas as pd
 
-from pyobs.object import get_class_from_string
+
 from pyobs.images import Image
 from .file import VFSFile
 
@@ -255,6 +255,8 @@ class VirtualFileSystem(object):
         return await klass.local_path(path, **self._roots[root])
 
     def _get_class(self, path: str) -> tuple[Type[VFSFile], str, str]:
+        from pyobs.object import get_class_from_string
+
         # split root
         root, path = VirtualFileSystem.split_root(path)
 

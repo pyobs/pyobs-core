@@ -21,11 +21,11 @@ ObjectClass = TypeVar("ObjectClass")
 class BaseModel(PydanticBaseModel, Object):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
-    timezone: datetime.tzinfo = Field(exclude=True)
-    location: EarthLocation = Field(exclude=True)
-    vfs: VirtualFileSystem = Field(exclude=True)
-    observer: Observer = Field(exclude=True)
-    comm: Comm | None = Field(exclude=True)
+    timezone: datetime.tzinfo = Field(exclude=True, default=None)
+    location: EarthLocation = Field(exclude=True, default=None)
+    vfs: VirtualFileSystem = Field(exclude=True, default=None)
+    observer: Observer = Field(exclude=True, default=None)
+    comm: Comm | None = Field(exclude=True, default=None)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

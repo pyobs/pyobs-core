@@ -6,7 +6,7 @@ from abc import ABCMeta
 from typing import Any, TypeVar, overload, Literal
 
 from astropy.coordinates import EarthLocation
-from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, Field, ConfigDict
+from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, ConfigDict, PrivateAttr
 from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
@@ -21,16 +21,17 @@ ObjectClass = TypeVar("ObjectClass")
 class BaseModel(PydanticBaseModel, Object):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
-    timezone: datetime.tzinfo = Field(exclude=True, default=None)
-    location: EarthLocation = Field(exclude=True, default=None)
-    vfs: VirtualFileSystem = Field(exclude=True, default=None)
-    observer: Observer = Field(exclude=True, default=None)
-    comm: Comm | None = Field(exclude=True, default=None)
+    _timezone: datetime.tzinfo = PrivateAttr(default=None)
+    _location: EarthLocation = PrivateAttr(default=None)
+    _vfs: VirtualFileSystem = PrivateAttr(default=None)
+    _observer: Observer = PrivateAttr(default=None)
+    _comm: Comm | None = PrivateAttr(default=None)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **kwargs):
         PydanticBaseModel.__init__(self, **kwargs)
+        # Object.__init__(self)
 
 
 class SubClassBaseModel(BaseModel, metaclass=ABCMeta):

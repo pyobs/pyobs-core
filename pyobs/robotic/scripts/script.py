@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Any, TypeVar, TYPE_CHECKING
 
-from pyobs.utils.serialization import SubClassBaseModel
+from pyobs.object import Object
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 ProxyClass = TypeVar("ProxyClass")
 
 
-class Script(SubClassBaseModel):
+class Script(Object):
     exptime_done: float = 0.0
 
     async def can_run(self, data: TaskData) -> bool:

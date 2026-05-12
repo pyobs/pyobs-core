@@ -37,7 +37,7 @@ class Task(BaseModel):
     constraints: list[Constraint] = Field(default_factory=list)
     merits: list[Merit] = Field(default_factory=list)
     target: Target | None = None
-    script: Script = Field(default_factory=Script)
+    script: dict[str, Any] = Field(default_factory=dict)
 
     def __str__(self) -> str:
         s = f"Task {self.id}: {self.name} (duration: {self.duration}s"

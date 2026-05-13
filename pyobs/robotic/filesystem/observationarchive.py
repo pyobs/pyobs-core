@@ -212,7 +212,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         with self._lock:
             for filename in glob.glob(os.path.join(self._path, f"*.{self._extension}")):
                 night = await self._load_observations_from_file(filename)
-                for_task = [n for n in night if n.task_id == task.id]
+                for_task = [n for n in night if n.task == task.id]
                 observations.extend(for_task)
         return ObservationList(observations)
 

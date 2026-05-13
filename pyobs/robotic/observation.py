@@ -1,10 +1,8 @@
 from __future__ import annotations
 from collections import UserList
 from enum import StrEnum
-from typing import Any, Self, TYPE_CHECKING
-from uuid import uuid4
+from typing import Any, TYPE_CHECKING
 from astropydantic import AstroPydanticTime  # type: ignore
-from pydantic import model_validator, Field
 
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
@@ -26,9 +24,8 @@ class ObservationState(StrEnum):
 class Observation(BaseModel):
     """A scheduled task."""
 
-    id: Any | None = Field(default_factory=uuid4)
-    task: Task | None = None
-    task_id: Any | None = None
+    id: Any | None = None
+    task: Task | Any | None = None
     start: AstroPydanticTime
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING
@@ -69,28 +66,18 @@ class Observation(BaseModel):
             return bool(self.start >= other.start)
         raise NotImplementedError
 
-    @model_validator(mode="after")
-    def validate_task(self) -> Self:
-        """Check that either task or task_id are given."""
-        task_is_none = self.task is None
-        id_is_none = self.task_id is None
-        if not (task_is_none ^ id_is_none):
-            raise ValueError("Either task or task_id must be given, not both.")
-        return self
-
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        if isinstance(self.task, Task):
+    def model_dump(self, use_task_id: bool = False, **kwargs: Any) -> dict[str, Any]:
+        if use_task_id and isinstance(self.task, Task):
             data = self.model_copy(deep=True)
-            data.task_id = self.task.id
-            data.task = None
+            data.task = self.task.id
             return data.model_dump(**kwargs)
         else:
             return super().model_dump(**kwargs)
 
     async def fetch_task(self, task_archive: TaskArchive) -> None:
         """Fetch a task from the task archive."""
-        if self.task is None:
-            self.task = await task_archive.get_task(self.task_id)
+        if not isinstance(self.task, Task):
+            self.task = await task_archive.get_task(self.task)
 
 
 class ObservationList(UserList[Observation]):
@@ -108,6 +95,9 @@ class ObservationList(UserList[Observation]):
         if after is not None:
             new_list = [obs for obs in new_list if obs.start >= after]
         return ObservationList(new_list)
+
+    def model_dump(self, **kwargs: Any) -> list[dict[str, Any]]:
+        return [obs.model_dump(**kwargs) for obs in self.data]
 
 
 __all__ = ["Observation", "ObservationState", "ObservationList"]

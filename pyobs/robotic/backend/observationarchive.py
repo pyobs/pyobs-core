@@ -1,11 +1,8 @@
 from __future__ import annotations
 import datetime
-import glob
-import os
 from typing import Any, Literal
-import abc
-import yaml
-from filelock import FileLock
+from urllib.parse import urljoin
+import requests
 
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
@@ -27,6 +24,8 @@ class BackendObservationArchive(ObservationArchive):
         self._url = url
         self._token = token
         self._mode = mode
+        self._session = requests.Session()
+        self._session.headers["Authorization"] = f"Token {self._token}"
 
     async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -34,7 +33,7 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             tasks: Scheduled tasks.
         """
-        ...
+        self._session.post(urljoin(self._url, "/api/observations/"), json=tasks.model_dump(use_task_id=True))
 
     async def clear_schedule(self, start_time: Time) -> None:
         """Clear schedule after given start time.
@@ -54,7 +53,7 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        ...
+        return ObservationList([])
 
     async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
@@ -66,7 +65,7 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Scheduled task at the given time.
         """
-        ...
+        return None
 
     async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the currently running observation.
@@ -77,7 +76,7 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Currently running observation.
         """
-        ...
+        return None
 
     async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
         """Updates observation state to given status.
@@ -96,7 +95,7 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-        ...
+        return ObservationList([])
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.
@@ -107,7 +106,7 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-        ...
+        return ObservationList([])
 
 
 __all__ = ["BackendObservationArchive"]

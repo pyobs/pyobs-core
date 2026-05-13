@@ -36,7 +36,7 @@ class BackendTaskArchive(TaskArchive):
         Returns:
             List of projects.
         """
-        req = requests.get(urljoin(self._url, "/api/projects/"))
+        req = self._session.get(urljoin(self._url, "/api/projects/"))
         return [Project.model_validate(project) for project in req.json()]
 
     async def get_schedulable_tasks(self) -> list[Task]:
@@ -45,7 +45,10 @@ class BackendTaskArchive(TaskArchive):
         Returns:
             List of schedulable tasks
         """
-        req = requests.get(urljoin(self._url, "/api/tasks/"))
+        req = self._session.get(urljoin(self._url, "/api/tasks/"))
+        import pprint
+
+        pprint.pprint(req.json())
         return [Task.model_validate(task) for task in req.json()]
 
     async def get_task(self, id: Any) -> Task:
@@ -54,7 +57,7 @@ class BackendTaskArchive(TaskArchive):
         Returns:
             Task with given ID.
         """
-        req = requests.get(urljoin(self._url, f"/api/tasks/{id}/"))
+        req = self._session.get(urljoin(self._url, f"/api/tasks/{id}/"))
         return Task.model_validate(req.json())
 
 

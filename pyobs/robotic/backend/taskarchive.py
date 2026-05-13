@@ -5,7 +5,7 @@ import requests
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from .. import Task
+from ..task import Task, Project
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,15 @@ class BackendTaskArchive(TaskArchive):
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""
         ...
+
+    async def get_projects(self) -> list[Project]:
+        """Returns list of projects.
+
+        Returns:
+            List of projects.
+        """
+        req = requests.get(urljoin(self._url, "/api/projects/"))
+        return [Project.model_validate(project) for project in req.json()]
 
     async def get_schedulable_tasks(self) -> list[Task]:
         """Returns list of schedulable tasks.

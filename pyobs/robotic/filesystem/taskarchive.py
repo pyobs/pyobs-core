@@ -5,7 +5,7 @@ from typing import Any
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from .. import Task
+from ..task import Task, Project
 from ...vfs import VirtualFileSystem
 
 log = logging.getLogger(__name__)
@@ -31,6 +31,14 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
     async def last_changed(self) -> Time | None:
         """Returns time when last time any blocks changed."""
         return None
+
+    async def get_projects(self) -> list[Project]:
+        """Returns list of projects.
+
+        Returns:
+            List of projects.
+        """
+        raise NotImplementedError()
 
     async def get_schedulable_tasks(self) -> list[Task]:
         """Returns list of schedulable tasks.

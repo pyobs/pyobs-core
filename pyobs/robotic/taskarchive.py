@@ -3,7 +3,7 @@ from typing import Any, Callable, Coroutine
 
 from pyobs.utils.time import Time
 from pyobs.object import Object
-from .task import Task
+from .task import Task, Project
 
 
 class TaskArchive(Object, metaclass=ABCMeta):
@@ -14,6 +14,15 @@ class TaskArchive(Object, metaclass=ABCMeta):
     @abstractmethod
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""
+        ...
+
+    @abstractmethod
+    async def get_projects(self) -> list[Project]:
+        """Returns list of projects.
+
+        Returns:
+            List of projects.
+        """
         ...
 
     @abstractmethod

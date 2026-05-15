@@ -52,7 +52,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # get scheduler
         self._task_archive = self.add_child_object(tasks, TaskArchive, on_tasks_changed=self._update_schedule)
-        self._schedule = self.add_child_object(schedule, ObservationArchive)
+        self._schedule = self.add_child_object(schedule, ObservationArchive, auto_update=False)
         self._scheduler = self.add_child_object(scheduler, TaskScheduler, observation_archive=self._schedule)
 
         # store
@@ -86,9 +86,6 @@ class Scheduler(Module, IStartStop, IRunnable):
             await self._comm.register_event(TaskStartedEvent, self._on_task_started)
             await self._comm.register_event(TaskFinishedEvent, self._on_task_finished)
             await self._comm.register_event(GoodWeatherEvent, self._on_good_weather)
-
-        # schedule an update run
-        asyncio.create_task(self._update_schedule())
 
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""

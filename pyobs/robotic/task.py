@@ -55,7 +55,8 @@ class Task(BaseModel):
             True, if the task can run now.
         """
         if self.script is not None:
-            return await self.script.can_run(data)
+            script = self.get_object(self.script, Script)
+            return await script.can_run(data)
         return True
 
     @property
@@ -70,7 +71,8 @@ class Task(BaseModel):
     async def run(self, data: TaskData) -> None:
         """Run a task"""
         if self.script is not None:
-            await self.script.run(data)
+            script = self.get_object(self.script, Script)
+            await script.run(data)
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

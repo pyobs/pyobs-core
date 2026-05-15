@@ -3,11 +3,14 @@ import datetime
 from typing import Any, Literal
 from urllib.parse import urljoin
 import requests
+import logging
 
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
 from ..observation import ObservationList, Observation
+
+log = logging.getLogger(__name__)
 
 
 class BackendObservationArchive(ObservationArchive):
@@ -41,7 +44,7 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             start_time: Start time to clear from.
         """
-        self._session.get(urljoin(self._url, "/api/cancel_observations/"), json={"after": start_time.isot})
+        self._session.get(urljoin(self._url, "/api/cancel_observations/"), params={"after": start_time.isot})
 
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
@@ -54,7 +57,7 @@ class BackendObservationArchive(ObservationArchive):
             ValueError: If something goes wrong.
         """
         res = self._session.get(
-            urljoin(self._url, "/api/observations/"), json={"start": Time.now().isot, "state": "pending"}
+            urljoin(self._url, "/api/observations/"), params={"start": Time.now().isot, "state": "pending"}
         )
         observations = res.json()
         return ObservationList.model_validate(observations)
@@ -69,12 +72,19 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Scheduled task at the given time.
         """
-        res = self._session.get(
-            urljoin(self._url, "/api/observations/"), json={"start": time.isot, "end": time.isot, "state": "pending"}
+        req = self._session.get(
+            urljoin(self._url, "/api/observations/"), params={"start": time.isot, "end": time.isot, "state": "pending"}
         )
-        observations = res.json()
-        if len(observations) == 1:
-            return Observation.model_validate(observations[0])
+        print({"start": time.isot, "end": time.isot, "state": "pending"})
+        print(req.text)
+        observations = req.json()
+        if len(observations) > 0:
+            if len(observations) > 1:
+                log.warning("More than one active scheduled task.")
+            obs = Observation.model_validate(observations[0])
+            if task_archive is not None:
+                await obs.fetch_task(task_archive)
+            return obs
         return None
 
     async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
@@ -130,7 +140,7 @@ class BackendObservationArchive(ObservationArchive):
         start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
         res = self._session.get(
-            urljoin(self._url, "/api/observations/"), json={"start": start.isoformat(), "end": end.isoformat()}
+            urljoin(self._url, "/api/observations/"), params={"start": start.isoformat(), "end": end.isoformat()}
         )
         observations = res.json()
         return ObservationList.model_validate(observations)

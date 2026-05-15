@@ -22,6 +22,7 @@ class BackendObservationArchive(ObservationArchive):
         url: str,
         token: str,
         mode: Literal["day", "night"] = "night",
+        auto_update: bool = True,
         **kwargs: Any,
     ):
         ObservationArchive.__init__(self, **kwargs)
@@ -32,7 +33,8 @@ class BackendObservationArchive(ObservationArchive):
         self._last_update: Time | None = None
         self._observations = ObservationList()
 
-        self.add_background_task(self._check_for_changes)
+        if auto_update:
+            self.add_background_task(self._check_for_changes)
 
     async def open(self) -> None:
         """Opens the backend observation archive."""

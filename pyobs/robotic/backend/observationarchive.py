@@ -53,8 +53,8 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        res = self._session.post(
-            urljoin(self._url, "/api/observations/"), {"start": Time.now().isot, "state": "pending"}
+        res = self._session.get(
+            urljoin(self._url, "/api/observations/"), json={"start": Time.now().isot, "state": "pending"}
         )
         observations = res.json()
         return ObservationList.model_validate(observations)
@@ -69,7 +69,7 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Scheduled task at the given time.
         """
-        res = self._session.post(
+        res = self._session.get(
             urljoin(self._url, "/api/observations/"), json={"start": time.isot, "end": time.isot, "state": "pending"}
         )
         observations = res.json()
@@ -87,7 +87,7 @@ class BackendObservationArchive(ObservationArchive):
             Currently running observation.
         """
         time = Time.now()
-        res = self._session.post(
+        res = self._session.get(
             urljoin(self._url, "/api/observations/"),
             json={"start": time.isot, "end": time.isot, "state": "in_progress"},
         )
@@ -129,7 +129,7 @@ class BackendObservationArchive(ObservationArchive):
         """
         start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
-        res = self._session.post(
+        res = self._session.get(
             urljoin(self._url, "/api/observations/"), json={"start": start.isoformat(), "end": end.isoformat()}
         )
         observations = res.json()

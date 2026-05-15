@@ -29,12 +29,14 @@ class BackendObservationArchive(ObservationArchive):
         self._token = token
         self._mode = mode
         self._session: aiohttp.ClientSession | None = None
-
         self._last_update: Time | None = None
+        self._observations = ObservationList()
+
         self.add_background_task(self._check_for_changes)
 
     async def open(self) -> None:
         """Opens the backend observation archive."""
+        await ObservationArchive.open(self)
         self._session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
 
     async def _check_for_changes(self) -> None:
@@ -43,7 +45,12 @@ class BackendObservationArchive(ObservationArchive):
         while True:
             last_update = await self.last_update_time()
             if self._last_update is None or self._last_update < last_update:
-                self._observations = await self.get_schedule()
+                self._observations = await self._get_schedule()
+                if len(self._observations) == 0:
+                    log.info("Downloaded new schedule.")
+                else:
+                    obs = self._observations[0]
+                    log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
                 self._last_update = last_update
 
             await asyncio.sleep(5)
@@ -54,7 +61,25 @@ class BackendObservationArchive(ObservationArchive):
             if response.status != 200:
                 raise RuntimeError("Invalid response from backend: " + await response.text())
             res = await response.json()
-            return Time(res["last_update_time"])
+            return Time(res["last_observation_update"])
+
+    async def _get_schedule(self) -> ObservationList:
+        """Fetch schedule from portal.
+
+        Returns:
+            Dictionary with tasks.
+
+        Raises:
+            Timeout: If request timed out.
+            ValueError: If something goes wrong.
+        """
+        async with self._session.get(
+            urljoin(self._url, "/api/observations/"), params={"start": Time.now().isot, "state": "pending,in_progress"}
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError("Invalid response from backend: " + await response.text())
+            observations = await response.json()
+            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -90,13 +115,7 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        async with self._session.get(
-            urljoin(self._url, "/api/observations/"), params={"start": Time.now().isot, "state": "pending,in_progress"}
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        return self._observations
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
@@ -108,19 +127,12 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Scheduled task at the given time.
         """
-        async with self._session.get(
-            urljoin(self._url, "/api/observations/"), params={"start": time.isot, "end": time.isot, "state": "pending"}
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            if len(observations) > 0:
-                if len(observations) > 1:
-                    log.warning("More than one active scheduled task.")
-                obs = self.pyobs_model_validate(Observation, observations[0])
+        for obs in self._observations:
+            if obs.state == "pending" and obs.start < time < obs.end:
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
                 return obs
+        else:
             return None
 
     async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
@@ -132,16 +144,12 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Currently running observation.
         """
-        time = Time.now()
-        async with self._session.get(
-            urljoin(self._url, "/api/observations/"),
-            params={"start": time.isot, "end": time.isot, "state": "in_progress"},
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            if len(observations) == 1:
-                return self.pyobs_model_validate(Observation, observations[0])
+        for obs in self._observations:
+            if obs.state == "in_progress":
+                if task_archive is not None:
+                    await obs.fetch_task(task_archive)
+                return obs
+        else:
             return None
 
     async def update_observation(self, observation: Observation) -> None:

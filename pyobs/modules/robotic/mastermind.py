@@ -134,7 +134,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
             # send event and change state
             await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
-            await self._observation_archive.update_observation_state(observation, ObservationState.IN_PROGRESS)
+            observation.state = ObservationState.IN_PROGRESS
+            await self._observation_archive.update_observation(observation)
 
             # run task in thread
             log.info("Running task %s...", self._task.name)
@@ -143,13 +144,15 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             except:
                 # something went wrong
                 log.warning("Task %s failed.", self._task.name)
-                await self._observation_archive.update_observation_state(observation, ObservationState.FAILED)
+                observation.state = ObservationState.FAILED
+                await self._observation_archive.update_observation(observation)
                 self._task = None
                 continue
 
             # send event and change state
             await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
-            await self._observation_archive.update_observation_state(observation, ObservationState.COMPLETED)
+            observation.state = ObservationState.COMPLETED
+            await self._observation_archive.update_observation(observation)
 
             # finish
             log.info("Finished task %s.", self._task.name)

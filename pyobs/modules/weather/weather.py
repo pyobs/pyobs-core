@@ -61,9 +61,9 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         await Module.open(self)
 
         # subscribe to events
-        if self.comm:
-            await self.comm.register_event(BadWeatherEvent)
-            await self.comm.register_event(GoodWeatherEvent)
+        if self._comm:
+            await self._comm.register_event(BadWeatherEvent)
+            await self._comm.register_event(GoodWeatherEvent)
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
@@ -71,7 +71,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         # did status change and weather is now bad?
         if not self._active and not self._weather.is_good:
             # send event!
-            await self.comm.send_event(BadWeatherEvent())
+            await self._comm.send_event(BadWeatherEvent())
 
         # activate
         self._active = True
@@ -113,10 +113,10 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
             if self._weather.is_good:
                 log.info("Weather is now good.")
                 eta = self._calc_system_init_eta()
-                await self.comm.send_event(GoodWeatherEvent(eta=eta))
+                await self._comm.send_event(GoodWeatherEvent(eta=eta))
             else:
                 log.info("Weather is now bad.")
-                await self.comm.send_event(BadWeatherEvent())
+                await self._comm.send_event(BadWeatherEvent())
 
     def _calc_system_init_eta(self) -> Time:
         return Time(Time.now() + self._system_init_time * u.second)

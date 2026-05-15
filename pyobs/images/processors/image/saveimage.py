@@ -102,7 +102,7 @@ class SaveImage(ImageProcessor):
         """
         filename = image.format_filename(self._formatter)
         data = self.encode_image(image, filename, self._image_format)
-        await self.vfs.write_bytes(filename, data)
+        await self._vfs.write_bytes(filename, data)
         return image
 
     @staticmethod

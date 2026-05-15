@@ -122,7 +122,7 @@ class Module(Object, IModule, IConfig):
         self._config_caps = self._get_config_caps()
 
         # name and label
-        self._device_name = name if name is not None else self.comm.name
+        self._device_name = name if name is not None else self._comm.name
         self._label = label if label is not None else self._device_name
 
         # state
@@ -137,13 +137,13 @@ class Module(Object, IModule, IConfig):
 
     async def open(self) -> None:
         # open comm
-        if self.comm is not None and self._own_comm:
+        if self._comm is not None and self._own_comm:
             # open it and connect module
-            self.comm.module = self
-            await self.comm.open()
+            self._comm.module = self
+            await self._comm.open()
 
             # react to connecting modules
-            await self.comm.register_event(ModuleOpenedEvent, self._on_module_opened)
+            await self._comm.register_event(ModuleOpenedEvent, self._on_module_opened)
 
         """Open module."""
         await Object.open(self)
@@ -153,9 +153,9 @@ class Module(Object, IModule, IConfig):
         await Object.close(self)
 
         # close comm
-        if self.comm is not None and self._own_comm:
+        if self._comm is not None and self._own_comm:
             log.info("Closing connection to server...")
-            await self.comm.close()
+            await self._comm.close()
 
     @staticmethod
     def new_event_loop() -> asyncio.AbstractEventLoop:
@@ -180,7 +180,7 @@ class Module(Object, IModule, IConfig):
 
     async def _on_module_opened(self, event: Event, sender: str) -> bool:
         """React to other modules connecting."""
-        if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
+        if sender == self._comm.name or not isinstance(event, ModuleOpenedEvent):
             return False
 
         # get proxy and version
@@ -292,7 +292,7 @@ class Module(Object, IModule, IConfig):
             del ba.arguments["kwargs"]
 
         # cast to types requested by method
-        cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
+        cast_bound_arguments_to_real(ba, type_hints, self._comm.cast_to_real_pre, self._comm.cast_to_real_post)
 
         # call method
         try:
@@ -314,7 +314,7 @@ class Module(Object, IModule, IConfig):
 
         # finished
         return cast_response_to_simple(
-            response, type_hints["return"], self.comm.cast_to_simple_pre, self.comm.cast_to_simple_post
+            response, type_hints["return"], self._comm.cast_to_simple_pre, self._comm.cast_to_simple_post
         )
 
     def _get_config_caps(self) -> dict[str, tuple[bool, bool, bool]]:

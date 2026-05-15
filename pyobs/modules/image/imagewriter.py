@@ -38,9 +38,9 @@ class ImageWriter(Module):
         await Module.open(self)
 
         # subscribe to channel with new images
-        if self.comm is not None:
+        if self._comm is not None:
             log.info("Subscribing to new image events...")
-            await self.comm.register_event(NewImageEvent, self.process_new_image_event)
+            await self._comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
@@ -75,7 +75,7 @@ class ImageWriter(Module):
             try:
                 # download image
                 log.info("Downloading file %s...", filename)
-                img = await self.vfs.read_image(filename)
+                img = await self._vfs.read_image(filename)
             except FileNotFoundError:
                 log.error("Could not download image.")
                 continue
@@ -90,7 +90,7 @@ class ImageWriter(Module):
             try:
                 # open output
                 log.info("Storing image as %s...", output)
-                await self.vfs.write_image(output, img)
+                await self._vfs.write_image(output, img)
             except Exception:
                 log.error("Could not store image.")
 

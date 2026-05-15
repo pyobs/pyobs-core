@@ -1,0 +1,75 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, Self
+import logging
+from pydantic import model_validator, ConfigDict
+
+from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope
+from pyobs.robotic.scripts import Script
+from pyobs.utils.targetpicker import TargetPicker
+
+if TYPE_CHECKING:
+    from pyobs.robotic.task import TaskData
+
+log = logging.getLogger(__name__)
+
+
+class AutoFocus(Script):
+    """Script for running autofocus series."""
+
+    autofocus: str = "autofocus"
+    telescope: str = "telescope"
+    count: int = 5
+    step: float = 0.1
+    exposure_time: float = 2.0
+    target: TargetPicker | dict[str, Any] | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def create_target_picker(self) -> Self:
+        if isinstance(self.target, dict):
+            self.target = self.get_object(self.target, TargetPicker)
+        return self
+
+    async def can_run(self, data: TaskData) -> bool:
+        """Whether this config can currently run.
+        Returns:
+            True if script can run now.
+        """
+
+        # we need a camera
+        try:
+            await Script._comm(data).proxy(self.autofocus, IAutoFocus)
+            telescope = await Script._comm(data).proxy(self.telescope, IPointingRaDec)
+        except ValueError:
+            return False
+
+        # ready?
+        if not isinstance(telescope, ITelescope):
+            return False
+        return await telescope.is_ready()
+
+    async def run(self, data: TaskData) -> None:
+        """Run script.
+        Raises:
+            InterruptedError: If interrupted
+        """
+
+        if not isinstance(self.target, TargetPicker):
+            return
+
+        autofocus = await Script._comm(data).proxy(self.autofocus, IAutoFocus)
+        telescope = await Script._comm(data).proxy(self.telescope, IPointingRaDec)
+
+        name, target = await self.target()
+        log.info(f"Picked target '{name}' at coordinates {target.to_string()} for auto focus...")
+
+        log.info("Moving telescope...")
+        await telescope.move_radec(target.ra.degree, target.dec.degree)
+
+        log.info("Performing auto focus...")
+        await autofocus.auto_focus(self.count, self.step, self.exposure_time)
+        log.info("Done.")
+
+
+__all__ = ["AutoFocus"]

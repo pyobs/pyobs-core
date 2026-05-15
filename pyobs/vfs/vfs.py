@@ -7,7 +7,7 @@ import yaml
 from astropy.io import fits
 import pandas as pd
 
-from pyobs.object import get_class_from_string
+
 from pyobs.images import Image
 from .file import VFSFile
 
@@ -28,7 +28,8 @@ class VirtualFileSystem(object):
 
         # if no root for 'pyobs' is given, add one
         self._roots: dict[str, Any] = {
-            "pyobs": {"class": "pyobs.vfs.LocalFile", "root": os.path.expanduser("~/.pyobs/")}
+            "pyobs": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/storage/"},
+            "robotic": {"class": "pyobs.vfs.LocalFile", "root": "/opt/pyobs/robotic/"},
         }
         if roots is not None:
             self._roots.update(roots)
@@ -254,6 +255,8 @@ class VirtualFileSystem(object):
         return await klass.local_path(path, **self._roots[root])
 
     def _get_class(self, path: str) -> tuple[Type[VFSFile], str, str]:
+        from pyobs.object import get_class_from_string
+
         # split root
         root, path = VirtualFileSystem.split_root(path)
 

@@ -39,7 +39,7 @@ class FlatFieldPointing(Module, IRunnable):
         telescope = await self.proxy(self._telescope, ITelescope)
 
         # pointing
-        pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self.observer)
+        pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self._observer)
 
         # point
         await pointing(telescope)

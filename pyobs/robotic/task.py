@@ -1,91 +1,62 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from astropy.units import Quantity
-import astropy.units as u
+from astroplan import Observer
+from pydantic import Field
 
-from pyobs.object import Object
+from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
-from pyobs.utils.time import Time
+from pyobs.vfs import VirtualFileSystem
 
 if TYPE_CHECKING:
-    from pyobs.robotic.taskschedule import TaskSchedule
-    from pyobs.robotic.taskrunner import TaskRunner
+    from pyobs.robotic.observationarchive import ObservationArchive
     from pyobs.robotic.taskarchive import TaskArchive
-    from pyobs.robotic.scheduler.constraints import Constraint
-    from pyobs.robotic.scheduler.merits import Merit
+
+from pyobs.robotic.scheduler.constraints import Constraint
+from pyobs.robotic.scheduler.merits import Merit
+from pyobs.utils.serialization import BaseModel
 
 
-class Task(Object):
+@dataclass
+class TaskData:
+    task: Task
+    observation_archive: ObservationArchive | None = None
+    task_archive: TaskArchive | None = None
+    observer: Observer | None = None
+    vfs: VirtualFileSystem | None = None
+    comm: Comm | None = None
 
-    def __init__(
-        self,
-        id: Any,
-        name: str,
-        duration: float,
-        priority: float | None = None,
-        config: dict[str, Any] | None = None,
-        constraints: list[Constraint] | None = None,
-        merits: list[Merit] | None = None,
-        target: Target | None = None,
-        **kwargs: Any,
-    ):
-        super().__init__(**kwargs)
-        self._id = id
-        self._name = name
-        self._duration = duration
-        self._priority = priority
-        self._config = config
-        self._constraints = constraints
-        self._merits = merits
-        self._target = target
 
-    @property
-    def id(self) -> Any:
-        """ID of task."""
-        return self._id
+class Task(BaseModel):
+    id: Any | None = None
+    name: str = Field(default="")
+    project: str = Field(default="")
+    duration: float = Field(ge=0.0, le=84000.0, default=0.0)
+    priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
+    constraints: list[Constraint] = Field(default_factory=list)
+    merits: list[Merit] = Field(default_factory=list)
+    target: Target | None = None
+    script: dict[str, Any] = Field(default_factory=dict)
 
-    @property
-    def name(self) -> str:
-        """Returns name of task."""
-        return self._name
+    def __str__(self) -> str:
+        s = f"Task {self.id}: {self.name} (duration: {self.duration}s"
+        if self.priority is not None:
+            s += f", priority: {self.priority}"
+        if self.target is not None:
+            s += f", target: {self.target.name}"
+        s += ")"
+        return s
 
-    @property
-    def duration(self) -> Quantity:
-        """Returns estimated duration of task in seconds."""
-        return self._duration * u.second
-
-    @property
-    def priority(self) -> float:
-        """Returns priority."""
-        return self._priority if self._priority is not None else 0.0
-
-    @property
-    def config(self) -> dict[str, Any]:
-        """Returns configuration."""
-        return self._config if self._config is not None else {}
-
-    @property
-    def constraints(self) -> list[Constraint]:
-        """Returns constraints."""
-        return self._constraints if self._constraints is not None else []
-
-    @property
-    def merits(self) -> list[Merit]:
-        """Returns merits."""
-        return self._merits if self._merits is not None else []
-
-    @property
-    def target(self) -> Target | None:
-        """Returns target."""
-        return self._target
-
-    async def can_run(self, scripts: dict[str, Script] | None = None) -> bool:
-        """Checks, whether this task could run now.
+    async def can_run(self, data: TaskData) -> bool:
+        """Checks whether this task could run now.
 
         Returns:
-            True, if task can run now.
+            True, if the task can run now.
         """
+        if self.script is not None:
+            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+            return await script.can_run(data)
         return True
 
     @property
@@ -97,15 +68,11 @@ class Task(Object):
         """
         return False
 
-    async def run(
-        self,
-        task_runner: TaskRunner,
-        task_schedule: TaskSchedule | None = None,
-        task_archive: TaskArchive | None = None,
-        scripts: dict[str, Script] | None = None,
-    ) -> None:
+    async def run(self, data: TaskData) -> None:
         """Run a task"""
-        ...
+        if self.script is not None:
+            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+            await script.run(data)
 
     def is_finished(self) -> bool:
         """Whether task is finished."""
@@ -123,58 +90,10 @@ class Task(Object):
         return {}
 
 
-class ScheduledTask:
-    """A scheduled task."""
-
-    def __init__(self, task: Task, start: Time, end: Time):
-        self._task = task
-        self._start = start
-        self._end = end
-
-    @property
-    def task(self) -> Task:
-        """Returns the task."""
-        return self._task
-
-    @property
-    def start(self) -> Time:
-        """Start time for task"""
-        return self._start
-
-    @property
-    def end(self) -> Time:
-        """End time for task"""
-        return self._end
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return self.task.id == other.task.id and self.start == other.start and self.end == other.end
-        return super().__eq__(other)
-
-    def __ne__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return self.task.id != other.task.id or self.start != other.start or self.end != other.end
-        return super().__ne__(other)
-
-    def __lt__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return bool(self.start < other.start)
-        raise NotImplementedError
-
-    def __gt__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return bool(self.start > other.start)
-        raise NotImplementedError
-
-    def __le__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return bool(self.start <= other.start)
-        raise NotImplementedError
-
-    def __ge__(self, other: object) -> bool:
-        if isinstance(other, ScheduledTask):
-            return bool(self.start >= other.start)
-        raise NotImplementedError
+class Project(BaseModel):
+    id: Any | None = None
+    name: str = Field(default="")
+    priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
 
 
-__all__ = ["Task", "ScheduledTask"]
+__all__ = ["Task", "TaskData", "Project"]

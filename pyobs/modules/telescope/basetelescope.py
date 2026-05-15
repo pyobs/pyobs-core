@@ -255,10 +255,10 @@ class BaseTelescope(
             hdr["DEC"] = (str(coords_ra_dec.dec.to_string(sep=":", unit=u.deg, pad=True)), "Declination of object")
 
         # site location
-        if self.observer is not None:
-            hdr["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
-            hdr["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
-            hdr["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
+        if self._observer is not None:
+            hdr["LATITUDE"] = (float(self._observer.location.lat.degree), "Latitude of telescope [deg N]")
+            hdr["LONGITUD"] = (float(self._observer.location.lon.degree), "Longitude of telescope [deg E]")
+            hdr["HEIGHT"] = (float(self._observer.location.height.value), "Altitude of telescope [m]")
 
         # add static fits headers
         for key, value in self._fits_headers.items():
@@ -296,7 +296,7 @@ class BaseTelescope(
         az: Optional[float]
 
         # no observer?
-        if self.observer is None:
+        if self._observer is None:
             return
 
         # get telescope alt/az
@@ -305,16 +305,16 @@ class BaseTelescope(
             try:
                 alt, az = await self.get_altaz()
                 tel_altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, location=self.observer.location, obstime=now, frame="altaz"
+                    alt=alt * u.deg, az=az * u.deg, location=self.observer._location, obstime=now, frame="altaz"
                 )
             except:
                 log.exception("Could not fetch telescope Alt/Az: %s", self)
                 return
 
         # get current moon and sun information
-        moon_altaz = self.observer.moon_altaz(now)
-        moon_frac = self.observer.moon_illumination(now)
-        sun_altaz = self.observer.sun_altaz(now)
+        moon_altaz = self._observer.moon_altaz(now)
+        moon_frac = self._observer.moon_illumination(now)
+        sun_altaz = self._observer.sun_altaz(now)
 
         # store it
         self._celestial_headers = {
@@ -338,9 +338,9 @@ class BaseTelescope(
 
     def _calculate_derotator_position(self, ra: float, dec: float, alt: float, obstime: Time) -> float:
         target = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="gcrs")
-        if self.observer is None:
+        if self._observer is None:
             raise ValueError("No observer.")
-        parallactic = self.observer.parallactic_angle(time=obstime, target=target).deg
+        parallactic = self._observer.parallactic_angle(time=obstime, target=target).deg
         return float(parallactic - alt)
 
 

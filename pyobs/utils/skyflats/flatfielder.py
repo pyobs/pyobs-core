@@ -91,7 +91,7 @@ class FlatFielder(Object):
         self._callback = callback
 
         # parse function
-        self._eval = ExpTimeEval(self.observer, functions)
+        self._eval = ExpTimeEval(self._observer, functions)
 
         # abort event
         self._abort = asyncio.Event()
@@ -228,10 +228,10 @@ class FlatFielder(Object):
         """Initialize whole system."""
 
         # which twilight are we in?
-        if self.observer is None:
+        if self._observer is None:
             raise ValueError("No observer given.")
-        sun = self.observer.sun_altaz(Time.now())
-        sun_10min = self.observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
+        sun = self._observer.sun_altaz(Time.now())
+        sun_10min = self._observer.sun_altaz(Time.now() + TimeDelta(10 * u.minute))
         self._twilight = (
             FlatFielder.Twilight.DUSK if sun_10min.alt.degree < sun.alt.degree else FlatFielder.Twilight.DAWN
         )
@@ -292,7 +292,7 @@ class FlatFielder(Object):
         filename = await cam.grab_data(broadcast=False)
 
         # download image
-        bias = await self.vfs.read_image(filename)
+        bias = await self._vfs.read_image(filename)
         avg = float(np.median(bias.data))
 
         # return it
@@ -335,9 +335,9 @@ class FlatFielder(Object):
         """
 
         # get solar elevation and evaluate exptime
-        if self.observer is None:
+        if self._observer is None:
             raise ValueError("No observer given.")
-        sun = self.observer.sun_altaz(time)
+        sun = self._observer.sun_altaz(time)
         exptime = self._eval(sun.alt.degree, binning=self._cur_binning, filter_name=self._cur_filter)
 
         # return solar altitude and exposure time
@@ -437,7 +437,7 @@ class FlatFielder(Object):
         """
 
         # download image
-        flat_field = await self.vfs.read_image(filename)
+        flat_field = await self._vfs.read_image(filename)
         if flat_field is None:
             return False
 
@@ -535,9 +535,9 @@ class FlatFielder(Object):
 
             # call callback
             if self._callback is not None:
-                if self.observer is None:
+                if self._observer is None:
                     raise ValueError("No observer given.")
-                sun = self.observer.sun_altaz(now)
+                sun = self._observer.sun_altaz(now)
                 await self._callback(
                     datetime=now.isot,
                     solalt=sun.alt.degree,

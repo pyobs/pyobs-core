@@ -147,9 +147,9 @@ class FocusModel(Module, IFocusModel):
         await Module.open(self)
 
         # subscribe to events
-        await self.comm.register_event(FocusFoundEvent, self._on_focus_found)
+        await self._comm.register_event(FocusFoundEvent, self._on_focus_found)
         if self._filter_offsets is not None and self._filter_wheel is not None:
-            await self.comm.register_event(FilterChangedEvent, self._on_filter_changed)
+            await self._comm.register_event(FilterChangedEvent, self._on_filter_changed)
 
         # update model now
         if self._update_model:

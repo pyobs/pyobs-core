@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
+from pydantic import Field
+
 from .merit import Merit
 
 if TYPE_CHECKING:
@@ -12,12 +14,10 @@ if TYPE_CHECKING:
 class RandomMerit(Merit):
     """Merit functions for a random normal-distributed number."""
 
-    def __init__(self, std: float = 1.0, **kwargs: Any):
-        super().__init__()
-        self._std = std
+    std: float = Field(ge=0.0, le=999.0, default=1.0)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
-        return np.random.normal(0.0, self._std)
+        return np.random.normal(0.0, self.std)
 
 
 __all__ = ["RandomMerit"]

@@ -226,52 +226,52 @@ class Object:
 
         # create vfs
         if vfs:
-            self.vfs = get_object(vfs, VirtualFileSystem)
+            self._vfs = get_object(vfs, VirtualFileSystem)
         else:
-            self.vfs = VirtualFileSystem()
+            self._vfs = VirtualFileSystem()
 
         # timezone
         if isinstance(timezone, datetime.tzinfo):
-            self.timezone = timezone
+            self._timezone = timezone
         elif isinstance(timezone, str):
-            self.timezone = pytz.timezone(timezone)
+            self._timezone = pytz.timezone(timezone)
         else:
-            raise ValueError("Unknown format for timezone.")
+            raise ValueError(f"Unknown format for timezone: {type(timezone)}")
 
         # location
         if location is None:
-            self.location = None
+            self._location = None
         elif isinstance(location, EarthLocation):
-            self.location = location
+            self._location = location
         elif isinstance(location, str):
-            self.location = EarthLocation.of_site(location)
+            self._location = EarthLocation.of_site(location)
         elif isinstance(location, dict):
-            self.location = EarthLocation.from_geodetic(
+            self._location = EarthLocation.from_geodetic(
                 location["longitude"], location["latitude"], location["elevation"]
             )
         else:
             raise ValueError("Unknown format for location.")
 
         # create observer
-        self.observer = observer
-        if self.observer is None and self.location is not None and self.timezone is not None:
+        self._observer = observer
+        if self._observer is None and self._location is not None and self._timezone is not None:
             log.info(
                 "Setting location to longitude=%s, latitude=%s, and elevation=%s.",
-                self.location.lon,
-                self.location.lat,
-                self.location.height,
+                self._location.lon,
+                self._location.lat,
+                self._location.height,
             )
-            self.observer = Observer(location=self.location, timezone=timezone)
+            self._observer = Observer(location=self._location, timezone=timezone)
 
         # comm object
-        self.comm: Comm
+        self._comm: Comm
         if comm is None:
-            self.comm = DummyComm()
+            self._comm = DummyComm()
         elif isinstance(comm, Comm):
-            self.comm = comm
+            self._comm = comm
         elif isinstance(comm, dict):
             log.info("Creating comm object...")
-            self.comm = get_object(comm, Comm)
+            self._comm = get_object(comm, Comm)
         else:
             raise ValueError("Invalid Comm object")
 
@@ -408,17 +408,18 @@ class Object:
 
         # copy comm?
         if copy_comm:
-            params["comm"] = self.comm
+            params["comm"] = self._comm
 
         # copy timezone, location, vfs, and observer, if not exists
-        for p in ["timezone", "location", "vfs", "observer"]:
-            if self.__config_or_object_get_param(config_or_object, p) is None:
-                params[p] = getattr(self, p)
+        for p in ["_timezone", "_location", "_vfs", "_observer"]:
+            if self.config_or_object_get_param(config_or_object, p) is None:
+                params[p[1:]] = getattr(self, p)
 
         # get it
         return get_object(config_or_object, object_class, **params)
 
-    def __config_or_object_get_param(self, config_or_object: dict[str, Any] | Any, param: str) -> Any:
+    @staticmethod
+    def config_or_object_get_param(config_or_object: dict[str, Any] | Any, param: str) -> Any:
         """Checks, whether a config_or_object has the given parameter.
 
         Args:
@@ -472,6 +473,13 @@ class Object:
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
         object_class: type[ObjectClass],
         copy_comm: bool = True,
+        **kwargs: Any,
+    ) -> ObjectClass: ...
+
+    @overload
+    def add_child_object(
+        self,
+        config_or_object: ObjectClass,
         **kwargs: Any,
     ) -> ObjectClass: ...
 
@@ -540,7 +548,17 @@ class Object:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-        return await self.comm.proxy(name_or_object, obj_type)
+        return await self._comm.proxy(name_or_object, obj_type)
+
+    def pyobs_model_validate(self, cls: type[ObjectClass], *args, **kwargs) -> ObjectClass:
+        """Validate a pydantic model with additional fields."""
+        obj = cls.model_validate(*args, **kwargs)
+        obj._timezone = self._timezone
+        obj._location = self._location
+        obj._vfs = self._vfs
+        obj._observer = self._observer
+        obj._comm = self._comm
+        return obj
 
 
 __all__ = ["get_object", "get_class_from_string", "create_object", "Object"]

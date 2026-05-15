@@ -62,7 +62,7 @@ class PointingSeries(Module, IAutonomous):
         """Run a pointing series."""
 
         # check observer
-        if self.observer is None:
+        if self._observer is None:
             raise ValueError("No observer given.")
 
         try:

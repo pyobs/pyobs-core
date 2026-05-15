@@ -50,14 +50,14 @@ class PipelineCamera(Module, ICamera, ImageFitsHeaderMixin, PipelineMixin):
         # upload file
         try:
             log.info("Uploading image to file server...")
-            await self.vfs.write_image(filename, image)
+            await self._vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError("Could not upload image.")
 
         # broadcast image path
-        if broadcast and self.comm:
+        if broadcast and self._comm:
             log.info("Broadcasting image ID...")
-            await self.comm.send_event(NewImageEvent(filename, ImageType.OBJECT))
+            await self._comm.send_event(NewImageEvent(filename, ImageType.OBJECT))
 
         # return filename
         return filename

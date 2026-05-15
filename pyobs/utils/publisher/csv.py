@@ -4,7 +4,6 @@ import logging
 
 from .publisher import Publisher
 
-
 log = logging.getLogger(__name__)
 
 
@@ -35,7 +34,7 @@ class CsvPublisher(Publisher):
         csv = pd.concat([csv, row], ignore_index=True)
 
         # write it
-        await self.vfs.write_csv(self._filename, csv, index=False)
+        await self._vfs.write_csv(self._filename, csv, index=False)
 
     async def data(self) -> pd.DataFrame:
         """Return data that has so far been published."""
@@ -43,7 +42,7 @@ class CsvPublisher(Publisher):
         # load data
         try:
             # load it
-            return await self.vfs.read_csv(self._filename, index_col=False)
+            return await self._vfs.read_csv(self._filename, index_col=False)
 
         except FileNotFoundError:
             # file not found, so start new with row

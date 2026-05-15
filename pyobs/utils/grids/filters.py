@@ -200,7 +200,7 @@ class ConvertGridToSkyCoord(GridFilter):
 
         # to SkyCoord
         return SkyCoord(
-            point[0] * u.deg, point[1] * u.deg, frame=self._frame, location=self.location, obstime=Time.now()
+            point[0] * u.deg, point[1] * u.deg, frame=self._frame, location=self._location, obstime=Time.now()
         )
 
 

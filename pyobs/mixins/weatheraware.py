@@ -34,9 +34,9 @@ class WeatherAwareMixin:
         """Open mixin."""
         # subscribe to events
         this = self
-        if self.__weather is not None and isinstance(self, Module) and self.comm is not None:
-            await self.comm.register_event(BadWeatherEvent, this.__on_bad_weather)
-            await self.comm.register_event(GoodWeatherEvent, this._on_good_weather)
+        if self.__weather is not None and isinstance(self, Module) and self._comm is not None:
+            await self._comm.register_event(BadWeatherEvent, this.__on_bad_weather)
+            await self._comm.register_event(GoodWeatherEvent, this._on_good_weather)
 
     async def __on_bad_weather(self, event: Event, sender: str) -> bool:
         """Abort exposure if a bad weather event occurs.

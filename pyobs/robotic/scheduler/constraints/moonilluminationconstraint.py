@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import astroplan
+from pydantic import Field
+
 from .constraint import Constraint
 
 if TYPE_CHECKING:
@@ -12,9 +14,7 @@ if TYPE_CHECKING:
 class MoonIlluminationConstraint(Constraint):
     """Moon illumination constraint."""
 
-    def __init__(self, max_phase: float, **kwargs: Any):
-        super().__init__()
-        self.max_phase = max_phase
+    max_phase: float = Field(ge=0.0, le=1.0, default=0.0)
 
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:
         return astroplan.MoonIlluminationConstraint(max=self.max_phase)

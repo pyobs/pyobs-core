@@ -77,7 +77,7 @@ class ImageWatcher(Module):
         from asyncinotify import Inotify, Mask  # type: ignore
 
         # get local directory
-        local = await self.vfs.local_path(self._watchpath)
+        local = await self._vfs.local_path(self._watchpath)
 
         # Context manager to close the inotify handle after use
         with Inotify() as inotify:
@@ -94,13 +94,13 @@ class ImageWatcher(Module):
 
     async def _watch_poll(self) -> None:
         # init list
-        files = set(await self.vfs.listdir(self._watchpath))
+        files = set(await self._vfs.listdir(self._watchpath))
 
         # run forever
         path = PurePosixPath(self._watchpath)
         while True:
             # get new list
-            new_files = await self.vfs.listdir(self._watchpath)
+            new_files = await self._vfs.listdir(self._watchpath)
 
             # find all new files and add them
             for f in new_files:
@@ -116,7 +116,7 @@ class ImageWatcher(Module):
         await Module.open(self)
 
         # add all files from directory to queue
-        for filename in await self.vfs.listdir(self._watchpath):
+        for filename in await self._vfs.listdir(self._watchpath):
             self.add_file(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:
@@ -158,7 +158,7 @@ class ImageWatcher(Module):
             # better safe than sorry
             try:
                 # get file data
-                async with self.vfs.open_file(filename, "rb") as fd:
+                async with self._vfs.open_file(filename, "rb") as fd:
                     data = await fd.read()
 
                 # try to load as fits file
@@ -188,7 +188,7 @@ class ImageWatcher(Module):
                     log.info("Storing file as %s...", out_filename)
                     self.current_file.out_filename = out_filename
                     try:
-                        async with self.vfs.open_file(out_filename, "wb") as fd:
+                        async with self._vfs.open_file(out_filename, "wb") as fd:
                             await fd.write(data)
                     except Exception as e:
                         log.warning(f"Error while copying file, skipping for now: {e}")
@@ -208,7 +208,7 @@ class ImageWatcher(Module):
 
                 # close and delete files
                 log.info("Removing file from watch directory...")
-                if not await self.vfs.remove(filename):
+                if not await self._vfs.remove(filename):
                     log.warning("Could not delete %s.", filename)
 
                 # cleanup extra

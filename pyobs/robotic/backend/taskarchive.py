@@ -46,9 +46,6 @@ class BackendTaskArchive(TaskArchive):
             List of schedulable tasks
         """
         req = self._session.get(urljoin(self._url, "/api/tasks/"))
-        import pprint
-
-        pprint.pprint(req.json())
         return [Task.model_validate(task) for task in req.json()]
 
     async def get_task(self, id: Any) -> Task:

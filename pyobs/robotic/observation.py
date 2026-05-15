@@ -68,7 +68,7 @@ class Observation(BaseModel):
 
     def model_dump(self, use_task_id: bool = False, **kwargs: Any) -> dict[str, Any]:
         if use_task_id and isinstance(self.task, Task):
-            data = self.model_copy(deep=True)
+            data = self.model_copy()
             data.task = self.task.id
             return data.model_dump(**kwargs)
         else:
@@ -80,7 +80,7 @@ class Observation(BaseModel):
             self.task = await task_archive.get_task(self.task)
 
 
-class ObservationList(UserList[Observation]):
+class ObservationList(UserList[Observation], Object):  # noqa: F821
     def __init__(self, observations: list[Observation] | None = None):
         UserList.__init__(self, observations)
 
@@ -99,9 +99,8 @@ class ObservationList(UserList[Observation]):
     def model_dump(self, **kwargs: Any) -> list[dict[str, Any]]:
         return [obs.model_dump(**kwargs) for obs in self.data]
 
-    @staticmethod
-    def model_validate(data: list[dict[str, Any]], **kwargs: Any) -> ObservationList:
-        return ObservationList([Observation.model_validate(obs, **kwargs) for obs in data])
+    def model_validate(self, data: list[dict[str, Any]], **kwargs: Any) -> ObservationList:
+        return ObservationList([self.pyobs_model_validate(Observation, obs, **kwargs) for obs in data])
 
 
 __all__ = ["Observation", "ObservationState", "ObservationList"]

@@ -41,7 +41,7 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             start_time: Start time to clear from.
         """
-        ...
+        self._session.get(urljoin(self._url, "/api/cancel_observations/"), json={"after": start_time.isot})
 
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
@@ -65,6 +65,12 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Scheduled task at the given time.
         """
+        res = self._session.post(
+            urljoin(self._url, "/api/observations/"), json={"start": time.isot, "end": time.isot, "state": "pending"}
+        )
+        observations = res.json()
+        if len(observations) == 1:
+            return Observation.model_validate(observations[0])
         return None
 
     async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
@@ -76,6 +82,14 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             Currently running observation.
         """
+        time = Time.now()
+        res = self._session.post(
+            urljoin(self._url, "/api/observations/"),
+            json={"start": time.isot, "end": time.isot, "state": "in_progress"},
+        )
+        observations = res.json()
+        if len(observations) == 1:
+            return Observation.model_validate(observations[0])
         return None
 
     async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
@@ -95,7 +109,9 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-        return ObservationList([])
+        res = self._session.get(urljoin(self._url, f"/api/tasks/{task.id}/observations/"))
+        observations = res.json()
+        return ObservationList.model_validate(observations)
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.

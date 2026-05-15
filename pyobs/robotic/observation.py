@@ -99,5 +99,9 @@ class ObservationList(UserList[Observation]):
     def model_dump(self, **kwargs: Any) -> list[dict[str, Any]]:
         return [obs.model_dump(**kwargs) for obs in self.data]
 
+    @staticmethod
+    def model_validate(data: list[dict[str, Any]], **kwargs: Any) -> ObservationList:
+        return ObservationList([Observation.model_validate(obs, **kwargs) for obs in data])
+
 
 __all__ = ["Observation", "ObservationState", "ObservationList"]

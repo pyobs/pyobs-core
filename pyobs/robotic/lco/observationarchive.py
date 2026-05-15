@@ -75,7 +75,7 @@ class LcoObservationArchive(ObservationArchive):
         """
         return await self._schedule_reader.get_schedule()
 
-    async def get_task(self, time: Time) -> Observation | None:
+    async def get_next_observation(self, time: Time) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:

@@ -126,7 +126,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         with self._lock:
             return await self._load_observations(Time.now())
 
-    async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:

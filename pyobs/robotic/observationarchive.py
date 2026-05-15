@@ -47,7 +47,7 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:

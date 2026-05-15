@@ -176,7 +176,7 @@ class MockLcoObservationArchive(LcoObservationArchive):
             return ObservationList()
         return ObservationList([Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))])
 
-    async def get_task(self, time: Time) -> Observation | None:
+    async def get_next_observation(self, time: Time) -> Observation | None:
         if self._task is None:
             return None
         return Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))

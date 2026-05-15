@@ -7,7 +7,7 @@ import requests
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
-from ..observation import ObservationList, Observation, ObservationState
+from ..observation import ObservationList, Observation
 
 
 class BackendObservationArchive(ObservationArchive):
@@ -92,13 +92,14 @@ class BackendObservationArchive(ObservationArchive):
             return Observation.model_validate(observations[0])
         return None
 
-    async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
-        """Updates observation state to given status.
+    async def update_observation(self, observation: Observation) -> None:
+        """Updates observation.
         Args:
             observation: Observation to update.
-            state: Observation state.
         """
-        ...
+        self._session.put(
+            urljoin(self._url, f"/api/observations/{observation.id}/"), json=observation.model_dump(use_task_id=True)
+        )
 
     async def observations_for_task(self, task: Task) -> ObservationList:
         """Returns list of observations for the given task.
@@ -122,7 +123,13 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-        return ObservationList([])
+        start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
+        end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
+        res = self._session.post(
+            urljoin(self._url, "/api/observations/"), json={"start": start.isoformat(), "end": end.isoformat()}
+        )
+        observations = res.json()
+        return ObservationList.model_validate(observations)
 
 
 __all__ = ["BackendObservationArchive"]

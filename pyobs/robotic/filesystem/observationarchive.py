@@ -181,15 +181,13 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         else:
             return None
 
-    async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
-        """Updates observation state to given status.
+    async def update_observation(self, observation: Observation) -> None:
+        """Updates observation.
         Args:
             observation: Observation to update.
-            state: Observation state.
         """
 
         with self._lock:
-            observation.state = state
             observations = await self._load_observations(observation.start)
             for i in range(len(observations)):
                 if observations[i].id == observation.id:

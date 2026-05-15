@@ -8,7 +8,7 @@ from pyobs.object import Object
 
 if TYPE_CHECKING:
     from . import Task, TaskArchive
-    from .observation import ObservationList, Observation, ObservationState
+    from .observation import ObservationList, Observation
 
 
 class ObservationArchive(Object, metaclass=ABCMeta):
@@ -72,11 +72,10 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def update_observation_state(self, observation: Observation, state: ObservationState) -> None:
-        """Updates observation state to given status.
+    async def update_observation(self, observation: Observation) -> None:
+        """Updates observation.
         Args:
             observation: Observation to update.
-            state: Observation state.
         """
         ...
 

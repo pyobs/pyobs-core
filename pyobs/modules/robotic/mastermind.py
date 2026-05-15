@@ -83,7 +83,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
     async def _run_thread(self) -> None:
         # wait a little
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
 
         # flags
         first_late_start_warning = True

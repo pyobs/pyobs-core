@@ -72,9 +72,9 @@ class DummyTelescope(
         await BaseTelescope.open(self)
 
         # subscribe to events
-        if self.comm:
-            await self.comm.register_event(FilterChangedEvent)
-            await self.comm.register_event(OffsetsRaDecEvent)
+        if self._comm:
+            await self._comm.register_event(FilterChangedEvent)
+            await self._comm.register_event(OffsetsRaDecEvent)
 
         # init status
         await self._change_motion_status(MotionStatus.IDLE)
@@ -108,7 +108,7 @@ class DummyTelescope(
 
         # alt/az coordinates to ra/dec
         coords = SkyCoord(
-            alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self.location, frame="altaz"
+            alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self._location, frame="altaz"
         )
         icrs = coords.icrs
 
@@ -211,7 +211,7 @@ class DummyTelescope(
             self._telescope.filter_name = filter_name
 
             # send event
-            await self.comm.send_event(FilterChangedEvent(filter_name))
+            await self._comm.send_event(FilterChangedEvent(filter_name))
             logging.info("New filter set.")
 
     @timeout(60)
@@ -256,7 +256,7 @@ class DummyTelescope(
         """
 
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
-        await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
+        await self._comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
 
     async def get_offsets_radec(self, **kwargs: Any) -> tuple[float, float]:
@@ -281,8 +281,8 @@ class DummyTelescope(
         Returns:
             Tuple of current Alt and Az in degrees.
         """
-        if self.observer is not None:
-            alt_az = self.observer.altaz(Time.now(), self._telescope.position)
+        if self._observer is not None:
+            alt_az = self._observer.altaz(Time.now(), self._telescope.position)
             return float(alt_az.alt.degree), float(alt_az.az.degree)
         else:
             raise ValueError("No observer given.")

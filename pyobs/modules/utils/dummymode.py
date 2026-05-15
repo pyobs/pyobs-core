@@ -40,8 +40,8 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         await self._change_motion_status(MotionStatus.POSITIONED)
 
         # subscribe to events
-        if isinstance(self, Module) and self.comm:
-            await self.comm.register_event(ModeChangedEvent)
+        if isinstance(self, Module) and self._comm:
+            await self._comm.register_event(ModeChangedEvent)
 
     async def list_mode_groups(self, **kwargs: Any) -> List[str]:
         """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
@@ -84,7 +84,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         await asyncio.sleep(3)
         self._modes[self._group_name(group)] = mode
         await self._change_motion_status(MotionStatus.POSITIONED)
-        await self.comm.send_event(ModeChangedEvent(list(self._mode_options.keys())[group], mode))
+        await self._comm.send_event(ModeChangedEvent(list(self._mode_options.keys())[group], mode))
 
     async def get_mode(self, group: int = 0, **kwargs: Any) -> str:
         """Get currently set mode.

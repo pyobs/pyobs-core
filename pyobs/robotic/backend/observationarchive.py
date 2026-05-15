@@ -60,7 +60,7 @@ class BackendObservationArchive(ObservationArchive):
             urljoin(self._url, "/api/observations/"), params={"start": Time.now().isot, "state": "pending"}
         )
         observations = res.json()
-        return ObservationList.model_validate(observations)
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
@@ -75,13 +75,11 @@ class BackendObservationArchive(ObservationArchive):
         req = self._session.get(
             urljoin(self._url, "/api/observations/"), params={"start": time.isot, "end": time.isot, "state": "pending"}
         )
-        print({"start": time.isot, "end": time.isot, "state": "pending"})
-        print(req.text)
         observations = req.json()
         if len(observations) > 0:
             if len(observations) > 1:
                 log.warning("More than one active scheduled task.")
-            obs = Observation.model_validate(observations[0])
+            obs = self.pyobs_model_validate(Observation, observations[0])
             if task_archive is not None:
                 await obs.fetch_task(task_archive)
             return obs
@@ -103,7 +101,7 @@ class BackendObservationArchive(ObservationArchive):
         )
         observations = res.json()
         if len(observations) == 1:
-            return Observation.model_validate(observations[0])
+            return self.pyobs_model_validate(Observation, observations[0])
         return None
 
     async def update_observation(self, observation: Observation) -> None:
@@ -126,7 +124,7 @@ class BackendObservationArchive(ObservationArchive):
         """
         res = self._session.get(urljoin(self._url, f"/api/tasks/{task.id}/observations/"))
         observations = res.json()
-        return ObservationList.model_validate(observations)
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.
@@ -143,7 +141,7 @@ class BackendObservationArchive(ObservationArchive):
             urljoin(self._url, "/api/observations/"), params={"start": start.isoformat(), "end": end.isoformat()}
         )
         observations = res.json()
-        return ObservationList.model_validate(observations)
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 
 __all__ = ["BackendObservationArchive"]

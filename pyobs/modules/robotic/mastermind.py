@@ -60,9 +60,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         await Module.open(self)
 
         # subscribe to events
-        if self.comm:
-            await self.comm.register_event(TaskStartedEvent)
-            await self.comm.register_event(TaskFinishedEvent)
+        if self._comm:
+            await self._comm.register_event(TaskStartedEvent)
+            await self._comm.register_event(TaskFinishedEvent)
 
         # start
         self._running = True
@@ -135,8 +135,9 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             eta = now + self._task.duration * u.second
 
             # send event and change state
-            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self._comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
             observation.state = ObservationState.IN_PROGRESS
+            observation.start = now
             await self._observation_archive.update_observation(observation)
 
             # run task in thread
@@ -145,14 +146,16 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 await self._task_runner.run_task(self._task)
             except:
                 # something went wrong
-                log.warning("Task %s failed.", self._task.name)
+                log.exception("Task %s failed.", self._task.name)
+                observation.end = now
                 observation.state = ObservationState.FAILED
                 await self._observation_archive.update_observation(observation)
                 self._task = None
                 continue
 
             # send event and change state
-            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self._comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            observation.end = now
             observation.state = ObservationState.COMPLETED
             await self._observation_archive.update_observation(observation)
 

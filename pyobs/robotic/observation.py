@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Any, TYPE_CHECKING
 from astropydantic import AstroPydanticTime  # type: ignore
 
+from pyobs.object import Object
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
 from pyobs.utils.serialization import BaseModel

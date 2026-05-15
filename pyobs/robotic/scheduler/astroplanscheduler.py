@@ -149,7 +149,7 @@ class AstroplanScheduler(TaskScheduler):
         transitioner = astroplan.Transitioner()
 
         # create scheduler
-        scheduler = astroplan.PriorityScheduler(constraints, self.observer, transitioner=transitioner)
+        scheduler = astroplan.PriorityScheduler(constraints, self._observer, transitioner=transitioner)
 
         # run scheduler
         logging.disable(logging.WARNING)

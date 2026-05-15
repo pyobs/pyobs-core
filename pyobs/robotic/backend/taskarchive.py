@@ -46,7 +46,7 @@ class BackendTaskArchive(TaskArchive):
             List of schedulable tasks
         """
         req = self._session.get(urljoin(self._url, "/api/tasks/"))
-        return [Task.model_validate(task) for task in req.json()]
+        return [self.pyobs_model_validate(Task, task) for task in req.json()]
 
     async def get_task(self, id: Any) -> Task:
         """Returns the task with the given ID.
@@ -55,7 +55,7 @@ class BackendTaskArchive(TaskArchive):
             Task with given ID.
         """
         req = self._session.get(urljoin(self._url, f"/api/tasks/{id}/"))
-        return Task.model_validate(req.json())
+        return self.pyobs_model_validate(Task, req.json())
 
 
 __all__ = ["BackendTaskArchive"]

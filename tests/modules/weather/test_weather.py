@@ -16,48 +16,48 @@ from pyobs.utils.time import Time
 @pytest.mark.asyncio
 async def test_open() -> None:
     weather = Weather("")
-    weather.comm = DummyComm()
-    weather.comm.register_event = AsyncMock()
+    weather._comm = DummyComm()
+    weather._comm.register_event = AsyncMock()
 
     Module.open = AsyncMock()
 
     await weather.open()
 
-    weather.comm.register_event.assert_called()
+    weather._comm.register_event.assert_called()
 
-    assert weather.comm.register_event.await_args_list[0][0][0] == BadWeatherEvent
-    assert weather.comm.register_event.await_args_list[1][0][0] == GoodWeatherEvent
+    assert weather._comm.register_event.await_args_list[0][0][0] == BadWeatherEvent
+    assert weather._comm.register_event.await_args_list[1][0][0] == GoodWeatherEvent
 
 
 @pytest.mark.asyncio
 async def test_start() -> None:
     weather = Weather("")
-    weather.comm = DummyComm()
-    weather.comm.send_event = AsyncMock()
+    weather._comm = DummyComm()
+    weather._comm.send_event = AsyncMock()
 
     weather._active = False
     weather._is_good = False
 
     await weather.start()
 
-    assert weather._active == True
-    assert isinstance(weather.comm.send_event.await_args[0][0], BadWeatherEvent)
+    assert weather._active is True
+    assert isinstance(weather._comm.send_event.await_args[0][0], BadWeatherEvent)
 
 
 @pytest.mark.asyncio
 async def test_stop() -> None:
     weather = Weather("")
     await weather.stop()
-    assert weather._active == False
+    assert weather._active is False
 
 
 @pytest.mark.asyncio
 async def test_is_running() -> None:
     weather = Weather("")
-    await weather.is_running() == False
+    assert await weather.is_running() is False
 
     weather._active = True
-    await weather.is_running() == True
+    assert await weather.is_running() is True
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_update_invalid_url(caplog) -> None:
     with caplog.at_level(logging.WARN):
         await weather._update()
 
-    assert weather._weather.is_good == False
+    assert weather._weather.is_good is False
     assert caplog.messages[0] == "Request failed: Could not connect to weather station."
 
     weather._api.get_current_status.assert_called_once_with()
@@ -153,14 +153,14 @@ async def test_update_invalid_response(caplog) -> None:
     with caplog.at_level(logging.WARN):
         await weather._update()
 
-    assert weather._weather.is_good == False
+    assert weather._weather.is_good is False
     assert caplog.messages[0] == "Request failed: Good parameter not found in response from weather station."
 
 
 @pytest.mark.asyncio
 async def test_update_good_weather(caplog) -> None:
     weather = Weather("")
-    weather.comm.send_event = AsyncMock()
+    weather._comm.send_event = AsyncMock()
     weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": True})
@@ -169,14 +169,14 @@ async def test_update_good_weather(caplog) -> None:
         await weather._update()
 
     assert caplog.messages[0] == "Weather is now good."
-    assert isinstance(weather.comm.send_event.await_args[0][0], GoodWeatherEvent)
+    assert isinstance(weather._comm.send_event.await_args[0][0], GoodWeatherEvent)
 
 
 @pytest.mark.asyncio
 async def test_update_bad_weather(caplog) -> None:
     weather = Weather("")
     weather._weather.is_good = True
-    weather.comm.send_event = AsyncMock()
+    weather._comm.send_event = AsyncMock()
     weather._active = True
 
     weather._api.get_current_status = AsyncMock(return_value={"good": False})
@@ -185,7 +185,7 @@ async def test_update_bad_weather(caplog) -> None:
         await weather._update()
 
     assert caplog.messages[0] == "Weather is now bad."
-    assert isinstance(weather.comm.send_event.await_args[0][0], BadWeatherEvent)
+    assert isinstance(weather._comm.send_event.await_args[0][0], BadWeatherEvent)
 
 
 def test_calc_system_init_eta() -> None:
@@ -200,11 +200,11 @@ def test_calc_system_init_eta() -> None:
 async def test_is_weather_good() -> None:
     weather = Weather("")
     weather._active = False
-    assert await weather.is_weather_good() == True
+    assert await weather.is_weather_good() is True
 
     weather._active = True
 
-    assert await weather.is_weather_good() == False
+    assert await weather.is_weather_good() is False
 
 
 @pytest.mark.asyncio

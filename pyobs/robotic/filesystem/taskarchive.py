@@ -46,8 +46,8 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
         Returns:
             List of schedulable tasks
         """
-        files = await self.vfs.find(self._path, f"*.{self._extension}")
-        return [await self._load_task_from_file(os.path.join(self._path, f), self.vfs) for f in files]
+        files = await self._vfs.find(self._path, f"*.{self._extension}")
+        return [await self._load_task_from_file(os.path.join(self._path, f), self._vfs) for f in files]
 
     async def get_task(self, id: Any) -> Task:
         """Returns the task with the given ID.
@@ -55,7 +55,7 @@ class FileSystemTaskArchive(TaskArchive, metaclass=abc.ABCMeta):
         Returns:
             Task with given ID.
         """
-        return await self._load_task_from_file(os.path.join(self._path, f"{id}.{self._extension}"), self.vfs)
+        return await self._load_task_from_file(os.path.join(self._path, f"{id}.{self._extension}"), self._vfs)
 
 
 class YamlTaskArchive(FileSystemTaskArchive):

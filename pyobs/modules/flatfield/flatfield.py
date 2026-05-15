@@ -104,9 +104,9 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             log.warning("Either telescope, camera or filters do not exist or are not of correct type at the moment.")
 
             # subscribe to events
-            if self.comm:
-                await self.comm.register_event(BadWeatherEvent, self._abort_weather)
-                await self.comm.register_event(RoofClosingEvent, self._abort_weather)
+            if self._comm:
+                await self._comm.register_event(BadWeatherEvent, self._abort_weather)
+                await self._comm.register_event(RoofClosingEvent, self._abort_weather)
 
     async def close(self) -> None:
         """Close module."""

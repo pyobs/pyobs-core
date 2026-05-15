@@ -61,7 +61,7 @@ class FlatFieldScheduler(Module, IRunnable):
         self._scheduler = Scheduler(
             functions,
             prio,
-            self.observer,
+            self._observer,
             min_exptime=min_exptime,
             max_exptime=max_exptime,
             timespan=timespan,

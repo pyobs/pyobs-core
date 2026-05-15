@@ -98,9 +98,9 @@ class SimWorld(Object):
     @property
     def sun_alt(self) -> float:
         """Returns current solar altitude."""
-        if self.observer is None:
+        if self._observer is None:
             raise ValueError("No observer given.")
-        return float(self.observer.sun_altaz(self.time).alt.degree)
+        return float(self._observer.sun_altaz(self.time).alt.degree)
 
 
 __all__ = ["SimWorld"]

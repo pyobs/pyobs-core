@@ -84,7 +84,7 @@ class Telegram(Module):
 
         # load storage file
         try:
-            self._application.bot_data["storage"] = await self.vfs.read_yaml("/pyobs/telegram.yaml")
+            self._application.bot_data["storage"] = await self._vfs.read_yaml("/pyobs/telegram.yaml")
         except FileNotFoundError:
             self._application.bot_data["storage"] = {}
 
@@ -96,7 +96,7 @@ class Telegram(Module):
         await self._application.start()
 
         # listen to log events
-        await self.comm.register_event(LogEvent, self._process_log_entry)
+        await self._comm.register_event(LogEvent, self._process_log_entry)
 
     async def close(self) -> None:
         """Close module."""
@@ -115,7 +115,7 @@ class Telegram(Module):
         Args:
             context: Telegram context.
         """
-        await self.vfs.write_yaml("/pyobs/telegram.yaml", context.bot_data["storage"])
+        await self._vfs.write_yaml("/pyobs/telegram.yaml", context.bot_data["storage"])
 
     @staticmethod
     def _is_user_authorized(context: CallbackContext[Any, Any, Any, Any], user_id: int) -> bool:
@@ -201,7 +201,7 @@ class Telegram(Module):
             return
 
         # create buttons for all modules
-        keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self.comm.clients] + [
+        keyboard = [[InlineKeyboardButton(c, callback_data=c)] for c in self._comm.clients] + [
             [InlineKeyboardButton("Cancel", callback_data="cancel")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -483,7 +483,7 @@ class Telegram(Module):
             return
 
         # list all modules
-        message = "Available modules:\n" + "\n".join(["- " + c for c in self.comm.clients])
+        message = "Available modules:\n" + "\n".join(["- " + c for c in self._comm.clients])
         await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
     async def _command_loglevel(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:

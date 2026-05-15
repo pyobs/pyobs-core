@@ -247,7 +247,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
         # apply offsets
         try:
-            if await self._apply(image, telescope, self.location):
+            if await self._apply(image, telescope, self._location):
                 self._set_loop_state(True)
                 log.info("Finished image.")
             else:

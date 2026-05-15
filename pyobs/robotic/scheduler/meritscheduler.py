@@ -55,8 +55,8 @@ class MeritScheduler(TaskScheduler):
         self._global_constraints: list[Constraint] = [Constraint.create(self, c) for c in constraints]
 
     async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
-        archive = ObservationArchiveEvolution(self.observer, self._obs_archive)
-        data = DataProvider(self.observer, archive)
+        archive = ObservationArchiveEvolution(self._observer, self._obs_archive)
+        data = DataProvider(self._observer, archive)
 
         # schedule from start to end
         async for task in self.schedule_in_interval(tasks, start, end, data):

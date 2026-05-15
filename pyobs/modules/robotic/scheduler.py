@@ -181,6 +181,8 @@ class Scheduler(Module, IStartStop, IRunnable):
         return sorted(additional1), sorted(additional2)
 
     async def _schedule_worker(self) -> None:
+        await asyncio.sleep(5)
+
         # run forever
         while True:
             # need update?

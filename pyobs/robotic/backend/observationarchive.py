@@ -53,7 +53,11 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return ObservationList([])
+        res = self._session.post(
+            urljoin(self._url, "/api/observations/"), {"start": Time.now().isot, "state": "pending"}
+        )
+        observations = res.json()
+        return ObservationList.model_validate(observations)
 
     async def get_task(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.

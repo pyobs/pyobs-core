@@ -35,7 +35,7 @@ class TaskArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_task(self, id: Any) -> Task:
+    async def get_task(self, id: Any) -> Task | None:
         """Returns the task with the given ID.
 
         Returns:

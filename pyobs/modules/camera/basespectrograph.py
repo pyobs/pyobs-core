@@ -55,7 +55,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         self.expose_abort = asyncio.Event()
 
         # check
-        if self.comm is None:
+        if self._comm is None:
             log.warning("No comm module given, will not be able to signal new images!")
 
     @abstractmethod
@@ -140,14 +140,14 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         # upload file
         try:
             log.info("Uploading spectrum to file server...")
-            await self.vfs.write_fits(filename, hdulist)
+            await self._vfs.write_fits(filename, hdulist)
         except FileNotFoundError:
             raise ValueError("Could not upload spectrum.")
 
         # broadcast image path
-        if broadcast and self.comm:
+        if broadcast and self._comm:
             log.info("Broadcasting spectrum ID...")
-            await self.comm.send_event(NewSpectrumEvent(filename))
+            await self._comm.send_event(NewSpectrumEvent(filename))
 
     @timeout(10)
     async def grab_data(self, broadcast: bool = True, **kwargs: Any) -> str:
@@ -186,7 +186,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
         # send event, if it changed
         if self._spectrograph_status != status:
-            await self.comm.send_event(ExposureStatusChangedEvent(last=self._spectrograph_status, current=status))
+            await self._comm.send_event(ExposureStatusChangedEvent(last=self._spectrograph_status, current=status))
 
         # set it
         self._spectrograph_status = status

@@ -424,9 +424,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._cache[image.header["FNAME"]] = image.to_bytes()
 
         # broadcast image path
-        if broadcast and self.comm:
+        if broadcast and self._comm:
             log.info("Broadcasting image ID...")
-            await self.comm.send_event(NewImageEvent(filename, image_type))
+            await self._comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
         return image, filename

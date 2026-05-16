@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -12,14 +12,14 @@ from pyobs.utils.enums import MotionStatus
 async def test_open(mocker) -> None:
     mocker.patch("pyobs.modules.roof.BaseRoof.open")
     roof = DummyRoof()
-    roof.comm.register_event = AsyncMock()
+    roof._comm.register_event = AsyncMock()
 
     await roof.open()
 
     pyobs.modules.roof.BaseRoof.open.assert_called_once()
 
-    assert roof.comm.register_event.call_args_list[0][0][0] == RoofOpenedEvent
-    assert roof.comm.register_event.call_args_list[1][0][0] == RoofClosingEvent
+    assert roof._comm.register_event.call_args_list[0][0][0] == RoofOpenedEvent
+    assert roof._comm.register_event.call_args_list[1][0][0] == RoofClosingEvent
 
 
 @pytest.mark.asyncio
@@ -28,12 +28,12 @@ async def test_init(mocker) -> None:
 
     roof = DummyRoof()
     roof._change_motion_status = AsyncMock()
-    roof.comm.send_event = AsyncMock()
+    roof._comm.send_event = AsyncMock()
 
     await roof.init()
 
     roof._change_motion_status.assert_awaited_with(MotionStatus.IDLE)
-    roof.comm.send_event(RoofOpenedEvent())
+    roof._comm.send_event(RoofOpenedEvent())
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_park(mocker) -> None:
     roof._open_percentage = 100
 
     roof._change_motion_status = AsyncMock()
-    roof.comm.send_event = AsyncMock()
+    roof._comm.send_event = AsyncMock()
 
     await roof.park()
 
@@ -86,7 +86,7 @@ async def test_move_roof_abort(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_move_roof_open(mocker) -> None:
+async def test_move_roof_percentage(mocker) -> None:
     mocker.patch("asyncio.sleep")
 
     roof = DummyRoof()

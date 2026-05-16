@@ -138,7 +138,7 @@ class Kiosk(Module, IStartStop):
 
             # download image
             try:
-                image = await self.vfs.read_image(filename)
+                image = await self._vfs.read_image(filename)
             except FileNotFoundError:
                 continue
 

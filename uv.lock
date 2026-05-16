@@ -3108,7 +3108,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.41.0"
+version = "1.42.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -3139,6 +3139,7 @@ dependencies = [
 full = [
     { name = "asyncinotify" },
     { name = "ccdproc" },
+    { name = "filelock" },
     { name = "lmfit" },
     { name = "matrix-nio" },
     { name = "opencv-python-headless" },
@@ -3196,6 +3197,7 @@ requires-dist = [
     { name = "colour", specifier = ">=0.1.5,<0.2" },
     { name = "dacite", specifier = ">=1.9.2" },
     { name = "dbus-next", specifier = ">=0.2.3,<0.3" },
+    { name = "filelock", marker = "extra == 'full'", specifier = ">=3.28.0" },
     { name = "influxdb-client", specifier = ">=1.49.0" },
     { name = "lmfit", marker = "extra == 'full'", specifier = ">=1.3.3,<2" },
     { name = "matrix-nio", marker = "extra == 'full'", specifier = ">=0.25.2" },

@@ -18,12 +18,12 @@ def test_init(mocker):
 @pytest.mark.asyncio
 async def test_open(mocker):
     save = Save(broadcast=True)
-    save.comm = Comm()
+    save._comm = Comm()
 
-    mocker.patch.object(save.comm, "register_event")
+    mocker.patch.object(save._comm, "register_event")
 
     await save.open()
-    save.comm.register_event.assert_called_once_with(NewImageEvent)
+    save._comm.register_event.assert_called_once_with(NewImageEvent)
 
 
 @pytest.mark.asyncio
@@ -33,14 +33,14 @@ async def test_call(mocker):
     mocker.patch.object(image, "format_filename", return_value="image.fits")
 
     save = Save()
-    save.comm = Comm()
-    mocker.patch.object(save.comm, "send_event")
-    save.vfs = VirtualFileSystem()
-    mocker.patch.object(save.vfs, "write_image")
+    save._comm = Comm()
+    mocker.patch.object(save._comm, "send_event")
+    save._vfs = VirtualFileSystem()
+    mocker.patch.object(save._vfs, "write_image")
 
     await save(image)
 
-    save.vfs.write_image.assert_called_once_with("image.fits", image)
+    save._vfs.write_image.assert_called_once_with("image.fits", image)
 
     # todo: fix
     # image_event = save.comm.send_event.call_args[0][0]

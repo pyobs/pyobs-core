@@ -15,13 +15,13 @@ async def test_aftertime_merit() -> None:
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     time = Time.now()
-    task = Task(1, "1", 100)
+    task = Task(id=1, name="1", duration=100)
 
-    merit = AfterTimeMerit(time)
+    merit = AfterTimeMerit(time=time)
     assert await merit(time, task, data) == 1.0
 
-    merit = AfterTimeMerit(time)
+    merit = AfterTimeMerit(time=time)
     assert await merit(time - TimeDelta(5.0 * u.second), task, data) == 0.0
 
-    merit = AfterTimeMerit(time)
+    merit = AfterTimeMerit(time=time)
     assert await merit(time + TimeDelta(5.0 * u.second), task, data) == 1.0

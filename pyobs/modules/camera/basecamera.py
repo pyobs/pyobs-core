@@ -75,7 +75,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         )
 
         # check
-        if self.comm is None:
+        if self._comm is None:
             log.warning("No comm module given, will not be able to signal new images!")
 
         # store
@@ -100,9 +100,9 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         await Module.open(self)
 
         # subscribe to events
-        if self.comm:
-            await self.comm.register_event(NewImageEvent)
-            await self.comm.register_event(ExposureStatusChangedEvent)
+        if self._comm:
+            await self._comm.register_event(NewImageEvent)
+            await self._comm.register_event(ExposureStatusChangedEvent)
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
@@ -150,7 +150,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # send event, if it changed
         if self._camera_status != status:
-            await self.comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
+            await self._comm.send_event(ExposureStatusChangedEvent(last=self._camera_status, current=status))
 
         # set it
         self._camera_status = status
@@ -304,14 +304,14 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # upload file
         try:
             log.info("Uploading image to file server...")
-            await self.vfs.write_image(filename, image)
+            await self._vfs.write_image(filename, image)
         except FileNotFoundError:
             raise ValueError("Could not upload image.")
 
         # broadcast image path
-        if broadcast and self.comm:
+        if broadcast and self._comm:
             log.info("Broadcasting image ID...")
-            await self.comm.send_event(NewImageEvent(filename, image_type))
+            await self._comm.send_event(NewImageEvent(filename, image_type))
 
         # return image and unique
         self._exposure = None

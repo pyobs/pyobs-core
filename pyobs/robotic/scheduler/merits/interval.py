@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from astropy.time import Time, TimeDelta
 import astropy.units as u
+from pydantic import Field
 
 from .merit import Merit
-from ...observation import ObservationState
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
@@ -14,16 +14,18 @@ if TYPE_CHECKING:
 class IntervalMerit(Merit):
     """Merit function that enforces an interval between observations."""
 
-    def __init__(self, interval: float, **kwargs: Any):
-        super().__init__()
-        self._interval = interval * u.minute
+    interval: float = Field(ge=0.0, le=31536000.0, default=0.0)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
+        from ...observation import ObservationState
+
         # get all observations for task
         observations = await data.archive.observations_for_task(task)
 
         # filter for those in the given interval that were successful
-        observations = observations.filter(after=time - TimeDelta(self._interval), state=ObservationState.COMPLETED)
+        observations = observations.filter(
+            after=time - TimeDelta(self.interval * u.second), state=ObservationState.COMPLETED
+        )
 
         # if there is an observation in the given interval, return 0.0
         return 0.0 if len(observations) > 0 else 1.0

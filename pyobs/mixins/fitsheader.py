@@ -69,9 +69,9 @@ class FitsHeaderMixin:
 
         # we can only do this with a comm module
         module = cast(Module, self)
-        if module.comm:
+        if module._comm:
             # get clients that provide fits headers
-            clients = await module.comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
+            clients = await module._comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
 
             # create and run a threads in which the fits headers are fetched
             for client in clients:
@@ -169,21 +169,21 @@ class FitsHeaderMixin:
         hdr["EQUINOX"] = (2000.0, "Equinox of celestial coordinate system")
 
         # do we have a location?
-        if module.location is not None:
-            loc = module.location
+        if module._location is not None:
+            loc = module._location
             # add location of telescope
             hdr["LONGITUD"] = (float(loc.lon.degree), "Longitude of the telescope [deg E]")
             hdr["LATITUDE"] = (float(loc.lat.degree), "Latitude of the telescope [deg N]")
             hdr["HEIGHT"] = (float(loc.height.value), "Altitude of the telescope [m]")
 
             # add local sidereal time
-            if module.observer is not None:
-                lst = module.observer.local_sidereal_time(date_obs)
+            if module._observer is not None:
+                lst = module._observer.local_sidereal_time(date_obs)
                 hdr["LST"] = (lst.to_string(unit=u.hour, sep=":"), "Local sidereal time")
 
         # date of night this observation is in
         if self._fitsheadermixin_night_obs:
-            hdr["DAY-OBS"] = (date_obs.night_obs(module.observer).strftime("%Y-%m-%d"), "Night of observation")
+            hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")
         else:
             hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
 
@@ -209,7 +209,7 @@ class FitsHeaderMixin:
             # try to load it
             try:
                 # load cache
-                cache = await module.vfs.read_yaml(self._fitsheadermixin_cache)
+                cache = await module._vfs.read_yaml(self._fitsheadermixin_cache)
 
                 # get new number
                 if cache is not None and "framenum" in cache:
@@ -224,7 +224,7 @@ class FitsHeaderMixin:
 
             # write file
             try:
-                await module.vfs.write_yaml(
+                await module._vfs.write_yaml(
                     self._fitsheadermixin_cache, {"night": night, "framenum": self._fitsheadermixin_frame_number}
                 )
             except (FileNotFoundError, ValueError):

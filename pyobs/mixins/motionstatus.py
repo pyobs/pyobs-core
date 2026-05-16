@@ -25,8 +25,8 @@ class MotionStatusMixin:
 
     async def open(self) -> None:
         # subscribe to events
-        if isinstance(self, Module) and self.comm:
-            await self.comm.register_event(MotionStatusChangedEvent)
+        if isinstance(self, Module) and self._comm:
+            await self._comm.register_event(MotionStatusChangedEvent)
 
     async def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
         """Change motion status and send event,
@@ -80,7 +80,7 @@ class MotionStatusMixin:
             # send event
             if not isinstance(self, Module):
                 raise ValueError("This is not a module.")
-            await self.comm.send_event(
+            await self._comm.send_event(
                 MotionStatusChangedEvent(status=this.__motion_status, interfaces=this.__motion_status_single)
             )
 

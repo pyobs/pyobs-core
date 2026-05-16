@@ -46,7 +46,7 @@ class Trigger(Module, IAutonomous):
 
         # register them
         for event in events:
-            await self.comm.register_event(event, self._handle_event)
+            await self._comm.register_event(event, self._handle_event)
 
     async def start(self, **kwargs: Any) -> None:
         """Starts a service."""
@@ -82,7 +82,7 @@ class Trigger(Module, IAutonomous):
 
                 # get proxy
                 try:
-                    proxy = await self.comm.proxy(trigger["module"])
+                    proxy = await self._comm.proxy(trigger["module"])
 
                     # call it
                     await proxy.execute(trigger["method"])

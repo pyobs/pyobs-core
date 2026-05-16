@@ -43,14 +43,14 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
         # calculate Alt/Az position of sun
         now = Time.now()
-        if self.observer is None:
+        if self._observer is None:
             raise RuntimeError("Observer not initialized.")
-        sun = self.observer.sun_altaz(now)
+        sun = self._observer.sun_altaz(now)
         log.info("Sun is currently located at alt=%.2f°, az=%.2f°", sun.alt.degree, sun.az.degree)
 
         # get sweet spot for flat-fielding
         altaz = SkyCoord(
-            alt=80 * u.deg, az=sun.az + 180 * u.degree, obstime=now, location=self.observer.location, frame="altaz"
+            alt=80 * u.deg, az=sun.az + 180 * u.degree, obstime=now, location=self._observer.location, frame="altaz"
         )
         log.info("Sweet spot for flat fielding is at alt=80°, az=%.2f°", altaz.az.degree)
 

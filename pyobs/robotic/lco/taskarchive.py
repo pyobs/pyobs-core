@@ -1,11 +1,15 @@
+import asyncio
 import logging
+import astropy.units as u
 from typing import Dict, Optional, Any
+from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from .portal import Portal
+from ._portal import Portal
 from .task import LcoTask
 from .. import Task
+from ..scripts import Script
 
 log = logging.getLogger(__name__)
 
@@ -31,11 +35,9 @@ class LcoTaskArchive(TaskArchive):
         TaskArchive.__init__(self, **kwargs)
 
         # portal
-        self._portal = Portal(url, token)
+        self._portal = Portal(url, token, "", "", "")
 
         # store stuff
-        self._url = url
-        self._token = token
         instrument_type = [instrument_type] if isinstance(instrument_type, str) else instrument_type
         self._instrument_type = [it.lower() for it in instrument_type]
 
@@ -44,6 +46,31 @@ class LcoTaskArchive(TaskArchive):
 
         # task list
         self._tasks: Dict[str, LcoTask] = {}
+
+        # update task
+        self.add_background_task(self._update_worker)
+
+    async def _update_worker(self) -> None:
+        # time of last change in blocks
+        last_change = None
+
+        # run forever
+        while True:
+            # got new time of last change?
+            t = await self._portal.last_changed()
+            more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
+            if last_change is None or last_change < t and not more_1day:
+                try:
+                    last_change = t
+                    if self._on_tasks_changed is not None:
+                        asyncio.create_task(self._on_tasks_changed())
+                except asyncio.CancelledError:
+                    return
+                except:
+                    log.exception("Something went wrong when updating schedule.")
+
+            # sleep a little
+            await asyncio.sleep(5)
 
     async def last_changed(self) -> Optional[Time]:
         """Returns time when last time any blocks changed."""
@@ -58,58 +85,33 @@ class LcoTaskArchive(TaskArchive):
         return self._last_changed
 
     async def get_schedulable_tasks(self) -> list[Task]:
-        """Returns list of schedulable tasks.
+        """Returns a list of schedulable tasks.
 
         Returns:
             List of schedulable tasks
         """
 
         # get data
-        schedulable = await self._portal.schedulable_requests()
+        schedulable_requests = await self._portal.schedulable_requests()
 
         # get proposal priorities
         proposals = await self._portal.proposals()
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
-        # loop all request groups
-        tasks: list[Task] = []
-        for group in schedulable:
-            # get base priority, which is tac_priority * ipp_value
-            proposal = group["proposal"]
-            if proposal not in tac_priorities:
-                log.error('Could not find proposal "%s".', proposal)
-                continue
-            base_priority = group["ipp_value"] * tac_priorities[proposal]
-
-            # loop all requests in group
-            for req in group["requests"]:
-                # still pending?
-                if req["state"] != "PENDING":
+        # to LcoTasks
+        all_tasks: list[Task] = []
+        for schedulable_request in schedulable_requests:
+            tasks = LcoTask.from_schedulable_request(schedulable_request, Script())
+            for task in tasks:
+                task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
+                if task.request.state == "PENDING":
                     continue
-
-                # just take first config and ignore the rest
-                cfg = req["configurations"][0]
-
-                # get instrument and check, whether we schedule it
-                instrument = cfg["instrument_type"]
-                if instrument.lower() not in self._instrument_type:
+                if task.request.configurations[0].instrument_type.lower() not in self._instrument_type:
                     continue
+                all_tasks.append(task)
 
-                # priority is base_priority times duration in minutes
-                # priority = base_priority * duration.value / 60.
-                priority = base_priority
-
-                # create task
-                task = LcoTask(
-                    id=req["id"],
-                    name=group["name"],
-                    priority=priority,
-                    config={"request": req},
-                )
-                tasks.append(task)
-
-        # return blocks
-        return tasks
+        # return tasks
+        return all_tasks
 
 
 __all__ = ["LcoTaskArchive"]

@@ -89,7 +89,7 @@ class Save(ImageProcessor):
         await ImageProcessor.open(self)
 
         if self._broadcast and self._comm is not None:
-            await self._comm.register_event(NewImageEvent)
+            await self.comm.register_event(NewImageEvent)
 
     async def __call__(self, image: Image) -> Image:
         """Broadcast image.
@@ -102,9 +102,9 @@ class Save(ImageProcessor):
         """
 
         filename = image.format_filename(self._formatter)
-        await self._vfs.write_image(filename, image)
+        await self.vfs.write_image(filename, image)
         if self._broadcast:
-            await self._comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header["IMAGETYP"])))
+            await self.comm.send_event(NewImageEvent(filename, image_type=ImageType(image.header["IMAGETYP"])))
         return image
 
 

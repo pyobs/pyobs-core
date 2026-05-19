@@ -157,6 +157,9 @@ class Portal(Object):
         self.enclosure = enclosure
         self.telescope = telescope
 
+        timeout = aiohttp.ClientTimeout(total=30)
+        self._session = aiohttp.ClientSession(timeout=timeout, headers=self.headers)
+
     async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
         """Do a GET request on the portal.
 
@@ -171,13 +174,10 @@ class Portal(Object):
             TimeoutError if the call timed out.
         """
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                urljoin(self.url, path), headers=self.headers, timeout=timeout, params=params
-            ) as response:
-                if response.status != 200:
-                    raise RuntimeError("Invalid response from portal: " + await response.text())
-                return await response.json()
+        async with self._session.get(urljoin(self.url, path), params=params) as response:
+            if response.status != 200:
+                raise RuntimeError("Invalid response from portal: " + await response.text())
+            return await response.json()
 
     async def last_changed(self) -> Time:
         t = await self._get("/api/last_changed/")
@@ -248,10 +248,9 @@ class Portal(Object):
 
         # cancel schedule
         log.info("Deleting all scheduled tasks after %s...", start.isot)
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=params, headers=headers, timeout=10) as response:
-                if response.status != 200:
-                    log.error("Could not cancel schedule: %s", await response.text())
+        async with self._session.post(url, json=params, headers=headers) as response:
+            if response.status != 200:
+                log.error("Could not cancel schedule: %s", await response.text())
 
     async def submit_observations(self, observations: list[dict[str, Any]]) -> None:
         """Submit observations.
@@ -269,11 +268,10 @@ class Portal(Object):
         headers = {"Authorization": "Token " + self.token, "Content-Type": "application/json; charset=utf8"}
 
         # submit observations
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=observations, headers=headers, timeout=10) as response:
-                if response.status != 201:
-                    log.error("Could not submit observations: %s", await response.text())
-                data = await response.json()
+        async with self._session.post(url, json=observations, headers=headers) as response:
+            if response.status != 201:
+                log.error("Could not submit observations: %s", await response.text())
+            data = await response.json()
 
         # log
         log.info("%d observations created.", data["num_created"])
@@ -296,10 +294,9 @@ class Portal(Object):
 
         # do request
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.patch(url, json=status, headers=self.headers, timeout=10) as response:
-                    if response.status != 200:
-                        log.error("Could not update configuration status: %s", await response.text())
+            async with self._session.patch(url, json=status) as response:
+                if response.status != 200:
+                    log.error("Could not update configuration status: %s", await response.text())
 
         except asyncio.TimeoutError:
             # schedule re-attempt for sending

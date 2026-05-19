@@ -16,12 +16,12 @@ class LogRunner(Script):
 
     expression: str
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
+        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
 
         # log it
         log.info(value)

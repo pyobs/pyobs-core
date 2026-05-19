@@ -144,7 +144,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if filename is None:
                 log.warning("Did not receive an image.")
                 continue
-            image = await self._vfs.read_image(filename)
+            image = await self.vfs.read_image(filename)
 
             # get offset
             log.info("Analysing image...")

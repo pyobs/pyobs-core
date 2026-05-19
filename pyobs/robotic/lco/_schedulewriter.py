@@ -79,7 +79,7 @@ class LcoScheduleWriter(Object):
         observations = []
         for scheduled_task in scheduled_tasks:
             # get request
-            request = cast(LcoTask, scheduled_task.task).config["request"]
+            request = cast(LcoTask, scheduled_task.task).request
 
             # create observation
             obs = {
@@ -88,27 +88,27 @@ class LcoScheduleWriter(Object):
                 "telescope": self._telescope,
                 "start": scheduled_task.start.isot,
                 "end": scheduled_task.end.isot,
-                "request": request["id"],
+                "request": request.id,
                 "configuration_statuses": [],
             }
 
             # add configuration statuses
-            for config in request["configurations"]:
+            for config in request.configurations:
                 # get instrument
                 instruments = self._configdb.get_instrument_by_type(
-                    config["instrument_type"], site=self._site, enclosure=self._enclosure, telescope=self._telescope
+                    config.instrument_type, site=self._site, enclosure=self._enclosure, telescope=self._telescope
                 )
                 if len(instruments) == 0:
-                    log.warning(f"Instrument type {config['instrument_type']} not found. Skipping configuration.")
+                    log.warning(f"Instrument type {config.instrument_type} not found. Skipping configuration.")
                     continue
                 if len(instruments) > 1:
-                    log.warning(f"More than one instrument of type {config['instrument_type']} found. Using first one.")
+                    log.warning(f"More than one instrument of type {config.instrument_type} found. Using first one.")
                 instrument = instruments[0].instrument
 
                 # add configuration status
                 obs["configuration_statuses"].append(
                     {
-                        "configuration": config["id"],
+                        "configuration": config.id,
                         "instrument_name": instrument.code,
                         "guide_camera_name": instrument.autoguider_camera.code,
                     }

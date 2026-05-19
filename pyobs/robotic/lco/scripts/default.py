@@ -43,7 +43,7 @@ class LcoDefaultScript(LcoScript):
     acquisition: str | None = None
 
     async def _get_proxies(
-        self, data: TaskData
+        self,
     ) -> tuple[
         IRoof | None, ITelescope | None, ICamera | None, IFilters | None, IAutoGuiding | None, IAcquisition | None
     ]:
@@ -55,13 +55,12 @@ class LcoDefaultScript(LcoScript):
         Raises:
             ValueError: Could not get proxies for all modules
         """
-        comm = self._comm(data)
-        roof = await comm.safe_proxy(self.roof, IRoof)
-        telescope = await comm.safe_proxy(self.telescope, ITelescope)
-        camera = await comm.safe_proxy(self.camera, ICamera)
-        filters = await comm.safe_proxy(self.filters, IFilters)
-        autoguider = await comm.safe_proxy(self.autoguider, IAutoGuiding)
-        acquisition = await comm.safe_proxy(self.acquisition, IAcquisition)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        camera = await self.comm.safe_proxy(self.camera, ICamera)
+        filters = await self.comm.safe_proxy(self.filters, IFilters)
+        autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
         return roof, telescope, camera, filters, autoguider, acquisition
 
     @property
@@ -72,7 +71,7 @@ class LcoDefaultScript(LcoScript):
             return ImageType.DARK
         return ImageType.OBJECT
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -80,7 +79,7 @@ class LcoDefaultScript(LcoScript):
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies(data)
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # need camera
         if camera is None:
@@ -116,7 +115,7 @@ class LcoDefaultScript(LcoScript):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
 
         Raises:
@@ -124,7 +123,7 @@ class LcoDefaultScript(LcoScript):
         """
 
         # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies(data)
+        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
 
         # got a target?
         cfg = self.request.configurations[0]
@@ -162,7 +161,7 @@ class LcoDefaultScript(LcoScript):
         # task archive must be LCO
         from pyobs.robotic.lco import LcoObservationArchive
 
-        if not isinstance(data.observation_archive, LcoObservationArchive):
+        if data is None or not isinstance(data.observation_archive, LcoObservationArchive):
             raise ValueError("Task schedule is not for LCO observation portal.")
 
         # get instrument info

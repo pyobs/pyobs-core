@@ -81,8 +81,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         await Module.open(self)
 
         # register event
-        await self._comm.register_event(FocusFoundEvent)
-        await self._comm.register_event(BadWeatherEvent, self._on_bad_weather)
+        await self.comm.register_event(FocusFoundEvent)
+        await self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
         # check focuser and camera
         try:
@@ -191,7 +191,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # download image
             log.info("Downloading image...")
-            image = await self._vfs.read_image(filename)
+            image = await self.vfs.read_image(filename)
 
             # get actual focus
             if self._offset:
@@ -247,7 +247,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             await focuser.set_focus(focus[0])
 
         # send event
-        await self._comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
+        await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
 
         # take final image?
         if self._final_image:

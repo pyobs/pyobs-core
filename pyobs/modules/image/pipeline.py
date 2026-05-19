@@ -55,7 +55,7 @@ class Pipeline(Module, PipelineMixin):
         # subscribe to channel with new images
         if self._sources is not None:
             log.info("Subscribing to new image events...")
-            await self._comm.register_event(NewImageEvent, self.process_new_image_event)
+            await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def _interval_processing(self) -> None:
         while True:
@@ -90,7 +90,7 @@ class Pipeline(Module, PipelineMixin):
         # download image
         try:
             log.info("Downloading file %s...", event.filename)
-            image = await self._vfs.read_image(event.filename)
+            image = await self.vfs.read_image(event.filename)
 
         except FileNotFoundError:
             log.error("Could not download image.")

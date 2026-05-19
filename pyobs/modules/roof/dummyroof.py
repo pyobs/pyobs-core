@@ -34,8 +34,8 @@ class DummyRoof(BaseRoof, IRoof):
         """Open module."""
         await BaseRoof.open(self)
 
-        await self._comm.register_event(RoofOpenedEvent)
-        await self._comm.register_event(RoofClosingEvent)
+        await self.comm.register_event(RoofOpenedEvent)
+        await self.comm.register_event(RoofClosingEvent)
 
     @timeout(15)
     async def init(self, **kwargs: Any) -> None:
@@ -54,7 +54,7 @@ class DummyRoof(BaseRoof, IRoof):
             await self._move_roof(self._ROOF_OPEN_PERCENTAGE)
 
             await self._change_motion_status(MotionStatus.IDLE)
-            await self._comm.send_event(RoofOpenedEvent())
+            await self.comm.send_event(RoofOpenedEvent())
 
     def _is_open(self) -> bool:
         return self._open_percentage == self._ROOF_OPEN_PERCENTAGE
@@ -72,7 +72,7 @@ class DummyRoof(BaseRoof, IRoof):
 
         async with LockWithAbort(self._lock_motion, self._abort_motion):
             await self._change_motion_status(MotionStatus.PARKING)
-            await self._comm.send_event(RoofClosingEvent())
+            await self.comm.send_event(RoofClosingEvent())
 
             await self._move_roof(self._ROOF_CLOSED_PERCENTAGE)
 

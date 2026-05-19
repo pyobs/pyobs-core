@@ -16,15 +16,15 @@ class CameraTest(Script):
 
     camera: str
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         try:
-            await self._comm(data).proxy(self.camera)
+            await self.comm.proxy(self.camera)
             return True
         except ValueError:
             return False
 
-    async def run(self, data: TaskData) -> None:
-        proxy = await self._comm(data).proxy(self.camera, IWindow)
+    async def run(self, data: TaskData | None) -> None:
+        proxy = await self.comm.proxy(self.camera, IWindow)
         wnd = await proxy.get_full_frame()
         print(wnd)
 

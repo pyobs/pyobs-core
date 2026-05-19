@@ -61,8 +61,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
 
         # subscribe to events
         if self._comm:
-            await self._comm.register_event(TaskStartedEvent)
-            await self._comm.register_event(TaskFinishedEvent)
+            await self.comm.register_event(TaskStartedEvent)
+            await self.comm.register_event(TaskFinishedEvent)
 
         # start
         self._running = True
@@ -136,7 +136,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             eta = now + self._task.duration * u.second
 
             # send event and change state
-            await self._comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
+            await self.comm.send_event(TaskStartedEvent(name=self._task.name, id=self._task.id, eta=eta))
             observation.state = ObservationState.IN_PROGRESS
             observation.start = now
             observation.end = eta
@@ -156,7 +156,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 continue
 
             # send event and change state
-            await self._comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
+            await self.comm.send_event(TaskFinishedEvent(name=self._task.name, id=self._task.id))
             observation.end = Time.now()
             observation.state = ObservationState.COMPLETED
             await self._observation_archive.update_observation(observation)

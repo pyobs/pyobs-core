@@ -1,13 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from astroplan import Observer
 from pydantic import Field
 
-from pyobs.comm import Comm
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
-from pyobs.vfs import VirtualFileSystem
 
 if TYPE_CHECKING:
     from pyobs.robotic.observationarchive import ObservationArchive
@@ -23,9 +20,6 @@ class TaskData:
     task: Task
     observation_archive: ObservationArchive | None = None
     task_archive: TaskArchive | None = None
-    observer: Observer | None = None
-    vfs: VirtualFileSystem | None = None
-    comm: Comm | None = None
 
 
 class Task(BaseModel):
@@ -48,7 +42,7 @@ class Task(BaseModel):
         s += ")"
         return s
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Checks whether this task could run now.
 
         Returns:
@@ -68,7 +62,7 @@ class Task(BaseModel):
         """
         return False
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run a task"""
         if self.script is not None:
             script = self.pyobs_model_validate(Script, self.script, by_alias=True)

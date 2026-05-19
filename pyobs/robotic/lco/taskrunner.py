@@ -2,15 +2,16 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from . import LcoTask
-from .scripts import LcoScript
+from ._portal import LcoRequest
 from .. import TaskRunner
-from ..scripts import Script
 
 if TYPE_CHECKING:
     from ..task import Task
 
 
 class LcoTaskRunner(TaskRunner):
+
+    scripts: dict[str, dict[str, Any]]
 
     def __init__(self, scripts: dict[str, Any], **kwargs: Any):
         """Creates a new LCO task runner.
@@ -32,14 +33,14 @@ class LcoTaskRunner(TaskRunner):
         """
         if not isinstance(task, LcoTask):
             raise ValueError("Not an LCO task")
-        task.script = self._get_config_script(task.config)
+        task.script = self._get_config_script(task.request)
         return await TaskRunner.can_run(self, task)
 
-    def _get_config_script(self, config: dict[str, Any]) -> Script:
+    def _get_config_script(self, request: LcoRequest) -> dict[str, Any]:
         """Get config script for given configuration.
 
         Args:
-            config: Config to create runner for.
+            request: LCO request.
 
         Returns:
             Script for running config
@@ -49,15 +50,10 @@ class LcoTaskRunner(TaskRunner):
         """
 
         # what do we run?
-        config_type = config["type"]
+        config_type = request.configurations[0].type
         if self.scripts is None or config_type not in self.scripts:
             raise ValueError('No script found for configuration type "%s".' % config_type)
-
-        # create script handler
-        script = self.pyobs_model_validate(Script, self.scripts[config_type], by_alias=True)
-        if isinstance(script, LcoScript):
-            script.config = config
-        return script
+        return self.scripts[config_type]
 
 
 __all__ = ["LcoTaskRunner"]

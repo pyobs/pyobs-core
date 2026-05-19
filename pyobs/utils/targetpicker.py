@@ -16,11 +16,11 @@ class TargetPicker(SubClassBaseModel):
     max_alt: float | None = None
 
     async def __call__(self) -> tuple[str, SkyCoord]:
-        data = await self._vfs.read_csv(self.csv)
+        data = await self.vfs.read_csv(self.csv)
         targets = SkyCoord(ra=data[self.ra_col], dec=data[self.dec_col], frame=self.frame, unit="deg")
 
         # calculate Alz/Az
-        altaz_frame = AltAz(location=self._observer.location, obstime=Time.now())
+        altaz_frame = AltAz(location=self.observer.location, obstime=Time.now())
         altaz = targets.transform_to(altaz_frame)
         data["alt"] = altaz.alt.deg
         data["az"] = altaz.az.deg

@@ -30,7 +30,7 @@ class SkyFlats(Script):
     count: int = 20
     readout: dict[str, Any] | None = None
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -39,9 +39,9 @@ class SkyFlats(Script):
 
         # get modules
         try:
-            roof = await self._comm(data).proxy(self.roof, IRoof)
-            telescope = await self._comm(data).proxy(self.telescope, ITelescope)
-            await self._comm(data).proxy(self.flatfield, IFlatField)
+            roof = await self.comm.proxy(self.roof, IRoof)
+            telescope = await self.comm.proxy(self.telescope, ITelescope)
+            await self.comm.proxy(self.flatfield, IFlatField)
         except ValueError:
             return False
 
@@ -52,7 +52,7 @@ class SkyFlats(Script):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
 
         Raises:
@@ -66,7 +66,7 @@ class SkyFlats(Script):
         scheduler = Scheduler(
             self.functions,
             prio,
-            data.observer,
+            self.observer,
             min_exptime=self.min_exptime,
             max_exptime=self.max_exptime,
             timespan=self.timespan,
@@ -76,7 +76,7 @@ class SkyFlats(Script):
         )
 
         # get proxy for flatfield
-        flatfield = await self._comm(data).proxy(self.flatfield, IFlatField)
+        flatfield = await self.comm.proxy(self.flatfield, IFlatField)
 
         # schedule
         log.info("Scheduling flat-fields...")

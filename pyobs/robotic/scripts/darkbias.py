@@ -20,7 +20,7 @@ class DarkBias(Script):
     exptime: float = 0
     binning: tuple[int, int] = (1, 1)
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -28,14 +28,14 @@ class DarkBias(Script):
 
         # we need a camera
         try:
-            await self._comm(data).proxy(self.camera, IData)
+            await self.comm.proxy(self.camera, IData)
         except ValueError:
             return False
 
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
@@ -44,7 +44,7 @@ class DarkBias(Script):
         image_type = ImageType.BIAS if self.exptime == 0 else ImageType.DARK
 
         # get modules
-        camera = await self._comm(data).proxy(self.camera, ICamera)
+        camera = await self.comm.proxy(self.camera, ICamera)
 
         if isinstance(camera, IBinning):
             await camera.set_binning(*self.binning)

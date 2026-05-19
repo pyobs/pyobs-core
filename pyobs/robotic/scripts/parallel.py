@@ -16,16 +16,16 @@ class ParallelRunner(Script):
     scripts: list[dict[str, Any]]
     check_all_can_run: bool = True
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         check_all = [await self.pyobs_model_validate(Script, s).can_run(data) for s in self.scripts]
         return all(check_all) if self.check_all_can_run else any(check_all)
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         scripts = [self.pyobs_model_validate(Script, s) for s in self.scripts]
         tasks = [asyncio.create_task(self._run_script(s, data)) for s in scripts if await s.can_run(data)]
         await asyncio.gather(*tasks)
 
-    async def _run_script(self, script: Script, data: TaskData) -> None:
+    async def _run_script(self, script: Script, data: TaskData | None) -> None:
         try:
             await script.run(data)
         except:

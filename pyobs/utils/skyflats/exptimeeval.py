@@ -8,7 +8,6 @@ import astropy.units as u
 
 from pyobs.utils.time import Time
 
-
 log = logging.getLogger(__name__)
 
 

@@ -7,7 +7,6 @@ from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
-    from pyobs.comm import Comm
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ ProxyClass = TypeVar("ProxyClass")
 class Script(SubClassBaseModel, Object):
     exptime_done: float = 0.0
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Checks whether this script could run now.
 
         Returns:
@@ -26,7 +25,7 @@ class Script(SubClassBaseModel, Object):
         """
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
 
         Raises:
@@ -44,12 +43,6 @@ class Script(SubClassBaseModel, Object):
             Dictionary containing FITS headers.
         """
         return {}
-
-    @staticmethod
-    def _comm(data: TaskData) -> Comm:
-        if data.comm is None:
-            raise ValueError("No communication module found")
-        return data.comm
 
 
 __all__ = ["Script"]

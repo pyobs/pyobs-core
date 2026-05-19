@@ -18,7 +18,7 @@ class CasesRunner(Script):
 
     def __get_script(self) -> Script:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
+        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
 
         # check in cases
         if value in self.cases:
@@ -28,11 +28,11 @@ class CasesRunner(Script):
         else:
             raise ValueError("Invalid choice")
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         script = self.__get_script()
         return await script.can_run(data)
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         script = self.__get_script()
         await script.run(data)
 

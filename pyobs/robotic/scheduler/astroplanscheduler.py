@@ -99,7 +99,7 @@ class AstroplanScheduler(TaskScheduler):
                     task.duration * u.second,
                     priority,
                     constraints=[c.to_astroplan() for c in task.constraints] if task.constraints else None,
-                    configuration={"request": task.config},
+                    configuration={"request": task},
                     name=task.id,
                 )
             )

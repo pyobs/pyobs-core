@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import copy
 import datetime
 from abc import ABCMeta
-from typing import Any, TypeVar, overload, Literal
+from typing import Any, TypeVar
 
 from astropy.coordinates import EarthLocation
 from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, ConfigDict, PrivateAttr
@@ -21,15 +20,15 @@ ObjectClass = TypeVar("ObjectClass")
 class BaseModel(PydanticBaseModel, Object):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
-    _timezone: datetime.tzinfo = PrivateAttr(default=None)
-    _location: EarthLocation = PrivateAttr(default=None)
-    _vfs: VirtualFileSystem = PrivateAttr(default=None)
-    _observer: Observer = PrivateAttr(default=None)
+    _timezone: datetime.tzinfo | None = PrivateAttr(default=None)
+    _location: EarthLocation | None = PrivateAttr(default=None)
+    _vfs: VirtualFileSystem | None = PrivateAttr(default=None)
+    _observer: Observer | None = PrivateAttr(default=None)
     _comm: Comm | None = PrivateAttr(default=None)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         PydanticBaseModel.__init__(self, **kwargs)
         # Object.__init__(self)
 

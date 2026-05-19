@@ -30,7 +30,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
 
         # subscribe to channel with new images
         log.info("Subscribing to new image events...")
-        await self._comm.register_event(NewImageEvent, self.add_image)
+        await self.comm.register_event(NewImageEvent, self.add_image)
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time for the auto-guider.
@@ -70,7 +70,7 @@ class ScienceFrameAutoGuiding(BaseGuiding):
         log.info("Received new image.")
 
         # download image
-        image = await self._vfs.read_image(event.filename)
+        image = await self.vfs.read_image(event.filename)
 
         # we only accept OBJECT images
         if image.header["IMAGETYP"] != "object":

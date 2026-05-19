@@ -2,6 +2,8 @@ from __future__ import annotations
 import logging
 from typing import Any, TYPE_CHECKING
 
+from pydantic import Field
+
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
 from pyobs.robotic.scripts import Script
@@ -14,17 +16,17 @@ class CallModule(Script):
 
     module: str
     method: str
-    params: list[Any] | None = [None]
+    params: list[Any] = Field(default_factory=list)
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         try:
-            await self._comm(data).proxy(self.module)
+            await self.comm.proxy(self.module)
             return True
         except ValueError:
             return False
 
-    async def run(self, data: TaskData) -> None:
-        proxy = await self._comm(data).proxy(self.module)
+    async def run(self, data: TaskData | None) -> None:
+        proxy = await self.comm.proxy(self.module)
         await proxy.execute(self.method, *self.params)
 
 

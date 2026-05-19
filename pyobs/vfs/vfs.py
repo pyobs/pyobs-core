@@ -1,6 +1,5 @@
 import io
 import logging
-import os
 from typing import Any, Type, cast, overload, Literal
 from collections.abc import Callable, Awaitable
 import yaml

@@ -83,9 +83,9 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # subscribe to events
         if self._comm:
-            await self._comm.register_event(TaskStartedEvent, self._on_task_started)
-            await self._comm.register_event(TaskFinishedEvent, self._on_task_finished)
-            await self._comm.register_event(GoodWeatherEvent, self._on_good_weather)
+            await self.comm.register_event(TaskStartedEvent, self._on_task_started)
+            await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
+            await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
     async def start(self, **kwargs: Any) -> None:
         """Start scheduler."""

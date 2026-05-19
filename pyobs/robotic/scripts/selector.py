@@ -18,25 +18,25 @@ class SelectorScript(Script):
     mode: str
     selector: str
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
         """
         # check if selector is ready
-        selector = await self._comm(data).proxy(self.selector, IMode)
+        selector = await self.comm.proxy(self.selector, IMode)
         status = await selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
             return True
         else:
             return False
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
         """
-        selector = await self._comm(data).proxy(self.selector, IMode)
+        selector = await self.comm.proxy(self.selector, IMode)
         await selector.set_mode(self.mode)
 
 

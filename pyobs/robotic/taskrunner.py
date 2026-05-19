@@ -30,8 +30,6 @@ class TaskRunner(Object):
             task=task,
             observation_archive=self.observation_archive,
             task_archive=self.task_archive,
-            observer=self._observer,
-            comm=self._comm,
         )
 
     async def can_run(self, task: Task) -> bool:

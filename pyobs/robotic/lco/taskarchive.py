@@ -9,7 +9,6 @@ from pyobs.robotic.taskarchive import TaskArchive
 from ._portal import Portal
 from .task import LcoTask
 from .. import Task
-from ..scripts import Script
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +100,7 @@ class LcoTaskArchive(TaskArchive):
         # to LcoTasks
         all_tasks: list[Task] = []
         for schedulable_request in schedulable_requests:
-            tasks = LcoTask.from_schedulable_request(schedulable_request, Script())
+            tasks = LcoTask.from_schedulable_request(schedulable_request, {})
             for task in tasks:
                 task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
                 if task.request.state == "PENDING":

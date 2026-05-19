@@ -18,7 +18,7 @@ class Pointing(Script):
     telescope: str
     pointing: dict[str, Any]
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -26,7 +26,7 @@ class Pointing(Script):
 
         # get modules
         try:
-            tel = await self._comm(data).proxy(self.telescope, IPointingAltAz)
+            tel = await self.comm.proxy(self.telescope, IPointingAltAz)
         except ValueError:
             return False
 
@@ -37,14 +37,14 @@ class Pointing(Script):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
         """
         # get modules
         log.info("Getting proxy for telescope...")
-        telescope = await self._comm(data).proxy(self.telescope, IPointingAltAz)
+        telescope = await self.comm.proxy(self.telescope, IPointingAltAz)
 
         # point
         pointing = get_object(self.pointing)

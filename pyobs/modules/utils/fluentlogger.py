@@ -40,7 +40,7 @@ class FluentLogger(Module):
         self._fluent = sender.FluentSender("pyobs", host=self._hostname, port=self._port)
 
         # listen to log events
-        await self._comm.register_event(LogEvent, self._process_log_entry)
+        await self.comm.register_event(LogEvent, self._process_log_entry)
 
     async def _process_log_entry(self, event: Event, sender: str) -> bool:
         """Process a new log entry.

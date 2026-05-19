@@ -100,7 +100,7 @@ class SimWorld(Object):
         """Returns current solar altitude."""
         if self._observer is None:
             raise ValueError("No observer given.")
-        return float(self._observer.sun_altaz(self.time).alt.degree)
+        return float(self.observer.sun_altaz(self.time).alt.degree)
 
 
 __all__ = ["SimWorld"]

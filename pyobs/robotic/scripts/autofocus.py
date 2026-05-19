@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING
 import logging
-from pydantic import model_validator, ConfigDict
 
 from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope
 from pyobs.robotic.scripts import Script
@@ -21,15 +20,7 @@ class AutoFocus(Script):
     count: int = 5
     step: float = 0.1
     exposure_time: float = 2.0
-    target: TargetPicker | dict[str, Any] | None = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @model_validator(mode="after")
-    def create_target_picker(self) -> Self:
-        if isinstance(self.target, dict):
-            self.target = self.get_object(self.target, TargetPicker)
-        return self
+    target: TargetPicker | None = None
 
     async def can_run(self, data: TaskData) -> bool:
         """Whether this config can currently run.

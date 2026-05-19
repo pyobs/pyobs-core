@@ -18,7 +18,7 @@ class CasesRunner(Script):
 
     def __get_script(self) -> Script:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc), "config": self.configuration})
+        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
 
         # check in cases
         if value in self.cases:

@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Dict, Optional, Any, TypedDict
+from typing import List, Optional, Any, TypedDict
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -9,7 +9,7 @@ from pyobs.robotic.observation import Observation
 from pyobs.utils.time import Time
 from .task import LcoTask
 from .observationarchive import LcoObservationArchive
-from .. import ObservationList
+from .. import ObservationList, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -174,14 +174,16 @@ class MockLcoObservationArchive(LcoObservationArchive):
     async def get_schedule(self) -> ObservationList:
         if self._task is None:
             return ObservationList()
-        return ObservationList([Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))])
+        return ObservationList(
+            [Observation(task=self._task, start=Time.now(), end=Time.now() + TimeDelta(5.0 * u.minute))]
+        )
 
-    async def get_next_observation(self, time: Time) -> Observation | None:
+    async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         if self._task is None:
             return None
-        return Observation(self._task, Time.now(), Time.now() + TimeDelta(5.0 * u.minute))
+        return Observation(task=self._task, start=Time.now(), end=Time.now() + TimeDelta(5.0 * u.minute))
 
-    async def send_update(self, status_id: int, status: Dict[str, Any]) -> None:
+    async def send_update(self, status_id: int | None, status: dict[str, Any]) -> None:
         pass
 
     async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:

@@ -301,11 +301,12 @@ class BaseTelescope(
 
         # get telescope alt/az
         tel_altaz = None
+        observer = self.observer
         if isinstance(self, IPointingAltAz):
             try:
                 alt, az = await self.get_altaz()
                 tel_altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, location=self.observer._location, obstime=now, frame="altaz"
+                    alt=alt * u.deg, az=az * u.deg, location=observer.location, obstime=now, frame="altaz"
                 )
             except:
                 log.exception("Could not fetch telescope Alt/Az: %s", self)

@@ -66,7 +66,7 @@ class SkyFlats(Script):
         scheduler = Scheduler(
             self.functions,
             prio,
-            data.observer,
+            self.observer,
             min_exptime=self.min_exptime,
             max_exptime=self.max_exptime,
             timespan=self.timespan,

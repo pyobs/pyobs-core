@@ -29,7 +29,7 @@ class SolarElevationConstraint(Constraint):
         return astroplan.AtNightConstraint(max_solar_altitude=self.max_elevation * u.deg)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
-        sun = data.observer.sun_altaz(time)
+        sun = self.observer.sun_altaz(time)
         return self.min_elevation <= float(sun.alt.degree) <= self.max_elevation
 
 

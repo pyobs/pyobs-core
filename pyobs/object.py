@@ -191,7 +191,7 @@ class Object:
         self,
         vfs: "VirtualFileSystem" | dict[str, Any] | None = None,
         comm: Comm | dict[str, Any] | None = None,
-        timezone: str | datetime.tzinfo = "utc",
+        timezone: str | datetime.tzinfo | None = "utc",
         location: str | dict[str, Any] | EarthLocation | None = None,
         observer: Observer | None = None,
         **kwargs: Any,
@@ -225,12 +225,14 @@ class Object:
         self._child_objects: list[Any] = []
 
         # create vfs
+        self._vfs: VirtualFileSystem | None
         if vfs:
             self._vfs = get_object(vfs, VirtualFileSystem)
         else:
             self._vfs = VirtualFileSystem()
 
         # timezone
+        self._timezone: datetime.tzinfo | None
         if isinstance(timezone, datetime.tzinfo):
             self._timezone = timezone
         elif isinstance(timezone, str):
@@ -264,7 +266,7 @@ class Object:
             self._observer = Observer(location=self._location, timezone=timezone)
 
         # comm object
-        self._comm: Comm
+        self._comm: Comm | None
         if comm is None:
             self._comm = DummyComm()
         elif isinstance(comm, Comm):
@@ -280,6 +282,18 @@ class Object:
 
         # background tasks
         self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
+
+    @property
+    def vfs(self) -> VirtualFileSystem:
+        if self._vfs is None:
+            raise AttributeError("No VFS available.")
+        return self._vfs
+
+    @property
+    def observer(self) -> Observer:
+        if self._observer is None:
+            raise AttributeError("No Observer available.")
+        return self._observer
 
     def add_background_task(
         self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True

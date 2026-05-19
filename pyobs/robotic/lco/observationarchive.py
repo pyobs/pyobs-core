@@ -9,7 +9,7 @@ from ._schedulereader import LcoScheduleReader
 from ._schedulewriter import LcoScheduleWriter
 from ._portal import Portal
 from .configdb import ConfigDB
-from .. import Task
+from .. import Task, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class LcoObservationArchive(ObservationArchive):
         """
         return await self._schedule_reader.get_schedule()
 
-    async def get_next_observation(self, time: Time) -> Observation | None:
+    async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 
         Args:

@@ -24,7 +24,7 @@ class BackendTaskArchive(TaskArchive):
         TaskArchive.__init__(self, **kwargs)
         self._url = url
         self._token = token
-        self._session: aiohttp.ClientSession | None = None
+        self._aiohttp_session: aiohttp.ClientSession | None = None
         self._last_update: Time | None = None
         self._projects: list[Project] = list()
         self._tasks: list[Task] = list()
@@ -35,7 +35,13 @@ class BackendTaskArchive(TaskArchive):
     async def open(self) -> None:
         """Opens the backend task archive."""
         await TaskArchive.open(self)
-        self._session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+        self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+
+    @property
+    def _session(self) -> aiohttp.ClientSession:
+        if self._aiohttp_session is None:
+            raise ValueError("No session available.")
+        return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
         """Update tasks in background."""

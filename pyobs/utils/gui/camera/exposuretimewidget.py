@@ -1,7 +1,7 @@
-from qtpy import QtWidgets, QtCore  # type: ignore
+from qtpy import QtWidgets, QtCore
 
 
-class ExposureTimeWidget(QtWidgets.QGroupBox):  # type: ignore
+class ExposureTimeWidget(QtWidgets.QGroupBox):
     exposure_time_changed = QtCore.Signal(float)
 
     def __init__(self, max_exposure_time_sec: float = 9999.99) -> None:
@@ -21,4 +21,4 @@ class ExposureTimeWidget(QtWidgets.QGroupBox):  # type: ignore
 
     @property
     def value(self) -> float:
-        return self.spin_exposure_time.value()  # type: ignore
+        return self.spin_exposure_time.value()

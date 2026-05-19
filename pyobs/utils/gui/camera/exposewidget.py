@@ -1,9 +1,9 @@
 from time import time
 
-from qtpy import QtWidgets, QtCore  # type: ignore
+from qtpy import QtWidgets, QtCore
 
 
-class ExposeWidget(QtWidgets.QGroupBox):  # type: ignore
+class ExposeWidget(QtWidgets.QGroupBox):
     expose_clicked = QtCore.Signal(int)
     abort_clicked = QtCore.Signal()
 

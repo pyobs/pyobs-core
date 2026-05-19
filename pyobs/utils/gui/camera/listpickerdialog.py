@@ -1,7 +1,7 @@
-from qtpy import QtWidgets  # type: ignore
+from qtpy import QtWidgets
 
 
-class ListPickerDialog(QtWidgets.QDialog):  # type: ignore
+class ListPickerDialog(QtWidgets.QDialog):
     def __init__(self, items: list[str]):
         super().__init__()
 

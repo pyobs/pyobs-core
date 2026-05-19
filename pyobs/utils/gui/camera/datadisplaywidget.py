@@ -1,10 +1,10 @@
-from qtpy import QtWidgets, QtCore  # type: ignore
-from qfitswidget import QFitsWidget  # type: ignore
+from qtpy import QtWidgets, QtCore
+from qfitswidget import QFitsWidget
 from astropy.io import fits
 import os
 
 
-class DataDisplayWidget(QtWidgets.QWidget):  # type: ignore
+class DataDisplayWidget(QtWidgets.QWidget):
     signal_update_gui = QtCore.Signal()
 
     def __init__(self) -> None:

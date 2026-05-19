@@ -1,7 +1,7 @@
-from qtpy import QtWidgets, QtCore  # type: ignore
+from qtpy import QtWidgets, QtCore
 
 
-class BinningWidget(QtWidgets.QGroupBox):  # type: ignore
+class BinningWidget(QtWidgets.QGroupBox):
     binning_changed = QtCore.Signal(int, int)
 
     def __init__(self, binnings: list[tuple[int, int]]) -> None:

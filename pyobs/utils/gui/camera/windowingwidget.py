@@ -1,7 +1,7 @@
-from qtpy import QtWidgets, QtCore  # type: ignore
+from qtpy import QtWidgets, QtCore
 
 
-class WindowingWidget(QtWidgets.QGroupBox):  # type: ignore
+class WindowingWidget(QtWidgets.QGroupBox):
     window_changed = QtCore.Signal(int, int, int, int)
 
     def __init__(self, max_width: int, max_height: int) -> None:
@@ -46,23 +46,23 @@ class WindowingWidget(QtWidgets.QGroupBox):  # type: ignore
 
     @property
     def value_left(self) -> int:
-        return self.spin_left.value()  # type: ignore
+        return self.spin_left.value()
 
     @property
     def value_top(self) -> int:
-        return self.spin_left.value()  # type: ignore
+        return self.spin_left.value()
 
     @property
     def value_width(self) -> int:
-        return self.spin_width.value()  # type: ignore
+        return self.spin_width.value()
 
     @property
     def value_height(self) -> int:
-        return self.spin_height.value()  # type: ignore
+        return self.spin_height.value()
 
     @property
     def values(self) -> tuple[int, int, int, int]:
-        return self.value_left, self.value_top, self.value_width, self.height
+        return self.value_left, self.value_top, self.value_width, self.value_height
 
     @property
     def max_width(self) -> int:

@@ -1,9 +1,9 @@
-from qtpy import QtWidgets, QtCore  # type: ignore
+from qtpy import QtWidgets, QtCore
 
 from pyobs.utils.enums import ImageFormat
 
 
-class ImageFormatWidget(QtWidgets.QGroupBox):  # type: ignore
+class ImageFormatWidget(QtWidgets.QGroupBox):
     format_changed = QtCore.Signal(ImageFormat)
 
     def __init__(self, formats: list[ImageFormat]) -> None:
@@ -22,7 +22,7 @@ class ImageFormatWidget(QtWidgets.QGroupBox):  # type: ignore
 
     @property
     def value(self) -> ImageFormat:
-        return self._formats[self.combo_formats.currentIndex()]  # type: ignore
+        return self._formats[self.combo_formats.currentIndex()]
 
     def _format_changed(self, index: int) -> None:
         self.format_changed.emit(self._formats[index])

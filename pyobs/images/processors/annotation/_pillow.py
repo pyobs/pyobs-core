@@ -7,7 +7,6 @@ from astropy.wcs import WCS
 
 from pyobs.images import Image
 
-
 log = logging.getLogger(__name__)
 
 
@@ -45,10 +44,14 @@ class PillowHelper:
             return x, y
 
     @staticmethod
-    def color(
-        color: float | int | tuple[float | int, float | int, float | int] | None,
-    ) -> float | int | tuple[float | int, float | int, float | int] | None:
-        return tuple(color) if isinstance(color, list) else color
+    def color(color: float | tuple[int, int, int] | list[int] | None) -> float | tuple[int, int, int] | None:
+        if isinstance(color, list):
+            if len(color) == 3:
+                return color[0], color[1], color[2]
+            else:
+                raise ValueError("Color must be a list/tuple of 3 integers or floats.")
+        else:
+            return color
 
 
 __all__ = ["PillowHelper"]

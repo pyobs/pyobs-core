@@ -54,10 +54,10 @@ async def test_stop() -> None:
 @pytest.mark.asyncio
 async def test_is_running() -> None:
     weather = Weather("")
-    assert await weather.is_running() is False
-
-    weather._active = True
     assert await weather.is_running() is True
+
+    weather._active = False
+    assert await weather.is_running() is False
 
 
 @pytest.mark.asyncio

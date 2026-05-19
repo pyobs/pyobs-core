@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -3108,7 +3108,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.42.4"
+version = "1.42.5"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

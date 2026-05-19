@@ -26,7 +26,7 @@ class Observation(BaseModel):
     """A scheduled task."""
 
     id: Any | None = None
-    task: Task | Any | None = None
+    task: Task | Any
     start: AstroPydanticTime
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING
@@ -68,7 +68,7 @@ class Observation(BaseModel):
         raise NotImplementedError
 
     def model_dump(self, use_task_id: bool = False, **kwargs: Any) -> dict[str, Any]:
-        if use_task_id and isinstance(self.task, Task):
+        if use_task_id and isinstance(self.task, Task) and self.task.id is not None:
             data = self.model_copy()
             data.task = self.task.id
             return data.model_dump(**kwargs)

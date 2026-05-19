@@ -29,7 +29,7 @@ class BackendObservationArchive(ObservationArchive):
         self._url = url
         self._token = token
         self._mode = mode
-        self._session: aiohttp.ClientSession | None = None
+        self._aiohttp_session: aiohttp.ClientSession | None = None
         self._last_update: Time | None = None
         self._observations = ObservationList()
 
@@ -39,7 +39,13 @@ class BackendObservationArchive(ObservationArchive):
     async def open(self) -> None:
         """Opens the backend observation archive."""
         await ObservationArchive.open(self)
-        self._session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+        self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+
+    @property
+    def _session(self) -> aiohttp.ClientSession:
+        if self._aiohttp_session is None:
+            raise ValueError("No session available.")
+        return self._aiohttp_session
 
     async def _check_for_changes(self) -> None:
         """Update schedule in background."""

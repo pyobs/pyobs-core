@@ -94,7 +94,7 @@ class HttpFileCache(Module):
         reader = await request.multipart()
         filename: Optional[str] = None
         data: Optional[bytes] = None
-        async for field in reader:  # type: ignore
+        async for field in reader:
             # we expect a file called 'file'
             if isinstance(field, aiohttp.BodyPartReader) and field.name == "file":
                 filename = field.filename

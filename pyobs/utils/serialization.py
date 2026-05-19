@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import copy
 import datetime
 from abc import ABCMeta
-from typing import Any, TypeVar, overload, Literal
+from typing import Any, TypeVar
 
 from astropy.coordinates import EarthLocation
 from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, ConfigDict, PrivateAttr

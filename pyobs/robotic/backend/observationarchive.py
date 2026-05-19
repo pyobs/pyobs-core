@@ -76,7 +76,8 @@ class BackendObservationArchive(ObservationArchive):
             ValueError: If something goes wrong.
         """
         async with self._session.get(
-            urljoin(self._url, "/api/observations/"), params={"start": Time.now().isot, "state": "pending,in_progress"}
+            urljoin(self._url, "/api/observations/"),
+            params={"end_after": Time.now().isot, "state": "pending,in_progress"},
         ) as response:
             if response.status != 200:
                 raise RuntimeError("Invalid response from backend: " + await response.text())
@@ -192,7 +193,8 @@ class BackendObservationArchive(ObservationArchive):
         start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
         async with self._session.get(
-            urljoin(self._url, "/api/observations/"), params={"start": start.isoformat(), "end": end.isoformat()}
+            urljoin(self._url, "/api/observations/"),
+            params={"start_after": start.isoformat(), "end_before": end.isoformat()},
         ) as response:
             if response.status != 200:
                 raise RuntimeError("Invalid response from backend: " + await response.text())

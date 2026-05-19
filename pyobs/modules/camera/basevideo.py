@@ -426,7 +426,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # broadcast image path
         if broadcast and self._comm:
             log.info("Broadcasting image ID...")
-            await self._comm.send_event(NewImageEvent(filename, image_type))
+            await self.comm.send_event(NewImageEvent(filename, image_type))
 
         # finished
         return image, filename

@@ -256,9 +256,9 @@ class BaseTelescope(
 
         # site location
         if self._observer is not None:
-            hdr["LATITUDE"] = (float(self._observer.location.lat.degree), "Latitude of telescope [deg N]")
-            hdr["LONGITUD"] = (float(self._observer.location.lon.degree), "Longitude of telescope [deg E]")
-            hdr["HEIGHT"] = (float(self._observer.location.height.value), "Altitude of telescope [m]")
+            hdr["LATITUDE"] = (float(self.observer.location.lat.degree), "Latitude of telescope [deg N]")
+            hdr["LONGITUD"] = (float(self.observer.location.lon.degree), "Longitude of telescope [deg E]")
+            hdr["HEIGHT"] = (float(self.observer.location.height.value), "Altitude of telescope [m]")
 
         # add static fits headers
         for key, value in self._fits_headers.items():
@@ -313,9 +313,9 @@ class BaseTelescope(
                 return
 
         # get current moon and sun information
-        moon_altaz = self._observer.moon_altaz(now)
-        moon_frac = self._observer.moon_illumination(now)
-        sun_altaz = self._observer.sun_altaz(now)
+        moon_altaz = self.observer.moon_altaz(now)
+        moon_frac = self.observer.moon_illumination(now)
+        sun_altaz = self.observer.sun_altaz(now)
 
         # store it
         self._celestial_headers = {
@@ -341,7 +341,7 @@ class BaseTelescope(
         target = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="gcrs")
         if self._observer is None:
             raise ValueError("No observer.")
-        parallactic = self._observer.parallactic_angle(time=obstime, target=target).deg
+        parallactic = self.observer.parallactic_angle(time=obstime, target=target).deg
         return float(parallactic - alt)
 
 

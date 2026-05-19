@@ -55,13 +55,12 @@ class LcoDefaultScript(LcoScript):
         Raises:
             ValueError: Could not get proxies for all modules
         """
-        comm = self._comm(data)
-        roof = await comm.safe_proxy(self.roof, IRoof)
-        telescope = await comm.safe_proxy(self.telescope, ITelescope)
-        camera = await comm.safe_proxy(self.camera, ICamera)
-        filters = await comm.safe_proxy(self.filters, IFilters)
-        autoguider = await comm.safe_proxy(self.autoguider, IAutoGuiding)
-        acquisition = await comm.safe_proxy(self.acquisition, IAcquisition)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        camera = await self.comm.safe_proxy(self.camera, ICamera)
+        filters = await self.comm.safe_proxy(self.filters, IFilters)
+        autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
         return roof, telescope, camera, filters, autoguider, acquisition
 
     @property

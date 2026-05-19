@@ -293,7 +293,7 @@ class SpilledLightGuiding(Offsets):
         return image
 
     async def _load_fibre_information(self) -> None:
-        fibers = await self._comm.proxy(self._fibers, IMultiFiber)
+        fibers = await self.comm.proxy(self._fibers, IMultiFiber)
         self._fibre_position = await fibers.get_pixel_position()
         self._inner_radius = await fibers.get_radius()
 

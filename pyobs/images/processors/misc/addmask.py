@@ -1,4 +1,4 @@
-from typing import Dict, Any, cast
+from typing import Dict, Any
 import logging
 import numpy as np
 import numpy.typing as npt
@@ -6,7 +6,6 @@ from astropy.io import fits
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +115,7 @@ class AddMask(ImageProcessor):
         instrument = image.header["INSTRUME"]
         binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
 
-        return cast(npt.NDArray[np.floating[Any]], self._masks[instrument][binning].copy())
+        return self._masks[instrument][binning].copy()
 
     async def __call__(self, image: Image) -> Image:
         """Add mask to image.

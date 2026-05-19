@@ -209,7 +209,7 @@ class FitsHeaderMixin:
             # try to load it
             try:
                 # load cache
-                cache = await module._vfs.read_yaml(self._fitsheadermixin_cache)
+                cache = await module.vfs.read_yaml(self._fitsheadermixin_cache)
 
                 # get new number
                 if cache is not None and "framenum" in cache:
@@ -224,7 +224,7 @@ class FitsHeaderMixin:
 
             # write file
             try:
-                await module._vfs.write_yaml(
+                await module.vfs.write_yaml(
                     self._fitsheadermixin_cache, {"night": night, "framenum": self._fitsheadermixin_frame_number}
                 )
             except (FileNotFoundError, ValueError):

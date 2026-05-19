@@ -30,8 +30,8 @@ class AutoFocus(Script):
 
         # we need a camera
         try:
-            await Script._comm(data).proxy(self.autofocus, IAutoFocus)
-            telescope = await Script._comm(data).proxy(self.telescope, IPointingRaDec)
+            await self.comm.proxy(self.autofocus, IAutoFocus)
+            telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
         except ValueError:
             return False
 
@@ -49,8 +49,8 @@ class AutoFocus(Script):
         if not isinstance(self.target, TargetPicker):
             return
 
-        autofocus = await Script._comm(data).proxy(self.autofocus, IAutoFocus)
-        telescope = await Script._comm(data).proxy(self.telescope, IPointingRaDec)
+        autofocus = await self.comm.proxy(self.autofocus, IAutoFocus)
+        telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
 
         name, target = await self.target()
         log.info(f"Picked target '{name}' at coordinates {target.to_string()} for auto focus...")

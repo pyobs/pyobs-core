@@ -90,8 +90,8 @@ class AutonomousWarning(Module):
 
         while True:
             # check for autonomous modules
-            autonomous = list(await self._comm.clients_with_interface(IAutonomous))
-            is_auto = any([await (await self._comm.proxy(a, IAutonomous)).is_running().wait() for a in autonomous])
+            autonomous = list(await self.comm.clients_with_interface(IAutonomous))
+            is_auto = any([await (await self.comm.proxy(a, IAutonomous)).is_running().wait() for a in autonomous])
 
             # did it change?
             if is_auto != self._autonomous:
@@ -114,7 +114,7 @@ class AutonomousWarning(Module):
             # does file exist?
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
-                autonomous = list(await self._comm.clients_with_interface(IAutonomous))
+                autonomous = list(await self.comm.clients_with_interface(IAutonomous))
                 is_auto = any([await (await self.proxy(a, IAutonomous)).is_running() for a in autonomous])
 
                 # play sound
@@ -128,7 +128,7 @@ class AutonomousWarning(Module):
                 for auto in autonomous:
                     # get proxy
                     log.info("  - %s", auto)
-                    proxy = await self._comm.proxy(auto)
+                    proxy = await self.comm.proxy(auto)
 
                     # start/stop
                     if is_auto:

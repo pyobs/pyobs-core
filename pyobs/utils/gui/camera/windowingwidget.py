@@ -1,7 +1,7 @@
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore  # type: ignore
 
 
-class WindowingWidget(QtWidgets.QGroupBox):
+class WindowingWidget(QtWidgets.QGroupBox):  # type: ignore
     window_changed = QtCore.Signal(int, int, int, int)
 
     def __init__(self, max_width: int, max_height: int) -> None:
@@ -45,24 +45,24 @@ class WindowingWidget(QtWidgets.QGroupBox):
         self.full_frame()
 
     @property
-    def left(self) -> int:
-        return self.spin_left.value()
+    def value_left(self) -> int:
+        return self.spin_left.value()  # type: ignore
 
     @property
-    def top(self) -> int:
-        return self.spin_left.value()
+    def value_top(self) -> int:
+        return self.spin_left.value()  # type: ignore
 
     @property
-    def width(self) -> int:
-        return self.spin_width.value()
+    def value_width(self) -> int:
+        return self.spin_width.value()  # type: ignore
 
     @property
-    def height(self) -> int:
-        return self.spin_height.value()
+    def value_height(self) -> int:
+        return self.spin_height.value()  # type: ignore
 
     @property
     def values(self) -> tuple[int, int, int, int]:
-        return self.left, self.top, self.width, self.height
+        return self.value_left, self.value_top, self.value_width, self.height
 
     @property
     def max_width(self) -> int:
@@ -86,7 +86,7 @@ class WindowingWidget(QtWidgets.QGroupBox):
     def binning(self) -> tuple[int, int]:
         return self._binning
 
-    @QtCore.Slot(int, int)
+    @QtCore.Slot(int, int)  # type: ignore
     def set_binning(self, x: int, y: int) -> None:
         self._binning = (x, y)
         self._update_min_max()
@@ -100,14 +100,14 @@ class WindowingWidget(QtWidgets.QGroupBox):
     def binned_height(self) -> int:
         return self._max_height // self.binning[1]
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def _update_min_max(self) -> None:
         self.spin_left.setMaximum(self.binned_width)
         self.spin_top.setMaximum(self.binned_height)
         self.spin_width.setMaximum(self.binned_width - self.spin_left.value())
         self.spin_height.setMaximum(self.binned_height - self.spin_top.value())
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def full_frame(self) -> None:
         self.spin_left.setValue(0)
         self.spin_top.setValue(0)

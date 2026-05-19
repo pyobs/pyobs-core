@@ -47,7 +47,7 @@ class Seeing(Module):
 
         # subscribe to channel with new images
         log.info("Subscribing to new image events...")
-        await self._comm.register_event(NewImageEvent, self.process_new_image_event)
+        await self.comm.register_event(NewImageEvent, self.process_new_image_event)
 
     async def process_new_image_event(self, event: Event, sender: str) -> bool:
         """Puts a new images in the DB with the given ID.
@@ -72,7 +72,7 @@ class Seeing(Module):
         # download image
         try:
             log.info("Downloading file %s...", event.filename)
-            image = await self._vfs.read_image(event.filename)
+            image = await self.vfs.read_image(event.filename)
 
         except FileNotFoundError:
             log.error("Could not download image.")

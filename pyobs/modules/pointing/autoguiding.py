@@ -109,7 +109,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
                 filename = await camera.grab_data(broadcast=self._broadcast)
 
                 # download image
-                image = await self._vfs.read_image(filename)
+                image = await self.vfs.read_image(filename)
 
                 # process it
                 log.info("Processing image...")

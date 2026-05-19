@@ -41,9 +41,9 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
             if self._observer is None:
                 raise ValueError("Observer is not set.")
             day = (
-                self._observer.sun_rise_time(time, "previous")
+                self.observer.sun_rise_time(time, "previous")
                 if self._mode == "night"
-                else self._observer.sun_set_time(time, "previous")
+                else self.observer.sun_set_time(time, "previous")
             )
             return f"{day.isot[:10]}.{self._extension}"
         elif isinstance(time, datetime.date):

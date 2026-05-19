@@ -105,8 +105,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
             # subscribe to events
             if self._comm:
-                await self._comm.register_event(BadWeatherEvent, self._abort_weather)
-                await self._comm.register_event(RoofClosingEvent, self._abort_weather)
+                await self.comm.register_event(BadWeatherEvent, self._abort_weather)
+                await self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
     async def close(self) -> None:
         """Close module."""

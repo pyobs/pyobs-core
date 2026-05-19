@@ -3,7 +3,7 @@ import logging
 
 # PySide is no requirement for pyobs-core...
 try:
-    from PySide6 import QtWidgets, QtGui  # type: ignore
+    from PySide6 import QtWidgets, QtGui
 
     class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
         def __init__(self, *args: Any, **kwargs: Any):

@@ -35,11 +35,10 @@ class LcoAutoFocusScript(LcoScript):
         Raises:
             ValueError: Could not get proxies for all modules
         """
-        comm = self._comm(data)
-        roof = await comm.safe_proxy(self.roof, IRoof)
-        telescope = await comm.safe_proxy(self.telescope, ITelescope)
-        acquisition = await comm.safe_proxy(self.acquisition, IAcquisition)
-        autofocus = await comm.safe_proxy(self.autofocus, IAutoFocus)
+        roof = await self.comm.safe_proxy(self.roof, IRoof)
+        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
+        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
+        autofocus = await self.comm.safe_proxy(self.autofocus, IAutoFocus)
         return roof, telescope, acquisition, autofocus
 
     async def can_run(self, data: TaskData) -> bool:

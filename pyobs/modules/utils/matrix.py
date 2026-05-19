@@ -67,7 +67,7 @@ class Matrix(Module):
             raise RuntimeError(f"Failed to log in: {resp}")
 
         # listen to log events
-        await self._comm.register_event(LogEvent, self._process_log_entry)
+        await self.comm.register_event(LogEvent, self._process_log_entry)
 
         # do initial sync
         await self.client.sync()
@@ -106,7 +106,7 @@ class Matrix(Module):
             return False
 
         # don't log my own messages
-        if sender == self._comm.name:
+        if sender == self.comm.name:
             return False
 
         # if log level of message is too small, ignore it

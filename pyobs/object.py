@@ -284,6 +284,12 @@ class Object:
         self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
 
     @property
+    def comm(self) -> Comm:
+        if self._comm is None:
+            raise AttributeError("No comm available.")
+        return self._comm
+
+    @property
     def vfs(self) -> VirtualFileSystem:
         if self._vfs is None:
             raise AttributeError("No VFS available.")
@@ -562,9 +568,9 @@ class Object:
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-        return await self._comm.proxy(name_or_object, obj_type)
+        return await self.comm.proxy(name_or_object, obj_type)
 
-    def pyobs_model_validate(self, cls: type[ObjectClass], *args, **kwargs) -> ObjectClass:
+    def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
         """Validate a pydantic model with additional fields."""
         obj = cls.model_validate(*args, **kwargs)
         obj._timezone = self._timezone

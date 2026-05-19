@@ -7,7 +7,6 @@ from pyobs.utils.serialization import SubClassBaseModel
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
-    from pyobs.comm import Comm
 
 log = logging.getLogger(__name__)
 
@@ -44,12 +43,6 @@ class Script(SubClassBaseModel, Object):
             Dictionary containing FITS headers.
         """
         return {}
-
-    @staticmethod
-    def _comm(data: TaskData) -> Comm:
-        if data.comm is None:
-            raise ValueError("No communication module found")
-        return data.comm
 
 
 __all__ = ["Script"]

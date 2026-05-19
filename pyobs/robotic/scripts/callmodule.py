@@ -20,13 +20,13 @@ class CallModule(Script):
 
     async def can_run(self, data: TaskData) -> bool:
         try:
-            await self._comm(data).proxy(self.module)
+            await self.comm.proxy(self.module)
             return True
         except ValueError:
             return False
 
     async def run(self, data: TaskData) -> None:
-        proxy = await self._comm(data).proxy(self.module)
+        proxy = await self.comm.proxy(self.module)
         await proxy.execute(self.method, *self.params)
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, cast
+from typing import Any
 
 from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoRequest, LcoObservation
 from pyobs.robotic.scheduler.constraints import (
@@ -32,7 +32,7 @@ class LcoTask(Task):
     request: LcoRequest
 
     @staticmethod
-    def __lco_task(request: LcoRequest, name: str, script: Script) -> LcoTask:
+    def __lco_task(request: LcoRequest, name: str, script: dict[str, Any]) -> LcoTask:
         return LcoTask(
             id=request.id,
             name=name,
@@ -45,14 +45,14 @@ class LcoTask(Task):
         )
 
     @staticmethod
-    def from_schedulable_request(schedulable_request: LcoSchedulableRequest, script: Script) -> list[LcoTask]:
+    def from_schedulable_request(schedulable_request: LcoSchedulableRequest, script: dict[str, Any]) -> list[LcoTask]:
         tasks: list[LcoTask] = []
         for request in schedulable_request.requests:
             tasks.append(LcoTask.__lco_task(request, schedulable_request.name, script))
         return tasks
 
     @staticmethod
-    def from_observation(observation: LcoObservation, script: Script) -> LcoTask:
+    def from_observation(observation: LcoObservation, script: dict[str, Any]) -> LcoTask:
         request = observation.request
         if not isinstance(request, LcoRequest):
             raise ValueError("Observation does not contain a fully defined request.")
@@ -103,7 +103,7 @@ class LcoTask(Task):
     def __eq__(self, other: object) -> bool:
         """Compares to tasks."""
         if isinstance(other, LcoTask):
-            return self.config == other.config
+            return self.request == other.request
         else:
             return False
 
@@ -114,10 +114,7 @@ class LcoTask(Task):
         Returns:
             observation_type of this task.
         """
-        if "observation_type" in self.config:
-            return cast(str, self.config["observation_type"])
-        else:
-            raise ValueError("No observation_type found in request group.")
+        return self.request.configurations[0].type
 
     @property
     def can_start_late(self) -> bool:
@@ -145,7 +142,8 @@ class LcoTask(Task):
                 await data.observation_archive.send_update(config.configuration_status, status.finish().to_json())
 
             # can run?
-            if not await self.script.can_run(data):
+            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+            if not await script.can_run(data):
                 log.warning("Cannot run config.")
                 continue
 
@@ -155,7 +153,7 @@ class LcoTask(Task):
 
             # send status
             if status is not None and isinstance(data.observation_archive, LcoObservationArchive):
-                self.config["state"] = status.state
+                config.state = status.state
                 await data.observation_archive.send_update(config.configuration_status, status.to_json())
 
         # finished task
@@ -173,46 +171,44 @@ class LcoTask(Task):
 
         # at least we tried...
         config_status = ConfigStatus()
+        script = self.pyobs_model_validate(Script, self.script, by_alias=True)
 
         try:
             # run it
             log.info("Running task %d: %s...", self.id, self.name)
-            await self.script.run(data)
+            await script.run(data)
 
             # finished config
-            config_status.finish(state="COMPLETED", time_completed=self.script.exptime_done)
+            config_status.finish(state="COMPLETED", time_completed=script.exptime_done)
 
         except InterruptedError:
             log.warning("Task execution was interrupted.")
             config_status.finish(
-                state="FAILED", reason="Task execution was interrupted.", time_completed=self.script.exptime_done
+                state="FAILED", reason="Task execution was interrupted.", time_completed=script.exptime_done
             )
 
         except exc.InvocationError as e:
             if isinstance(e.exception, exc.AbortedError):
                 log.warning(f"Task execution was aborted: {e.exception}")
                 config_status.finish(
-                    state="FAILED", reason="Task execution was aborted.", time_completed=self.script.exptime_done
+                    state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
                 )
             else:
                 log.warning(f"Error during task execution: {e.exception}")
                 config_status.finish(
-                    state="FAILED", reason="Error during task execution.", time_completed=self.script.exptime_done
+                    state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
                 )
 
         except Exception:
             log.exception("Something went wrong.")
-            config_status.finish(state="FAILED", reason="Something went wrong", time_completed=self.script.exptime_done)
+            config_status.finish(state="FAILED", reason="Something went wrong", time_completed=script.exptime_done)
 
         # finished
         return config_status
 
     def is_finished(self) -> bool:
         """Whether task is finished."""
-        if "config" in self.config and isinstance(self.config["state"], str):
-            return self.config["state"] != "PENDING"
-        else:
-            return False
+        return self.request.configurations[0].state != "PENDING"
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
@@ -225,7 +221,9 @@ class LcoTask(Task):
         """
 
         # get header from the script
-        hdr = self.script.get_fits_headers(namespaces)
+
+        script = self.pyobs_model_validate(Script, self.script, by_alias=True)
+        hdr = script.get_fits_headers(namespaces)
 
         # return it
         return hdr

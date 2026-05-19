@@ -572,13 +572,13 @@ class Object:
 
     def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
         """Validate a pydantic model with additional fields."""
-        obj = cls.model_validate(*args, **kwargs)
+        obj = cls.model_validate(*args, **kwargs)  # type: ignore
         obj._timezone = self._timezone
         obj._location = self._location
         obj._vfs = self._vfs
         obj._observer = self._observer
         obj._comm = self._comm
-        return obj
+        return obj  # type: ignore
 
 
 __all__ = ["get_object", "get_class_from_string", "create_object", "Object"]

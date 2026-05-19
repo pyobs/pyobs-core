@@ -12,8 +12,9 @@ class _DotNetRequest:
         self._status_code: Optional[int] = None
 
     async def _send_request(self, url: str, timeout: int) -> None:
+        to = aiohttp.ClientTimeout(total=timeout)
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=self._request_data, timeout=timeout) as response:
+            async with session.post(url, json=self._request_data, timeout=to) as response:
                 self._status_code = response.status
                 self._response_data = await response.json()
 

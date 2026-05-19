@@ -33,7 +33,7 @@ try:
             logging.root.addHandler(self)
             self.setFormatter(formatter)
 
-        def emit(self, record: logging.LogRecord) -> None:
+        def emit(self, record: logging.LogRecord) -> None:  # type: ignore
             # format entry
             log_entry = self.format(record)
 

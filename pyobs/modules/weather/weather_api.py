@@ -6,7 +6,7 @@ from pyobs.utils.enums import WeatherSensors
 
 
 class WeatherApi(object):
-    TIMEOUT = 5
+    TIMEOUT = aiohttp.ClientTimeout(total=30)
 
     def __init__(self, url: str) -> None:
         self._url = url
@@ -20,13 +20,13 @@ class WeatherApi(object):
 
     async def _send(self, path: str) -> dict[str, Any]:
         url = urllib.parse.urljoin(self._url, path)
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=self.TIMEOUT) as session:
             return await self._get_response(url, session)
 
     async def _get_response(self, url: str, session: aiohttp.ClientSession, max_attempts: int = 3) -> dict[str, Any]:
         attempt = 0
         while attempt < max_attempts:
-            async with session.get(url, timeout=self.TIMEOUT) as response:
+            async with session.get(url) as response:
                 if response.status == 200:
                     return cast(dict[str, Any], await response.json())
             attempt += 1

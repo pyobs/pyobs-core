@@ -2,7 +2,6 @@ import json
 
 from pyobs.robotic.lco import LcoTask
 from pyobs.robotic.lco._portal import LcoSchedulableRequest
-from pyobs.robotic.scripts import Script
 
 REQUEST_CONFIG = """
 {
@@ -147,8 +146,7 @@ def test_create_lcoschedulablerequest() -> None:
 def test_lcoschedulablerequest_to_lcotask() -> None:
     request_config = json.loads(REQUEST_CONFIG)
     schedulable_request = LcoSchedulableRequest.model_validate(request_config)
-    script = Script()
-    tasks = LcoTask.from_schedulable_request(schedulable_request, script)
+    tasks = LcoTask.from_schedulable_request(schedulable_request, {})
 
     assert len(tasks) == 1
     task = tasks[0]

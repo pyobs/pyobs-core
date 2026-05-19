@@ -128,7 +128,7 @@ class Text(ImageProcessor):
         text: str,
         font: str | None = None,
         font_size: float = 10,
-        fill: float | int | tuple[float | int, float | int, float | int] | None = None,
+        fill: float | tuple[int, int, int] | None = None,
         anchor: str | None = None,
         spacing: int = 4,
         align: str = "left",

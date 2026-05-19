@@ -78,13 +78,14 @@ class PySepStatsCalculator:
     def _calc_flux_radii(self) -> None:
         import sep
 
+        data = self._data.copy()
         flux_radii, flag = sep.flux_radius(
-            self._data,
-            self._catalog.sources["x"],
-            self._catalog.sources["y"],
-            6.0 * self._catalog.sources["a"],
+            data,
+            np.array(self._catalog.sources["x"]),
+            np.array(self._catalog.sources["y"]),
+            np.array(6.0 * self._catalog.sources["a"]),
             [0.25, 0.5, 0.75],
-            normflux=self._catalog.sources["flux"],
+            normflux=np.array(self._catalog.sources["flux"]),
             subpix=5,
         )
 

@@ -61,7 +61,7 @@ class ExposeWidget(QtWidgets.QGroupBox):
         self.label_exposures_left.setVisible(self._exposures_left > 1)
         self.label_exposures_left.setText(f"Exposures left: {self._exposures_left}")
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def _button_clicked(self) -> None:
         if self._exposing:
             self.abort_clicked.emit()
@@ -72,7 +72,7 @@ class ExposeWidget(QtWidgets.QGroupBox):
             self._update_gui()
             self.expose_clicked.emit(self.spin_count.value())
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def set_exposures_left(self, exposures_left: int = 0) -> None:
         self._exposing = exposures_left > 0
         self._exposures_left = exposures_left
@@ -80,18 +80,18 @@ class ExposeWidget(QtWidgets.QGroupBox):
         self.progress_bar.setValue(0)
         self._update_gui()
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def start_exposure(self, exposure_time: float) -> None:
         self._exposure_time = exposure_time
         self._exposure_start = time()
         self.progress_timer.start()
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def _progress_timer_update(self) -> None:
         done = min(100.0, (time() - self._exposure_start) / self._exposure_time * 100.0)
         self.progress_bar.setValue(int(done))
 
-    @QtCore.Slot()
+    @QtCore.Slot()  # type: ignore
     def set_progress(self, progress: float = 0.0) -> None:
         self._progress = progress
         self.progress_bar.setValue(int(self._progress))

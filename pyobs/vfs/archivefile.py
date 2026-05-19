@@ -5,7 +5,6 @@ import aiohttp
 
 from .httpfile import HttpFile
 
-
 log = logging.getLogger(__name__)
 
 
@@ -51,7 +50,10 @@ class ArchiveFile(HttpFile):
             data.add_field("file", self._buffer(self.filename), filename=os.path.basename(self.filename))
 
             # send data and return image ID
-            async with session.post(url, auth=self._auth, data=data, timeout=10, headers=self._headers) as response:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with session.post(
+                url, auth=self._auth, data=data, timeout=timeout, headers=self._headers
+            ) as response:
                 # success, if status code is 200
                 if response.status != 200:
                     raise ValueError("Cannot write file, received status_code %d." % response.status)

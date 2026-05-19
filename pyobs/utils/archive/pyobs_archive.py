@@ -44,6 +44,7 @@ class PyobsArchive(Archive):
         self._url = url
         self._headers = {"Authorization": "Token " + token}
         self._proxies = proxies
+        self._timeout = aiohttp.ClientTimeout(total=30)
 
     async def list_options(
         self,
@@ -68,7 +69,7 @@ class PyobsArchive(Archive):
 
         # do request
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, headers=self._headers, timeout=10) as response:
+            async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                 if response.status != 200:
                     raise ValueError("Could not query frames: %s" % str(await response.text()))
 
@@ -108,7 +109,7 @@ class PyobsArchive(Archive):
             # loop until we got all
             while True:
                 # do request
-                async with session.get(url, params=params, headers=self._headers, timeout=10) as response:
+                async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         raise ValueError("Could not query frames")
 
@@ -175,7 +176,7 @@ class PyobsArchive(Archive):
             # download
             url = urllib.parse.urljoin(self._url, info.url)
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=self._headers, timeout=60) as response:
+                async with session.get(url, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         log.exception("Error downloading file %s.", info.filename)
 
@@ -196,7 +197,7 @@ class PyobsArchive(Archive):
             # download
             url = urllib.parse.urljoin(self._url, info.url).replace("download", "headers")
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=self._headers, timeout=60) as response:
+                async with session.get(url, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         log.error("Could not fetch headers for %s.", info.filename)
 
@@ -233,7 +234,7 @@ class PyobsArchive(Archive):
                     data.add_field(f"file{i}", bio.getvalue(), filename=filename)
 
             # post it
-            async with session.post(url, data=data, timeout=30, headers=self._headers) as response:
+            async with session.post(url, data=data, timeout=self._timeout, headers=self._headers) as response:
                 # success, if status code is 200
                 if response.status != 200:
                     raise ValueError("Cannot write file, received status_code %d." % response.status)

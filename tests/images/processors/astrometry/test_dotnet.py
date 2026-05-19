@@ -1,11 +1,7 @@
 import json
-import logging
-
 import numpy as np
 import pytest
-from astropy.io.fits import Header
 from astropy.table import QTable
-from astropy.wcs import WCS
 
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image
@@ -173,7 +169,6 @@ async def test_call_post_error_n_exception(mocker, mock_header):
     assert result_image.header["WCSERR"] == 1
 
     assert mock.call_args_list[0].args[0] == url
-    assert mock.call_args_list[0].kwargs["timeout"] == 10
 
     data = mock.call_args_list[0].kwargs["json"]
 

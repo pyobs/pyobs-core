@@ -7,7 +7,6 @@ import aiohttp
 
 from .bufferedfile import BufferedFile
 
-
 log = logging.getLogger(__name__)
 
 
@@ -46,7 +45,7 @@ class HttpFile(BufferedFile):
         io.RawIOBase.__init__(self)
         BufferedFile.__init__(self)
         self._verify_tls = verify_tls
-        self._timeout = timeout
+        self._timeout = aiohttp.ClientTimeout(total=timeout)
 
         # auth
         self._auth = None

@@ -85,8 +85,9 @@ class DataDisplayWidget(QtWidgets.QWidget):
     def _show_fits_headers(self) -> None:
         # get all header cards
         headers = {}
-        for card in self.data.header.cards:
-            headers[card.keyword] = (card.value, card.comment)
+        if self.data is not None:
+            for card in self.data.header.cards:
+                headers[card.keyword] = (card.value, card.comment)
 
         # prepare table
         self.table_fits_header.setRowCount(len(headers))
@@ -102,6 +103,9 @@ class DataDisplayWidget(QtWidgets.QWidget):
         self.table_fits_header.resizeColumnToContents(1)
 
     def _auto_save(self) -> None:
+        if self.data is None:
+            return
+
         # autosave?
         path = self.text_autosave_path.text()
 
@@ -130,7 +134,8 @@ class DataDisplayWidget(QtWidgets.QWidget):
     @QtCore.Slot()  # type: ignore
     def save_data(self) -> None:
         """Save image."""
-
+        if self.data is None:
+            return
         # get initial filename
         init_filename = "image.fits"
 

@@ -18,7 +18,7 @@ class SelectorScript(Script):
     mode: str
     selector: str
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -31,7 +31,7 @@ class SelectorScript(Script):
         else:
             return False
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted

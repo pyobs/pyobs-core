@@ -22,7 +22,7 @@ class AutoFocus(Script):
     exposure_time: float = 2.0
     target: TargetPicker | None = None
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -40,7 +40,7 @@ class AutoFocus(Script):
             return False
         return await telescope.is_ready()
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted

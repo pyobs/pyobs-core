@@ -15,10 +15,10 @@ class DebugTriggerRunner(Script):
 
     triggered: bool = False
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         self.triggered = True
 
 

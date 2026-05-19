@@ -20,7 +20,7 @@ class DarkBias(Script):
     exptime: float = 0
     binning: tuple[int, int] = (1, 1)
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -35,7 +35,7 @@ class DarkBias(Script):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted

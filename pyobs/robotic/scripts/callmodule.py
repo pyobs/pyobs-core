@@ -18,14 +18,14 @@ class CallModule(Script):
     method: str
     params: list[Any] = Field(default_factory=list)
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         try:
             await self.comm.proxy(self.module)
             return True
         except ValueError:
             return False
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         proxy = await self.comm.proxy(self.module)
         await proxy.execute(self.method, *self.params)
 

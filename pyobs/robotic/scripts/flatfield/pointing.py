@@ -18,7 +18,7 @@ class Pointing(Script):
     telescope: str
     pointing: dict[str, Any]
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
         Returns:
             True if script can run now.
@@ -37,7 +37,7 @@ class Pointing(Script):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted

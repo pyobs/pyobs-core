@@ -30,7 +30,7 @@ class SkyFlats(Script):
     count: int = 20
     readout: dict[str, Any] | None = None
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -52,7 +52,7 @@ class SkyFlats(Script):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
 
         Raises:

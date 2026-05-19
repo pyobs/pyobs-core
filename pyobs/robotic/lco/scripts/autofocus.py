@@ -24,9 +24,7 @@ class LcoAutoFocusScript(LcoScript):
     step: float = 0.1
     exptime: float = 2.0
 
-    async def _get_proxies(
-        self, data: TaskData
-    ) -> tuple[IRoof | None, ITelescope | None, IAcquisition | None, IAutoFocus | None]:
+    async def _get_proxies(self) -> tuple[IRoof | None, ITelescope | None, IAcquisition | None, IAutoFocus | None]:
         """Get proxies for running the task
 
         Returns:
@@ -41,7 +39,7 @@ class LcoAutoFocusScript(LcoScript):
         autofocus = await self.comm.safe_proxy(self.autofocus, IAutoFocus)
         return roof, telescope, acquisition, autofocus
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
 
         Returns:
@@ -49,7 +47,7 @@ class LcoAutoFocusScript(LcoScript):
         """
 
         # get proxies
-        roof, telescope, acquisition, autofocus = await self._get_proxies(data)
+        roof, telescope, acquisition, autofocus = await self._get_proxies()
 
         # need everything
         if roof is None or telescope is None or autofocus is None:
@@ -73,7 +71,7 @@ class LcoAutoFocusScript(LcoScript):
         # seems alright
         return True
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         """Run script.
 
         Raises:
@@ -81,7 +79,7 @@ class LcoAutoFocusScript(LcoScript):
         """
 
         # get proxies
-        roof, telescope, acquisition, autofocus = await self._get_proxies(data)
+        roof, telescope, acquisition, autofocus = await self._get_proxies()
         if telescope is None:
             raise ValueError("No telescope given.")
 

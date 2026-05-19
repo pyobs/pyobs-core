@@ -28,11 +28,11 @@ class CasesRunner(Script):
         else:
             raise ValueError("Invalid choice")
 
-    async def can_run(self, data: TaskData) -> bool:
+    async def can_run(self, data: TaskData | None) -> bool:
         script = self.__get_script()
         return await script.can_run(data)
 
-    async def run(self, data: TaskData) -> None:
+    async def run(self, data: TaskData | None) -> None:
         script = self.__get_script()
         await script.run(data)
 

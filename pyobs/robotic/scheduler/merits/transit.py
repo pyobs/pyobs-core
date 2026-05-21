@@ -3,7 +3,6 @@ from astropy.coordinates import SkyCoord, EarthLocation
 from pydantic import model_validator, PrivateAttr
 from typing import TYPE_CHECKING, Self
 from astropy.time import Time
-from astropydantic import AstroPydanticTime  # type: ignore
 
 from .merit import Merit
 

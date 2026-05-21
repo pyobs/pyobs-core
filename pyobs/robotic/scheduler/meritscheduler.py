@@ -130,11 +130,11 @@ class MeritScheduler(TaskScheduler):
                 )
                 if postpone_time is not None:
                     # yes, we can! schedule both
-                    yield self.create_scheduled_task(task, start)
-                    yield self.create_scheduled_task(better_task, postpone_time)
+                    yield self.create_scheduled_task(task, merit, start)
+                    yield self.create_scheduled_task(better_task, better_merit, postpone_time)
                 else:
                     # just schedule better_task
-                    yield self.create_scheduled_task(better_task, better_time)
+                    yield self.create_scheduled_task(better_task, better_merit, better_time)
 
                     # and find other tasks for in between, new end time is better_time
                     async for between_task in self.schedule_in_interval(tasks, projects, start, better_time, data):
@@ -142,12 +142,12 @@ class MeritScheduler(TaskScheduler):
 
             else:
                 # this seems to be the best task for now, schedule it
-                yield self.create_scheduled_task(task, start)
+                yield self.create_scheduled_task(task, merit, start)
 
-    def create_scheduled_task(self, task: Task, time: Time) -> Observation:
+    def create_scheduled_task(self, task: Task, merit: float, time: Time) -> Observation:
         from pyobs.robotic import Observation
 
-        return Observation(task=task, start=time, end=time + TimeDelta(task.duration * u.second))
+        return Observation(task=task, start=time, end=time + TimeDelta(task.duration * u.second), priority=merit)
 
     async def evaluate_constraints(self, task: Task, start: Time, end: Time, data: DataProvider) -> bool:
         """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.

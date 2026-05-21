@@ -1,6 +1,7 @@
 from __future__ import annotations
 from astropy.coordinates import SkyCoord, EarthLocation
-from typing import TYPE_CHECKING
+from pydantic import model_validator, PrivateAttr
+from typing import TYPE_CHECKING, Self
 from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
 
@@ -27,6 +28,17 @@ class TransitMerit(Merit):
     # start observation not later than over*duration before 1st contact
     over: float = 0.0
 
+    _duration: float = PrivateAttr(default=0.0)
+    _ingress: float = PrivateAttr(default=0.0)
+    _over: float = PrivateAttr(default=0.0)
+
+    @model_validator(mode="after")
+    def calculate_derived(self) -> Self:
+        self._duration = self.duration / 86400.0 / self.period
+        self._ingress = self.ingress * self.duration / 86400.0 / self.period
+        self._over = self.over * self.duration / 86400.0 / self.period
+        return self
+
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         if task.target is None:
             return 0.0
@@ -34,13 +46,8 @@ class TransitMerit(Merit):
         # current phase
         phi = self.phase_for_jd(task.target.coordinates(time), data.observer.location, time.jd)
 
-        # convert parameters to phase space
-        duration = self.duration / 86400.0 / self.period
-        ingress = self.ingress / 86400.0 / self.period
-        over = self.over / 86400.0 / self.period
-
         # check
-        return float(1.0 - duration / 2.0 - ingress <= phi <= 1.0 - duration / 2.0 - over)
+        return float(1.0 - self._duration / 2.0 - self._ingress <= phi <= 1.0 - self._duration / 2.0 - self._over)
 
     def phase_for_jd(self, target: SkyCoord, location: EarthLocation, jd: float) -> float:
         hjd = self.jd_to_hjd(target, location, jd)

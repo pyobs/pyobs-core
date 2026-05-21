@@ -1,6 +1,6 @@
 from __future__ import annotations
 from astropy.coordinates import SkyCoord, EarthLocation
-from pydantic import model_validator, PrivateAttr
+from pydantic import model_validator, PrivateAttr, Field
 from typing import TYPE_CHECKING, Self
 from astropy.time import Time
 
@@ -15,15 +15,15 @@ class TransitMerit(Merit):
     """Merit function for observing transits."""
 
     # jd0 of first transit
-    jd0: float
+    jd0: float = Field(default=2450000, ge=2400000, le=2499999, json_schema_extra={"decimals": 9})
     # period in days
-    period: float
+    period: float = Field(default=1.0, ge=0.01, le=9999, json_schema_extra={"decimals": 9})
     # transit duration in seconds
-    duration: float
+    duration: int = Field(default=1, ge=1, le=99999)
     # start observation this ingress*duration before 1st contact
-    ingress: float = 0.2
+    ingress: float = Field(default=0.2, ge=0, le=5)
     # start observation not later than over*duration before 1st contact
-    over: float = 0.0
+    over: float = Field(default=0.0, ge=0, le=5)
 
     _duration: float = PrivateAttr(default=0.0)
     _ingress: float = PrivateAttr(default=0.0)

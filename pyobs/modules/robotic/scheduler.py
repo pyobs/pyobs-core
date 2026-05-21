@@ -11,11 +11,10 @@ from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.events import GoodWeatherEvent, Event
 from pyobs.robotic.scheduler import TaskScheduler
-from pyobs.robotic.task import Project
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList
+from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList, Project
 
 log = logging.getLogger(__name__)
 

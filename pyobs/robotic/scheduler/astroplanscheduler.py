@@ -14,8 +14,7 @@ from .targets import SiderealTarget
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import Observation, Task, ObservationList
-    from ..task import Project
+    from pyobs.robotic import Observation, Task, ObservationList, Project
 
 log = logging.getLogger(__name__)
 

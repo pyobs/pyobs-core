@@ -14,10 +14,12 @@ from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
 from ..observationarchive import ObservationArchive
 from .observationarchiveevolution import ObservationArchiveEvolution
+from ..task import Project
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
     from pyobs.robotic import Observation
+
 
 log = logging.getLogger(__name__)
 
@@ -54,12 +56,18 @@ class MeritScheduler(TaskScheduler):
         constraints = constraints or []
         self._global_constraints: list[Constraint] = [Constraint.create(self, c) for c in constraints]
 
-    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
+    async def schedule(
+        self, tasks: list[Task], projects: list[Project], start: Time, end: Time
+    ) -> AsyncIterator[Observation]:
+        if self._observer is None:
+            raise RuntimeError("No observer given.")
+
         archive = ObservationArchiveEvolution(self._observer, self._obs_archive)
         data = DataProvider(self._observer, archive)
+        projects_dict = {project.id: project for project in projects}
 
         # schedule from start to end
-        async for task in self.schedule_in_interval(tasks, start, end, data):
+        async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):
             # evolve archive
             await data.archive.evolve(task)
 
@@ -70,14 +78,20 @@ class MeritScheduler(TaskScheduler):
         self._abort.set()
 
     async def schedule_in_interval(
-        self, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
+        self,
+        tasks: list[Task],
+        projects: dict[str, Project],
+        start: Time,
+        end: Time,
+        data: DataProvider,
+        step: float = 300,
     ) -> AsyncIterator[Observation]:
         time = start
         while time < end:
             latest_end = start
 
             # schedule first in this interval, could be one or two
-            async for scheduled_task in self.schedule_first_in_interval(tasks, time, end, data):
+            async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):
                 # yield it to caller
                 yield scheduled_task
 
@@ -93,20 +107,28 @@ class MeritScheduler(TaskScheduler):
                 time = latest_end
 
     async def schedule_first_in_interval(
-        self, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
+        self,
+        tasks: list[Task],
+        projects: dict[str, Project],
+        start: Time,
+        end: Time,
+        data: DataProvider,
+        step: float = 300,
     ) -> AsyncIterator[Observation]:
         # find current best task
-        task, merit = await self.find_next_best_task(tasks, start, end, data)
+        task, merit = await self.find_next_best_task(tasks, projects, start, end, data)
 
         if task is not None and merit is not None:
             # check, whether there is another task within its duration that  will have a higher merit
             better_task, better_time, better_merit = await self.check_for_better_task(
-                task, merit, tasks, start, end, data, step=step
+                task, projects, merit, tasks, start, end, data, step=step
             )
 
             if better_task is not None and better_time is not None and better_merit is not None:
                 # can we maybe postpone the better task to run both?
-                postpone_time = await self.can_postpone_task(task, better_task, better_merit, start, end, data)
+                postpone_time = await self.can_postpone_task(
+                    task, projects, better_task, better_merit, start, end, data
+                )
                 if postpone_time is not None:
                     # yes, we can! schedule both
                     yield self.create_scheduled_task(task, start)
@@ -116,7 +138,7 @@ class MeritScheduler(TaskScheduler):
                     yield self.create_scheduled_task(better_task, better_time)
 
                     # and find other tasks for in between, new end time is better_time
-                    async for between_task in self.schedule_in_interval(tasks, start, better_time, data):
+                    async for between_task in self.schedule_in_interval(tasks, projects, start, better_time, data):
                         yield between_task
 
             else:
@@ -171,7 +193,7 @@ class MeritScheduler(TaskScheduler):
         return total_merit
 
     async def evaluate_constraints_and_merits(
-        self, tasks: list[Task], start: Time, end: Time, data: DataProvider
+        self, tasks: list[Task], projects: dict[str, Project], start: Time, end: Time, data: DataProvider
     ) -> list[float]:
         # evaluate all merit functions at given time
         merits: list[float] = []
@@ -194,16 +216,21 @@ class MeritScheduler(TaskScheduler):
                 # some constraint failed...
                 merit = 0.0
 
+            # multiply with priorities
+            merit *= task.priority
+            if task.project in projects:
+                merit *= projects[task.project].priority
+
             # store it
             merits.append(merit)
 
         return merits
 
     async def find_next_best_task(
-        self, tasks: list[Task], start: Time, end: Time, data: DataProvider
+        self, tasks: list[Task], projects: dict[str, Project], start: Time, end: Time, data: DataProvider
     ) -> tuple[Task | None, float]:
         # evaluate all merit functions at given time
-        merits = await self.evaluate_constraints_and_merits(tasks, start, end, data)
+        merits = await self.evaluate_constraints_and_merits(tasks, projects, start, end, data)
 
         # find max one
         idx = np.argmax(merits)
@@ -213,11 +240,19 @@ class MeritScheduler(TaskScheduler):
         return None if merits[idx] == 0.0 else task, merits[idx]
 
     async def check_for_better_task(
-        self, task: Task, merit: float, tasks: list[Task], start: Time, end: Time, data: DataProvider, step: float = 300
+        self,
+        task: Task,
+        projects: dict[str, Project],
+        merit: float,
+        tasks: list[Task],
+        start: Time,
+        end: Time,
+        data: DataProvider,
+        step: float = 300,
     ) -> tuple[Task | None, Time | None, float | None]:
         t = start + TimeDelta(step * u.second)
         while t < start + TimeDelta(task.duration * u.second):
-            merits = await self.evaluate_constraints_and_merits(tasks, t, end, data)
+            merits = await self.evaluate_constraints_and_merits(tasks, projects, t, end, data)
             for i, m in enumerate(merits):
                 if m > merit:
                     return tasks[i], t, m
@@ -225,13 +260,20 @@ class MeritScheduler(TaskScheduler):
         return None, None, None
 
     async def can_postpone_task(
-        self, task: Task, better_task: Task, better_merit: float, start: Time, end: Time, data: DataProvider
+        self,
+        task: Task,
+        projects: dict[str, Project],
+        better_task: Task,
+        better_merit: float,
+        start: Time,
+        end: Time,
+        data: DataProvider,
     ) -> Time | None:
         # new start time of better_task would be after the execution of task
         better_start: Time = start + TimeDelta(task.duration * u.second)
 
         # evaluate merit of better_task at new start time
-        merit = (await self.evaluate_constraints_and_merits([better_task], better_start, end, data))[0]
+        merit = (await self.evaluate_constraints_and_merits([better_task], projects, better_start, end, data))[0]
 
         # if it got better, return it, otherwise return Nones
         if merit >= better_merit:

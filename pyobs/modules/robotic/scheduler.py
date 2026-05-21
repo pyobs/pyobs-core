@@ -11,6 +11,7 @@ from pyobs.events.taskfinished import TaskFinishedEvent
 from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.events import GoodWeatherEvent, Event
 from pyobs.robotic.scheduler import TaskScheduler
+from pyobs.robotic.task import Project
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
 from pyobs.modules import Module
@@ -73,6 +74,7 @@ class Scheduler(Module, IStartStop, IRunnable):
 
         # tasks
         self._tasks: list[Task] = []
+        self._projects: list[Project] = []
 
         # update threads
         self.add_background_task(self._schedule_worker)
@@ -107,6 +109,9 @@ class Scheduler(Module, IStartStop, IRunnable):
             key=lambda x: json.dumps(x.id, sort_keys=True),
         )
         log.info("Downloaded %d schedulable tasks(s).", len(tasks))
+
+        # download projects
+        self._projects = await self._task_archive.get_projects()
 
         # compare new and old lists
         removed, added = self._compare_task_lists(self._tasks, tasks)
@@ -210,7 +215,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # schedule
                     scheduled_tasks = ObservationList()
                     first = True
-                    async for scheduled_task in self._scheduler.schedule(self._tasks, start, end):
+                    async for scheduled_task in self._scheduler.schedule(self._tasks, self._projects, start, end):
                         # remember for later
                         scheduled_tasks.append(scheduled_task)
 

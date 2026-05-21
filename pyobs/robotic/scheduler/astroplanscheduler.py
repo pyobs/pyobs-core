@@ -15,6 +15,7 @@ from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic import Observation, Task, ObservationList
+    from ..task import Project
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +43,9 @@ class AstroplanScheduler(TaskScheduler):
         self._abort: asyncio.Event = asyncio.Event()
         self._is_running: bool = False
 
-    async def schedule(self, tasks: list[Task], start: Time, end: Time) -> AsyncIterator[Observation]:
+    async def schedule(
+        self, tasks: list[Task], projects: list[Project], start: Time, end: Time
+    ) -> AsyncIterator[Observation]:
         # is lock acquired? send abort signal
         if self._lock.locked():
             await self.abort()

@@ -85,8 +85,8 @@ class Task(BaseModel):
 
 
 class Project(BaseModel):
-    id: Any | None = None
-    name: str = Field(default="")
+    id: str
+    name: str = ""
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
 
 

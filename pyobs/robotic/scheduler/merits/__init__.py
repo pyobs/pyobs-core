@@ -7,7 +7,7 @@ from .follow import FollowMerit
 from .pernight import PerNightMerit
 from .random import RandomMerit
 from .timewindow import TimeWindowMerit
-
+from .transit import TransitMerit
 
 __all__ = [
     "Merit",
@@ -19,4 +19,5 @@ __all__ = [
     "PerNightMerit",
     "RandomMerit",
     "TimeWindowMerit",
+    "TransitMerit",
 ]

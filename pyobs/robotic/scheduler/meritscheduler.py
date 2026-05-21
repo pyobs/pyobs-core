@@ -63,7 +63,7 @@ class MeritScheduler(TaskScheduler):
 
         archive = ObservationArchiveEvolution(self._observer, self._obs_archive)
         data = DataProvider(self._observer, archive)
-        projects_dict = {project.id: project for project in projects}
+        projects_dict = {project.code: project for project in projects}
 
         # schedule from start to end
         async for task in self.schedule_in_interval(tasks, projects_dict, start, end, data):

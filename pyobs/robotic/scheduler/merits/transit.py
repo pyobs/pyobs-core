@@ -20,8 +20,6 @@ class TransitMerit(Merit):
     period: float
     # transit duration in seconds
     duration: float
-    # step of transits to observe, 1=all
-    step: int = 1
     # start observation this ingress*duration before 1st contact
     ingress: float = 0.2
     # start observation not later than over*duration before 1st contact
@@ -47,6 +45,13 @@ class TransitMerit(Merit):
 
         # check
         return float(1.0 - self._duration / 2.0 - self._ingress <= phi <= 1.0 - self._duration / 2.0 - self._over)
+
+    def days_since_jd0(self) -> float:
+        return Time.now().jd - self.jd0
+
+    def periods_since_jd0(self) -> int:
+        p = self.days_since_jd0() / self.period
+        return round(p)
 
     def phase_for_jd(self, target: SkyCoord, location: EarthLocation, time: Time) -> float:
         hjd = self.jd_to_hjd(target, location, time)

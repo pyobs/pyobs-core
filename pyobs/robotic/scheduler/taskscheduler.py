@@ -8,8 +8,7 @@ from pyobs.object import Object
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import Task, Observation
-    from pyobs.robotic.task import Project
+    from pyobs.robotic import Task, Observation, Project
 
 log = logging.getLogger(__name__)
 

@@ -14,10 +14,9 @@ from .taskscheduler import TaskScheduler
 from pyobs.utils.time import Time
 from ..observationarchive import ObservationArchive
 from .observationarchiveevolution import ObservationArchiveEvolution
-from ..task import Project
 
 if TYPE_CHECKING:
-    from pyobs.robotic import Task
+    from pyobs.robotic import Task, Project
     from pyobs.robotic import Observation
 
 

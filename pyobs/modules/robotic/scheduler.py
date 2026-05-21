@@ -31,6 +31,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         schedule: Union[Dict[str, Any], ObservationArchive],
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
+        trigger_on_every_update: bool = False,
         schedule_range: float = 24.0,
         safety_time: float = 300,
         **kwargs: Any,
@@ -61,6 +62,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._need_update = False
         self._trigger_on_task_started = trigger_on_task_started
         self._trigger_on_task_finished = trigger_on_task_finished
+        self._trigger_on_every_update = trigger_on_every_update
         self._schedule_range = schedule_range * u.hour
         self._safety_time = safety_time * u.second
 
@@ -119,7 +121,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._need_update = True
 
         # no changes?
-        if len(removed) == 0 and len(added) == 0:
+        if not self._trigger_on_every_update and len(removed) == 0 and len(added) == 0:
             # no need to re-schedule
             log.info("No change in list of blocks detected.")
             self._need_update = False

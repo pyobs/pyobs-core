@@ -47,7 +47,7 @@ class TransitMerit(Merit):
         return float(1.0 - self._duration / 2.0 - self._ingress <= phi <= 1.0 - self._duration / 2.0 - self._over)
 
     def days_since_jd0(self) -> float:
-        return Time.now().jd - self.jd0
+        return float(Time.now().jd - self.jd0)
 
     def periods_since_jd0(self) -> int:
         p = self.days_since_jd0() / self.period

@@ -30,6 +30,7 @@ class Observation(BaseModel):
     start: AstroPydanticTime
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING
+    priority: float | None = None
 
     def __str__(self) -> str:
         return (
@@ -83,6 +84,8 @@ class Observation(BaseModel):
 
 class ObservationList(UserList[Observation], Object):  # noqa: F821
     def __init__(self, observations: list[Observation] | None = None):
+        if observations is None:
+            observations = []
         UserList.__init__(self, observations)
 
     def filter(

@@ -258,15 +258,15 @@ class Scheduler(Module, IStartStop, IRunnable):
             # sleep a little
             await asyncio.sleep(1)
 
-    def _log_scheduled_task(self, scheduled_tasks: ObservationList) -> None:
+    @staticmethod
+    def _log_scheduled_task(scheduled_tasks: ObservationList) -> None:
         for scheduled_task in scheduled_tasks:
-            log.info(
-                "  - %s to %s: %s (%s)",
-                scheduled_task.start.strftime("%H:%M:%S"),
-                scheduled_task.end.strftime("%H:%M:%S"),
-                scheduled_task.task.name,
-                scheduled_task.task.id,
-            )
+            msg = f"  - {scheduled_task.start.strftime("%H:%M:%S")} to {scheduled_task.end.strftime("%H:%M:%S")}: "
+            msg += f"{scheduled_task.task.name} ({scheduled_task.task.id}"
+            if scheduled_task.priority is not None:
+                msg += f", priority: {scheduled_task.priority}"
+            msg += ")"
+            log.info(msg)
 
     async def run(self, **kwargs: Any) -> None:
         """Trigger a re-schedule."""

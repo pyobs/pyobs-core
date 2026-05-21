@@ -44,21 +44,20 @@ class TransitMerit(Merit):
             return 0.0
 
         # current phase
-        phi = self.phase_for_jd(task.target.coordinates(time), data.observer.location, time.jd)
+        phi = self.phase_for_jd(task.target.coordinates(time), data.observer.location, time)
 
         # check
         return float(1.0 - self._duration / 2.0 - self._ingress <= phi <= 1.0 - self._duration / 2.0 - self._over)
 
-    def phase_for_jd(self, target: SkyCoord, location: EarthLocation, jd: float) -> float:
-        hjd = self.jd_to_hjd(target, location, jd)
+    def phase_for_jd(self, target: SkyCoord, location: EarthLocation, time: Time) -> float:
+        hjd = self.jd_to_hjd(target, location, time)
         phi = ((hjd - self.jd0) % self.period) / self.period
         return phi if phi >= 0 else phi + 1.0
 
     @staticmethod
-    def jd_to_hjd(target: SkyCoord, location: EarthLocation, jd: float) -> float:
-        t = Time(jd, format="jd", scale="utc")
-        t_bjd = t.light_travel_time(target, kind="barycentric", location=location)
-        bjd = (t + t_bjd).tdb.jd
+    def jd_to_hjd(target: SkyCoord, location: EarthLocation, time: Time) -> float:
+        t_bjd = time.light_travel_time(target, kind="barycentric", location=location)
+        bjd = (time + t_bjd).tdb.jd
         return float(bjd)
 
 

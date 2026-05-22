@@ -216,7 +216,8 @@ class MeritScheduler(TaskScheduler):
                 merit = 0.0
 
             # multiply with priorities
-            merit *= task.priority
+            if task.priority is not None:
+                merit *= task.priority
             if task.project in projects:
                 merit *= projects[task.project].priority
 

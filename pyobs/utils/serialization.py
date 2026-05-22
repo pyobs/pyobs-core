@@ -10,14 +10,14 @@ from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
 from pyobs.comm import Comm
-from pyobs.object import Object
+from pyobs.object import Object, PrivateAttrMixin
 from pyobs.vfs import VirtualFileSystem
 
 """Class of an Object."""
 ObjectClass = TypeVar("ObjectClass")
 
 
-class BaseModel(PydanticBaseModel, Object):
+class BaseModel(PydanticBaseModel, PrivateAttrMixin):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
     _timezone: datetime.tzinfo | None = PrivateAttr(default=None)
@@ -38,11 +38,7 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
 
     @model_serializer(mode="wrap")
     def inject_class_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
-        # result: dict[str, Any] = handler(self)
-        # TODO: why doesn't this work?
-        result: dict[str, Any] = self.__dict__.copy()
-        if "class" in result:
-            raise ValueError('Cannot use field "class". It is reserved.')
+        result = self.model_dump()  # use this instead of __dict__
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
         return result
 

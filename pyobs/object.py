@@ -184,12 +184,60 @@ def create_object(config: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
     return klass(*args, **cfg, **kwargs)
 
 
-class Object:
+class PrivateAttrMixin:
+    _comm: Comm | None
+    _vfs: VirtualFileSystem | None
+    _observer: Observer | None
+    _location: EarthLocation | None
+    _timezone: datetime.tzinfo | None
+
+    @property
+    def comm(self) -> Comm:
+        if self._comm is None:
+            raise AttributeError("No comm available.")
+        return self._comm
+
+    @property
+    def vfs(self) -> VirtualFileSystem:
+        if self._vfs is None:
+            raise AttributeError("No VFS available.")
+        return self._vfs
+
+    @property
+    def observer(self) -> Observer:
+        if self._observer is None:
+            raise AttributeError("No Observer available.")
+        return self._observer
+
+    @property
+    def location(self) -> EarthLocation:
+        if self._location is None:
+            raise AttributeError("No location available.")
+        return self._location
+
+    @property
+    def timezone(self) -> datetime.tzinfo:
+        if self._timezone is None:
+            raise AttributeError("No timezone available.")
+        return self._timezone
+
+    def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
+        """Validate a pydantic model with additional fields."""
+        obj = cls.model_validate(*args, **kwargs)  # type: ignore
+        obj._timezone = self._timezone
+        obj._location = self._location
+        obj._vfs = self._vfs
+        obj._observer = self._observer
+        obj._comm = self._comm
+        return obj  # type: ignore
+
+
+class Object(PrivateAttrMixin):
     """Base class for all objects in *pyobs*."""
 
     def __init__(
         self,
-        vfs: "VirtualFileSystem" | dict[str, Any] | None = None,
+        vfs: VirtualFileSystem | dict[str, Any] | None = None,
         comm: Comm | dict[str, Any] | None = None,
         timezone: str | datetime.tzinfo | None = "utc",
         location: str | dict[str, Any] | EarthLocation | None = None,
@@ -282,24 +330,6 @@ class Object:
 
         # background tasks
         self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
-
-    @property
-    def comm(self) -> Comm:
-        if self._comm is None:
-            raise AttributeError("No comm available.")
-        return self._comm
-
-    @property
-    def vfs(self) -> VirtualFileSystem:
-        if self._vfs is None:
-            raise AttributeError("No VFS available.")
-        return self._vfs
-
-    @property
-    def observer(self) -> Observer:
-        if self._observer is None:
-            raise AttributeError("No Observer available.")
-        return self._observer
 
     def add_background_task(
         self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True
@@ -570,15 +600,5 @@ class Object:
         """
         return await self.comm.proxy(name_or_object, obj_type)
 
-    def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
-        """Validate a pydantic model with additional fields."""
-        obj = cls.model_validate(*args, **kwargs)  # type: ignore
-        obj._timezone = self._timezone
-        obj._location = self._location
-        obj._vfs = self._vfs
-        obj._observer = self._observer
-        obj._comm = self._comm
-        return obj  # type: ignore
 
-
-__all__ = ["get_object", "get_class_from_string", "create_object", "Object"]
+__all__ = ["get_object", "get_class_from_string", "create_object", "Object", "PrivateAttrMixin"]

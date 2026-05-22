@@ -10,14 +10,14 @@ from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
 from pyobs.comm import Comm
-from pyobs.object import Object
+from pyobs.object import Object, PrivateAttrMixin
 from pyobs.vfs import VirtualFileSystem
 
 """Class of an Object."""
 ObjectClass = TypeVar("ObjectClass")
 
 
-class BaseModel(PydanticBaseModel, Object):
+class BaseModel(PydanticBaseModel, PrivateAttrMixin):
     """Pydantic base model for pyobs classes that need to be serialized."""
 
     _timezone: datetime.tzinfo | None = PrivateAttr(default=None)

@@ -10,7 +10,7 @@ from pydantic_core.core_schema import ValidatorFunctionWrapHandler
 from astroplan import Observer
 
 from pyobs.comm import Comm
-from pyobs.object import Object, PrivateAttrMixin
+from pyobs.object import PrivateAttrMixin
 from pyobs.vfs import VirtualFileSystem
 
 """Class of an Object."""
@@ -38,7 +38,7 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
 
     @model_serializer(mode="wrap")
     def inject_class_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
-        result = self.model_dump()  # use this instead of __dict__
+        result = handler(self)
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
         return result
 

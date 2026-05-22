@@ -40,7 +40,7 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
     def inject_class_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
         result = handler(self)
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
-        return result
+        return result  # type: ignore
 
     @model_validator(mode="wrap")  # noqa  # the decorator position is correct
     @classmethod

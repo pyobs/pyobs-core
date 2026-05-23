@@ -167,6 +167,7 @@ class BackendObservationArchive(ObservationArchive):
             self._session,
             urljoin(self._url, f"/api/observations/{observation.id}/"),
             method="put",
+            expected_status=200,
             json=observation.model_dump(use_task_id=True),
         )
 

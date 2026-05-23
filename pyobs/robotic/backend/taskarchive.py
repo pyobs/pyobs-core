@@ -7,6 +7,7 @@ import aiohttp
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from ..task import Task, Project
+from ...utils.http import http_request_with_retries
 
 log = logging.getLogger(__name__)
 
@@ -58,27 +59,18 @@ class BackendTaskArchive(TaskArchive):
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""
-        async with self._session.get(urljoin(self._url, "/api/last_task_update/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            res = await response.json()
-            return Time(res["last_task_update"])
+        res = await http_request_with_retries(self._session, urljoin(self._url, "/api/last_task_update/"))
+        return Time(res["last_task_update"])
 
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
-        async with self._session.get(urljoin(self._url, "/api/projects/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            projects = await response.json()
-            return [self.pyobs_model_validate(Project, project) for project in projects]
+        projects = await http_request_with_retries(self._session, urljoin(self._url, "/api/projects/"))
+        return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
-        async with self._session.get(urljoin(self._url, "/api/tasks/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            tasks = await response.json()
-            return [self.pyobs_model_validate(Task, task) for task in tasks]
+        tasks = await http_request_with_retries(self._session, urljoin(self._url, "/api/tasks/"))
+        return [self.pyobs_model_validate(Task, task) for task in tasks]
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""

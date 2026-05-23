@@ -1,36 +1,20 @@
-# taken from: https://www.peterbe.com/plog/best-practice-with-retries-with-requests
-from typing import Optional, Collection
+import asyncio
+from typing import Any
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3 import Retry
-
-# disable warnings
-# TODO: is there a better way? we can link to actual CA:
-# https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl
-# but does that only work in Linux?
-# some more:
-# https://github.com/psf/requests/issues/2214
-import urllib3
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import aiohttp
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 
-def requests_retry_session(
-    retries: int = 3,
-    backoff_factor: float = 0.3,
-    status_forcelist: Collection[int] = (500, 502, 504),
-    session: Optional[requests.Session] = None,
-) -> requests.Session:
-    session = session or requests.Session()
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=status_forcelist,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-    return session
+@retry(
+    retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+    wait=wait_exponential(multiplier=1, min=1, max=30),
+    stop=stop_after_attempt(5),
+    reraise=True,
+)
+async def http_request_with_retries(
+    session: aiohttp.ClientSession, url: str, method: str = "get", expected_status: int = 200, **kwargs: Any
+) -> dict[str, Any] | list[Any]:
+    async with session.request(method, url, **kwargs) as response:
+        if response.status != expected_status:
+            raise RuntimeError("Invalid response from server: " + await response.text())
+        return await response.json()

@@ -7,6 +7,7 @@ import aiohttp
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from ..task import Task, Project
+from ...utils.http import http_request_with_retries
 
 log = logging.getLogger(__name__)
 
@@ -46,39 +47,33 @@ class BackendTaskArchive(TaskArchive):
     async def _check_for_changes(self) -> None:
         """Update tasks in background."""
         while True:
-            last_update = await self.last_update_time()
-            if self._last_update is None or self._last_update < last_update:
-                self._projects = await self._get_projects()
-                self._tasks = await self._get_tasks()
-                log.info("Downloaded new tasks/projects.")
-                self._last_update = last_update
-                if self._on_tasks_changed is not None:
-                    await self._on_tasks_changed()
+            try:
+                last_update = await self.last_update_time()
+                if self._last_update is None or self._last_update < last_update:
+                    self._projects = await self._get_projects()
+                    self._tasks = await self._get_tasks()
+                    log.info("Downloaded new tasks/projects.")
+                    self._last_update = last_update
+                    if self._on_tasks_changed is not None:
+                        await self._on_tasks_changed()
+            except Exception as e:
+                log.error("Failed to update tasks from backend: %s", e)
             await asyncio.sleep(5)
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""
-        async with self._session.get(urljoin(self._url, "/api/last_task_update/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            res = await response.json()
-            return Time(res["last_task_update"])
+        res = await http_request_with_retries(self._session, urljoin(self._url, "/api/last_task_update/"))
+        return Time(res["last_task_update"])
 
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
-        async with self._session.get(urljoin(self._url, "/api/projects/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            projects = await response.json()
-            return [self.pyobs_model_validate(Project, project) for project in projects]
+        projects = await http_request_with_retries(self._session, urljoin(self._url, "/api/projects/"))
+        return [self.pyobs_model_validate(Project, project) for project in projects]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
-        async with self._session.get(urljoin(self._url, "/api/tasks/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            tasks = await response.json()
-            return [self.pyobs_model_validate(Task, task) for task in tasks]
+        tasks = await http_request_with_retries(self._session, urljoin(self._url, "/api/tasks/"))
+        return [self.pyobs_model_validate(Task, task) for task in tasks]
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""

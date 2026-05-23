@@ -10,6 +10,7 @@ from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
 from ..observation import ObservationList, Observation
+from ...utils.http import http_request_with_retries
 
 log = logging.getLogger(__name__)
 
@@ -51,25 +52,24 @@ class BackendObservationArchive(ObservationArchive):
         """Update schedule in background."""
 
         while True:
-            last_update = await self.last_update_time()
-            if self._last_update is None or self._last_update < last_update:
-                self._observations = await self._get_schedule()
-                if len(self._observations) == 0:
-                    log.info("Downloaded new schedule.")
-                else:
-                    obs = self._observations[0]
-                    log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
-                self._last_update = last_update
-
+            try:
+                last_update = await self.last_update_time()
+                if self._last_update is None or self._last_update < last_update:
+                    self._observations = await self._get_schedule()
+                    if len(self._observations) == 0:
+                        log.info("Downloaded new schedule.")
+                    else:
+                        obs = self._observations[0]
+                        log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
+                    self._last_update = last_update
+            except Exception as e:
+                log.error("Failed to update observations from backend: %s", e)
             await asyncio.sleep(5)
 
     async def last_update_time(self) -> Time:
         """Fetches last schedule update time."""
-        async with self._session.get(urljoin(self._url, "/api/last_observation_update/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            res = await response.json()
-            return Time(res["last_observation_update"])
+        res = await http_request_with_retries(self._session, urljoin(self._url, "/api/last_observation_update/"))
+        return Time(res["last_observation_update"])
 
     async def _get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
@@ -81,14 +81,12 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        async with self._session.get(
+        observations = await http_request_with_retries(
+            self._session,
             urljoin(self._url, "/api/observations/"),
             params={"end_after": Time.now().isot, "state": "pending,in_progress"},
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        )
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -96,11 +94,13 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             tasks: Scheduled tasks.
         """
-        async with self._session.post(
-            urljoin(self._url, "/api/observations/"), json=tasks.model_dump(use_task_id=True)
-        ) as response:
-            if response.status != 201:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
+        await http_request_with_retries(
+            self._session,
+            urljoin(self._url, "/api/observations/"),
+            method="post",
+            expected_status=201,
+            json=tasks.model_dump(use_task_id=True),
+        )
 
     async def clear_schedule(self, start_time: Time) -> None:
         """Clear schedule after given start time.
@@ -108,11 +108,9 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             start_time: Start time to clear from.
         """
-        async with self._session.get(
-            urljoin(self._url, "/api/cancel_observations/"), params={"after": start_time.isot}
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
+        await http_request_with_retries(
+            self._session, urljoin(self._url, "/api/cancel_observations/"), params={"after": start_time.isot}
+        )
 
     async def get_schedule(self) -> ObservationList:
         """Fetch schedule from portal.
@@ -166,11 +164,14 @@ class BackendObservationArchive(ObservationArchive):
         Args:
             observation: Observation to update.
         """
-        async with self._session.put(
-            urljoin(self._url, f"/api/observations/{observation.id}/"), json=observation.model_dump(use_task_id=True)
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
+
+        await http_request_with_retries(
+            self._session,
+            urljoin(self._url, f"/api/observations/{observation.id}/"),
+            method="put",
+            expected_status=200,
+            json=observation.model_dump(use_task_id=True),
+        )
 
     async def observations_for_task(self, task: Task) -> ObservationList:
         """Returns list of observations for the given task.
@@ -181,11 +182,11 @@ class BackendObservationArchive(ObservationArchive):
         Returns:
             List of observations for the given task.
         """
-        async with self._session.get(urljoin(self._url, f"/api/tasks/{task.id}/observations/")) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+
+        observations = await http_request_with_retries(
+            self._session, urljoin(self._url, f"/api/tasks/{task.id}/observations/")
+        )
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.
@@ -198,14 +199,12 @@ class BackendObservationArchive(ObservationArchive):
         """
         start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
-        async with self._session.get(
-            urljoin(self._url, "/api/observations/"),
+        observations = await http_request_with_retries(
+            self._session,
+            urljoin(self._url, f"/api/observations/"),
             params={"start_after": start.isoformat(), "end_before": end.isoformat()},
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError("Invalid response from backend: " + await response.text())
-            observations = await response.json()
-            return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        )
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 
 
 __all__ = ["BackendObservationArchive"]

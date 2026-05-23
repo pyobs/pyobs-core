@@ -219,7 +219,9 @@ class MeritScheduler(TaskScheduler):
             if task.priority is not None:
                 merit *= task.priority
             if task.project in projects:
-                merit *= projects[task.project].priority
+                project = projects[task.project]
+                if project.priority is not None:
+                    merit *= project.priority
 
             # store it
             merits.append(merit)

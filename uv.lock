@@ -1826,6 +1826,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mando"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/24/cd70d5ae6d35962be752feccb7dca80b5e0c2d450e995b16abd6275f3296/mando-0.7.1.tar.gz", hash = "sha256:18baa999b4b613faefb00eac4efadcf14f510b59b924b66e08289aa1de8c3500", size = 37868, upload-time = "2022-02-24T08:12:27.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/f0/834e479e47e499b6478e807fb57b31cc2db696c4db30557bb6f5aea4a90b/mando-0.7.1-py2.py3-none-any.whl", hash = "sha256:26ef1d70928b6057ee3ca12583d73c63e05c49de8972d620c278a7b206581a8a", size = 28149, upload-time = "2022-02-24T08:12:25.24Z" },
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3108,7 +3120,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.42.13"
+version = "1.43.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -3132,6 +3144,7 @@ dependencies = [
     { name = "scipy" },
     { name = "single-source" },
     { name = "slixmpp" },
+    { name = "tenacity" },
     { name = "typing-extensions" },
 ]
 
@@ -3170,6 +3183,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
+    { name = "radon" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "sphinx-rtd-theme" },
@@ -3222,6 +3236,7 @@ requires-dist = [
     { name = "single-source", specifier = ">=0.4.0,<0.5" },
     { name = "slixmpp", specifier = ">=1.14.1" },
     { name = "sunpy", marker = "extra == 'full'", specifier = ">=7.0.1" },
+    { name = "tenacity", specifier = ">=9.1.4" },
     { name = "tornado", marker = "extra == 'full'", specifier = ">=6.4.2,<7" },
     { name = "typing-extensions", specifier = ">=4.13.2,<5" },
 ]
@@ -3240,6 +3255,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.26.0,<1.4" },
     { name = "pytest-cov", specifier = ">=6.1.1,<8" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4" },
+    { name = "radon", specifier = ">=6.0.1" },
     { name = "sphinx", specifier = ">=8.2.3" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0.2" },
     { name = "types-cryptography", specifier = ">=3.3.23.2,<4" },
@@ -3585,6 +3601,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/70/01/392eba83c8e47b946b929d7c46e0f04b35e9671f8bb6fc36b6f7945b4de8/qtpy-2.4.3.tar.gz", hash = "sha256:db744f7832e6d3da90568ba6ccbca3ee2b3b4a890c3d6fbbc63142f6e4cdf5bb", size = 66982, upload-time = "2025-02-11T15:09:25.759Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/69/76/37c0ccd5ab968a6a438f9c623aeecc84c202ab2fabc6a8fd927580c15b5a/QtPy-2.4.3-py3-none-any.whl", hash = "sha256:72095afe13673e017946cc258b8d5da43314197b741ed2890e563cf384b51aa1", size = 95045, upload-time = "2025-02-11T15:09:24.162Z" },
+]
+
+[[package]]
+name = "radon"
+version = "6.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "mando" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/6d/98e61600febf6bd929cf04154537c39dc577ce414bafbfc24a286c4fa76d/radon-6.0.1.tar.gz", hash = "sha256:d1ac0053943a893878940fedc8b19ace70386fc9c9bf0a09229a44125ebf45b5", size = 1874992, upload-time = "2023-03-26T06:24:38.868Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/f7/d00d9b4a0313a6be3a3e0818e6375e15da6d7076f4ae47d1324e7ca986a1/radon-6.0.1-py2.py3-none-any.whl", hash = "sha256:632cc032364a6f8bb1010a2f6a12d0f14bc7e5ede76585ef29dc0cecf4cd8859", size = 52784, upload-time = "2023-03-26T06:24:33.949Z" },
 ]
 
 [[package]]
@@ -4240,6 +4269,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6b/46/c0e9e701816146c578f53055e401fd75a4bbad9a6d6fbe937169231e50eb/sunpy-7.1.1-cp312-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3adb01791f196dd2e9be26171d226e8ecdd6a80b5ab41c01cba9af8445aacd1f", size = 3735435, upload-time = "2026-03-26T10:22:55.05Z" },
     { url = "https://files.pythonhosted.org/packages/7d/db/841b432c1dce4db9beeca123afcd3dac02b6f950b2d39aaff90f7770c825/sunpy-7.1.1-cp312-abi3-win_amd64.whl", hash = "sha256:ef33692b4281a4827ca00be6247b0eaff46240bb53a387d11c7fbfcaacaeca01", size = 3684406, upload-time = "2026-03-26T10:22:56.766Z" },
     { url = "https://files.pythonhosted.org/packages/13/b3/6579018ab22139f2c54138b94a5478015f6bd979a2d5ff78e17da668648f/sunpy-7.1.1-py3-none-any.whl", hash = "sha256:c9925f2ccc3a09d3f9830b236a421e14ca72bf2af105d84c86cd92bd31653517", size = 3655271, upload-time = "2026-03-26T10:22:58.959Z" },
+]
+
+[[package]]
+name = "tenacity"
+version = "9.1.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a", size = 49413, upload-time = "2026-02-07T10:45:33.841Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
 ]
 
 [[package]]

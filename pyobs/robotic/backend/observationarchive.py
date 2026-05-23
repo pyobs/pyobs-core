@@ -201,7 +201,7 @@ class BackendObservationArchive(ObservationArchive):
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
         observations = await http_request_with_retries(
             self._session,
-            urljoin(self._url, f"/api/observations/"),
+            urljoin(self._url, "/api/observations/"),
             params={"start_after": start.isoformat(), "end_before": end.isoformat()},
         )
         return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])

@@ -52,16 +52,18 @@ class BackendObservationArchive(ObservationArchive):
         """Update schedule in background."""
 
         while True:
-            last_update = await self.last_update_time()
-            if self._last_update is None or self._last_update < last_update:
-                self._observations = await self._get_schedule()
-                if len(self._observations) == 0:
-                    log.info("Downloaded new schedule.")
-                else:
-                    obs = self._observations[0]
-                    log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
-                self._last_update = last_update
-
+            try:
+                last_update = await self.last_update_time()
+                if self._last_update is None or self._last_update < last_update:
+                    self._observations = await self._get_schedule()
+                    if len(self._observations) == 0:
+                        log.info("Downloaded new schedule.")
+                    else:
+                        obs = self._observations[0]
+                        log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
+                    self._last_update = last_update
+            except Exception as e:
+                log.error("Failed to update observations from backend: %s", e)
             await asyncio.sleep(5)
 
     async def last_update_time(self) -> Time:

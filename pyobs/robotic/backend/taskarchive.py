@@ -47,14 +47,17 @@ class BackendTaskArchive(TaskArchive):
     async def _check_for_changes(self) -> None:
         """Update tasks in background."""
         while True:
-            last_update = await self.last_update_time()
-            if self._last_update is None or self._last_update < last_update:
-                self._projects = await self._get_projects()
-                self._tasks = await self._get_tasks()
-                log.info("Downloaded new tasks/projects.")
-                self._last_update = last_update
-                if self._on_tasks_changed is not None:
-                    await self._on_tasks_changed()
+            try:
+                last_update = await self.last_update_time()
+                if self._last_update is None or self._last_update < last_update:
+                    self._projects = await self._get_projects()
+                    self._tasks = await self._get_tasks()
+                    log.info("Downloaded new tasks/projects.")
+                    self._last_update = last_update
+                    if self._on_tasks_changed is not None:
+                        await self._on_tasks_changed()
+            except Exception as e:
+                log.error("Failed to update tasks from backend: %s", e)
             await asyncio.sleep(5)
 
     async def last_update_time(self) -> Time:

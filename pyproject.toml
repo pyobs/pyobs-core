@@ -28,6 +28,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "astropydantic>=0.0.5",
     "pillow>=11.3.0",
+    "tenacity>=9.1.4",
 ]
 
 [project.optional-dependencies]
@@ -81,6 +82,7 @@ dev = [
     "sphinx>=8.2.3",
     "sphinx-rtd-theme>=3.0.2",
     "pyside6-stubs>=6.7.3.0",
+    "radon>=6.0.1",
 ]
 
 [tool.hatch.build.targets.sdist]

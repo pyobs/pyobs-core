@@ -3120,7 +3120,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.42.13"
+version = "1.43.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

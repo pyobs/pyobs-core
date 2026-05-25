@@ -68,12 +68,12 @@ class BackendTaskArchive(TaskArchive):
     async def _get_projects(self) -> list[Project]:
         """Fetch projects from backend."""
         projects = await http_request_with_retries(self._session, urljoin(self._url, "/api/projects/"))
-        return [self.pyobs_model_validate(Project, project) for project in projects]
+        return [self.pyobs_model_validate(Project, project) for project in projects["results"]]
 
     async def _get_tasks(self) -> list[Task]:
         """Fetch tasks from backend."""
         tasks = await http_request_with_retries(self._session, urljoin(self._url, "/api/tasks/"))
-        return [self.pyobs_model_validate(Task, task) for task in tasks]
+        return [self.pyobs_model_validate(Task, task) for task in tasks["results"]]
 
     async def last_changed(self) -> Time | None:
         """Returns time when last time any tasks changed."""

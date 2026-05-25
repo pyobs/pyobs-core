@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 )
 async def http_request_with_retries(
     session: aiohttp.ClientSession, url: str, method: str = "get", expected_status: int = 200, **kwargs: Any
-) -> dict[str, Any] | list[Any]:
+) -> dict[str, Any]:
     async with session.request(method, url, **kwargs) as response:
         if response.status != expected_status:
             raise RuntimeError("Invalid response from server: " + await response.text())

@@ -86,7 +86,7 @@ class BackendObservationArchive(ObservationArchive):
             urljoin(self._url, "/api/observations/"),
             params={"end_after": Time.now().isot, "state": "pending,in_progress"},
         )
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
 
     async def add_schedule(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -186,7 +186,7 @@ class BackendObservationArchive(ObservationArchive):
         observations = await http_request_with_retries(
             self._session, urljoin(self._url, f"/api/tasks/{task.id}/observations/")
         )
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.
@@ -201,10 +201,10 @@ class BackendObservationArchive(ObservationArchive):
         end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
         observations = await http_request_with_retries(
             self._session,
-            urljoin(self._url, f"/api/observations/"),
+            urljoin(self._url, "/api/observations/"),
             params={"start_after": start.isoformat(), "end_before": end.isoformat()},
         )
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
+        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
 
 
 __all__ = ["BackendObservationArchive"]

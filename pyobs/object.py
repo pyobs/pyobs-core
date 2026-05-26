@@ -223,13 +223,17 @@ class PrivateAttrMixin:
 
     def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
         """Validate a pydantic model with additional fields."""
-        obj = cls.model_validate(*args, **kwargs)  # type: ignore
-        obj._timezone = self._timezone
-        obj._location = self._location
-        obj._vfs = self._vfs
-        obj._observer = self._observer
-        obj._comm = self._comm
-        return obj  # type: ignore
+        return cls.model_validate(
+            *args,
+            context={
+                "comm": self._comm,
+                "observer": self._observer,
+                "vfs": self._vfs,
+                "timezone": self._timezone,
+                "location": self._location,
+            },
+            **kwargs,
+        )
 
 
 class Object(PrivateAttrMixin):

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import datetime
 from abc import ABCMeta
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Self
 
 from astropy.coordinates import EarthLocation
 from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, ConfigDict, PrivateAttr
-from pydantic_core.core_schema import ValidatorFunctionWrapHandler
+from pydantic_core.core_schema import ValidatorFunctionWrapHandler, ValidationInfo
 from astroplan import Observer
 
 from pyobs.comm import Comm
@@ -28,9 +28,17 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, **kwargs: Any) -> None:
-        PydanticBaseModel.__init__(self, **kwargs)
-        # Object.__init__(self)
+    @model_validator(mode="after")
+    def _inject_context_into_children(self, info: ValidationInfo) -> Self:
+        print("inject", self.__class__.__name__)
+        if info.context is not None:
+            print("observer:", info.context.get("observer"))
+            self._comm = info.context.get("comm")
+            self._observer = info.context.get("observer")
+            self._vfs = info.context.get("vfs")
+            self._timezone = info.context.get("timezone")
+            self._location = info.context.get("location")
+        return self
 
 
 class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
@@ -44,19 +52,20 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
         return result
 
-    @model_validator(mode="wrap")  # noqa  # the decorator position is correct
+    @model_validator(mode="wrap")
     @classmethod
-    def retrieve_class_on_deserialization(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> Any:
+    def retrieve_class_on_deserialization(
+        cls, value: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> Any:
+        """Get the correct class for this model and run model_validate on that class with the current context."""
         if isinstance(value, dict):
             from pyobs.object import get_class_from_string
 
-            # WARNING: we do not want to modify `value` which will come from the outer scope
-            # WARNING2: `sub_cls(**modified_value)` will trigger a recursion, and thus we need to remove `class`
             modified_value = value.copy()
             sub_cls_name = modified_value.pop("class", None)
             if sub_cls_name is not None:
                 klass = get_class_from_string(sub_cls_name)
-                return klass(**modified_value)
+                return klass.model_validate(modified_value, context=info.context)
         return handler(value)
 
 

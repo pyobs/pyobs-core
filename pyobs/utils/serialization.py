@@ -38,9 +38,11 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
 
     @model_serializer(mode="wrap")
     def inject_class_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
-        result = handler(self)
+        # Collect fields from the concrete runtime type to avoid Pydantic v2
+        # resolving field schemas against the abstract base type when nested in a parent model
+        result = {field_name: getattr(self, field_name) for field_name in type(self).model_fields}
         result["class"] = f"{self.__module__}.{self.__class__.__name__}"
-        return result  # type: ignore
+        return result
 
     @model_validator(mode="wrap")  # noqa  # the decorator position is correct
     @classmethod

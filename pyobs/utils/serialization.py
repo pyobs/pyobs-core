@@ -41,7 +41,7 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
         return self
 
 
-class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
+class PolymorphicBaseModel(BaseModel, metaclass=ABCMeta):
     """Pydantic base model for pyobs sub classes that need to be serialized."""
 
     @model_serializer(mode="wrap")
@@ -69,4 +69,4 @@ class SubClassBaseModel(BaseModel, metaclass=ABCMeta):
         return handler(value)
 
 
-__all__ = ["BaseModel", "SubClassBaseModel"]
+__all__ = ["BaseModel", "PolymorphicBaseModel"]

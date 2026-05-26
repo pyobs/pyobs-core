@@ -5,14 +5,14 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 from astropy.time import Time
 
-from pyobs.utils.serialization import SubClassBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
     from ..dataprovider import DataProvider
     from pyobs.robotic import Task
 
 
-class Merit(SubClassBaseModel, metaclass=ABCMeta):
+class Merit(PolymorphicBaseModel, metaclass=ABCMeta):
     """Merit class."""
 
     @abstractmethod

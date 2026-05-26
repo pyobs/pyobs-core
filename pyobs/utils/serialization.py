@@ -30,9 +30,7 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
 
     @model_validator(mode="after")
     def _inject_context_into_children(self, info: ValidationInfo) -> Self:
-        print("inject", self.__class__.__name__)
         if info.context is not None:
-            print("observer:", info.context.get("observer"))
             self._comm = info.context.get("comm")
             self._observer = info.context.get("observer")
             self._vfs = info.context.get("vfs")

@@ -1,10 +1,10 @@
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 
-from pyobs.utils.serialization import SubClassBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel
 
 
-class TargetPicker(SubClassBaseModel):
+class TargetPicker(PolymorphicBaseModel):
     """A helper class for picking a target from a list."""
 
     csv: str

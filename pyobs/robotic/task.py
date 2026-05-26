@@ -42,6 +42,9 @@ class Task(BaseModel):
         s += ")"
         return s
 
+    def create_script(self) -> Script:
+        return self.pyobs_model_validate(Script, self.script, by_alias=True)
+
     async def can_run(self, data: TaskData | None) -> bool:
         """Checks whether this task could run now.
 
@@ -49,8 +52,7 @@ class Task(BaseModel):
             True, if the task can run now.
         """
         if self.script is not None:
-            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
-            return await script.can_run(data)
+            return await self.create_script().can_run(data)
         return True
 
     @property
@@ -65,8 +67,7 @@ class Task(BaseModel):
     async def run(self, data: TaskData | None) -> None:
         """Run a task"""
         if self.script is not None:
-            script = self.pyobs_model_validate(Script, self.script, by_alias=True)
-            await script.run(data)
+            await self.create_script().run(data)
 
     def is_finished(self) -> bool:
         """Whether task is finished."""

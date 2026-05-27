@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 from astropy.time import Time
 
-from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.robotic.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
     from ..dataprovider import DataProvider

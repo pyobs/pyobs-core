@@ -4,7 +4,7 @@ import logging
 
 from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope
 from pyobs.robotic.scripts import Script
-from pyobs.utils.targetpicker import TargetPicker
+from pyobs.robotic.utils.targetpicker import TargetPicker
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData

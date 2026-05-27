@@ -6,7 +6,7 @@ import astroplan
 from typing import TYPE_CHECKING, Any
 
 from pyobs.object import create_object, Object
-from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.robotic.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time

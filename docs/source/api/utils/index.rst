@@ -6,11 +6,17 @@ Utilities (pyobs.utils)
    :caption: Contents:
 
    archive
+   config
+   coordinates
    enums
    exceptions
    fits
    focusseries
+   http
+   offsets
    parallel
+   pipeline
+   publisher
    simulation
    skyflats
    time

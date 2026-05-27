@@ -8,13 +8,13 @@ from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.merits import ConstantMerit, TimeWindowMerit
 from pyobs.robotic.scheduler.merits.timewindow import TimeWindow
-from pyobs.robotic.scheduler.meritscheduler import MeritScheduler
+from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
 from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio
 async def test_evaluate_merits() -> None:
-    scheduler = MeritScheduler()
+    scheduler = OnDemandScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -31,7 +31,7 @@ async def test_evaluate_merits() -> None:
 
 @pytest.mark.asyncio
 async def test_next_best_task() -> None:
-    scheduler = MeritScheduler()
+    scheduler = OnDemandScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -70,7 +70,7 @@ async def test_next_best_task() -> None:
 
 @pytest.mark.asyncio
 async def test_check_for_better_task() -> None:
-    scheduler = MeritScheduler()
+    scheduler = OnDemandScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time.now()
@@ -101,7 +101,7 @@ async def test_check_for_better_task() -> None:
 
 @pytest.mark.asyncio
 async def test_fill_for_better_task() -> None:
-    scheduler = MeritScheduler()
+    scheduler = OnDemandScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")
@@ -137,7 +137,7 @@ async def test_fill_for_better_task() -> None:
 
 @pytest.mark.asyncio
 async def test_postpone_task() -> None:
-    scheduler = MeritScheduler()
+    scheduler = OnDemandScheduler()
     observer = Observer(location=EarthLocation.of_site("SAAO"))
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")

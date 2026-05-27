@@ -8,7 +8,7 @@ import aiohttp
 
 from pyobs.object import Object
 from pyobs.utils.time import Time
-from pyobs.utils.serialization import BaseModel
+from pyobs.robotic.utils.serialization import BaseModel
 
 log = logging.getLogger(__name__)
 

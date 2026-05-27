@@ -7,7 +7,7 @@ from astropydantic import AstroPydanticTime  # type: ignore
 from pyobs.object import Object
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
-from pyobs.utils.serialization import BaseModel
+from pyobs.robotic.utils.serialization import BaseModel
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskArchive

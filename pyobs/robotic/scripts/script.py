@@ -3,7 +3,7 @@ import logging
 from typing import Any, TypeVar, TYPE_CHECKING
 
 from pyobs.object import Object
-from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.robotic.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData

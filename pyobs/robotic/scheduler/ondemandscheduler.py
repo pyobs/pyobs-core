@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class MeritScheduler(TaskScheduler):
+class OnDemandScheduler(TaskScheduler):
     """Scheduler based on merits."""
 
     __module__ = "pyobs.modules.robotic"
@@ -284,4 +284,4 @@ class MeritScheduler(TaskScheduler):
             return None
 
 
-__all__ = ["MeritScheduler"]
+__all__ = ["OnDemandScheduler"]

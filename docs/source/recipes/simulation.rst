@@ -5,6 +5,14 @@ Setting up a *pyobs* system with simulated telescope and camera
     This recipe requires three accounts on your XMPP server (see :ref:`Setting up ejabberd`): ``telescope``, ``camera``,
     and ``gui``.
 
+.. note::
+    Several configuration files in this recipe use the ``{include <filename>}`` syntax. This is a *pyobs*
+    preprocessing feature: before a YAML file is parsed, *pyobs* replaces any ``{include <filename>}`` block
+    with the contents of the referenced file, resolved relative to the including file's directory. This lets
+    you share common settings (like observatory location) across multiple configuration files without
+    repetition. An optional key can be appended to include only a specific section:
+    ``{include shared.yaml some.nested.key}``.
+
 Setting up the venv
 ^^^^^^^^^^^^^^^^^^^
 

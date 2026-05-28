@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import logging
 
-from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope
+from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope, IMotion
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.targetpicker import TargetPicker
 
@@ -60,6 +60,10 @@ class AutoFocus(Script):
 
         log.info("Performing auto focus...")
         await autofocus.auto_focus(self.count, self.step, self.exposure_time)
+
+        if isinstance(telescope, IMotion):
+            log.info("Stopping telescope...")
+            await telescope.stop_motion()
         log.info("Done.")
 
 

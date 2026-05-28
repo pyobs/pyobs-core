@@ -1,5 +1,3 @@
-from typing import Dict, Tuple, Any
-
 from .base import SkyflatPriorities
 
 
@@ -8,12 +6,10 @@ class ConstSkyflatPriorities(SkyflatPriorities):
 
     __module__ = "pyobs.utils.skyflats.priorities"
 
-    def __init__(self, priorities: Dict[Tuple[str, Tuple[int, int]], float], *args: Any, **kwargs: Any):
-        SkyflatPriorities.__init__(self)
-        self._priorities = priorities
+    priorities: dict[tuple[str, tuple[int, int]], float]
 
-    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
-        return self._priorities
+    async def __call__(self) -> dict[tuple[str, tuple[int, int]], float]:
+        return self.priorities
 
 
 __all__ = ["ConstSkyflatPriorities"]

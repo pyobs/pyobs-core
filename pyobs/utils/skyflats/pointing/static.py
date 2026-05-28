@@ -1,7 +1,9 @@
 import logging
-from typing import Any
-from astropy.coordinates import SkyCoord
+from typing import Self
+
+from astropy.coordinates import SkyCoord, AltAz
 import astropy.units as u
+from pydantic import model_validator
 
 from pyobs.interfaces import IPointingAltAz
 from pyobs.utils.time import Time
@@ -15,28 +17,20 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
     __module__ = "pyobs.utils.skyflats.pointing"
 
-    def __init__(self, initialized: bool = False, *args: Any, **kwargs: Any):
-        """Inits new static pointing for sky flats.
+    _initialized: bool = False
 
-        Args:
-            initialized: If False, telescope does not move at all.
-        """
-
-        SkyFlatsBasePointing.__init__(self, *args, **kwargs)
-
-        # whether we've moved already
-        self._initialized = initialized
+    @model_validator(mode="after")
+    def _reset_initialized(self) -> Self:
+        # always start uninitialized when freshly validated
+        self._initialized = False
+        return self
 
     async def __call__(self, telescope: IPointingAltAz) -> None:
         """Move telescope.
 
         Args:
             telescope: Telescope to use.
-
-        Returns:
-            Future for the movement call.
         """
-
         if self._initialized:
             return
         self._initialized = True
@@ -56,7 +50,7 @@ class SkyFlatsStaticPointing(SkyFlatsBasePointing):
 
         # move telescope
         log.info("Moving telescope to Alt=80, Az=%.2f...", altaz.az.degree)
-        return await telescope.move_altaz(80, float(altaz.az.degree))
+        await telescope.move_altaz(80, float(altaz.az.degree))
 
     async def reset(self) -> None:
         """Reset pointing."""

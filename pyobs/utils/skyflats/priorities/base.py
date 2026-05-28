@@ -1,13 +1,15 @@
-from typing import Dict, Tuple
+from abc import abstractmethod, ABCMeta
+
+from pyobs.robotic.utils.serialization import PolymorphicBaseModel
 
 
-class SkyflatPriorities:
+class SkyflatPriorities(PolymorphicBaseModel, metaclass=ABCMeta):
     """Base class for sky flat priorities."""
 
     __module__ = "pyobs.utils.skyflats.priorities"
 
-    async def __call__(self) -> Dict[Tuple[str, Tuple[int, int]], float]:
-        return {}
+    @abstractmethod
+    async def __call__(self) -> dict[tuple[str, tuple[int, int]], float]: ...
 
 
 __all__ = ["SkyflatPriorities"]

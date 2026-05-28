@@ -99,7 +99,11 @@ class FlatFielder(Object):
         # pointing
         self._pointing: Optional[SkyFlatsBasePointing] = None
         if pointing is not None:
-            self._pointing = self.get_safe_object(pointing, SkyFlatsBasePointing)
+            self._pointing = (
+                pointing
+                if isinstance(pointing, SkyFlatsBasePointing)
+                else self.pyobs_model_validate(SkyFlatsBasePointing, pointing)
+            )
 
         # state machine
         self._state = FlatFielder.State.INIT

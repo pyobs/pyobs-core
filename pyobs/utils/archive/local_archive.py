@@ -2,6 +2,7 @@ import glob
 from pathlib import Path
 from typing import Any
 import logging
+from pydantic import PrivateAttr
 import pandas as pd
 from astropy.io import fits
 
@@ -18,16 +19,21 @@ class LocalArchive(Archive):
 
     __module__ = "pyobs.utils.archive"
 
-    def __init__(self, root: str, **kwargs: Any):
-        self._root = Path(root)
+    root: str
+
+    _root_path: Path = PrivateAttr()
+    _data: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        self._root_path = Path(self.root)
         self._data = pd.DataFrame()
         self._update_root()
 
     def _update_root(self) -> None:
         """Update files in root directory."""
-
-        # init lists
-        filenames = sorted(glob.glob(str(self._root / "*.fits")))
+        filenames = sorted(glob.glob(str(self._root_path / "*.fits")))
         columns: dict[str, Any] = {
             h: []
             for h in [
@@ -42,13 +48,8 @@ class LocalArchive(Archive):
                 "rlevel",
             ]
         }
-
-        # loop files
         for filename in filenames:
-            # load header
             hdr = fits.getheader(filename)
-
-            # store it
             columns["date-obs"].append(Time(hdr["DATE-OBS"]) if "DATE-OBS" in hdr else None)
             columns["day-obs"].append(Time(hdr["DAY-OBS"]) if "DAY-OBS" in hdr else None)
             columns["binning"].append(f"{hdr['XBINNING']}x{hdr['YBINNING']}" if "XBINNING" in hdr else None)
@@ -58,8 +59,6 @@ class LocalArchive(Archive):
             columns["site"].append(hdr["SITEID"] if "SITEID" in hdr else None)
             columns["telescope"].append(hdr["TELID"] if "TELID" in hdr else None)
             columns["rlevel"].append(hdr["RLEVEL"] if "RLEVEL" in hdr else None)
-
-        # init df
         columns["filename"] = filenames
         self._data = pd.DataFrame(columns)
 
@@ -76,9 +75,6 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> pd.DataFrame:
-        """Filter data"""
-
-        # filter
         data = self._data
         if start is not None:
             data = data[data["date-obs"] > start]
@@ -115,30 +111,9 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> dict[str, list[Any]]:
-        """Returns a list of options restricted to the given parameters.
-
-        Args:
-            start: Start time for restriction.
-            end: End time for restriction.
-            night: Images in given night.
-            site: From given site.
-            telescope: From given telescope.
-            instrument: From given instrument.
-            image_type: With given image type.
-            binning: With given binning.
-            filter_name: With given filter.
-            rlevel: In given reduction level.
-
-        Returns:
-            Dictionary with lists of "binnings", "filters", "imagetypes", "instruments", "sites", and "telescopes".
-        """
-
-        # filter
         data = self._filter_data(
             start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
         )
-
-        # return results
         return {
             "binnings": list(data["binning"].unique()),
             "filters": list(data["filter"].unique()),
@@ -161,30 +136,9 @@ class LocalArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> list[FrameInfo]:
-        """Returns a list of frames restricted to the given parameters.
-
-        Args:
-            start: Start time for restriction.
-            end: End time for restriction.
-            night: Images in given night.
-            site: From given site.
-            telescope: From given telescope.
-            instrument: From given instrument.
-            image_type: With given image type.
-            binning: With given binning.
-            filter_name: With given filter.
-            rlevel: In given reduction level.
-
-        Returns:
-            List of frames.
-        """
-
-        # filter
         data = self._filter_data(
             start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
         )
-
-        # create list of FrameInfos
         infos: list[FrameInfo] = []
         for _, row in data.iterrows():
             info = FrameInfo()
@@ -197,16 +151,6 @@ class LocalArchive(Archive):
         return infos
 
     async def download_frames(self, frames: list[FrameInfo]) -> list[Image]:
-        """Download given frames.
-
-        Args:
-            frames: List of frames to download.
-
-        Returns:
-            List of Image objects.
-        """
-
-        # load frames
         images: list[Image] = []
         for frame in frames:
             if frame.filename is not None:
@@ -214,16 +158,6 @@ class LocalArchive(Archive):
         return images
 
     async def download_headers(self, infos: list[FrameInfo]) -> list[dict[str, Any]]:
-        """Download given headers.
-
-        Args:
-            infos: List of frames to download.
-
-        Returns:
-            List of dicts with headers.
-        """
-
-        # load frames
         headers = []
         for frame in infos:
             headers.append({k: v for k, v in fits.getheader(frame.filename).items()})

@@ -3,7 +3,6 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
-from pyobs.object import get_object
 from pyobs.robotic.scripts import Script
 from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
@@ -60,7 +59,7 @@ class SkyFlats(Script):
         """
 
         # get archive and priorities
-        prio = get_object(self.priorities, SkyflatPriorities)
+        prio = self.pyobs_model_validate(SkyflatPriorities, self.priorities)
 
         # create scheduler
         scheduler = Scheduler(

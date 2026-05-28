@@ -25,7 +25,7 @@ async def test_scheduler():
     }
 
     # set constant priorities
-    priorities = ConstSkyflatPriorities({("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
+    priorities = ConstSkyflatPriorities(priorities={("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
 
     # create scheduler
     scheduler = Scheduler(functions, priorities, saao_observer)

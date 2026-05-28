@@ -1,7 +1,7 @@
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 
-from pyobs.robotic.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel
 
 
 class TargetPicker(PolymorphicBaseModel):

@@ -1,6 +1,6 @@
 import pytest
 
-from pyobs.utils.skyflats.exptimeeval import ExpTimeEval
+from pyobs.robotic.utils.skyflats.exptimeeval import ExpTimeEval
 
 
 def test_parse_config_simple():

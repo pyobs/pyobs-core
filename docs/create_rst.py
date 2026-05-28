@@ -242,15 +242,12 @@ def write_index(
 def create_utils_rst() -> None:
     import pyobs.utils.focusseries
     import pyobs.utils.simulation
-    import pyobs.utils.skyflats
     import pyobs.utils.enums
     import pyobs.utils.time
-    import pyobs.utils.archive
     import pyobs.utils.fits
     import pyobs.utils.exceptions
     import pyobs.utils.parallel
-    import pyobs.utils.skyflats.pointing
-    import pyobs.utils.skyflats.priorities
+    import pyobs.robotic.utils.skyflats.priorities
 
     # clean up
     os.system("rm -rf source/api/utils/*")

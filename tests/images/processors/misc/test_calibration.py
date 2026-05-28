@@ -4,8 +4,21 @@ import pytest
 import pyobs.utils.pipeline
 from pyobs.images import Image
 from pyobs.images.processors.calibration import Calibration
-from pyobs.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
+
+
+class ConcreteArchive(Archive):
+    """Minimal concrete Archive for testing."""
+
+    async def list_options(self, **kwargs):
+        return {}
+
+    async def list_frames(self, **kwargs):
+        return []
+
+    async def download_frames(self, frames):
+        return []
 
 
 @pytest.fixture()
@@ -24,7 +37,7 @@ async def test_find_master_in_cache(mocker, mock_image):
     cached_image = Image()
     image_type = ImageType.OBJECT
 
-    archive = Archive()
+    archive = ConcreteArchive()
     calibration = Calibration(archive)
     assert calibration._calib_cache is not None
     mocker.patch.object(calibration._calib_cache, "get_from_cache", return_value=cached_image)
@@ -38,7 +51,7 @@ async def test_find_master_not_in_archive(mocker, mock_image):
     mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", return_value=None)
 
     image_type = ImageType.OBJECT
-    archive = Archive()
+    archive = ConcreteArchive()
 
     calibration = Calibration(archive)
     assert calibration._calib_cache is not None
@@ -64,7 +77,7 @@ async def test_find_master_in_archive(mocker, mock_image):
     mocker.patch("pyobs.utils.pipeline.Pipeline.find_master", return_value=calib_image)
 
     image_type = ImageType.OBJECT
-    archive = Archive()
+    archive = ConcreteArchive()
     calibration = Calibration(archive)
     assert calibration._calib_cache is not None
     mocker.patch.object(calibration._calib_cache, "add_to_cache")
@@ -87,7 +100,7 @@ async def test_call_valid(mocker, mock_image):
     mocker.patch("pyobs.images.Image.from_ccddata", return_value=calib_image)
     mocker.patch("pyobs.images.Image.to_ccddata", return_value=calib_image)
 
-    archive = Archive()
+    archive = ConcreteArchive()
     calibration = Calibration(archive)
     mocker.patch.object(calibration, "_find_master", return_value=mock_image)
 
@@ -106,7 +119,7 @@ async def test_call_valid(mocker, mock_image):
 
 @pytest.mark.asyncio
 async def test_call_calibration_not_found(mocker, caplog):
-    archive = Archive()
+    archive = ConcreteArchive()
     calibration = Calibration(archive)
 
     mocker.patch.object(calibration, "_get_calibrations_masters", side_effect=ValueError("Test"))

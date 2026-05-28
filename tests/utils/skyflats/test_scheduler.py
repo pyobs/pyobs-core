@@ -1,8 +1,8 @@
 from astroplan import Observer
 import pytest
 
-from pyobs.utils.skyflats import Scheduler
-from pyobs.utils.skyflats.priorities import ConstSkyflatPriorities
+from pyobs.robotic.utils.skyflats import Scheduler
+from pyobs.robotic.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time
 import astropy.units as u
 
@@ -25,7 +25,7 @@ async def test_scheduler():
     }
 
     # set constant priorities
-    priorities = ConstSkyflatPriorities({("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
+    priorities = ConstSkyflatPriorities(priorities={("B", (1, 1)): 1, ("V", (1, 1)): 2, ("R", (1, 1)): 3})
 
     # create scheduler
     scheduler = Scheduler(functions, priorities, saao_observer)

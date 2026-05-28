@@ -4,7 +4,7 @@ from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
 from pydantic import Field
 
-from pyobs.robotic.utils.serialization import BaseModel
+from pyobs.utils.serialization import BaseModel
 from .merit import Merit
 
 if TYPE_CHECKING:

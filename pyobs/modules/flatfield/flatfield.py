@@ -9,7 +9,7 @@ from pyobs.modules import Module
 from pyobs.modules import timeout
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.publisher import CsvPublisher
-from pyobs.utils.skyflats import FlatFielder
+from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)

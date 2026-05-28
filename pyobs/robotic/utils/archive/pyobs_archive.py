@@ -3,10 +3,11 @@ from typing import Any, TypedDict, cast
 import aiohttp
 import urllib.parse
 import logging
+from pydantic import PrivateAttr
 
 from pyobs.utils.time import Time
 from pyobs.images import Image
-from pyobs.utils.archive import Archive, FrameInfo
+from pyobs.robotic.utils.archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)
@@ -40,10 +41,17 @@ class PyobsArchive(Archive):
 
     __module__ = "pyobs.utils.archive"
 
-    def __init__(self, url: str, token: str, proxies: dict[str, str] | None = None, **kwargs: Any):
-        self._url = url
-        self._headers = {"Authorization": "Token " + token}
-        self._proxies = proxies
+    url: str
+    token: str
+    proxies: dict[str, str] | None = None
+
+    _headers: dict[str, str] = PrivateAttr()
+    _timeout: aiohttp.ClientTimeout = PrivateAttr()
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        self._headers = {"Authorization": "Token " + self.token}
         self._timeout = aiohttp.ClientTimeout(total=30)
 
     async def list_options(
@@ -59,21 +67,14 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> dict[str, list[Any]]:
-        # build URL
-        url = urllib.parse.urljoin(self._url, "frames/aggregate/")
-
-        # and params
+        url = urllib.parse.urljoin(self.url, "frames/aggregate/")
         params = self._build_query(
             start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
         )
-
-        # do request
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                 if response.status != 200:
                     raise ValueError("Could not query frames: %s" % str(await response.text()))
-
-                # create frames and return them
                 return cast(dict[str, list[Any]], await response.json())
 
     async def list_frames(
@@ -89,42 +90,23 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> list[FrameInfo]:
-        # build URL
-        url = urllib.parse.urljoin(self._url, "frames/")
-
-        # and params
+        url = urllib.parse.urljoin(self.url, "frames/")
         params = self._build_query(
             start, end, night, site, telescope, instrument, image_type, binning, filter_name, rlevel
         )
-
-        # init list
         frames: list[FrameInfo] = []
-
-        # set offset and limit
         params["offset"] = 0
         params["limit"] = 1000
-
-        # open session
         async with aiohttp.ClientSession() as session:
-            # loop until we got all
             while True:
-                # do request
                 async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         raise ValueError("Could not query frames")
-
-                    # create frames and return them
                     res = await response.json()
-
-                    # create frames
                     new_frames = [PyobsArchiveFrameInfo(frame) for frame in res["results"]]
                     frames.extend(new_frames)
-
-                    # got all?
                     if len(frames) >= res["count"]:
                         return frames
-
-                    # get next chunk
                     params["offset"] += len(new_frames)
 
     @staticmethod
@@ -140,7 +122,6 @@ class PyobsArchive(Archive):
         filter_name: str | None = None,
         rlevel: int | None = None,
     ) -> dict[str, Any]:
-        # build params
         params: dict[str, Any] = {}
         if start is not None:
             params["start"] = start.isot
@@ -165,81 +146,54 @@ class PyobsArchive(Archive):
         return params
 
     async def download_frames(self, infos: list[FrameInfo]) -> list[Image]:
-        # loop infos
         images = []
         for info in infos:
-            # make sure it's the correct FrameInfo
             if not isinstance(info, PyobsArchiveFrameInfo):
                 log.warning("Incorrect type for frame info.")
                 continue
-
-            # download
-            url = urllib.parse.urljoin(self._url, info.url)
+            url = urllib.parse.urljoin(self.url, info.url)
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         log.exception("Error downloading file %s.", info.filename)
-
-                    # create image
                     try:
                         image = Image.from_bytes(await response.read())
                         images.append(image)
                     except OSError:
                         log.exception("Error downloading file %s.", info.filename)
-
-        # return all
         return images
 
     async def download_headers(self, infos: list[PyobsArchiveFrameInfo]) -> list[dict[str, Any]]:
-        # loop infos
         headers = []
         for info in infos:
-            # download
-            url = urllib.parse.urljoin(self._url, info.url).replace("download", "headers")
+            url = urllib.parse.urljoin(self.url, info.url).replace("download", "headers")
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=self._headers, timeout=self._timeout) as response:
                     if response.status != 200:
                         log.error("Could not fetch headers for %s.", info.filename)
-
                     try:
                         results = (await response.json())["results"]
                         headers.append(dict((d["key"], d["value"]) for d in results))
                     except KeyError:
                         log.error("Could not fetch headers for %s.", info.filename)
                         headers.append({})
-
-        # return all
         return headers
 
     async def upload_frames(self, images: list[Image]) -> None:
-        # build URL
-        url = urllib.parse.urljoin(self._url, "frames/create/")
-
-        # do some initial GET request for getting the csrftoken
+        url = urllib.parse.urljoin(self.url, "frames/create/")
         async with aiohttp.ClientSession() as session:
-            # do some initial GET request for getting the csrftoken
             data = aiohttp.FormData()
-            async with session.get(self._url, headers=self._headers) as response:
+            async with session.get(self.url, headers=self._headers) as response:
                 token = response.cookies["csrftoken"].value
                 data.add_field("csrfmiddlewaretoken", token)
-
             for i, img in enumerate(images, 1):
-                # get filename
                 filename = img.header["FNAME"]
-
-                # write HDU to BytesIO
                 with io.BytesIO() as bio:
-                    # write it
                     img.writeto(bio)
                     data.add_field(f"file{i}", bio.getvalue(), filename=filename)
-
-            # post it
             async with session.post(url, data=data, timeout=self._timeout, headers=self._headers) as response:
-                # success, if status code is 200
                 if response.status != 200:
                     raise ValueError("Cannot write file, received status_code %d." % response.status)
-
-                # check json
                 json = await response.json()
                 if "created" not in json or json["created"] == 0:
                     if "errors" in json:

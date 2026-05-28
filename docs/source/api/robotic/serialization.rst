@@ -1,4 +1,4 @@
-Serialization (pyobs.robotic.utils.serialization)
+Serialization (pyobs.utils.serialization)
 --------------------------------------------------
 
 The robotic subsystem uses pydantic models rather than :class:`~pyobs.object.Object` subclasses for
@@ -16,18 +16,18 @@ is discarded. These map naturally onto pydantic models, which give you field val
 coercion, and YAML round-tripping for free, without the overhead of managing ``open()``/``close()``
 lifecycles.
 
-The two base classes in ``pyobs.robotic.utils.serialization`` bridge pydantic's validation machinery
+The two base classes in ``pyobs.utils.serialization`` bridge pydantic's validation machinery
 with *pyobs*'s runtime context system.
 
 
 BaseModel
 ^^^^^^^^^^
 
-:class:`~pyobs.robotic.utils.serialization.BaseModel` is the pydantic equivalent of
+:class:`~pyobs.utils.serialization.BaseModel` is the pydantic equivalent of
 :class:`~pyobs.object.Object` for non-polymorphic models. It adds the five runtime context
 attributes as ``PrivateAttr`` fields and injects them from a validation context if one is present::
 
-    from pyobs.robotic.utils.serialization import BaseModel
+    from pyobs.utils.serialization import BaseModel
 
     class Task(BaseModel):
         name: str
@@ -58,7 +58,7 @@ populated in two ways:
 PolymorphicBaseModel
 ^^^^^^^^^^^^^^^^^^^^^
 
-:class:`~pyobs.robotic.utils.serialization.PolymorphicBaseModel` extends ``BaseModel`` for cases
+:class:`~pyobs.utils.serialization.PolymorphicBaseModel` extends ``BaseModel`` for cases
 where the concrete type is not known at parse time — the ``class:`` key in the YAML selects it
 at runtime. ``Constraint``, ``Merit``, ``Target``, and ``Script`` are all polymorphic base classes.
 
@@ -91,7 +91,7 @@ PrivateAttrMixin
 
 The runtime context properties (``comm``, ``vfs``, ``observer``, ``location``, ``timezone``) are
 defined on :class:`~pyobs.object.PrivateAttrMixin`, which both :class:`~pyobs.object.Object` and
-:class:`~pyobs.robotic.utils.serialization.BaseModel` inherit from. This ensures that scripts,
+:class:`~pyobs.utils.serialization.BaseModel` inherit from. This ensures that scripts,
 constraints, merits, and targets all expose the same property interface as full ``Object``
 subclasses, even though they are pydantic models::
 
@@ -106,11 +106,11 @@ See :doc:`/api/object` for the full list of properties.
 API reference
 ^^^^^^^^^^^^^^
 
-.. autoclass:: pyobs.robotic.utils.serialization.BaseModel
+.. autoclass:: pyobs.utils.serialization.BaseModel
    :members:
    :show-inheritance:
 
-.. autoclass:: pyobs.robotic.utils.serialization.PolymorphicBaseModel
+.. autoclass:: pyobs.utils.serialization.PolymorphicBaseModel
    :members:
    :show-inheritance:
 

@@ -208,3 +208,34 @@ runtime. It filters the catalogue by current altitude and picks a target in the 
 .. autoclass:: pyobs.robotic.utils.TargetPicker
    :members:
    :show-inheritance:
+
+
+Sky flat utilities
+^^^^^^^^^^^^^^^^^^
+
+These classes support the :class:`~pyobs.robotic.scripts.SkyFlats` script and are configured as
+nested objects within it.
+
+.. autoclass:: pyobs.robotic.utils.skyflats.FlatFielder
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.skyflats.pointing.SkyFlatsBasePointing
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.skyflats.pointing.SkyFlatsStaticPointing
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.SkyflatPriorities
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.ConstSkyflatPriorities
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.skyflats.priorities.ArchiveSkyflatPriorities
+   :members:
+   :show-inheritance:

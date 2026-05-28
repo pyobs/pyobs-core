@@ -330,3 +330,23 @@ appropriate :class:`~pyobs.robotic.scripts.Script` subclass based on a configura
 .. autoclass:: pyobs.robotic.lco.LcoTaskRunner
    :members:
    :show-inheritance:
+
+Image archives
+^^^^^^^^^^^^^^
+
+:class:`~pyobs.robotic.utils.archive.Archive` is the base class used by
+:class:`~pyobs.robotic.utils.skyflats.priorities.ArchiveSkyflatPriorities` to query historical
+observations when calculating flat-field priorities. Concrete implementations are configured via
+the ``class:`` key like any other polymorphic model.
+
+.. autoclass:: pyobs.robotic.utils.archive.Archive
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.archive.PyobsArchive
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.utils.archive.LocalArchive
+   :members:
+   :show-inheritance:

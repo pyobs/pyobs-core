@@ -9,7 +9,6 @@ API
    module
    mixins
    comm
-   environment
    vfs
    interfaces
    events

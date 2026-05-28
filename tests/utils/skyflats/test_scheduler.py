@@ -1,8 +1,8 @@
 from astroplan import Observer
 import pytest
 
-from pyobs.utils.skyflats import Scheduler
-from pyobs.utils.skyflats.priorities import ConstSkyflatPriorities
+from pyobs.robotic.utils.skyflats import Scheduler
+from pyobs.robotic.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time
 import astropy.units as u
 

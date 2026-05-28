@@ -4,8 +4,8 @@ from typing import Any, TYPE_CHECKING
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script
-from pyobs.utils.skyflats.priorities.base import SkyflatPriorities
-from pyobs.utils.skyflats.scheduler import Scheduler, SchedulerItem
+from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
+from pyobs.robotic.utils.skyflats.scheduler import Scheduler, SchedulerItem
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:

@@ -6,11 +6,10 @@ from pyobs.images import Image
 from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
 from pyobs.images.processors.calibration._ccddata_calibrator import _CCDDataCalibrator
 from pyobs.object import get_object
-from pyobs.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from pyobs.utils.pipeline import Pipeline
 from pyobs.utils.time import Time
-
 
 log = logging.getLogger(__name__)
 

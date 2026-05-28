@@ -4,7 +4,7 @@ import pytest
 import pyobs.utils.pipeline
 from pyobs.images import Image
 from pyobs.images.processors.calibration import Calibration
-from pyobs.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 
 

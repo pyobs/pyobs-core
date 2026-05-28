@@ -8,7 +8,7 @@ import astropy.units as u
 
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import Object
-from pyobs.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from pyobs.images import Image, ImageProcessor
 from pyobs.utils.time import Time

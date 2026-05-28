@@ -5,7 +5,7 @@ from pyobs.interfaces import IRunnable, ITelescope
 from pyobs.modules import Module
 from pyobs.object import get_object
 from pyobs.modules import timeout
-from pyobs.utils.skyflats.pointing.base import SkyFlatsBasePointing
+from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)
 

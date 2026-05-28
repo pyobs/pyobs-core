@@ -5,8 +5,7 @@ import operator
 
 from .exptimeeval import ExpTimeEval
 from .priorities import SkyflatPriorities
-from ..time import Time
-
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 

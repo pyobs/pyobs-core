@@ -1,10 +1,10 @@
 from astropy.time import TimeDelta
 import astropy.units as u
 
-from pyobs.utils.archive import Archive
+from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.time import Time
 from .base import SkyflatPriorities
-from ...enums import ImageType
+from pyobs.utils.enums import ImageType
 
 
 class ArchiveSkyflatPriorities(SkyflatPriorities):

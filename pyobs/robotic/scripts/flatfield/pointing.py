@@ -4,7 +4,7 @@ from typing import Any, TYPE_CHECKING
 
 from pyobs.interfaces import IPointingAltAz
 from pyobs.robotic.scripts import Script
-from pyobs.utils.skyflats.pointing import SkyFlatsBasePointing
+from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData

@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 
 from pyobs.interfaces import IPointingAltAz
-from pyobs.robotic.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel
 
 
 class SkyFlatsBasePointing(PolymorphicBaseModel, metaclass=ABCMeta):

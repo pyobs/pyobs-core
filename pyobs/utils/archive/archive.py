@@ -1,6 +1,8 @@
 from __future__ import annotations
+from abc import ABCMeta, abstractmethod
 from typing import Any, TYPE_CHECKING
 
+from pyobs.utils.serialization import PolymorphicBaseModel
 from pyobs.utils.enums import ImageType
 from pyobs.utils.time import Time
 
@@ -19,11 +21,14 @@ class FrameInfo:
         self.dateobs: str | None = None
 
 
-class Archive:
+class Archive(PolymorphicBaseModel, metaclass=ABCMeta):
     """Base class for image archives."""
 
     __module__ = "pyobs.utils.archive"
 
+    model_config = {"arbitrary_types_allowed": True}
+
+    @abstractmethod
     async def list_options(
         self,
         start: Time | None = None,
@@ -36,26 +41,9 @@ class Archive:
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
-    ) -> dict[str, list[Any]]:
-        """Returns a list of options restricted to the given parameters.
+    ) -> dict[str, list[Any]]: ...
 
-        Args:
-            start: Start time for restriction.
-            end: End time for restriction.
-            night: Images in given night.
-            site: From given site.
-            telescope: From given telescope.
-            instrument: From given instrument.
-            image_type: With given image type.
-            binning: With given binning.
-            filter_name: With given filter.
-            rlevel: In given reduction level.
-
-        Returns:
-            Dictionary with lists of "binnings", "filters", "imagetypes", "instruments", "sites", and "telescopes".
-        """
-        raise NotImplementedError
-
+    @abstractmethod
     async def list_frames(
         self,
         start: Time | None = None,
@@ -68,36 +56,10 @@ class Archive:
         binning: str | None = None,
         filter_name: str | None = None,
         rlevel: int | None = None,
-    ) -> list[FrameInfo]:
-        """Returns a list of frames restricted to the given parameters.
+    ) -> list[FrameInfo]: ...
 
-        Args:
-            start: Start time for restriction.
-            end: End time for restriction.
-            night: Images in given night.
-            site: From given site.
-            telescope: From given telescope.
-            instrument: From given instrument.
-            image_type: With given image type.
-            binning: With given binning.
-            filter_name: With given filter.
-            rlevel: In given reduction level.
-
-        Returns:
-            List of frames.
-        """
-        raise NotImplementedError
-
-    async def download_frames(self, frames: list[FrameInfo]) -> list[Image]:
-        """Download given frames.
-
-        Args:
-            frames: List of frames to download.
-
-        Returns:
-            List of Image objects.
-        """
-        raise NotImplementedError
+    @abstractmethod
+    async def download_frames(self, frames: list[FrameInfo]) -> list[Image]: ...
 
     async def upload_frames(self, frames: list[Image]) -> None:
         raise NotImplementedError

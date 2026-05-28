@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 
-from pyobs.robotic.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.serialization import PolymorphicBaseModel
 
 
 class SkyflatPriorities(PolymorphicBaseModel, metaclass=ABCMeta):

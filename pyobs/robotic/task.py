@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit
-from pyobs.robotic.utils.serialization import BaseModel
+from pyobs.utils.serialization import BaseModel
 
 
 @dataclass

@@ -13,5 +13,6 @@ API
    interfaces
    events
    images
+   robotic/index
    image_processors/index
    utils/index

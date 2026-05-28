@@ -1,5 +1,3 @@
-**TODO: Check functionality and add reference to this**
-
 Setting up a minimal robotic observation system
 -----------------------------------------------
 
@@ -248,11 +246,15 @@ Where to go next
 
 - Add more task YAML files to ``/robotic/tasks/`` to build up an observing queue.
 - Implement more :class:`~pyobs.robotic.scripts.Script` subclasses for different observation
-  types (flat fields, focus runs, spectroscopy).
+  types (flat fields, focus runs, spectroscopy) — see :doc:`/api/robotic/scripts` for the full
+  list of built-in scripts and the writing guide.
 - Replace ``YamlTaskArchive`` and ``YamlObservationArchive`` with
   :class:`~pyobs.robotic.backend.BackendTaskArchive` and
   :class:`~pyobs.robotic.backend.BackendObservationArchive` to use the *pyobs-robotic-backend*
-  web service for multi-telescope coordination.
+  web service for multi-telescope coordination — see :doc:`/api/robotic/scheduling`.
 - Add :class:`~pyobs.robotic.scheduler.merits.TransitMerit` or
   :class:`~pyobs.robotic.scheduler.merits.TimeWindowMerit` to the task YAML files for more
-  sophisticated scheduling.
+  sophisticated scheduling — see :doc:`/api/robotic/scheduling` for the full constraint and merit
+  reference.
+- Read :doc:`/api/robotic/serialization` to understand how pydantic models and the ``class:`` key
+  work together, which is useful when writing custom ``Script`` or ``Constraint`` subclasses.

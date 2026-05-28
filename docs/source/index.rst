@@ -118,6 +118,18 @@ Introduction
    overview
    cli
 
+Robotic Mode
+------------
+
+.. toctree::
+   :maxdepth: 1
+
+   api/robotic/index
+   api/robotic/scheduling
+   api/robotic/scripts
+   api/robotic/serialization
+   recipes/robotic
+
 Recipes
 -------
 

@@ -215,30 +215,49 @@ excluded from that slot. This lets merits double as soft constraints when needed
 Scheduler
 ^^^^^^^^^^
 
-:class:`~pyobs.robotic.scheduler.OnDemandScheduler` is the only built-in
-:class:`~pyobs.robotic.scheduler.TaskScheduler` implementation. It evaluates tasks on-demand,
-picking the highest-merit eligible task at each time step rather than computing a fixed nightly
-plan upfront. This makes it robust to interruptions — a weather delay or a last-minute task
-addition triggers an immediate reschedule from the current moment.
-
-The ``OnDemandScheduler`` is configured as a nested object inside the
-:class:`~pyobs.modules.robotic.Scheduler` module::
+*pyobs-core* ships two :class:`~pyobs.robotic.scheduler.TaskScheduler` implementations. Both are
+configured as a nested object inside the :class:`~pyobs.modules.robotic.Scheduler` module::
 
     scheduler:
-      class: pyobs.robotic.scheduler.OnDemandScheduler
+      class: pyobs.robotic.scheduler.OnDemandScheduler  # or AstroplanScheduler
       twilight: astronomical
       constraints:
         - class: pyobs.robotic.scheduler.constraints.SolarElevationConstraint
           max_solar_elevation: -12.0
 
-The ``constraints`` block here defines *global* constraints applied to every task in addition to
-each task's own constraints.
+The ``constraints`` block defines *global* constraints applied to every task in addition to each
+task's own constraints. Note that global constraints are only supported by
+:class:`~pyobs.robotic.scheduler.OnDemandScheduler` — :class:`~pyobs.robotic.scheduler.AstroplanScheduler`
+applies only per-task constraints.
+
+
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Class
+     - Strategy
+   * - :class:`~pyobs.robotic.scheduler.OnDemandScheduler`
+     - Greedy, on-demand scheduling. Evaluates constraints and merits at each time step and picks
+       the highest-scoring task. Robust to interruptions — re-runs from the current moment.
+       Supports merits, global constraints, and lookahead to avoid missing higher-priority tasks.
+   * - :class:`~pyobs.robotic.scheduler.AstroplanScheduler`
+     - Full-night planning via :mod:`astroplan`'s ``PriorityScheduler``. Computes a fixed schedule
+       for the entire night in one pass, running the heavy computation in a separate process to
+       avoid blocking the event loop. Only supports :class:`~pyobs.robotic.scheduler.targets.SiderealTarget`
+       and per-task constraints (not merits). Use when you need a committed nightly plan rather
+       than rolling on-demand decisions.
 
 .. autoclass:: pyobs.robotic.scheduler.TaskScheduler
    :members:
    :show-inheritance:
 
 .. autoclass:: pyobs.robotic.scheduler.OnDemandScheduler
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.AstroplanScheduler
    :members:
    :show-inheritance:
 
@@ -289,5 +308,25 @@ multi-telescope coordination, a web UI for queue management, and centralised log
    :show-inheritance:
 
 .. autoclass:: pyobs.robotic.backend.BackendObservationArchive
+   :members:
+   :show-inheritance:
+
+**Las Cumbres Observatory** (``pyobs.robotic.lco``)
+
+Integration with the `Las Cumbres Observatory <https://lco.global>`_ observation portal. Tasks are
+fetched from the LCO portal API using an instrument type and authorisation token; observations are
+read from and written back to the LCO schedule. Also includes
+:class:`~pyobs.robotic.lco.LcoTaskRunner`, which maps LCO request configurations to the
+appropriate :class:`~pyobs.robotic.scripts.Script` subclass based on a configurable scripts map.
+
+.. autoclass:: pyobs.robotic.lco.LcoTaskArchive
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.lco.LcoObservationArchive
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.lco.LcoTaskRunner
    :members:
    :show-inheritance:

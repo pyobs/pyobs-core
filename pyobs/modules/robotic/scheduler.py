@@ -34,6 +34,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         trigger_on_every_update: bool = False,
         schedule_range: float = 24.0,
         safety_time: float = 300,
+        min_safety_time: float = 20,
         **kwargs: Any,
     ):
         """Initialize a new scheduler.
@@ -48,6 +49,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             safety_time: If no ETA for next task to start exists (from current task, weather became good, etc), use
                          this time in seconds to make sure that we don't schedule for a time when the scheduler is
                          still running
+            min_safety_time: Minimum safety time.
         """
         Module.__init__(self, **kwargs)
 
@@ -65,6 +67,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         self._trigger_on_every_update = trigger_on_every_update
         self._schedule_range = schedule_range * u.hour
         self._safety_time = safety_time * u.second
+        self._min_safety_time = min_safety_time * u.second
 
         # time to start next schedule from
         self._schedule_start: Time = Time.now()
@@ -230,8 +233,8 @@ class Scheduler(Module, IStartStop, IRunnable):
                             log.info("Finished calculating next task:")
                             self._log_scheduled_task(ObservationList([scheduled_task]))
 
-                            # set new safety_time as duration + 20%
-                            self._safety_time = (time.time() - start_time) * 1.2 * u.second
+                            # set new safety_time as duration + 20%, but at least _min_safety_time
+                            self._safety_time = max((time.time() - start_time) * 1.2 * u.second, self._min_safety_time)
 
                             # submit it
                             await self._schedule.add_observations(ObservationList([scheduled_task]))

@@ -140,6 +140,8 @@ class ImagingScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
+        if self._camera is None:
+            await self._get_proxies()
 
         # got a target?
         target = data.task.target if data is not None and data.task is not None else None

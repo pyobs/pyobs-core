@@ -86,7 +86,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def _save_observations_to_file(self, path: str, observations: ObservationList) -> None: ...
 
-    async def add_schedule(self, observations: ObservationList) -> None:
+    async def add_observations(self, observations: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
 
         Args:
@@ -197,34 +197,41 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
                 observations.append(observation)
             await self._save_observations(observation.start, observations)
 
-    async def observations_for_task(self, task: Task) -> ObservationList:
-        """Returns list of observations for the given task.
+    async def get_observations(
+        self,
+        task: Task | None = None,
+        state: ObservationState | None = None,
+        start_before: Time | None = None,
+        start_after: Time | None = None,
+        end_before: Time | None = None,
+        end_after: Time | None = None,
+    ) -> ObservationList:
+        """Returns a list of observations matching the given filters.
 
         Args:
-            task: Task to get observations for.
+            task: If given, only return observations for this task.
+            state: If given, only return observations in this state.
+            start_before: If given, only return observations that start before this time.
+            start_after: If given, only return observations that start after this time.
+            end_before: If given, only return observations that end before this time.
+            end_after: If given, only return observations that end after this time.
 
         Returns:
-            List of observations for the given task.
+            List of matching observations.
         """
         observations: list[Observation] = []
         with self._lock:
             for filename in glob.glob(os.path.join(self._path, f"*.{self._extension}")):
                 night = await self._load_observations_from_file(filename)
-                for_task = [n for n in night if n.task == task.id]
-                observations.extend(for_task)
-        return ObservationList(observations)
-
-    async def observations_for_night(self, date: datetime.date) -> ObservationList:
-        """Returns list of observations for the given task.
-
-        Args:
-            date: Date of night to get observations for.
-
-        Returns:
-            List of observations for the given task.
-        """
-        with self._lock:
-            return await self._load_observations(date)
+                observations.extend(night)
+        return ObservationList(observations).filter(
+            state=state,
+            task_id=task.id if task is not None else None,
+            start_before=start_before,
+            start_after=start_after,
+            end_before=end_before,
+            end_after=end_after,
+        )
 
 
 class YamlObservationArchive(FileSystemObservationArchive):

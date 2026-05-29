@@ -98,7 +98,7 @@ class LcoObservationArchive(ObservationArchive):
         await self._portal.update_configuration_status(status_id, status)
         # await self._schedule_reader.update_now()
 
-    async def add_schedule(self, tasks: ObservationList) -> None:
+    async def add_observations(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
 
         Args:
@@ -114,14 +114,29 @@ class LcoObservationArchive(ObservationArchive):
         """
         await self._schedule_writer.clear_schedule(start_time)
 
-    async def observations_for_task(self, task: Task) -> ObservationList:
-        """Returns a list of observations for the given task.
+    async def get_observations(
+        self,
+        task: Task | None = None,
+        state: ObservationState | None = None,
+        start_before: Time | None = None,
+        start_after: Time | None = None,
+        end_before: Time | None = None,
+        end_after: Time | None = None,
+    ) -> ObservationList:
+        """Returns a list of observations matching the given filters.
+
+        The LCO portal requires a request id, so a task is mandatory for this archive.
 
         Args:
-            task: Task to get observations for.
+            task: Task to get observations for (required for the LCO archive).
+            state: If given, only return observations in this state.
+            start_before: If given, only return observations that start before this time.
+            start_after: If given, only return observations that start after this time.
+            end_before: If given, only return observations that end before this time.
+            end_after: If given, only return observations that end after this time.
 
         Returns:
-            List of observations for the given task.
+            List of matching observations.
         """
 
         from pyobs.robotic.lco import LcoTask
@@ -141,7 +156,13 @@ class LcoObservationArchive(ObservationArchive):
                     state=STATE_MAP[obs.state],
                 )
             )
-        return observations
+        return observations.filter(
+            state=state,
+            start_before=start_before,
+            start_after=start_after,
+            end_before=end_before,
+            end_after=end_after,
+        )
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns a list of observations for the given task.

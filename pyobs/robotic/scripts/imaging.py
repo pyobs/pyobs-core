@@ -1,7 +1,8 @@
+from __future__ import annotations
 import asyncio
 import logging
 from pydantic import PrivateAttr, BaseModel, Field
-from typing import Any, cast
+from typing import Any, cast, TYPE_CHECKING
 
 from pyobs.interfaces import (
     IAutoGuiding,
@@ -17,11 +18,14 @@ from pyobs.interfaces import (
 )
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.task import TaskData
 from pyobs.utils.enums import ImageType, MotionStatus
 import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
+
+if TYPE_CHECKING:
+    from pyobs.robotic.task import TaskData
+
 
 log = logging.getLogger(__name__)
 

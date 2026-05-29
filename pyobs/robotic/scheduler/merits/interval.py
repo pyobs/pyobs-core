@@ -32,11 +32,12 @@ class IntervalMerit(Merit):
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState
 
-        # get all observations for task
-        observations = await data.archive.get_observations(task)
-
-        # filter for those in the given interval that were successful
-        observations = observations.filter(after=time - self._interval, state=ObservationState.COMPLETED)
+        # get completed observations for task within the interval
+        observations = await data.archive.get_observations(
+            task=task,
+            state=ObservationState.COMPLETED,
+            start_after=time - self._interval,
+        )
 
         # if there is an observation in the given interval, return 0.0
         return 0.0 if len(observations) > 0 else 1.0

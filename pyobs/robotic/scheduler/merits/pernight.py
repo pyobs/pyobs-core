@@ -19,11 +19,12 @@ class PerNightMerit(Merit):
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
         from ...observation import ObservationState
 
-        # get all observations for task
-        observations = await data.archive.get_observations(task)
-
-        # filter for those after last sunset that were successful
-        observations = observations.filter(after=data.last_sunrise(time), state=ObservationState.COMPLETED)
+        # get completed observations for task since last sunrise
+        observations = await data.archive.get_observations(
+            task=task,
+            state=ObservationState.COMPLETED,
+            start_after=data.last_sunrise(time),
+        )
 
         # compare to count
         return 1.0 if len(observations) < self.count else 0.0

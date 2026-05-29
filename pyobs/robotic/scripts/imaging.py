@@ -46,7 +46,7 @@ class InstrumentConfig(BaseModel):
     image_type: ImageType = ImageType.OBJECT
     binning: tuple[int, int] = (1, 1)
     window: tuple[int, int, int, int] | None = None
-    optical_filter: str | None
+    optical_filter: str | None = None
 
 
 class Configuration(BaseModel):
@@ -59,7 +59,7 @@ class Configuration(BaseModel):
 class ImagingScript(Script):
     """Default script for imaging configs."""
 
-    configuration = Configuration
+    configuration: Configuration
 
     camera: str
     telescope: str | None = None
@@ -75,14 +75,12 @@ class ImagingScript(Script):
 
     _object_name: str | None = PrivateAttr(default=None)
 
-    @model_validator(mode="after")
-    async def _get_proxies(self) -> Self:
+    async def _get_proxies(self) -> None:
         self._telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
         self._camera = await self.comm.safe_proxy(self.camera, ICamera)
         self._filters = await self.comm.safe_proxy(self.filters, IFilters)
         self._autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
         self._acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
-        return self
 
     def _image_types(self) -> list[ImageType]:
         return list(set([instr.image_type for instr in self.configuration.instrument_configs]))
@@ -104,6 +102,7 @@ class ImagingScript(Script):
         Returns:
             True, if the script can run now
         """
+        await self._get_proxies()
 
         # need camera
         if self._camera is None:
@@ -118,7 +117,7 @@ class ImagingScript(Script):
                 return False
 
             # we probably need filters and autoguider/acquisition
-            if len(self._optical_filters()) > 0 or self._filters is None:
+            if len(self._optical_filters()) > 0 and self._filters is None:
                 cannot_run_logger.warning("Cannot run task, No filter module found.")
                 return False
 
@@ -141,6 +140,7 @@ class ImagingScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
+        await self._get_proxies()
 
         # got a target?
         target = data.task.target if data is not None and data.task is not None else None
@@ -152,18 +152,20 @@ class ImagingScript(Script):
             if isinstance(self._telescope, IPointingRaDec):
                 if isinstance(target, SiderealTarget):
                     track = asyncio.create_task(self._telescope.move_radec(target.ra, target.dec))
-                raise exc.MotionError("Only sidereal targets allowed.")
+                else:
+                    raise exc.MotionError("Only sidereal targets allowed.")
             else:
                 raise exc.MotionError("Telescope can't move to RA/Dec.")
 
         # acquisition?
         if self.configuration.acquisition_config.enabled:
+            if self._acquisition is None:
+                raise ValueError("No acquisition given.")
+
             # wait for track
             await track
 
             # do acquisition
-            if self._acquisition is None:
-                raise ValueError("No acquisition given.")
             log.info("Performing acquisition...")
             try:
                 await self._acquisition.acquire_target()
@@ -177,6 +179,11 @@ class ImagingScript(Script):
         if self.configuration.guiding_config.enabled:
             if self._autoguider is None:
                 raise ValueError("No autoguider given.")
+
+            # wait for track
+            await track
+
+            # start auto-guiding
             log.info("Starting auto-guiding...")
             await self._autoguider.start()
 
@@ -238,7 +245,10 @@ class ImagingScript(Script):
             await self._autoguider.stop()
 
         # finally, stop telescope
-        if await cast(ITelescope, self._telescope).get_motion_status() != MotionStatus.IDLE:
+        if (
+            self._telescope is not None
+            and await cast(ITelescope, self._telescope).get_motion_status() != MotionStatus.IDLE
+        ):
             log.info("Stopping telescope...")
             await cast(ITelescope, self._telescope).stop_motion()
 

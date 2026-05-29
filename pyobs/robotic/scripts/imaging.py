@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from pydantic import model_validator, PrivateAttr, BaseModel, Field
-from typing import Any, cast, Self
+from pydantic import PrivateAttr, BaseModel, Field
+from typing import Any, cast
 
 from pyobs.interfaces import (
     IAutoGuiding,
@@ -50,8 +50,8 @@ class InstrumentConfig(BaseModel):
 
 
 class Configuration(BaseModel):
-    acquisition_config: AcquisitionConfig
-    guiding_config: GuidingConfig
+    acquisition_config: AcquisitionConfig = Field(default_factory=AcquisitionConfig)
+    guiding_config: GuidingConfig = Field(default_factory=GuidingConfig)
     instrument_configs: list[InstrumentConfig] = Field(default_factory=list)
     repeats: int = 1
 
@@ -67,11 +67,11 @@ class ImagingScript(Script):
     autoguider: str | None = None
     acquisition: str | None = None
 
-    _telescope: ITelescope | None = PrivateAttr()
-    _camera: ICamera | None = PrivateAttr()
-    _filters: IFilters | None = PrivateAttr()
-    _autoguider: IAutoGuiding | None = PrivateAttr()
-    _acquisition: IAcquisition | None = PrivateAttr()
+    _telescope: ITelescope | None = PrivateAttr(default=None)
+    _camera: ICamera | None = PrivateAttr(default=None)
+    _filters: IFilters | None = PrivateAttr(default=None)
+    _autoguider: IAutoGuiding | None = PrivateAttr(default=None)
+    _acquisition: IAcquisition | None = PrivateAttr(default=None)
 
     _object_name: str | None = PrivateAttr(default=None)
 
@@ -140,7 +140,6 @@ class ImagingScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        await self._get_proxies()
 
         # got a target?
         target = data.task.target if data is not None and data.task is not None else None

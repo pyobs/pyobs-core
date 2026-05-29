@@ -32,6 +32,7 @@ class Task(BaseModel):
     merits: list[Merit] = Field(default_factory=list)
     target: Target | None = None
     script: dict[str, Any] = Field(default_factory=dict)
+    active: bool = True
 
     def __str__(self) -> str:
         s = f"Task {self.id}: {self.name} (duration: {self.duration}s"

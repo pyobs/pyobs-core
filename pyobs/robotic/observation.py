@@ -89,15 +89,27 @@ class ObservationList(UserList[Observation], Object):  # noqa: F821
         UserList.__init__(self, observations)
 
     def filter(
-        self, state: ObservationState | None = None, task_id: int | None = None, after: Time | None = None
+        self,
+        state: ObservationState | None = None,
+        task_id: int | None = None,
+        start_before: Time | None = None,
+        start_after: Time | None = None,
+        end_before: Time | None = None,
+        end_after: Time | None = None,
     ) -> ObservationList:
         new_list = self.data
         if state is not None:
             new_list = [obs for obs in new_list if obs.state == state]
         if task_id is not None:
             new_list = [obs for obs in new_list if obs.task.id == task_id]
-        if after is not None:
-            new_list = [obs for obs in new_list if obs.start >= after]
+        if start_before is not None:
+            new_list = [obs for obs in new_list if obs.start <= start_before]
+        if start_after is not None:
+            new_list = [obs for obs in new_list if obs.start >= start_after]
+        if end_before is not None:
+            new_list = [obs for obs in new_list if obs.end <= end_before]
+        if end_after is not None:
+            new_list = [obs for obs in new_list if obs.end >= end_after]
         return ObservationList(new_list)
 
     def model_dump(self, **kwargs: Any) -> list[dict[str, Any]]:

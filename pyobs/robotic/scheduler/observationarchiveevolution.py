@@ -40,10 +40,10 @@ class ObservationArchiveEvolution:
     async def observations_for_task(self, task: Task) -> ObservationList:
         from pyobs.robotic.observation import ObservationList
 
+        if self._obs_archive is None:
+            return ObservationList()
         if task.id not in self._obs_for_task:
-            self._obs_for_task[task.id] = (
-                ObservationList() if self._obs_archive is None else await self._obs_archive.observations_for_task(task)
-            )
+            self._obs_for_task[task.id] = await self._obs_archive.get_observations(task)
         return self._obs_for_task[task.id]
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
@@ -57,10 +57,13 @@ class ObservationArchiveEvolution:
         """
         from pyobs.robotic.observation import ObservationList
 
+        if self._obs_archive is None:
+            return ObservationList()
+
         if date not in self._obs_for_night:
-            self._obs_for_night[date] = (
-                ObservationList() if self._obs_archive is None else await self._obs_archive.observations_for_night(date)
-            )
+            start = Time(datetime.datetime.combine(date, datetime.time(0, 0, 0)))
+            end = Time(datetime.datetime.combine(date, datetime.time(23, 59, 59)))
+            self._obs_for_night[date] = await self._obs_archive.get_observations(end_after=start, start_before=end)
         return self._obs_for_night[date]
 
 

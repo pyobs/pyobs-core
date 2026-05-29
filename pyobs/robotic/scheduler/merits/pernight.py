@@ -20,7 +20,7 @@ class PerNightMerit(Merit):
         from ...observation import ObservationState
 
         # get all observations for task
-        observations = await data.archive.observations_for_task(task)
+        observations = await data.archive.get_observations(task)
 
         # filter for those after last sunset that were successful
         observations = observations.filter(after=data.last_sunrise(time), state=ObservationState.COMPLETED)

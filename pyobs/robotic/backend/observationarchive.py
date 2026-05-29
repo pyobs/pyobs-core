@@ -9,7 +9,7 @@ import logging
 from pyobs.utils.time import Time
 from .. import ObservationArchive, TaskArchive
 from .. import Task
-from ..observation import ObservationList, Observation
+from ..observation import ObservationList, Observation, ObservationState
 from ...utils.http import http_request_with_retries
 
 log = logging.getLogger(__name__)
@@ -81,14 +81,9 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        observations = await http_request_with_retries(
-            self._session,
-            urljoin(self._url, "/api/observations/"),
-            params={"end_after": Time.now().isot, "state": "pending,in_progress"},
-        )
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
+        return await self.get_observations(end_after=Time.now())
 
-    async def add_schedule(self, tasks: ObservationList) -> None:
+    async def add_observations(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
 
         Args:
@@ -173,37 +168,44 @@ class BackendObservationArchive(ObservationArchive):
             json=observation.model_dump(use_task_id=True),
         )
 
-    async def observations_for_task(self, task: Task) -> ObservationList:
-        """Returns list of observations for the given task.
+    async def get_observations(
+        self,
+        task: Task | None = None,
+        state: ObservationState | None = None,
+        start_before: Time | None = None,
+        start_after: Time | None = None,
+        end_before: Time | None = None,
+        end_after: Time | None = None,
+    ) -> ObservationList:
+        """Returns a list of observations matching the given filters.
 
         Args:
-            task: Task to get observations for.
+            task: If given, only return observations for this task.
+            state: If given, only return observations in this state.
+            start_before: If given, only return observations that start before this time.
+            start_after: If given, only return observations that start after this time.
+            end_before: If given, only return observations that end before this time.
+            end_after: If given, only return observations that end after this time.
 
         Returns:
-            List of observations for the given task.
+            List of matching observations.
         """
 
-        observations = await http_request_with_retries(
-            self._session, urljoin(self._url, f"/api/tasks/{task.id}/observations/")
-        )
-        return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
-
-    async def observations_for_night(self, date: datetime.date) -> ObservationList:
-        """Returns list of observations for the given task.
-
-        Args:
-            date: Date of night to get observations for.
-
-        Returns:
-            List of observations for the given task.
-        """
-        start = datetime.datetime.combine(date, datetime.time(0, 0, 0))
-        end = datetime.datetime.combine(date, datetime.time(23, 59, 59))
-        observations = await http_request_with_retries(
-            self._session,
-            urljoin(self._url, "/api/observations/"),
-            params={"start_after": start.isoformat(), "end_before": end.isoformat()},
-        )
+        url = urljoin(self._url, "/api/observations/")
+        params = {}
+        if task is not None:
+            params["task"] = task.id
+        if state is not None:
+            params["state"] = state.value
+        if start_before is not None:
+            params["start_before"] = start_before.isot
+        if start_after is not None:
+            params["start_after"] = start_after.isot
+        if end_before is not None:
+            params["end_before"] = end_before.isot
+        if end_after is not None:
+            params["end_after"] = end_after.isot
+        observations = await http_request_with_retries(self._session, url, params=params)
         return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations["results"]])
 
 

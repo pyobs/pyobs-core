@@ -40,5 +40,9 @@ class Script(PolymorphicBaseModel):
         """
         return {}
 
+    def estimate_duration(self) -> float:
+        """Estimate duration of this script in seconds."""
+        return 0.0
+
 
 __all__ = ["Script"]

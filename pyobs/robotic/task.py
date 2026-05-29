@@ -85,6 +85,11 @@ class Task(BaseModel):
         """
         return {}
 
+    def estimate_duration(self) -> float:
+        if self.script:
+            return self.create_script().estimate_duration()
+        return self.duration
+
 
 class Project(BaseModel):
     code: str

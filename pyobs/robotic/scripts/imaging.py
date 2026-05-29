@@ -278,5 +278,17 @@ class ImagingScript(Script):
         # return
         return hdr
 
+    def estimate_duration(self) -> float:
+        """Estimate duration of this script in seconds."""
+        # TODO: get some good estimates for slewing/filter/acquisition etc
+        duration = (
+            sum(ic.exposure_time * ic.count for ic in self.configuration.instrument_configs)
+            * self.configuration.repeats
+            + 60.0
+        )
+        if self.configuration.acquisition_config.enabled:
+            duration += 30.0
+        return duration
+
 
 __all__ = ["ImagingScript"]

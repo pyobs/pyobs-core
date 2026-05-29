@@ -146,6 +146,36 @@ produce a single score. The task with the highest score wins each time slot.
 A merit returning ``0.0`` has the same effect as a constraint returning ``False`` — the task is
 excluded from that slot. This lets merits double as soft constraints when needed.
 
+Every merit's ``__call__`` receives three arguments: ``time``, ``task``, and ``data``. The
+``data`` argument is a :class:`~pyobs.robotic.scheduler.dataprovider.DataProvider` which gives
+access to:
+
+- ``data.observer`` — the :class:`~astroplan.Observer` for the site
+- ``data.last_sunset(time)`` / ``data.last_sunrise(time)`` — cached sunrise/sunset times
+- ``data.night(time)`` — the calendar date of the observing night
+- ``data.archive`` — an :class:`~pyobs.robotic.scheduler.observationarchiveevolution.ObservationArchiveEvolution`
+  that provides historical and simulated-future observations
+
+To query past observations from within a merit, use ``data.archive.get_observations()`` rather
+than accessing the archive directly. This ensures the lookahead cache is used during scheduling::
+
+    from pyobs.robotic.scheduler.merits import Merit
+    from pyobs.robotic.observation import ObservationState
+
+    class MyMerit(Merit):
+        min_days: float = 7.0
+
+        async def __call__(self, time, task, data) -> float:
+            from astropy.time import TimeDelta
+            import astropy.units as u
+
+            observations = await data.archive.get_observations(
+                task=task,
+                state=ObservationState.COMPLETED,
+                start_after=time - TimeDelta(self.min_days * u.day),
+            )
+            return 0.0 if len(observations) > 0 else 1.0
+
 .. list-table::
    :header-rows: 1
    :widths: 30 70
@@ -348,5 +378,35 @@ the ``class:`` key like any other polymorphic model.
    :show-inheritance:
 
 .. autoclass:: pyobs.robotic.utils.archive.LocalArchive
+   :members:
+   :show-inheritance:
+
+Scheduling internals
+^^^^^^^^^^^^^^^^^^^^^
+
+These classes are used internally by the scheduler and are relevant mainly when writing custom
+merit functions.
+
+:class:`~pyobs.robotic.scheduler.dataprovider.DataProvider` is passed to every
+:class:`~pyobs.robotic.scheduler.merits.Merit` and
+:class:`~pyobs.robotic.scheduler.constraints.Constraint` during a scheduling run. It provides
+cached access to site geometry (sunrise, sunset, night boundaries) and to the observation
+history via its ``archive`` attribute.
+
+:class:`~pyobs.robotic.scheduler.observationarchiveevolution.ObservationArchiveEvolution` wraps
+the real :class:`~pyobs.robotic.observationarchive.ObservationArchive` with two additions:
+
+- **Caching** — observations for each task are fetched from the archive once per scheduling run
+  and cached in memory, avoiding repeated HTTP requests during evaluation of many time slots.
+- **Lookahead simulation** — as the scheduler plans ahead and tentatively assigns tasks to future
+  slots, it calls ``evolve()`` to record those assignments. Subsequent merit evaluations for the
+  same task then see those simulated observations, so ``IntervalMerit`` and ``PerNightMerit``
+  correctly prevent the same task from being scheduled twice in one run.
+
+.. autoclass:: pyobs.robotic.scheduler.dataprovider.DataProvider
+   :members:
+   :show-inheritance:
+
+.. autoclass:: pyobs.robotic.scheduler.observationarchiveevolution.ObservationArchiveEvolution
    :members:
    :show-inheritance:

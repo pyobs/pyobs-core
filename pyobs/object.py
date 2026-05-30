@@ -12,7 +12,6 @@ There are a few convenience functions:
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import datetime
 import inspect
@@ -363,7 +362,7 @@ class Object(PrivateAttrMixin):
         # open child objects
         for obj in self._child_objects:
             if hasattr(obj, "open"):
-                if asyncio.iscoroutinefunction(obj.open):
+                if inspect.iscoroutinefunction(obj.open):
                     await obj.open()
                 else:
                     obj.open()

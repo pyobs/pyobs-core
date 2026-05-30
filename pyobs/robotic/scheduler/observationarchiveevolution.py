@@ -57,7 +57,7 @@ class ObservationArchiveEvolution:
         Returns:
             List of observations for the given task.
         """
-        from pyobs.robotic.observation import ObservationList
+        from pyobs.robotic.observation import ObservationList, ObservationState
 
         if self._obs_archive is None:
             return ObservationList()

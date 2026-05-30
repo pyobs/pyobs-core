@@ -23,7 +23,7 @@ def patch() -> None:
 
 
 def _aio_make_method_handler(self, interface, method):  # type: ignore
-    if not asyncio.iscoroutinefunction(method.fn):
+    if not inspect.iscoroutinefunction(method.fn):
         return BaseMessageBus._make_method_handler(self, interface, method)  # type: ignore
 
     def handler(msg, send_reply):  # type: ignore

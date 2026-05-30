@@ -33,11 +33,8 @@ class IntervalMerit(Merit):
         from ...observation import ObservationState
 
         # get completed observations for task within the interval
-        observations = await data.archive.get_observations(
-            task=task,
-            state=ObservationState.COMPLETED,
-            start_after=time - self._interval,
-        )
+        observations = await data.archive.observations_for_task(task=task)
+        observations = observations.filter(state=ObservationState.COMPLETED, start_after=time - self._interval)
 
         # if there is an observation in the given interval, return 0.0
         return 0.0 if len(observations) > 0 else 1.0

@@ -9,7 +9,7 @@ from ...utils.time import Time
 if TYPE_CHECKING:
     from pyobs.robotic import Observation, Task
     from pyobs.robotic.observationarchive import ObservationArchive
-    from pyobs.robotic.observation import ObservationList
+    from pyobs.robotic.observation import ObservationList, ObservationState
 
 
 class ObservationArchiveEvolution:
@@ -45,32 +45,6 @@ class ObservationArchiveEvolution:
         if task.id not in self._obs_for_task:
             self._obs_for_task[task.id] = await self._obs_archive.get_observations(task=task)
         return self._obs_for_task[task.id]
-
-    async def get_observations(
-        self,
-        task: Task | None = None,
-        state: Any = None,
-        start_before: Any = None,
-        start_after: Any = None,
-        end_before: Any = None,
-        end_after: Any = None,
-    ) -> ObservationList:
-        from pyobs.robotic.observation import ObservationList
-
-        # get base list from cache
-        if task is not None:
-            observations = await self.observations_for_task(task)
-        else:
-            observations = ObservationList([obs for obs_list in self._obs_for_task.values() for obs in obs_list])
-
-        # apply filters using ObservationList.filter
-        return observations.filter(
-            state=state,
-            start_before=start_before,
-            start_after=start_after,
-            end_before=end_before,
-            end_after=end_after,
-        )
 
     async def observations_for_night(self, date: datetime.date) -> ObservationList:
         """Returns list of observations for the given task.

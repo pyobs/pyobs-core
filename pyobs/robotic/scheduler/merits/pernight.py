@@ -20,11 +20,8 @@ class PerNightMerit(Merit):
         from ...observation import ObservationState
 
         # get completed observations for task since last sunrise
-        observations = await data.archive.get_observations(
-            task=task,
-            state=ObservationState.COMPLETED,
-            start_after=data.last_sunrise(time),
-        )
+        observations = await data.archive.observations_for_task(task=task)
+        observations = observations.filter(state=ObservationState.COMPLETED, start_after=data.last_sunrise(time))
 
         # compare to count
         return 1.0 if len(observations) < self.count else 0.0

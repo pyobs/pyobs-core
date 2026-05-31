@@ -1,6 +1,5 @@
 from __future__ import annotations
 import asyncio
-import datetime
 from typing import Any, Literal
 from urllib.parse import urljoin
 import aiohttp

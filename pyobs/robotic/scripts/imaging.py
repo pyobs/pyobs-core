@@ -197,7 +197,7 @@ class ImagingScript(Script):
 
         # repeat configuration
         for repeat in range(self.configuration.repeats):
-            log.info(f"Starting configuration repeat {repeat+1}/{self.configuration.repeats}...")
+            log.info(f"Starting configuration repeat {repeat + 1}/{self.configuration.repeats}...")
 
             # loop instrument configs
             for instrument_config in self.configuration.instrument_configs:
@@ -235,7 +235,7 @@ class ImagingScript(Script):
 
                 # do repeats
                 for repeat2 in range(instrument_config.count):
-                    log.info(f"Exposing image {repeat2+1}/{instrument_config.count}...")
+                    log.info(f"Exposing image {repeat2 + 1}/{instrument_config.count}...")
 
                     # grab image
                     await cast(ICamera, self._camera).grab_data()
@@ -250,12 +250,9 @@ class ImagingScript(Script):
             await self._autoguider.stop()
 
         # finally, stop telescope
-        if (
-            self._telescope is not None
-            and await cast(ITelescope, self._telescope).get_motion_status() != MotionStatus.IDLE
-        ):
+        if self._telescope is not None and await self._telescope.get_motion_status() != MotionStatus.IDLE:
             log.info("Stopping telescope...")
-            await cast(ITelescope, self._telescope).stop_motion()
+            await self._telescope.stop_motion()
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

@@ -20,7 +20,7 @@ class ObservationArchiveEvolution:
         self._observer = observer
 
     async def evolve(self, scheduled_task: Observation) -> None:
-        from pyobs.robotic.observation import ObservationState
+        from pyobs.robotic.observation import ObservationState, Observation
 
         obs = Observation(
             id=str(uuid4()),

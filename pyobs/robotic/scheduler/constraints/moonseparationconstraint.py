@@ -25,9 +25,7 @@ class MoonSeparationConstraint(Constraint):
         if task.target is None:
             return True
         coord = task.target.coordinates(time)
-        moon_separation = astropy.coordinates.get_body("moon", time).separation(
-            coord.coordinates(time), origin_mismatch="ignore"
-        )
+        moon_separation = astropy.coordinates.get_body("moon", time).separation(coord, origin_mismatch="ignore")
         return float(moon_separation.degree) >= self.min_distance
 
 

@@ -22,11 +22,11 @@ class MoonSeparationConstraint(Constraint):
         return astroplan.MoonSeparationConstraint(min=self.min_distance * u.deg)
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
-        target = task.target
-        if target is None:
+        if task.target is None:
             return True
+        coord = task.target.coordinates(time)
         moon_separation = astropy.coordinates.get_body("moon", time).separation(
-            target.coordinates(time), origin_mismatch="ignore"
+            coord.coordinates(time), origin_mismatch="ignore"
         )
         return float(moon_separation.degree) >= self.min_distance
 

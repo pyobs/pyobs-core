@@ -25,7 +25,7 @@ class AirmassConstraint(Constraint):
         coord = task.target.coordinates(time)
         altaz = data.observer.altaz(time, coord)
         airmass = float(altaz.secz)
-        return 0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0
+        return bool(0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0)
 
 
 __all__ = ["AirmassConstraint"]

@@ -22,8 +22,10 @@ class AirmassConstraint(Constraint):
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> bool:
         if task.target is None:
             return False
-        airmass = float(data.observer.altaz(time, task.target).secz)
-        return 0.0 < airmass <= self.max_airmass
+        coord = task.target.coordinates(time)
+        altaz = data.observer.altaz(time, coord)
+        airmass = float(altaz.secz)
+        return 0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0
 
 
 __all__ = ["AirmassConstraint"]

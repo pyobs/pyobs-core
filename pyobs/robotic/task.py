@@ -98,6 +98,8 @@ class Task(BaseModel):
         """Resolve dynamic target. Returns False if no valid target found."""
         if self.target is None:
             return True
+        if self._resolved_target is not None:
+            return True
         self._resolved_target = await self.target.resolve(time, self, data)
         return self._resolved_target is not None
 

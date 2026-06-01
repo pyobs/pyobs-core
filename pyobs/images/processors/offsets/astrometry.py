@@ -6,7 +6,7 @@ import astropy.units as u
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets, OnSkyDistance
-from . import Offsets
+from .offsets import Offsets
 
 log = logging.getLogger(__name__)
 

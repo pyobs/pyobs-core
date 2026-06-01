@@ -20,8 +20,6 @@ class CsvPicker(Picker):
     ra_col: str = "ra"
     dec_col: str = "dec"
     frame: str = "icrs"
-    min_alt: float | None = None
-    max_alt: float | None = None
 
     _dataframe: pd.DataFrame | None = PrivateAttr(default=None)
 
@@ -37,9 +35,7 @@ class CsvPicker(Picker):
         # evaluate constraints for each candidate
         valid = []
         for _, row in self._dataframe.iterrows():
-            candidate = SiderealTarget(
-                name=row[self.name_col].values[0], ra=row[self.ra_col].values[0], dec=row[self.dec_col].values[0]
-            )
+            candidate = SiderealTarget(name=row[self.name_col], ra=row[self.ra_col], dec=row[self.dec_col])
 
             # create a temporary task with this candidate as target
             candidate_task = task.model_copy(update={"target": candidate})

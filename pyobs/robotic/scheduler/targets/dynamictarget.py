@@ -1,6 +1,6 @@
 from typing import Any, TYPE_CHECKING
 from astropy.coordinates import SkyCoord
-from pydantic import PrivateAttr, Field
+from pydantic import PrivateAttr, Field, ConfigDict
 
 from pyobs.utils.time import Time
 from .target import Target
@@ -17,15 +17,18 @@ class DynamicTarget(Target):
     _target: Target | None = PrivateAttr(default=None)
     _picker: Picker | None = PrivateAttr(default=None)
 
-    def _get_picker(self) -> Picker:
-        return self.pyobs_model_validate(Picker, self._picker, by_alias=True)
+    model_config = ConfigDict(frozen=False)
+
+    def _get_picker(self) -> Picker | None:
+        if self._picker is None:
+            self._picker = self.pyobs_model_validate(Picker, self.picker, by_alias=True)
+        return self._picker
 
     async def resolve(self, time: Time, task: Task, data: DataProvider) -> None:
         """Pick the best available target given current conditions. For static targets this will just be itself."""
-        from .picker import Picker
-
         picker = self._get_picker()
-        self._target = await picker(time, task, data)
+        if picker is not None:
+            self._target = await picker(time, task, data)
         self.name = self._target.name if self._target is not None else "None"
 
     def coordinates(self, time: Time) -> SkyCoord:

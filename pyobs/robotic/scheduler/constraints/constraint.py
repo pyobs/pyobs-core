@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 import astroplan
 from typing import TYPE_CHECKING, Any
 
-from pyobs.object import create_object, Object
+from pyobs.object import Object
 from pyobs.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:

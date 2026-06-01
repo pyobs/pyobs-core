@@ -4,9 +4,9 @@ from pydantic import PrivateAttr, Field, ConfigDict
 
 from pyobs.utils.time import Time
 from .target import Target
+from .picker import Picker
 
 if TYPE_CHECKING:
-    from .picker import Picker
     from pyobs.robotic import Task
     from pyobs.robotic.scheduler import DataProvider
 

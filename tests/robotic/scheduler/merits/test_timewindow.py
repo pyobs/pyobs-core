@@ -12,7 +12,9 @@ from pyobs.robotic.scheduler.merits.timewindow import TimeWindowMerit, TimeWindo
 
 @pytest.mark.asyncio
 async def test_timewindow_merit() -> None:
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     time = Time.now()
     time2 = time + TimeDelta(1.0 * u.hour)

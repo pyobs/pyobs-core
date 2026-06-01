@@ -13,7 +13,9 @@ from pyobs.robotic.scheduler.observationarchiveevolution import ObservationArchi
 
 @pytest.mark.asyncio
 async def test_pernight_merit() -> None:
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     archive = ObservationArchiveEvolution(observer)
     data = DataProvider(observer, archive)
     time = Time.now()

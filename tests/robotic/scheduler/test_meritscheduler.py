@@ -15,7 +15,9 @@ from pyobs.utils.time import Time
 @pytest.mark.asyncio
 async def test_evaluate_merits() -> None:
     scheduler = OnDemandScheduler()
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     start = Time.now()
     end = start + TimeDelta(5000 * u.second)
@@ -32,7 +34,9 @@ async def test_evaluate_merits() -> None:
 @pytest.mark.asyncio
 async def test_next_best_task() -> None:
     scheduler = OnDemandScheduler()
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     start = Time.now()
     end = start + TimeDelta(5000)
@@ -71,7 +75,9 @@ async def test_next_best_task() -> None:
 @pytest.mark.asyncio
 async def test_check_for_better_task() -> None:
     scheduler = OnDemandScheduler()
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     start = Time.now()
     end = start + TimeDelta(5000)
@@ -102,7 +108,9 @@ async def test_check_for_better_task() -> None:
 @pytest.mark.asyncio
 async def test_fill_for_better_task() -> None:
     scheduler = OnDemandScheduler()
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")
     end = start + TimeDelta(3600 * u.second)
@@ -138,7 +146,9 @@ async def test_fill_for_better_task() -> None:
 @pytest.mark.asyncio
 async def test_postpone_task() -> None:
     scheduler = OnDemandScheduler()
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     start = Time("2025-11-01 00:00:00")
     end = start + TimeDelta(3600 * u.second)

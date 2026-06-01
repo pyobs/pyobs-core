@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation, SkyCoord
+import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -12,7 +13,9 @@ from astropy.time import Time
 
 @pytest.mark.asyncio
 async def test_moonseparation_constraint() -> None:
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     coord = SkyCoord("16h29m22.94s -26d25m53.0s", frame="icrs")
     task = Task(

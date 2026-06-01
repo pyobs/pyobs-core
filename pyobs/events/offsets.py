@@ -1,7 +1,7 @@
 from typing_extensions import TypedDict
 from typing import Any
 
-from pyobs.events import Event
+from .event import Event
 
 
 class OffsetsEvent(Event):

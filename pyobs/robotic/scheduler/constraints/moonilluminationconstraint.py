@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class MoonIlluminationConstraint(Constraint):
     """Moon illumination constraint."""
 
+    cost: float = 3.0
     max_phase: float = Field(ge=0.0, le=1.0, default=0.0)
 
     def to_astroplan(self) -> astroplan.MoonIlluminationConstraint:

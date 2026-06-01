@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 class MoonSeparationConstraint(Constraint):
     """Moon separation constraint."""
 
+    cost: float = 3.0
+    target_dependent: bool = True
     min_distance: float = Field(ge=0.0, le=180.0, default=30.0)
 
     def to_astroplan(self) -> astroplan.MoonSeparationConstraint:

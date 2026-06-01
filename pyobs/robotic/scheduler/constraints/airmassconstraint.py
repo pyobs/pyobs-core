@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 class AirmassConstraint(Constraint):
     """Airmass constraint."""
 
+    cost: float = 2.0
+    target_dependent: bool = True
     max_airmass: float = Field(ge=1.0, le=9.9, default=1.3)
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:

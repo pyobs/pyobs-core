@@ -144,7 +144,7 @@ class OnDemandScheduler(TaskScheduler):
                 # this seems to be the best task for now, schedule it
                 yield self.create_scheduled_task(task, merit, start)
 
-    def create_scheduled_task(self, task: Task, merit: float, time: Time) -> Observation | None:
+    def create_scheduled_task(self, task: Task, merit: float, time: Time) -> Observation:
         from pyobs.robotic import Observation
 
         return Observation(

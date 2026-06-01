@@ -8,7 +8,7 @@ from astropy.io import fits
 
 from pyobs.utils.time import Time
 from pyobs.images import Image
-from pyobs.robotic.utils.archive import Archive, FrameInfo
+from .archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
 
 log = logging.getLogger(__name__)

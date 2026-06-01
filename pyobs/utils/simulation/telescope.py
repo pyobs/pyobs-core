@@ -12,7 +12,7 @@ from pyobs.object import Object
 from pyobs.utils.enums import MotionStatus
 
 if TYPE_CHECKING:
-    from pyobs.utils.simulation import SimWorld
+    from .world import SimWorld
 
 
 class SimTelescope(Object):

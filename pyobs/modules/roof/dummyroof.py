@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
 from pyobs.interfaces import IRoof
 from pyobs.modules import timeout
-from pyobs.modules.roof import BaseRoof
+from .baseroof import BaseRoof
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 

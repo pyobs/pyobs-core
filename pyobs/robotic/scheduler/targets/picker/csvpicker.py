@@ -33,13 +33,9 @@ class CsvPicker(Picker):
             if self._dataframe is None:
                 return None
 
-        # sort constraints by cost
+        # sort constraints by cost and remove non-target rependent
         sorted_constraints = sorted(task.constraints, key=lambda c: c.cost)
-
-        # remove target-independent constraints
-        for c in sorted_constraints:
-            if not c.target_dependent:
-                sorted_constraints.remove(c)
+        sorted_constraints = [c for c in sorted_constraints if c.target_dependent]
 
         # evaluate constraints for each candidate
         valid = []

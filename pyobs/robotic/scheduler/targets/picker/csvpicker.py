@@ -1,12 +1,15 @@
-from astroplan import Observer
+import pandas as pd
+import random
+from pydantic import PrivateAttr
 from typing import TYPE_CHECKING
-from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 
 from .picker import Picker
 
 if TYPE_CHECKING:
     from pyobs.robotic.scheduler.targets import Target, SiderealTarget
+    from pyobs.robotic import Task
+    from pyobs.robotic.scheduler import DataProvider
 
 
 class CsvPicker(Picker):
@@ -20,30 +23,35 @@ class CsvPicker(Picker):
     min_alt: float | None = None
     max_alt: float | None = None
 
-    async def __call__(self, time: Time) -> Target:
+    _dataframe: pd.DataFrame | None = PrivateAttr(default=None)
+
+    async def __call__(self, time: Time, task: Task, data: DataProvider) -> Target | None:
         from pyobs.robotic.scheduler.targets import SiderealTarget
 
-        data = await self.vfs.read_csv(self.csv)
-        targets = SkyCoord(ra=data[self.ra_col], dec=data[self.dec_col], frame=self.frame, unit="deg")
+        # get data
+        if self._dataframe is None:
+            self._dataframe = await self.vfs.read_csv(self.csv)
+            if self._dataframe is None:
+                return None
 
-        # calculate Alz/Az
-        altaz_frame = AltAz(location=self.observer.location, obstime=time)
-        altaz = targets.transform_to(altaz_frame)
-        data["alt"] = altaz.alt.deg
-        data["az"] = altaz.az.deg
+        # evaluate constraints for each candidate
+        valid = []
+        for _, row in self._dataframe.iterrows():
+            candidate = SiderealTarget(
+                name=row[self.name_col].values[0], ra=row[self.ra_col].values[0], dec=row[self.dec_col].values[0]
+            )
 
-        # filter
-        d = data
-        if self.min_alt is not None:
-            d = d[d["alt"] >= self.min_alt]
-        if self.max_alt is not None:
-            d = d[d["alt"] <= self.max_alt]
+            # create a temporary task with this candidate as target
+            candidate_task = task.model_copy(update={"target": candidate})
 
-        # pick random row
-        row = d.sample()
-        return SiderealTarget(
-            name=row[self.name_col].values[0], ra=row[self.ra_col].values[0], dec=row[self.dec_col].values[0]
-        )
+            if all(await c(time, candidate_task, data) for c in task.constraints):
+                valid.append(candidate)
+
+        if not valid:
+            return None
+
+        # pick random
+        return random.choice(valid)
 
 
 __all__ = ["CsvPicker"]

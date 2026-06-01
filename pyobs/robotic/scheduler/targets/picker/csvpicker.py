@@ -1,3 +1,4 @@
+from astroplan import Observer
 from typing import TYPE_CHECKING
 from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
@@ -19,14 +20,14 @@ class CsvPicker(Picker):
     min_alt: float | None = None
     max_alt: float | None = None
 
-    async def __call__(self) -> Target:
+    async def __call__(self, time: Time) -> Target:
         from pyobs.robotic.scheduler.targets import SiderealTarget
 
         data = await self.vfs.read_csv(self.csv)
         targets = SkyCoord(ra=data[self.ra_col], dec=data[self.dec_col], frame=self.frame, unit="deg")
 
         # calculate Alz/Az
-        altaz_frame = AltAz(location=self.observer.location, obstime=Time.now())
+        altaz_frame = AltAz(location=self.observer.location, obstime=time)
         altaz = targets.transform_to(altaz_frame)
         data["alt"] = altaz.alt.deg
         data["az"] = altaz.az.deg

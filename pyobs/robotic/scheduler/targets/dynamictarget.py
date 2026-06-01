@@ -1,6 +1,7 @@
-from typing import Any, TYPE_CHECKING
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from astropy.coordinates import SkyCoord
-from pydantic import PrivateAttr, Field, ConfigDict
+from pydantic import PrivateAttr, ConfigDict
 
 from pyobs.utils.time import Time
 from .target import Target

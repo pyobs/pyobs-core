@@ -12,7 +12,9 @@ from astropy.time import Time, TimeDelta
 
 @pytest.mark.asyncio
 async def test_beforetime_merit() -> None:
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     data = DataProvider(observer)
     time = Time.now()
     task = Task(id=1, name="1", duration=100)

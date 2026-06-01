@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 
 class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
+    cost: float = 1.0  # change in derived classes if needed
+    target_dependent: bool = False  # change in derived classes if needed
+
     @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...
 
@@ -29,7 +32,7 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
     def create(obj: Object, config: Constraint | dict[str, Any]) -> Constraint:
         if isinstance(config, Constraint):
             return config
-        elif "type" in config:
+        if "type" in config:
             from . import __all__ as constraints
 
             constraints_lower = [c.lower() for c in constraints]
@@ -37,15 +40,8 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
                 idx = constraints_lower.index(config["type"].lower() + "constraint")
             except ValueError:
                 raise ValueError(f"Invalid constraint type: {config['type']}")
-
             config["class"] = f"pyobs.robotic.scheduler.constraints.{constraints[idx]}"
-            obj = create_object(config)
-            if isinstance(obj, Constraint):
-                return obj
-            else:
-                raise ValueError(f"Invalid constraint config: {config}")
-        else:
-            return obj.pyobs_model_validate(Constraint, config, by_alias=True)
+        return obj.pyobs_model_validate(Constraint, config, by_alias=True)
 
     @staticmethod
     def list() -> list[str]:

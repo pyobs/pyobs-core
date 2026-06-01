@@ -21,6 +21,7 @@ import logging
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
+from pydantic import BaseModel
 
 from pyobs.background_task import BackgroundTask
 from pyobs.comm import Comm
@@ -34,6 +35,9 @@ log = logging.getLogger(__name__)
 
 """Class of an Object."""
 ObjectClass = TypeVar("ObjectClass")
+
+"""Class of a pydantic model."""
+PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
 
 
 """Class of a proxy."""
@@ -220,7 +224,7 @@ class PrivateAttrMixin:
             raise AttributeError("No timezone available.")
         return self._timezone
 
-    def pyobs_model_validate(self, cls: type[ObjectClass], *args: Any, **kwargs: Any) -> ObjectClass:
+    def pyobs_model_validate(self, cls: type[PydanticModel], *args: Any, **kwargs: Any) -> PydanticModel:
         """Validate a pydantic model with additional fields."""
         return cls.model_validate(
             *args,

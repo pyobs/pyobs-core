@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 class AirmassConstraint(Constraint):
     """Airmass constraint."""
 
+    cost: float = 2.0
+    target_dependent: bool = True
     max_airmass: float = Field(ge=1.0, le=9.9, default=1.3)
 
     def to_astroplan(self) -> astroplan.AirmassConstraint:
@@ -25,7 +27,7 @@ class AirmassConstraint(Constraint):
         coord = task.target.coordinates(time)
         altaz = data.observer.altaz(time, coord)
         airmass = float(altaz.secz)
-        return 0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0
+        return bool(0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0)
 
 
 __all__ = ["AirmassConstraint"]

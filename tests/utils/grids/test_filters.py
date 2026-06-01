@@ -1,9 +1,9 @@
 import io
 from typing import Any
-
 import pandas as pd
 from astroplan import Observer
 from astropy.coordinates import SkyCoord, EarthLocation
+import astropy.units as u
 
 from pyobs.utils.grids.filters import GridFilterValue, FromList, ConvertGridToSkyCoord, ConvertGridFrame
 from pyobs.utils.grids.grid import RegularSphericalGrid
@@ -51,7 +51,9 @@ def test_fromlistfilter(mocker: Any) -> None:
     time = Time("2020-01-01T00:00:00")
     mocker.patch("astropy.time.Time.now", return_value=time)
 
-    observer = Observer(location=EarthLocation.of_site("SAAO"))
+    observer = Observer(
+        location=EarthLocation.from_geodetic(lon=20.8108 * u.deg, lat=-32.3758 * u.deg, height=1798 * u.m)
+    )
     grid = RegularSphericalGrid(5, 5)
     grid2 = ConvertGridToSkyCoord(grid=grid, frame="altaz", observer=observer, location=observer.location)
     grid3 = ConvertGridFrame(grid=grid2, frame="icrs", observer=observer, location=observer.location)

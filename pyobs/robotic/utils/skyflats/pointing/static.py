@@ -1,7 +1,7 @@
 import logging
 from typing import Self
 
-from astropy.coordinates import SkyCoord, AltAz
+from astropy.coordinates import SkyCoord
 import astropy.units as u
 from pydantic import model_validator
 

@@ -8,6 +8,7 @@ from pyobs.object import Object
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
 from pyobs.utils.serialization import BaseModel
+from pyobs.robotic.scheduler.targets import Target
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskArchive

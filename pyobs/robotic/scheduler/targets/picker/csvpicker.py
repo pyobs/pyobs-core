@@ -1,7 +1,7 @@
 import pandas as pd
 import random
 from pydantic import PrivateAttr
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from astropy.time import Time
 
 from .picker import Picker
@@ -20,6 +20,7 @@ class CsvPicker(Picker):
     ra_col: str = "ra"
     dec_col: str = "dec"
     frame: str = "icrs"
+    ra_unit: Literal["deg", "hour"] = "deg"
 
     _dataframe: pd.DataFrame | None = PrivateAttr(default=None)
 
@@ -32,15 +33,27 @@ class CsvPicker(Picker):
             if self._dataframe is None:
                 return None
 
+        # sort constraints by cost
+        sorted_constraints = sorted(task.constraints, key=lambda c: c.cost)
+
         # evaluate constraints for each candidate
         valid = []
         for _, row in self._dataframe.iterrows():
-            candidate = SiderealTarget(name=row[self.name_col], ra=row[self.ra_col], dec=row[self.dec_col])
+            ra = row[self.ra_col]
+            if self.ra_unit == "hour":
+                ra *= 15
+            candidate = SiderealTarget(name=row[self.name_col], ra=ra, dec=row[self.dec_col])
 
             # create a temporary task with this candidate as target
             candidate_task = task.model_copy(update={"target": candidate})
 
-            if all(await c(time, candidate_task, data) for c in task.constraints):
+            # check constraints
+            valid_candidate = True
+            for c in sorted_constraints:
+                if not await c(time, candidate_task, data):
+                    valid_candidate = False
+                    break
+            if valid_candidate:
                 valid.append(candidate)
 
         if not valid:

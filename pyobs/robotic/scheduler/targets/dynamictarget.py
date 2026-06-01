@@ -12,23 +12,16 @@ if TYPE_CHECKING:
 
 
 class DynamicTarget(Target):
-    picker: dict[str, Any] = Field(default_factory=dict)
+    picker: Picker
+    name: str = "(dynamic)"
 
     _target: Target | None = PrivateAttr(default=None)
-    _picker: Picker | None = PrivateAttr(default=None)
 
     model_config = ConfigDict(frozen=False)
 
-    def _get_picker(self) -> Picker | None:
-        if self._picker is None:
-            self._picker = self.pyobs_model_validate(Picker, self.picker, by_alias=True)
-        return self._picker
-
     async def resolve(self, time: Time, task: Task, data: DataProvider) -> None:
         """Pick the best available target given current conditions. For static targets this will just be itself."""
-        picker = self._get_picker()
-        if picker is not None:
-            self._target = await picker(time, task, data)
+        self._target = await self.picker(time, task, data)
         self.name = self._target.name if self._target is not None else "None"
 
     def coordinates(self, time: Time) -> SkyCoord:

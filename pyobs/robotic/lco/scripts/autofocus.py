@@ -2,7 +2,7 @@ import logging
 from typing import cast
 
 from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus, IPointingRaDec
-from pyobs.robotic.lco.scripts import LcoScript
+from .script import LcoScript
 from pyobs.robotic.task import TaskData
 from pyobs.utils.logger import DuplicateFilter
 

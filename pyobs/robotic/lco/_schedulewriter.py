@@ -6,7 +6,6 @@ from pyobs.robotic.observation import ObservationList
 from pyobs.utils.time import Time
 from ._portal import Portal
 from .configdb import ConfigDB
-from .task import LcoTask
 from ...object import Object
 
 log = logging.getLogger(__name__)
@@ -74,6 +73,7 @@ class LcoScheduleWriter(Object):
         Returns:
             List with observations.
         """
+        from .task import LcoTask
 
         # loop tasks
         observations = []

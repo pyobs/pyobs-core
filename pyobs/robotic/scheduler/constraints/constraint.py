@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
     cost: float = 1.0
+    target_dependent: bool = False
 
     @abstractmethod
     def to_astroplan(self) -> astroplan.Constraint: ...

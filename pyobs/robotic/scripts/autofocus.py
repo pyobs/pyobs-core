@@ -4,6 +4,7 @@ import logging
 
 from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope, IMotion
 from pyobs.robotic.scripts import Script
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -50,10 +51,13 @@ class AutoFocus(Script):
         telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
 
         target = data.task.target
+        if target is None:
+            raise ValueError("No target given.")
         log.info(f"Picked target {target} for auto focus...")
 
         log.info("Moving telescope...")
-        await telescope.move_radec(target.ra.degree, target.dec.degree)
+        coord = target.coordinates(Time.now())
+        await telescope.move_radec(coord.ra.degree, coord.dec.degree)
 
         try:
             log.info("Performing auto focus...")

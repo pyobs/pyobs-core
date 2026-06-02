@@ -103,6 +103,11 @@ class Task(BaseModel):
         self._resolved_target = await self.target.resolve(time, self, data)
         return self._resolved_target is not None
 
+    def set_resolved_target(self, target: Target | None) -> None:
+        """Set the resolved target if not already set, e.g. when restoring from an observation."""
+        if self._resolved_target is None:
+            self._resolved_target = target
+
     @property
     def effective_target(self) -> Target | None:
         """The resolved target, or the static target if not dynamic."""

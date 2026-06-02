@@ -9,6 +9,7 @@ import astropy.units as u
 from astroplan import ObservingBlock, FixedTarget
 
 from pyobs.object import Object
+from .dataprovider import DataProvider
 from .taskscheduler import TaskScheduler
 from .targets import SiderealTarget
 from pyobs.utils.time import Time
@@ -83,9 +84,17 @@ class AstroplanScheduler(TaskScheduler):
         else:
             raise ValueError("Unknown twilight type.")
 
+        # create a data provider
+        data = DataProvider(self.observer)
+
         # create blocks from tasks
         blocks: list[ObservingBlock] = []
         for task in tasks:
+            # resolve dynamic target
+            if not await task.resolve_target(start, task, data):
+                log.warning("Could not resolve target for task '%s', skipping.", task.name)
+                continue
+
             target = task.target
             if not isinstance(target, SiderealTarget):
                 log.warning("Non-sidereal targets not supported.")

@@ -24,5 +24,8 @@ class SiderealTarget(Target):
     def coordinates(self, time: Time) -> SkyCoord:
         return self._coord
 
+    def __str__(self) -> str:
+        return f"{self.name} ({self._coord})"
+
 
 __all__ = ["SiderealTarget"]

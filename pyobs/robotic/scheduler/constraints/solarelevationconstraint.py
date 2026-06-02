@@ -5,7 +5,7 @@ import astropy.units as u
 import logging
 from astropy.coordinates import get_sun
 from pydantic import Field
-from astropy.time import Time, TimeDelta
+from astropy.time import Time
 
 from .constraint import Constraint
 

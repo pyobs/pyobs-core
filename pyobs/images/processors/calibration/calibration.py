@@ -5,7 +5,6 @@ from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
 from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
 from pyobs.images.processors.calibration._ccddata_calibrator import _CCDDataCalibrator
-from pyobs.object import get_object
 from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
 from pyobs.utils.pipeline import Pipeline
@@ -160,7 +159,7 @@ class Calibration(ImageProcessor):
         self._require_dark = require_dark
         self._require_flat = require_flat
 
-        self._archive = get_object(archive, Archive)
+        self._archive = self.pyobs_model_validate(Archive, archive)
 
         if self._calib_cache is None:
             self._calib_cache = _CalibrationCache(self._max_cache_size)

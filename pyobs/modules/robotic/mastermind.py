@@ -151,8 +151,8 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 observation.end = Time.now()
                 observation.state = ObservationState.FAILED
                 await self._observation_archive.update_observation(observation)
-                self._task = None
                 await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id))
+                self._task = None
                 continue
 
             # send event and change state

@@ -266,7 +266,7 @@ class Scheduler(Module, IStartStop, IRunnable):
     @staticmethod
     def _log_scheduled_task(scheduled_tasks: ObservationList) -> None:
         for scheduled_task in scheduled_tasks:
-            msg = f"  - {scheduled_task.start.strftime("%H:%M:%S")} to {scheduled_task.end.strftime("%H:%M:%S")}: "
+            msg = f"  - {scheduled_task.start.strftime('%H:%M:%S')} to {scheduled_task.end.strftime('%H:%M:%S')}: "
             msg += f"{scheduled_task.task.name} ({scheduled_task.task.id}"
             if scheduled_task.priority is not None:
                 msg += f", priority: {scheduled_task.priority}"

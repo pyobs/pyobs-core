@@ -5,11 +5,11 @@ import astropy.units as u
 import logging
 from astropy.coordinates import get_sun
 from pydantic import Field
+from astropy.time import Time, TimeDelta
 
 from .constraint import Constraint
 
 if TYPE_CHECKING:
-    from astropy.time import Time, TimeDelta
     from ..dataprovider import DataProvider
     from pyobs.robotic import Task
 
@@ -37,15 +37,12 @@ class SolarElevationConstraint(Constraint):
         else:
             sun_coord = get_sun(time)
             transit = data.observer.target_meridian_transit_time(time, sun_coord, which="nearest")
-            sun_coord_12h = get_sun(time + TimeDelta(12 * u.hour))
-            nadir = data.observer.target_meridian_transit_time(
-                time + TimeDelta(12 * u.hour), sun_coord_12h, which="nearest"
-            )
+            midnight = data.observer.midnight(time, which="nearest")
 
             if self.direction == "rising":
-                return in_range and (nadir < time < transit)
+                return in_range and bool(midnight < time < transit)
             else:
-                return in_range and not (nadir < time < transit)
+                return in_range and not bool(midnight < time < transit)
 
 
 __all__ = ["SolarElevationConstraint"]

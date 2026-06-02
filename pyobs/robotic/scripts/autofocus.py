@@ -4,7 +4,6 @@ import logging
 
 from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope, IMotion
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.utils.targetpicker import TargetPicker
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -20,7 +19,6 @@ class AutoFocus(Script):
     count: int = 5
     step: float = 0.1
     exposure_time: float = 2.0
-    target: TargetPicker | None = None
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -45,15 +43,14 @@ class AutoFocus(Script):
         Raises:
             InterruptedError: If interrupted
         """
-
-        if not isinstance(self.target, TargetPicker):
+        if data is None or data.task is None:
             return
 
         autofocus = await self.comm.proxy(self.autofocus, IAutoFocus)
         telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
 
-        name, target = await self.target()
-        log.info(f"Picked target '{name}' at coordinates {target.to_string()} for auto focus...")
+        target = data.task.effective_target
+        log.info(f"Picked target '{target.name}' at coordinates {target.to_string()} for auto focus...")
 
         log.info("Moving telescope...")
         await telescope.move_radec(target.ra.degree, target.dec.degree)

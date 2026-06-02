@@ -83,7 +83,6 @@ dev = [
     "sphinx-rtd-theme>=3.0.2",
     "pyside6-stubs>=6.7.3.0",
     "radon>=6.0.1",
-    "circular-import-detector>=1.0.18",
 ]
 
 [tool.hatch.build.targets.sdist]

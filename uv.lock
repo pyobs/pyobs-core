@@ -720,15 +720,6 @@ wheels = [
 ]
 
 [[package]]
-name = "circular-import-detector"
-version = "1.0.18"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6b/bd/5f8fe59cd54986138869e750d491856a7166e18e4a69a6a8b37a5eb09bbe/circular_import_detector-1.0.18.tar.gz", hash = "sha256:b6ecbcd378799d31ee9edc0f5356ea97d751e19e7fdead6c13cfd4b145a6c299", size = 16972, upload-time = "2025-10-17T21:22:54.44Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/b6/5cca9553b72a14ef49a224a20eb614054bd00217a13e022dcc889416b499/circular_import_detector-1.0.18-py3-none-any.whl", hash = "sha256:b25c64e493a2808d380150bb1fd8e2e5771a9baea3cb3cb61eabda37e06dca7a", size = 17156, upload-time = "2025-10-17T21:22:53.514Z" },
-]
-
-[[package]]
 name = "click"
 version = "8.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3183,7 +3174,6 @@ gui = [
 dev = [
     { name = "aioresponses" },
     { name = "black" },
-    { name = "circular-import-detector" },
     { name = "coverage" },
     { name = "flake8" },
     { name = "mypy" },
@@ -3256,7 +3246,6 @@ provides-extras = ["full", "gui"]
 dev = [
     { name = "aioresponses", specifier = ">=0.7.8" },
     { name = "black", specifier = ">=25.1.0,<27" },
-    { name = "circular-import-detector", specifier = ">=1.0.18" },
     { name = "coverage", specifier = ">=7.9.2" },
     { name = "flake8", specifier = ">=7.3.0" },
     { name = "mypy", specifier = ">=1.15.0,<2" },

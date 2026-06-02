@@ -41,6 +41,13 @@ class BackendObservationArchive(ObservationArchive):
         await ObservationArchive.open(self)
         self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
 
+    async def close(self) -> None:
+        """Closes the backend observation archive."""
+        await ObservationArchive.close(self)
+        if self._aiohttp_session is not None:
+            await self._aiohttp_session.close()
+            self._aiohttp_session = None
+
     @property
     def _session(self) -> aiohttp.ClientSession:
         if self._aiohttp_session is None:

@@ -49,8 +49,8 @@ class AutoFocus(Script):
         autofocus = await self.comm.proxy(self.autofocus, IAutoFocus)
         telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
 
-        target = data.task.effective_target
-        log.info(f"Picked target '{target.name}' at coordinates {target.to_string()} for auto focus...")
+        target = data.task.target
+        log.info(f"Picked target {target} for auto focus...")
 
         log.info("Moving telescope...")
         await telescope.move_radec(target.ra.degree, target.dec.degree)

@@ -9,7 +9,6 @@ import astropy.units as u
 from astroplan import ObservingBlock, FixedTarget
 
 from pyobs.object import Object
-from .dataprovider import DataProvider
 from .taskscheduler import TaskScheduler
 from .targets import SiderealTarget
 from pyobs.utils.time import Time
@@ -22,8 +21,6 @@ log = logging.getLogger(__name__)
 
 class AstroplanScheduler(TaskScheduler):
     """Scheduler based on astroplan."""
-
-    __module__ = "pyobs.modules.robotic"
 
     def __init__(
         self,
@@ -52,10 +49,14 @@ class AstroplanScheduler(TaskScheduler):
 
         # get lock
         async with self._lock:
+            # clear abort event for this run
+            self._abort.clear()
             # prepare scheduler
             blocks, start, end, constraints = await self._prepare_schedule(tasks, start, end)
 
             # schedule
+            if not blocks:
+                return
             scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints, self._abort)
 
             # convert
@@ -75,6 +76,9 @@ class AstroplanScheduler(TaskScheduler):
         self, tasks: list[Task], start: Time, end: Time
     ) -> tuple[list[ObservingBlock], Time, Time, list[Any]]:
         """TaskSchedule blocks."""
+        from pyobs.robotic.scheduler.dataprovider import DataProvider
+
+        data = DataProvider(self.observer)
 
         # only global constraint is the night
         if self._twilight == "astronomical":
@@ -83,9 +87,6 @@ class AstroplanScheduler(TaskScheduler):
             constraints = [astroplan.AtNightConstraint.twilight_nautical()]
         else:
             raise ValueError("Unknown twilight type.")
-
-        # create a data provider
-        data = DataProvider(self.observer)
 
         # create blocks from tasks
         blocks: list[ObservingBlock] = []
@@ -175,7 +176,7 @@ class AstroplanScheduler(TaskScheduler):
         del transitioner, scheduler, schedule
 
     async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> ObservationList:
-        from pyobs.robotic import Observation
+        from pyobs.robotic import Observation, ObservationList
 
         scheduled_tasks = ObservationList()
         for block in blocks:

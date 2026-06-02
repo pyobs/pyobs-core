@@ -58,13 +58,15 @@ class AutoFocus(Script):
         log.info("Moving telescope...")
         await telescope.move_radec(target.ra.degree, target.dec.degree)
 
-        log.info("Performing auto focus...")
-        await autofocus.auto_focus(self.count, self.step, self.exposure_time)
+        try:
+            log.info("Performing auto focus...")
+            await autofocus.auto_focus(self.count, self.step, self.exposure_time)
 
-        if isinstance(telescope, IMotion):
-            log.info("Stopping telescope...")
-            await telescope.stop_motion()
-        log.info("Done.")
+        finally:
+            if isinstance(telescope, IMotion):
+                log.info("Stopping telescope...")
+                await telescope.stop_motion()
+            log.info("Done.")
 
 
 __all__ = ["AutoFocus"]

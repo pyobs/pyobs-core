@@ -147,7 +147,13 @@ class OnDemandScheduler(TaskScheduler):
     def create_scheduled_task(self, task: Task, merit: float, time: Time) -> Observation:
         from pyobs.robotic import Observation
 
-        return Observation(task=task, start=time, end=time + TimeDelta(task.duration * u.second), priority=merit)
+        return Observation(
+            task=task,
+            start=time,
+            end=time + TimeDelta(task.duration * u.second),
+            priority=merit,
+            target=task.effective_target,
+        )
 
     async def evaluate_constraints(self, task: Task, start: Time, end: Time, data: DataProvider) -> bool:
         """Loops all constraints. If any evaluates to False, return False. Otherwise, return True.
@@ -197,6 +203,11 @@ class OnDemandScheduler(TaskScheduler):
         # evaluate all merit functions at given time
         merits: list[float] = []
         for task in tasks:
+            # resolve dynamic target — skip task if no valid target found
+            if not await task.resolve_target(start, task, data):
+                merits.append(0.0)
+                continue
+
             # evaluate constraints
             if await self.evaluate_constraints(task, start, end, data):
                 # now we can evaluate the merits
@@ -231,6 +242,7 @@ class OnDemandScheduler(TaskScheduler):
     async def find_next_best_task(
         self, tasks: list[Task], projects: dict[str, Project], start: Time, end: Time, data: DataProvider
     ) -> tuple[Task | None, float]:
+
         # evaluate all merit functions at given time
         merits = await self.evaluate_constraints_and_merits(tasks, projects, start, end, data)
 

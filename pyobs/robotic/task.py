@@ -1,10 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
+from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.scripts import Script
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.observationarchive import ObservationArchive
@@ -33,6 +35,8 @@ class Task(BaseModel):
     target: Target | None = None
     script: dict[str, Any] = Field(default_factory=dict)
     active: bool = True
+
+    _resolved_target: Target | None = PrivateAttr(default=None)
 
     def __str__(self) -> str:
         s = f"Task {self.id}: {self.name} (duration: {self.duration}s"
@@ -89,6 +93,22 @@ class Task(BaseModel):
         if self.script:
             return self.create_script().estimate_duration()
         return self.duration
+
+    async def resolve_target(self, time: Time, task: Task, data: DataProvider) -> bool:
+        """Resolve dynamic target. Returns False if no valid target found."""
+        if self.target is None:
+            return True
+        if self._resolved_target is not None:
+            return True
+        self._resolved_target = await self.target.resolve(time, self, data)
+        return self._resolved_target is not None
+
+    @property
+    def effective_target(self) -> Target | None:
+        """The resolved target, or the static target if not dynamic."""
+        if self._resolved_target is not None:
+            return self._resolved_target
+        return self.target
 
 
 class Project(BaseModel):

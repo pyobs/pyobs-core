@@ -19,7 +19,7 @@ from pyobs.utils.enums import ImageFormat
 from pyobs.images import Image
 
 if TYPE_CHECKING:
-    from pyobs.utils.simulation import SimWorld
+    from .world import SimWorld
 
 
 log = logging.getLogger(__name__)

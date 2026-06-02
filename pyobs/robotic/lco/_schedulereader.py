@@ -9,7 +9,6 @@ import astropy.units as u
 from pyobs.robotic.observation import Observation, ObservationList
 from pyobs.utils.time import Time
 from ._portal import Portal
-from .task import LcoTask
 from ...object import Object
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
@@ -172,6 +171,7 @@ class LcoScheduleReader(Object):
             Timeout: If request timed out.
             RuntimeError: If something goes wrong.
         """
+        from .task import LcoTask
 
         # download schedule
         schedules = await self._portal.download_schedule(start_before, end_after)

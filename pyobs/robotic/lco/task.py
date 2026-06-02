@@ -127,7 +127,7 @@ class LcoTask(Task):
 
     async def run(self, data: TaskData | None) -> None:
         """Run a task"""
-        from pyobs.robotic.lco import LcoObservationArchive
+        from .observationarchive import LcoObservationArchive
 
         if data is None:
             raise ValueError("No TaskData given.")

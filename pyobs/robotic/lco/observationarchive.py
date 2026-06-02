@@ -5,8 +5,6 @@ from typing import Any, Literal
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
 from pyobs.utils.time import Time
 from pyobs.robotic.observationarchive import ObservationArchive
-from ._schedulereader import LcoScheduleReader
-from ._schedulewriter import LcoScheduleWriter
 from ._portal import Portal
 from .configdb import ConfigDB
 from .. import Task, TaskArchive
@@ -51,6 +49,9 @@ class LcoObservationArchive(ObservationArchive):
             instrument: Instrument for new schedules.
             period: Period to schedule in hours
         """
+        from ._schedulereader import LcoScheduleReader
+        from ._schedulewriter import LcoScheduleWriter
+
         ObservationArchive.__init__(self, **kwargs)
 
         # portal
@@ -139,7 +140,7 @@ class LcoObservationArchive(ObservationArchive):
             List of matching observations.
         """
 
-        from pyobs.robotic.lco import LcoTask
+        from .task import LcoTask
 
         if not isinstance(task, LcoTask) or task.id is None or not isinstance(task.id, int):
             raise ValueError("Task is not a LCO task.")

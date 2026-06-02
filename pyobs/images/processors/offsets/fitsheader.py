@@ -3,7 +3,7 @@ from typing import Tuple, Any
 import numpy as np
 
 from pyobs.images import Image
-from . import Offsets
+from .offsets import Offsets
 from ...meta.genericoffset import GenericOffset
 
 log = logging.getLogger(__name__)

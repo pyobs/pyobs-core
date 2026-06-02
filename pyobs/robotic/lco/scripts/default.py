@@ -18,7 +18,7 @@ from pyobs.interfaces import (
     IImageType,
     IPointingRaDec,
 )
-from pyobs.robotic.lco.scripts import LcoScript
+from .script import LcoScript
 from pyobs.robotic.task import TaskData
 from pyobs.utils.enums import ImageType
 import pyobs.utils.exceptions as exc

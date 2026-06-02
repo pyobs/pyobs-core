@@ -6,8 +6,8 @@ from typing import Union, Optional, TYPE_CHECKING, Dict, Any
 from pyobs.object import create_object, Object
 
 if TYPE_CHECKING:
-    from pyobs.utils.simulation.telescope import SimTelescope
-    from pyobs.utils.simulation.camera import SimCamera
+    from .telescope import SimTelescope
+    from .camera import SimCamera
 
 
 class SimWorld(Object):

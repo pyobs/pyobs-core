@@ -8,7 +8,7 @@ from astropy.time import Time
 from .picker import Picker
 
 if TYPE_CHECKING:
-    from pyobs.robotic.scheduler.targets import Target, SiderealTarget
+    from pyobs.robotic.scheduler.targets import Target
     from pyobs.robotic import Task
     from pyobs.robotic.scheduler import DataProvider
 

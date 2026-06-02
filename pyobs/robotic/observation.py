@@ -8,6 +8,7 @@ from pyobs.object import Object
 from pyobs.utils.time import Time
 from pyobs.robotic.task import Task
 from pyobs.utils.serialization import BaseModel
+from pyobs.robotic.scheduler.targets import Target
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskArchive
@@ -31,6 +32,7 @@ class Observation(BaseModel):
     end: AstroPydanticTime
     state: ObservationState = ObservationState.PENDING
     priority: float | None = None
+    target: Target | None = None
 
     def __str__(self) -> str:
         return (
@@ -69,12 +71,12 @@ class Observation(BaseModel):
         raise NotImplementedError
 
     def model_dump(self, use_task_id: bool = False, **kwargs: Any) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
         if use_task_id and isinstance(self.task, Task) and self.task.id is not None:
-            data = self.model_copy()
-            data.task = self.task.id
-            return data.model_dump(**kwargs)
-        else:
-            return super().model_dump(**kwargs)
+            data["task"] = self.task.id
+        if self.target is not None:
+            data["target"] = self.target.model_dump()
+        return data
 
     async def fetch_task(self, task_archive: TaskArchive) -> None:
         """Fetch a task from the task archive."""

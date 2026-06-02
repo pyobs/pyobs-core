@@ -83,7 +83,7 @@ class Observation(BaseModel):
         if not isinstance(self.task, Task):
             self.task = await task_archive.get_task(self.task)
         # restore resolved target from observation
-        if self.target is not None:
+        if self.task is not None and self.target is not None:
             self.task.set_resolved_target(self.target)
 
 

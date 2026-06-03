@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
@@ -16,7 +16,7 @@ class CallModule(Script):
 
     module: str
     method: str
-    params: list[Any] = Field(default_factory=list)
+    params: list[str | int | float] = Field(default_factory=list)
 
     async def can_run(self, data: TaskData | None) -> bool:
         try:

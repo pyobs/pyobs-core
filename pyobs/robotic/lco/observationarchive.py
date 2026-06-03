@@ -55,7 +55,7 @@ class LcoObservationArchive(ObservationArchive):
         ObservationArchive.__init__(self, **kwargs)
 
         # portal
-        self._portal = Portal(url, token, site, enclosure, telescope)
+        self._portal = self.add_child_object(Portal(url, token, site, enclosure, telescope))
         self._configdb = ConfigDB(configdb)
 
         # reader/writer

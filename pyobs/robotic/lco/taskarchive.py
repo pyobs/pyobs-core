@@ -35,7 +35,7 @@ class LcoTaskArchive(TaskArchive):
         TaskArchive.__init__(self, **kwargs)
 
         # portal
-        self._portal = Portal(url, token, "", "", "")
+        self._portal = self.add_child_object(Portal(url, token, "", "", ""))
 
         # store stuff
         instrument_type = [instrument_type] if isinstance(instrument_type, str) else instrument_type

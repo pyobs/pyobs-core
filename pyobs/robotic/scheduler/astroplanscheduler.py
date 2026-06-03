@@ -125,7 +125,7 @@ class AstroplanScheduler(TaskScheduler):
 
         # run actual scheduler in separate process and wait for it
         queue_out: mp.Queue[ObservingBlock] = mp.Queue()
-        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, queue_out))
+        p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, self.observer, queue_out))
         p.start()
 
         # wait for process to finish
@@ -144,12 +144,13 @@ class AstroplanScheduler(TaskScheduler):
 
         return scheduled_blocks
 
+    @staticmethod
     def _schedule_process(
-        self,
         blocks: list[ObservingBlock],
         start: Time,
         end: Time,
         constraints: list[Any],
+        observer: Any,
         scheduled_blocks: mp.Queue[ObservingBlock],
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
@@ -161,7 +162,7 @@ class AstroplanScheduler(TaskScheduler):
         transitioner = astroplan.Transitioner()
 
         # create scheduler
-        scheduler = astroplan.PriorityScheduler(constraints, self._observer, transitioner=transitioner)
+        scheduler = astroplan.PriorityScheduler(constraints, observer, transitioner=transitioner)
 
         # run scheduler
         logging.disable(logging.WARNING)

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, cast, Tuple, Optional
 from urllib.parse import urljoin
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from astropydantic import AstroPydanticTime  # type: ignore
 import aiohttp
 
@@ -111,7 +111,7 @@ class LcoRequest(BaseModel):
     modified: AstroPydanticTime
     acceptability_threshold: float
     duration: int
-    location: LcoLocation | None = None
+    lco_location: LcoLocation | None = Field(default=None, alias="location")
     optimization_type: str
     state: str
     configurations: list[LcoConfiguration]
@@ -119,6 +119,8 @@ class LcoRequest(BaseModel):
     configuration_repeats: int = 1
     windows: list[LcoWindow] = []
     extra_params: dict[str, Any]
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class LcoObservation(BaseModel):

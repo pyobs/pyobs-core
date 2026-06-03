@@ -245,6 +245,8 @@ class Portal(Object):
             start: Start time to clear schedule from.
             end: End time to clear schedule to
         """
+        if self._session is None:
+            raise RuntimeError("Portal not opened yet.")
 
         # define parameters
         params = {
@@ -271,6 +273,8 @@ class Portal(Object):
         Args:
             observations: List of observations to submit.
         """
+        if self._session is None:
+            raise RuntimeError("Portal not opened yet.")
 
         # nothing?
         if len(observations) == 0:
@@ -301,6 +305,8 @@ class Portal(Object):
             status_id: id of config status
             status: Status dictionary
         """
+        if self._session is None:
+            raise RuntimeError("Portal not opened yet.")
 
         log.info("Sending configuration status update to portal...")
         url = urljoin(self.url, f"/api/configurationstatus/{status_id}/")

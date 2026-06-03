@@ -15,8 +15,8 @@ class ConditionalRunner(Script):
     """Script for running an if condition."""
 
     condition: str
-    true: dict[str, Any]
-    false: dict[str, Any] | None = None
+    true: Script
+    false: Script | None = None
 
     def __get_script(self) -> Script | None:
         # evaluate condition
@@ -24,9 +24,9 @@ class ConditionalRunner(Script):
 
         # run scripts
         if ret:
-            return self.pyobs_model_validate(Script, self.true)
+            return self.true
         elif self.false is not None:
-            return self.pyobs_model_validate(Script, self.false)
+            return self.false
         else:
             return None
 

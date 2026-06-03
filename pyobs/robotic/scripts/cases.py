@@ -14,7 +14,7 @@ class CasesRunner(Script):
     """Script for distinguishing cases."""
 
     expression: str
-    cases: dict[str | int | float, Any]
+    cases: dict[str | int | float, Script]
 
     def __get_script(self) -> Script:
         # evaluate condition
@@ -22,9 +22,9 @@ class CasesRunner(Script):
 
         # check in cases
         if value in self.cases:
-            return self.pyobs_model_validate(Script, self.cases[value])
+            return self.cases[value]
         elif "else" in self.cases:
-            return self.pyobs_model_validate(Script, self.cases["else"])
+            return self.cases["else"]
         else:
             raise ValueError("Invalid choice")
 

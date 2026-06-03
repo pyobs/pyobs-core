@@ -3,9 +3,8 @@ import logging
 from typing import Any
 import astropy.units as u
 
+from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
 from pyobs.modules import Module
-from pyobs.events.taskfinished import TaskFinishedEvent
-from pyobs.events.taskstarted import TaskStartedEvent
 from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
 from pyobs.robotic import Task, Observation, TaskArchive, ObservationState
 from pyobs.utils.time import Time
@@ -152,6 +151,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 observation.end = Time.now()
                 observation.state = ObservationState.FAILED
                 await self._observation_archive.update_observation(observation)
+                await self.comm.send_event(TaskFailedEvent(name=self._task.name, id=self._task.id))
                 self._task = None
                 continue
 

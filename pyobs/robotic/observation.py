@@ -82,6 +82,9 @@ class Observation(BaseModel):
         """Fetch a task from the task archive."""
         if not isinstance(self.task, Task):
             self.task = await task_archive.get_task(self.task)
+        # restore resolved target from observation
+        if self.task is not None and self.target is not None:
+            self.task.set_resolved_target(self.target)
 
 
 class ObservationList(UserList[Observation], Object):  # noqa: F821

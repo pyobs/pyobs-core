@@ -22,8 +22,6 @@ log = logging.getLogger(__name__)
 class AstroplanScheduler(TaskScheduler):
     """Scheduler based on astroplan."""
 
-    __module__ = "pyobs.modules.robotic"
-
     def __init__(
         self,
         twilight: str = "astronomical",
@@ -51,10 +49,14 @@ class AstroplanScheduler(TaskScheduler):
 
         # get lock
         async with self._lock:
+            # clear abort event for this run
+            self._abort.clear()
             # prepare scheduler
             blocks, start, end, constraints = await self._prepare_schedule(tasks, start, end)
 
             # schedule
+            if not blocks:
+                return
             scheduled_blocks = await self._schedule_blocks(blocks, start, end, constraints, self._abort)
 
             # convert
@@ -74,6 +76,9 @@ class AstroplanScheduler(TaskScheduler):
         self, tasks: list[Task], start: Time, end: Time
     ) -> tuple[list[ObservingBlock], Time, Time, list[Any]]:
         """TaskSchedule blocks."""
+        from pyobs.robotic.scheduler.dataprovider import DataProvider
+
+        data = DataProvider(self.observer)
 
         # only global constraint is the night
         if self._twilight == "astronomical":
@@ -86,6 +91,11 @@ class AstroplanScheduler(TaskScheduler):
         # create blocks from tasks
         blocks: list[ObservingBlock] = []
         for task in tasks:
+            # resolve dynamic target
+            if not await task.resolve_target(start, task, data):
+                log.warning("Could not resolve target for task '%s', skipping.", task.name)
+                continue
+
             target = task.target
             if not isinstance(target, SiderealTarget):
                 log.warning("Non-sidereal targets not supported.")
@@ -166,7 +176,7 @@ class AstroplanScheduler(TaskScheduler):
         del transitioner, scheduler, schedule
 
     async def _convert_blocks(self, blocks: list[ObservingBlock], tasks: list[Task]) -> ObservationList:
-        from pyobs.robotic import Observation
+        from pyobs.robotic import Observation, ObservationList
 
         scheduled_tasks = ObservationList()
         for block in blocks:

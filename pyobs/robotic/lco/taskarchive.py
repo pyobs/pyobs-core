@@ -9,6 +9,7 @@ from pyobs.robotic.taskarchive import TaskArchive
 from ._portal import Portal
 from .task import LcoTask
 from .. import Task
+from ..task import Project
 
 log = logging.getLogger(__name__)
 
@@ -83,6 +84,18 @@ class LcoTaskArchive(TaskArchive):
         # even in case of errors, return last time
         return self._last_changed
 
+    async def get_projects(self) -> list[Project]:
+        """Returns list of projects from the LCO portal."""
+        proposals = await self._portal.proposals()
+        return [Project(code=p["id"], name=p["id"], priority=p.get("tac_priority", 1.0)) for p in proposals]
+
+    async def get_task(self, id: Any) -> Task | None:
+        """Returns the task with the given ID."""
+        for task in self._tasks.values():
+            if task.id == id:
+                return task
+        return None
+
     async def get_schedulable_tasks(self) -> list[Task]:
         """Returns a list of schedulable tasks.
 
@@ -103,7 +116,7 @@ class LcoTaskArchive(TaskArchive):
             tasks = LcoTask.from_schedulable_request(schedulable_request, {})
             for task in tasks:
                 task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
-                if task.request.state == "PENDING":
+                if task.request.state != "PENDING":
                     continue
                 if task.request.configurations[0].instrument_type.lower() not in self._instrument_type:
                     continue

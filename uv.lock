@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -717,15 +717,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/1d/29d32e0fb40864b1f878c7f5a0b343ae676c6e2b271a2d55cc3a152391da/charset_normalizer-3.4.7-cp314-cp314t-win_amd64.whl", hash = "sha256:03853ed82eeebbce3c2abfdbc98c96dc205f32a79627688ac9a27370ea61a49c", size = 174168, upload-time = "2026-04-02T09:27:49.795Z" },
     { url = "https://files.pythonhosted.org/packages/de/32/d92444ad05c7a6e41fb2036749777c163baf7a0301a040cb672d6b2b1ae9/charset_normalizer-3.4.7-cp314-cp314t-win_arm64.whl", hash = "sha256:c35abb8bfff0185efac5878da64c45dafd2b37fb0383add1be155a763c1f083d", size = 153018, upload-time = "2026-04-02T09:27:51.116Z" },
     { url = "https://files.pythonhosted.org/packages/db/8f/61959034484a4a7c527811f4721e75d02d653a35afb0b6054474d8185d4c/charset_normalizer-3.4.7-py3-none-any.whl", hash = "sha256:3dce51d0f5e7951f8bb4900c257dad282f49190fdbebecd4ba99bcc41fef404d", size = 61958, upload-time = "2026-04-02T09:28:37.794Z" },
-]
-
-[[package]]
-name = "circular-import-detector"
-version = "1.0.18"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6b/bd/5f8fe59cd54986138869e750d491856a7166e18e4a69a6a8b37a5eb09bbe/circular_import_detector-1.0.18.tar.gz", hash = "sha256:b6ecbcd378799d31ee9edc0f5356ea97d751e19e7fdead6c13cfd4b145a6c299", size = 16972, upload-time = "2025-10-17T21:22:54.44Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/b6/5cca9553b72a14ef49a224a20eb614054bd00217a13e022dcc889416b499/circular_import_detector-1.0.18-py3-none-any.whl", hash = "sha256:b25c64e493a2808d380150bb1fd8e2e5771a9baea3cb3cb61eabda37e06dca7a", size = 17156, upload-time = "2025-10-17T21:22:53.514Z" },
 ]
 
 [[package]]
@@ -3129,7 +3120,7 @@ wheels = [
 
 [[package]]
 name = "pyobs-core"
-version = "1.46.3"
+version = "1.46.4"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -3183,7 +3174,6 @@ gui = [
 dev = [
     { name = "aioresponses" },
     { name = "black" },
-    { name = "circular-import-detector" },
     { name = "coverage" },
     { name = "flake8" },
     { name = "mypy" },
@@ -3256,7 +3246,6 @@ provides-extras = ["full", "gui"]
 dev = [
     { name = "aioresponses", specifier = ">=0.7.8" },
     { name = "black", specifier = ">=25.1.0,<27" },
-    { name = "circular-import-detector", specifier = ">=1.0.18" },
     { name = "coverage", specifier = ">=7.9.2" },
     { name = "flake8", specifier = ">=7.3.0" },
     { name = "mypy", specifier = ">=1.15.0,<2" },

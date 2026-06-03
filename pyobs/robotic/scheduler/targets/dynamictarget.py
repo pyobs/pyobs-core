@@ -31,5 +31,8 @@ class DynamicTarget(Target):
             raise RuntimeError("Target not resolved yet.")
         return self._target.coordinates(time)
 
+    def __str__(self) -> str:
+        return "dynamic" if self._target is None else str(self._target)
+
 
 __all__ = ["DynamicTarget"]

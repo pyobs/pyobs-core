@@ -22,6 +22,20 @@ class LcoTaskRunner(TaskRunner):
         TaskRunner.__init__(self, **kwargs)
         self.scripts = scripts
 
+    async def run_task(self, task: Task) -> bool:
+        """Run a task.
+
+        Args:
+            task: Task to run
+
+        Returns:
+            Success or not
+        """
+        if not isinstance(task, LcoTask):
+            raise ValueError("Not an LCO task")
+        task.script = self._get_config_script(task.request)
+        return await TaskRunner.run_task(self, task)
+
     async def can_run(self, task: Task) -> bool:
         """Checks whether this task could run now.
 

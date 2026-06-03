@@ -152,7 +152,7 @@ class OnDemandScheduler(TaskScheduler):
             start=time,
             end=time + TimeDelta(task.duration * u.second),
             priority=merit,
-            target=task.effective_target,
+            target=task.target,
         )
 
     async def evaluate_constraints(self, task: Task, start: Time, end: Time, data: DataProvider) -> bool:

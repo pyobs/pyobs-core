@@ -47,7 +47,7 @@ class CsvPicker(Picker):
             candidate = SiderealTarget(name=row[self.name_col], ra=ra, dec=row[self.dec_col])
 
             # create a temporary task with this candidate as target
-            candidate_task = task.model_copy(update={"target": candidate})
+            candidate_task = task.model_copy(update={"static_target": candidate})
 
             # check constraints
             valid_candidate = True

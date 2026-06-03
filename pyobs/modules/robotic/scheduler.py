@@ -7,9 +7,7 @@ from typing import Union, Any, Dict
 import astropy.units as u
 from astropy.time import TimeDelta
 
-from pyobs.events.taskfinished import TaskFinishedEvent
-from pyobs.events.taskstarted import TaskStartedEvent
-from pyobs.events import GoodWeatherEvent, Event
+from pyobs.events import GoodWeatherEvent, Event, TaskFailedEvent, TaskStartedEvent, TaskFinishedEvent
 from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
 from pyobs.interfaces import IStartStop, IRunnable
@@ -91,6 +89,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         if self._comm:
             await self.comm.register_event(TaskStartedEvent, self._on_task_started)
             await self.comm.register_event(TaskFinishedEvent, self._on_task_finished)
+            await self.comm.register_event(TaskFailedEvent, self._on_task_finished)
             await self.comm.register_event(GoodWeatherEvent, self._on_good_weather)
 
     async def start(self, **kwargs: Any) -> None:

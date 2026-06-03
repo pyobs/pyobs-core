@@ -4,7 +4,7 @@ import logging
 
 from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope, IMotion
 from pyobs.robotic.scripts import Script
-from pyobs.robotic.utils.targetpicker import TargetPicker
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -20,7 +20,6 @@ class AutoFocus(Script):
     count: int = 5
     step: float = 0.1
     exposure_time: float = 2.0
-    target: TargetPicker | None = None
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -45,26 +44,30 @@ class AutoFocus(Script):
         Raises:
             InterruptedError: If interrupted
         """
-
-        if not isinstance(self.target, TargetPicker):
+        if data is None or data.task is None:
             return
 
         autofocus = await self.comm.proxy(self.autofocus, IAutoFocus)
         telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
 
-        name, target = await self.target()
-        log.info(f"Picked target '{name}' at coordinates {target.to_string()} for auto focus...")
+        target = data.task.target
+        if target is None:
+            raise ValueError("No target given.")
+        log.info(f"Picked target {target} for auto focus...")
 
         log.info("Moving telescope...")
-        await telescope.move_radec(target.ra.degree, target.dec.degree)
+        coord = target.coordinates(Time.now())
+        await telescope.move_radec(coord.ra.degree, coord.dec.degree)
 
-        log.info("Performing auto focus...")
-        await autofocus.auto_focus(self.count, self.step, self.exposure_time)
+        try:
+            log.info("Performing auto focus...")
+            await autofocus.auto_focus(self.count, self.step, self.exposure_time)
 
-        if isinstance(telescope, IMotion):
-            log.info("Stopping telescope...")
-            await telescope.stop_motion()
-        log.info("Done.")
+        finally:
+            if isinstance(telescope, IMotion):
+                log.info("Stopping telescope...")
+                await telescope.stop_motion()
+            log.info("Done.")
 
 
 __all__ = ["AutoFocus"]

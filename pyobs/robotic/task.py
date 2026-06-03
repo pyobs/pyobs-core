@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, ConfigDict
 
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.targets import Target
@@ -32,11 +32,13 @@ class Task(BaseModel):
     priority: float | None = Field(ge=0.0, le=9999.0, default=1.0)
     constraints: list[Constraint] = Field(default_factory=list)
     merits: list[Merit] = Field(default_factory=list)
-    target: Target | None = None
+    static_target: Target | None = Field(default=None, alias="target")
     script: dict[str, Any] = Field(default_factory=dict)
     active: bool = True
 
     _resolved_target: Target | None = PrivateAttr(default=None)
+
+    model_config = ConfigDict(populate_by_name=True)
 
     def __str__(self) -> str:
         s = f"Task {self.id}: {self.name} (duration: {self.duration}s"
@@ -96,19 +98,24 @@ class Task(BaseModel):
 
     async def resolve_target(self, time: Time, task: Task, data: DataProvider) -> bool:
         """Resolve dynamic target. Returns False if no valid target found."""
-        if self.target is None:
+        if self.static_target is None:
             return True
         if self._resolved_target is not None:
             return True
-        self._resolved_target = await self.target.resolve(time, self, data)
+        self._resolved_target = await self.static_target.resolve(time, self, data)
         return self._resolved_target is not None
 
+    def set_resolved_target(self, target: Target | None) -> None:
+        """Set the resolved target if not already set, e.g. when restoring from an observation."""
+        if self._resolved_target is None:
+            self._resolved_target = target
+
     @property
-    def effective_target(self) -> Target | None:
+    def target(self) -> Target | None:
         """The resolved target, or the static target if not dynamic."""
         if self._resolved_target is not None:
             return self._resolved_target
-        return self.target
+        return self.static_target
 
 
 class Project(BaseModel):

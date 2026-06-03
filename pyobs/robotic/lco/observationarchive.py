@@ -76,6 +76,23 @@ class LcoObservationArchive(ObservationArchive):
         """
         return await self._schedule_reader.get_schedule()
 
+    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+        """Returns the currently running observation."""
+        return await self._schedule_reader.get_task(Time.now())
+
+    async def update_observation(self, observation: Observation) -> None:
+        """Updates observation state in the portal."""
+        if not isinstance(observation.task, Task) or observation.task.id is None:
+            return
+        from .task import LcoTask, ConfigStatus
+
+        if not isinstance(observation.task, LcoTask):
+            return
+        for config in observation.task.request.configurations:
+            status = ConfigStatus(state=observation.state.value)
+            status.finish(state=observation.state.value)
+            await self.send_update(config.configuration_status, status.to_json())
+
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
 

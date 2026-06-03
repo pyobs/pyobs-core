@@ -156,9 +156,18 @@ class Portal(Object):
         self.site = site
         self.enclosure = enclosure
         self.telescope = telescope
+        self._session: aiohttp.ClientSession | None = None
 
+    async def open(self) -> None:
+        await Object.open(self)
         timeout = aiohttp.ClientTimeout(total=30)
         self._session = aiohttp.ClientSession(timeout=timeout, headers=self.headers)
+
+    async def close(self) -> None:
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
+        await Object.close(self)
 
     async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
         """Do a GET request on the portal.
@@ -174,6 +183,8 @@ class Portal(Object):
             TimeoutError if the call timed out.
         """
 
+        if self._session is None:
+            raise RuntimeError("Portal not opened yet.")
         async with self._session.get(urljoin(self.url, path), params=params) as response:
             if response.status != 200:
                 raise RuntimeError("Invalid response from portal: " + await response.text())

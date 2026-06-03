@@ -97,7 +97,7 @@ class LcoConfiguration(BaseModel):
     repeat_duration: float | None = None
     target: LcoTarget
     type: str
-    state: str = ""
+    state: str = "PENDING"
     configuration_status: int | None = None
 
 

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, cast, Tuple, Optional
 from urllib.parse import urljoin
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from astropydantic import AstroPydanticTime  # type: ignore
 import aiohttp
 
@@ -111,7 +111,7 @@ class LcoRequest(BaseModel):
     modified: AstroPydanticTime
     acceptability_threshold: float
     duration: int
-    location: LcoLocation | None = None
+    lco_location: LcoLocation | None = Field(default=None, alias="location")
     optimization_type: str
     state: str
     configurations: list[LcoConfiguration]
@@ -119,6 +119,8 @@ class LcoRequest(BaseModel):
     configuration_repeats: int = 1
     windows: list[LcoWindow] = []
     extra_params: dict[str, Any]
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class LcoObservation(BaseModel):
@@ -156,9 +158,18 @@ class Portal(Object):
         self.site = site
         self.enclosure = enclosure
         self.telescope = telescope
+        self._session: aiohttp.ClientSession | None = None
 
+    async def open(self) -> None:
+        await Object.open(self)
         timeout = aiohttp.ClientTimeout(total=30)
         self._session = aiohttp.ClientSession(timeout=timeout, headers=self.headers)
+
+    async def close(self) -> None:
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
+        await Object.close(self)
 
     async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
         """Do a GET request on the portal.
@@ -174,6 +185,8 @@ class Portal(Object):
             TimeoutError if the call timed out.
         """
 
+        if self._session is None:
+            raise RuntimeError("Portal not opened yet.")
         async with self._session.get(urljoin(self.url, path), params=params) as response:
             if response.status != 200:
                 raise RuntimeError("Invalid response from portal: " + await response.text())

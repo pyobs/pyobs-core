@@ -116,7 +116,7 @@ class LcoTaskArchive(TaskArchive):
             tasks = LcoTask.from_schedulable_request(schedulable_request, {})
             for task in tasks:
                 task.priority = schedulable_request.ipp_value * tac_priorities[schedulable_request.proposal]
-                if task.request.state == "PENDING":
+                if task.request.state != "PENDING":
                     continue
                 if task.request.configurations[0].instrument_type.lower() not in self._instrument_type:
                     continue

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 from typing import Any, Literal
 from urllib.parse import urljoin

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any

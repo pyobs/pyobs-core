@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
 from astropydantic import AstroPydanticTime  # type: ignore
 from pydantic import Field

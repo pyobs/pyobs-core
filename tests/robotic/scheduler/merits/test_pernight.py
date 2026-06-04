@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation

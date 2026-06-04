@@ -1,4 +1,6 @@
-from typing import Any, cast
+from __future__ import annotations
+
+from typing import Union, Any, cast
 import logging
 
 from pyobs.images.processor import ImageProcessor

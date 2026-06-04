@@ -1,3 +1,4 @@
+from __future__ import annotations
 import abc
 from typing import Any
 from astropy.coordinates import SkyCoord

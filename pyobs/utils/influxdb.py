@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # from https://gitlab.com/kipe/influx_logging_handler
 import logging
 import traceback

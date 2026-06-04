@@ -1,3 +1,4 @@
+from __future__ import annotations
 from astropy.coordinates import SkyCoord, EarthLocation
 from pydantic import model_validator, PrivateAttr, Field
 from typing import TYPE_CHECKING, Self

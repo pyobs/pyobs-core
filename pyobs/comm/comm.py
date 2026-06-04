@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import inspect
 import logging
@@ -131,7 +132,9 @@ class Comm:
     @overload
     async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any: ...
 
-    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any | ProxyType:
+    async def proxy(
+        self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None
+    ) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

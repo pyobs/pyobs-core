@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 class FileList:
     """Base class for file lists."""

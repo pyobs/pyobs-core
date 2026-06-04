@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pyobs.images import Image
 
 

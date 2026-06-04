@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 from abc import ABCMeta
 from typing import Any, TypeVar, Self

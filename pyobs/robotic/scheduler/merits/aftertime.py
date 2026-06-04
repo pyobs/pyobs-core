@@ -1,3 +1,4 @@
+from __future__ import annotations
 from astropy.time import Time
 from pydantic import Field
 from typing import TYPE_CHECKING

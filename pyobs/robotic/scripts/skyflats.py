@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script

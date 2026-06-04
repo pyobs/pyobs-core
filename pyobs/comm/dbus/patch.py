@@ -35,7 +35,7 @@ def _aio_make_method_handler(self, interface, method):  # type: ignore
 
         args = ServiceInterface._msg_body_to_args(msg)  # type: ignore
         kwargs = {method.sender_keyword: msg.sender} if method.sender_keyword else {}
-        fut = asyncio.ensure_future(method.fn(interface, *args, **kwargs))
+        fut = asyncio.create_task(method.fn(interface, *args, **kwargs))
         fut.add_done_callback(done)
 
     return handler

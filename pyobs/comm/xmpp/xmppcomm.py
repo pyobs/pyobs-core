@@ -258,7 +258,7 @@ class XmppComm(Comm):
             self._jid_got_offline(jid)
 
         # reconnect
-        asyncio.create_task(self._reconnect(), loop=self._loop)
+        asyncio.create_task(self._reconnect())
 
     @property
     def name(self) -> str | None:

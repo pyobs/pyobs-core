@@ -4,11 +4,10 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.interfaces import IWeather
-from pyobs.modules import Module
-from pyobs.events import BadWeatherEvent, GoodWeatherEvent, Event
-from pyobs.interfaces import IMotion
+from pyobs.events import BadWeatherEvent, Event, GoodWeatherEvent
+from pyobs.interfaces import IMotion, IWeather
 from pyobs.mixins import MotionStatusMixin
+from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)

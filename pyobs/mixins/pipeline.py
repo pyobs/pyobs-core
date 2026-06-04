@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from pyobs.images import ImageProcessor, Image
 
+from pyobs.images import Image, ImageProcessor
 from pyobs.object import Object
 
 log = logging.getLogger(__name__)

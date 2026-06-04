@@ -2,13 +2,13 @@ import asyncio
 import logging
 from collections.abc import Awaitable
 from typing import Any
-from astropy.coordinates import SkyCoord
+
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 
-from pyobs.utils import exceptions as exc
-from pyobs.modules import Module
 from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
-
+from pyobs.modules import Module
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 

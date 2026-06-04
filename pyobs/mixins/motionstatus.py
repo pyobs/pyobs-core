@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyobs.modules import Module
 from pyobs.events import MotionStatusChangedEvent
+from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)

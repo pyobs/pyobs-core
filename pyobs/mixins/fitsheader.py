@@ -6,14 +6,15 @@ import math
 import os
 from asyncio import Task
 from typing import Any, cast
+
 import astropy.units as u
 from astropy.io import fits
 
 from pyobs.images import Image
-from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
+from pyobs.interfaces import IFitsHeaderAfter, IFitsHeaderBefore
 from pyobs.modules import Module
-from pyobs.utils.fits import format_filename
 from pyobs.utils import exceptions as exc
+from pyobs.utils.fits import format_filename
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)

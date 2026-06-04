@@ -1,8 +1,9 @@
 from __future__ import annotations
-import logging
-from typing import cast, Any
 
-from pyobs.interfaces import IBinning, IWindow, IFilters, IData
+import logging
+from typing import Any, cast
+
+from pyobs.interfaces import IBinning, IData, IFilters, IWindow
 from pyobs.modules import Module
 
 log = logging.getLogger(__name__)

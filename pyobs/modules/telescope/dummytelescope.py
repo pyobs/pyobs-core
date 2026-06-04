@@ -156,7 +156,7 @@ class DummyTelescope(
 
         # acquire lock
         async with LockWithAbort(self._lock_focus, self._abort_focus):
-            log.info(f"Setting focus to {focus:.2f}...")
+            log.info("Setting focus to %.2f...", focus)
             await self._change_motion_status(MotionStatus.SLEWING, interface="IFocuser")
             ifoc = self._telescope.focus * 1.0
             dfoc = (focus - ifoc) / 300.0

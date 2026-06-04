@@ -67,10 +67,10 @@ class DarkBiasScript(Script):
         else:
             im_type = "%d darks (%d s)" % (self.count, self.exptime)
 
-        log.info(f"Starting a series of {im_type} with {self.camera}...")
+        log.info("Starting a series of %s with %s...", im_type, self.camera)
         for i in range(self.count):
             await camera.grab_data()
-        log.info(f"Finished series of {im_type} with {self.camera}.")
+        log.info("Finished series of %s with %s.", im_type, self.camera)
         return
 
 

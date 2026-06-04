@@ -132,7 +132,11 @@ class LcoScheduleReader(Object):
                 log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
                 for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
                     log.info(
-                        f"  - {scheduled_task.start} to {scheduled_task.end}: {scheduled_task.task.name} (#{scheduled_task.task.id})"
+                        "  - %s to %s: %s (#%s)",
+                        scheduled_task.start,
+                        scheduled_task.end,
+                        scheduled_task.task.name,
+                        scheduled_task.task.id,
                     )
 
                 # update

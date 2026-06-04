@@ -125,7 +125,7 @@ class XmppComm(Comm):
         self._server = server
         self._use_tls = use_tls
         self._ignore_cert_errors = ignore_cert_errors
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_running_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
 

@@ -30,7 +30,7 @@ class SkyFlats(Script):
     timespan: float = 7200
     filter_change: float = 30
     count: int = 20
-    readout: dict[str, Any] | None = None
+    readout: dict[str, float] | None = None
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.

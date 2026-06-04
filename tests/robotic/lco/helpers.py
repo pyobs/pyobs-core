@@ -42,7 +42,8 @@ def make_task_archive(instrument_type: str = "0m5 iag50cm sbig6303e") -> LcoTask
     archive._portal = make_portal()
     archive._instrument_type = [instrument_type]
     archive._last_changed = None
-    archive._tasks = {}
+    archive._tasks = []
+    archive._projects = []
     archive._on_tasks_changed = None
     return archive
 

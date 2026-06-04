@@ -1,10 +1,12 @@
 from __future__ import annotations
+import copy
 import pytest
 from unittest.mock import AsyncMock
 
 from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoObservation
 from pyobs.robotic.lco.task import LcoTask
 from pyobs.robotic.observation import ObservationState
+from pyobs.robotic.task import Project
 from pyobs.utils.time import Time
 from .conftest import (
     SCHEDULABLE_REQUESTS_RESPONSE,
@@ -23,13 +25,11 @@ def make_lco_task() -> LcoTask:
 
 
 @pytest.mark.asyncio
-async def test_task_archive_get_schedulable_tasks(mocker) -> None:
-    """get_schedulable_tasks returns PENDING tasks filtered by instrument."""
+async def test_task_archive_get_schedulable_tasks() -> None:
+    """get_schedulable_tasks returns cached task list."""
     archive = make_task_archive()
-
-    sr = LcoSchedulableRequest.model_validate(SCHEDULABLE_REQUESTS_RESPONSE[0])
-    mocker.patch.object(archive._portal, "schedulable_requests", AsyncMock(return_value=[sr]))
-    mocker.patch.object(archive._portal, "proposals", AsyncMock(return_value=[{"id": "test", "tac_priority": 1.0}]))
+    task = make_lco_task()
+    archive._tasks = [task]
 
     tasks = await archive.get_schedulable_tasks()
     assert len(tasks) == 1
@@ -38,22 +38,20 @@ async def test_task_archive_get_schedulable_tasks(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_task_archive_filters_by_instrument(mocker) -> None:
-    """Tasks with non-matching instrument type are excluded."""
+    """Tasks with non-matching instrument type are excluded during cache update."""
     archive = make_task_archive(instrument_type="some_other_instrument")
 
     sr = LcoSchedulableRequest.model_validate(SCHEDULABLE_REQUESTS_RESPONSE[0])
     mocker.patch.object(archive._portal, "schedulable_requests", AsyncMock(return_value=[sr]))
     mocker.patch.object(archive._portal, "proposals", AsyncMock(return_value=[{"id": "test", "tac_priority": 1.0}]))
 
-    tasks = await archive.get_schedulable_tasks()
+    tasks, _ = await archive._get_tasks_and_projects()
     assert len(tasks) == 0
 
 
 @pytest.mark.asyncio
 async def test_task_archive_excludes_non_pending_requests(mocker) -> None:
-    """Tasks with non-PENDING request state are excluded — only PENDING requests need scheduling."""
-    import copy
-
+    """Tasks with non-PENDING request state are excluded during cache update."""
     data = copy.deepcopy(SCHEDULABLE_REQUESTS_RESPONSE[0])
     data["requests"][0]["state"] = "COMPLETED"
 
@@ -62,14 +60,15 @@ async def test_task_archive_excludes_non_pending_requests(mocker) -> None:
     mocker.patch.object(archive._portal, "schedulable_requests", AsyncMock(return_value=[sr]))
     mocker.patch.object(archive._portal, "proposals", AsyncMock(return_value=[{"id": "test", "tac_priority": 1.0}]))
 
-    tasks = await archive.get_schedulable_tasks()
+    tasks, _ = await archive._get_tasks_and_projects()
     assert len(tasks) == 0
 
 
 @pytest.mark.asyncio
-async def test_task_archive_last_changed(mocker) -> None:
+async def test_task_archive_last_changed() -> None:
+    """last_changed returns cached time."""
     archive = make_task_archive()
-    mocker.patch.object(archive._portal, "last_changed", AsyncMock(return_value=Time("2026-05-27T08:18:50Z")))
+    archive._last_changed = Time("2026-05-27T08:18:50Z")
 
     t = await archive.last_changed()
     assert t is not None
@@ -77,16 +76,46 @@ async def test_task_archive_last_changed(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_task_archive_last_changed_returns_cached_on_error(mocker) -> None:
-    """last_changed returns last known time if portal call fails."""
+async def test_task_archive_last_changed_returns_none_before_first_update() -> None:
+    """last_changed returns None before first update."""
     archive = make_task_archive()
-    archive._last_changed = Time("2026-05-26T00:00:00Z")
-
-    mocker.patch.object(archive._portal, "last_changed", AsyncMock(side_effect=RuntimeError("portal down")))
-
     t = await archive.last_changed()
-    assert t is not None
-    assert t.isot.startswith("2026-05-26")
+    assert t is None
+
+
+@pytest.mark.asyncio
+async def test_task_archive_get_projects() -> None:
+    """get_projects returns cached projects."""
+    archive = make_task_archive()
+    archive._projects = [
+        Project(code="test", name="test", priority=2.0),
+        Project(code="other", name="other", priority=1.0),
+    ]
+
+    projects = await archive.get_projects()
+    assert len(projects) == 2
+    assert {p.code for p in projects} == {"test", "other"}
+
+
+@pytest.mark.asyncio
+async def test_task_archive_get_task_found() -> None:
+    """get_task returns task when found in cache."""
+    archive = make_task_archive()
+    task = make_lco_task()
+    archive._tasks = [task]
+
+    result = await archive.get_task(task.id)
+    assert result is task
+
+
+@pytest.mark.asyncio
+async def test_task_archive_get_task_not_found() -> None:
+    """get_task returns None when task not in cache."""
+    archive = make_task_archive()
+    archive._tasks = []
+
+    result = await archive.get_task(99999)
+    assert result is None
 
 
 # ── LcoObservationArchive ─────────────────────────────────────────────────────
@@ -152,13 +181,40 @@ async def test_observation_archive_send_update_skips_none() -> None:
     archive._portal.update_configuration_status.assert_not_called()
 
 
-# ── ConfigDB ──────────────────────────────────────────────────────────────────
+@pytest.mark.asyncio
+async def test_observation_archive_update_observation(mocker) -> None:
+    """update_observation sends config status update to portal."""
+    from pyobs.robotic.observation import Observation, ObservationState
+
+    archive = make_observation_archive()
+    task = make_lco_task()
+    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=ObservationState.COMPLETED)
+
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    await archive.update_observation(obs)
+
+    assert send_mock.call_count == len(task.request.configurations)
+    assert send_mock.call_args_list[0][0][0] == task.request.configurations[0].configuration_status
+
+
+@pytest.mark.asyncio
+async def test_observation_archive_update_observation_skips_non_lco(mocker) -> None:
+    from pyobs.robotic import Task
+    from pyobs.robotic.observation import Observation, ObservationState
+
+    archive = make_observation_archive()
+    task = Task(id="plain", name="plain", duration=100)
+    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=ObservationState.COMPLETED)
+
+    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
+    await archive.update_observation(obs)
+    send_mock.assert_not_called()
+
 
 # ── ConfigDB ──────────────────────────────────────────────────────────────────
 
 
 def test_configdb_get_instrument_by_type() -> None:
-    """ConfigDB.get_instrument_by_type filters by site/enclosure/telescope/type."""
     from pyobs.robotic.lco.configdb import (
         ConfigDB,
         Site,
@@ -239,93 +295,5 @@ def test_configdb_get_instrument_by_type() -> None:
     result = configdb.get_instrument_by_type("0M5 IAG50CM SBIG6303E", site="goe", enclosure="roof", telescope="0m5a")
     assert len(result) == 1
     assert result[0].instrument.code == "kb03"
-
-    # wrong site
     assert len(configdb.get_instrument_by_type("0M5 IAG50CM SBIG6303E", site="saao")) == 0
-
-    # wrong instrument type
-    assert len(configdb.get_instrument_by_type("OTHER_INSTRUMENT", site="goe", enclosure="roof", telescope="0m5a")) == 0
-
-
-# ── new abstract method implementations ───────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_task_archive_get_projects(mocker) -> None:
-    """get_projects maps LCO proposals to Project objects."""
-    archive = make_task_archive()
-    mocker.patch.object(
-        archive._portal,
-        "proposals",
-        AsyncMock(
-            return_value=[
-                {"id": "test", "tac_priority": 2.0},
-                {"id": "other", "tac_priority": 1.0},
-            ]
-        ),
-    )
-
-    projects = await archive.get_projects()
-    assert len(projects) == 2
-    codes = {p.code for p in projects}
-    assert "test" in codes
-    assert "other" in codes
-    test_project = next(p for p in projects if p.code == "test")
-    assert test_project.priority == 2.0
-
-
-@pytest.mark.asyncio
-async def test_task_archive_get_task_found(mocker) -> None:
-    """get_task returns task when found in cache."""
-    archive = make_task_archive()
-    task = make_lco_task()
-    archive._tasks = {str(task.id): task}
-
-    result = await archive.get_task(task.id)
-    assert result is task
-
-
-@pytest.mark.asyncio
-async def test_task_archive_get_task_not_found() -> None:
-    """get_task returns None when task not in cache."""
-    archive = make_task_archive()
-    archive._tasks = {}
-
-    result = await archive.get_task(99999)
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_observation_archive_update_observation(mocker) -> None:
-    """update_observation sends config status update to portal."""
-    from pyobs.robotic.observation import Observation, ObservationState
-    from pyobs.utils.time import Time
-
-    archive = make_observation_archive()
-    task = make_lco_task()
-    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=ObservationState.COMPLETED)
-
-    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
-    await archive.update_observation(obs)
-
-    # should call send_update for each configuration
-    assert send_mock.call_count == len(task.request.configurations)
-    # status_id should match configuration_status
-    call_args = send_mock.call_args_list[0]
-    assert call_args[0][0] == task.request.configurations[0].configuration_status
-
-
-@pytest.mark.asyncio
-async def test_observation_archive_update_observation_skips_non_lco(mocker) -> None:
-    """update_observation is a no-op for non-LCO tasks."""
-    from pyobs.robotic import Task
-    from pyobs.robotic.observation import Observation, ObservationState
-    from pyobs.utils.time import Time
-
-    archive = make_observation_archive()
-    task = Task(id="plain", name="plain", duration=100)
-    obs = Observation(task=task, start=Time.now(), end=Time.now(), state=ObservationState.COMPLETED)
-
-    send_mock = mocker.patch.object(archive, "send_update", AsyncMock())
-    await archive.update_observation(obs)
-    send_mock.assert_not_called()
+    assert len(configdb.get_instrument_by_type("OTHER_INSTRUMENT", site="goe")) == 0

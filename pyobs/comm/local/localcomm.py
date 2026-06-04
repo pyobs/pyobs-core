@@ -1,10 +1,11 @@
-from typing import Any
 from collections.abc import Callable, Coroutine
+from typing import Any
 
 from pyobs.comm import Comm
 from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_response_to_real
+
 from .localnetwork import LocalNetwork
 
 

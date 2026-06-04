@@ -1,8 +1,9 @@
 import asyncio
 import logging
+from typing import Any
+
 import slixmpp
 import slixmpp.xmlstream
-from typing import Any
 from slixmpp.xmlstream import StanzaBase
 
 from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009

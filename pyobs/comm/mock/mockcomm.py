@@ -1,12 +1,12 @@
 from __future__ import annotations
+
 import logging
 from typing import Any
 
+import pyobs.interfaces
 from pyobs.comm import Comm
 from pyobs.comm.comm import ProxyType
 from pyobs.interfaces import Interface
-import pyobs.interfaces
-
 
 log = logging.getLogger(__name__)
 

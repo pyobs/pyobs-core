@@ -1,34 +1,35 @@
 from __future__ import annotations
 
-# patch dbus-next to provide sender name
-from .patch import patch  # noqa: F401
-
 import asyncio
+import inspect
 import json
 import logging
 import re
 import sys
 import types
-import inspect
 import uuid
+from collections.abc import Awaitable
 from enum import Enum
 from typing import (
     Any,
-    get_args,
-    no_type_check_decorator,
-    get_origin,
     Protocol,
     Union,
+    get_args,
+    get_origin,
+    no_type_check_decorator,
 )
-from collections.abc import Awaitable
-from dbus_next.aio import MessageBus
+
 import dbus_next.service
+from dbus_next.aio import MessageBus
 
 from pyobs.comm import Comm
-from pyobs.events import ModuleOpenedEvent, ModuleClosedEvent, Event
+from pyobs.events import Event, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils.parallel import Future
+
+# patch dbus-next to provide sender name
+from .patch import patch  # noqa: F401
 
 log = logging.getLogger(__name__)
 

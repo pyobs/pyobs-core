@@ -7,3 +7,5 @@ See the file LICENSE for copying permission.
 """
 
 from .RPC import MethodTimeout
+
+__all__ = ["MethodTimeout"]

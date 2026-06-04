@@ -2,11 +2,12 @@
 # Copyright (C) 2011 Nathanael C. Fritz, Dann Martens (TOMOTON).
 # This file is part of Slixmpp.
 # See the file LICENSE for copying permission.
-from typing import Any
-from slixmpp.xmlstream import ET
 import base64
 import logging
 import time
+from typing import Any
+
+from slixmpp.xmlstream import ET
 
 log = logging.getLogger(__name__)
 

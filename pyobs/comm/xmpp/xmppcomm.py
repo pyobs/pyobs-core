@@ -6,22 +6,22 @@ import json
 import logging
 import re
 import ssl
-
 import time
-from collections.abc import Coroutine
-from typing import Any, TYPE_CHECKING
-from collections.abc import Callable
+import xml.sax.saxutils
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
+
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
 from slixmpp.xmlstream import ET
-import xml.sax.saxutils
 
 from pyobs.comm import Comm
-from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
+from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils import exceptions as exc
+
 from .rpc import RPC
 from .xmppclient import XmppClient
 

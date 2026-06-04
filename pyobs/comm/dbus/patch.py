@@ -1,14 +1,15 @@
+import asyncio
 import inspect
 from functools import wraps
-import asyncio
 from typing import no_type_check_decorator
+
+import dbus_next.service
 from dbus_next import Message, SignatureTree
+from dbus_next import introspection as intr
 from dbus_next._private.util import parse_annotation
-from dbus_next.service import ServiceInterface
 from dbus_next.aio import MessageBus
 from dbus_next.message_bus import BaseMessageBus
-import dbus_next.service
-from dbus_next import introspection as intr
+from dbus_next.service import ServiceInterface
 
 
 def patch() -> None:

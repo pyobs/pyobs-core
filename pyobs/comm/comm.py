@@ -1,16 +1,17 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
-from collections.abc import Coroutine
-from typing import Any, TYPE_CHECKING, TypeVar, overload
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
-from .proxy import Proxy
+
 from .commlogging import CommLoggingHandler
+from .proxy import Proxy
 
 if TYPE_CHECKING:
     from pyobs.modules import Module

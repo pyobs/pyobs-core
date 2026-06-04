@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class Pointing(Script):
+class PointingScript(Script):
     """Script for pointing the telescope for flats."""
 
     telescope: str
@@ -45,4 +45,4 @@ class Pointing(Script):
         log.info("Finished pointing telescope.")
 
 
-__all__ = ["Pointing"]
+__all__ = ["PointingScript"]

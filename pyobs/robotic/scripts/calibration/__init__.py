@@ -1,3 +1,3 @@
-from .darkbias import DarkBias
-from .pointing import Pointing
-from .skyflats import SkyFlats
+from .darkbias import DarkBiasScript
+from .pointing import PointingScript
+from .skyflats import SkyFlatsScript

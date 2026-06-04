@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 FlatFunctions = Union[str, dict[str, Union[str, dict[str, str]]]]
 
 
-class SkyFlats(Script):
+class SkyFlatsScript(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
     roof: str
@@ -108,4 +108,4 @@ class SkyFlats(Script):
         log.info("Finished all scheduled flat-fields.")
 
 
-__all__ = ["SkyFlats"]
+__all__ = ["SkyFlatsScript"]

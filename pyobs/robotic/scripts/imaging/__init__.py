@@ -1,2 +1,2 @@
-from .autofocus import AutoFocus
+from .autofocus import AutoFocusScript
 from .imaging import ImagingScript

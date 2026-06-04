@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from pyobs.events import RoofOpenedEvent, RoofClosingEvent
 from pyobs.interfaces import IRoof
@@ -96,7 +98,7 @@ class DummyRoof(BaseRoof, IRoof):
         """Get the percentage the roof is open."""
         return self._open_percentage
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from .IAbortable import IAbortable
 from .IRunning import IRunning
@@ -11,7 +13,7 @@ class IAcquisition(IRunning, IAbortable, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import List, Any
+from typing import Any
 
 from .IMotion import IMotion
 
@@ -10,7 +12,7 @@ class IFilters(IMotion, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def list_filters(self, **kwargs: Any) -> List[str]:
+    async def list_filters(self, **kwargs: Any) -> list[str]:
         """List available filters.
 
         Returns:

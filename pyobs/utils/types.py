@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import functools
 import inspect
 from inspect import BoundArguments, Parameter
 from enum import Enum
-from typing import Any, get_args, Callable, Tuple, Optional, Type, Dict, get_origin
+from typing import Any, get_args, Callable, Type, get_origin
 
 
 def iterate_params(
     value: Any,
-    type_hint: Optional[Type[Any]] = None,
-    method: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    type_hint: Type[Any] | None = None,
+    method: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
     """Iterate values and type_hints and call a given method.
 
@@ -69,9 +71,9 @@ def iterate_params(
 
 def cast_bound_arguments_to_simple(
     bound_arguments: BoundArguments,
-    type_hints: Dict[str, Type[Any]],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    type_hints: dict[str, Type[Any]],
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
     """Cast the requested parameters, which are of simple types, to the types required by the method.
 
@@ -92,9 +94,9 @@ def cast_bound_arguments_to_simple(
 
 def cast_bound_arguments_to_real(
     bound_arguments: BoundArguments,
-    type_hints: Dict[str, Type[Any]],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    type_hints: dict[str, Type[Any]],
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
     """Cast the requested parameters to real types.
 
@@ -114,8 +116,8 @@ def cast_bound_arguments_to_real(
 def cast_response_to_simple(
     value: Any,
     type_hint: Type[Any],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
     """Cast a response from simple to the method's real types.
 
@@ -137,8 +139,8 @@ def cast_response_to_simple(
 def cast_response_to_real(
     value: Any,
     type_hint: Type[Any],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
     """Cast a response from simple to the method's real types.
 
@@ -160,9 +162,9 @@ def cast_response_to_real(
 def __cast_to_simple(
     value: Any,
     type_hint: Type[Any],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-) -> Tuple[bool, Any]:
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+) -> tuple[bool, Any]:
     """Default method for pre method that casts to simple types like str, int, etc.
 
     Args:
@@ -201,9 +203,9 @@ def __cast_to_simple(
 def __cast_to_real(
     value: Any,
     type_hint: Type[Any],
-    pre: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-    post: Optional[Callable[[Any, Any], Tuple[bool, Optional[Any]]]] = None,
-) -> Tuple[bool, Any]:
+    pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+    post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
+) -> tuple[bool, Any]:
     """Default method for pre method that casts to "real" Python types.
 
     Args:

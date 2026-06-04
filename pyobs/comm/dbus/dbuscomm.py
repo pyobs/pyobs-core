@@ -14,17 +14,13 @@ import uuid
 from enum import Enum
 from typing import (
     Any,
-    Optional,
     Type,
-    List,
-    Dict,
-    Tuple,
     get_args,
     Awaitable,
     no_type_check_decorator,
-    Union,
     get_origin,
     Protocol,
+    Union,
 )
 from dbus_next.aio import MessageBus
 import dbus_next.service
@@ -42,7 +38,7 @@ NONE_VALUES = {str: "NONE", int: sys.maxsize, float: sys.maxsize, list: ["EMPTY"
 
 
 class ServiceInterface(dbus_next.service.ServiceInterface):
-    def __init__(self, interface: str, comm: DbusComm, pyobs_interfaces: List[str]):
+    def __init__(self, interface: str, comm: DbusComm, pyobs_interfaces: list[str]):
         dbus_next.service.ServiceInterface.__init__(self, interface)
         self._interfaces = pyobs_interfaces
         self._comm = comm
@@ -115,12 +111,12 @@ class DbusComm(Comm):
         # variables
         self._name = name
         self._domain = domain
-        self._dbus: Optional[MessageBus] = None
-        self._dbus_classes: Dict[str, dbus_next.service.ServiceInterface] = {}
-        self._dbus_introspection: Optional[dbus_next.aio.ProxyInterface] = None
-        self._dbus_introspection_cache: Dict[str, dbus_next.introspection.Node] = {}
-        self._interfaces: Dict[str, List[Type[Interface]]] = {}
-        self._futures: Dict[str, Future] = {}
+        self._dbus: MessageBus | None = None
+        self._dbus_classes: dict[str, dbus_next.service.ServiceInterface] = {}
+        self._dbus_introspection: dbus_next.aio.ProxyInterface | None = None
+        self._dbus_introspection_cache: dict[str, dbus_next.introspection.Node] = {}
+        self._interfaces: dict[str, list[Type[Interface]]] = {}
+        self._futures: dict[str, Future] = {}
 
     async def open(self) -> None:
         """Creates the dbus connection."""
@@ -185,7 +181,7 @@ class DbusComm(Comm):
         modules = list(map(lambda d: d[len(prefix) :], filter(r.match, data)))
 
         # get interfaces
-        interfaces: Dict[str, List[Type[Interface]]] = {}
+        interfaces: dict[str, list[Type[Interface]]] = {}
         for m in modules:
             prefix = f"{self._domain}.{m}.interfaces."
             iface_names = list(map(lambda d: d[len(prefix) :], filter(lambda d: d.startswith(prefix), data)))
@@ -230,7 +226,7 @@ class DbusComm(Comm):
 
     def _build_dbus_signature(self, sig: inspect.Signature) -> inspect.Signature:
         # build list of parameters
-        new_params: List[inspect.Parameter] = []
+        new_params: list[inspect.Parameter] = []
 
         # real parameters
         for name, param in sig.parameters.items():
@@ -289,7 +285,7 @@ class DbusComm(Comm):
             interface = f"{self._domain}.{self._name}"
             self._dbus_classes[interface] = main_klass(interface, self, [i.__name__ for i in self._module.interfaces])
 
-    async def _get_dbus_introspection(self, client: str) -> Tuple[dbus_next.introspection.Node, str, str]:
+    async def _get_dbus_introspection(self, client: str) -> tuple[dbus_next.introspection.Node, str, str]:
         # check
         if self._dbus is None:
             raise ValueError("No connection")
@@ -403,12 +399,12 @@ class DbusComm(Comm):
             raise ValueError("Owner not found.")
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Name of this client."""
         return self._name
 
     @property
-    def clients(self) -> List[str]:
+    def clients(self) -> list[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -418,7 +414,7 @@ class DbusComm(Comm):
         # return names
         return list(self._interfaces.keys())
 
-    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -448,7 +444,7 @@ class DbusComm(Comm):
         # does it exist?
         return interface in self._interfaces[client]
 
-    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
@@ -486,7 +482,7 @@ class DbusComm(Comm):
         # set result
         self._futures[uid].set_result(result)
 
-    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -522,7 +518,7 @@ class DbusComm(Comm):
         else:
             return False, value
 
-    def cast_to_real_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:

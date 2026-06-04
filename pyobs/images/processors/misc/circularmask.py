@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -74,7 +76,7 @@ class CircularMask(ImageProcessor):
 
     __module__ = "pyobs.images.processors.misc"
 
-    def __init__(self, radius: float, center: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(self, radius: float, center: tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
         """Init an image processor that masks out everything except for a central circle.
 
         Args:

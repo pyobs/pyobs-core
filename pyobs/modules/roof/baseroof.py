@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta
-from typing import List, Dict, Tuple, Any, Optional
+from typing import Any
 
 from pyobs.interfaces import IRoof, IFitsHeaderBefore
 from pyobs.modules import Module
@@ -31,8 +33,8 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await MotionStatusMixin.open(self)
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

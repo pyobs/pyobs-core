@@ -1,4 +1,6 @@
-from typing import Tuple, cast, Any
+from __future__ import annotations
+
+from typing import cast, Any
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import SigmaClip
@@ -7,7 +9,7 @@ from pyobs.images import Image
 
 
 class _DaoBackgroundRemover:
-    def __init__(self, sigma: float, box_size: Tuple[int, int], filter_size: Tuple[int, int]):
+    def __init__(self, sigma: float, box_size: tuple[int, int], filter_size: tuple[int, int]):
         from photutils.background import MedianBackground
 
         self._sigma_clip = SigmaClip(sigma=sigma)

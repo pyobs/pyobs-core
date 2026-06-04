@@ -1,7 +1,7 @@
 from __future__ import annotations
 import copy
 import io
-from typing import TypeVar, Optional, Type, Any, cast
+from typing import TypeVar, Type, Any, cast
 import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
@@ -382,7 +382,7 @@ class Image:
         return str(self._header["FNAME"])
 
     @property
-    def pixel_scale(self) -> Optional[float]:
+    def pixel_scale(self) -> float | None:
         """Returns pixel scale in arcsec/pixel."""
         if "CD1_1" in self._header:
             return abs(float(self._header["CD1_1"])) * 3600.0
@@ -391,7 +391,7 @@ class Image:
         else:
             return None
 
-    def to_jpeg(self, vmin: Optional[float] = None, vmax: Optional[float] = None) -> bytes:
+    def to_jpeg(self, vmin: float | None = None, vmax: float | None = None) -> bytes:
         """Returns a JPEG image created from this image.
 
         Returns:
@@ -471,7 +471,7 @@ class Image:
         # return it
         return cast(MetaClass, self._meta[meta_class])
 
-    def get_meta_safe(self, meta_class: Type[MetaClass], default: Optional[MetaClass] = None) -> Optional[MetaClass]:
+    def get_meta_safe(self, meta_class: Type[MetaClass], default: MetaClass | None = None) -> MetaClass | None:
         """Calls get_meta in a safe way and returns default value in case of an exception."""
 
         try:
@@ -480,7 +480,7 @@ class Image:
             return default
 
     @property
-    def safe_data(self) -> Optional[npt.NDArray[np.floating[Any]]]:
+    def safe_data(self) -> npt.NDArray[np.floating[Any]] | None:
         return self._data
 
     @property
@@ -490,11 +490,11 @@ class Image:
         return self._data
 
     @data.setter
-    def data(self, val: Optional[npt.NDArray[np.floating[Any]]]) -> None:
+    def data(self, val: npt.NDArray[np.floating[Any]] | None) -> None:
         self._data = val
 
     @property
-    def safe_header(self) -> Optional[fits.Header]:
+    def safe_header(self) -> fits.Header | None:
         return self._header
 
     @property
@@ -504,7 +504,7 @@ class Image:
         return self._header
 
     @header.setter
-    def header(self, val: Optional[fits.Header]) -> None:
+    def header(self, val: fits.Header | None) -> None:
         self._header = val
 
     @property
@@ -571,7 +571,7 @@ class Image:
         return self._meta
 
     @meta.setter
-    def meta(self, val: Optional[dict[Any, Any]]) -> None:
+    def meta(self, val: dict[Any, Any] | None) -> None:
         self._meta = {} if val is None else val
 
     @property

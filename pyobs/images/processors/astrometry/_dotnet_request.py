@@ -1,15 +1,17 @@
-from typing import Dict, Optional, Any
+from __future__ import annotations
+
+from typing import Any
 import aiohttp
 
 import pyobs.utils.exceptions as exc
 
 
 class _DotNetRequest:
-    def __init__(self, request_data: Dict[str, Any]):
+    def __init__(self, request_data: dict[str, Any]):
         self._request_data = request_data
 
-        self._response_data: Optional[Dict[str, Any]] = None
-        self._status_code: Optional[int] = None
+        self._response_data: dict[str, Any] | None = None
+        self._status_code: int | None = None
 
     async def _send_request(self, url: str, timeout: int) -> None:
         to = aiohttp.ClientTimeout(total=timeout)
@@ -46,9 +48,9 @@ class _DotNetRequest:
             self._handle_request_error()
 
     @property
-    def request_data(self) -> Dict[str, Any]:
+    def request_data(self) -> dict[str, Any]:
         return self._request_data
 
     @property
-    def response_data(self) -> Optional[Dict[str, Any]]:
+    def response_data(self) -> dict[str, Any] | None:
         return self._response_data

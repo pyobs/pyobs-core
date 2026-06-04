@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Tuple, Any, Dict, List, Optional
+from typing import Any
 
 import astropy.units as u
 
@@ -121,7 +123,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
     def _calc_system_init_eta(self) -> Time:
         return Time(Time.now() + self._system_init_time * u.second)
 
-    async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_weather_status(self, **kwargs: Any) -> dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         raise NotImplementedError
 
@@ -134,7 +136,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
 
         return self._weather.is_good
 
-    async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_current_weather(self, **kwargs: Any) -> dict[str, Any]:
         """Returns current weather.
 
         Returns:
@@ -143,7 +145,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         """
         return self._weather.status
 
-    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> tuple[str, float]:
         """Return value for given sensor.
 
         Args:
@@ -165,8 +167,8 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
         return status["time"], status["value"]
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

@@ -1,1 +1,1 @@
-from .camera import CameraTest
+from .camera import CameraTestScript

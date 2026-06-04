@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Union, cast, Optional, Any
+from typing import cast, Any
 
 from pyobs.interfaces import IBinning, IWindow, IFilters, IData
 from pyobs.modules import Module
@@ -15,9 +15,9 @@ class CameraSettingsMixin:
 
     def __init__(
         self,
-        filters: Optional[Union[str, IFilters]] = None,
-        filter_name: Optional[str] = None,
-        binning: Optional[int] = None,
+        filters: str | IFilters | None = None,
+        filter_name: str | None = None,
+        binning: int | None = None,
         **kwargs: Any,
     ):
         """Initializes the mixin.
@@ -33,7 +33,7 @@ class CameraSettingsMixin:
         self.__camerasettings_filter = filter_name
         self.__camerasettings_binning = binning
 
-    async def _do_camera_settings(self, camera: Union[Module, IData, IFilters, IBinning, IWindow]) -> None:
+    async def _do_camera_settings(self, camera: Module | IData | IFilters | IBinning | IWindow) -> None:
         """Do camera settings for given camera."""
 
         # check type

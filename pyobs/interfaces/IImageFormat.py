@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import List, Any
+from typing import Any
 
 from .interface import Interface
 from pyobs.utils.enums import ImageFormat
@@ -32,7 +34,7 @@ class IImageFormat(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def list_image_formats(self, **kwargs: Any) -> List[str]:
+    async def list_image_formats(self, **kwargs: Any) -> list[str]:
         """List available image formats.
 
         Returns:

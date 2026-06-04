@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
 import subprocess
-from typing import Optional, Any
+from typing import Any
 
 from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
@@ -19,12 +21,12 @@ class AutonomousWarning(Module):
         self,
         warn_sound: str,
         warn_interval: float = 1,
-        start_sound: Optional[str] = None,
-        started_sound: Optional[str] = None,
-        stop_sound: Optional[str] = None,
-        stopped_sound: Optional[str] = None,
+        start_sound: str | None = None,
+        started_sound: str | None = None,
+        stop_sound: str | None = None,
+        stopped_sound: str | None = None,
         player: str = "mpg123",
-        trigger_file: Optional[str] = None,
+        trigger_file: str | None = None,
         **kwargs: Any,
     ):
         """Initialize a new warning.

@@ -3,7 +3,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Union, Any, Dict
+from typing import Any
 import astropy.units as u
 from astropy.time import TimeDelta
 
@@ -25,8 +25,8 @@ class Scheduler(Module, IStartStop, IRunnable):
     def __init__(
         self,
         scheduler: dict[str, Any] | TaskScheduler,
-        tasks: Union[Dict[str, Any], TaskArchive],
-        schedule: Union[Dict[str, Any], ObservationArchive],
+        tasks: dict[str, Any] | TaskArchive,
+        schedule: dict[str, Any] | ObservationArchive,
         trigger_on_task_started: bool = False,
         trigger_on_task_finished: bool = False,
         trigger_on_every_update: bool = False,

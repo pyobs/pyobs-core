@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script
@@ -14,20 +14,23 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class SkyFlats(Script):
+FlatFunctions = str | dict[str, str | dict[str, str]]
+
+
+class SkyFlatsScript(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
     roof: str
     telescope: str
     flatfield: str
-    functions: dict[str, Any]
-    priorities: dict[str, Any]
+    functions: FlatFunctions = {}
+    priorities: SkyflatPriorities
     min_exptime: float = 0.5
     max_exptime: float = 5
     timespan: float = 7200
     filter_change: float = 30
     count: int = 20
-    readout: dict[str, Any] | None = None
+    readout: dict[str, float] | None = None
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -58,13 +61,10 @@ class SkyFlats(Script):
             InterruptedError: If interrupted
         """
 
-        # get archive and priorities
-        prio = self.pyobs_model_validate(SkyflatPriorities, self.priorities)
-
         # create scheduler
         scheduler = Scheduler(
             self.functions,
-            prio,
+            self.priorities,
             self.observer,
             min_exptime=self.min_exptime,
             max_exptime=self.max_exptime,
@@ -108,4 +108,4 @@ class SkyFlats(Script):
         log.info("Finished all scheduled flat-fields.")
 
 
-__all__ = ["SkyFlats"]
+__all__ = ["SkyFlatsScript"]

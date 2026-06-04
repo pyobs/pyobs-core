@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pyobs.interfaces import IPointingAltAz
 from pyobs.robotic.scripts import Script
@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class Pointing(Script):
+class PointingScript(Script):
     """Script for pointing the telescope for flats."""
 
     telescope: str
-    pointing: dict[str, Any]
+    pointing: SkyFlatsBasePointing
 
     async def can_run(self, data: TaskData | None) -> bool:
         """Whether this config can currently run.
@@ -41,9 +41,8 @@ class Pointing(Script):
         log.info("Getting proxy for telescope...")
         telescope = await self.comm.proxy(self.telescope, IPointingAltAz)
 
-        pointing = self.pyobs_model_validate(SkyFlatsBasePointing, self.pointing)
-        await pointing(telescope)
+        await self.pointing(telescope)
         log.info("Finished pointing telescope.")
 
 
-__all__ = ["Pointing"]
+__all__ = ["PointingScript"]

@@ -1,10 +1,10 @@
-from typing import List, Tuple
+from __future__ import annotations
 
 import numpy as np
 from scipy.optimize import curve_fit
 
 
-def fit_hyperbola(x_arr: List[float], y_arr: List[float], y_err: List[float]) -> Tuple[float, float]:
+def fit_hyperbola(x_arr: list[float], y_arr: list[float], y_err: list[float]) -> tuple[float, float]:
     """Fit a hyperbola
 
     Args:

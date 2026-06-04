@@ -1,11 +1,10 @@
-from typing import Optional, Any, Dict
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from pyobs.utils.time import Time
 from pyobs.events.event import Event
 
-
-DataType = TypedDict("DataType", {"eta": Optional[str]})
+DataType = TypedDict("DataType", {"eta": str | None})
 
 
 class GoodWeatherEvent(Event):
@@ -13,7 +12,7 @@ class GoodWeatherEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, eta: Optional[Time] = None, **kwargs: Any):
+    def __init__(self, eta: Time | None = None, **kwargs: Any):
         """Initializes a new good weather event.
 
         Args:
@@ -23,9 +22,9 @@ class GoodWeatherEvent(Event):
         self.data: DataType = {"eta": eta.isot if eta is not None else None}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get eta
-        eta: Optional[Time] = None
+        eta: Time | None = None
         if "eta" in d and isinstance(d["eta"], str):
             eta = Time(d["eta"])
 
@@ -33,7 +32,7 @@ class GoodWeatherEvent(Event):
         return GoodWeatherEvent(eta=eta)
 
     @property
-    def eta(self) -> Optional[Time]:
+    def eta(self) -> Time | None:
         return Time(self.data["eta"]) if self.data["eta"] is not None else None
 
 

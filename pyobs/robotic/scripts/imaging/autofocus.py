@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class AutoFocus(Script):
+class AutoFocusScript(Script):
     """Script for running autofocus series."""
 
     autofocus: str = "autofocus"
@@ -70,4 +70,4 @@ class AutoFocus(Script):
             log.info("Done.")
 
 
-__all__ = ["AutoFocus"]
+__all__ = ["AutoFocusScript"]

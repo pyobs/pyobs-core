@@ -9,7 +9,7 @@ import ssl
 
 import time
 from collections.abc import Coroutine
-from typing import Any, Callable, Dict, Type, List, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Callable, Type, TYPE_CHECKING
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -90,12 +90,12 @@ class XmppComm(Comm):
 
     def __init__(
         self,
-        jid: Optional[str] = None,
-        user: Optional[str] = None,
-        domain: Optional[str] = None,
+        jid: str | None = None,
+        user: str | None = None,
+        domain: str | None = None,
         resource: str = "pyobs",
         password: str = "",
-        server: Optional[str] = None,
+        server: str | None = None,
         use_tls: bool = False,
         ignore_cert_errors: bool = False,
         *args: Any,
@@ -118,8 +118,8 @@ class XmppComm(Comm):
 
         # variables
         self._connected = False
-        self._online_clients: List[str] = []
-        self._interface_cache: Dict[str, asyncio.Future[List[Type[Interface]]]] = {}
+        self._online_clients: list[str] = []
+        self._interface_cache: dict[str, asyncio.Future[list[Type[Interface]]]] = {}
         self._user = user
         self._password = password
         self._domain = domain
@@ -127,7 +127,7 @@ class XmppComm(Comm):
         self._server = server
         self._use_tls = use_tls
         self._ignore_cert_errors = ignore_cert_errors
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_running_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
 
@@ -153,8 +153,8 @@ class XmppComm(Comm):
             self._jid = "%s@%s/%s" % (self._user, self._domain, self._resource)
 
         #  client and RPC handler
-        self._xmpp: Optional[XmppClient] = None
-        self._rpc: Optional[RPC] = None
+        self._xmpp: XmppClient | None = None
+        self._rpc: RPC | None = None
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -260,13 +260,10 @@ class XmppComm(Comm):
             self._jid_got_offline(jid)
 
         # reconnect
-        asyncio.ensure_future(
-            self._reconnect(),
-            loop=self._loop,
-        )
+        asyncio.create_task(self._reconnect())
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Name of this client."""
         return self._user
 
@@ -289,7 +286,7 @@ class XmppComm(Comm):
         """
         return name if "@" in name else "%s@%s/%s" % (name, self._domain, self._resource)
 
-    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -309,7 +306,7 @@ class XmppComm(Comm):
         # return them from cache
         return await self._interface_cache[client]
 
-    async def _get_interfaces(self, jid: str, attempts: int = 3) -> List[str]:
+    async def _get_interfaces(self, jid: str, attempts: int = 3) -> list[str]:
         """Return list of interfaces for the given JID.
 
         Args:
@@ -369,7 +366,7 @@ class XmppComm(Comm):
         # supported?
         return interface in interfaces
 
-    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
@@ -461,7 +458,7 @@ class XmppComm(Comm):
         self._send_event_to_module(ModuleClosedEvent(), username)
 
     @property
-    def clients(self) -> List[str]:
+    def clients(self) -> list[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -509,7 +506,7 @@ class XmppComm(Comm):
             self._send_event_to_module(event, self._module.name)
 
     @staticmethod
-    def _send_event_callback(iq: Any, event: Optional[Event] = None) -> None:
+    def _send_event_callback(iq: Any, event: Event | None = None) -> None:
         """Called when an event has been successfully sent.
 
         Args:
@@ -519,7 +516,7 @@ class XmppComm(Comm):
         log.debug("%s successfully sent.", event.__class__.__name__)
 
     async def _register_events(
-        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         # loop events
         for ev in events:
@@ -599,7 +596,7 @@ class XmppComm(Comm):
         # never should reach this
         raise slixmpp.exceptions.IqTimeout(iq)  # type: ignore
 
-    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -615,7 +612,7 @@ class XmppComm(Comm):
         else:
             return False, value
 
-    def cast_to_real_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:

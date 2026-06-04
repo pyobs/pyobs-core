@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class DarkBias(Script):
+class DarkBiasScript(Script):
     """Script for running darks or biases."""
 
     camera: str
@@ -74,4 +74,4 @@ class DarkBias(Script):
         return
 
 
-__all__ = ["DarkBias"]
+__all__ = ["DarkBiasScript"]

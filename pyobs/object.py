@@ -16,7 +16,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Coroutine
-from typing import Union, Callable, TypeVar, Optional, Type, List, Tuple, Any, overload, TYPE_CHECKING, Literal
+from typing import Callable, TypeVar, Type, Any, overload, TYPE_CHECKING, Literal
 import logging
 import pytz
 from astroplan import Observer
@@ -336,7 +336,7 @@ class Object(PrivateAttrMixin):
         self._opened = False
 
         # background tasks
-        self._background_tasks: List[Tuple[BackgroundTask, bool]] = []
+        self._background_tasks: list[tuple[BackgroundTask, bool]] = []
 
     def add_background_task(
         self, func: Callable[..., Coroutine[Any, Any, None]], restart: bool = True, autostart: bool = True
@@ -500,7 +500,7 @@ class Object(PrivateAttrMixin):
         object_class: Type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[ObjectClass]: ...
+    ) -> ObjectClass | None: ...
 
     @overload
     def get_safe_object(
@@ -509,7 +509,7 @@ class Object(PrivateAttrMixin):
         object_class: None,
         copy_comm: bool = True,
         **kwargs: Any,
-    ) -> Optional[Any]: ...
+    ) -> Any | None: ...
 
     def get_safe_object(
         self,
@@ -582,9 +582,7 @@ class Object(PrivateAttrMixin):
     @overload
     async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any: ...
 
-    async def proxy(
-        self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
-    ) -> Union[Any, ProxyType]:
+    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:

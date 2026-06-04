@@ -4,7 +4,7 @@ import time
 import asyncio
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import Optional, List, Any, Union, Dict, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pyobs.utils.types import cast_response_to_real
 
@@ -32,15 +32,15 @@ class Future(asyncio.Future[Any]):
     def __init__(
         self,
         empty: bool = False,
-        annotation: Optional[Dict[str, Any]] = None,
-        comm: Optional[Comm] = None,
+        annotation: dict[str, Any] | None = None,
+        comm: Comm | None = None,
         *args: Any,
         **kwargs: Any,
     ):
         asyncio.Future.__init__(self, *args, **kwargs)
 
         """Init new base future."""
-        self.timeout: Optional[float] = None
+        self.timeout: float | None = None
         self.annotation = annotation
         self.comm = comm
 
@@ -55,7 +55,7 @@ class Future(asyncio.Future[Any]):
         """
         self.timeout = timeout
 
-    def get_timeout(self) -> Optional[float]:
+    def get_timeout(self) -> float | None:
         """
         Returns async timeout.
         """
@@ -105,7 +105,7 @@ class Future(asyncio.Future[Any]):
         return result
 
     @staticmethod
-    async def wait_all(futures: List[Optional[Union[Future, Coroutine[Any, Any, Any], Task[Any]]]]) -> List[Any]:
+    async def wait_all(futures: list[Future | Coroutine[Any, Any, Any] | Task[Any] | None]) -> list[Any]:
         return [await fut for fut in futures if fut is not None]
 
 

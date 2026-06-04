@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
@@ -29,7 +31,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
 
         # store
         self._default_exposure_time = exposure_time
-        self._exposure_time: Optional[float] = None
+        self._exposure_time: float | None = None
         self._broadcast = broadcast
         self._source_detection = SepSourceDetection()
 

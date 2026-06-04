@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import astropy.units as u
-from typing import Dict, Optional, Any
+from typing import Any
 from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from ._portal import Portal
 from .task import LcoTask
-from .. import Task
 from ..task import Project
 
 log = logging.getLogger(__name__)
@@ -42,65 +43,64 @@ class LcoTaskArchive(TaskArchive):
         self._instrument_type = [it.lower() for it in instrument_type]
 
         # buffers in case of errors
-        self._last_changed: Optional[Time] = None
+        self._last_changed: Time | None = None
 
         # task list
-        self._tasks: Dict[str, LcoTask] = {}
+        self._projects: list[Project] = list()
+        self._tasks: list[LcoTask] = list()
 
         # update task
-        self.add_background_task(self._update_worker)
+        self.add_background_task(self._check_for_changes)
 
-    async def _update_worker(self) -> None:
+    async def _check_for_changes(self) -> None:
         # time of last change in blocks
         last_change = None
 
         # run forever
         while True:
-            # got new time of last change?
-            t = await self._portal.last_changed()
-            more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
-            if last_change is None or last_change < t and not more_1day:
-                try:
+            try:
+                # got new time of last change?
+                t = await self._portal.last_changed()
+                more_1day = (Time.now() - t) > TimeDelta(1 * u.day)
+                if last_change is None or last_change < t and not more_1day:
                     last_change = t
+                    self._tasks, self._projects = await self._get_tasks_and_projects()
                     if self._on_tasks_changed is not None:
                         asyncio.create_task(self._on_tasks_changed())
-                except asyncio.CancelledError:
-                    return
-                except:
-                    log.exception("Something went wrong when updating schedule.")
+            except Exception as e:
+                log.error("Failed to update tasks from backend: %s", e)
 
             # sleep a little
             await asyncio.sleep(5)
 
-    async def last_changed(self) -> Optional[Time]:
-        """Returns time when last time any blocks changed."""
-
-        # try to update time
-        try:
-            self._last_changed = await self._portal.last_changed()
-        except:
-            log.debug("Could not get last changed time")
-
-        # even in case of errors, return last time
+    async def last_changed(self) -> Time | None:
+        """Returns time when last time any tasks changed."""
         return self._last_changed
 
     async def get_projects(self) -> list[Project]:
         """Returns list of projects from the LCO portal."""
-        proposals = await self._portal.proposals()
-        return [Project(code=p["id"], name=p["id"], priority=p.get("tac_priority", 1.0)) for p in proposals]
+        return self._projects
 
-    async def get_task(self, id: Any) -> Task | None:
+    async def get_schedulable_tasks(self) -> list[LcoTask]:  # type: ignore[override]
+        """Returns list of schedulable tasks.
+
+        Returns:
+            List of schedulable tasks
+        """
+        return self._tasks
+
+    async def get_task(self, id: Any) -> LcoTask | None:
         """Returns the task with the given ID."""
-        for task in self._tasks.values():
+        for task in self._tasks:
             if task.id == id:
                 return task
         return None
 
-    async def get_schedulable_tasks(self) -> list[Task]:
-        """Returns a list of schedulable tasks.
+    async def _get_tasks_and_projects(self) -> tuple[list[LcoTask], list[Project]]:
+        """Returns a list of schedulable tasks and projects
 
         Returns:
-            List of schedulable tasks
+            List of schedulable tasks and projects
         """
 
         # get data
@@ -111,7 +111,7 @@ class LcoTaskArchive(TaskArchive):
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
         # to LcoTasks
-        all_tasks: list[Task] = []
+        all_tasks: list[LcoTask] = []
         for schedulable_request in schedulable_requests:
             tasks = LcoTask.from_schedulable_request(schedulable_request, {})
             for task in tasks:
@@ -123,7 +123,7 @@ class LcoTaskArchive(TaskArchive):
                 all_tasks.append(task)
 
         # return tasks
-        return all_tasks
+        return all_tasks, [Project(code=p["id"], name=p["id"], priority=p.get("tac_priority", 1.0)) for p in proposals]
 
 
 __all__ = ["LcoTaskArchive"]

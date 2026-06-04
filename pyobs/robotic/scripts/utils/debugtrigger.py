@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-from datetime import datetime, timezone
 import logging
 from typing import TYPE_CHECKING
 
@@ -11,20 +9,16 @@ from pyobs.robotic.scripts import Script
 log = logging.getLogger(__name__)
 
 
-class LogRunner(Script):
-    """Script for logging something."""
+class DebugTriggerScript(Script):
+    """Script for a debug trigger."""
 
-    expression: str
+    triggered: bool = False
 
     async def can_run(self, data: TaskData | None) -> bool:
         return True
 
     async def run(self, data: TaskData | None) -> None:
-        # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
-
-        # log it
-        log.info(value)
+        self.triggered = True
 
 
-__all__ = ["LogRunner"]
+__all__ = ["DebugTriggerScript"]

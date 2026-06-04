@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import glob
 import logging
 from datetime import datetime, timezone
-from typing import Tuple, NamedTuple, Dict, Any, Optional, TYPE_CHECKING, List
+from typing import NamedTuple, Any, TYPE_CHECKING
 
 from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
@@ -20,7 +22,7 @@ class CoolingStatus(NamedTuple):
     enabled: bool = True
     set_point: float = -10.0
     power: float = 80.0
-    temperatures: Dict[str, float] = {"CCD": 0.0, "Back": 3.14}
+    temperatures: dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
 class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
@@ -31,8 +33,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
     def __init__(
         self,
         readout_time: float = 2,
-        sim: Optional[Dict[str, Any]] = None,
-        world: Optional["SimWorld"] = None,
+        sim: dict[str, Any] | None = None,
+        world: "SimWorld" | None = None,
         **kwargs: Any,
     ):
         """Creates a new dummy cammera.
@@ -83,7 +85,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             # sleep for 1 second
             await asyncio.sleep(1)
 
-    async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -168,7 +170,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         self._exposing = False
 
-    async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -191,7 +193,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
 
-    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
         """List available binnings.
 
         Returns:
@@ -200,7 +202,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
         return [(1, 1), (2, 2), (3, 3)]
 
-    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -243,7 +245,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             enabled=enabled, set_point=setpoint, power=self._cooling.power, temperatures=self._cooling.temperatures
         )
 
-    async def get_cooling(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling(self, **kwargs: Any) -> tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -254,7 +256,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         return self._cooling.enabled, self._cooling.set_point, self._cooling.power
 
-    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

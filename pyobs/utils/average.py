@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -7,7 +8,7 @@ import numpy as np
 class RollingTimeAverage(object):
     def __init__(self, interval: float):
         self._interval = interval
-        self._values: List[Tuple[datetime, float]] = []
+        self._values: list[tuple[datetime, float]] = []
         self._start_time = datetime.now(timezone.utc)
 
     def clear(self) -> None:
@@ -22,7 +23,7 @@ class RollingTimeAverage(object):
         # clean up
         self._values = [(time, value) for time, value in self._values if (now - time).total_seconds() < self._interval]
 
-    def average(self, min_interval: Optional[float] = None) -> Optional[float]:
+    def average(self, min_interval: float | None = None) -> float | None:
         # got values?
         if len(self._values) == 0:
             return None

@@ -5,7 +5,7 @@ import threading
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from typing import Tuple, List, Optional, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 import random
 
 from pyobs.object import Object
@@ -23,15 +23,15 @@ class SimTelescope(Object):
     def __init__(
         self,
         world: "SimWorld",
-        position: Optional[Tuple[float, float]] = None,
-        offsets: Optional[Tuple[float, float]] = None,
-        pointing_offset: Optional[Tuple[float, float]] = None,
+        position: tuple[float, float] | None = None,
+        offsets: tuple[float, float] | None = None,
+        pointing_offset: tuple[float, float] | None = None,
         move_accuracy: float = 2.0,
         speed: float = 20.0,
         focus: float = 50,
-        filters: Optional[List[str]] = None,
+        filters: list[str] | None = None,
         filter_name: str = "clear",
-        drift: Optional[Tuple[float, float]] = None,
+        drift: tuple[float, float] | None = None,
         focal_length: float = 5000.0,
         **kwargs: Any,
     ):
@@ -88,7 +88,7 @@ class SimTelescope(Object):
         return self._position
 
     @property
-    def offsets(self) -> Tuple[float, float]:
+    def offsets(self) -> tuple[float, float]:
         return self._offsets
 
     def _change_motion_status(self, status: MotionStatus) -> None:

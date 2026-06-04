@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from .interface import Interface
 
@@ -10,7 +12,7 @@ class ITemperatures(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:

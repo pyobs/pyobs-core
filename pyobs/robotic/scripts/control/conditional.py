@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from datetime import datetime, timezone
 import logging
 from typing import Any, TYPE_CHECKING
@@ -10,31 +11,33 @@ from pyobs.robotic.scripts import Script
 log = logging.getLogger(__name__)
 
 
-class CasesRunner(Script):
-    """Script for distinguishing cases."""
+class ConditionalRunner(Script):
+    """Script for running an if condition."""
 
-    expression: str
-    cases: dict[str | int | float, Any]
+    condition: str
+    true: Script
+    false: Script | None = None
 
-    def __get_script(self) -> Script:
+    def __get_script(self) -> Script | None:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
+        ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
 
-        # check in cases
-        if value in self.cases:
-            return self.pyobs_model_validate(Script, self.cases[value])
-        elif "else" in self.cases:
-            return self.pyobs_model_validate(Script, self.cases["else"])
+        # run scripts
+        if ret:
+            return self.true
+        elif self.false is not None:
+            return self.false
         else:
-            raise ValueError("Invalid choice")
+            return None
 
     async def can_run(self, data: TaskData | None) -> bool:
         script = self.__get_script()
-        return await script.can_run(data)
+        return True if script is None else await script.can_run(data)
 
     async def run(self, data: TaskData | None) -> None:
         script = self.__get_script()
-        await script.run(data)
+        if script is not None:
+            await script.run(data)
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.
@@ -46,7 +49,7 @@ class CasesRunner(Script):
             Dictionary containing FITS headers.
         """
         script = self.__get_script()
-        return script.get_fits_headers(namespaces)
+        return script.get_fits_headers(namespaces) if script is not None else {}
 
 
-__all__ = ["CasesRunner"]
+__all__ = ["ConditionalRunner"]

@@ -1,4 +1,6 @@
-from typing import Optional, Any, Dict
+from __future__ import annotations
+
+from typing import Any
 
 import pandas as pd
 from astropy.io.fits import Header
@@ -13,9 +15,9 @@ class _DotNetRequestBuilder:
         self._source_count = source_count
         self._radius = radius
 
-        self._request_data: Dict[str, Any] = {}
+        self._request_data: dict[str, Any] = {}
         self._catalog = pd.DataFrame()
-        self._header: Optional[Header] = None
+        self._header: Header | None = None
 
     def _filter_catalog(self) -> None:
         self._catalog = self._catalog.dropna(how="any")

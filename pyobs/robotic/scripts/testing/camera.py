@@ -11,7 +11,7 @@ from pyobs.robotic.scripts import Script
 log = logging.getLogger(__name__)
 
 
-class CameraTest(Script):
+class CameraTestScript(Script):
     """Test script for a camera module."""
 
     camera: str
@@ -29,4 +29,4 @@ class CameraTest(Script):
         print(wnd)
 
 
-__all__ = ["CameraTest"]
+__all__ = ["CameraTestScript"]

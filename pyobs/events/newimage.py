@@ -1,12 +1,10 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any
-from typing_extensions import TypedDict
+from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 from pyobs.utils.enums import ImageType
 
-
-DataType = TypedDict("DataType", {"filename": str, "image_type": Optional[str], "raw": Optional[str]})
+DataType = TypedDict("DataType", {"filename": str, "image_type": str | None, "raw": str | None})
 
 
 class NewImageEvent(Event):
@@ -14,7 +12,7 @@ class NewImageEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, filename: str, image_type: Optional[ImageType] = None, raw: Optional[str] = None, **kwargs: Any):
+    def __init__(self, filename: str, image_type: ImageType | None = None, raw: str | None = None, **kwargs: Any):
         """Initializes new NewImageEvent.
 
         Args:
@@ -30,19 +28,19 @@ class NewImageEvent(Event):
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get filename
         if "filename" not in d or not isinstance(d["filename"], str):
             raise ValueError("Invalid type for filename.")
         filename: str = d["filename"]
 
         # get image type
-        image_type: Optional[ImageType] = None
+        image_type: ImageType | None = None
         if "image_type" in d and isinstance(d["image_type"], str):
             image_type = ImageType(d["image_type"])
 
         # get raw
-        raw: Optional[str] = None
+        raw: str | None = None
         if "raw" in d and isinstance(d["raw"], str):
             raw = d["raw"]
 
@@ -54,11 +52,15 @@ class NewImageEvent(Event):
         return self.data["filename"]
 
     @property
-    def image_type(self) -> Optional[ImageType]:
-        return ImageType(self.data["image_type"]) if "image_type" in self.data else None
+    def image_type(self) -> ImageType | None:
+        return (
+            ImageType(self.data["image_type"])
+            if "image_type" in self.data and self.data["image_type"] is not None
+            else None
+        )
 
     @property
-    def raw(self) -> Optional[str]:
+    def raw(self) -> str | None:
         return self.data["raw"]
 
     @property

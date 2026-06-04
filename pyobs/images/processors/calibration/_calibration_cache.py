@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from collections import deque
-from typing import Tuple, Optional, cast
+from typing import cast
 
 from pyobs.images import Image
 from pyobs.utils.enums import ImageType
@@ -9,7 +11,7 @@ class _CalibrationCache:
     BINNING_FORMAT = "{0}x{0}"
 
     def __init__(self, max_size: int):
-        self._cache: deque[Tuple[Tuple[ImageType, str, str, Optional[str]], Image]] = deque([], max_size)
+        self._cache: deque[tuple[tuple[ImageType, str, str, str | None], Image]] = deque([], max_size)
 
     def add_to_cache(self, image: Image, image_type: ImageType) -> None:
         cache_keys = self._get_cache_keys(image, image_type)
@@ -20,20 +22,20 @@ class _CalibrationCache:
         cache_keys = self._get_cache_keys(image, image_type)
         return self._find_cache_entry(cache_keys)
 
-    def _find_cache_entry(self, keys: Tuple[ImageType, str, str, Optional[str]]) -> Image:
+    def _find_cache_entry(self, keys: tuple[ImageType, str, str, str | None]) -> Image:
         for m, item in self._cache:
             if m == keys:
                 return item
 
         raise ValueError("Calibration not found in cache.")
 
-    def _get_cache_keys(self, image: Image, image_type: ImageType) -> Tuple[ImageType, str, str, Optional[str]]:
+    def _get_cache_keys(self, image: Image, image_type: ImageType) -> tuple[ImageType, str, str, str | None]:
         instrument, binning, filter_name = self._get_image_cache_keys(image)
         cache_keys = (image_type, instrument, binning, filter_name)
 
         return cache_keys
 
-    def _get_image_cache_keys(self, image: Image) -> Tuple[str, str, Optional[str]]:
+    def _get_image_cache_keys(self, image: Image) -> tuple[str, str, str | None]:
         instrument = image.header["INSTRUME"]
         binning = self.BINNING_FORMAT.format(image.header["XBINNING"])
 

@@ -1,10 +1,9 @@
-from typing import Optional, Any
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from .event import Event
 
-
-DataType = TypedDict("DataType", {"focus": float, "error": Optional[float], "filter_name": Optional[str]})
+DataType = TypedDict("DataType", {"focus": float, "error": float | None, "filter_name": str | None})
 
 
 class FocusFoundEvent(Event):
@@ -12,7 +11,7 @@ class FocusFoundEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, focus: float, error: Optional[float] = None, filter_name: Optional[str] = None, **kwargs: Any):
+    def __init__(self, focus: float, error: float | None = None, filter_name: str | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {"focus": focus, "error": error, "filter_name": filter_name}
 
@@ -21,11 +20,11 @@ class FocusFoundEvent(Event):
         return self.data["focus"]
 
     @property
-    def error(self) -> Optional[float]:
+    def error(self) -> float | None:
         return self.data["error"]
 
     @property
-    def filter_name(self) -> Optional[str]:
+    def filter_name(self) -> str | None:
         return self.data["filter_name"]
 
 

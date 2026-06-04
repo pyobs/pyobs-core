@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, List, Dict
+from typing import Any
 
 from pyobs.events import Event
 from pyobs.modules import Module
@@ -14,7 +16,7 @@ class Trigger(Module, IAutonomous):
 
     __module__ = "pyobs.modules.utils"
 
-    def __init__(self, triggers: List[Dict[str, Any]], **kwargs: Any):
+    def __init__(self, triggers: list[dict[str, Any]], **kwargs: Any):
         """Initialize a new trigger module.
 
         Args:

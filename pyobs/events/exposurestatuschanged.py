@@ -1,11 +1,10 @@
-from typing import Optional, Any, Dict
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 from pyobs.utils.enums import ExposureStatus
 
-
-DataType = TypedDict("DataType", {"last": Optional[str], "current": str})
+DataType = TypedDict("DataType", {"last": str | None, "current": str})
 
 
 class ExposureStatusChangedEvent(Event):
@@ -13,7 +12,7 @@ class ExposureStatusChangedEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, current: ExposureStatus, last: Optional[ExposureStatus] = None, **kwargs: Any):
+    def __init__(self, current: ExposureStatus, last: ExposureStatus | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {
             "last": last.value if last is not None else None,
@@ -21,14 +20,14 @@ class ExposureStatusChangedEvent(Event):
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get current
         if "current" not in d or not isinstance(d["current"], str):
             raise ValueError("Invalid type for current.")
         current: ExposureStatus = ExposureStatus(d["current"])
 
         # get last
-        last: Optional[ExposureStatus] = None
+        last: ExposureStatus | None = None
         if "last" in d and isinstance(d["last"], str):
             last = ExposureStatus(d["last"])
 
@@ -36,7 +35,7 @@ class ExposureStatusChangedEvent(Event):
         return ExposureStatusChangedEvent(current=current, last=last)
 
     @property
-    def last(self) -> Optional[ExposureStatus]:
+    def last(self) -> ExposureStatus | None:
         return ExposureStatus(self.data["last"]) if self.data["last"] is not None else None
 
     @property

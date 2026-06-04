@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Optional, Dict, Any, NamedTuple, List
+from typing import Any, NamedTuple
 import numpy as np
 from astropy.io import fits
 
@@ -41,15 +43,15 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
     def __init__(
         self,
-        fits_headers: Optional[Dict[str, Any]] = None,
-        centre: Optional[Tuple[float, float]] = None,
+        fits_headers: dict[str, Any] | None = None,
+        centre: tuple[float, float] | None = None,
         rotation: float = 0.0,
-        flip: Optional[bool] = None,
+        flip: bool | None = None,
         flip_x: bool = False,
         flip_y: bool = False,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits.gz",
-        fits_namespaces: Optional[List[str]] = None,
-        meridian_flip_on: Optional[str] = None,
+        fits_namespaces: list[str] | None = None,
+        meridian_flip_on: str | None = None,
         **kwargs: Any,
     ):
         """Creates a new BaseCamera.
@@ -86,7 +88,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self._meridian_flip_on = meridian_flip_on
 
         # init camera
-        self._exposure: Optional[ExposureInfo] = None
+        self._exposure: ExposureInfo | None = None
         self._camera_status = ExposureStatus.IDLE
 
         # multi-threading
@@ -222,7 +224,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """Method that is always called at the very beginning of __expose and can be used to set stuff up."""
         ...
 
-    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) -> Tuple[Image, str]:
+    async def __expose(self, exposure_time: float, image_type: ImageType, broadcast: bool) -> tuple[Image, str]:
         """Wrapper for a single exposure.
 
         Args:

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Optional, Union, Any
+from typing import Any
 
 from pyobs.interfaces import IWeather
 from pyobs.modules import Module
@@ -17,10 +19,10 @@ class WeatherAwareMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, weather: Optional[Union[str, IWeather]] = None, **kwargs: Any):
+    def __init__(self, weather: str | IWeather | None = None, **kwargs: Any):
         self.__weather = weather
-        self.__is_weather_good: Optional[bool] = None
-        self.__last_park_attempt: Optional[float] = None
+        self.__is_weather_good: bool | None = None
+        self.__last_park_attempt: float | None = None
         self.__weatheraware_is_error_state = False
         self.__weatheraware_lock = asyncio.Lock()
         this = self

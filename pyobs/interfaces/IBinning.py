@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, List, Any
+from typing import Any
 
 from .interface import Interface
 
@@ -23,7 +25,7 @@ class IBinning(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -32,7 +34,7 @@ class IBinning(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
         """List available binnings.
 
         Returns:

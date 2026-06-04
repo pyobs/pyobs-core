@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional, List
+from typing import Any
 
 from pyobs.modules import Module
 from pyobs.events import MotionStatusChangedEvent
@@ -13,7 +15,7 @@ class MotionStatusMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, motion_status_interfaces: Optional[List[str]] = None, **kwargs: Any):
+    def __init__(self, motion_status_interfaces: list[str] | None = None, **kwargs: Any):
         """Initializes the mixin.
 
         Args:
@@ -28,7 +30,7 @@ class MotionStatusMixin:
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(MotionStatusChangedEvent)
 
-    async def _change_motion_status(self, status: MotionStatus, interface: Optional[str] = None) -> None:
+    async def _change_motion_status(self, status: MotionStatus, interface: str | None = None) -> None:
         """Change motion status and send event,
 
         Args:
@@ -106,7 +108,7 @@ class MotionStatusMixin:
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
         Args:

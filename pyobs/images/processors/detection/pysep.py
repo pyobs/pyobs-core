@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import numpy.typing as npt
 
@@ -204,7 +206,7 @@ class SepSourceDetection(SourceDetection):
         return image.mask if image.safe_mask is not None else np.zeros(image.data.shape, dtype=bool)
 
     @staticmethod
-    def _get_gain_or_default(image: Image) -> Optional[float]:
+    def _get_gain_or_default(image: Image) -> float | None:
         if "DET-GAIN" in image.header:
             return cast(float, image.header["DET-GAIN"])
 

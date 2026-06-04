@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Any, Tuple, Union, List, Optional
+from typing import Any
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
@@ -27,9 +29,9 @@ class BaseTelescope(
 
     def __init__(
         self,
-        fits_headers: Optional[Dict[str, Any]] = None,
+        fits_headers: dict[str, Any] | None = None,
         min_altitude: float = 10,
-        wait_for_dome: Optional[str] = None,
+        wait_for_dome: str | None = None,
         **kwargs: Any,
     ):
         """Initialize a new base telescope.
@@ -50,7 +52,7 @@ class BaseTelescope(
         self._abort_move = asyncio.Event()
 
         # celestial status
-        self._celestial_headers: Dict[str, Any] = {}
+        self._celestial_headers: dict[str, Any] = {}
 
         # add thread func
         self.add_background_task(self._celestial, True)
@@ -209,8 +211,8 @@ class BaseTelescope(
             log.info("Finished moving telescope.")
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -221,7 +223,7 @@ class BaseTelescope(
         """
 
         # define base header
-        hdr: Dict[str, Union[Any, Tuple[Any, str]]] = {}
+        hdr: dict[str, Any | tuple[Any, str]] = {}
 
         # positions
         coords_ra_dec = None
@@ -292,8 +294,8 @@ class BaseTelescope(
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
-        alt: Optional[float]
-        az: Optional[float]
+        alt: float | None
+        az: float | None
 
         # no observer?
         if self._observer is None:

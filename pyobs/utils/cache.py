@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import time
 from collections import namedtuple
 from threading import Lock
-from typing import Any, Dict
+from typing import Any
 
 
 class DataCacheEntry:
@@ -46,7 +48,7 @@ class DataCache(object):
             size: Cache size.
         """
         self._lock = Lock()
-        self._cache: Dict[str, DataCacheEntry] = {}
+        self._cache: dict[str, DataCacheEntry] = {}
         self._size = size
 
     def __contains__(self, name: str) -> bool:

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 import numpy as np
-from typing import List, Union, Any, Optional, Dict
+from typing import Any
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
@@ -19,8 +21,8 @@ class Seeing(Module):
 
     def __init__(
         self,
-        sources: Optional[Union[str, List[str]]] = None,
-        publisher: Optional[Union[Publisher, Dict[str, Any]]] = None,
+        sources: str | list[str] | None = None,
+        publisher: Publisher | dict[str, Any] | None = None,
         max_ellipticity: float = 0.2,
         correct_for_airmass: bool = True,
         **kwargs: Any,

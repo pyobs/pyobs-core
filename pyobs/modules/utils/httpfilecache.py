@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import Any
 import aiohttp
 from aiohttp import web
 
@@ -33,7 +35,7 @@ class HttpFileCache(Module):
         self._app = web.Application()
         self._app.add_routes([web.get("/{filename}", self.download_handler), web.post("/", self.upload_handler)])
         self._runner = web.AppRunner(self._app)
-        self._site: Optional[web.TCPSite] = None
+        self._site: web.TCPSite | None = None
 
     async def open(self) -> None:
         """Open server"""
@@ -92,8 +94,8 @@ class HttpFileCache(Module):
 
         # read multipart data
         reader = await request.multipart()
-        filename: Optional[str] = None
-        data: Optional[bytes] = None
+        filename: str | None = None
+        data: bytes | None = None
         async for field in reader:
             # we expect a file called 'file'
             if isinstance(field, aiohttp.BodyPartReader) and field.name == "file":

@@ -1,8 +1,9 @@
-from typing import List, Union, Any, Optional, Dict
+from __future__ import annotations
+
+from typing import Any
 import logging
 
 from .publisher import Publisher
-
 
 log = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ log = logging.getLogger(__name__)
 class MultiPublisher(Publisher):
     """Forwards a message to multiple publishers."""
 
-    def __init__(self, publishers: Optional[List[Union[Publisher, Dict[str, Any]]]] = None, **kwargs: Any):
+    def __init__(self, publishers: list[Publisher | dict[str, Any]] | None = None, **kwargs: Any):
         """Initialize new multi publisher.
 
         Args:
@@ -19,7 +20,7 @@ class MultiPublisher(Publisher):
         Publisher.__init__(self, **kwargs)
 
         # store
-        self._publishers: List[Publisher] = (
+        self._publishers: list[Publisher] = (
             [] if publishers is None else [self.add_child_object(p, Publisher) for p in publishers]
         )
 

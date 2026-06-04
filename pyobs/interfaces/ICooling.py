@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any
+from typing import Any
 
 from .ITemperatures import ITemperatures
 
@@ -10,7 +12,7 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def get_cooling(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling(self, **kwargs: Any) -> tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:

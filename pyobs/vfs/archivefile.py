@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import os
-from typing import Optional
 import logging
 import aiohttp
 
@@ -13,7 +14,7 @@ class ArchiveFile(HttpFile):
 
     __module__ = "pyobs.vfs"
 
-    def __init__(self, name: str, url: str, mode: str = "w", token: Optional[str] = None):
+    def __init__(self, name: str, url: str, mode: str = "w", token: str | None = None):
         """Creates a new archive file.
 
         Args:

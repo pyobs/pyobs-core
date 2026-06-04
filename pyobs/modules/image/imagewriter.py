@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 import asyncio
-from typing import Union, List, Any, Optional
+from typing import Any
 
 from pyobs.modules import Module
 from pyobs.events import NewImageEvent, Event
@@ -14,9 +16,7 @@ class ImageWriter(Module):
 
     __module__ = "pyobs.modules.image"
 
-    def __init__(
-        self, filename: str = "/archive/{FNAME}", sources: Optional[Union[str, List[str]]] = None, **kwargs: Any
-    ):
+    def __init__(self, filename: str = "/archive/{FNAME}", sources: str | list[str] | None = None, **kwargs: Any):
         """Creates a new image writer.
 
         Args:

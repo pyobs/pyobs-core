@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import numpy as np
-from typing import Tuple, Dict, Any, Optional, cast
+from typing import Any, cast
 import astropy.units as u
 
 from pyobs.images.meta import OnSkyDistance
@@ -28,11 +30,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     def __init__(
         self,
         exposure_time: float,
-        target_pixel: Optional[Tuple[float, float]] = None,
+        target_pixel: tuple[float, float] | None = None,
         attempts: int = 5,
         tolerance: float = 1,
         max_offset: float = 120,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
         oneshot: bool = False,
         broadcast: bool = False,
         **kwargs: Any,
@@ -86,7 +88,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
 
     @raises(exc.AbortedError, exc.AcquisitionError)
     @timeout(120)
-    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -106,7 +108,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         finally:
             self._is_running = False
 
-    async def _acquire(self, exposure_time: float) -> Dict[str, Any]:
+    async def _acquire(self, exposure_time: float) -> dict[str, Any]:
         """Actually acquire target."""
 
         # get telescope

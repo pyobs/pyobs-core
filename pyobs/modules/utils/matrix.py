@@ -3,8 +3,8 @@ import logging
 from asyncio import Task
 from typing import Any
 
+from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
-from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
 

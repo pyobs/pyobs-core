@@ -1,7 +1,8 @@
 import abc
 from typing import Any
-from astropy.coordinates import SkyCoord
+
 import numpy as np
+from astropy.coordinates import SkyCoord
 
 from .gridnode import GridNode
 

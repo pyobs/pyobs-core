@@ -2,22 +2,31 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import numpy as np
 from typing import Any, cast
-import astropy.units as u
 
+import astropy.units as u
+import numpy as np
+
+import pyobs.utils.exceptions as exc
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.interfaces import IAcquisition, IPointingAltAz, IPointingRaDec
-from pyobs.modules import Module, raises
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import timeout
+from pyobs.modules import Module, raises, timeout
 from pyobs.utils.enums import ImageType
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
-import pyobs.utils.exceptions as exc
+
+from ...interfaces import (
+    ICamera,
+    IData,
+    IExposureTime,
+    IImageType,
+    IOffsetsAltAz,
+    IOffsetsRaDec,
+    ITelescope,
+)
 from ._base import BasePointing
-from ...interfaces import IExposureTime, IImageType, ITelescope, IData, IOffsetsRaDec, IOffsetsAltAz, ICamera
 
 log = logging.getLogger(__name__)
 

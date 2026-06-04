@@ -5,11 +5,12 @@ from enum import Enum
 from inspect import Parameter
 from pprint import pprint
 from typing import Any
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackQueryHandler, CallbackContext, Application
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CallbackContext, CallbackQueryHandler
+
+from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
-from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
 

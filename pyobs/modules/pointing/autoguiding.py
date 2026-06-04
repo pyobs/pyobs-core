@@ -4,13 +4,13 @@ import asyncio
 import logging
 from typing import Any
 
+from pyobs.images.meta.exptime import ExpTime
+from pyobs.images.processors.detection import SepSourceDetection
+from pyobs.interfaces import ICamera, IData, IExposureTime, IImageType
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import timeout
 from pyobs.modules.pointing._baseguiding import BaseGuiding
-from pyobs.images.meta.exptime import ExpTime
-from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.interfaces import IExposureTime, IImageType, IData, ICamera
-from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.utils.enums import ExposureStatus, ImageType
 
 log = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from time import time
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
 
 class ExposeWidget(QtWidgets.QGroupBox):

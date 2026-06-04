@@ -1,19 +1,18 @@
 import asyncio
 import logging
-from typing import Any, TYPE_CHECKING, cast
-from py_expression_eval import Parser
-import pandas as pd
+from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+from py_expression_eval import Parser
 
 if TYPE_CHECKING:
     import lmfit
 
-from pyobs.interfaces import IFocuser, IFilters, IWeather, ITemperatures
-from pyobs.modules import Module
-from pyobs.modules import timeout
-from pyobs.interfaces import IFocusModel
-from pyobs.events import FocusFoundEvent, FilterChangedEvent, Event
+from pyobs.events import Event, FilterChangedEvent, FocusFoundEvent
+from pyobs.interfaces import IFilters, IFocuser, IFocusModel, ITemperatures, IWeather
+from pyobs.modules import Module, timeout
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time

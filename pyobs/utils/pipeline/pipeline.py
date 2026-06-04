@@ -4,15 +4,16 @@ import asyncio
 import logging
 from functools import partial
 from typing import Any
+
+import astropy.units as u
 import ccdproc
 import numpy as np
-import astropy.units as u
 
+from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.object import Object
 from pyobs.robotic.utils.archive import Archive
 from pyobs.utils.enums import ImageType
-from pyobs.images import Image, ImageProcessor
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ class Pipeline(Object, PipelineMixin):
         # add history
         for i, src in enumerate(images, 1):
             basename = src.header["FNAME"].replace(".fits.fz", "").replace(".fits", "")
-            image.header["L1AVG%03d" % i] = (basename, "Image used for average")
+            image.header[f"L1AVG{i:03d}"] = (basename, "Image used for average")
         image.header["RLEVEL"] = (1, "Reduction level")
 
         # finished

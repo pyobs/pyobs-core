@@ -9,3 +9,5 @@ from .imagewatcher import ImageWatcher
 from .imagewriter import ImageWriter
 from .pipeline import Pipeline
 from .seeing import Seeing
+
+__all__ = ["ImageWatcher", "ImageWriter", "Pipeline", "Seeing"]

@@ -1,17 +1,25 @@
 import logging
-from typing import Any
 import threading
+from typing import Any
+
 import numpy as np
 
-from pyobs.interfaces import IAutoFocus, ICamera
-from pyobs.events import FocusFoundEvent, BadWeatherEvent, Event
-from pyobs.interfaces import IExposureTime, IImageType, IFocuser, IFilters, IData
-from pyobs.object import get_object
+from pyobs.events import BadWeatherEvent, Event, FocusFoundEvent
+from pyobs.interfaces import (
+    IAutoFocus,
+    ICamera,
+    IData,
+    IExposureTime,
+    IFilters,
+    IFocuser,
+    IImageType,
+)
 from pyobs.mixins import CameraSettingsMixin
-from pyobs.modules import Module, timeout, raises
+from pyobs.modules import Module, raises, timeout
+from pyobs.object import get_object
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ImageType
 from pyobs.utils.focusseries import FocusSeries
-from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 

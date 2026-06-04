@@ -6,8 +6,8 @@ from enum import Enum
 from io import BytesIO
 from typing import Any
 
-from pyobs.comm import Comm
 import pyobs.utils.exceptions as exc
+from pyobs.comm import Comm
 
 
 class ParserState(Enum):

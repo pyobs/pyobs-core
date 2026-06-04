@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 import logging
 import math
 import time
 from asyncio import Server
-from struct import unpack, pack
+from struct import pack, unpack
 from typing import Any, NoReturn, cast
 
 from pyobs.interfaces import IPointingRaDec

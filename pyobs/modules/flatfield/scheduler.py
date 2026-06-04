@@ -2,14 +2,12 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.interfaces import IRunnable
-from pyobs.interfaces import IFlatField, IFilters, IBinning
-from pyobs.modules import Module
-from pyobs.modules import timeout
+from pyobs.interfaces import IBinning, IFilters, IFlatField, IRunnable
+from pyobs.modules import Module, timeout
 from pyobs.object import get_object
-from pyobs.utils.parallel import event_wait
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.robotic.utils.skyflats.scheduler import Scheduler
+from pyobs.utils.parallel import event_wait
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)

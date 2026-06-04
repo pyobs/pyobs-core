@@ -1,23 +1,25 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, TYPE_CHECKING
-from astropy.coordinates import SkyCoord
+from typing import TYPE_CHECKING, Any
+
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 
 from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import (
-    IFocuser,
-    IFitsHeaderBefore,
     IFilters,
-    ITemperatures,
+    IFitsHeaderBefore,
+    IFocuser,
     IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
+    ITemperatures,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
-from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.modules import timeout
+from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time

@@ -7,10 +7,9 @@ __title__ = "Exceptions"
 
 import asyncio
 import logging
-from collections.abc import Coroutine
-from typing import NamedTuple, Any
-from collections.abc import Callable
 import time
+from collections.abc import Callable, Coroutine
+from typing import Any, NamedTuple
 
 
 class PyObsError(Exception):

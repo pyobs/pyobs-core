@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyobs.modules import Module, timeout
 from pyobs.interfaces import IRunnable
+from pyobs.modules import Module, timeout
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)

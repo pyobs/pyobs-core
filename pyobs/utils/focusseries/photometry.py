@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
-import numpy as np
 import logging
-from pyobs.object import get_object
+from typing import Any
 
-from pyobs.images.processors.detection import SourceDetection
-from pyobs.utils.focusseries.base import FocusSeries
-from pyobs.utils.curvefit import fit_hyperbola
+import numpy as np
+
 from pyobs.images import Image
-
+from pyobs.images.processors.detection import SourceDetection
+from pyobs.object import get_object
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.utils.focusseries.base import FocusSeries
 
 log = logging.getLogger(__name__)
 

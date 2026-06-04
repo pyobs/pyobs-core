@@ -1,6 +1,7 @@
-from typing import Any
-import pandas as pd
 import logging
+from typing import Any
+
+import pandas as pd
 
 from .publisher import Publisher
 

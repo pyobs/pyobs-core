@@ -1,5 +1,6 @@
 import urllib.parse
 from typing import Any, cast
+
 import aiohttp
 
 from pyobs.utils.enums import WeatherSensors

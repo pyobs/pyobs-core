@@ -4,8 +4,8 @@ import logging
 from typing import Any
 
 from pyobs.events import Event
-from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
+from pyobs.modules import Module
 from pyobs.object import get_class_from_string
 
 log = logging.getLogger(__name__)

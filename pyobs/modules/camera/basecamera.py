@@ -5,17 +5,17 @@ import datetime
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, NamedTuple
+
 import numpy as np
 from astropy.io import fits
 
-from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
-from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.events import ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
-from pyobs.modules import Module
-from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IExposureTime, IImageType
-from pyobs.modules import timeout
+from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
+from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ExposureStatus, ImageType
 
 log = logging.getLogger(__name__)
 

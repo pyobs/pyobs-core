@@ -4,7 +4,7 @@ TODO: write doc
 
 __title__ = "Time"
 
-from datetime import datetime, date, UTC
+from datetime import UTC, date, datetime
 from typing import cast
 
 import astropy.time

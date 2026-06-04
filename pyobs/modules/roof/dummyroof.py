@@ -4,12 +4,13 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.events import RoofOpenedEvent, RoofClosingEvent
+from pyobs.events import RoofClosingEvent, RoofOpenedEvent
 from pyobs.interfaces import IRoof
 from pyobs.modules import timeout
-from .baseroof import BaseRoof
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
+
+from .baseroof import BaseRoof
 
 log = logging.getLogger(__name__)
 

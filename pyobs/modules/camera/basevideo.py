@@ -1,22 +1,22 @@
-from abc import ABCMeta
-from datetime import datetime, UTC
+import asyncio
 import io
 import logging
+import time
+from abc import ABCMeta
+from datetime import UTC, datetime
+from typing import Any, NamedTuple
 
 import aiohttp
-import time
-import asyncio
-from typing import Any, NamedTuple
 import numpy as np
 import PIL.Image
 from aiohttp import web
 from numpy.typing import NDArray
 
-from pyobs.modules import Module, timeout
-from pyobs.interfaces import IVideo, IImageType, IExposureTime
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
+from pyobs.interfaces import IExposureTime, IImageType, IVideo
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
+from pyobs.modules import Module, timeout
 from pyobs.utils.cache import DataCache
 from pyobs.utils.enums import ImageType
 

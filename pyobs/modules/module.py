@@ -1,20 +1,22 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
 import typing
-from typing import Any, TypeVar, cast
 from collections.abc import Callable
-from py_expression_eval import Parser
-import packaging.version
+from typing import Any, TypeVar, cast
 
-from pyobs.events import ModuleOpenedEvent, Event
+import packaging.version
+from py_expression_eval import Parser
+
+from pyobs.events import Event, ModuleOpenedEvent
+from pyobs.interfaces import IConfig, IModule, Interface
 from pyobs.object import Object
-from pyobs.interfaces import IModule, IConfig, Interface
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
-from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 

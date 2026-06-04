@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, UTC
 import logging
 from abc import ABCMeta, abstractmethod
+from datetime import UTC, datetime
 from typing import Any, NamedTuple
+
 from astropy.io import fits
 
-from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
-from pyobs.utils.enums import ExposureStatus
-from pyobs.modules import Module
-from pyobs.events import NewSpectrumEvent, ExposureStatusChangedEvent
+from pyobs.events import ExposureStatusChangedEvent, NewSpectrumEvent
 from pyobs.interfaces import ISpectrograph
-from pyobs.modules import timeout
+from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
+from pyobs.modules import Module, timeout
+from pyobs.utils.enums import ExposureStatus
 
 log = logging.getLogger(__name__)
 

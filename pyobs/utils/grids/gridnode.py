@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import abc
-from typing import Any
-from astropy.coordinates import SkyCoord
 import logging
+from typing import Any
+
+from astropy.coordinates import SkyCoord
 
 from pyobs.object import Object
 

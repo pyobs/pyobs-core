@@ -7,6 +7,7 @@ import numpy as np
 
 from pyobs.images import Image
 from pyobs.images.meta import SkyOffsets
+
 from .guidingstatistics import GuidingStatistics
 
 log = logging.getLogger(__name__)

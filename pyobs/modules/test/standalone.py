@@ -4,7 +4,6 @@ from typing import Any
 
 from pyobs.modules import Module
 
-
 log = logging.getLogger(__name__)
 
 

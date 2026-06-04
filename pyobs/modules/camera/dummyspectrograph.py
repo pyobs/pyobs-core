@@ -1,14 +1,14 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
+
 import numpy as np
 from astropy.io import fits
 
 from pyobs.modules.camera.basespectrograph import BaseSpectrograph
 from pyobs.utils.enums import ExposureStatus
-
 
 log = logging.getLogger(__name__)
 

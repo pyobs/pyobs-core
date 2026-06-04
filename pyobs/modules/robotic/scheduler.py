@@ -1,18 +1,32 @@
 from __future__ import annotations
+
 import asyncio
 import json
 import logging
 import time
 from typing import Any
+
 import astropy.units as u
 from astropy.time import TimeDelta
 
-from pyobs.events import GoodWeatherEvent, Event, TaskFailedEvent, TaskStartedEvent, TaskFinishedEvent
+from pyobs.events import (
+    Event,
+    GoodWeatherEvent,
+    TaskFailedEvent,
+    TaskFinishedEvent,
+    TaskStartedEvent,
+)
+from pyobs.interfaces import IRunnable, IStartStop
+from pyobs.modules import Module
+from pyobs.robotic import (
+    ObservationArchive,
+    ObservationList,
+    Project,
+    Task,
+    TaskArchive,
+)
 from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
-from pyobs.interfaces import IStartStop, IRunnable
-from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList, Project
 
 log = logging.getLogger(__name__)
 

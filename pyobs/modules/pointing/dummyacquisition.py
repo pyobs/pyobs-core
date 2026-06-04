@@ -5,8 +5,7 @@ import logging
 from typing import Any
 
 from pyobs.interfaces import IAcquisition
-from pyobs.modules import Module
-from pyobs.modules import timeout
+from pyobs.modules import Module, timeout
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)

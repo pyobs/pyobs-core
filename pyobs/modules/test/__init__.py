@@ -6,3 +6,5 @@ TODO: write doc
 __title__ = "Test modules"
 
 from .standalone import StandAlone
+
+__all__ = ["StandAlone"]

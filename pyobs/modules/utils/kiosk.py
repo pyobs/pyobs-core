@@ -4,12 +4,12 @@ import asyncio
 import io
 import logging
 from typing import Any
+
 import numpy as np
 from aiohttp import web
 
-from pyobs.interfaces import ICamera, IExposureTime, IWindow
+from pyobs.interfaces import ICamera, IExposureTime, IStartStop, IWindow
 from pyobs.modules import Module
-from pyobs.interfaces import IStartStop
 
 log = logging.getLogger(__name__)
 

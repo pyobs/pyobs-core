@@ -1,15 +1,16 @@
 from __future__ import annotations
+
 import abc
 import random
 from typing import Any
 
+import astropy.units as u
 import pandas as pd
 from astropy.coordinates import SkyCoord, get_body
-import astropy.units as u
 from astropy.time import Time
 
-from .gridnode import GridNode
 from .grid import Grid
+from .gridnode import GridNode
 
 
 class GridFilter(GridNode, metaclass=abc.ABCMeta):

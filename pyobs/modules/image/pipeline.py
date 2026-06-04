@@ -2,10 +2,10 @@ import asyncio
 import logging
 from typing import Any
 
-from pyobs.images import ImageProcessor, Image
+from pyobs.events import Event, NewImageEvent
+from pyobs.images import Image, ImageProcessor
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent, Event
 
 log = logging.getLogger(__name__)
 

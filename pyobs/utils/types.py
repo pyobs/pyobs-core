@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import functools
 import inspect
-from inspect import BoundArguments, Parameter
-from enum import Enum
-from typing import Any, get_args, get_origin
 from collections.abc import Callable
+from enum import Enum
+from inspect import BoundArguments, Parameter
+from typing import Any, get_args, get_origin
 
 
 def iterate_params(

@@ -3,7 +3,6 @@ from typing import Any
 
 from .publisher import Publisher
 
-
 log = logging.getLogger(__name__)
 
 

@@ -1,9 +1,9 @@
 import os
 import re
+from io import StringIO
 from typing import Any
 
 import yaml
-from io import StringIO
 
 
 def pre_process_yaml(config: str) -> str:

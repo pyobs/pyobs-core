@@ -1,21 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any
-from astropy.coordinates import SkyCoord, ICRS, AltAz
-import astropy.units as u
-import logging
 
-from pyobs.events import MoveRaDecEvent, MoveAltAzEvent
-from pyobs.interfaces import ITelescope, IFitsHeaderBefore, IPointingRaDec, IPointingAltAz
-from pyobs.modules import Module
-from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin, WaitForMotionMixin
-from pyobs.modules import timeout
+import astropy.units as u
+from astropy.coordinates import ICRS, AltAz, SkyCoord
+
+from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
+from pyobs.interfaces import (
+    IFitsHeaderBefore,
+    IPointingAltAz,
+    IPointingRaDec,
+    ITelescope,
+)
+from pyobs.mixins import MotionStatusMixin, WaitForMotionMixin, WeatherAwareMixin
+from pyobs.modules import Module, timeout
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 

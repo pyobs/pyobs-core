@@ -1,6 +1,6 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, TypeVar, Generic
+from typing import Any, Generic, TypeVar
 
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")

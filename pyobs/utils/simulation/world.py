@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from astropy.time import Time
 from typing import TYPE_CHECKING, Any
 
-from pyobs.object import create_object, Object
+from astropy.time import Time
+
+from pyobs.object import Object, create_object
 
 if TYPE_CHECKING:
-    from .telescope import SimTelescope
     from .camera import SimCamera
+    from .telescope import SimTelescope
 
 
 class SimWorld(Object):

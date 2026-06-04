@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import datetime
 from abc import ABCMeta
-from typing import Any, TypeVar, Self
+from typing import Any, Self, TypeVar
 
-from astropy.coordinates import EarthLocation
-from pydantic import BaseModel as PydanticBaseModel, model_serializer, model_validator, ConfigDict, PrivateAttr
-from pydantic_core.core_schema import ValidatorFunctionWrapHandler, ValidationInfo
 from astroplan import Observer
+from astropy.coordinates import EarthLocation
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict, PrivateAttr, model_serializer, model_validator
+from pydantic_core.core_schema import ValidationInfo, ValidatorFunctionWrapHandler
 
 from pyobs.comm import Comm
 from pyobs.object import PrivateAttrMixin

@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import glob
 import logging
-from datetime import datetime, UTC
-from typing import NamedTuple, Any, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
-from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
+from pyobs.interfaces import IBinning, ICooling, IGain, IWindow
+from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus
 
 if TYPE_CHECKING:

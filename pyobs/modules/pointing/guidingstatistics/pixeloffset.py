@@ -1,11 +1,12 @@
 import logging
 from typing import Any
+
 import numpy as np
 
 from pyobs.images import Image
-from .guidingstatistics import GuidingStatistics
 from pyobs.images.meta import PixelOffsets
 
+from .guidingstatistics import GuidingStatistics
 
 log = logging.getLogger(__name__)
 

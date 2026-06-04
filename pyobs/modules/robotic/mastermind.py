@@ -1,14 +1,21 @@
 import asyncio
 import logging
 from typing import Any
+
 import astropy.units as u
 
 from pyobs.events import TaskFailedEvent, TaskFinishedEvent, TaskStartedEvent
+from pyobs.interfaces import IAutonomous, IFitsHeaderBefore
 from pyobs.modules import Module
-from pyobs.interfaces import IFitsHeaderBefore, IAutonomous
-from pyobs.robotic import Task, Observation, TaskArchive, ObservationState
+from pyobs.robotic import (
+    Observation,
+    ObservationArchive,
+    ObservationState,
+    Task,
+    TaskArchive,
+    TaskRunner,
+)
 from pyobs.utils.time import Time
-from pyobs.robotic import TaskRunner, ObservationArchive
 
 log = logging.getLogger(__name__)
 

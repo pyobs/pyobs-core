@@ -1,10 +1,11 @@
 from __future__ import annotations
+
+import asyncio
 import contextlib
 import time
-import asyncio
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyobs.utils.types import cast_response_to_real
 

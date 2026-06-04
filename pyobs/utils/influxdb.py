@@ -3,8 +3,8 @@ from __future__ import annotations
 # from https://gitlab.com/kipe/influx_logging_handler
 import logging
 import traceback
-from typing import Any
 from collections.abc import Iterator
+from typing import Any
 
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, WriteOptions

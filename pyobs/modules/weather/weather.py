@@ -7,7 +7,7 @@ from typing import Any
 import astropy.units as u
 
 from pyobs.events import BadWeatherEvent, GoodWeatherEvent
-from pyobs.interfaces import IWeather, IFitsHeaderBefore
+from pyobs.interfaces import IFitsHeaderBefore, IWeather
 from pyobs.modules import Module
 from pyobs.modules.weather.weather_api import WeatherApi
 from pyobs.modules.weather.weather_state import WeatherState

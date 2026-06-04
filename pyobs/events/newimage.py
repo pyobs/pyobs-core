@@ -52,7 +52,11 @@ class NewImageEvent(Event):
 
     @property
     def image_type(self) -> ImageType | None:
-        return ImageType(self.data["image_type"]) if "image_type" in self.data else None
+        return (
+            ImageType(self.data["image_type"])
+            if "image_type" in self.data and self.data["image_type"] is not None
+            else None
+        )
 
     @property
     def raw(self) -> str | None:

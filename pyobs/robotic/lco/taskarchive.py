@@ -2,13 +2,13 @@ import asyncio
 import logging
 import astropy.units as u
 from typing import Optional, Any
+from typing_extensions import override
 from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
 from ._portal import Portal
 from .task import LcoTask
-from .. import Task
 from ..task import Project
 
 log = logging.getLogger(__name__)
@@ -80,7 +80,8 @@ class LcoTaskArchive(TaskArchive):
         """Returns list of projects from the LCO portal."""
         return self._projects
 
-    async def get_schedulable_tasks(self) -> list[Task]:
+    @override
+    async def get_schedulable_tasks(self) -> list[LcoTask]:  # type: ignore[override]
         """Returns list of schedulable tasks.
 
         Returns:
@@ -88,14 +89,15 @@ class LcoTaskArchive(TaskArchive):
         """
         return self._tasks
 
-    async def get_task(self, id: Any) -> Task | None:
+    @override
+    async def get_task(self, id: Any) -> LcoTask | None:
         """Returns the task with the given ID."""
         for task in self._tasks:
             if task.id == id:
                 return task
         return None
 
-    async def _get_tasks_and_projects(self) -> tuple[list[Task], list[Project]]:
+    async def _get_tasks_and_projects(self) -> tuple[list[LcoTask], list[Project]]:
         """Returns a list of schedulable tasks and projects
 
         Returns:
@@ -110,7 +112,7 @@ class LcoTaskArchive(TaskArchive):
         tac_priorities = {p["id"]: p["tac_priority"] for p in proposals}
 
         # to LcoTasks
-        all_tasks: list[Task] = []
+        all_tasks: list[LcoTask] = []
         for schedulable_request in schedulable_requests:
             tasks = LcoTask.from_schedulable_request(schedulable_request, {})
             for task in tasks:

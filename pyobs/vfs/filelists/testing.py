@@ -5,7 +5,6 @@ from typing import Any
 
 from .filelist import FileList
 
-
 log = logging.getLogger(__name__)
 
 

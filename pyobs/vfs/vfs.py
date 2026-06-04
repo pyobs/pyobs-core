@@ -1,13 +1,14 @@
 import io
 import logging
-from typing import Any, cast, overload, Literal
-from collections.abc import Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any, Literal, cast, overload
+
+import pandas as pd
 import yaml
 from astropy.io import fits
-import pandas as pd
-
 
 from pyobs.images import Image
+
 from .file import VFSFile
 
 log = logging.getLogger(__name__)

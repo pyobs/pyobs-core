@@ -1,8 +1,9 @@
 import io
+import logging
 import uuid
 from typing import Any
 from urllib.parse import urljoin
-import logging
+
 import aiohttp
 
 from .bufferedfile import BufferedFile

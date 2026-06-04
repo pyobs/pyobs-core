@@ -4,7 +4,6 @@ from typing import Any
 
 from .bufferedfile import BufferedFile
 
-
 log = logging.getLogger(__name__)
 
 

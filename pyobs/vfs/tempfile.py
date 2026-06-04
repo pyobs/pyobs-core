@@ -1,10 +1,9 @@
+import logging
 import os
 from tempfile import NamedTemporaryFile
-import logging
 from typing import Any
 
 from .localfile import VFSFile
-
 
 log = logging.getLogger(__name__)
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
+
 import aiohttp
 
 from .httpfile import HttpFile
@@ -57,7 +58,7 @@ class ArchiveFile(HttpFile):
             ) as response:
                 # success, if status code is 200
                 if response.status != 200:
-                    raise ValueError("Cannot write file, received status_code %d." % response.status)
+                    raise ValueError(f"Cannot write file, received status_code {response.status}.")
 
                 # check json
                 json = await response.json()

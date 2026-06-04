@@ -1,11 +1,10 @@
 import asyncio
+import logging
 from functools import partial
 from pathlib import PureWindowsPath
 from typing import Any
-import logging
 
 from .file import VFSFile
-
 
 # set logging for smbprotocol package
 logging.getLogger("smbprotocol").setLevel(logging.WARNING)

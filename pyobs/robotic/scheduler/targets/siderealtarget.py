@@ -1,8 +1,10 @@
 from typing import Self
+
 from astropy.coordinates import SkyCoord
-from pydantic import model_validator, PrivateAttr
+from pydantic import PrivateAttr, model_validator
 
 from pyobs.utils.time import Time
+
 from .target import Target
 
 

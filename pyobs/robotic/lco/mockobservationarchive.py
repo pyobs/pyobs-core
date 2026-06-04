@@ -3,15 +3,17 @@ from __future__ import annotations
 import copy
 import logging
 from typing import Any, TypedDict
+
+import astropy.units as u
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
-import astropy.units as u
 
 from pyobs.robotic.observation import Observation
 from pyobs.utils.time import Time
-from .task import LcoTask
-from .observationarchive import LcoObservationArchive
+
 from .. import ObservationList, TaskArchive
+from .observationarchive import LcoObservationArchive
+from .task import LcoTask
 
 log = logging.getLogger(__name__)
 

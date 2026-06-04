@@ -1,10 +1,10 @@
 from collections import namedtuple
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urljoin
 
 import dacite
 import requests
-from urllib.parse import urljoin
 
 
 @dataclass

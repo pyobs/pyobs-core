@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import abc
 import logging
 from collections.abc import AsyncIterator
@@ -8,7 +9,7 @@ from pyobs.object import Object
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic import Task, Observation, Project
+    from pyobs.robotic import Observation, Project, Task
 
 log = logging.getLogger(__name__)
 

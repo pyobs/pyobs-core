@@ -1,15 +1,18 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import astroplan
+from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
 from pydantic import Field
-from astropy.time import Time
 
 from .constraint import Constraint
 
 if TYPE_CHECKING:
-    from ..dataprovider import DataProvider
     from pyobs.robotic import Task
+
+    from ..dataprovider import DataProvider
 
 
 class TimeConstraint(Constraint):

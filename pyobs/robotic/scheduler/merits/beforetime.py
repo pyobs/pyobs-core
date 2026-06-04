@@ -1,13 +1,16 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
+from astropy.time import Time
 from astropydantic import AstroPydanticTime  # type: ignore
 from pydantic import Field
 
 from .merit import Merit
-from astropy.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
+
     from ..dataprovider import DataProvider
 
 

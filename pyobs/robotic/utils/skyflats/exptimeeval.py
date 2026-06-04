@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
+
+import astropy.units as u
 from astroplan import Observer
 from astropy.time import TimeDelta
-from py_expression_eval import Parser, Expression
-import logging
-import astropy.units as u
+from py_expression_eval import Expression, Parser
 
 from pyobs.utils.time import Time
 

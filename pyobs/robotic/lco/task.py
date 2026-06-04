@@ -1,23 +1,24 @@
 from __future__ import annotations
+
 import logging
 from typing import Any
 
-from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoRequest, LcoObservation
+import pyobs.utils.exceptions as exc
+from pyobs.robotic.lco._portal import LcoObservation, LcoRequest, LcoSchedulableRequest
 from pyobs.robotic.scheduler.constraints import (
-    TimeConstraint,
-    Constraint,
     AirmassConstraint,
-    MoonSeparationConstraint,
+    Constraint,
     MoonIlluminationConstraint,
+    MoonSeparationConstraint,
     SolarElevationConstraint,
+    TimeConstraint,
 )
 from pyobs.robotic.scheduler.merits import Merit
-from pyobs.robotic.scheduler.targets import Target, SiderealTarget
+from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task, TaskData
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
-import pyobs.utils.exceptions as exc
 
 log = logging.getLogger(__name__)
 

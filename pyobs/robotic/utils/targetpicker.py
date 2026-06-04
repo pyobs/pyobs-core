@@ -1,4 +1,4 @@
-from astropy.coordinates import SkyCoord, AltAz
+from astropy.coordinates import AltAz, SkyCoord
 from astropy.time import Time
 
 from pyobs.utils.serialization import PolymorphicBaseModel

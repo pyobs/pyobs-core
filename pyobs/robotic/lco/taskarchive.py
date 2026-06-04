@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import astropy.units as u
 from typing import Any
+
+import astropy.units as u
 from astropy.time import TimeDelta
 
-from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
+from pyobs.utils.time import Time
+
+from ..task import Project
 from ._portal import Portal
 from .task import LcoTask
-from ..task import Project
 
 log = logging.getLogger(__name__)
 

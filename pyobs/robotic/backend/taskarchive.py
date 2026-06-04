@@ -2,12 +2,14 @@ import asyncio
 import logging
 from typing import Any
 from urllib.parse import urljoin
+
 import aiohttp
 
-from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from ..task import Task, Project
+from pyobs.utils.time import Time
+
 from ...utils.http import http_request_with_retries
+from ..task import Project, Task
 
 log = logging.getLogger(__name__)
 

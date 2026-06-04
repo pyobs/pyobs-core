@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import asyncio
+import logging
 from typing import Any, Literal
 from urllib.parse import urljoin
+
 import aiohttp
-import logging
 
 from pyobs.utils.time import Time
-from .. import ObservationArchive, TaskArchive
-from .. import Task
-from ..observation import ObservationList, Observation, ObservationState
+
 from ...utils.http import http_request_with_retries
+from .. import ObservationArchive, Task, TaskArchive
+from ..observation import Observation, ObservationList, ObservationState
 
 log = logging.getLogger(__name__)
 

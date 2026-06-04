@@ -1,16 +1,18 @@
 from __future__ import annotations
+
+import abc
 import datetime
 import glob
 import os
 from typing import Any, Literal
-import abc
+
 import yaml
 from filelock import FileLock
 
 from pyobs.utils.time import Time
-from .. import ObservationArchive, TaskArchive
-from .. import Task
-from ..observation import ObservationList, Observation, ObservationState
+
+from .. import ObservationArchive, Task, TaskArchive
+from ..observation import Observation, ObservationList, ObservationState
 
 
 class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):

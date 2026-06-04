@@ -1,12 +1,14 @@
 import logging
 from typing import Any, cast
+
 import astropy.units as u
 
 from pyobs.robotic.observation import ObservationList
 from pyobs.utils.time import Time
+
+from ...object import Object
 from ._portal import Portal
 from .configdb import ConfigDB
-from ...object import Object
 
 log = logging.getLogger(__name__)
 

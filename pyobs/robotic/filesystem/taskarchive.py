@@ -3,10 +3,11 @@ import logging
 import os
 from typing import Any
 
-from pyobs.utils.time import Time
 from pyobs.robotic.taskarchive import TaskArchive
-from ..task import Task, Project
+from pyobs.utils.time import Time
+
 from ...vfs import VirtualFileSystem
+from ..task import Project, Task
 
 log = logging.getLogger(__name__)
 

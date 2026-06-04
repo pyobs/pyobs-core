@@ -1,29 +1,30 @@
 import asyncio
 import logging
 import time
-
-import numpy as np
 from typing import Any, cast
 
+import numpy as np
+
+import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
-    IBinning,
-    IWindow,
-    IExposureTime,
-    IRoof,
-    IAutoGuiding,
-    ITelescope,
     IAcquisition,
+    IAutoGuiding,
+    IBinning,
     ICamera,
+    IExposureTime,
     IFilters,
     IImageType,
     IPointingRaDec,
+    IRoof,
+    ITelescope,
+    IWindow,
 )
-from .script import LcoScript
 from pyobs.robotic.task import TaskData
 from pyobs.utils.enums import ImageType
-import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
+
+from .script import LcoScript
 
 log = logging.getLogger(__name__)
 

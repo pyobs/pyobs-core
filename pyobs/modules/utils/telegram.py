@@ -375,9 +375,7 @@ class Telegram(Module):
                 + ", ".join([f'"{p}"' if isinstance(p, str) else str(p) for p in context.user_data["params"]])
                 + ")"
             )
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id, text="Executing #%d:\n%s" % (call_id, command)
-            )
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Executing #{call_id}:\n{command}")
 
             # start call
             asyncio.create_task(
@@ -426,14 +424,14 @@ class Telegram(Module):
 
         # set message
         if response is None:
-            message = "Finished #%d." % call_id
+            message = f"Finished #{call_id}."
 
         else:
             # format message
             with io.StringIO() as sio:
                 # format response
                 pprint(response, stream=sio, indent=2)
-                message = "Finished #%d:\n%s" % (call_id, sio.getvalue())
+                message = f"Finished #{call_id}:\n{sio.getvalue()}"
 
         # send reply
         await context.bot.send_message(chat_id=chat_id, text=message)

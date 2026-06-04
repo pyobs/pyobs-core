@@ -1,20 +1,23 @@
 from __future__ import annotations
+
 import asyncio
 import logging
 import multiprocessing as mp
-from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any
+
 import astroplan
 import astropy.units as u
-from astroplan import ObservingBlock, FixedTarget
+from astroplan import FixedTarget, ObservingBlock
 
 from pyobs.object import Object
-from .taskscheduler import TaskScheduler
-from .targets import SiderealTarget
 from pyobs.utils.time import Time
 
+from .targets import SiderealTarget
+from .taskscheduler import TaskScheduler
+
 if TYPE_CHECKING:
-    from pyobs.robotic import Observation, Task, ObservationList, Project
+    from pyobs.robotic import Observation, ObservationList, Project, Task
 
 log = logging.getLogger(__name__)
 

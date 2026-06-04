@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
 
+from typing import TYPE_CHECKING, Any
+
+from .. import TaskRunner
 from . import LcoTask
 from ._portal import LcoRequest
-from .. import TaskRunner
 
 if TYPE_CHECKING:
     from ..task import Task

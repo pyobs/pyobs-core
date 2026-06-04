@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import abc
 from abc import ABCMeta
-from astropy.coordinates import SkyCoord
 from typing import TYPE_CHECKING
+
+from astropy.coordinates import SkyCoord
 
 from pyobs.utils.serialization import PolymorphicBaseModel
 from pyobs.utils.time import Time

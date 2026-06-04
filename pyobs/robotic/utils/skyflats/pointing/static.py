@@ -1,12 +1,13 @@
 import logging
 from typing import Self
 
-from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 from pydantic import model_validator
 
 from pyobs.interfaces import IPointingAltAz
 from pyobs.utils.time import Time
+
 from .base import SkyFlatsBasePointing
 
 log = logging.getLogger(__name__)

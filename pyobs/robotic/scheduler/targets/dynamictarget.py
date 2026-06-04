@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from astropy.coordinates import SkyCoord
-from pydantic import PrivateAttr, ConfigDict
+from pydantic import ConfigDict, PrivateAttr
 
 from pyobs.utils.time import Time
-from .target import Target
+
 from .picker import Picker
+from .target import Target
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task

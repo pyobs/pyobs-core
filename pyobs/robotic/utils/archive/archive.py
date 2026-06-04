@@ -1,9 +1,10 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
-from typing import Any, TYPE_CHECKING
 
-from pyobs.utils.serialization import PolymorphicBaseModel
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Any
+
 from pyobs.utils.enums import ImageType
+from pyobs.utils.serialization import PolymorphicBaseModel
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:

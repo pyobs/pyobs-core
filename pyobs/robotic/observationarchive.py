@@ -1,13 +1,14 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
-from typing import Any, TYPE_CHECKING
 
-from pyobs.utils.time import Time
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Any
+
 from pyobs.object import Object
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from . import Task, TaskArchive
-    from .observation import ObservationList, Observation, ObservationState
+    from .observation import Observation, ObservationList, ObservationState
 
 
 class ObservationArchive(Object, metaclass=ABCMeta):

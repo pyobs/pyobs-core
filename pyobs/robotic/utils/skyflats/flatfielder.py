@@ -1,33 +1,34 @@
 from __future__ import annotations
 
 import asyncio
-from enum import Enum
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
+from enum import Enum
 from typing import Any, cast
-from collections.abc import Coroutine
-import astropy.units as u
-from astropy.time import TimeDelta
-import numpy as np
 
+import astropy.units as u
+import numpy as np
+from astropy.time import TimeDelta
+
+from pyobs.images import Image
+from pyobs.interfaces import (
+    IBinning,
+    ICamera,
+    IExposureTime,
+    IFilters,
+    IImageType,
+    IPointingAltAz,
+    ITelescope,
+    IWindow,
+)
 from pyobs.object import Object
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import fitssec
 from pyobs.utils.parallel import Future, event_wait
 from pyobs.utils.time import Time
+
 from .exptimeeval import ExpTimeEval
 from .pointing import SkyFlatsBasePointing
-from pyobs.interfaces import (
-    ITelescope,
-    ICamera,
-    IFilters,
-    IExposureTime,
-    IBinning,
-    IWindow,
-    IImageType,
-    IPointingAltAz,
-)
-from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 

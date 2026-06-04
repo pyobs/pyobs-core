@@ -4,13 +4,14 @@ import asyncio
 import logging
 from typing import Any, cast
 from urllib.parse import urljoin
-from pydantic import Field, ConfigDict
-from astropydantic import AstroPydanticTime  # type: ignore
+
 import aiohttp
+from astropydantic import AstroPydanticTime  # type: ignore
+from pydantic import ConfigDict, Field
 
 from pyobs.object import Object
-from pyobs.utils.time import Time
 from pyobs.utils.serialization import BaseModel
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 

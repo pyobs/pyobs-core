@@ -2,17 +2,19 @@ import asyncio
 import asyncio.exceptions
 import logging
 from typing import Any
+
 import aiodns
-from astropy.time import TimeDelta
 import astropy.units as u
+from astropy.time import TimeDelta
 
 from pyobs.robotic.observation import Observation, ObservationList
 from pyobs.utils.time import Time
-from ._portal import Portal
+
 from ...object import Object
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
 from ...utils.parallel import acquire_lock
+from ._portal import Portal
 
 log = logging.getLogger(__name__)
 

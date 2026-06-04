@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 from typing import Any
 
 from pyobs.object import Object
+
 from . import ObservationArchive, TaskArchive
 from .task import Task, TaskData
 

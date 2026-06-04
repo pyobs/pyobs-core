@@ -1,16 +1,20 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import astroplan
-import astropy.units as u
 import astropy.coordinates
+import astropy.units as u
 from pydantic import Field
 
 from .constraint import Constraint
 
 if TYPE_CHECKING:
     from astropy.time import Time
-    from ..dataprovider import DataProvider
+
     from pyobs.robotic import Task
+
+    from ..dataprovider import DataProvider
 
 
 class MoonSeparationConstraint(Constraint):

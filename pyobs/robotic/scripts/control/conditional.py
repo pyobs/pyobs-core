@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
 import logging
-from typing import Any, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData

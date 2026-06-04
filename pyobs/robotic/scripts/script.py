@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyobs.utils.serialization import PolymorphicBaseModel
 

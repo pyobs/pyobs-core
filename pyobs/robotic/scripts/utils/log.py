@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

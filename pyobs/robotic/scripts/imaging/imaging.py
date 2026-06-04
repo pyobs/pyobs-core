@@ -1,25 +1,27 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from pydantic import PrivateAttr, BaseModel, Field
-from typing import Any, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
+from pydantic import BaseModel, Field, PrivateAttr
+
+import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
-    IAutoGuiding,
-    ITelescope,
     IAcquisition,
-    ICamera,
-    IFilters,
-    IPointingRaDec,
+    IAutoGuiding,
     IBinning,
-    IWindow,
+    ICamera,
     IExposureTime,
+    IFilters,
     IImageType,
+    IPointingRaDec,
+    ITelescope,
+    IWindow,
 )
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType, MotionStatus
-import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
 

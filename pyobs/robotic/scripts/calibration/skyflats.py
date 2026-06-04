@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
-from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
+from pyobs.interfaces import IBinning, IFilters, IFlatField, IRoof, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.robotic.utils.skyflats.scheduler import Scheduler, SchedulerItem

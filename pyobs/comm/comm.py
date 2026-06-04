@@ -3,7 +3,8 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Coroutine
-from typing import Any, Type, TYPE_CHECKING, Callable, TypeVar, overload
+from typing import Any, TYPE_CHECKING, TypeVar, overload
+from collections.abc import Callable
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
@@ -27,14 +28,13 @@ class Comm:
 
     def __init__(self, cache_proxies: bool = True):
         """Creates a comm module."""
-        from pyobs.modules import Module
 
         self._proxies: dict[str, Proxy] = {}
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
         self._logging_task: asyncio.Task[Any] | None = None
-        self._event_handlers: dict[Type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._closing = asyncio.Event()
 
     @property
@@ -127,14 +127,12 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType]) -> ProxyType: ...
+    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> ProxyType: ...
 
     @overload
-    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any: ...
+    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any: ...
 
-    async def proxy(
-        self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None
-    ) -> Any | ProxyType:
+    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -182,7 +180,7 @@ class Comm:
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
     async def safe_proxy(
-        self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None
+        self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
     ) -> Any | ProxyType | None:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
@@ -219,7 +217,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    async def clients_with_interface(self, interface: Type[Interface]) -> list[str]:
+    async def clients_with_interface(self, interface: type[Interface]) -> list[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:
@@ -230,7 +228,7 @@ class Comm:
         """
         return [c for c in self.clients if await self._supports_interface(c, interface)]
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -244,7 +242,7 @@ class Comm:
         """
         raise NotImplementedError
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -257,7 +255,7 @@ class Comm:
         raise NotImplementedError
 
     @staticmethod
-    def _interface_names_to_classes(interfaces: list[str]) -> list[Type[Interface]]:
+    def _interface_names_to_classes(interfaces: list[str]) -> list[type[Interface]]:
         """Converts a list of interface names to interface classes.
 
         Args:
@@ -342,7 +340,7 @@ class Comm:
         """
         pass
 
-    def _get_derived_events(self, event: Type[Event]) -> list[Type[Event]]:
+    def _get_derived_events(self, event: type[Event]) -> list[type[Event]]:
         """Return list of given event itself and all events derived from it.
 
         Args:
@@ -353,14 +351,14 @@ class Comm:
         """
         import pyobs.events
 
-        event_classes: list[Type[Event]] = []
+        event_classes: list[type[Event]] = []
         for cls in inspect.getmembers(pyobs.events, inspect.isclass):
             if issubclass(cls[1], event):
                 event_classes.append(cls[1])
         return event_classes
 
     async def register_event(
-        self, event_class: Type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+        self, event_class: type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
@@ -390,7 +388,7 @@ class Comm:
             await self._register_events(event_classes, handler)
 
     async def _register_events(
-        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+        self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         pass
 

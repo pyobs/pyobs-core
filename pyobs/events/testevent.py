@@ -3,7 +3,9 @@ from typing import Any, TypedDict
 
 from .event import Event
 
-DataType = TypedDict("DataType", {"message": str | None})
+
+class DataType(TypedDict):
+    message: str | None
 
 
 class TestEvent(Event):

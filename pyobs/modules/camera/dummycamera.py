@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import glob
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import NamedTuple, Any, TYPE_CHECKING
 
 from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
@@ -34,7 +34,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self,
         readout_time: float = 2,
         sim: dict[str, Any] | None = None,
-        world: "SimWorld" | None = None,
+        world: SimWorld | None = None,
         **kwargs: Any,
     ):
         """Creates a new dummy cammera.
@@ -123,7 +123,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
         # start exposure
         log.info("Starting exposure with %s shutter...", "open" if open_shutter else "closed")
-        date_obs = datetime.now(timezone.utc)
+        date_obs = datetime.now(UTC)
         self._exposing = True
 
         # request image

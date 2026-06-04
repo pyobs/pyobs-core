@@ -92,7 +92,7 @@ class LcoScheduleReader(Object):
                 error_logger.info("Successfully updated schedule.")
             except asyncio.CancelledError:
                 return
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # do nothing
                 error_logger.warning("Could not retrieve schedule.")
             except:

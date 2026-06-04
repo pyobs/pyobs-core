@@ -319,7 +319,7 @@ class Portal(Object):
                 if response.status != 200:
                     log.error("Could not update configuration status: %s", await response.text())
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # schedule re-attempt for sending
             asyncio.create_task(self._update_configuration_status_later(status_id, status))
 

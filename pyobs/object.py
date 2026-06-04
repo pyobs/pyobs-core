@@ -16,7 +16,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Coroutine, Callable
-from typing import TypeVar, Type, Any, overload, TYPE_CHECKING, Literal
+from typing import TypeVar, Any, overload, TYPE_CHECKING, Literal
 import logging
 import pytz
 from astroplan import Observer
@@ -497,7 +497,7 @@ class Object(PrivateAttrMixin):
     def get_safe_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
-        object_class: Type[ObjectClass],
+        object_class: type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> ObjectClass | None: ...

@@ -1,7 +1,8 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Coroutine, Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
+from collections.abc import Coroutine, Callable
 import time
 
 if TYPE_CHECKING:

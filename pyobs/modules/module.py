@@ -3,7 +3,8 @@ import asyncio
 import inspect
 import logging
 import typing
-from typing import Any, Callable, TypeVar, cast
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 from py_expression_eval import Parser
 import packaging.version
 

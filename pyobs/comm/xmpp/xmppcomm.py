@@ -9,7 +9,8 @@ import ssl
 
 import time
 from collections.abc import Coroutine
-from typing import Any, Callable, Type, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
+from collections.abc import Callable
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
@@ -119,7 +120,7 @@ class XmppComm(Comm):
         # variables
         self._connected = False
         self._online_clients: list[str] = []
-        self._interface_cache: dict[str, asyncio.Future[list[Type[Interface]]]] = {}
+        self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
         self._user = user
         self._password = password
         self._domain = domain
@@ -286,7 +287,7 @@ class XmppComm(Comm):
         """
         return name if "@" in name else "%s@%s/%s" % (name, self._domain, self._resource)
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -345,7 +346,7 @@ class XmppComm(Comm):
         # finished
         return interface_names
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -516,7 +517,7 @@ class XmppComm(Comm):
         log.debug("%s successfully sent.", event.__class__.__name__)
 
     async def _register_events(
-        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+        self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         # loop events
         for ev in events:

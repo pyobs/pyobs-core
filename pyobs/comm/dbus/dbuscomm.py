@@ -14,14 +14,13 @@ import uuid
 from enum import Enum
 from typing import (
     Any,
-    Type,
     get_args,
-    Awaitable,
     no_type_check_decorator,
     get_origin,
     Protocol,
     Union,
 )
+from collections.abc import Awaitable
 from dbus_next.aio import MessageBus
 import dbus_next.service
 
@@ -50,7 +49,7 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
     @no_type_check_decorator
     @dbus_next.service.method(sender_keyword="sender")  # type: ignore
-    async def handle_event(self, event: "s", sender):  # type: ignore # noqa: F821
+    async def handle_event(self, event: s, sender):  # type: ignore # noqa: F821
         # convert event to dict
         try:
             d = json.loads(event.replace("'", '"'))
@@ -68,7 +67,7 @@ class ServiceInterface(dbus_next.service.ServiceInterface):
 
     @no_type_check_decorator
     @dbus_next.service.method()  # type: ignore
-    def set_timeout(self, uid: "s", timeout: "d"):  # type: ignore # noqa: F821
+    def set_timeout(self, uid: s, timeout: d):  # type: ignore # noqa: F821
         self._comm.set_timeout(uid, timeout)
 
 
@@ -115,7 +114,7 @@ class DbusComm(Comm):
         self._dbus_classes: dict[str, dbus_next.service.ServiceInterface] = {}
         self._dbus_introspection: dbus_next.aio.ProxyInterface | None = None
         self._dbus_introspection_cache: dict[str, dbus_next.introspection.Node] = {}
-        self._interfaces: dict[str, list[Type[Interface]]] = {}
+        self._interfaces: dict[str, list[type[Interface]]] = {}
         self._futures: dict[str, Future] = {}
 
     async def open(self) -> None:
@@ -181,7 +180,7 @@ class DbusComm(Comm):
         modules = list(map(lambda d: d[len(prefix) :], filter(r.match, data)))
 
         # get interfaces
-        interfaces: dict[str, list[Type[Interface]]] = {}
+        interfaces: dict[str, list[type[Interface]]] = {}
         for m in modules:
             prefix = f"{self._domain}.{m}.interfaces."
             iface_names = list(map(lambda d: d[len(prefix) :], filter(lambda d: d.startswith(prefix), data)))
@@ -414,7 +413,7 @@ class DbusComm(Comm):
         # return names
         return list(self._interfaces.keys())
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -430,7 +429,7 @@ class DbusComm(Comm):
         # return list
         return self._interfaces[client]
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:

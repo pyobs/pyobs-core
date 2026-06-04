@@ -136,7 +136,7 @@ class ProjectionFocusSeries(FocusSeries):
         min_focus = np.min(focus)
         max_focus = np.max(focus)
         if foc < min_focus or foc > max_focus:
-            raise ValueError("New focus out of bounds: {0:.3f}+-{1:.3f}mm.".format(foc, err))
+            raise ValueError(f"New focus out of bounds: {foc:.3f}+-{err:.3f}mm.")
 
         # return it
         return float(foc), float(err)

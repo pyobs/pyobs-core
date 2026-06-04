@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import io
 import logging
 
@@ -371,7 +371,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
             # store everything
             logging.info("Preparing to catch next image...")
             self._next_image = NextImage(
-                date_obs=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                date_obs=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f"),
                 image_type=self._image_type,
                 header_futures=await self.request_fits_headers(),
                 broadcast=broadcast,

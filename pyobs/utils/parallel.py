@@ -24,7 +24,7 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
     try:
         await asyncio.wait_for(lock.acquire(), timeout)
         return True
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
 
 

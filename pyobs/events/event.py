@@ -33,7 +33,7 @@ class Event:
         return cls(**d)
 
 
-class EventFactory(object):
+class EventFactory:
     packages = [__package__]
 
     @staticmethod

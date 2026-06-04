@@ -4,7 +4,8 @@ import asyncio
 from enum import Enum
 import logging
 from collections.abc import Callable
-from typing import Any, cast, Coroutine
+from typing import Any, cast
+from collections.abc import Coroutine
 import astropy.units as u
 from astropy.time import TimeDelta
 import numpy as np

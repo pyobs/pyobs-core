@@ -75,7 +75,7 @@ class SMBFile(VFSFile):
         path = str(self._full_path.parent)
         try:
             smbclient.lstat(path)
-        except IOError:
+        except OSError:
             if mkdir:
                 smbclient.mkdir(path)
             else:

@@ -6,7 +6,7 @@ IN = TypeVar("IN")
 OUT = TypeVar("OUT")
 
 
-class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
+class GuidingStatistics(Generic[IN, OUT], metaclass=ABCMeta):
     """Calculates statistics for guiding."""
 
     def __init__(self) -> None:

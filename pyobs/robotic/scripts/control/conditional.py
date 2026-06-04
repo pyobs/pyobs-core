@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import logging
 from typing import Any, TYPE_CHECKING
 
@@ -20,7 +20,7 @@ class ConditionalRunner(Script):
 
     def __get_script(self) -> Script | None:
         # evaluate condition
-        ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
+        ret = eval(self.condition, {"now": datetime.now(UTC)})
 
         # run scripts
         if ret:

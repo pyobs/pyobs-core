@@ -239,7 +239,7 @@ class YamlObservationArchive(FileSystemObservationArchive):
         FileSystemObservationArchive.__init__(self, "yaml", **kwargs)
 
     async def _load_observations_from_file(self, path: str) -> ObservationList:
-        with open(path, "r") as f:
+        with open(path) as f:
             observations = yaml.safe_load(f)
             return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 

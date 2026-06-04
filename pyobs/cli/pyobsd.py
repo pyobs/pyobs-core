@@ -83,7 +83,7 @@ class PyobsDaemonCLI(CLI):
                 daemon.list()
 
 
-class PyobsDaemon(object):
+class PyobsDaemon:
     def __init__(
         self,
         config_path: str,
@@ -291,7 +291,7 @@ class PyobsDaemon(object):
             return None
 
         # get pid
-        with open(pid_file, "r") as f:
+        with open(pid_file) as f:
             return int(f.read())
 
 

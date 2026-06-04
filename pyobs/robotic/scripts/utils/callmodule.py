@@ -22,7 +22,7 @@ class CallModuleScript(Script):
     params: dict[str, str | int | float] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _validate_params(self) -> "CallModuleScript":
+    def _validate_params(self) -> CallModuleScript:
         cls = get_class_from_string(self.interface)
         if not hasattr(cls, self.method):
             raise ValueError(f"Method '{self.method}' not found on {self.interface}")

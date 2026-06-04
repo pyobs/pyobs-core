@@ -2,7 +2,9 @@ from typing import Any, TypedDict
 
 from .event import Event
 
-DataType = TypedDict("DataType", {"current": str})
+
+class DataType(TypedDict):
+    current: str
 
 
 class FilterChangedEvent(Event):

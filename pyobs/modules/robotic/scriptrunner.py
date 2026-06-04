@@ -10,7 +10,7 @@ from pyobs.robotic.scripts import Script
 log = logging.getLogger(__name__)
 
 
-async def calc_run_timeout(obj: "ScriptRunner", *args: Any, **kwargs: Any) -> float:
+async def calc_run_timeout(obj: ScriptRunner, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for run()."""
     return obj.timeout
 

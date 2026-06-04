@@ -216,7 +216,7 @@ class SepSourceDetection(SourceDetection):
     def remove_background(
         data: npt.NDArray[np.floating[Any]],
         mask: npt.NDArray[np.floating[Any]] | None = None,
-    ) -> tuple[npt.NDArray[np.floating[Any]], "Background"]:
+    ) -> tuple[npt.NDArray[np.floating[Any]], Background]:
         """Remove background from image in data.
 
         Args:
@@ -243,7 +243,7 @@ class SepSourceDetection(SourceDetection):
     async def _extract_sources(
         self,
         data: npt.NDArray[np.floating[Any]],
-        bkg: "Background",
+        bkg: Background,
         mask: npt.NDArray[np.floating[Any]],
     ) -> npt.NDArray[Any]:
         import sep

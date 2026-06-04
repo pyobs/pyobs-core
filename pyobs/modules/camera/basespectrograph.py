@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, NamedTuple
@@ -92,7 +92,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         header_futures_before = await self.request_fits_headers(before=True)
 
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.now(timezone.utc))
+        self._exposure = ExposureInfo(start=datetime.now(UTC))
         try:
             hdulist = await self._expose(abort_event=self.expose_abort)
             if hdulist is None or hdulist[0].data is None:

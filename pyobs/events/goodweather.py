@@ -4,7 +4,9 @@ from typing import Any, TypedDict
 from pyobs.utils.time import Time
 from pyobs.events.event import Event
 
-DataType = TypedDict("DataType", {"eta": str | None})
+
+class DataType(TypedDict):
+    eta: str | None
 
 
 class GoodWeatherEvent(Event):

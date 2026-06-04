@@ -22,7 +22,7 @@ class SimTelescope(Object):
 
     def __init__(
         self,
-        world: "SimWorld",
+        world: SimWorld,
         position: tuple[float, float] | None = None,
         offsets: tuple[float, float] | None = None,
         pointing_offset: tuple[float, float] | None = None,

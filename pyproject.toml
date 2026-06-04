@@ -104,7 +104,18 @@ build-backend = "hatchling.build"
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
+# Only select specific safe rules
+select = [
+    "G",    # logging format (W1201/W1202 equivalent) - safe to fix
+    "UP",   # pyupgrade - safe for most things
+    "F401", # unused imports - DON'T auto-fix, review manually
+    "I",    # isort - DON'T auto-fix, can break circular import workarounds
+]
+
+# Never auto-fix these
+unfixable = [
+    "I",     # import sorting - can break circular import ordering
+]
 
 [tool.black]
 line-length = 120

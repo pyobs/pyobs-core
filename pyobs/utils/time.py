@@ -4,7 +4,7 @@ TODO: write doc
 
 __title__ = "Time"
 
-from datetime import datetime, timezone, date
+from datetime import datetime, date, UTC
 from typing import cast
 
 import astropy.time
@@ -19,7 +19,7 @@ class Time(astropy.time.Time):  # type: ignore
 
     def __hash__(self) -> int:
         if self.ndim != 0:
-            raise TypeError("unhashable type: '{}'".format(self.__class__.__name__))
+            raise TypeError(f"unhashable type: '{self.__class__.__name__}'")
         return hash((self.jd1, self.jd2, self.scale))
 
     @classmethod
@@ -43,7 +43,7 @@ class Time(astropy.time.Time):  # type: ignore
             such a subclass) at the current time.
         """
         # call `utcnow` immediately to be sure it's ASAP
-        dtnow = datetime.now(timezone.utc)
+        dtnow = datetime.now(UTC)
         return cast(Time, Time(val=dtnow, format="datetime", scale="utc") + Time._now_offset)
 
     def night_obs(self, observer: Observer) -> date:

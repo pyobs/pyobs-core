@@ -32,7 +32,7 @@ class SimCamera(Object):
 
     def __init__(
         self,
-        world: "SimWorld",
+        world: SimWorld,
         image_size: tuple[int, int] | None = None,
         pixel_size: float = 0.015,
         images: str | None = None,

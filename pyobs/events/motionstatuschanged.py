@@ -4,7 +4,10 @@ from typing import Any, TypedDict
 from pyobs.events.event import Event
 from pyobs.utils.enums import MotionStatus
 
-DataType = TypedDict("DataType", {"status": str, "interfaces": dict[str, str]})
+
+class DataType(TypedDict):
+    status: str
+    interfaces: dict[str, str]
 
 
 class MotionStatusChangedEvent(Event):

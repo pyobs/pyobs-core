@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import Awaitable
-from typing import Type, Any
+from typing import Any
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 async def get_coords(
-    obj: IPointingAltAz | IPointingRaDec, mode: Type[IPointingAltAz | IPointingRaDec]
+    obj: IPointingAltAz | IPointingRaDec, mode: type[IPointingAltAz | IPointingRaDec]
 ) -> tuple[float, float]:
     """Gets coordinates from object
 
@@ -34,7 +34,7 @@ async def get_coords(
         raise ValueError("Unknown mode.")
 
 
-def build_skycoord(coord: tuple[float, float], mode: Type[IPointingAltAz | IPointingRaDec]) -> SkyCoord:
+def build_skycoord(coord: tuple[float, float], mode: type[IPointingAltAz | IPointingRaDec]) -> SkyCoord:
     """Build SkyCoord from x/y tuple in given mode.
 
     Args:
@@ -59,7 +59,7 @@ class FollowMixin:
     def __init__(
         self,
         device: str | None,
-        mode: Type[IPointingAltAz | IPointingRaDec],
+        mode: type[IPointingAltAz | IPointingRaDec],
         interval: float = 10,
         tolerance: float = 1,
         only_follow_when_ready: bool = True,

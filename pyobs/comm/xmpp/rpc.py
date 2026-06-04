@@ -2,7 +2,8 @@ from __future__ import annotations
 import copy
 import inspect
 import logging
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
+from collections.abc import Callable
 import slixmpp
 import slixmpp.exceptions
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class RPC(object):
+class RPC:
     """RPC wrapper around XEP0009."""
 
     def __init__(self, comm: XmppComm, client: slixmpp.ClientXMPP, handler: Module | None = None):

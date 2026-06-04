@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import Any, Type, cast, overload, Literal
+from typing import Any, cast, overload, Literal
 from collections.abc import Callable, Awaitable
 import yaml
 from astropy.io import fits
@@ -13,7 +13,7 @@ from .file import VFSFile
 log = logging.getLogger(__name__)
 
 
-class VirtualFileSystem(object):
+class VirtualFileSystem:
     """Base for a virtual file system."""
 
     __module__ = "pyobs.vfs"
@@ -75,7 +75,7 @@ class VirtualFileSystem(object):
 
         # does root exist?
         if root not in self._roots:
-            raise ValueError("Could not find root {0} for file.".format(root))
+            raise ValueError(f"Could not find root {root} for file.")
 
         # create file object
         from pyobs.object import get_object
@@ -253,7 +253,7 @@ class VirtualFileSystem(object):
         # get local path
         return await klass.local_path(path, **self._roots[root])
 
-    def _get_class(self, path: str) -> tuple[Type[VFSFile], str, str]:
+    def _get_class(self, path: str) -> tuple[type[VFSFile], str, str]:
         from pyobs.object import get_class_from_string
 
         # split root

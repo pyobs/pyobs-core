@@ -243,9 +243,7 @@ class ConfigStatus:
         self.reason: str = reason
         self.time_completed: float = 0.0
 
-    def finish(
-        self, state: str | None = None, reason: str | None = None, time_completed: float = 0.0
-    ) -> "ConfigStatus":
+    def finish(self, state: str | None = None, reason: str | None = None, time_completed: float = 0.0) -> ConfigStatus:
         """Finish this status with the given values and the current time.
 
         Args:

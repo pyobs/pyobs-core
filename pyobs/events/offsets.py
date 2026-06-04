@@ -10,7 +10,9 @@ class OffsetsEvent(Event):
     pass
 
 
-DataTypeRaDec = TypedDict("DataTypeRaDec", {"ra": float, "dec": float})
+class DataTypeRaDec(TypedDict):
+    ra: float
+    dec: float
 
 
 class OffsetsRaDecEvent(OffsetsEvent):
@@ -31,7 +33,9 @@ class OffsetsRaDecEvent(OffsetsEvent):
         return self.data["dec"]
 
 
-DataTypeAltAz = TypedDict("DataTypeAltAz", {"alt": float, "az": float})
+class DataTypeAltAz(TypedDict):
+    alt: float
+    az: float
 
 
 class OffsetsAltAzEvent(OffsetsEvent):

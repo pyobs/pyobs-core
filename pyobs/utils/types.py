@@ -4,12 +4,13 @@ import functools
 import inspect
 from inspect import BoundArguments, Parameter
 from enum import Enum
-from typing import Any, get_args, Callable, Type, get_origin
+from typing import Any, get_args, get_origin
+from collections.abc import Callable
 
 
 def iterate_params(
     value: Any,
-    type_hint: Type[Any] | None = None,
+    type_hint: type[Any] | None = None,
     method: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
     """Iterate values and type_hints and call a given method.
@@ -71,7 +72,7 @@ def iterate_params(
 
 def cast_bound_arguments_to_simple(
     bound_arguments: BoundArguments,
-    type_hints: dict[str, Type[Any]],
+    type_hints: dict[str, type[Any]],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
@@ -94,7 +95,7 @@ def cast_bound_arguments_to_simple(
 
 def cast_bound_arguments_to_real(
     bound_arguments: BoundArguments,
-    type_hints: dict[str, Type[Any]],
+    type_hints: dict[str, type[Any]],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
@@ -115,7 +116,7 @@ def cast_bound_arguments_to_real(
 
 def cast_response_to_simple(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
@@ -138,7 +139,7 @@ def cast_response_to_simple(
 
 def cast_response_to_real(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
@@ -161,7 +162,7 @@ def cast_response_to_real(
 
 def __cast_to_simple(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> tuple[bool, Any]:
@@ -202,7 +203,7 @@ def __cast_to_simple(
 
 def __cast_to_real(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> tuple[bool, Any]:

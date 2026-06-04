@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, Type
+from typing import Any
 
 from pyobs.comm import Comm
 from pyobs.comm.comm import ProxyType
@@ -47,12 +47,12 @@ class MockComm(Comm):
         """Name of this client."""
         return "mock"
 
-    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any | ProxyType:
+    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
         if isinstance(name_or_object, str) and name_or_object not in self.modules:
             log.warning("Calling module %s that is not mocked.", name_or_object)
         return await super().proxy(name_or_object, obj_type)
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:

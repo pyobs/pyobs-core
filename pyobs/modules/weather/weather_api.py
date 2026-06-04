@@ -5,7 +5,7 @@ import aiohttp
 from pyobs.utils.enums import WeatherSensors
 
 
-class WeatherApi(object):
+class WeatherApi:
     TIMEOUT = aiohttp.ClientTimeout(total=30)
 
     def __init__(self, url: str) -> None:

@@ -1,23 +1,23 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import numpy as np
 
 
-class RollingTimeAverage(object):
+class RollingTimeAverage:
     def __init__(self, interval: float):
         self._interval = interval
         self._values: list[tuple[datetime, float]] = []
-        self._start_time = datetime.now(timezone.utc)
+        self._start_time = datetime.now(UTC)
 
     def clear(self) -> None:
         self._values = []
-        self._start_time = datetime.now(timezone.utc)
+        self._start_time = datetime.now(UTC)
 
     def add(self, value: float) -> None:
         # add value
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self._values.append((now, value))
 
         # clean up
@@ -29,7 +29,7 @@ class RollingTimeAverage(object):
             return None
 
         # get time
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # go no values older than now-interval?
         if min_interval:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-class WeatherState(object):
+class WeatherState:
     def __init__(self) -> None:
         self._state: dict[str, Any] = {"good": False}
 

@@ -18,8 +18,8 @@ class SimWorld(Object):
     def __init__(
         self,
         time: Time | str | None = None,
-        telescope: "SimTelescope | dict[str, Any] | None" = None,
-        camera: "SimCamera | dict[str, Any] | None" = None,
+        telescope: SimTelescope | dict[str, Any] | None = None,
+        camera: SimCamera | dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """Initializes a new simulated world.

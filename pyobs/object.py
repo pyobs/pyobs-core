@@ -15,9 +15,10 @@ from __future__ import annotations
 import copy
 import datetime
 import inspect
-from collections.abc import Coroutine, Callable
-from typing import TypeVar, Any, overload, TYPE_CHECKING, Literal
 import logging
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
+
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation

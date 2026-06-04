@@ -4,14 +4,15 @@ import logging.handlers
 import os
 import platform
 import signal
-import warnings
 import threading
+import warnings
 from io import StringIO
 from typing import Any, TypedDict
+
 import yaml
 
-from pyobs.object import get_object, get_class_from_string
 from pyobs.modules import Module
+from pyobs.object import get_class_from_string, get_object
 from pyobs.utils.config import pre_process_yaml
 
 # just init logger with something here, will be overwritten in __init__
@@ -210,9 +211,11 @@ class GuiApplication(Application):
         Application.__init__(self, **kwargs)
 
         # import Qt stuff
-        from PySide6.QtWidgets import QApplication
-        from pyobs.utils.modulegui import ModuleGui
         import sys
+
+        from PySide6.QtWidgets import QApplication
+
+        from pyobs.utils.modulegui import ModuleGui
 
         # create Qt app and window
         self._qapp = QApplication(sys.argv)

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, TYPE_CHECKING
-from collections.abc import Coroutine, Callable
 import time
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.object import Object

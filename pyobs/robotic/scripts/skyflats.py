@@ -24,7 +24,7 @@ class SkyFlats(Script):
     telescope: str
     flatfield: str
     functions: FlatFunctions = {}
-    priorities: dict[str, Any]
+    priorities: SkyflatPriorities
     min_exptime: float = 0.5
     max_exptime: float = 5
     timespan: float = 7200
@@ -61,13 +61,10 @@ class SkyFlats(Script):
             InterruptedError: If interrupted
         """
 
-        # get archive and priorities
-        prio = self.pyobs_model_validate(SkyflatPriorities, self.priorities)
-
         # create scheduler
         scheduler = Scheduler(
             self.functions,
-            prio,
+            self.priorities,
             self.observer,
             min_exptime=self.min_exptime,
             max_exptime=self.max_exptime,

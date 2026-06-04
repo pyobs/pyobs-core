@@ -4,10 +4,10 @@ TODO: write doc
 
 __title__ = "Enumerations"
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ModuleState(Enum):
+class ModuleState(StrEnum):
     """Enumerator for module states.
 
     Attributes:
@@ -23,7 +23,7 @@ class ModuleState(Enum):
     LOCAL = "local"
 
 
-class ExposureStatus(Enum):
+class ExposureStatus(StrEnum):
     """Enumerator for camera status.
 
     Attributes:
@@ -39,7 +39,7 @@ class ExposureStatus(Enum):
     ERROR = "error"
 
 
-class ImageType(Enum):
+class ImageType(StrEnum):
     """Enumerator specifying the image type.
 
     Attributes:
@@ -61,7 +61,7 @@ class ImageType(Enum):
     GUIDING = "guiding"
 
 
-class ImageFormat(Enum):
+class ImageFormat(StrEnum):
     """Enumerator for image formats.
 
     Attributes:
@@ -79,7 +79,7 @@ class ImageFormat(Enum):
     RGB24 = "rgb24"
 
 
-class MotionStatus(Enum):
+class MotionStatus(StrEnum):
     """Enumerator for moving device status.
 
     Attributes:
@@ -108,7 +108,7 @@ class MotionStatus(Enum):
     UNKNOWN = "unknown"
 
 
-class WeatherSensors(Enum):
+class WeatherSensors(StrEnum):
     """Enumerator for sensors of a weather station.
 
     Attributes:

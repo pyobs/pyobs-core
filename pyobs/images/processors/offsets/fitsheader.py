@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 import numpy as np
 
 from pyobs.images import Image
-from .offsets import Offsets
+
 from ...meta.genericoffset import GenericOffset
+from .offsets import Offsets
 
 log = logging.getLogger(__name__)
 

@@ -3,9 +3,8 @@ from typing import Any
 
 from astropy.time import Time
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 

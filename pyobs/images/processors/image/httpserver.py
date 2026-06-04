@@ -1,9 +1,11 @@
 import logging
 from typing import Any
+
 from aiohttp import web
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
+
 from .saveimage import SaveImage
 
 log = logging.getLogger(__name__)

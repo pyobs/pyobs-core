@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
 import logging
+from typing import Any
+
 import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class AddMask(ImageProcessor):
 
     def _get_mask(self, image: Image) -> npt.NDArray[np.floating[Any]]:
         instrument = image.header["INSTRUME"]
-        binning = "%dx%d" % (image.header["XBINNING"], image.header["YBINNING"])
+        binning = f"{image.header['XBINNING']}x{image.header['YBINNING']}"
 
         return self._masks[instrument][binning].copy()
 

@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from .interface import Interface
 from pyobs.utils.enums import ImageType
+
+from .interface import Interface
 
 
 class IImageType(Interface, metaclass=ABCMeta):

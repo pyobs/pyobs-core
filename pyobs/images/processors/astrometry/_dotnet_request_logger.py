@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 
 from pyobs.images import Image

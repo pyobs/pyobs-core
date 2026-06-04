@@ -3,8 +3,8 @@ import logging
 import os.path
 from typing import Any
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.images.processors.annotation._pillow import PillowHelper
 from pyobs.utils.fits import FilenameFormatter
 

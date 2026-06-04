@@ -1,8 +1,9 @@
 from typing import Any
 
-from .offsets import Offsets
 from pyobs.images import Image
 from pyobs.object import get_class_from_string
+
+from .offsets import Offsets
 
 
 class DummyOffsets(Offsets):

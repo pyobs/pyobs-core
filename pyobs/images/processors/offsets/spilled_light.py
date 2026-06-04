@@ -1,11 +1,13 @@
 import logging
 from typing import Any, cast, overload
+
 import numpy as np
 import numpy.typing as npt
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.interfaces import IMultiFiber
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

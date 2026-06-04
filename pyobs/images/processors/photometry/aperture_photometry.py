@@ -4,7 +4,9 @@ from typing import Any
 
 from pyobs.images import Image
 from pyobs.images.processors.photometry import Photometry
-from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
+from pyobs.images.processors.photometry._photometry_calculator import (
+    _PhotometryCalculator,
+)
 
 log = logging.getLogger(__name__)
 

@@ -4,9 +4,8 @@ from typing import Any
 import numpy as np
 import scipy.ndimage as ndi
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 

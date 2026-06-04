@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, cast
 import logging
+from typing import Any, cast
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
 from pyobs.images.processors.calibration._ccddata_calibrator import _CCDDataCalibrator
 from pyobs.robotic.utils.archive import Archive

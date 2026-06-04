@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
 from astropy.table import QTable, Table
-from photutils.aperture import CircularAperture, CircularAnnulus, ApertureMask, aperture_photometry
+from photutils.aperture import (
+    ApertureMask,
+    CircularAnnulus,
+    CircularAperture,
+    aperture_photometry,
+)
 
 from pyobs.images import Image
-from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
+from pyobs.images.processors.photometry._photometry_calculator import (
+    _PhotometryCalculator,
+)
 
 
 class _PhotUtilAperturePhotometry(_PhotometryCalculator):

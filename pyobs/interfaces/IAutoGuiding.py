@@ -1,7 +1,7 @@
 from abc import ABCMeta
 
-from .IStartStop import IStartStop
 from .IExposureTime import IExposureTime
+from .IStartStop import IStartStop
 
 
 class IAutoGuiding(IStartStop, IExposureTime, metaclass=ABCMeta):

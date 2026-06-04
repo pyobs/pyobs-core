@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.table import Table
 
 from pyobs.images import Image
 from pyobs.images.processors.detection import SepSourceDetection
-from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
+from pyobs.images.processors.photometry._photometry_calculator import (
+    _PhotometryCalculator,
+)
 
 
 class _SepAperturePhotometry(_PhotometryCalculator):

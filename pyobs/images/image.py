@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 import copy
 import io
-from typing import TypeVar, Any, cast
+from typing import Any, TypeVar, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
-from astropy.io.fits import table_to_hdu, ImageHDU
-from astropy.table import Table
+from astropy.io.fits import ImageHDU, table_to_hdu
 from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.table import Table
 from numpy.typing import NDArray
 
-from pyobs.utils.fits import FilenameFormatter
 import pyobs.utils.exceptions as exc
+from pyobs.utils.fits import FilenameFormatter
 
 MetaClass = TypeVar("MetaClass")
 

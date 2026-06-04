@@ -4,11 +4,12 @@ import logging
 from typing import Any
 
 from astropy.coordinates import Angle
-from astropy.table import Table, Row
+from astropy.table import Row, Table
 from astropy.wcs import WCS
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance
+from pyobs.images.meta import OnSkyDistance, PixelOffsets
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

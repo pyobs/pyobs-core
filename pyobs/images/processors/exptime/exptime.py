@@ -11,7 +11,6 @@ from pyobs.images import Image
 from pyobs.images.meta.exptime import ExpTime
 from pyobs.images.processor import ImageProcessor
 
-
 log = logging.getLogger(__name__)
 
 

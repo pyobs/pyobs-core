@@ -4,10 +4,12 @@ import asyncio
 import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 import numpy.typing as npt
 
 from pyobs.images import Image
+
 from ._pysep_stats_calculator import PySepStatsCalculator
 from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection

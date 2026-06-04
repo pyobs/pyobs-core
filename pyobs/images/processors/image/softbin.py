@@ -1,11 +1,11 @@
 import logging
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 

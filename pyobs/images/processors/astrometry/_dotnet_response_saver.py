@@ -5,8 +5,8 @@ from typing import Any
 
 from astropy.wcs import WCS
 
-from pyobs.images import Image
 import pyobs.utils.exceptions as exc
+from pyobs.images import Image
 
 
 class _ResponseImageWriter:

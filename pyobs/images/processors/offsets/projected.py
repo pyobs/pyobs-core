@@ -1,6 +1,7 @@
 import logging
 import re
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import UnivariateSpline
@@ -8,6 +9,7 @@ from scipy.optimize import fmin
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

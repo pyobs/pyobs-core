@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+
 from astropy.table import QTable
 
 from pyobs.images import Image

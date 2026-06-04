@@ -3,15 +3,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
+
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 
 from pyobs.images import Image
+
+from .._daobackgroundremover import _DaoBackgroundRemover
 from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection
-from .._daobackgroundremover import _DaoBackgroundRemover
 
 log = logging.getLogger(__name__)
 

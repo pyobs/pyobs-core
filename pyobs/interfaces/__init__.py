@@ -13,7 +13,6 @@ __title__ = "Interfaces"
 
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
-from .ILatLon import ILatLon
 from .IAutoFocus import IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
@@ -22,6 +21,7 @@ from .ICalibrate import ICalibrate
 from .ICamera import ICamera
 from .IConfig import IConfig
 from .ICooling import ICooling
+from .IData import IData
 from .IDome import IDome
 from .IExposure import IExposure
 from .IExposureTime import IExposureTime
@@ -29,16 +29,19 @@ from .IFilters import IFilters
 from .IFitsHeaderAfter import IFitsHeaderAfter
 from .IFitsHeaderBefore import IFitsHeaderBefore
 from .IFlatField import IFlatField
-from .IFocusModel import IFocusModel
 from .IFocuser import IFocuser
+from .IFocusModel import IFocusModel
 from .IGain import IGain
 from .IImageFormat import IImageFormat
-from .IData import IData
 from .IImageType import IImageType
+from .ILatLon import ILatLon
 from .IMode import IMode
 from .IModule import IModule
 from .IMotion import IMotion
 from .IMultiFiber import IMultiFiber
+from .interface import Interface
+from .IOffsetsAltAz import IOffsetsAltAz
+from .IOffsetsRaDec import IOffsetsRaDec
 from .IPointingAltAz import IPointingAltAz
 from .IPointingHelioprojective import IPointingHelioprojective
 from .IPointingHGS import IPointingHGS
@@ -50,17 +53,14 @@ from .IRotation import IRotation
 from .IRunnable import IRunnable
 from .IRunning import IRunning
 from .IScriptRunner import IScriptRunner
+from .ISpectrograph import ISpectrograph
 from .IStartStop import IStartStop
 from .ISyncTarget import ISyncTarget
 from .ITelescope import ITelescope
 from .ITemperatures import ITemperatures
-from .IOffsetsAltAz import IOffsetsAltAz
-from .IOffsetsRaDec import IOffsetsRaDec
-from .ISpectrograph import ISpectrograph
 from .IVideo import IVideo
 from .IWeather import IWeather
 from .IWindow import IWindow
-from .interface import Interface
 
 __all__ = [
     "IAbortable",

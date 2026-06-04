@@ -5,8 +5,8 @@ from typing import Any
 import pandas as pd
 from astropy.io.fits import Header
 
-from pyobs.images import Image
 import pyobs.utils.exceptions as exc
+from pyobs.images import Image
 from pyobs.images.processors.astrometry._dotnet_request import _DotNetRequest
 
 

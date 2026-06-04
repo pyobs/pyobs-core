@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import astropy.units as u
 from astropy.nddata import CCDData
 
 from pyobs.images import Image
 from pyobs.utils.pipeline import Pipeline
-
-import astropy.units as u
 
 
 class _CCDDataCalibrator:

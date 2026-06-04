@@ -3,11 +3,12 @@ import logging
 import os
 from datetime import datetime
 from typing import Any
+
 import aiohttp
 import numpy as np
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 

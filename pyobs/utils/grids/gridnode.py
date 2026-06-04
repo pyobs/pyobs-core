@@ -109,9 +109,9 @@ class GridNode(Object, metaclass=abc.ABCMeta):
             return
         if isinstance(point, SkyCoord):
             if hasattr(point, "ra") and hasattr(point, "dec"):
-                log.info(f"Picked point at {point.to_string('hmsdms', precision=1)}.")
+                log.info("Picked point at %s.", point.to_string("hmsdms", precision=1))
             elif hasattr(point, "az") and hasattr(point, "alt"):
-                log.info(f"Picked point at Alt={point.alt.degree:.2f}°, Az={point.az.degree:.2f}°.")
+                log.info("Picked point at Alt=%.2f°, Az=%.2f°.", point.alt.degree, point.az.degree)
 
     @abc.abstractmethod
     def log_last(self) -> None:

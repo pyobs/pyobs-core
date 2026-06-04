@@ -153,7 +153,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             try:
                 image = await self.run_pipeline(image)
             except Exception as e:
-                log.warning(f"Error in pipeline: {e}. Skipping image.")
+                log.warning("Error in pipeline: %s. Skipping image.", e)
                 continue
 
             # calculate distance from offset

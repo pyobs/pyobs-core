@@ -76,7 +76,7 @@ class EventFactory(object):
             return obj
 
         except ValueError as e:
-            log.warning(f"Could not create event {obj_dict['type']}: {e}")
+            log.warning("Could not create event %s: %s", obj_dict["type"], e)
             return None
 
 

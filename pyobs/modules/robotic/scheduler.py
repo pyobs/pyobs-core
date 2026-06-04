@@ -147,7 +147,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             schedule = await self._schedule.get_schedule()
             removed_from_schedule = [s for s in schedule if s.task.id in removed]
             if len(removed_from_schedule) == 0:
-                log.info(f"Found {len(removed)} tasks, but none of them was scheduled.")
+                log.info("Found %s tasks, but none of them was scheduled.", len(removed))
                 self._need_update = False
 
         # store blocks

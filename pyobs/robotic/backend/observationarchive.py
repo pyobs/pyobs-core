@@ -66,7 +66,7 @@ class BackendObservationArchive(ObservationArchive):
                         log.info("Downloaded new schedule.")
                     else:
                         obs = self._observations[0]
-                        log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
+                        log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
                     self._last_update = last_update
             except Exception as e:
                 log.error("Failed to update observations from backend: %s", e)

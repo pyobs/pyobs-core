@@ -298,7 +298,7 @@ class Portal(Object):
         # errors?
         if "errors" in data and len(data["errors"]) > 0:
             for err in data["errors"].values():
-                log.warning(f"Error from portal: {err}")
+                log.warning("Error from portal: %s", err)
 
     async def update_configuration_status(self, status_id: int, status: dict[str, Any]) -> None:
         """Send report to LCO portal

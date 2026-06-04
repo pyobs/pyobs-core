@@ -192,12 +192,12 @@ class LcoTask(Task):
 
         except exc.InvocationError as e:
             if isinstance(e.exception, exc.AbortedError):
-                log.warning(f"Task execution was aborted: {e.exception}")
+                log.warning("Task execution was aborted: %s", e.exception)
                 config_status.finish(
                     state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
                 )
             else:
-                log.warning(f"Error during task execution: {e.exception}")
+                log.warning("Error during task execution: %s", e.exception)
                 config_status.finish(
                     state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
                 )

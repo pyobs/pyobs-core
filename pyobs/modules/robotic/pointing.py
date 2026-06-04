@@ -75,7 +75,7 @@ class PointingSeries(Module, IAutonomous):
         # get grid and get count
         grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
         count = len([coord for coord in grid])
-        log.info(f"Found {count} grid points.")
+        log.info("Found %s grid points.", count)
 
         # iterate over all grid points
         grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
@@ -94,7 +94,7 @@ class PointingSeries(Module, IAutonomous):
 
             # got it
             finished += 1
-            log.info(f"Finished {finished} of {count} grid points.")
+            log.info("Finished %s of %s grid points.", finished, count)
 
         # finished
         log.info("Pointing series finished.")

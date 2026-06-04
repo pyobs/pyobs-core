@@ -38,7 +38,7 @@ class StellariumProtocol(asyncio.Protocol):
         dec = dec_int / MAX_INT * 180
 
         # move
-        log.info(f"Received command to move telescope to RA={ra}, Dec={dec}.")
+        log.info("Received command to move telescope to RA=%s, Dec=%s.", ra, dec)
         asyncio.create_task(self.server.move_telescope(ra, dec))
 
     def send(self, ra: float, dec: float, status: int) -> None:

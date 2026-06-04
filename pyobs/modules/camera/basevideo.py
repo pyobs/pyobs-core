@@ -254,7 +254,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         data = self._cache[filename]
 
         # send it
-        log.info(f"Serving file {filename}.")
+        log.info("Serving file %s.", filename)
         return web.Response(body=data, content_type="image/fits")
 
     @property

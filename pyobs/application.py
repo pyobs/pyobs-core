@@ -93,7 +93,7 @@ class Application:
         self._hack_threading()
 
         # load config
-        log.info("Loading configuration from {0:s}...".format(self._config))
+        log.info("Loading configuration from %s...", self._config)
         with StringIO(pre_process_yaml(self._config)) as f:
             cfg: dict[str, Any] = yaml.safe_load(f)
 
@@ -106,7 +106,7 @@ class Application:
         asyncio.set_event_loop(self._loop)
 
         # create module and open it
-        log.info(f"Creating module from class {klass.__name__}...")
+        log.info("Creating module from class %s...", klass.__name__)
         self._module = get_object(cfg, Module)
 
     def run(self) -> None:
@@ -124,7 +124,7 @@ class Application:
         # main finished, cancel all tasks
         tasks = asyncio.all_tasks()
         for t in tasks:
-            log.debug(f"Task {t} still running, cancelling it...")
+            log.debug("Task %s still running, cancelling it...", t)
             t.cancel()
         group = asyncio.gather(*tasks, return_exceptions=True)
         self._loop.run_until_complete(group)
@@ -142,7 +142,7 @@ class Application:
         self._module.quit()
 
         # reset signal handlers
-        log.info(f"Got signal: {sig!s}, shutting down.")
+        log.info("Got signal: %s, shutting down.", sig)
         loop = asyncio.get_running_loop()
         loop.remove_signal_handler(signal.SIGTERM)
         loop.add_signal_handler(signal.SIGINT, lambda: None)

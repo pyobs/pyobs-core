@@ -49,7 +49,7 @@ class MockComm(Comm):
 
     async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any | ProxyType:
         if isinstance(name_or_object, str) and name_or_object not in self.modules:
-            log.warning(f"Calling module {name_or_object} that is not mocked.")
+            log.warning("Calling module %s that is not mocked.", name_or_object)
         return await super().proxy(name_or_object, obj_type)
 
     async def get_interfaces(self, client: str) -> list[Type[Interface]]:
@@ -78,7 +78,7 @@ class MockComm(Comm):
         Returns:
             Passes through return from method call.
         """
-        log.info(f"Calling {client}.{method}...")
+        log.info("Calling %s.%s...", client, method)
         return self.modules[client].execute(method, *args)
 
 

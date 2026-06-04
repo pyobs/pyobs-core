@@ -191,7 +191,7 @@ class ImageWatcher(Module):
                         async with self.vfs.open_file(out_filename, "wb") as fd:
                             await fd.write(data)
                     except Exception as e:
-                        log.warning(f"Error while copying file, skipping for now: {e}")
+                        log.warning("Error while copying file, skipping for now: %s", e)
                         success = False
                         break
 

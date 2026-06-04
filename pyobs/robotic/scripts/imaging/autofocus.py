@@ -53,7 +53,7 @@ class AutoFocusScript(Script):
         target = data.task.target
         if target is None:
             raise ValueError("No target given.")
-        log.info(f"Picked target {target} for auto focus...")
+        log.info("Picked target %s for auto focus...", target)
 
         log.info("Moving telescope...")
         coord = target.coordinates(Time.now())

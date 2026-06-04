@@ -222,7 +222,7 @@ class LcoDefaultScript(LcoScript):
                         await camera.set_image_type(self._image_type)
 
                     # log it
-                    log.info(f"{msg}...")
+                    log.info("%s...", msg)
 
                     # grab image
                     await cast(ICamera, camera).grab_data()

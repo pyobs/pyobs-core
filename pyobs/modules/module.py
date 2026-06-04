@@ -191,7 +191,7 @@ class Module(Object, IModule, IConfig):
             return True
 
         # log it
-        log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
+        log.debug("Other module %s found, running on pyobs %s.", sender, module_version)
 
         # check version, only compare major and minor, ignore patch level
         v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)

@@ -122,7 +122,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
 
         # start exposure
-        log.info("Starting exposure with {0:s} shutter...".format("open" if open_shutter else "closed"))
+        log.info("Starting exposure with %s shutter...", "open" if open_shutter else "closed")
         date_obs = datetime.now(timezone.utc)
         self._exposing = True
 

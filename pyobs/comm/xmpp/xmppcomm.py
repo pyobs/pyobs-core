@@ -417,7 +417,7 @@ class XmppComm(Comm):
         # if no interfaces are implemented (not even IModule), quit here
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
-            log.debug(f"Module {module} does not seem to implement IModule, ignoring.")
+            log.debug("Module %s does not seem to implement IModule, ignoring.", module)
             return
 
         # store interfaces

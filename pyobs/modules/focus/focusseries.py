@@ -146,7 +146,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         try:
             if self._offset:
                 guess = 0.0 if self._init_offset_to_zero else await focuser.get_focus_offset()
-                log.info(f"Using focus offset of {guess:.2f}mm as initial guess.")
+                log.info("Using focus offset of %.2fmm as initial guess.", guess)
             else:
                 guess = await focuser.get_focus()
                 log.info("Using current focus of %.2fmm as initial guess.", guess)

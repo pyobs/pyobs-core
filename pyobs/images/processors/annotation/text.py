@@ -187,7 +187,7 @@ class Text(ImageProcessor):
         x, y = PillowHelper.position(image, self._x, self._y, self._wcs)
         fill = PillowHelper.color(self._fill)
         try:
-            text = self._text.format(**image.header)
+            text = self._text.format(**image.header)  # noqa: UP031
         except KeyError:
             text = self._text
 

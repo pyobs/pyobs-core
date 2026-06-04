@@ -97,7 +97,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
     ) -> None:
         if self._image is None or self._image.catalog is None:
             raise ValueError("No catalog.")
-        self._image.catalog["fluxaper%d" % diameter] = corrected_aperture_flux
+        self._image.catalog[f"fluxaper{diameter}"] = corrected_aperture_flux
         if aperture_error is not None:
-            self._image.catalog["fluxerr%d" % diameter] = aperture_error
-        self._image.catalog["bkgaper%d" % diameter] = median_background
+            self._image.catalog[f"fluxerr{diameter}"] = aperture_error
+        self._image.catalog[f"bkgaper{diameter}"] = median_background

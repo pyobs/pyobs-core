@@ -31,7 +31,7 @@ class CommLoggingHandler(logging.Handler):
         """
 
         # format message
-        msg = self._formatter.format(rec)
+        msg = self._formatter.format(rec)  # noqa: UP031
 
         # create and send event
         entry = LogEvent(rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg)

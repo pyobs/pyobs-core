@@ -35,13 +35,13 @@ try:
 
         def emit(self, record: logging.LogRecord) -> None:  # type: ignore
             # format entry
-            log_entry = self.format(record)
+            log_entry = self.format(record)  # noqa: UP031
 
             # colors?
             if "[ERROR]" in log_entry:
-                log_entry = '<font color="red">%s</font>' % log_entry
+                log_entry = f'<font color="red">{log_entry}</font>'
             elif "[WARNING]" in log_entry:
-                log_entry = '<font color="orange">%s</font>' % log_entry
+                log_entry = f'<font color="orange">{log_entry}</font>'
 
             # append to log
             self.log.append(log_entry)

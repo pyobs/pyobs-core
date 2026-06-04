@@ -114,7 +114,7 @@ class Matrix(Module):
             return False
 
         # build log message
-        message = "(%s) %s: %s" % (entry.level, sender, entry.message)
+        message = f"({entry.level}) {sender}: {entry.message}"
 
         # send it
         await self.client.room_send(

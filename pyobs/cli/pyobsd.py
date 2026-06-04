@@ -146,7 +146,7 @@ class PyobsDaemon:
             try:
                 os.kill(pid, 0)
             except OSError:
-                print("Removing PID file %s without process..." % os.path.basename(pid_file))
+                print(f"Removing PID file {os.path.basename(pid_file)} without process...")
                 os.remove(pid_file)
             else:
                 running.append(pid_file)
@@ -168,14 +168,14 @@ class PyobsDaemon:
         for module in sorted(modules):
             # exists?
             if module not in configs:
-                print("module %s does not exists." % module)
+                print(f"module {module} does not exists.")
                 sys.exit(1)
 
             # start it?
             if module in running:
-                print("%s already running." % module)
+                print(f"{module} already running.")
             else:
-                print("Starting %s..." % module)
+                print(f"Starting {module}...")
                 self._start_service(module)
 
     def stop(self, modules: list[str] | None = None) -> None:
@@ -185,7 +185,7 @@ class PyobsDaemon:
 
         # loop running and stop them
         for module in modules:
-            print("Stopping %s..." % module)
+            print(f"Stopping {module}...")
             self._stop_service(module)
 
     def restart(self, modules: list[str] | None = None) -> None:
@@ -251,7 +251,7 @@ class PyobsDaemon:
             print(f"[DEBUG] Executing command: {' '.join(cmd)}.")
 
         # execute
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        res = subprocess.run(cmd, capture_output=True)
 
         if self._verbose:
             print(f"[DEBUG] stdout: {res.stdout.decode('utf-8')}")

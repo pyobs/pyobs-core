@@ -151,7 +151,7 @@ class XmppComm(Comm):
             self._jid = jid
 
         else:
-            self._jid = "%s@%s/%s" % (self._user, self._domain, self._resource)
+            self._jid = f"{self._user}@{self._domain}/{self._resource}"
 
         #  client and RPC handler
         self._xmpp: XmppClient | None = None
@@ -206,7 +206,7 @@ class XmppComm(Comm):
         # add features
         if self._module is not None:
             for i in self._module.interfaces:
-                self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
+                self._xmpp["xep_0030"].add_feature(f"pyobs:interface:{i.__name__}")
 
         # RPC
         self._rpc = RPC(self, self._xmpp, None)
@@ -285,7 +285,7 @@ class XmppComm(Comm):
         Returns:
             Full JID for given user.
         """
-        return name if "@" in name else "%s@%s/%s" % (name, self._domain, self._resource)
+        return name if "@" in name else f"{name}@{self._domain}/{self._resource}"
 
     async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
@@ -302,7 +302,7 @@ class XmppComm(Comm):
 
         # full JID given?
         if "@" not in client:
-            client = "%s@%s/%s" % (client, self._domain, self._resource)
+            client = f"{client}@{self._domain}/{self._resource}"
 
         # return them from cache
         return await self._interface_cache[client]
@@ -359,7 +359,7 @@ class XmppComm(Comm):
 
         # full JID given?
         if "@" not in client:
-            client = "%s@%s/%s" % (client, self._domain, self._resource)
+            client = f"{client}@{self._domain}/{self._resource}"
 
         # update interface cache and get interface names
         interfaces = await self.get_interfaces(client)
@@ -492,13 +492,13 @@ class XmppComm(Comm):
         body = xml.sax.saxutils.escape(json.dumps(event.to_json()))
 
         # set xml and send event
-        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
+        stanza.xml = ET.fromstring(f'<event xmlns="pyobs:event">{body}</event>')
 
         # send it
         await self._safe_send(
             self.client["xep_0163"].publish,
             stanza,
-            node="pyobs:event:%s" % event.__class__.__name__,
+            node=f"pyobs:event:{event.__class__.__name__}",
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -522,12 +522,12 @@ class XmppComm(Comm):
         # loop events
         for ev in events:
             # register event at XMPP
-            self.client["xep_0030"].add_feature("pyobs:event:%s" % ev.__name__)
+            self.client["xep_0030"].add_feature(f"pyobs:event:{ev.__name__}")
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self.client["xep_0163"].add_interest("pyobs:event:%s" % ev.__name__)
+                self.client["xep_0163"].add_interest(f"pyobs:event:{ev.__name__}")
 
         # update caps and send presence
         await self._safe_send(self.client["xep_0115"].update_caps)

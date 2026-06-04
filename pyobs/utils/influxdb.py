@@ -35,8 +35,7 @@ class InfluxHandler(logging.Handler):
     @staticmethod
     def _get_additional_tags(record: logging.LogRecord) -> Iterator[tuple[str, Any]]:
         if "tags" in record.__dict__ and isinstance(record.__dict__["tags"], dict):
-            for key, value in record.__dict__["tags"].items():
-                yield (key, value)
+            yield from record.__dict__["tags"].items()
 
     def emit(self, record: logging.LogRecord) -> None:
         point = (

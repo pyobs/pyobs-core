@@ -110,7 +110,7 @@ def get_object(
 
     # do we need a type check and does the given object pass?
     if object_class is not None and not isinstance(obj, object_class):
-        raise TypeError("Provided object is not of requested type %s." % object_class.__name__)
+        raise TypeError(f"Provided object is not of requested type {object_class.__name__}.")
     return obj
 
 

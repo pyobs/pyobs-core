@@ -425,7 +425,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # rectangle empty?
         if is_right <= is_left or is_bottom <= is_top:
             # easy case, all is BIASSEC, no TRIMSEC at all
-            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], hdr["NAXIS2"]), c1)
+            hdr["BIASSEC"] = ("[1:{},1:{}]".format(hdr["NAXIS1"], hdr["NAXIS2"]), c1)  # noqa: UP031
             return
 
         # we got a TRIMSEC, calculate its binned and windowd coordinates

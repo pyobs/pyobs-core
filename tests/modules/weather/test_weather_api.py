@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Any
 
 import pytest
 
@@ -7,11 +7,11 @@ from pyobs.utils.enums import WeatherSensors
 
 
 class MockResponse:
-    def __init__(self, json: Dict[str, Any], status=200) -> None:
+    def __init__(self, json: dict[str, Any], status=200) -> None:
         self._json = json
         self.status = status
 
-    async def json(self) -> Dict[str, Any]:
+    async def json(self) -> dict[str, Any]:
         return self._json
 
     async def __aexit__(self, exc_type, exc, tb):

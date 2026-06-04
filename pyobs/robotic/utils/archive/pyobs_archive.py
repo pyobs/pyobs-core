@@ -74,7 +74,7 @@ class PyobsArchive(Archive):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                 if response.status != 200:
-                    raise ValueError("Could not query frames: %s" % str(await response.text()))
+                    raise ValueError(f"Could not query frames: {str(await response.text())}")
                 return cast(dict[str, list[Any]], await response.json())
 
     async def list_frames(

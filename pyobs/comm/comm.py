@@ -167,17 +167,17 @@ class Comm:
 
             # check it
             if proxy is None:
-                raise ValueError('Could not create proxy for given name "%s".' % name_or_object)
+                raise ValueError(f'Could not create proxy for given name "{name_or_object}".')
             elif obj_type is None or isinstance(proxy, obj_type):
                 return proxy
             else:
                 raise ValueError(
-                    'Proxy obtained from given name "%s" is not of requested type "%s".' % (name_or_object, obj_type)
+                    f'Proxy obtained from given name "{name_or_object}" is not of requested type "{obj_type}".'
                 )
 
         else:
             # completely wrong...
-            raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
+            raise ValueError(f'Given parameter is neither a name nor an object of requested type "{obj_type}".')
 
     async def safe_proxy(
         self, name_or_object: str | object, obj_type: type[ProxyType] | None = None

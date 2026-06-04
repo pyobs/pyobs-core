@@ -186,7 +186,7 @@ class LcoDefaultScript(LcoScript):
 
             # loop instrument configs
             for ic in cfg.instrument_configs:
-                log.info('Using readout mode "%s"...' % ic.mode)
+                log.info(f'Using readout mode "{ic.mode}"...')
 
                 # set filter
                 set_filter: Future | asyncio.Task[Any] = Future(empty=True)

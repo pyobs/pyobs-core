@@ -387,7 +387,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
             raise ValueError("Parameter %s is not remotely accessible.")
 
@@ -410,7 +410,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
             raise ValueError("Parameter %s has no list of possible values.")
 
@@ -431,7 +431,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:
             raise ValueError("Parameter %s is not remotely settable.")
 

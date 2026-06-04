@@ -131,7 +131,7 @@ class FocusModel(Module, IFocusModel):
 
         # coefficients
         if self._coefficients is not None and len(self._coefficients) > 0:
-            log.info("Found coefficients: %s", ", ".join(["%s=%.3f" % (k, v) for k, v in self._coefficients.items()]))
+            log.info("Found coefficients: %s", ", ".join([f"{k}={v:.3f}" for k, v in self._coefficients.items()]))
 
         # variables
         variables = self._temp_model.variables()
@@ -301,18 +301,16 @@ class FocusModel(Module, IFocusModel):
                 module_temps[cfg["module"]] = await proxy.get_temperatures()
 
                 # log
-                vals = ", ".join(["%s=%.2f" % (k, v) for k, v in module_temps[cfg["module"]].items()])
+                vals = ", ".join([f"{k}={v:.2f}" for k, v in module_temps[cfg["module"]].items()])
                 log.info("Received temperatures: %s", vals)
 
             # store, what we need
             if cfg["sensor"] not in module_temps[cfg["module"]]:
-                raise ValueError(
-                    "Temperature for sensor %s not in data from module %s." % (cfg["sensor"], cfg["module"])
-                )
+                raise ValueError(f"Temperature for sensor {cfg['sensor']} not in data from module {cfg['module']}.")
             variables[var] = module_temps[cfg["module"]][cfg["sensor"]]
 
         # log
-        vals = ", ".join(["%s=%.2f" % (k, v) for k, v in variables.items()])
+        vals = ", ".join([f"{k}={v:.2f}" for k, v in variables.items()])
         log.info("Found values for model: %s", vals)
         return variables
 

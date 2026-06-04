@@ -37,7 +37,7 @@ class _CalibrationCache:
 
     def _get_image_cache_keys(self, image: Image) -> tuple[str, str, str | None]:
         instrument = image.header["INSTRUME"]
-        binning = self.BINNING_FORMAT.format(image.header["XBINNING"])
+        binning = self.BINNING_FORMAT.format(image.header["XBINNING"])  # noqa: UP031
 
         filter_name = None
         if "FILTER" in image.header:

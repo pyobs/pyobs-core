@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,7 +15,7 @@ class MockBaseRoof(BaseRoof):
     async def park(self, **kwargs: Any) -> None:
         pass
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
 
 

@@ -272,7 +272,10 @@ class SpilledLightGuiding(Offsets):
         image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
         log.info(
-            f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}."
+            "Creating Ring at x=%s, y=%s with radius %s.",
+            self._fibre_position[0],
+            self._fibre_position[1],
+            self._inner_radius,
         )
         await self._correct_fibre_position_for_trimming()
         self.ring = Ring(

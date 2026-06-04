@@ -26,8 +26,7 @@ class XEP_0009_timeout(BasePlugin):
             Callback(
                 "RPC Call",
                 MatchXPath(
-                    "{%s}iq/{%s}query/{%s}methodTimeout"
-                    % (self.xmpp.default_ns, RPCQuery.namespace, RPCQuery.namespace)
+                    f"{{{self.xmpp.default_ns}}}iq/{{{RPCQuery.namespace}}}query/{{{RPCQuery.namespace}}}methodTimeout"
                 ),
                 self._handle_method_timeout,
             )

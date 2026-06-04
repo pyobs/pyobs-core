@@ -94,7 +94,7 @@ class FollowMixin:
 
         # check
         if not isinstance(self, self.__follow_mode):
-            raise ValueError("This module is not of given mode %s." % mode)
+            raise ValueError(f"This module is not of given mode {mode}.")
 
     @property
     def is_following(self) -> bool:

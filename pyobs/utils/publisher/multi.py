@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Union, Any
+from typing import Any
 import logging
 
 from .publisher import Publisher
-
 
 log = logging.getLogger(__name__)
 

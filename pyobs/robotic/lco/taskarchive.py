@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import astropy.units as u
-from typing import Dict, Optional, Any
+from typing import Optional, Any
 from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time

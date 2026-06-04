@@ -4,12 +4,12 @@ from unittest.mock import AsyncMock, MagicMock
 from pydantic import ValidationError
 
 from pyobs.interfaces import IExposureTime
-from pyobs.robotic.scripts.callmodule import CallModule
+from pyobs.robotic.scripts.utils.callmodule import CallModuleScript
 
 
 @pytest.fixture
-def script() -> CallModule:
-    s = CallModule(
+def script() -> CallModuleScript:
+    s = CallModuleScript(
         module="camera",
         interface="pyobs.interfaces.IExposureTime",
         method="set_exposure_time",
@@ -23,7 +23,7 @@ def script() -> CallModule:
 
 
 def test_valid_params_pass_validation() -> None:
-    s = CallModule(
+    s = CallModuleScript(
         module="camera",
         interface="pyobs.interfaces.IExposureTime",
         method="set_exposure_time",
@@ -34,7 +34,7 @@ def test_valid_params_pass_validation() -> None:
 
 def test_unknown_param_raises() -> None:
     with pytest.raises(ValidationError, match="Unknown parameter 'nonexistent'"):
-        CallModule(
+        CallModuleScript(
             module="camera",
             interface="pyobs.interfaces.IExposureTime",
             method="set_exposure_time",
@@ -44,7 +44,7 @@ def test_unknown_param_raises() -> None:
 
 def test_wrong_type_raises() -> None:
     with pytest.raises(ValidationError, match="Parameter 'exposure_time'"):
-        CallModule(
+        CallModuleScript(
             module="camera",
             interface="pyobs.interfaces.IExposureTime",
             method="set_exposure_time",
@@ -54,7 +54,7 @@ def test_wrong_type_raises() -> None:
 
 def test_unknown_method_raises() -> None:
     with pytest.raises(ValidationError, match="Method 'nonexistent_method' not found"):
-        CallModule(
+        CallModuleScript(
             module="camera",
             interface="pyobs.interfaces.IExposureTime",
             method="nonexistent_method",
@@ -64,11 +64,11 @@ def test_unknown_method_raises() -> None:
 
 def test_interface_is_required() -> None:
     with pytest.raises(ValidationError):
-        CallModule(module="camera", method="set_exposure_time", params={})
+        CallModuleScript(module="camera", method="set_exposure_time", params={})
 
 
 def test_empty_params_always_valid() -> None:
-    s = CallModule(
+    s = CallModuleScript(
         module="camera",
         interface="pyobs.interfaces.IExposureTime",
         method="set_exposure_time",
@@ -78,7 +78,7 @@ def test_empty_params_always_valid() -> None:
 
 
 def test_default_params_is_empty_dict() -> None:
-    s = CallModule(
+    s = CallModuleScript(
         module="camera",
         interface="pyobs.interfaces.IExposureTime",
         method="set_exposure_time",
@@ -90,19 +90,19 @@ def test_default_params_is_empty_dict() -> None:
 
 
 @pytest.mark.asyncio
-async def test_can_run_true_when_module_available(script: CallModule) -> None:
+async def test_can_run_true_when_module_available(script: CallModuleScript) -> None:
     script._comm.proxy = AsyncMock(return_value=MagicMock())
     assert await script.can_run(None) is True
 
 
 @pytest.mark.asyncio
-async def test_can_run_false_when_module_unavailable(script: CallModule) -> None:
+async def test_can_run_false_when_module_unavailable(script: CallModuleScript) -> None:
     script._comm.proxy = AsyncMock(side_effect=ValueError("module not found"))
     assert await script.can_run(None) is False
 
 
 @pytest.mark.asyncio
-async def test_can_run_uses_interface_for_proxy(script: CallModule) -> None:
+async def test_can_run_uses_interface_for_proxy(script: CallModuleScript) -> None:
     script._comm.proxy = AsyncMock(return_value=MagicMock())
     await script.can_run(None)
     assert script._comm.proxy.call_args[0][1] is IExposureTime
@@ -112,7 +112,7 @@ async def test_can_run_uses_interface_for_proxy(script: CallModule) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_calls_method_with_named_params(script: CallModule) -> None:
+async def test_run_calls_method_with_named_params(script: CallModuleScript) -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock()
     script._comm.proxy = AsyncMock(return_value=proxy)
@@ -122,7 +122,7 @@ async def test_run_calls_method_with_named_params(script: CallModule) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_uses_interface_for_proxy(script: CallModule) -> None:
+async def test_run_uses_interface_for_proxy(script: CallModuleScript) -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock()
     script._comm.proxy = AsyncMock(return_value=proxy)
@@ -136,13 +136,13 @@ async def test_run_uses_interface_for_proxy(script: CallModule) -> None:
 
 def test_yaml_roundtrip() -> None:
     config = {
-        "class": "pyobs.robotic.scripts.CallModule",
+        "class": "pyobs.robotic.scripts.utils.CallModuleScript",
         "module": "camera",
         "interface": "pyobs.interfaces.IExposureTime",
         "method": "set_exposure_time",
         "params": {"exposure_time": 30.0},
     }
-    s = CallModule.model_validate(config)
+    s = CallModuleScript.model_validate(config)
     assert s.module == "camera"
     assert s.interface == "pyobs.interfaces.IExposureTime"
     assert s.method == "set_exposure_time"

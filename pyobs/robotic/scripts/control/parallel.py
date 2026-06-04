@@ -27,8 +27,10 @@ class ParallelRunner(Script):
         return all(results) if self.check_all_can_run else any(results)
 
     async def run(self, data: TaskData | None) -> None:
-        tasks = [asyncio.create_task(_run_script(s, data)) for s in self.scripts if await s.can_run(data)]
-        await asyncio.gather(*tasks)
+        async with asyncio.TaskGroup() as tg:
+            for s in self.scripts:
+                if await s.can_run(data):
+                    tg.create_task(_run_script(s, data))
 
 
 __all__ = ["ParallelRunner"]

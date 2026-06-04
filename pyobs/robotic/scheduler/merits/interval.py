@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING, Literal, Self
 from astropy.time import Time, TimeDelta
 import astropy.units as u

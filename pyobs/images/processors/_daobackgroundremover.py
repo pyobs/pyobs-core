@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import cast, Any
 import numpy as np
 import numpy.typing as npt

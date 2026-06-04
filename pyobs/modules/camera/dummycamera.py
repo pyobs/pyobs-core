@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import glob
 import logging
@@ -34,7 +32,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self,
         readout_time: float = 2,
         sim: dict[str, Any] | None = None,
-        world: "SimWorld" | None = None,
+        world: "SimWorld | None" = None,
         **kwargs: Any,
     ):
         """Creates a new dummy cammera.

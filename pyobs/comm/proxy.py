@@ -1,4 +1,3 @@
-from __future__ import annotations
 import inspect
 import types
 from typing import TYPE_CHECKING, Any, Type, get_type_hints

@@ -1,4 +1,3 @@
-from __future__ import annotations
 from collections import UserList
 from enum import StrEnum
 from typing import Any, TYPE_CHECKING

@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 """
 TODO: Write docs
 """
+
 __title__ = "Exceptions"
 
 import asyncio

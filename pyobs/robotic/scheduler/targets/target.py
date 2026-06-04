@@ -1,4 +1,3 @@
-from __future__ import annotations
 import abc
 from abc import ABCMeta
 from astropy.coordinates import SkyCoord

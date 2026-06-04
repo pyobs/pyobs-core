@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from astropy.nddata import CCDData
 
 from pyobs.images import Image

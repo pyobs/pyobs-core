@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING
 from astropy.coordinates import SkyCoord
 from pydantic import PrivateAttr, ConfigDict

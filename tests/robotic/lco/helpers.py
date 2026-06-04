@@ -1,6 +1,5 @@
 """Shared helpers for LCO tests."""
 
-from __future__ import annotations
 from unittest.mock import MagicMock
 
 from pyobs.robotic.lco._portal import Portal

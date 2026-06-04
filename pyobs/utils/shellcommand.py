@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pprint
 import tokenize
 from enum import Enum

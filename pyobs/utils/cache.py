@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import time
 from collections import namedtuple
 from threading import Lock

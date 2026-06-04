@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import ABCMeta
 from typing import Union, Any
 import logging

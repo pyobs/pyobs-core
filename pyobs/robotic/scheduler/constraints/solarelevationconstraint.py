@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 import astroplan
 import astropy.units as u

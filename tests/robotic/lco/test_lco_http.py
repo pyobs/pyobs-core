@@ -1,4 +1,3 @@
-from __future__ import annotations
 import copy
 import pytest
 from unittest.mock import AsyncMock

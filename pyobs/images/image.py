@@ -1,4 +1,3 @@
-from __future__ import annotations
 import copy
 import io
 from typing import TypeVar, Type, Any, cast

@@ -1,4 +1,3 @@
-from __future__ import annotations
 import asyncio
 import logging
 from typing import Any, TYPE_CHECKING
@@ -44,7 +43,7 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: SimWorld | None = None, wait_secs: float = 1.0, **kwargs: Any):
+    def __init__(self, world: "SimWorld | None" = None, wait_secs: float = 1.0, **kwargs: Any):
         """Creates a new dummy telescope.
 
         Args:

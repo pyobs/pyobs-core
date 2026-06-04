@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import threading
 
 from astropy.time import Time

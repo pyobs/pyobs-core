@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Union
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script
@@ -14,13 +14,16 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+FlatFunctions = Union[str, dict[str, Union[str, dict[str, str]]]]
+
+
 class SkyFlats(Script):
     """Script for scheduling and running skyflats using an IFlatField module."""
 
     roof: str
     telescope: str
     flatfield: str
-    functions: dict[str, Any]
+    functions: FlatFunctions = {}
     priorities: dict[str, Any]
     min_exptime: float = 0.5
     max_exptime: float = 5

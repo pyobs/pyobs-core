@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Any
+from typing import Any
 
 from .filelist import FileList
 
@@ -15,7 +17,7 @@ class TestingFileList(FileList):
     def __init__(self, *args: Any, **kwargs: Any):
         pass
 
-    def __call__(self, filename: str) -> List[str]:
+    def __call__(self, filename: str) -> list[str]:
         return [__file__]
 
 

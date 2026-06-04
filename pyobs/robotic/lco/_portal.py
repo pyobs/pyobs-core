@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Dict, List, cast, Tuple, Optional
+from typing import Any, cast
 from urllib.parse import urljoin
 from pydantic import Field, ConfigDict
 from astropydantic import AstroPydanticTime  # type: ignore
@@ -171,7 +173,7 @@ class Portal(Object):
             self._session = None
         await Object.close(self)
 
-    async def _get(self, path: str, timeout: int = 30, params: Optional[Dict[str, Any]] = None) -> Any:
+    async def _get(self, path: str, timeout: int = 30, params: dict[str, Any] | None = None) -> Any:
         """Do a GET request on the portal.
 
         Args:
@@ -204,9 +206,9 @@ class Portal(Object):
         requests = await self._get("/api/requestgroups/schedulable_requests/")
         return [self.pyobs_model_validate(LcoSchedulableRequest, request) for request in requests]
 
-    async def proposals(self) -> List[Dict[str, Any]]:
+    async def proposals(self) -> list[dict[str, Any]]:
         # init
-        proposal_list: List[Dict[str, Any]] = []
+        proposal_list: list[dict[str, Any]] = []
         offset, limit = 0, 100
 
         # get everything!
@@ -226,13 +228,13 @@ class Portal(Object):
             if len(proposal_list) == count:
                 return proposal_list
 
-    async def _proposals(self, offset: int, limit: int) -> Tuple[List[Dict[str, Any]], int]:
+    async def _proposals(self, offset: int, limit: int) -> tuple[list[dict[str, Any]], int]:
         req = await self._get("/api/proposals/", params={"offset": offset, "limit": limit})
-        return cast(List[Dict[str, Any]], req["results"]), req["count"]
+        return cast(list[dict[str, Any]], req["results"]), req["count"]
 
-    async def instruments(self) -> Dict[str, Any]:
+    async def instruments(self) -> dict[str, Any]:
         req = await self._get("/api/instruments/")
-        return cast(Dict[str, Any], req)
+        return cast(dict[str, Any], req)
 
     async def observations(self, request_id: int) -> list[LcoObservation]:
         req = await self._get(f"/api/requests/{request_id}/observations/")

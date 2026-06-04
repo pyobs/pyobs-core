@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Dict, Any
+from typing import Any
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -9,7 +11,7 @@ from pyobs.images import Image
 
 
 class _RequestLogger:
-    def __init__(self, logger: logging.Logger, image: Image, request_data: Dict[str, Any]):
+    def __init__(self, logger: logging.Logger, image: Image, request_data: dict[str, Any]):
         self._logger = logger
         self._image = image
         self._request_data = request_data

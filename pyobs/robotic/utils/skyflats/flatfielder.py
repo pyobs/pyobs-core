@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from enum import Enum
 import logging
-from typing import Dict, Union, Callable, Optional, Tuple, Any, cast, Coroutine
+from typing import Union, Callable, Any, cast, Coroutine
 import astropy.units as u
 from astropy.time import TimeDelta
 import numpy as np
@@ -48,16 +48,16 @@ class FlatFielder(Object):
 
     def __init__(
         self,
-        functions: Union[str, Dict[str, Union[str, Dict[str, str]]]],
+        functions: Union[str, dict[str, Union[str, dict[str, str]]]],
         target_count: float = 30000,
         min_exptime: float = 0.5,
         max_exptime: float = 5,
-        test_frame: Optional[Tuple[float, float, float, float]] = None,
-        counts_frame: Optional[Tuple[float, float, float, float]] = None,
+        test_frame: tuple[float, float, float, float] | None = None,
+        counts_frame: tuple[float, float, float, float] | None = None,
         allowed_offset_frac: float = 0.2,
         min_counts: int = 100,
-        pointing: Optional[Union[Dict[str, Any], SkyFlatsBasePointing]] = None,
-        callback: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
+        pointing: Union[dict[str, Any], SkyFlatsBasePointing] | None = None,
+        callback: Callable[..., Coroutine[Any, Any, None]] | None = None,
         **kwargs: Any,
     ):
         """Initialize a new flat fielder.
@@ -97,7 +97,7 @@ class FlatFielder(Object):
         self._abort = asyncio.Event()
 
         # pointing
-        self._pointing: Optional[SkyFlatsBasePointing] = None
+        self._pointing: SkyFlatsBasePointing | None = None
         if pointing is not None:
             self._pointing = (
                 pointing
@@ -126,17 +126,17 @@ class FlatFielder(Object):
         self._twilight = FlatFielder.Twilight.DAWN
 
         # current request
-        self._cur_filter: Optional[str] = None
-        self._cur_binning: Tuple[int, int] = (1, 1)
+        self._cur_filter: str | None = None
+        self._cur_binning: tuple[int, int] = (1, 1)
 
     async def __call__(
         self,
         telescope: ITelescope,
         camera: ICamera,
-        filters: Optional[IFilters] = None,
-        filter_name: Optional[str] = None,
+        filters: IFilters | None = None,
+        filter_name: str | None = None,
         count: int = 20,
-        binning: Tuple[int, int] = (1, 1),
+        binning: tuple[int, int] = (1, 1),
     ) -> State:
         """Calls next step in state machine.
 
@@ -227,7 +227,7 @@ class FlatFielder(Object):
             return True
 
     async def _init_system(
-        self, telescope: ITelescope, camera: Union[ICamera, IExposureTime], filters: Optional[IFilters] = None
+        self, telescope: ITelescope, camera: Union[ICamera, IExposureTime], filters: IFilters | None = None
     ) -> None:
         """Initialize whole system."""
 
@@ -328,7 +328,7 @@ class FlatFielder(Object):
             log.info("Missed flat-fielding time, finish task...")
             self._state = FlatFielder.State.FINISHED
 
-    def _eval_function(self, time: Time) -> Tuple[float, float]:
+    def _eval_function(self, time: Time) -> tuple[float, float]:
         """Evaluate function for given filter at given time.
 
         Args:
@@ -347,7 +347,7 @@ class FlatFielder(Object):
         # return solar altitude and exposure time
         return float(sun.alt.degree), exptime
 
-    def _eval_exptime(self, min_exptime: Optional[float] = None, max_exptime: Optional[float] = None) -> int:
+    def _eval_exptime(self, min_exptime: float | None = None, max_exptime: float | None = None) -> int:
         """Evaluates current exposure time. Sets new state or waits of necessary.
 
         Returns:
@@ -470,7 +470,7 @@ class FlatFielder(Object):
                 return True
 
     @staticmethod
-    def _get_image_median(image: Image, frame: Optional[Tuple[float, float, float, float]] = None) -> float:
+    def _get_image_median(image: Image, frame: tuple[float, float, float, float] | None = None) -> float:
         """Returns median of image after trimming it to TRIMSEC and to given frame.
 
         Args:

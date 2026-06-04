@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any
+from typing import Any
 
 from .interface import Interface
 
@@ -10,7 +12,7 @@ class IWindow(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -34,7 +36,7 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:

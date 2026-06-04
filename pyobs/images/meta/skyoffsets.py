@@ -1,4 +1,4 @@
-from typing import Tuple
+from __future__ import annotations
 
 from astropy.coordinates import SkyCoord, BaseCoordinateFrame, Angle
 
@@ -22,7 +22,7 @@ class SkyOffsets:
         coord0, coord1 = self._to_frame(frame)
         return coord0.separation(coord1)
 
-    def spherical_offsets(self, frame: BaseCoordinateFrame = None) -> Tuple[Angle, Angle]:
+    def spherical_offsets(self, frame: BaseCoordinateFrame = None) -> tuple[Angle, Angle]:
         """Calculates spherical offset from first coordinate to second.
 
         Args:
@@ -37,7 +37,7 @@ class SkyOffsets:
         off0, off1 = coord0.spherical_offsets_to(coord1.frame)
         return off0, off1
 
-    def _to_frame(self, frame: BaseCoordinateFrame = None) -> Tuple[SkyCoord, SkyCoord]:
+    def _to_frame(self, frame: BaseCoordinateFrame = None) -> tuple[SkyCoord, SkyCoord]:
         """
 
         Args:

@@ -1,4 +1,6 @@
-from typing import Tuple, Dict, List, Any, cast
+from __future__ import annotations
+
+from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 import logging
@@ -32,7 +34,7 @@ class ProjectionFocusSeries(FocusSeries):
         self._backsub = backsub
         self._xbad = xbad
         self._ybad = ybad
-        self._data: List[Dict[str, float]] = []
+        self._data: list[dict[str, float]] = []
 
     def reset(self) -> None:
         """Reset focus series."""
@@ -103,7 +105,7 @@ class ProjectionFocusSeries(FocusSeries):
             }
         )
 
-    def fit_focus(self) -> Tuple[float, float]:
+    def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

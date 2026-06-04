@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any, Dict
+from typing import Any
 
 from .IStartStop import IStartStop
 from pyobs.utils.enums import WeatherSensors
@@ -11,7 +13,7 @@ class IWeather(IStartStop, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def get_weather_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_weather_status(self, **kwargs: Any) -> dict[str, Any]:
         """Returns status of object in form of a dictionary. See other interfaces for details."""
         ...
 
@@ -21,7 +23,7 @@ class IWeather(IStartStop, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_current_weather(self, **kwargs: Any) -> Dict[str, Any]:
+    async def get_current_weather(self, **kwargs: Any) -> dict[str, Any]:
         """Returns current weather.
 
         Returns:
@@ -31,7 +33,7 @@ class IWeather(IStartStop, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> Tuple[str, float]:
+    async def get_sensor_value(self, station: str, sensor: WeatherSensors, **kwargs: Any) -> tuple[str, float]:
         """Return value for given sensor.
 
         Args:

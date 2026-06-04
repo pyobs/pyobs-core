@@ -1,4 +1,6 @@
-from typing import Tuple, Optional, Any
+from __future__ import annotations
+
+from typing import Any
 import numpy as np
 from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.wcs import WCS
@@ -20,7 +22,7 @@ class ApplyOffsets(Object):
 
     __module__ = "pyobs.utils.offsets"
 
-    def __init__(self, log_file: Optional[str] = None, log_absolute: bool = False, **kwargs: Any):
+    def __init__(self, log_file: str | None = None, log_absolute: bool = False, **kwargs: Any):
         Object.__init__(self, **kwargs)
 
         # init log file
@@ -40,7 +42,7 @@ class ApplyOffsets(Object):
         """
         return False
 
-    def _get_radec_center_target(self, image: Image, location: EarthLocation) -> Tuple[SkyCoord, SkyCoord]:
+    def _get_radec_center_target(self, image: Image, location: EarthLocation) -> tuple[SkyCoord, SkyCoord]:
         """Return RA/Dec of central pixel and of central pixel plus offsets.
 
         Args:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Dict, Optional, Any, Tuple
+from typing import Any
 
 
 log = logging.getLogger(__name__)
@@ -10,12 +12,12 @@ class FitsNamespaceMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, fits_namespaces: Optional[Dict[str, List[str]]] = None, **kwargs: Any):
+    def __init__(self, fits_namespaces: dict[str, list[str]] | None = None, **kwargs: Any):
         self.__namespaces = {} if fits_namespaces is None else fits_namespaces
 
     def _filter_fits_namespace(
-        self, hdr: Dict[str, Tuple[Any, str]], sender: str, namespaces: Optional[List[str]] = None
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, hdr: dict[str, tuple[Any, str]], sender: str, namespaces: list[str] | None = None
+    ) -> dict[str, tuple[Any, str]]:
         """Filter FITS header keywords by given namespaces. If no namespaces are given, let all through. Always
         let keywords with this module's name as namespace pass.
 
@@ -33,7 +35,7 @@ class FitsNamespaceMixin:
             return hdr
 
         # get list of FITS headers that we let pass
-        keywords: List[str] = []
+        keywords: list[str] = []
 
         # is the sender name in my namespaces?
         if sender in self.__namespaces:
@@ -54,7 +56,7 @@ class FitsNamespaceMixin:
         # return filtered header
         return {k: v for k, v in hdr.items() if k in keywords}
 
-    def __add_namespace(self, name: str, keywords: List[str], hdr: Dict[str, Any]) -> None:
+    def __add_namespace(self, name: str, keywords: list[str], hdr: dict[str, Any]) -> None:
         """Add FITS header keywords from namespace to list of valid keywords
 
         Args:

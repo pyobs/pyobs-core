@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # import logging
 # import threading
 # from enum import Enum
@@ -48,7 +50,7 @@
 #         self._camera = None
 #         self._mode = mode if isinstance(mode, AdaptiveCameraMode) else AdaptiveCameraMode(mode)
 #         self._radius = radius
-#         self._history: List[float] = []
+#         self._history: list[float] = []
 #         self._max_history = history
 #
 #         # abort

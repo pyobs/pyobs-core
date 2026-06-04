@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from functools import partial
-from typing import Union, List, Optional, Any, Dict
+from typing import Union, Any
 import ccdproc
 import numpy as np
 import astropy.units as u
@@ -19,7 +21,7 @@ log = logging.getLogger(__name__)
 class Pipeline(Object, PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: List[Union[Dict[str, Any], ImageProcessor]], **kwargs: Any):
+    def __init__(self, steps: list[Union[dict[str, Any], ImageProcessor]], **kwargs: Any):
         """Pipeline for science images.
 
         Args:
@@ -46,7 +48,7 @@ class Pipeline(Object, PipelineMixin):
 
     @staticmethod
     def _combine_calib_images(
-        images: List[Image], bias: Optional[Image] = None, normalize: bool = False, method: str = "average"
+        images: list[Image], bias: Image | None = None, normalize: bool = False, method: str = "average"
     ) -> Image:
         """Combine a list of given images.
 
@@ -108,12 +110,12 @@ class Pipeline(Object, PipelineMixin):
         # finished
         return image
 
-    async def _combine_calib_images_async(self, images: List[Image], **kwargs: Any) -> Image:
+    async def _combine_calib_images_async(self, images: list[Image], **kwargs: Any) -> Image:
         return await asyncio.get_running_loop().run_in_executor(
             None, partial(self._combine_calib_images, images, **kwargs)
         )
 
-    async def create_master_bias(self, images: List[Image]) -> Image:
+    async def create_master_bias(self, images: list[Image]) -> Image:
         """Create master bias frame.
 
         Args:
@@ -124,7 +126,7 @@ class Pipeline(Object, PipelineMixin):
         """
         return await self._combine_calib_images_async(images)
 
-    async def create_master_dark(self, images: List[Image], bias: Image) -> Image:
+    async def create_master_dark(self, images: list[Image], bias: Image) -> Image:
         """Create master dark frame.
 
         Args:
@@ -136,7 +138,7 @@ class Pipeline(Object, PipelineMixin):
         """
         return await self._combine_calib_images_async(images, bias=bias)
 
-    async def create_master_flat(self, images: List[Image], bias: Image) -> Image:
+    async def create_master_flat(self, images: list[Image], bias: Image) -> Image:
         """Create master flat frame.
 
         Args:
@@ -175,9 +177,9 @@ class Pipeline(Object, PipelineMixin):
         time: Time,
         instrument: str,
         binning: str,
-        filter_name: Optional[str] = None,
-        max_days: Optional[float] = 30.0,
-    ) -> Optional[Image]:
+        filter_name: str | None = None,
+        max_days: float | None = 30.0,
+    ) -> Image | None:
         """Find and download master calibration frame.
 
         Args:

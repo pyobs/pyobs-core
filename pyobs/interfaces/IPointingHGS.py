@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any
+from typing import Any
 
 from .interface import Interface
 
@@ -23,7 +25,7 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_hgs_lon_lat(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_hgs_lon_lat(self, **kwargs: Any) -> tuple[float, float]:
         """Returns current longitude and latitude position.
 
         Returns:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, List, Type, Dict
+from typing import Any, Type
 
 from pyobs.comm import Comm
 from pyobs.events import Event
@@ -17,11 +19,11 @@ class DummyComm(Comm):
         Comm.__init__(self, *args, **kwargs)
 
     @property
-    def clients(self) -> List[str]:
+    def clients(self) -> list[str]:
         """Always return zero clients."""
         return []
 
-    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
         """No interfaces implemented."""
         return []
 
@@ -29,7 +31,7 @@ class DummyComm(Comm):
         """Interfaces are never supported."""
         return False
 
-    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import List, Any
+from typing import Any
 
 from .interface import Interface
 
@@ -9,7 +11,7 @@ class IMode(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    async def list_mode_groups(self) -> List[str]:
+    async def list_mode_groups(self) -> list[str]:
         """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
         methods.
 
@@ -19,7 +21,7 @@ class IMode(Interface, metaclass=ABCMeta):
         return []
 
     @abstractmethod
-    async def list_modes(self, group: int = 0, **kwargs: Any) -> List[str]:
+    async def list_modes(self, group: int = 0, **kwargs: Any) -> list[str]:
         """List available modes.
 
         Args:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Tuple, Any
+from typing import Any
 import numpy as np
 
 from pyobs.images import Image
@@ -73,7 +75,7 @@ class FitsHeaderOffsets(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, target: Tuple[str, str], center: Tuple[str, str] = ("DET-CPX1", "DET-CPX2"), **kwargs: Any):
+    def __init__(self, target: tuple[str, str], center: tuple[str, str] = ("DET-CPX1", "DET-CPX2"), **kwargs: Any):
         """Initializes new fits header offsets."""
         Offsets.__init__(self, **kwargs)
 

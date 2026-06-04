@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from pyobs.modules import Module
 from pyobs.events import LogEvent, Event
@@ -28,7 +30,7 @@ class FluentLogger(Module):
         # store
         self._hostname = hostname
         self._port = port
-        self._fluent: Optional[sender.FluentSender] = None
+        self._fluent: sender.FluentSender | None = None
 
     async def open(self) -> None:
         """Open module."""

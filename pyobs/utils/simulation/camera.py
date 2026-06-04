@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 from astropy.table import Table
 from astropy.time import Time
-from typing import Tuple, TYPE_CHECKING, Optional, Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from astropy.wcs import WCS
 from astropy.io import fits
 from numpy.typing import NDArray
@@ -33,9 +33,9 @@ class SimCamera(Object):
     def __init__(
         self,
         world: "SimWorld",
-        image_size: Optional[Tuple[int, int]] = None,
+        image_size: tuple[int, int] | None = None,
         pixel_size: float = 0.015,
-        images: Optional[str] = None,
+        images: str | None = None,
         max_mag: float = 20.0,
         seeing: float = 3.0,
         **kwargs: Any,
@@ -55,7 +55,7 @@ class SimCamera(Object):
         # store
         self.world = world
         self.telescope = world.telescope
-        self.full_frame: Tuple[int, int, int, int] = (
+        self.full_frame: tuple[int, int, int, int] = (
             (0, 0, image_size[0], image_size[1]) if image_size is not None else (0, 0, 512, 512)
         )
         self.window = self.full_frame

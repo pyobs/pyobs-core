@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta
-from typing import List, Dict, Tuple, Any, Optional
+from typing import Any
 
 from pyobs.interfaces import IDome
 from pyobs.utils import exceptions as exc
@@ -22,8 +24,8 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
         exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

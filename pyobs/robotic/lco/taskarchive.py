@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import astropy.units as u
-from typing import Optional, Any
+from typing import Any
 from typing_extensions import override
 from astropy.time import TimeDelta
 
@@ -42,7 +44,7 @@ class LcoTaskArchive(TaskArchive):
         self._instrument_type = [it.lower() for it in instrument_type]
 
         # buffers in case of errors
-        self._last_changed: Optional[Time] = None
+        self._last_changed: Time | None = None
 
         # task list
         self._projects: list[Project] = list()

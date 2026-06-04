@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any, Dict
+from typing import Any
 
 from .IAbortable import IAbortable
 
@@ -10,7 +12,7 @@ class IAutoFocus(IAbortable, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> Tuple[float, float]:
+    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given
@@ -31,7 +33,7 @@ class IAutoFocus(IAbortable, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def auto_focus_status(self, **kwargs: Any) -> Dict[str, Any]:
+    async def auto_focus_status(self, **kwargs: Any) -> dict[str, Any]:
         """Returns current status of auto focus.
 
         Returned dictionary contains a list of focus/fwhm pairs in X and Y direction.

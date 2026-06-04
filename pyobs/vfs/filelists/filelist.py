@@ -1,4 +1,4 @@
-from typing import List
+from __future__ import annotations
 
 
 class FileList:
@@ -6,5 +6,5 @@ class FileList:
 
     __module__ = "pyobs.vfs.filelists"
 
-    def __call__(self, filename: str) -> List[str]:
+    def __call__(self, filename: str) -> list[str]:
         return []

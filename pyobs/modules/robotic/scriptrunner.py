@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from pyobs.modules import Module, timeout
 from pyobs.interfaces import IRunnable
@@ -20,7 +22,7 @@ class ScriptRunner(Module, IRunnable):
 
     def __init__(
         self,
-        script: Dict[str, Any],
+        script: dict[str, Any],
         run_once: bool = False,
         timeout: int = 10,
         **kwargs: Any,

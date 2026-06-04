@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta, abstractmethod
 from copy import copy
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -18,7 +20,7 @@ class ExpTimeEstimator(ImageProcessor, metaclass=ABCMeta):
 
     __module__ = "pyobs.images.processors.exptime"
 
-    def __init__(self, min_exp_time: float = 0.0, max_exp_time: Optional[float] = None, **kwargs: Any):
+    def __init__(self, min_exp_time: float = 0.0, max_exp_time: float | None = None, **kwargs: Any):
         """Init new exposure time estimator."""
         ImageProcessor.__init__(self, **kwargs)
         self._min_exp_time = min_exp_time

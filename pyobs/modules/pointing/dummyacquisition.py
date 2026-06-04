@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from pyobs.interfaces import IAcquisition
 from pyobs.modules import Module
@@ -28,7 +30,7 @@ class DummyAcquisition(Module, IAcquisition):
         return self._is_running
 
     @timeout(120)
-    async def acquire_target(self, **kwargs: Any) -> Dict[str, Any]:
+    async def acquire_target(self, **kwargs: Any) -> dict[str, Any]:
         """Acquire target at given coordinates.
 
         If no RA/Dec are given, start from current position. Might not work for some implementations that require
@@ -47,7 +49,7 @@ class DummyAcquisition(Module, IAcquisition):
         finally:
             self._is_running = False
 
-    async def _acquire(self) -> Dict[str, Any]:
+    async def _acquire(self) -> dict[str, Any]:
         """Actually acquire target."""
         log.info("Acquiring target.")
         await asyncio.sleep(self._wait_secs)

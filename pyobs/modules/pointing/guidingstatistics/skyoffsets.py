@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Dict, Tuple, Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -12,7 +14,7 @@ log = logging.getLogger(__name__)
 
 class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
     @staticmethod
-    def _calc_rms(data: List[float]) -> Optional[float]:
+    def _calc_rms(data: list[float]) -> float | None:
         """
         Calculates RMS of data.
 
@@ -29,7 +31,7 @@ class GuidingStatisticsSkyOffset(GuidingStatistics[Image, float]):
         rms = np.sqrt(np.sum(np.power(data, 2)) / data_len)
         return float(rms)
 
-    def _build_header(self, data: List[float]) -> Dict[str, Tuple[Any, str]]:
+    def _build_header(self, data: list[float]) -> dict[str, tuple[Any, str]]:
         header = {}
         rms = self._calc_rms(data)
 

@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 # from https://gitlab.com/kipe/influx_logging_handler
 import logging
 import traceback
-from typing import Any, Iterator, Tuple
+from typing import Any, Iterator
 
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, WriteOptions
@@ -30,7 +32,7 @@ class InfluxHandler(logging.Handler):
         super().__init__()
 
     @staticmethod
-    def _get_additional_tags(record: logging.LogRecord) -> Iterator[Tuple[str, Any]]:
+    def _get_additional_tags(record: logging.LogRecord) -> Iterator[tuple[str, Any]]:
         if "tags" in record.__dict__ and isinstance(record.__dict__["tags"], dict):
             for key, value in record.__dict__["tags"].items():
                 yield (key, value)

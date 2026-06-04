@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Optional, Dict, Any, NamedTuple, List
+from typing import Any, NamedTuple
 from astropy.io import fits
 
 from pyobs.mixins.fitsheader import SpectrumFitsHeaderMixin
@@ -28,9 +30,9 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
 
     def __init__(
         self,
-        fits_headers: Optional[Dict[str, Any]] = None,
+        fits_headers: dict[str, Any] | None = None,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits.gz",
-        fits_namespaces: Optional[List[str]] = None,
+        fits_namespaces: list[str] | None = None,
         **kwargs: Any,
     ):
         """Creates a new BaseCamera.
@@ -47,7 +49,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         )
 
         # init camera
-        self._exposure: Optional[ExposureInfo] = None
+        self._exposure: ExposureInfo | None = None
         self._spectrograph_status = ExposureStatus.IDLE
 
         # multi-threading
@@ -73,7 +75,7 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         """
         ...
 
-    async def __expose(self, broadcast: bool) -> Tuple[Optional[fits.HDUList], Optional[str]]:
+    async def __expose(self, broadcast: bool) -> tuple[fits.HDUList | None, str | None]:
         """Wrapper for a single exposure.
 
         Args:

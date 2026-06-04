@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import json
 import logging
@@ -152,7 +154,7 @@ class PyobsDaemon(object):
         # return running processes
         return running
 
-    def start(self, modules: Optional[list[str]] = None) -> None:
+    def start(self, modules: list[str] | None = None) -> None:
         # get list of running processes
         running = [self._module(r) for r in self._running]
         configs = [self._module(r) for r in self._configs]
@@ -176,7 +178,7 @@ class PyobsDaemon(object):
                 print("Starting %s..." % module)
                 self._start_service(module)
 
-    def stop(self, modules: Optional[list[str]] = None) -> None:
+    def stop(self, modules: list[str] | None = None) -> None:
         # if no modules are given, stop all
         if modules is None or len(modules) == 0:
             modules = [self._module(r) for r in self._running]
@@ -186,7 +188,7 @@ class PyobsDaemon(object):
             print("Stopping %s..." % module)
             self._stop_service(module)
 
-    def restart(self, modules: Optional[list[str]] = None) -> None:
+    def restart(self, modules: list[str] | None = None) -> None:
         # stop all modules
         self.stop(modules=modules)
 

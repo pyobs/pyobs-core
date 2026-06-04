@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from astropy.time import Time
-from typing import Union, Optional, TYPE_CHECKING, Dict, Any
+from typing import Union, TYPE_CHECKING, Any
 
 from pyobs.object import create_object, Object
 
@@ -17,9 +17,9 @@ class SimWorld(Object):
 
     def __init__(
         self,
-        time: Optional[Union[Time, str]] = None,
-        telescope: Optional[Union["SimTelescope", Dict[str, Any]]] = None,
-        camera: Optional[Union["SimCamera", Dict[str, Any]]] = None,
+        time: Union[Time, str] | None = None,
+        telescope: Union["SimTelescope", dict[str, Any]] | None = None,
+        camera: Union["SimCamera", dict[str, Any]] | None = None,
         **kwargs: Any,
     ):
         """Initializes a new simulated world.

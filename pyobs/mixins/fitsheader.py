@@ -5,7 +5,7 @@ import logging
 import math
 import os
 from asyncio import Task
-from typing import Union, Dict, Any, Tuple, Optional, List, cast
+from typing import Union, Any, cast
 import astropy.units as u
 from astropy.io import fits
 
@@ -26,8 +26,8 @@ class FitsHeaderMixin:
 
     def __init__(
         self,
-        fits_namespaces: Optional[List[str]] = None,
-        fits_headers: Optional[Dict[str, Any]] = None,
+        fits_namespaces: list[str] | None = None,
+        fits_headers: dict[str, Any] | None = None,
         filenames: str = "/cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}.fits",
         frame_number: bool = True,
         night_obs: bool = True,
@@ -91,7 +91,7 @@ class FitsHeaderMixin:
         return futures
 
     async def add_requested_fits_headers(
-        self, image: Union[Image, fits.PrimaryHDU], futures: Dict[str, Task[Any]]
+        self, image: Union[Image, fits.PrimaryHDU], futures: dict[str, Task[Any]]
     ) -> None:
         """Add requested FITS headers to header of given image.
 
@@ -233,7 +233,7 @@ class FitsHeaderMixin:
         # set it
         hdr["FRAMENUM"] = self._fitsheadermixin_frame_number
 
-    def format_filename(self, image: Union[Image, fits.PrimaryHDU]) -> Optional[str]:
+    def format_filename(self, image: Union[Image, fits.PrimaryHDU]) -> str | None:
         """Format filename according to given pattern and store in header of image.
 
         Args:
@@ -260,7 +260,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, centre: Optional[Tuple[float, float]] = None, rotation: Optional[float] = None, **kwargs: Any):
+    def __init__(self, centre: tuple[float, float] | None = None, rotation: float | None = None, **kwargs: Any):
         """Initialise the mixin.
 
         Args:
@@ -277,11 +277,11 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
         self._fitsheadermixin_rotation = rotation
 
     @property
-    def rotation(self) -> Optional[float]:
+    def rotation(self) -> float | None:
         return self._fitsheadermixin_rotation
 
     @property
-    def centre(self) -> Optional[Tuple[float, float]]:
+    def centre(self) -> tuple[float, float] | None:
         return self._fitsheadermixin_centre
 
     def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:

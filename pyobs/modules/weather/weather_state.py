@@ -1,9 +1,11 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any
 
 
 class WeatherState(object):
     def __init__(self) -> None:
-        self._state: Dict[str, Any] = {"good": False}
+        self._state: dict[str, Any] = {"good": False}
 
     @property
     def is_good(self) -> bool:
@@ -14,11 +16,11 @@ class WeatherState(object):
         self._state["good"] = is_good
 
     @property
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         return self._state
 
     @status.setter
-    def status(self, state: Dict[str, Any]) -> None:
+    def status(self, state: dict[str, Any]) -> None:
         if "good" not in state:
             raise ValueError("Good parameter not found in response from weather station.")
 

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Tuple, Optional
+from typing import Any
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import astropy.units as u
@@ -86,8 +88,8 @@ class AstrometryOffsets(Offsets):
         """
         Offsets.__init__(self, **kwargs)
 
-        self._image: Optional[Image] = None
-        self._wcs: Optional[WCS] = None
+        self._image: Image | None = None
+        self._wcs: WCS | None = None
 
     async def __call__(self, image: Image) -> Image:
         """Processes an image and sets x/y pixel offset to reference in offset attribute.
@@ -115,7 +117,7 @@ class AstrometryOffsets(Offsets):
         self._image.set_meta(OnSkyDistance(on_sky_distance))
         return self._image
 
-    def _get_coordinates_from_header(self, header_cards: Tuple[str, str]) -> Tuple[SkyCoord, Tuple[float, float]]:
+    def _get_coordinates_from_header(self, header_cards: tuple[str, str]) -> tuple[SkyCoord, tuple[float, float]]:
         coordinates = SkyCoord(
             self._image.header[header_cards[0]] * u.deg,  # type: ignore
             self._image.header[header_cards[1]] * u.deg,  # type: ignore

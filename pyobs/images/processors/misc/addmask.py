@@ -1,4 +1,6 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any
 import logging
 import numpy as np
 import numpy.typing as npt
@@ -102,7 +104,7 @@ class AddMask(ImageProcessor):
             self._masks[instrument] = {}
             self._build_binning_dictionary(instrument, binning)
 
-    def _build_binning_dictionary(self, instrument: str, masks: Dict[str, npt.NDArray[np.floating[Any]] | str]) -> None:
+    def _build_binning_dictionary(self, instrument: str, masks: dict[str, npt.NDArray[np.floating[Any]] | str]) -> None:
         for binning, mask in masks.items():
             if isinstance(mask, np.ndarray):
                 self._masks[instrument][binning] = mask

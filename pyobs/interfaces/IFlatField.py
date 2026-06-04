@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Any
+from typing import Any
 
 from .IAbortable import IAbortable
 
@@ -10,7 +12,7 @@ class IFlatField(IAbortable, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def flat_field(self, count: int = 20, **kwargs: Any) -> Tuple[int, float]:
+    async def flat_field(self, count: int = 20, **kwargs: Any) -> tuple[int, float]:
         """Do a series of flat fields.
 
         Args:

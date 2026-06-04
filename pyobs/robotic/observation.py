@@ -87,7 +87,7 @@ class Observation(BaseModel):
             self.task.set_resolved_target(self.target)
 
 
-class ObservationList(UserList[Observation], Object):  # noqa: F821
+class ObservationList(Userlist[Observation], Object):  # noqa: F821
     def __init__(self, observations: list[Observation] | None = None):
         if observations is None:
             observations = []

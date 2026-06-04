@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import time
 from asyncio import Event
-from typing import Union, List, Any, Optional
+from typing import Union, Any
 
 from pyobs.interfaces import IMotion
 from pyobs.modules import Module
@@ -18,8 +20,8 @@ class WaitForMotionMixin:
 
     def __init__(
         self,
-        wait_for_modules: Optional[List[str]] = None,
-        wait_for_states: Optional[List[Union[MotionStatus, str]]] = None,
+        wait_for_modules: list[str] | None = None,
+        wait_for_states: list[Union[MotionStatus, str]] | None = None,
         wait_for_timeout: float = 0,
         **kwargs: Any,
     ):

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Tuple
+from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -64,8 +66,8 @@ class RemoveBackground(ImageProcessor):
     def __init__(
         self,
         sigma: float = 3.0,
-        box_size: Tuple[int, int] = (50, 50),
-        filter_size: Tuple[int, int] = (3, 3),
+        box_size: tuple[int, int] = (50, 50),
+        filter_size: tuple[int, int] = (3, 3),
         **kwargs: Any,
     ):
         """Init an image processor that removes background from image.

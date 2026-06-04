@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from copy import copy
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from astropy.table import Row
@@ -113,7 +115,7 @@ class StarExpTimeEstimator(ExpTimeEstimator):
         self._bias = bias
         self._saturated = saturated
 
-        self._image: Optional[Image] = None
+        self._image: Image | None = None
 
     async def _calc_exp_time(self, image: Image) -> float:
         """

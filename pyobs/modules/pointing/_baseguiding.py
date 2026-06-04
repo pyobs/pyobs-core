@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta
-from typing import Union, List, Dict, Tuple, Any, Optional
+from typing import Union, Any
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -24,14 +26,14 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
 
     def __init__(
         self,
-        max_exposure_time: Optional[float] = None,
+        max_exposure_time: float | None = None,
         min_interval: float = 0,
         max_interval: float = 600,
-        separation_reset: Optional[float] = None,
+        separation_reset: float | None = None,
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_statistic: Optional[Union[Dict[str, Any], GuidingStatistics[Any, Any]]] = None,
+        guiding_statistic: Union[dict[str, Any], GuidingStatistics[Any, Any]] | None = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -88,8 +90,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         return self._enabled
 
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -110,8 +112,8 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         return {"AGSTATE": (state, "Autoguider state")}
 
     async def get_fits_header_after(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:
@@ -132,7 +134,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # finished
         return hdr
 
-    async def _reset_guiding(self, enabled: bool = True, image: Optional[Union[Image, None]] = None) -> None:
+    async def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] | None = None) -> None:
         """Reset guiding.
 
         Args:
@@ -153,7 +155,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._uptime.add_data(state)
         self._loop_closed = state
 
-    async def _process_image(self, image: Image) -> Optional[Image]:
+    async def _process_image(self, image: Image) -> Image | None:
         """Processes a single image and offsets telescope.
 
         Args:

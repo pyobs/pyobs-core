@@ -1,4 +1,6 @@
-from typing import Union, Optional, Tuple, Any, Dict, cast
+from __future__ import annotations
+
+from typing import Union, Any, cast
 import logging
 
 from pyobs.images.processor import ImageProcessor
@@ -134,14 +136,14 @@ class Calibration(ImageProcessor):
 
     def __init__(
         self,
-        archive: Union[Dict[str, Any], Archive],
+        archive: Union[dict[str, Any], Archive],
         max_cache_size: int = 20,
         require_bias: bool = True,
         require_dark: bool = True,
         require_flat: bool = True,
-        max_days_bias: Optional[float] = None,
-        max_days_dark: Optional[float] = None,
-        max_days_flat: Optional[float] = None,
+        max_days_bias: float | None = None,
+        max_days_dark: float | None = None,
+        max_days_flat: float | None = None,
         **kwargs: Any,
     ):
         """Init a new image calibration pipeline step.
@@ -190,7 +192,7 @@ class Calibration(ImageProcessor):
 
         return calibrated
 
-    async def _get_calibrations_masters(self, image: Image) -> Tuple[Optional[Image], Optional[Image], Optional[Image]]:
+    async def _get_calibrations_masters(self, image: Image) -> tuple[Image | None, Image | None, Image | None]:
         bias = (
             None
             if not self._require_bias
@@ -209,7 +211,7 @@ class Calibration(ImageProcessor):
 
         return bias, dark, flat
 
-    async def _find_master(self, image: Image, image_type: ImageType, max_days: Optional[float] = None) -> Image:
+    async def _find_master(self, image: Image, image_type: ImageType, max_days: float | None = None) -> Image:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -244,7 +246,7 @@ class Calibration(ImageProcessor):
             raise ValueError("Could not fetch items from image header.")
 
     async def _find_master_in_archive(
-        self, image: Image, image_type: ImageType, max_days: Optional[float] = None
+        self, image: Image, image_type: ImageType, max_days: float | None = None
     ) -> Image:
         instrument = image.header["INSTRUME"]
         binning = "{0}x{0}".format(image.header["XBINNING"])

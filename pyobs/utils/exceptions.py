@@ -8,14 +8,14 @@ __title__ = "Exceptions"
 import asyncio
 import logging
 from collections.abc import Coroutine
-from typing import Optional, List, NamedTuple, Any, Tuple, Type, Dict, Callable
+from typing import NamedTuple, Any, Type, Callable
 import time
 
 
 class PyObsError(Exception):
     """Base class for all exceptions"""
 
-    def __init__(self, message: Optional[str] = None, logged: bool = False):
+    def __init__(self, message: str | None = None, logged: bool = False):
         self.message = message
         self.logged = logged
 
@@ -94,7 +94,7 @@ class AcquisitionError(PyObsError, metaclass=_Meta):
 class RemoteError(PyObsError, metaclass=_Meta):
     """Exception for anything related to the communication between modules."""
 
-    def __init__(self, module: str, message: Optional[str] = None):
+    def __init__(self, module: str, message: str | None = None):
         PyObsError.__init__(self, message)
         self.module = module
 
@@ -129,7 +129,7 @@ class InvocationError(RemoteError, metaclass=_Meta):
 class SevereError(PyObsError):
     """Severe exception that is raised after multiple raised other exceptions."""
 
-    def __init__(self, exception: PyObsError, module: Optional[str] = None):
+    def __init__(self, exception: PyObsError, module: str | None = None):
         PyObsError.__init__(self, "A severe error has occurred.")
         self.module = module
         # never encapsulate a SevereError
@@ -144,18 +144,18 @@ class LoggedException(NamedTuple):
 class ExceptionHandler(NamedTuple):
     exc_type: Type[PyObsError]
     limit: int
-    timespan: Optional[float] = None
-    module: Optional[str] = None
-    callback: Optional[Callable[[PyObsError], Coroutine[Any, Any, None]]] = None
+    timespan: float | None = None
+    module: str | None = None
+    callback: Callable[[PyObsError], Coroutine[Any, Any, None]] | None = None
     throw: bool = False
 
 
 #######################################
 
 
-_local_exceptions: Dict[Type[PyObsError], List[LoggedException]] = {}
-_remote_exceptions: Dict[Tuple[Type[PyObsError], str], List[LoggedException]] = {}
-_handlers: List[ExceptionHandler] = []
+_local_exceptions: dict[Type[PyObsError], list[LoggedException]] = {}
+_remote_exceptions: dict[tuple[Type[PyObsError], str], list[LoggedException]] = {}
+_handlers: list[ExceptionHandler] = []
 
 
 def clear() -> None:
@@ -167,9 +167,9 @@ def clear() -> None:
 def register_exception(
     exc_type: Type[PyObsError],
     limit: int,
-    timespan: Optional[float] = None,
-    module: Optional[str] = None,
-    callback: Optional[Callable[[PyObsError], Coroutine[Any, Any, None]]] = None,
+    timespan: float | None = None,
+    module: str | None = None,
+    callback: Callable[[PyObsError], Coroutine[Any, Any, None]] | None = None,
     throw: bool = False,
 ) -> None:
     _handlers.append(ExceptionHandler(exc_type, limit, timespan, module, callback, throw))
@@ -210,7 +210,7 @@ def handle_exception(exception: PyObsError) -> PyObsError:
     return exception
 
 
-def _store_exception(exception: PyObsError, module: Optional[str]) -> None:
+def _store_exception(exception: PyObsError, module: str | None) -> None:
     # get all classes from mro
     for e in type(exception).__mro__:
         # only pyobs exceptions
@@ -238,7 +238,7 @@ def _store_exception(exception: PyObsError, module: Optional[str]) -> None:
             _remote_exceptions[e, module].append(le)
 
 
-def _check_severity() -> List[ExceptionHandler]:
+def _check_severity() -> list[ExceptionHandler]:
     """Checks all handlers against all raised exceptions and returns a list of triggered exception handlers.
 
     Returns:
@@ -246,7 +246,7 @@ def _check_severity() -> List[ExceptionHandler]:
     """
 
     # loop all _handlers
-    triggered: List[ExceptionHandler] = []
+    triggered: list[ExceptionHandler] = []
     for h in _handlers:
         # get all exceptions that this handler deals with
         exceptions = []

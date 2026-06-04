@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os.path
-from typing import Union, Dict, Tuple, Optional, Any
+from typing import Union, Any
 
 from pyobs.object import get_object
 from pyobs.utils.time import Time
@@ -19,12 +21,12 @@ FILENAME = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{XBINNING}x{YB
 class Night:
     def __init__(
         self,
-        archive: Union[Dict[str, Any], Archive],
-        pipeline: Union[Dict[str, Any], Pipeline],
+        archive: Union[dict[str, Any], Archive],
+        pipeline: Union[dict[str, Any], Pipeline],
         worker_procs: int = 4,
         filenames_calib: str = FILENAME,
         min_flats: int = 10,
-        store_local: Optional[str] = None,
+        store_local: str | None = None,
         create_calibs: bool = True,
         calib_science: bool = True,
         **kwargs: Any,
@@ -54,7 +56,7 @@ class Night:
         self._calib_science = calib_science
 
         # cache for master calibration frames
-        self._master_frames: Dict[Tuple[ImageType, str, str, Optional[str]], Image] = {}
+        self._master_frames: dict[tuple[ImageType, str, str, str | None], Image] = {}
 
         # default filename patterns
         self._fmt_calib = FilenameFormatter(filenames_calib)
@@ -65,9 +67,9 @@ class Night:
         image_type: ImageType,
         instrument: str,
         binning: str,
-        filter_name: Optional[str] = None,
+        filter_name: str | None = None,
         max_days: float = 30.0,
-    ) -> Optional[Image]:
+    ) -> Image | None:
         """Find master calibration frame for given parameters using a cache.
 
         Args:
@@ -99,8 +101,8 @@ class Night:
             return None
 
     async def _create_master_calib(
-        self, night: str, instrument: str, image_type: ImageType, binning: str, filter_name: Optional[str] = None
-    ) -> Optional[Image]:
+        self, night: str, instrument: str, image_type: ImageType, binning: str, filter_name: str | None = None
+    ) -> Image | None:
         # get frames
         infos = await self._archive.list_frames(
             night=night,
@@ -127,7 +129,7 @@ class Night:
             log.warning("Too few (%d) frames found, skipping...", len(infos))
 
         # create master
-        calib: Optional[Image] = None
+        calib: Image | None = None
         if image_type == ImageType.BIAS:
             # BIAS are easy, just combine
             calib = await self._pipeline.create_master_bias(images)

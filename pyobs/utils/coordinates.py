@@ -1,9 +1,10 @@
-from typing import Tuple
+from __future__ import annotations
+
 import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, ICRS
 
 
-def offset_altaz_to_radec(altaz: SkyCoord, dalt: float, daz: float) -> Tuple[float, float]:
+def offset_altaz_to_radec(altaz: SkyCoord, dalt: float, daz: float) -> tuple[float, float]:
     # convert to ra/dec
     p0 = altaz.transform_to(ICRS())
     p1 = altaz.spherical_offsets_by(daz * u.degree, dalt * u.degree).icrs
@@ -17,7 +18,7 @@ def offset_altaz_to_radec(altaz: SkyCoord, dalt: float, daz: float) -> Tuple[flo
     return float(dra.degree), float(ddec.degree)
 
 
-def offset_radec_to_altaz(radec: SkyCoord, ra: float, dec: float, location: EarthLocation) -> Tuple[float, float]:
+def offset_radec_to_altaz(radec: SkyCoord, ra: float, dec: float, location: EarthLocation) -> tuple[float, float]:
     # convert to alt/az
     altaz = AltAz(
         location=location,

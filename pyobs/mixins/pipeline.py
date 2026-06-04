@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Union, List, Dict, Any, Optional
+from typing import Union, Any
 from pyobs.images import ImageProcessor, Image
 
 from pyobs.object import Object
@@ -12,7 +14,7 @@ class PipelineMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, steps: Optional[List[Union[Dict[str, Any], ImageProcessor]]] = None, **kwargs: Any):
+    def __init__(self, steps: list[Union[dict[str, Any], ImageProcessor]] | None = None, **kwargs: Any):
         """Initializes the mixin.
 
         Args:

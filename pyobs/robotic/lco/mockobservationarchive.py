@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import copy
 import logging
-from typing import List, Optional, Any, TypedDict
+from typing import Any, TypedDict
 from astroplan import ObservingBlock
 from astropy.time import TimeDelta
 import astropy.units as u
@@ -162,7 +164,7 @@ class MockLcoObservationArchive(LcoObservationArchive):
     async def _init_from_portal(self) -> None:
         pass
 
-    async def last_scheduled(self) -> Optional[Time]:
+    async def last_scheduled(self) -> Time | None:
         return self._last_schedule_time
 
     async def _update_schedule(self) -> None:
@@ -186,7 +188,7 @@ class MockLcoObservationArchive(LcoObservationArchive):
     async def send_update(self, status_id: int | None, status: dict[str, Any]) -> None:
         pass
 
-    async def set_schedule(self, blocks: List[ObservingBlock], start_time: Time) -> None:
+    async def set_schedule(self, blocks: list[ObservingBlock], start_time: Time) -> None:
         pass
 
 

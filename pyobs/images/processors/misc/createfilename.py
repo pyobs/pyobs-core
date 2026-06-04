@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
@@ -89,7 +91,7 @@ class CreateFilename(ImageProcessor):
 
     _DEFAULT_PATTERN = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}01.fits"
 
-    def __init__(self, pattern: Optional[str], **kwargs: Any):
+    def __init__(self, pattern: str | None, **kwargs: Any):
         """Init an image processor that adds a filename to an image.
 
         Args:

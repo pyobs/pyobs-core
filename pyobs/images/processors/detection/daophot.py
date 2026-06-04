@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Tuple, Any
+from typing import Any
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
@@ -111,8 +113,8 @@ class DaophotSourceDetection(SourceDetection):
         fwhm: float = 3.0,
         threshold: float = 4.0,
         bkg_sigma: float = 3.0,
-        bkg_box_size: Tuple[int, int] = (50, 50),
-        bkg_filter_size: Tuple[int, int] = (3, 3),
+        bkg_box_size: tuple[int, int] = (50, 50),
+        bkg_filter_size: tuple[int, int] = (3, 3),
         **kwargs: Any,
     ):
         """Initializes a wrapper for photutils. See its documentation for details.

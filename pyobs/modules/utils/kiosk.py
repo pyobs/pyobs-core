@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import io
 import logging
-from typing import Union, Any, Optional
+from typing import Union, Any
 import numpy as np
 from aiohttp import web
 
@@ -35,7 +37,7 @@ class Kiosk(Module, IStartStop):
         self._port = port
         self._exp_time = 2
         self._running = False
-        self._image: Optional[bytes] = None
+        self._image: bytes | None = None
 
         # create empty image
         from PIL import Image, ImageDraw
@@ -53,7 +55,7 @@ class Kiosk(Module, IStartStop):
         self._app = web.Application()
         self._app.add_routes([web.get("/image.jpg", self.image_handler)])
         self._runner = web.AppRunner(self._app)
-        self._site: Optional[web.TCPSite] = None
+        self._site: web.TCPSite | None = None
 
     async def open(self) -> None:
         """Open server"""

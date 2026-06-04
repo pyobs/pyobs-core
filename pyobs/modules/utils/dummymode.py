@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from pyobs.events import ModeChangedEvent
 from pyobs.interfaces import IMode, IMotion
@@ -43,7 +43,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(ModeChangedEvent)
 
-    async def list_mode_groups(self, **kwargs: Any) -> List[str]:
+    async def list_mode_groups(self, **kwargs: Any) -> list[str]:
         """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
         methods.
 
@@ -58,7 +58,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         except IndexError:
             return ""
 
-    async def list_modes(self, group: int = 0, **kwargs: Any) -> List[str]:
+    async def list_modes(self, group: int = 0, **kwargs: Any) -> list[str]:
         """List available modes.
 
         Args:
@@ -103,7 +103,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
     async def park(self, **kwargs: Any) -> None:
         pass
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
 
     async def is_ready(self, **kwargs: Any) -> bool:

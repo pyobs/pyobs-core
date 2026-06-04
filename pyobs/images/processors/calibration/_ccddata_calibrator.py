@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from astropy.nddata import CCDData
 
@@ -21,7 +21,7 @@ class _CCDDataCalibrator:
             self._dark_exp_time = dark.header["EXPTIME"]
 
     @staticmethod
-    def _optional_to_ccddata(image: Optional[Image]) -> Optional[CCDData]:
+    def _optional_to_ccddata(image: Image | None) -> CCDData | None:
         if image is None:
             return None
         return image.to_ccddata()

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from .IReady import IReady
 from pyobs.utils.enums import MotionStatus
@@ -29,7 +31,7 @@ class IMotion(IReady, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_motion_status(self, device: Optional[str] = None, **kwargs: Any) -> MotionStatus:
+    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
         """Returns current motion status.
 
         Args:
@@ -41,7 +43,7 @@ class IMotion(IReady, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         """Stop the motion.
 
         Args:

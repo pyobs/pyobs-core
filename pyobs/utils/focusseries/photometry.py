@@ -1,4 +1,6 @@
-from typing import Tuple, Dict, List, Any
+from __future__ import annotations
+
+from typing import Any
 import numpy as np
 import logging
 from pyobs.object import get_object
@@ -27,7 +29,7 @@ class PhotometryFocusSeries(FocusSeries):
         # stuff
         self._source_detection: SourceDetection = get_object(source_detection, SourceDetection)
         self._radius_col = radius_column
-        self._data: List[Dict[str, float]] = []
+        self._data: list[dict[str, float]] = []
 
     def reset(self) -> None:
         """Reset focus series."""
@@ -62,7 +64,7 @@ class PhotometryFocusSeries(FocusSeries):
         # add to list
         self._data.append({"focus": focus_value, "r": radius, "rerr": radius_err})
 
-    def fit_focus(self) -> Tuple[float, float]:
+    def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images
 
         Returns:

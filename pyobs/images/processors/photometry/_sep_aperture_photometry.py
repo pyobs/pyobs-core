@@ -1,4 +1,6 @@
-from typing import List, Optional, Any, cast
+from __future__ import annotations
+
+from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 from astropy.table import Table
@@ -10,11 +12,11 @@ from pyobs.images.processors.photometry._photometry_calculator import _Photometr
 
 class _SepAperturePhotometry(_PhotometryCalculator):
     def __init__(self) -> None:
-        self._image: Optional[Image] = None
-        self._pos_x: Optional[List[float]] = None
-        self._pos_y: Optional[List[float]] = None
+        self._image: Image | None = None
+        self._pos_x: list[float] | None = None
+        self._pos_y: list[float] | None = None
 
-        self._gain: Optional[float] = None
+        self._gain: float | None = None
 
         self._data: npt.NDArray[np.floating[Any]] | None = None
         self._average_background: npt.NDArray[np.floating[Any]] | None = None

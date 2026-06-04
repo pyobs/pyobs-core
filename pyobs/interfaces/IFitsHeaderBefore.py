@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import List, Dict, Tuple, Any, Optional
+from typing import Any
 
 from .interface import Interface
 
@@ -12,8 +14,8 @@ class IFitsHeaderBefore(Interface, metaclass=ABCMeta):
 
     @abstractmethod
     async def get_fits_header_before(
-        self, namespaces: Optional[List[str]] = None, **kwargs: Any
-    ) -> Dict[str, Tuple[Any, str]]:
+        self, namespaces: list[str] | None = None, **kwargs: Any
+    ) -> dict[str, tuple[Any, str]]:
         """Returns FITS header for the current status of this module.
 
         Args:

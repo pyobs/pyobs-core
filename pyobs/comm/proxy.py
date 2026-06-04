@@ -1,7 +1,7 @@
 from __future__ import annotations
 import inspect
 import types
-from typing import TYPE_CHECKING, Any, Type, List, Dict, get_type_hints
+from typing import TYPE_CHECKING, Any, Type, get_type_hints
 
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_bound_arguments_to_simple
@@ -15,7 +15,7 @@ class Proxy:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, comm: Comm, client: str, interfaces: List[Type[Interface]]):
+    def __init__(self, comm: Comm, client: str, interfaces: list[Type[Interface]]):
         """Creates a new proxy.
 
         Args:
@@ -51,12 +51,12 @@ class Proxy:
         return self._client
 
     @property
-    def method_names(self) -> List[str]:
+    def method_names(self) -> list[str]:
         """List of method names."""
         return list(sorted(self._methods.keys()))
 
     @property
-    def interfaces(self) -> List[Type[Interface]]:
+    def interfaces(self) -> list[Type[Interface]]:
         """List of interfaces."""
         return self._interfaces
 
@@ -112,7 +112,7 @@ class Proxy:
         # do request and return future
         return await self._comm.execute(self._client, method, type_hints, *ba.args[1:])
 
-    def _create_methods(self) -> Dict[str, Any]:
+    def _create_methods(self) -> dict[str, Any]:
         """Create local methods for the remote client."""
 
         # loop all interfaces and get methods

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Tuple, Any
+from typing import Any
 
 from astropy.coordinates import Angle
 from astropy.table import Table, Row
@@ -87,7 +89,7 @@ class BrightestStarOffsets(Offsets):
 
     __module__ = "pyobs.images.processors.offsets"
 
-    def __init__(self, center_header_cards: Tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
+    def __init__(self, center_header_cards: tuple[str, str] = ("CRPIX1", "CRPIX2"), **kwargs: Any):
         """Initializes a new auto guiding system."""
         Offsets.__init__(self, **kwargs)
 
@@ -122,12 +124,12 @@ class BrightestStarOffsets(Offsets):
         return image
 
     @staticmethod
-    def _get_brightest_star_position(catalog: Table) -> Tuple[float, float]:
+    def _get_brightest_star_position(catalog: Table) -> tuple[float, float]:
         brightest_star: Row = max(catalog, key=lambda row: row["flux"])
         return brightest_star["x"], brightest_star["y"]
 
     @staticmethod
-    def _calc_on_sky_distance(image: Image, center: Tuple[float, float], star_pos: Tuple[float, float]) -> Angle:
+    def _calc_on_sky_distance(image: Image, center: tuple[float, float], star_pos: tuple[float, float]) -> Angle:
         wcs = WCS(image.header)
         center_coordinates = wcs.pixel_to_world(*center)
         star_coordinates = wcs.pixel_to_world(*star_pos)

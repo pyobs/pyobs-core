@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from copy import copy
-from typing import Dict, Any, Optional
+from typing import Any
 
 from astropy.wcs import WCS
 
@@ -8,14 +10,14 @@ import pyobs.utils.exceptions as exc
 
 
 class _ResponseImageWriter:
-    def __init__(self, response_data: Dict[str, Any], image: Image):
+    def __init__(self, response_data: dict[str, Any], image: Image):
         self._response_data = response_data
         self._image = copy(image)
 
-        self._image_wcs: Optional[WCS] = None
+        self._image_wcs: WCS | None = None
 
     @property
-    def response_data(self) -> Dict[str, Any]:
+    def response_data(self) -> dict[str, Any]:
         return self._response_data
 
     @property

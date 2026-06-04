@@ -1,4 +1,6 @@
-from typing import List, Tuple, Optional, Any, cast
+from __future__ import annotations
+
+from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
@@ -12,8 +14,8 @@ from pyobs.images.processors.photometry._photometry_calculator import _Photometr
 class _PhotUtilAperturePhotometry(_PhotometryCalculator):
 
     def __init__(self) -> None:
-        self._image: Optional[Image] = None
-        self._positions: Optional[List[Tuple[float, float]]] = None
+        self._image: Image | None = None
+        self._positions: list[tuple[float, float]] | None = None
 
     def set_data(self, image: Image) -> None:
         self._image = image.copy()

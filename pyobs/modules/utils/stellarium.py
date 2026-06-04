@@ -5,7 +5,7 @@ import math
 import time
 from asyncio import Server
 from struct import unpack, pack
-from typing import Any, Optional, List, NoReturn, cast
+from typing import Any, NoReturn, cast
 
 from pyobs.interfaces import IPointingRaDec
 from pyobs.modules import Module
@@ -70,10 +70,10 @@ class Stellarium(Module):
         self._telescope = telescope
         self._host = host
         self._port = port
-        self._clients: List[StellariumProtocol] = []
+        self._clients: list[StellariumProtocol] = []
 
         # server
-        self._server: Optional[Server] = None
+        self._server: Server | None = None
 
         # background task
         self.add_background_task(self._send_task)

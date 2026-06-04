@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from copy import copy
-from typing import Any, Union, Dict
+from typing import Any, Union
 
 from astropy.coordinates import SkyCoord
 
@@ -74,7 +76,7 @@ class DummySkyOffsets(Offsets):
     __module__ = "pyobs.images.processors.offsets"
 
     def __init__(
-        self, coord0: Union[SkyCoord, Dict[str, Any]], coord1: Union[SkyCoord, Dict[str, Any]], **kwargs: Any
+        self, coord0: Union[SkyCoord, dict[str, Any]], coord1: Union[SkyCoord, dict[str, Any]], **kwargs: Any
     ) -> None:
         super().__init__(**kwargs)
         sky_coord0 = get_object(coord0, SkyCoord)

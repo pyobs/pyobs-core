@@ -87,7 +87,7 @@ class LcoTaskArchive(TaskArchive):
         """
         return self._tasks
 
-    async def get_task(self, id: Any) -> LcoTask | None:  # type: ignore[override]
+    async def get_task(self, id: Any) -> LcoTask | None:
         """Returns the task with the given ID."""
         for task in self._tasks:
             if task.id == id:

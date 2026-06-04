@@ -15,8 +15,8 @@ from __future__ import annotations
 import copy
 import datetime
 import inspect
-from collections.abc import Coroutine
-from typing import Callable, TypeVar, Type, Any, overload, TYPE_CHECKING, Literal
+from collections.abc import Coroutine, Callable
+from typing import TypeVar, Type, Any, overload, TYPE_CHECKING, Literal
 import logging
 import pytz
 from astroplan import Observer

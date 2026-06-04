@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 from enum import Enum
 import logging
-from typing import Callable, Any, cast, Coroutine
+from collections.abc import Callable
+from typing import Any, cast, Coroutine
 import astropy.units as u
 from astropy.time import TimeDelta
 import numpy as np

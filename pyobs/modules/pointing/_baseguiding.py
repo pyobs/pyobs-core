@@ -1,6 +1,6 @@
 import logging
 from abc import ABCMeta
-from typing import Union, Any
+from typing import Any
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -31,7 +31,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         pid: bool = False,
         reset_at_focus: bool = True,
         reset_at_filter: bool = True,
-        guiding_statistic: Union[dict[str, Any], GuidingStatistics[Any, Any]] | None = None,
+        guiding_statistic: dict[str, Any] | GuidingStatistics[Any, Any] | None = None,
         **kwargs: Any,
     ):
         """Initializes a new science frame auto guiding system.
@@ -132,7 +132,7 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         # finished
         return hdr
 
-    async def _reset_guiding(self, enabled: bool = True, image: Union[Image, None] | None = None) -> None:
+    async def _reset_guiding(self, enabled: bool = True, image: Image | None = None) -> None:
         """Reset guiding.
 
         Args:

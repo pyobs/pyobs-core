@@ -2,7 +2,6 @@ import asyncio
 import logging
 import astropy.units as u
 from typing import Any
-from typing_extensions import override
 from astropy.time import TimeDelta
 
 from pyobs.utils.time import Time
@@ -80,7 +79,6 @@ class LcoTaskArchive(TaskArchive):
         """Returns list of projects from the LCO portal."""
         return self._projects
 
-    @override
     async def get_schedulable_tasks(self) -> list[LcoTask]:  # type: ignore[override]
         """Returns list of schedulable tasks.
 
@@ -89,8 +87,7 @@ class LcoTaskArchive(TaskArchive):
         """
         return self._tasks
 
-    @override
-    async def get_task(self, id: Any) -> LcoTask | None:
+    async def get_task(self, id: Any) -> LcoTask | None:  # type: ignore[override]
         """Returns the task with the given ID."""
         for task in self._tasks:
             if task.id == id:

@@ -1,7 +1,7 @@
 import asyncio
 from enum import Enum
 import logging
-from typing import Union, Callable, Any, cast, Coroutine
+from typing import Callable, Any, cast, Coroutine
 import astropy.units as u
 from astropy.time import TimeDelta
 import numpy as np
@@ -46,7 +46,7 @@ class FlatFielder(Object):
 
     def __init__(
         self,
-        functions: Union[str, dict[str, Union[str, dict[str, str]]]],
+        functions: str | dict[str, str | dict[str, str]],
         target_count: float = 30000,
         min_exptime: float = 0.5,
         max_exptime: float = 5,
@@ -54,7 +54,7 @@ class FlatFielder(Object):
         counts_frame: tuple[float, float, float, float] | None = None,
         allowed_offset_frac: float = 0.2,
         min_counts: int = 100,
-        pointing: Union[dict[str, Any], SkyFlatsBasePointing] | None = None,
+        pointing: dict[str, Any] | SkyFlatsBasePointing | None = None,
         callback: Callable[..., Coroutine[Any, Any, None]] | None = None,
         **kwargs: Any,
     ):
@@ -225,7 +225,7 @@ class FlatFielder(Object):
             return True
 
     async def _init_system(
-        self, telescope: ITelescope, camera: Union[ICamera, IExposureTime], filters: IFilters | None = None
+        self, telescope: ITelescope, camera: ICamera | IExposureTime, filters: IFilters | None = None
     ) -> None:
         """Initialize whole system."""
 
@@ -405,7 +405,7 @@ class FlatFielder(Object):
             log.info("Missed flat-fielding time, finish task...")
             self._state = FlatFielder.State.FINISHED
 
-    async def _set_window(self, camera: Union[ICamera, IExposureTime], testing: bool) -> None:
+    async def _set_window(self, camera: ICamera | IExposureTime, testing: bool) -> None:
         """Set camera window.
 
         Args:

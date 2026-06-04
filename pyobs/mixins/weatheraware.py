@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Union, Any
+from typing import Any
 
 from pyobs.interfaces import IWeather
 from pyobs.modules import Module
@@ -17,7 +17,7 @@ class WeatherAwareMixin:
 
     __module__ = "pyobs.mixins"
 
-    def __init__(self, weather: Union[str, IWeather] | None = None, **kwargs: Any):
+    def __init__(self, weather: str | IWeather | None = None, **kwargs: Any):
         self.__weather = weather
         self.__is_weather_good: bool | None = None
         self.__last_park_attempt: float | None = None

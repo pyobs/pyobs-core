@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from functools import partial
-from typing import Union, Any
+from typing import Any
 import ccdproc
 import numpy as np
 import astropy.units as u
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 class Pipeline(Object, PipelineMixin):
     """Pipeline based on the astropy package ccdproc."""
 
-    def __init__(self, steps: list[Union[dict[str, Any], ImageProcessor]], **kwargs: Any):
+    def __init__(self, steps: list[dict[str, Any] | ImageProcessor], **kwargs: Any):
         """Pipeline for science images.
 
         Args:

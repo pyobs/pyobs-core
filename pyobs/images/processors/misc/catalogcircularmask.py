@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -92,7 +92,7 @@ class CatalogCircularMask(ImageProcessor):
     def __init__(
         self,
         radius: float,
-        center: Union[tuple[int, int], tuple[float, float], tuple[str, str]] = ("CRPIX1", "CRPIX2"),
+        center: tuple[int, int] | tuple[float, float] | tuple[str, str] = ("CRPIX1", "CRPIX2"),
         exclude_circle: bool = False,
         **kwargs: Any,
     ):

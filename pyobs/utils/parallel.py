@@ -3,7 +3,7 @@ import time
 import asyncio
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import Any, Union, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pyobs.utils.types import cast_response_to_real
 
@@ -104,7 +104,7 @@ class Future(asyncio.Future[Any]):
         return result
 
     @staticmethod
-    async def wait_all(futures: list[Union[Future, Coroutine[Any, Any, Any], Task[Any]] | None]) -> list[Any]:
+    async def wait_all(futures: list[Future | Coroutine[Any, Any, Any] | Task[Any] | None]) -> list[Any]:
         return [await fut for fut in futures if fut is not None]
 
 

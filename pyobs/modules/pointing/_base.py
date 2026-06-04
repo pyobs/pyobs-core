@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from typing import Union, Any
+from typing import Any
 import logging
 
 from pyobs.interfaces import ITelescope, ICamera
@@ -20,10 +20,10 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
 
     def __init__(
         self,
-        camera: Union[str, ICamera],
-        telescope: Union[str, ITelescope],
-        pipeline: list[Union[dict[str, Any], ImageProcessor]],
-        apply: Union[dict[str, Any], ApplyOffsets],
+        camera: str | ICamera,
+        telescope: str | ITelescope,
+        pipeline: list[dict[str, Any] | ImageProcessor],
+        apply: dict[str, Any] | ApplyOffsets,
         **kwargs: Any,
     ):
         """Initializes a new base pointing.

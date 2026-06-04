@@ -1,8 +1,7 @@
-from typing import Union, Any
+from typing import Any
 import logging
 
 from .publisher import Publisher
-
 
 log = logging.getLogger(__name__)
 
@@ -10,7 +9,7 @@ log = logging.getLogger(__name__)
 class MultiPublisher(Publisher):
     """Forwards a message to multiple publishers."""
 
-    def __init__(self, publishers: list[Union[Publisher, dict[str, Any]]] | None = None, **kwargs: Any):
+    def __init__(self, publishers: list[Publisher | dict[str, Any]] | None = None, **kwargs: Any):
         """Initialize new multi publisher.
 
         Args:

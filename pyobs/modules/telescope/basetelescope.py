@@ -1,6 +1,6 @@
 import asyncio
 from abc import ABCMeta, abstractmethod
-from typing import Any, Union
+from typing import Any
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 import astropy.units as u
 import logging
@@ -221,7 +221,7 @@ class BaseTelescope(
         """
 
         # define base header
-        hdr: dict[str, Union[Any, tuple[Any, str]]] = {}
+        hdr: dict[str, Any | tuple[Any, str]] = {}
 
         # positions
         coords_ra_dec = None

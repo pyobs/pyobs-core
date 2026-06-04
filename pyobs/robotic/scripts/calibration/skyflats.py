@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from pyobs.interfaces import IFilters, IBinning, IFlatField, ITelescope, IRoof
 from pyobs.robotic.scripts import Script
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-FlatFunctions = Union[str, dict[str, Union[str, dict[str, str]]]]
+FlatFunctions = str | dict[str, str | dict[str, str]]
 
 
 class SkyFlatsScript(Script):

@@ -1,5 +1,5 @@
 import re
-from typing import Union, Any
+from typing import Any
 from astroplan import Observer
 from astropy.time import TimeDelta
 from py_expression_eval import Parser, Expression
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 class ExpTimeEval:
     """Exposure time evaluator for skyflats."""
 
-    def __init__(self, observer: Observer, functions: Union[str, dict[str, Union[str, dict[str, str]]]]):
+    def __init__(self, observer: Observer, functions: str | dict[str, str | dict[str, str]]):
         """Initializes a new evaluator.
 
         Args:
@@ -107,9 +107,7 @@ class ExpTimeEval:
         """Return list of filters."""
         return self._keys(1)
 
-    def __call__(
-        self, solalt: float, binning: tuple[int, int] | None = None, filter_name: str | None = None
-    ) -> float:
+    def __call__(self, solalt: float, binning: tuple[int, int] | None = None, filter_name: str | None = None) -> float:
         """Estimate exposure time for given filter
 
         Args:

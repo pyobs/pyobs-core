@@ -1,7 +1,7 @@
 import asyncio
 import io
 import logging
-from typing import Union, Any
+from typing import Any
 import numpy as np
 from aiohttp import web
 
@@ -17,7 +17,7 @@ class Kiosk(Module, IStartStop):
 
     __module__ = "pyobs.modules.utils"
 
-    def __init__(self, camera: Union[ICamera, str], port: int = 37077, **kwargs: Any):
+    def __init__(self, camera: ICamera | str, port: int = 37077, **kwargs: Any):
         """Initializes file cache.
 
         Args:

@@ -1,6 +1,6 @@
 import logging
 import os.path
-from typing import Union, Any
+from typing import Any
 
 from pyobs.object import get_object
 from pyobs.utils.time import Time
@@ -19,8 +19,8 @@ FILENAME = "{SITEID}{TELID}-{INSTRUME}-{DAY-OBS|date:}-{IMAGETYP}-{XBINNING}x{YB
 class Night:
     def __init__(
         self,
-        archive: Union[dict[str, Any], Archive],
-        pipeline: Union[dict[str, Any], Pipeline],
+        archive: dict[str, Any] | Archive,
+        pipeline: dict[str, Any] | Pipeline,
         worker_procs: int = 4,
         filenames_calib: str = FILENAME,
         min_flats: int = 10,

@@ -1,4 +1,4 @@
-from typing import Union, Any, cast
+from typing import Any, cast
 import logging
 
 from pyobs.images.processor import ImageProcessor
@@ -134,7 +134,7 @@ class Calibration(ImageProcessor):
 
     def __init__(
         self,
-        archive: Union[dict[str, Any], Archive],
+        archive: dict[str, Any] | Archive,
         max_cache_size: int = 20,
         require_bias: bool = True,
         require_dark: bool = True,

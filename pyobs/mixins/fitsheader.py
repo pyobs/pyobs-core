@@ -3,7 +3,7 @@ import logging
 import math
 import os
 from asyncio import Task
-from typing import Union, Any, cast
+from typing import Any, cast
 import astropy.units as u
 from astropy.io import fits
 
@@ -88,9 +88,7 @@ class FitsHeaderMixin:
         # finished
         return futures
 
-    async def add_requested_fits_headers(
-        self, image: Union[Image, fits.PrimaryHDU], futures: dict[str, Task[Any]]
-    ) -> None:
+    async def add_requested_fits_headers(self, image: Image | fits.PrimaryHDU, futures: dict[str, Task[Any]]) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -119,7 +117,7 @@ class FitsHeaderMixin:
                     else:
                         image.header[key] = value
 
-    async def add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
         """Add requested FITS headers to header of given image.
 
         Args:
@@ -138,7 +136,7 @@ class FitsHeaderMixin:
         if self._fitsheadermixin_enable_frame_number:
             await self._fitsheadermixin_add_framenum(image)
 
-    def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    def _fitsheadermixin_add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
         """Add FITS header keywords to the given FITS header.
 
         Args:
@@ -185,7 +183,7 @@ class FitsHeaderMixin:
         else:
             hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
 
-    async def _fitsheadermixin_add_framenum(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    async def _fitsheadermixin_add_framenum(self, image: Image | fits.PrimaryHDU) -> None:
         """Add FRAMENUM keyword to header
 
         Args:
@@ -231,7 +229,7 @@ class FitsHeaderMixin:
         # set it
         hdr["FRAMENUM"] = self._fitsheadermixin_frame_number
 
-    def format_filename(self, image: Union[Image, fits.PrimaryHDU]) -> str | None:
+    def format_filename(self, image: Image | fits.PrimaryHDU) -> str | None:
         """Format filename according to given pattern and store in header of image.
 
         Args:
@@ -282,7 +280,7 @@ class ImageFitsHeaderMixin(FitsHeaderMixin):
     def centre(self) -> tuple[float, float] | None:
         return self._fitsheadermixin_centre
 
-    def _fitsheadermixin_add_fits_headers(self, image: Union[Image, fits.PrimaryHDU]) -> None:
+    def _fitsheadermixin_add_fits_headers(self, image: Image | fits.PrimaryHDU) -> None:
         """Add FITS header keywords to the given FITS header.
 
         Args:

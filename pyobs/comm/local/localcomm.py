@@ -1,4 +1,4 @@
-from typing import Optional, List, Type, Dict, Any, Callable, Coroutine
+from typing import Type, Any, Callable, Coroutine
 
 from pyobs.comm import Comm
 from pyobs.events import Event
@@ -21,7 +21,7 @@ class LocalComm(Comm):
         return self._name
 
     @property
-    def clients(self) -> List[str]:
+    def clients(self) -> list[str]:
         """Returns list of currently connected clients.
 
         Returns:
@@ -29,7 +29,7 @@ class LocalComm(Comm):
         """
         return self._network.get_client_names()
 
-    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -58,7 +58,7 @@ class LocalComm(Comm):
         interfaces = await self.get_interfaces(client)
         return interface in interfaces
 
-    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
@@ -92,6 +92,6 @@ class LocalComm(Comm):
             client._send_event_to_module(event, self.name)
 
     async def _register_events(
-        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         pass

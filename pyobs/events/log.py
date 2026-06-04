@@ -1,8 +1,6 @@
-from typing import Optional, Any
-from typing_extensions import TypedDict
+from typing import Any, TypedDict
 
 from pyobs.events.event import Event
-
 
 DataType = TypedDict(
     "DataType", {"time": str, "level": str, "filename": str, "function": str, "line": int, "message": str}
@@ -42,7 +40,7 @@ class LogEvent(Event):
         return str(self.data["function"])
 
     @property
-    def line(self) -> Optional[int]:
+    def line(self) -> int | None:
         return int(self.data["line"])
 
     @property

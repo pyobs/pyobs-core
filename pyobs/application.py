@@ -7,7 +7,7 @@ import signal
 import warnings
 import threading
 from io import StringIO
-from typing import Optional, Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 import yaml
 
 from pyobs.object import get_object, get_class_from_string
@@ -31,7 +31,7 @@ class Application:
     def __init__(
         self,
         config: str,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
         log_level: str = "info",
         influx_log: InfluxLogConfig | None = None,
         **kwargs: Any,
@@ -51,7 +51,7 @@ class Application:
 
         # formatter for logging, and list of logging handlers
         formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
-        handlers: List[logging.Handler] = []
+        handlers: list[logging.Handler] = []
 
         # create stdout logging handler
         stream_handler = logging.StreamHandler()
@@ -95,7 +95,7 @@ class Application:
         # load config
         log.info("Loading configuration from {0:s}...".format(self._config))
         with StringIO(pre_process_yaml(self._config)) as f:
-            cfg: Dict[str, Any] = yaml.safe_load(f)
+            cfg: dict[str, Any] = yaml.safe_load(f)
 
         # get module class
         class_name = cfg["class"]

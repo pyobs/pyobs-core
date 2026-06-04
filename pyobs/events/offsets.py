@@ -1,5 +1,4 @@
-from typing_extensions import TypedDict
-from typing import Any
+from typing import Any, TypedDict
 
 from .event import Event
 

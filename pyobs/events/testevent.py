@@ -1,10 +1,9 @@
-from typing import Optional, Any
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from .event import Event
 
-
-DataType = TypedDict("DataType", {"message": Optional[str]})
+DataType = TypedDict("DataType", {"message": str | None})
 
 
 class TestEvent(Event):
@@ -12,7 +11,7 @@ class TestEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, message: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data["message"] = message
 

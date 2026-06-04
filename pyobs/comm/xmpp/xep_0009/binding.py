@@ -2,7 +2,7 @@
 # Copyright (C) 2011 Nathanael C. Fritz, Dann Martens (TOMOTON).
 # This file is part of Slixmpp.
 # See the file LICENSE for copying permission.
-from typing import Any, Dict, List, Optional
+from typing import Any
 from slixmpp.xmlstream import ET
 import base64
 import logging
@@ -14,7 +14,7 @@ _namespace = "jabber:iq:rpc"
 
 
 def fault2xml(code: int, message: str) -> ET.Element:
-    value: Dict[str, Any] = dict()
+    value: dict[str, Any] = dict()
     value["faultCode"] = code
     value["faultString"] = message
     fault = ET.Element("fault", {"xmlns": _namespace})
@@ -22,7 +22,7 @@ def fault2xml(code: int, message: str) -> ET.Element:
     return fault
 
 
-def xml2fault(params: ET.Element) -> Dict[str, Any]:
+def xml2fault(params: ET.Element) -> dict[str, Any]:
     vals = []
     for value in params.findall("{%s}value" % _namespace):
         vals.append(_xml2py(value)[0])
@@ -91,9 +91,9 @@ def _py2xml(*args: Any) -> ET.Element:
         return val
 
 
-def xml2py(params: ET.Element) -> List[Any]:
+def xml2py(params: ET.Element) -> list[Any]:
     namespace = "jabber:iq:rpc"
-    vals: List[Any] = []
+    vals: list[Any] = []
     for param in params.findall("{%s}param" % namespace):
         vals.append(_xml2py(param.find("{%s}value" % namespace)))
     return vals
@@ -150,7 +150,7 @@ class rpcbase64(object):
 
 
 class rpctime(object):
-    def __init__(self, data: Optional[Any] = None):
+    def __init__(self, data: Any | None = None):
         # assume string data is in iso format YYYYMMDDTHH:MM:SS
         if type(data) is str:
             self.timestamp = time.strptime(data, "%Y%m%dT%H:%M:%S")

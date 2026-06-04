@@ -1,11 +1,10 @@
-from typing import Optional, Dict, Any
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 from pyobs.utils.enums import MotionStatus
 
-
-DataType = TypedDict("DataType", {"status": str, "interfaces": Dict[str, str]})
+DataType = TypedDict("DataType", {"status": str, "interfaces": dict[str, str]})
 
 
 class MotionStatusChangedEvent(Event):
@@ -13,7 +12,7 @@ class MotionStatusChangedEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, status: MotionStatus, interfaces: Optional[Dict[str, MotionStatus]] = None, **kwargs: Any):
+    def __init__(self, status: MotionStatus, interfaces: dict[str, MotionStatus] | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {
             "status": status.value,
@@ -21,14 +20,14 @@ class MotionStatusChangedEvent(Event):
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get status
         if "status" not in d or not isinstance(d["status"], str):
             raise ValueError("Invalid type for status.")
         status: MotionStatus = MotionStatus(d["status"])
 
         # get interfaces
-        interfaces: Optional[Dict[str, MotionStatus]] = {}
+        interfaces: dict[str, MotionStatus] | None = {}
         if "interfaces" in d and isinstance(d["interfaces"], dict):
             interfaces = {k: MotionStatus(v) for k, v in d["interfaces"].items()}
 
@@ -40,7 +39,7 @@ class MotionStatusChangedEvent(Event):
         return MotionStatus(self.data["status"])
 
     @property
-    def interfaces(self) -> Dict[str, MotionStatus]:
+    def interfaces(self) -> dict[str, MotionStatus]:
         return {k: MotionStatus(v) for k, v in self.data["interfaces"].items()}
 
 

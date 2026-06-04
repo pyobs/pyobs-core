@@ -1,9 +1,7 @@
 from __future__ import annotations
-from typing import Dict, Any
-from typing_extensions import TypedDict
+from typing import Any, TypedDict
 
 from pyobs.events.event import Event
-
 
 DataType = TypedDict("DataType", {"filename": str})
 
@@ -23,7 +21,7 @@ class NewSpectrumEvent(Event):
         self.data: DataType = {"filename": filename}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get filename
         if "filename" not in d or not isinstance(d["filename"], str):
             raise ValueError("Invalid type for filename.")

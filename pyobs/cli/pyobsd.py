@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Optional, List, Any
+from typing import Any
 
 from ._cli import CLI
 
@@ -88,7 +88,7 @@ class PyobsDaemon(object):
         run_path: str,
         log_path: str,
         log_level: str = "info",
-        chuid: Optional[str] = None,
+        chuid: str | None = None,
         start_stop_daemon: str = "start-stop-daemon",
         verbose: bool = False,
         **kwargs: Any,
@@ -122,12 +122,12 @@ class PyobsDaemon(object):
         print(message)
         sys.exit(1)
 
-    def _get_configs(self) -> List[str]:
+    def _get_configs(self) -> list[str]:
         # get configuration files, ignore those ending on .shared.yaml
         tmp = sorted(glob.glob(os.path.join(self._config_path, "*.yaml")))
         return list(filter(lambda t: not t.endswith(".shared.yaml"), tmp))
 
-    def _get_running(self) -> List[str]:
+    def _get_running(self) -> list[str]:
         # get PID files
         pid_files = sorted(glob.glob(os.path.join(self._run_path, "*.pid")))
 
@@ -152,7 +152,7 @@ class PyobsDaemon(object):
         # return running processes
         return running
 
-    def start(self, modules: Optional[List[str]] = None) -> None:
+    def start(self, modules: Optional[list[str]] = None) -> None:
         # get list of running processes
         running = [self._module(r) for r in self._running]
         configs = [self._module(r) for r in self._configs]
@@ -176,7 +176,7 @@ class PyobsDaemon(object):
                 print("Starting %s..." % module)
                 self._start_service(module)
 
-    def stop(self, modules: Optional[List[str]] = None) -> None:
+    def stop(self, modules: Optional[list[str]] = None) -> None:
         # if no modules are given, stop all
         if modules is None or len(modules) == 0:
             modules = [self._module(r) for r in self._running]
@@ -186,7 +186,7 @@ class PyobsDaemon(object):
             print("Stopping %s..." % module)
             self._stop_service(module)
 
-    def restart(self, modules: Optional[List[str]] = None) -> None:
+    def restart(self, modules: Optional[list[str]] = None) -> None:
         # stop all modules
         self.stop(modules=modules)
 
@@ -282,7 +282,7 @@ class PyobsDaemon(object):
         # get pid file
         return os.path.join(self._log_path, module + ".log")
 
-    def _pid(self, module: str) -> Optional[int]:
+    def _pid(self, module: str) -> int | None:
         # get pid file
         pid_file = self._pid_file(module)
         if not os.path.exists(pid_file):

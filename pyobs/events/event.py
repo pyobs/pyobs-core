@@ -3,8 +3,7 @@ import json
 import time
 import uuid
 import logging
-from typing import Dict, Any, Optional
-
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class Event:
         self.timestamp = time.time()
         self.data: Any = {}
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """JSON representation of event."""
         return {"type": self.__class__.__name__, "timestamp": self.timestamp, "uuid": self.uuid, "data": self.data}
 
@@ -29,7 +28,7 @@ class Event:
         return json.dumps(self.to_json())
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         """Generic from_dict method for derived classes that don't need their own."""
         return cls(**d)
 
@@ -38,7 +37,7 @@ class EventFactory(object):
     packages = [__package__]
 
     @staticmethod
-    def from_dict(obj_dict: Dict[str, Any]) -> Optional[Event]:
+    def from_dict(obj_dict: dict[str, Any]) -> Event | None:
         """Create Event from a dictionary.
 
         Args:
@@ -49,7 +48,7 @@ class EventFactory(object):
         """
 
         # create class
-        cls: Optional[Event] = None
+        cls: Event | None = None
         for p in EventFactory.packages:
             # import package
             parts = p.split(".")

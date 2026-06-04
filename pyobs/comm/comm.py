@@ -3,7 +3,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Coroutine
-from typing import Any, Union, Type, Dict, TYPE_CHECKING, Optional, Callable, TypeVar, overload, List, Tuple
+from typing import Any, Type, TYPE_CHECKING, Callable, TypeVar, overload
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
@@ -29,12 +29,12 @@ class Comm:
         """Creates a comm module."""
         from pyobs.modules import Module
 
-        self._proxies: Dict[str, Proxy] = {}
-        self._module: Optional[Module] = None
+        self._proxies: dict[str, Proxy] = {}
+        self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._cache_proxies = cache_proxies
-        self._logging_task: Optional[asyncio.Task[Any]] = None
-        self._event_handlers: Dict[Type[Event], List[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
+        self._logging_task: asyncio.Task[Any] | None = None
+        self._event_handlers: dict[Type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._closing = asyncio.Event()
 
     @property
@@ -95,7 +95,7 @@ class Comm:
         # this base class doesn't have short names
         return name
 
-    async def _get_client(self, client: str) -> Optional[Union[Module, Proxy]]:
+    async def _get_client(self, client: str) -> Module | Proxy | None:
         """Get a proxy to the given client.
 
         Args:
@@ -127,14 +127,14 @@ class Comm:
         return self._proxies[client]
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Type[ProxyType]) -> ProxyType: ...
+    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType]) -> ProxyType: ...
 
     @overload
-    async def proxy(self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None) -> Any: ...
+    async def proxy(self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None) -> Any: ...
 
     async def proxy(
-        self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None
-    ) -> Union[Any, ProxyType]:
+        self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None
+    ) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -182,8 +182,8 @@ class Comm:
             raise ValueError('Given parameter is neither a name nor an object of requested type "%s".' % obj_type)
 
     async def safe_proxy(
-        self, name_or_object: Union[str, object], obj_type: Optional[Type[ProxyType]] = None
-    ) -> Optional[Union[Any, ProxyType]]:
+        self, name_or_object: str | object, obj_type: Type[ProxyType] | None = None
+    ) -> Any | ProxyType | None:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
@@ -206,38 +206,38 @@ class Comm:
         return True
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Name of this client."""
         raise NotImplementedError
 
     @property
-    def clients(self) -> List[str]:
+    def clients(self) -> list[str]:
         """Returns list of currently connected clients.
 
         Returns:
-            (list) List of currently connected clients.
+            (list) list of currently connected clients.
         """
         raise NotImplementedError
 
-    async def clients_with_interface(self, interface: Type[Interface]) -> List[str]:
+    async def clients_with_interface(self, interface: Type[Interface]) -> list[str]:
         """Returns list of currently connected clients that implement the given interface.
 
         Args:
             interface: Interface to search for.
 
         Returns:
-            (list) List of currently connected clients that implement the given interface.
+            (list) list of currently connected clients that implement the given interface.
         """
         return [c for c in self.clients if await self._supports_interface(c, interface)]
 
-    async def get_interfaces(self, client: str) -> List[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
             client: Name of client.
 
         Returns:
-            List of supported interfaces.
+            list of supported interfaces.
 
         Raises:
             IndexError: If client cannot be found.
@@ -257,14 +257,14 @@ class Comm:
         raise NotImplementedError
 
     @staticmethod
-    def _interface_names_to_classes(interfaces: List[str]) -> List[Type[Interface]]:
+    def _interface_names_to_classes(interfaces: list[str]) -> list[Type[Interface]]:
         """Converts a list of interface names to interface classes.
 
         Args:
-            interfaces: List of interface names.
+            interfaces: list of interface names.
 
         Returns:
-            List of interface classes.
+            list of interface classes.
         """
 
         # get interface classes
@@ -292,14 +292,14 @@ class Comm:
                 log.error('Could not find interface "%s" for client.', interface_name)
         return interface_classes
 
-    async def execute(self, client: str, method: str, annotation: Dict[str, Any], *args: Any) -> Any:
+    async def execute(self, client: str, method: str, annotation: dict[str, Any], *args: Any) -> Any:
         """Execute a given method on a remote client.
 
         Args:
             client (str): ID of client.
             method (str): Method to call.
             annotation: Method annotation.
-            *args: List of parameters for given method.
+            *args: list of parameters for given method.
 
         Returns:
             Passes through return from method call.
@@ -342,25 +342,25 @@ class Comm:
         """
         pass
 
-    def _get_derived_events(self, event: Type[Event]) -> List[Type[Event]]:
+    def _get_derived_events(self, event: Type[Event]) -> list[Type[Event]]:
         """Return list of given event itself and all events derived from it.
 
         Args:
             event: Event class to check.
 
         Returns:
-            List of event classes.
+            list of event classes.
         """
         import pyobs.events
 
-        event_classes: List[Type[Event]] = []
+        event_classes: list[Type[Event]] = []
         for cls in inspect.getmembers(pyobs.events, inspect.isclass):
             if issubclass(cls[1], event):
                 event_classes.append(cls[1])
         return event_classes
 
     async def register_event(
-        self, event_class: Type[Event], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+        self, event_class: Type[Event], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         """Register an event type. If a handler is given, we also receive those events, otherwise we just
         send them.
@@ -390,7 +390,7 @@ class Comm:
             await self._register_events(event_classes, handler)
 
     async def _register_events(
-        self, events: List[Type[Event]], handler: Optional[Callable[[Event, str], Coroutine[Any, Any, bool]]] = None
+        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         pass
 
@@ -410,7 +410,7 @@ class Comm:
                 if asyncio.iscoroutine(ret):
                     asyncio.create_task(ret)
 
-    def cast_to_simple_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -422,7 +422,7 @@ class Comm:
         """
         return False, value
 
-    def cast_to_simple_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_simple_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
 
         Args:
@@ -434,7 +434,7 @@ class Comm:
         """
         return False, value
 
-    def cast_to_real_pre(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:
@@ -446,7 +446,7 @@ class Comm:
         """
         return False, value
 
-    def cast_to_real_post(self, value: Any, annotation: Optional[Any] = None) -> Tuple[bool, Any]:
+    def cast_to_real_post(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them after being sent via Comm.
 
         Args:

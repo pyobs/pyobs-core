@@ -2,7 +2,7 @@ import asyncio
 import logging
 import slixmpp
 import slixmpp.xmlstream
-from typing import Any, Optional
+from typing import Any
 from slixmpp.xmlstream import StanzaBase
 
 from pyobs.comm.xmpp.xep_0009.rpc import XEP_0009
@@ -56,7 +56,7 @@ class XmppClient(slixmpp.ClientXMPP):
         self.add_event_handler("failed_all_auth", self.failed_all_auth)
         self.add_filter("in", self._filter_messages)
 
-    def _filter_messages(self, stanza: StanzaBase) -> Optional[StanzaBase]:
+    def _filter_messages(self, stanza: StanzaBase) -> StanzaBase | None:
         # if a user with same JID is already connected, we get a conflict
         if '<conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" />' in str(stanza):
             self._jid_conflict = True

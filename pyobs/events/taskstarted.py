@@ -1,11 +1,10 @@
-from typing import Optional, Any, Dict
-from typing_extensions import TypedDict
+from __future__ import annotations
+from typing import Any, TypedDict
 
 from pyobs.utils.time import Time
 from pyobs.events.event import Event
 
-
-DataType = TypedDict("DataType", {"name": str, "id": Any, "eta": Optional[str]})
+DataType = TypedDict("DataType", {"name": str, "id": Any, "eta": str | None})
 
 
 class TaskStartedEvent(Event):
@@ -13,7 +12,7 @@ class TaskStartedEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, name: str, id: Any, eta: Optional[Time] = None, **kwargs: Any):
+    def __init__(self, name: str, id: Any, eta: Time | None = None, **kwargs: Any):
         """Initializes a new task started event.
 
         Args:
@@ -25,7 +24,7 @@ class TaskStartedEvent(Event):
         self.data: DataType = {"name": name, "id": id, "eta": None if eta is None else eta.isot}
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, Any]) -> Event:
         # get name
         if "name" not in d or not isinstance(d["name"], str):
             raise ValueError("Invalid type for name.")
@@ -37,7 +36,7 @@ class TaskStartedEvent(Event):
         id: Any = d["id"]
 
         # get eta
-        eta: Optional[Time] = None
+        eta: Time | None = None
         if "eta" in d and isinstance(d["eta"], str):
             eta = Time(d["eta"])
 
@@ -53,7 +52,7 @@ class TaskStartedEvent(Event):
         return self.data["id"]
 
     @property
-    def eta(self) -> Optional[Time]:
+    def eta(self) -> Time | None:
         return Time(self.data["eta"]) if self.data["eta"] is not None else None
 
 

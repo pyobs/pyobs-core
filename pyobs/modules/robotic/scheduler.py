@@ -270,7 +270,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 except asyncio.CancelledError:
                     return
 
-                except:
+                except Exception:
                     log.exception("Something went wrong")
 
             # sleep a little

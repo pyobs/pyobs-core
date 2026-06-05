@@ -124,7 +124,7 @@ class WeatherAwareMixin:
                         # get good status
                         this.__is_weather_good = await weather.is_weather_good()
 
-                    except:
+                    except Exception:
                         # could either not connect or weather is not good
                         this.__is_weather_good = False
 

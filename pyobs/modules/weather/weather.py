@@ -93,7 +93,7 @@ class Weather(Module, IWeather, IFitsHeaderBefore):
     async def _loop(self) -> None:
         try:
             await self._update()
-        except:
+        except Exception:
             sleep = 60
         else:
             sleep = 5

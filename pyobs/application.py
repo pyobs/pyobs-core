@@ -161,7 +161,7 @@ class Application:
             # run module
             await self._module.main()
 
-        except:
+        except Exception:
             # some exception was thrown
             log.exception("Something went wrong.")
 
@@ -174,7 +174,7 @@ class Application:
                 log.info("Closing module...")
                 try:
                     await self._module.close()
-                except:
+                except Exception:
                     log.exception("hey")
 
             # finished

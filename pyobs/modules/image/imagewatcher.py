@@ -165,7 +165,7 @@ class ImageWatcher(Module):
                 # try to load as fits file
                 try:
                     fits_file = fits.HDUList.fromstring(data)
-                except:
+                except Exception:
                     fits_file = None
 
                 # fill current file
@@ -215,7 +215,7 @@ class ImageWatcher(Module):
                 # cleanup extra
                 await self.cleanup_extra(filename)
 
-            except:
+            except Exception:
                 log.exception("Something went wrong.")
 
     async def process_extra(self, filename: str) -> bool:

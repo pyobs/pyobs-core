@@ -29,7 +29,7 @@ from __future__ import annotations
 #     """A virtual camera for adaptive exposure times."""
 #     # TODO: adapt this to new ICamera interface or remove!
 #
-#     def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
+#    def __init__(self, camera: str, mode: Union[str, AdaptiveCameraMode] = AdaptiveCameraMode.CENTRE, radius: int = 20,
 #                  target_counts: int = 30000, min_exptime: float = 0.5, max_exptime: float = 60, history: int = 10,
 #                  **kwargs: Any):
 #         """Creates a new adaptive exposure time camera.

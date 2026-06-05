@@ -73,7 +73,8 @@ class SepSourceDetection(SourceDetection):
       at 90 degrees, converting angles to degrees, and applying FITS 1-based origin
       conventions.
     - The catalog is attached to the image using the keys:
-      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25", "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
+      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25",
+      "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
 
     Input/Output
     ------------

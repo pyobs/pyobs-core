@@ -243,7 +243,8 @@ class SpilledLightGuiding(Offsets):
         Args:
             fibers: IMultiFiber module that contains information about the currently selected fiber
             radius_ratio: ratio between inner radius (radius of the fiber) and outer radius of the ring around the fiber
-            max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is uniform
+            max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is
+                uniform
             relative_shift: fraction of inner radius, that will be used as pixel offset
             delta_angle: angle of the sections of the ring, that are used to find the offset direction
         """

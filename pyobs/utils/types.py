@@ -38,17 +38,17 @@ def iterate_params(
 
     elif isinstance(value, tuple):
         # handle tuple
-        if type_hint and get_origin(type_hint) == tuple:
+        if type_hint and get_origin(type_hint) is tuple:
             return tuple(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
         else:
             return tuple(iterate_params(v, None, method) for v in value)
 
     elif isinstance(value, list):
         # handle lists
-        if type_hint and get_origin(type_hint) == tuple:
+        if type_hint and get_origin(type_hint) is tuple:
             # also convert a tuple, if type is actually a tuple
             return list(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
-        elif type_hint and get_origin(type_hint) == list:
+        elif type_hint and get_origin(type_hint) is list:
             typ = get_args(type_hint)[0]
             return [iterate_params(v, typ, method) for v in value]
         else:
@@ -56,7 +56,7 @@ def iterate_params(
 
     elif isinstance(value, dict):
         # handle dict
-        if type_hint and get_origin(type_hint) == dict:
+        if type_hint and get_origin(type_hint) is dict:
             annk, annv = get_args(type_hint)
             return {iterate_params(k, annk, method): iterate_params(v, annv, method) for k, v in value.items()}
         else:

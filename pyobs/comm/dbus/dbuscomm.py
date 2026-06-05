@@ -201,13 +201,13 @@ class DbusComm(Comm):
         self._interfaces = interfaces
 
     def _annotation_to_dbus(self, annotation: Any) -> Any:
-        if hasattr(annotation, "__origin__") and annotation.__origin__ == list:
+        if hasattr(annotation, "__origin__") and annotation.__origin__ is list:
             # lists
             return "a" + self._annotation_to_dbus(get_args(annotation)[0])
-        elif hasattr(annotation, "__origin__") and annotation.__origin__ == tuple:
+        elif hasattr(annotation, "__origin__") and annotation.__origin__ is tuple:
             # tuples
             return "(" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + ")"
-        elif hasattr(annotation, "__origin__") and annotation.__origin__ == dict:
+        elif hasattr(annotation, "__origin__") and annotation.__origin__ is dict:
             # dicts
             return "a{" + "".join([self._annotation_to_dbus(a) for a in get_args(annotation)]) + "}"
         elif (

@@ -19,8 +19,8 @@ jobs:
       - name: Install packages
         run: uv sync --all-extras --dev
 
-      - name: Run flake8
-        run: uv run flake8 pyobs/
+      - name: Run ruff
+        run: uv run ruff check pyobs/
 
       - name: Run mypy
         run: uv run mypy pyobs/

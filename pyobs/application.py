@@ -123,7 +123,7 @@ class Application:
         self._loop.run_until_complete(main)
 
         # main finished, cancel all tasks
-        tasks = asyncio.all_tasks()
+        tasks = asyncio.all_tasks(self._loop)
         for t in tasks:
             log.debug("Task %s still running, cancelling it...", t)
             t.cancel()

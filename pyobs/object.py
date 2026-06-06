@@ -5,7 +5,8 @@ and helper methods for creating other Objects.
 There are a few convenience functions:
 
     - :func:`~pyobs.object.create_object` creates objects from dictionaries.
-    - :func:`~pyobs.object.get_object` is a wrapper around :func:`pyobs.object.create_object` that can do further checks.
+    - :func:`~pyobs.object.get_object` is a wrapper around :func:`pyobs.object.create_object` that can do further
+      checks.
     - :func:`~pyobs.object.get_safe_object` is a wrapper around :func:`~pyobs.object.get_object` that never raises
       exceptions.
 """
@@ -265,8 +266,8 @@ class Object(PrivateAttrMixin):
         method as well as a watchdog thread that automatically restarts threads, if requested.
 
         Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
-        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
-        on those objects.
+        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and
+        :meth:`~pyobs.object.Object.close` on those objects.
 
         Args:
             vfs: VFS to use (either object or config)

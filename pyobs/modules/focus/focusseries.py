@@ -211,7 +211,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             log.info("Analysing picture...")
             try:
                 await self._series.analyse_image(image, actual_focus)
-            except:
+            except Exception:
                 # do nothing...
                 log.info("Could not analyse image.")
                 continue

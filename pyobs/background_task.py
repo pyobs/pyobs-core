@@ -36,7 +36,7 @@ class BackgroundTask:
             except asyncio.CancelledError:
                 log.info("Task %s was cancelled.", self._func.__name__)
                 return
-            except:
+            except Exception:
                 log.exception("Exception in task %s.", self._func.__name__)
 
             # check time since last exit

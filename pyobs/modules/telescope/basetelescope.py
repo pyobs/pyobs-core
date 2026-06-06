@@ -289,7 +289,7 @@ class BaseTelescope(
             # update headers
             try:
                 await self._update_celestial_headers()
-            except:
+            except Exception:
                 log.exception("Something went wrong.")
 
             # sleep a little
@@ -315,7 +315,7 @@ class BaseTelescope(
                 tel_altaz = SkyCoord(
                     alt=alt * u.deg, az=az * u.deg, location=observer.location, obstime=now, frame="altaz"
                 )
-            except:
+            except Exception:
                 log.exception("Could not fetch telescope Alt/Az: %s", self)
                 return
 

@@ -48,7 +48,7 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
                         else:
                             # call method directly
                             to = await func_timeout(obj, *args, **kwargs)
-                    except:
+                    except Exception:
                         log.exception("Could not call timeout method.")
 
                 elif isinstance(func_timeout, str):

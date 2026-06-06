@@ -152,7 +152,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             log.info("Running task %s...", self._task.name)
             try:
                 await self._task_runner.run_task(self._task)
-            except:
+            except Exception:
                 # something went wrong
                 log.exception("Task %s failed.", self._task.name)
                 observation.end = Time.now()

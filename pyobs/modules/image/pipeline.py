@@ -63,7 +63,7 @@ class Pipeline(Module, PipelineMixin):
                 if self._interval is not None:
                     image = Image()
                     await self.run_pipeline(image)
-            except:
+            except Exception:
                 log.exception("Error in pipeline:")
             await asyncio.sleep(1 if self._interval is None else self._interval)
 

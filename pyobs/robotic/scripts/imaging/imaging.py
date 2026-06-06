@@ -176,7 +176,7 @@ class ImagingScript(Script):
             log.info("Performing acquisition...")
             try:
                 await self._acquisition.acquire_target()
-            except:
+            except Exception:
                 if self.configuration.acquisition_config.optional:
                     log.warning("Could not acquire target, will continue without.")
                 else:

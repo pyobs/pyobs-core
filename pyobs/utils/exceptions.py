@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-"""
-TODO: Write docs
-"""
-__title__ = "Exceptions"
-
 import asyncio
 import logging
 import time
 from collections.abc import Callable, Coroutine
 from typing import Any, NamedTuple
+
+"""
+TODO: Write docs
+"""
+__title__ = "Exceptions"
 
 
 class PyObsError(Exception):

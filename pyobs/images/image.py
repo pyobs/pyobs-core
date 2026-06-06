@@ -478,7 +478,7 @@ class Image:
 
         try:
             return self.get_meta(meta_class)
-        except:
+        except Exception:
             return default
 
     @property

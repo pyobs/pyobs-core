@@ -77,7 +77,7 @@ class LcoScheduleReader(Object):
                 last_scheduled = await self._portal.last_scheduled()
             except asyncio.CancelledError:
                 return
-            except:
+            except Exception:
                 continue
 
             # get time of last scheduler run and check, whether we need an update, which is not the case, if
@@ -97,7 +97,7 @@ class LcoScheduleReader(Object):
             except TimeoutError:
                 # do nothing
                 error_logger.warning("Could not retrieve schedule.")
-            except:
+            except Exception:
                 log.exception("An exception occurred.")
 
     async def _update_schedule_now(self, force: bool = False) -> None:

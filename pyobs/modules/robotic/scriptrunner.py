@@ -57,7 +57,7 @@ class ScriptRunner(Module, IRunnable):
         """Run the script."""
         try:
             await self.run()
-        except:
+        except Exception:
             log.exception("Script failed.")
 
 

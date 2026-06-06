@@ -321,7 +321,7 @@ class Comm:
             except asyncio.CancelledError:
                 return
 
-            except:
+            except Exception:
                 log.exception("Something went wrong")
                 pass
 

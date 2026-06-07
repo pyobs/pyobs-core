@@ -75,11 +75,6 @@ class Future(asyncio.Future[Any]):
 
             handle.cancel()  # cancel timeout if completed normally
 
-        # not done? yield!
-        if not self.done():
-            self._asyncio_future_blocking = True
-            yield self  # This tells Task to wait for completion.
-
         # still not done? raise exception.
         if not self.done():
             raise RuntimeError("await wasn't used with future")

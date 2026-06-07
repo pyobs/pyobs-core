@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from pyobs.utils.parallel import Future
+from pyobs.utils.parallel import Future, acquire_lock, event_wait
 
 # ── basic functionality ───────────────────────────────────────────────────────
 
@@ -154,3 +154,63 @@ async def test_wait_all_skips_none() -> None:
     asyncio.get_running_loop().call_soon(f.set_result, 99)
     results = await Future.wait_all([None, f, None])
     assert results == [99]
+
+
+# ── event_wait ────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_event_wait_returns_true_when_set() -> None:
+    evt = asyncio.Event()
+    evt.set()
+    result = await event_wait(evt, timeout=1.0)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_event_wait_returns_false_on_timeout() -> None:
+    evt = asyncio.Event()  # never set
+    result = await event_wait(evt, timeout=0.05)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_event_wait_returns_true_when_set_during_wait() -> None:
+    evt = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.02, evt.set)
+    result = await event_wait(evt, timeout=1.0)
+    assert result is True
+
+
+# ── acquire_lock ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_acquire_lock_returns_true_when_free() -> None:
+    lock = asyncio.Lock()
+    result = await acquire_lock(lock, timeout=1.0)
+    assert result is True
+    assert lock.locked()
+
+
+@pytest.mark.asyncio
+async def test_acquire_lock_returns_false_on_timeout() -> None:
+    lock = asyncio.Lock()
+    await lock.acquire()  # lock it first
+    result = await acquire_lock(lock, timeout=0.05)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_acquire_lock_returns_true_when_released_during_wait() -> None:
+    lock = asyncio.Lock()
+    await lock.acquire()
+
+    async def release_later() -> None:
+        await asyncio.sleep(0.02)
+        lock.release()
+
+    asyncio.create_task(release_later())
+    result = await acquire_lock(lock, timeout=1.0)
+    assert result is True

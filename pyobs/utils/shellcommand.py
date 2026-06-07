@@ -30,8 +30,8 @@ class ShellCommand:
         self.command = command
         self.params = params
 
-        self.last_command_number += 1
-        self.command_number = self.last_command_number
+        ShellCommand.last_command_number += 1
+        self.command_number = ShellCommand.last_command_number
 
     @staticmethod
     def parse(cmd: str) -> ShellCommand:

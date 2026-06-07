@@ -28,7 +28,6 @@ class Proxy:
         # set client and interfaces
         self._comm: Comm = comm
         self._client = client
-        self._interfaces = interfaces
 
         # remove interfaces that are implemented by others
         to_delete = []
@@ -38,6 +37,9 @@ class Proxy:
                     # i1 implements i2, so remove i2
                     to_delete.append(i2)
         interfaces = [i for i in interfaces if i not in to_delete]
+
+        # store deduplicated interfaces
+        self._interfaces = interfaces
 
         # add interfaces as base classes
         cls = self.__class__

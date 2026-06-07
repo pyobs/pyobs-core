@@ -9,7 +9,7 @@ class XEP_0009(XEP_0009_original):
         pass
 
     def extract_method(self, stanza):
-        xml = ET.fromstring("%s" % stanza)
+        xml = ET.fromstring(f"{stanza}")
         return xml.find("./{jabber:iq:rpc}methodCall/{jabber:iq:rpc}methodName").text
 
     def item_not_found(self, iq):

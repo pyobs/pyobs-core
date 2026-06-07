@@ -2,12 +2,12 @@ import logging
 from typing import Any
 
 from pyobs.events import NewImageEvent
+from pyobs.images import Image
 from pyobs.interfaces import ICamera
 from pyobs.mixins import ImageFitsHeaderMixin
 from pyobs.mixins.pipeline import PipelineMixin
-from pyobs.images import Image
 from pyobs.modules import Module
-from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.utils.enums import ExposureStatus, ImageType
 from pyobs.utils.exceptions import GrabImageError
 
 log = logging.getLogger(__name__)

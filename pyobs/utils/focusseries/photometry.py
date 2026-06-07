@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
-import numpy as np
 import logging
-from pyobs.object import get_object
+from typing import Any
 
-from pyobs.images.processors.detection import SourceDetection
-from pyobs.utils.focusseries.base import FocusSeries
-from pyobs.utils.curvefit import fit_hyperbola
+import numpy as np
+
 from pyobs.images import Image
-
+from pyobs.images.processors.detection import SourceDetection
+from pyobs.object import get_object
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.utils.focusseries.base import FocusSeries
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class PhotometryFocusSeries(FocusSeries):
         min_focus = np.min(focus)
         max_focus = np.max(focus)
         if foc < min_focus or foc > max_focus:
-            raise ValueError("New focus out of bounds: {0:.3f}+-{1:.3f}mm.".format(foc, err))
+            raise ValueError(f"New focus out of bounds: {foc:.3f}+-{err:.3f}mm.")
 
         # return it
         return float(foc), float(err)

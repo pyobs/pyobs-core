@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
+
 from astroplan import Observer
 
 from ...utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic import Observation, Task
-    from pyobs.robotic.observationarchive import ObservationArchive
     from pyobs.robotic.observation import ObservationList
+    from pyobs.robotic.observationarchive import ObservationArchive
 
 
 class ObservationArchiveEvolution:
@@ -20,7 +22,7 @@ class ObservationArchiveEvolution:
         self._observer = observer
 
     async def evolve(self, scheduled_task: Observation) -> None:
-        from pyobs.robotic.observation import ObservationState, Observation
+        from pyobs.robotic.observation import Observation, ObservationState
 
         obs = Observation(
             id=str(uuid4()),
@@ -38,7 +40,7 @@ class ObservationArchiveEvolution:
         self._obs_for_night[night].append(obs)
 
     async def observations_for_task(self, task: Task) -> ObservationList:
-        from pyobs.robotic.observation import ObservationState, ObservationList
+        from pyobs.robotic.observation import ObservationList, ObservationState
 
         if task.id not in self._obs_for_task:
             if self._obs_archive is not None:
@@ -58,7 +60,7 @@ class ObservationArchiveEvolution:
         Returns:
             List of observations for the given task.
         """
-        from pyobs.robotic.observation import ObservationState, ObservationList
+        from pyobs.robotic.observation import ObservationList, ObservationState
 
         if date not in self._obs_for_night:
             if self._obs_archive is not None:

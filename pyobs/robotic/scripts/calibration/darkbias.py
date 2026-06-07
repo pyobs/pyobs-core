@@ -1,8 +1,16 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
-from pyobs.interfaces import IBinning, ICamera, IWindow, IExposureTime, IImageType, IData
+from pyobs.interfaces import (
+    IBinning,
+    ICamera,
+    IData,
+    IExposureTime,
+    IImageType,
+    IWindow,
+)
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 
@@ -62,15 +70,15 @@ class DarkBiasScript(Script):
 
         # image type for logger
         if self.exptime == 0:
-            im_type = "%d biases" % self.count
+            im_type = f"{self.count} biases"
 
         else:
-            im_type = "%d darks (%d s)" % (self.count, self.exptime)
+            im_type = f"{self.count} darks ({self.exptime} s)"
 
-        log.info("Starting a series of %s with %s..." % (im_type, self.camera))
+        log.info("Starting a series of %s with %s...", im_type, self.camera)
         for i in range(self.count):
             await camera.grab_data()
-        log.info("Finished series of %s with %s." % (im_type, self.camera))
+        log.info("Finished series of %s with %s.", im_type, self.camera)
         return
 
 

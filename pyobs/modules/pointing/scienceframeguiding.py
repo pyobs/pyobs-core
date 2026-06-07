@@ -1,9 +1,10 @@
-import logging
 import asyncio
+import logging
 from typing import Any
 
-from pyobs.events import NewImageEvent, Event
+from pyobs.events import Event, NewImageEvent
 from pyobs.images import Image
+
 from ._baseguiding import BaseGuiding
 
 log = logging.getLogger(__name__)

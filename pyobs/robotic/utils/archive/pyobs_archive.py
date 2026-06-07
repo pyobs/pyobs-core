@@ -1,14 +1,16 @@
 import io
-from typing import Any, TypedDict, cast
-import aiohttp
-import urllib.parse
 import logging
+import urllib.parse
+from typing import Any, TypedDict, cast
+
+import aiohttp
 from pydantic import PrivateAttr
 
-from pyobs.utils.time import Time
 from pyobs.images import Image
-from .archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
+from pyobs.utils.time import Time
+
+from .archive import Archive, FrameInfo
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ class PyobsArchive(Archive):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, headers=self._headers, timeout=self._timeout) as response:
                 if response.status != 200:
-                    raise ValueError("Could not query frames: %s" % str(await response.text()))
+                    raise ValueError(f"Could not query frames: {str(await response.text())}")
                 return cast(dict[str, list[Any]], await response.json())
 
     async def list_frames(
@@ -193,7 +195,7 @@ class PyobsArchive(Archive):
                     data.add_field(f"file{i}", bio.getvalue(), filename=filename)
             async with session.post(url, data=data, timeout=self._timeout, headers=self._headers) as response:
                 if response.status != 200:
-                    raise ValueError("Cannot write file, received status_code %d." % response.status)
+                    raise ValueError(f"Cannot write file, received status_code {response.status}.")
                 json = await response.json()
                 if "created" not in json or json["created"] == 0:
                     if "errors" in json:

@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from .IReady import IReady
 from pyobs.utils.enums import MotionStatus
+
+from .IReady import IReady
 
 
 class IMotion(IReady, metaclass=ABCMeta):

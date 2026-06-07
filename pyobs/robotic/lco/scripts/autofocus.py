@@ -1,10 +1,11 @@
 import logging
 from typing import cast
 
-from pyobs.interfaces import IRoof, ITelescope, IAcquisition, IAutoFocus, IPointingRaDec
-from .script import LcoScript
+from pyobs.interfaces import IAcquisition, IAutoFocus, IPointingRaDec, IRoof, ITelescope
 from pyobs.robotic.task import TaskData
 from pyobs.utils.logger import DuplicateFilter
+
+from .script import LcoScript
 
 log = logging.getLogger(__name__)
 

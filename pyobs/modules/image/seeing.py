@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
-import numpy as np
 from typing import Any
+
+import numpy as np
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
+from pyobs.events import Event, NewImageEvent
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent, Event
 from pyobs.utils.publisher import Publisher
 from pyobs.utils.time import Time
 

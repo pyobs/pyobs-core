@@ -1,15 +1,17 @@
 import glob
+import logging
 from pathlib import Path
 from typing import Any
-import logging
-from pydantic import PrivateAttr
+
 import pandas as pd
 from astropy.io import fits
+from pydantic import PrivateAttr
 
-from pyobs.utils.time import Time
 from pyobs.images import Image
-from .archive import Archive, FrameInfo
 from pyobs.utils.enums import ImageType
+from pyobs.utils.time import Time
+
+from .archive import Archive, FrameInfo
 
 log = logging.getLogger(__name__)
 

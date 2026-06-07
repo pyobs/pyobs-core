@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 
 from pyobs.interfaces import IPointingAltAz
 from pyobs.utils.serialization import PolymorphicBaseModel

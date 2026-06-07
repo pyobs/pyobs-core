@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import inspect
 import types
-from typing import TYPE_CHECKING, Any, Type, get_type_hints
+from typing import TYPE_CHECKING, Any, get_type_hints
 
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_bound_arguments_to_simple
@@ -15,7 +16,7 @@ class Proxy:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, comm: Comm, client: str, interfaces: list[Type[Interface]]):
+    def __init__(self, comm: Comm, client: str, interfaces: list[type[Interface]]):
         """Creates a new proxy.
 
         Args:
@@ -56,7 +57,7 @@ class Proxy:
         return list(sorted(self._methods.keys()))
 
     @property
-    def interfaces(self) -> list[Type[Interface]]:
+    def interfaces(self) -> list[type[Interface]]:
         """List of interfaces."""
         return self._interfaces
 

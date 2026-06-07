@@ -3,11 +3,12 @@ import logging
 from typing import Any, Literal
 
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
-from pyobs.utils.time import Time
 from pyobs.robotic.observationarchive import ObservationArchive
+from pyobs.utils.time import Time
+
+from .. import Task, TaskArchive
 from ._portal import Portal
 from .configdb import ConfigDB
-from .. import Task, TaskArchive
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class LcoObservationArchive(ObservationArchive):
         """Updates observation state in the portal."""
         if not isinstance(observation.task, Task) or observation.task.id is None:
             return
-        from .task import LcoTask, ConfigStatus
+        from .task import ConfigStatus, LcoTask
 
         if not isinstance(observation.task, LcoTask):
             return

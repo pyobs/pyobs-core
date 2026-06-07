@@ -1,15 +1,18 @@
 from __future__ import annotations
+
 import copy
 import inspect
 import logging
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
 import slixmpp
 import slixmpp.exceptions
 
+import pyobs.utils.exceptions as exc
+from pyobs.comm.xmpp.xep_0009.binding import fault2xml, py2xml, xml2fault, xml2py
 from pyobs.modules import Module
 from pyobs.utils.parallel import Future
-from pyobs.comm.xmpp.xep_0009.binding import fault2xml, xml2fault, xml2py, py2xml
-import pyobs.utils.exceptions as exc
 
 if TYPE_CHECKING:
     from .xmppcomm import XmppComm
@@ -18,7 +21,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class RPC(object):
+class RPC:
     """RPC wrapper around XEP0009."""
 
     def __init__(self, comm: XmppComm, client: slixmpp.ClientXMPP, handler: Module | None = None):

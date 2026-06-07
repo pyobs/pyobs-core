@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
-import logging
 from scipy import ndimage
 
-from pyobs.utils.focusseries.base import FocusSeries
-from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.images import Image
-
+from pyobs.utils.curvefit import fit_hyperbola
+from pyobs.utils.focusseries.base import FocusSeries
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class ProjectionFocusSeries(FocusSeries):
         min_focus = np.min(focus)
         max_focus = np.max(focus)
         if foc < min_focus or foc > max_focus:
-            raise ValueError("New focus out of bounds: {0:.3f}+-{1:.3f}mm.".format(foc, err))
+            raise ValueError(f"New focus out of bounds: {foc:.3f}+-{err:.3f}mm.")
 
         # return it
         return float(foc), float(err)
@@ -164,7 +164,7 @@ class ProjectionFocusSeries(FocusSeries):
         """
         Removes global slopes and fills up bad rows (ybad) or columns (xbad).
         """
-        (ny, nx) = data.shape
+        ny, nx = data.shape
 
         # REMOVE BAD COLUMNS AND ROWS
         if xbad is not None:

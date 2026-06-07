@@ -1,10 +1,11 @@
 from copy import copy
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.table import Table
 
-from pyobs.images import ImageProcessor, Image
+from pyobs.images import Image, ImageProcessor
 
 
 class ImageSourceFilter(ImageProcessor):

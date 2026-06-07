@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from pyobs.images import Image
 import pyobs.images.meta as meta
+from pyobs.images import Image
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

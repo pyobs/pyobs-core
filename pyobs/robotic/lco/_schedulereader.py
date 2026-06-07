@@ -2,17 +2,19 @@ import asyncio
 import asyncio.exceptions
 import logging
 from typing import Any
+
 import aiodns
-from astropy.time import TimeDelta
 import astropy.units as u
+from astropy.time import TimeDelta
 
 from pyobs.robotic.observation import Observation, ObservationList
 from pyobs.utils.time import Time
-from ._portal import Portal
+
 from ...object import Object
 from ...utils.logger import DuplicateFilter
 from ...utils.logging.resolvableerror import ResolvableErrorLogger
 from ...utils.parallel import acquire_lock
+from ._portal import Portal
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +77,7 @@ class LcoScheduleReader(Object):
                 last_scheduled = await self._portal.last_scheduled()
             except asyncio.CancelledError:
                 return
-            except:
+            except Exception:
                 continue
 
             # get time of last scheduler run and check, whether we need an update, which is not the case, if
@@ -92,10 +94,10 @@ class LcoScheduleReader(Object):
                 error_logger.info("Successfully updated schedule.")
             except asyncio.CancelledError:
                 return
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # do nothing
                 error_logger.warning("Could not retrieve schedule.")
-            except:
+            except Exception:
                 log.exception("An exception occurred.")
 
     async def _update_schedule_now(self, force: bool = False) -> None:
@@ -132,7 +134,11 @@ class LcoScheduleReader(Object):
                 log.info("Task list changed, found %d task(s) to run.", len(scheduled_tasks))
                 for scheduled_task in sorted(scheduled_tasks, key=lambda x: x.start):
                     log.info(
-                        f"  - {scheduled_task.start} to {scheduled_task.end}: {scheduled_task.task.name} (#{scheduled_task.task.id})"
+                        "  - %s to %s: %s (#%s)",
+                        scheduled_task.start,
+                        scheduled_task.end,
+                        scheduled_task.task.name,
+                        scheduled_task.task.id,
                     )
 
                 # update

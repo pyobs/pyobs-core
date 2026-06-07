@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ class LogScript(Script):
 
     async def run(self, data: TaskData | None) -> None:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
+        value = eval(self.expression, {"now": datetime.now(UTC)})
 
         # log it
         log.info(value)

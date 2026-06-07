@@ -1,16 +1,18 @@
 from __future__ import annotations
-import pandas as pd
+
 import random
-from pydantic import PrivateAttr
 from typing import TYPE_CHECKING, Literal
+
+import pandas as pd
 from astropy.time import Time
+from pydantic import PrivateAttr
 
 from .picker import Picker
 
 if TYPE_CHECKING:
-    from pyobs.robotic.scheduler.targets import Target
     from pyobs.robotic import Task
     from pyobs.robotic.scheduler import DataProvider
+    from pyobs.robotic.scheduler.targets import Target
 
 
 class CsvPicker(Picker):

@@ -1,19 +1,22 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
 import typing
-from typing import Any, Callable, TypeVar, cast
-from py_expression_eval import Parser
-import packaging.version
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
-from pyobs.events import ModuleOpenedEvent, Event
+import packaging.version
+from py_expression_eval import Parser
+
+from pyobs.events import Event, ModuleOpenedEvent
+from pyobs.interfaces import IConfig, IModule, Interface
 from pyobs.object import Object
-from pyobs.interfaces import IModule, IConfig, Interface
+from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
 from pyobs.utils.types import cast_bound_arguments_to_real, cast_response_to_simple
 from pyobs.version import version
-from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +48,7 @@ def timeout(func_timeout: str | int | Callable[..., Any] | None = None) -> Calla
                         else:
                             # call method directly
                             to = await func_timeout(obj, *args, **kwargs)
-                    except:
+                    except Exception:
                         log.exception("Could not call timeout method.")
 
                 elif isinstance(func_timeout, str):
@@ -191,7 +194,7 @@ class Module(Object, IModule, IConfig):
             return True
 
         # log it
-        log.debug(f"Other module {sender} found, running on pyobs {module_version}.")
+        log.debug("Other module %s found, running on pyobs %s.", sender, module_version)
 
         # check version, only compare major and minor, ignore patch level
         v1, v2 = packaging.version.parse(version()), packaging.version.parse(module_version)
@@ -386,7 +389,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][0]:
             raise ValueError("Parameter %s is not remotely accessible.")
 
@@ -409,7 +412,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][2]:
             raise ValueError("Parameter %s has no list of possible values.")
 
@@ -430,7 +433,7 @@ class Module(Object, IModule, IConfig):
 
         # valid parameter?
         if name not in self._config_caps:
-            raise ValueError("Invalid parameter %s" % name)
+            raise ValueError(f"Invalid parameter {name}")
         if not self._config_caps[name][1]:
             raise ValueError("Parameter %s is not remotely settable.")
 

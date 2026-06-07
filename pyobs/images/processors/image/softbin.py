@@ -1,11 +1,11 @@
 import logging
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
-
+from pyobs.images.processor import ImageProcessor
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ class SoftBin(ImageProcessor):
 
       - ``NAXIS1``, ``NAXIS2`` are set to the new image dimensions.
       - ``CRPIX1``, ``CRPIX2`` are divided by ``binning`` (reference pixel scales with binning).
-      - ``DET-BIN1``, ``DET-BIN2``, ``XBINNING``, ``YBINNING``, ``CDELT1``, ``CDELT2`` are multiplied by ``binning`` (detector binning and pixel scale increase).
+      - ``DET-BIN1``, ``DET-BIN2``, ``XBINNING``, ``YBINNING``, ``CDELT1``, ``CDELT2`` are multiplied by
+        ``binning`` (detector binning and pixel scale increase).
 
     - Header values not listed above (e.g., ``CRVAL*``, ``CTYPE*``) are left unchanged.
 

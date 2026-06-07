@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 import glob
-import numpy as np
+import logging
+from typing import TYPE_CHECKING, Any, cast
+
 import astropy.units as u
+import numpy as np
+from astropy.io import fits
+from astropy.modeling import models
 from astropy.table import Table
 from astropy.time import Time
-from typing import TYPE_CHECKING, Any, cast
 from astropy.wcs import WCS
-from astropy.io import fits
 from numpy.typing import NDArray
-
 from photutils.datasets import make_model_image, make_noise_image
-from astropy.modeling import models
-import logging
 
+from pyobs.images import Image
 from pyobs.object import Object
 from pyobs.utils.enums import ImageFormat
-from pyobs.images import Image
 
 if TYPE_CHECKING:
     from .world import SimWorld
@@ -32,7 +32,7 @@ class SimCamera(Object):
 
     def __init__(
         self,
-        world: "SimWorld",
+        world: SimWorld,
         image_size: tuple[int, int] | None = None,
         pixel_size: float = 0.015,
         images: str | None = None,

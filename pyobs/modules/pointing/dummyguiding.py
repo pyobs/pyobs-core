@@ -1,8 +1,8 @@
 import logging
 from typing import Any
 
-from pyobs.modules import Module
 from pyobs.interfaces import IAutoGuiding
+from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 

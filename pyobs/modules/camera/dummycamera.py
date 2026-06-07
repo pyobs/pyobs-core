@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import glob
 import logging
-from datetime import datetime, timezone
-from typing import NamedTuple, Any, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from pyobs.interfaces import IWindow, IBinning, ICooling, IGain
-from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.images import Image
+from pyobs.interfaces import IBinning, ICooling, IGain, IWindow
+from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self,
         readout_time: float = 2,
         sim: dict[str, Any] | None = None,
-        world: "SimWorld" | None = None,
+        world: SimWorld | None = None,
         **kwargs: Any,
     ):
         """Creates a new dummy cammera.
@@ -122,8 +122,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
 
         # start exposure
-        log.info("Starting exposure with {0:s} shutter...".format("open" if open_shutter else "closed"))
-        date_obs = datetime.now(timezone.utc)
+        log.info("Starting exposure with %s shutter...", "open" if open_shutter else "closed")
+        date_obs = datetime.now(UTC)
         self._exposing = True
 
         # request image

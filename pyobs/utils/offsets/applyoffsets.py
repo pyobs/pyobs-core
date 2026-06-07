@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
+
 import numpy as np
 from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.wcs import WCS
-import logging
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
-from pyobs.interfaces import ITelescope, IPointingRaDec, IPointingAltAz
+from pyobs.interfaces import IPointingAltAz, IPointingRaDec, ITelescope
 from pyobs.object import Object
 from pyobs.utils.publisher import CsvPublisher
 from pyobs.utils.time import Time
-
 
 log = logging.getLogger(__name__)
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from pydantic import Field, PrivateAttr, ConfigDict
+
+from pydantic import ConfigDict, Field, PrivateAttr
 
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.targets import Target

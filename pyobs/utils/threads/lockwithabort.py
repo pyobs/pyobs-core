@@ -11,7 +11,7 @@ class AcquireLockFailed(Exception):
     pass
 
 
-class LockWithAbort(object):
+class LockWithAbort:
     """Tries to acquire a lock. If unsuccessful, it sets the event and tries again."""
 
     def __init__(self, lock: asyncio.Lock, event: asyncio.Event):

@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 from collections import UserList
 from enum import StrEnum
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 from astropydantic import AstroPydanticTime  # type: ignore
 
 from pyobs.object import Object
-from pyobs.utils.time import Time
+from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.task import Task
 from pyobs.utils.serialization import BaseModel
-from pyobs.robotic.scheduler.targets import Target
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic import TaskArchive

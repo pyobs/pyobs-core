@@ -1,10 +1,11 @@
+import asyncio
 import fnmatch
 import logging
 import os
-import asyncio
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
+
 from astropy.io import fits
 
 from pyobs.modules import Module
@@ -164,7 +165,7 @@ class ImageWatcher(Module):
                 # try to load as fits file
                 try:
                     fits_file = fits.HDUList.fromstring(data)
-                except:
+                except Exception:
                     fits_file = None
 
                 # fill current file
@@ -191,7 +192,7 @@ class ImageWatcher(Module):
                         async with self.vfs.open_file(out_filename, "wb") as fd:
                             await fd.write(data)
                     except Exception as e:
-                        log.warning(f"Error while copying file, skipping for now: {e}")
+                        log.warning("Error while copying file, skipping for now: %s", e)
                         success = False
                         break
 
@@ -214,7 +215,7 @@ class ImageWatcher(Module):
                 # cleanup extra
                 await self.cleanup_extra(filename)
 
-            except:
+            except Exception:
                 log.exception("Something went wrong.")
 
     async def process_extra(self, filename: str) -> bool:

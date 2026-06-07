@@ -35,7 +35,7 @@ class DataCacheEntry:
         return self._data
 
 
-class DataCache(object):
+class DataCache:
     """Data cache for proxy server."""
 
     """Type for cache entries."""

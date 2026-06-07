@@ -1,23 +1,24 @@
 from __future__ import annotations
+
 import logging
 from typing import Any
 
-from pyobs.robotic.lco._portal import LcoSchedulableRequest, LcoRequest, LcoObservation
+import pyobs.utils.exceptions as exc
+from pyobs.robotic.lco._portal import LcoObservation, LcoRequest, LcoSchedulableRequest
 from pyobs.robotic.scheduler.constraints import (
-    TimeConstraint,
-    Constraint,
     AirmassConstraint,
-    MoonSeparationConstraint,
+    Constraint,
     MoonIlluminationConstraint,
+    MoonSeparationConstraint,
     SolarElevationConstraint,
+    TimeConstraint,
 )
 from pyobs.robotic.scheduler.merits import Merit
-from pyobs.robotic.scheduler.targets import Target, SiderealTarget
+from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.task import Task, TaskData
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.time import Time
-import pyobs.utils.exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -192,12 +193,12 @@ class LcoTask(Task):
 
         except exc.InvocationError as e:
             if isinstance(e.exception, exc.AbortedError):
-                log.warning(f"Task execution was aborted: {e.exception}")
+                log.warning("Task execution was aborted: %s", e.exception)
                 config_status.finish(
                     state="FAILED", reason="Task execution was aborted.", time_completed=script.exptime_done
                 )
             else:
-                log.warning(f"Error during task execution: {e.exception}")
+                log.warning("Error during task execution: %s", e.exception)
                 config_status.finish(
                     state="FAILED", reason="Error during task execution.", time_completed=script.exptime_done
                 )
@@ -243,9 +244,7 @@ class ConfigStatus:
         self.reason: str = reason
         self.time_completed: float = 0.0
 
-    def finish(
-        self, state: str | None = None, reason: str | None = None, time_completed: float = 0.0
-    ) -> "ConfigStatus":
+    def finish(self, state: str | None = None, reason: str | None = None, time_completed: float = 0.0) -> ConfigStatus:
         """Finish this status with the given values and the current time.
 
         Args:

@@ -1,13 +1,16 @@
 from __future__ import annotations
-from astropy.coordinates import SkyCoord, EarthLocation
-from pydantic import model_validator, PrivateAttr, Field
+
 from typing import TYPE_CHECKING, Self
+
+from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
+from pydantic import Field, PrivateAttr, model_validator
 
 from .merit import Merit
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
+
     from ..dataprovider import DataProvider
 
 

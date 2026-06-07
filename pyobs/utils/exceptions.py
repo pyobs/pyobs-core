@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+from collections.abc import Callable, Coroutine
+from typing import Any, NamedTuple
+
 """
 TODO: Write docs
 """
 __title__ = "Exceptions"
-
-import asyncio
-import logging
-from collections.abc import Coroutine
-from typing import NamedTuple, Any, Type, Callable
-import time
 
 
 class PyObsError(Exception):
@@ -142,7 +142,7 @@ class LoggedException(NamedTuple):
 
 
 class ExceptionHandler(NamedTuple):
-    exc_type: Type[PyObsError]
+    exc_type: type[PyObsError]
     limit: int
     timespan: float | None = None
     module: str | None = None
@@ -153,8 +153,8 @@ class ExceptionHandler(NamedTuple):
 #######################################
 
 
-_local_exceptions: dict[Type[PyObsError], list[LoggedException]] = {}
-_remote_exceptions: dict[tuple[Type[PyObsError], str], list[LoggedException]] = {}
+_local_exceptions: dict[type[PyObsError], list[LoggedException]] = {}
+_remote_exceptions: dict[tuple[type[PyObsError], str], list[LoggedException]] = {}
 _handlers: list[ExceptionHandler] = []
 
 
@@ -165,7 +165,7 @@ def clear() -> None:
 
 
 def register_exception(
-    exc_type: Type[PyObsError],
+    exc_type: type[PyObsError],
     limit: int,
     timespan: float | None = None,
     module: str | None = None,

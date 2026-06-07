@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, cast
 import logging
+from typing import Any, cast
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.images.processors.calibration._calibration_cache import _CalibrationCache
 from pyobs.images.processors.calibration._ccddata_calibrator import _CCDDataCalibrator
 from pyobs.robotic.utils.archive import Archive
@@ -179,7 +179,7 @@ class Calibration(ImageProcessor):
         try:
             bias, dark, flat = await self._get_calibrations_masters(image)
         except ValueError as e:
-            log.warning("Could not find calibration frames: " + str(e))
+            log.warning("Could not find calibration frames: %s", e)
             return image
 
         calibrator = _CCDDataCalibrator(image, bias, dark, flat)
@@ -249,7 +249,7 @@ class Calibration(ImageProcessor):
         self, image: Image, image_type: ImageType, max_days: float | None = None
     ) -> Image:
         instrument = image.header["INSTRUME"]
-        binning = "{0}x{0}".format(image.header["XBINNING"])
+        binning = "{0}x{0}".format(image.header["XBINNING"])  # noqa: UP031
         filter_name = cast(str, image.header["FILTER"]) if "FILTER" in image.header else None
         time = Time(image.header["DATE-OBS"])
 

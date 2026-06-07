@@ -1,11 +1,11 @@
 import logging
 from typing import Any
+
 from astropy.coordinates import SkyCoord
 
-from pyobs.interfaces import IAcquisition, IPointingRaDec, IPointingSeries
+from pyobs.interfaces import IAcquisition, IAutonomous, IPointingRaDec, IPointingSeries
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
-from pyobs.interfaces import IAutonomous
 from pyobs.utils.grids.filters import GridFilter
 from pyobs.utils.grids.grid import Grid
 from pyobs.utils.grids.gridnode import GridNode
@@ -75,7 +75,7 @@ class PointingSeries(Module, IAutonomous):
         # get grid and get count
         grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
         count = len([coord for coord in grid])
-        log.info(f"Found {count} grid points.")
+        log.info("Found %s grid points.", count)
 
         # iterate over all grid points
         grid = self.get_object(GridPipeline, GridNode, steps=self._grid)
@@ -94,7 +94,7 @@ class PointingSeries(Module, IAutonomous):
 
             # got it
             finished += 1
-            log.info(f"Finished {finished} of {count} grid points.")
+            log.info("Finished %s of %s grid points.", finished, count)
 
         # finished
         log.info("Pointing series finished.")

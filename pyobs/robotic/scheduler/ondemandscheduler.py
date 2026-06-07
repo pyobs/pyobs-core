@@ -1,23 +1,25 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, TYPE_CHECKING
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any
+
+import astropy.units as u
 import numpy as np
 from astropy.time import TimeDelta
-import astropy.units as u
 
 from pyobs.object import Object
+from pyobs.utils.time import Time
+
+from ..observationarchive import ObservationArchive
 from . import DataProvider
 from .constraints import Constraint
-from .taskscheduler import TaskScheduler
-from pyobs.utils.time import Time
-from ..observationarchive import ObservationArchive
 from .observationarchiveevolution import ObservationArchiveEvolution
+from .taskscheduler import TaskScheduler
 
 if TYPE_CHECKING:
-    from pyobs.robotic import Task, Project
-    from pyobs.robotic import Observation
+    from pyobs.robotic import Observation, Project, Task
 
 
 log = logging.getLogger(__name__)

@@ -5,6 +5,8 @@ TODO: write doc
 
 __title__ = "Roofs"
 
+from .basedome import BaseDome
 from .baseroof import BaseRoof
 from .dummyroof import DummyRoof
-from .basedome import BaseDome
+
+__all__ = ["BaseRoof", "DummyRoof", "BaseDome"]

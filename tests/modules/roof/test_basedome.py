@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Optional
+from typing import Any
 
 import pytest
 
@@ -13,13 +13,13 @@ class MockBaseDome(BaseDome):
     async def park(self, **kwargs: Any) -> None:
         pass
 
-    async def stop_motion(self, device: Optional[str] = None, **kwargs: Any) -> None:
+    async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
 
     async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
         pass
 
-    async def get_altaz(self, **kwargs: Any) -> Tuple[float, float]:
+    async def get_altaz(self, **kwargs: Any) -> tuple[float, float]:
         return 60.0, 0.0
 
 

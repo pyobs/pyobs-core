@@ -1,9 +1,11 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
-from pyobs.utils.time import Time
 from pyobs.object import Object
-from .task import Task, Project
+from pyobs.utils.time import Time
+
+from .task import Project, Task
 
 
 class TaskArchive(Object, metaclass=ABCMeta):

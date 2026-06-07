@@ -1,11 +1,13 @@
 import logging
 from typing import Any, cast, overload
+
 import numpy as np
 import numpy.typing as npt
 
 from pyobs.images import Image
 from pyobs.images.meta import PixelOffsets
 from pyobs.interfaces import IMultiFiber
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)
@@ -241,7 +243,8 @@ class SpilledLightGuiding(Offsets):
         Args:
             fibers: IMultiFiber module that contains information about the currently selected fiber
             radius_ratio: ratio between inner radius (radius of the fiber) and outer radius of the ring around the fiber
-            max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is uniform
+            max_relative_sigma: upper limit for fraction of standard deviation and median in order determine if ring is
+                uniform
             relative_shift: fraction of inner radius, that will be used as pixel offset
             delta_angle: angle of the sections of the ring, that are used to find the offset direction
         """
@@ -272,7 +275,10 @@ class SpilledLightGuiding(Offsets):
         image.data = image.data - np.mean(image.data.ravel())
         trimmed_image_data = await self._get_trimmed_image(image.data)
         log.info(
-            f"Creating Ring at x={self._fibre_position[0]}, y={self._fibre_position[1]} with radius {self._inner_radius}."
+            "Creating Ring at x=%s, y=%s with radius %s.",
+            self._fibre_position[0],
+            self._fibre_position[1],
+            self._inner_radius,
         )
         await self._correct_fibre_position_for_trimming()
         self.ring = Ring(

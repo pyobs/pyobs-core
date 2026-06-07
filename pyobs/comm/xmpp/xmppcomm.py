@@ -6,21 +6,22 @@ import json
 import logging
 import re
 import ssl
-
 import time
-from collections.abc import Coroutine
-from typing import Any, Callable, Type, TYPE_CHECKING
+import xml.sax.saxutils
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
+
 import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
 from slixmpp.xmlstream import ET
-import xml.sax.saxutils
 
 from pyobs.comm import Comm
-from pyobs.events import Event, LogEvent, ModuleOpenedEvent, ModuleClosedEvent
+from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils import exceptions as exc
+
 from .rpc import RPC
 from .xmppclient import XmppClient
 
@@ -119,7 +120,7 @@ class XmppComm(Comm):
         # variables
         self._connected = False
         self._online_clients: list[str] = []
-        self._interface_cache: dict[str, asyncio.Future[list[Type[Interface]]]] = {}
+        self._interface_cache: dict[str, asyncio.Future[list[type[Interface]]]] = {}
         self._user = user
         self._password = password
         self._domain = domain
@@ -127,7 +128,7 @@ class XmppComm(Comm):
         self._server = server
         self._use_tls = use_tls
         self._ignore_cert_errors = ignore_cert_errors
-        self._loop = asyncio.get_running_loop()
+        self._loop = asyncio.get_event_loop()
         self._safe_send_attempts = 5
         self._safe_send_wait = 1
 
@@ -150,7 +151,7 @@ class XmppComm(Comm):
             self._jid = jid
 
         else:
-            self._jid = "%s@%s/%s" % (self._user, self._domain, self._resource)
+            self._jid = f"{self._user}@{self._domain}/{self._resource}"
 
         #  client and RPC handler
         self._xmpp: XmppClient | None = None
@@ -205,7 +206,7 @@ class XmppComm(Comm):
         # add features
         if self._module is not None:
             for i in self._module.interfaces:
-                self._xmpp["xep_0030"].add_feature("pyobs:interface:%s" % i.__name__)
+                self._xmpp["xep_0030"].add_feature(f"pyobs:interface:{i.__name__}")
 
         # RPC
         self._rpc = RPC(self, self._xmpp, None)
@@ -284,9 +285,9 @@ class XmppComm(Comm):
         Returns:
             Full JID for given user.
         """
-        return name if "@" in name else "%s@%s/%s" % (name, self._domain, self._resource)
+        return name if "@" in name else f"{name}@{self._domain}/{self._resource}"
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -301,7 +302,7 @@ class XmppComm(Comm):
 
         # full JID given?
         if "@" not in client:
-            client = "%s@%s/%s" % (client, self._domain, self._resource)
+            client = f"{client}@{self._domain}/{self._resource}"
 
         # return them from cache
         return await self._interface_cache[client]
@@ -345,7 +346,7 @@ class XmppComm(Comm):
         # finished
         return interface_names
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -358,7 +359,7 @@ class XmppComm(Comm):
 
         # full JID given?
         if "@" not in client:
-            client = "%s@%s/%s" % (client, self._domain, self._resource)
+            client = f"{client}@{self._domain}/{self._resource}"
 
         # update interface cache and get interface names
         interfaces = await self.get_interfaces(client)
@@ -417,7 +418,7 @@ class XmppComm(Comm):
         # if no interfaces are implemented (not even IModule), quit here
         if len(interface_names) == 0:
             module = jid[: jid.index("@")]
-            log.debug(f"Module {module} does not seem to implement IModule, ignoring.")
+            log.debug("Module %s does not seem to implement IModule, ignoring.", module)
             return
 
         # store interfaces
@@ -491,13 +492,13 @@ class XmppComm(Comm):
         body = xml.sax.saxutils.escape(json.dumps(event.to_json()))
 
         # set xml and send event
-        stanza.xml = ET.fromstring('<event xmlns="pyobs:event">%s</event>' % body)
+        stanza.xml = ET.fromstring(f'<event xmlns="pyobs:event">{body}</event>')
 
         # send it
         await self._safe_send(
             self.client["xep_0163"].publish,
             stanza,
-            node="pyobs:event:%s" % event.__class__.__name__,
+            node=f"pyobs:event:{event.__class__.__name__}",
             callback=functools.partial(self._send_event_callback, event=event),
         )
 
@@ -516,17 +517,17 @@ class XmppComm(Comm):
         log.debug("%s successfully sent.", event.__class__.__name__)
 
     async def _register_events(
-        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+        self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         # loop events
         for ev in events:
             # register event at XMPP
-            self.client["xep_0030"].add_feature("pyobs:event:%s" % ev.__name__)
+            self.client["xep_0030"].add_feature(f"pyobs:event:{ev.__name__}")
 
             # if we have a handler, we're also interested in receiving such events
             if handler:
                 # add interest
-                self.client["xep_0163"].add_interest("pyobs:event:%s" % ev.__name__)
+                self.client["xep_0163"].add_interest(f"pyobs:event:{ev.__name__}")
 
         # update caps and send presence
         await self._safe_send(self.client["xep_0115"].update_caps)

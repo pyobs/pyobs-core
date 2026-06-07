@@ -1,11 +1,15 @@
 from __future__ import annotations
+
 import datetime
 from dataclasses import dataclass
 from functools import cache
+
 from astroplan import Observer
 from astropy.time import Time
 
-from pyobs.robotic.scheduler.observationarchiveevolution import ObservationArchiveEvolution
+from pyobs.robotic.scheduler.observationarchiveevolution import (
+    ObservationArchiveEvolution,
+)
 
 
 @dataclass

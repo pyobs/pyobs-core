@@ -1,12 +1,12 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, TypeVar, Generic
+from typing import Any, Generic, TypeVar
 
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")
 
 
-class GuidingStatistics(Generic[IN, OUT], object, metaclass=ABCMeta):
+class GuidingStatistics(Generic[IN, OUT], metaclass=ABCMeta):
     """Calculates statistics for guiding."""
 
     def __init__(self) -> None:

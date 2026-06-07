@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import inspect
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 from pydantic import Field, model_validator
 
 from pyobs.object import get_class_from_string
@@ -22,7 +24,7 @@ class CallModuleScript(Script):
     params: dict[str, str | int | float] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _validate_params(self) -> "CallModuleScript":
+    def _validate_params(self) -> CallModuleScript:
         cls = get_class_from_string(self.interface)
         if not hasattr(cls, self.method):
             raise ValueError(f"Method '{self.method}' not found on {self.interface}")

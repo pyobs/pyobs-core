@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 import aiohttp
 from aiohttp import web
 
@@ -79,7 +80,7 @@ class HttpFileCache(Module):
         data = self._cache[filename]
 
         # send it
-        log.info(f"Serving file {filename}.")
+        log.info("Serving file %s.", filename)
         return web.Response(body=data)
 
     async def upload_handler(self, request: web.Request) -> web.Response:
@@ -108,7 +109,7 @@ class HttpFileCache(Module):
             raise web.HTTPNotFound()
 
         # store it
-        log.info(f"Storing file {filename}.")
+        log.info("Storing file %s.", filename)
         self._cache[filename] = data
 
         # return filename

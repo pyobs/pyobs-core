@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Coroutine, Any, Callable, TYPE_CHECKING
 import time
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.object import Object
@@ -32,16 +34,16 @@ class BackgroundTask:
             try:
                 await self._func()
             except asyncio.CancelledError:
-                log.info(f"Task {self._func.__name__} was cancelled.")
+                log.info("Task %s was cancelled.", self._func.__name__)
                 return
-            except:
-                log.exception(f"Exception in task {self._func.__name__}.")
+            except Exception:
+                log.exception("Exception in task %s.", self._func.__name__)
 
             # check time since last exit
             if time.time() - start < MAX_FINISH_INTERVAL_SECONDS:
                 finish_count += 1
                 if finish_count > MAX_FINISH_COUNT:
-                    log.error(f"Succession of failure for background task {self._func.__name__} too fast, quitting...")
+                    log.error("Succession of failure for background task %s too fast, quitting...", self._func.__name__)
                     if self._restart:
                         self._parent.quit()
                         return
@@ -53,9 +55,9 @@ class BackgroundTask:
 
             # don't restart?
             if self._restart:
-                log.info(f"Background task for {self._func.__name__} has died, restarting...")
+                log.info("Background task for %s has died, restarting...", self._func.__name__)
             else:
-                log.info(f"Background task for {self._func.__name__} has died, quitting...")
+                log.info("Background task for %s has died, quitting...", self._func.__name__)
                 return
 
     def stop(self) -> None:

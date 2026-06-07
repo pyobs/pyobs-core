@@ -1,13 +1,15 @@
 import logging
 from typing import Any
-import numpy as np
-from astropy.coordinates import EarthLocation, Angle
+
 import astropy.units as u
+import numpy as np
+from astropy.coordinates import Angle, EarthLocation
 
 from pyobs.images import Image
+
+from ...images.meta import AltAzOffsets, PixelOffsets, RaDecOffsets
+from ...interfaces import IOffsetsRaDec, ITelescope
 from .applyoffsets import ApplyOffsets
-from ...images.meta import RaDecOffsets, PixelOffsets, AltAzOffsets
-from ...interfaces import ITelescope, IOffsetsRaDec
 
 log = logging.getLogger(__name__)
 

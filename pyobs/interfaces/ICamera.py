@@ -1,7 +1,7 @@
 from abc import ABCMeta
 
-from .IExposure import IExposure
 from .IData import IData
+from .IExposure import IExposure
 
 
 class ICamera(IData, IExposure, metaclass=ABCMeta):

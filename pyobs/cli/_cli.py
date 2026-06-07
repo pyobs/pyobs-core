@@ -1,6 +1,7 @@
 import argparse
 import os
 from typing import Any
+
 import yaml
 
 
@@ -46,7 +47,7 @@ class CLI:
             config_file = os.path.expanduser(os.path.join("/", "etc", "pyobs.yaml"))
             if not os.path.exists(config_file):
                 return
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             cfg = yaml.safe_load(f)
             if cfg is None or self.CONFIG_SECTION not in cfg:
                 return

@@ -1,13 +1,16 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Literal, Self
-from astropy.time import Time, TimeDelta
+
 import astropy.units as u
-from pydantic import Field, model_validator, PrivateAttr
+from astropy.time import Time, TimeDelta
+from pydantic import Field, PrivateAttr, model_validator
 
 from .merit import Merit
 
 if TYPE_CHECKING:
     from pyobs.robotic import Task
+
     from ..dataprovider import DataProvider
 
 

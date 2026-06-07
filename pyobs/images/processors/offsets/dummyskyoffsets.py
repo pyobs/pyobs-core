@@ -7,8 +7,9 @@ from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
 from pyobs.images.meta import SkyOffsets
-from .offsets import Offsets
 from pyobs.object import get_object
+
+from .offsets import Offsets
 
 
 class DummySkyOffsets(Offsets):

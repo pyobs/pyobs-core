@@ -1,13 +1,15 @@
 import logging
 from typing import Any
-from astropy.coordinates import AltAz, EarthLocation, SkyCoord
-from astropy.table import Table, Row
-from astropy.wcs import WCS
-from pyobs.utils.time import Time
+
 import astropy.units as u
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.table import Row, Table
+from astropy.wcs import WCS
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, AltAzOffsets
+from pyobs.images.meta import AltAzOffsets, PixelOffsets
+from pyobs.utils.time import Time
+
 from .offsets import Offsets
 
 log = logging.getLogger(__name__)

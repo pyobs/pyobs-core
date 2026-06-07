@@ -6,8 +6,8 @@ import os
 import subprocess
 from typing import Any
 
-from pyobs.modules import Module
 from pyobs.interfaces import IAutonomous
+from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 

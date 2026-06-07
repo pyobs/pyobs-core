@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import asyncio
+import logging
 from typing import Any, Literal
 from urllib.parse import urljoin
+
 import aiohttp
-import logging
 
 from pyobs.utils.time import Time
-from .. import ObservationArchive, TaskArchive
-from .. import Task
-from ..observation import ObservationList, Observation, ObservationState
+
 from ...utils.http import http_request_with_retries
+from .. import ObservationArchive, Task, TaskArchive
+from ..observation import Observation, ObservationList, ObservationState
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ class BackendObservationArchive(ObservationArchive):
                         log.info("Downloaded new schedule.")
                     else:
                         obs = self._observations[0]
-                        log.info(f"Downloaded new schedule. Next observation is task {obs.task} at {obs.start}.")
+                        log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
                     self._last_update = last_update
             except Exception as e:
                 log.error("Failed to update observations from backend: %s", e)

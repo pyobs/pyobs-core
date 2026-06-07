@@ -1,6 +1,7 @@
 import asyncio
 import os
 from typing import Any
+
 import paramiko
 import paramiko.sftp
 
@@ -66,7 +67,7 @@ class SFTPFile(VFSFile):
         path = os.path.dirname(full_path)
         try:
             self._sftp.chdir(path)
-        except IOError:
+        except OSError:
             if mkdir:
                 self._sftp.mkdir(path)
             else:

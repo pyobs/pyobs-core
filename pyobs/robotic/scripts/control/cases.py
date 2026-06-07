@@ -1,7 +1,8 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
 import logging
-from typing import Any, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -18,7 +19,7 @@ class CasesRunner(Script):
 
     def __get_script(self) -> Script:
         # evaluate condition
-        value = eval(self.expression, {"now": datetime.now(timezone.utc)})
+        value = eval(self.expression, {"now": datetime.now(UTC)})
 
         # check in cases
         if value in self.cases:

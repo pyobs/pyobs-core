@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
-from pyobs.events import LogEvent, Event
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)

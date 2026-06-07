@@ -4,14 +4,15 @@ import logging.handlers
 import os
 import platform
 import signal
-import warnings
 import threading
+import warnings
 from io import StringIO
 from typing import Any, TypedDict
+
 import yaml
 
-from pyobs.object import get_object, get_class_from_string
 from pyobs.modules import Module
+from pyobs.object import get_class_from_string, get_object
 from pyobs.utils.config import pre_process_yaml
 
 # just init logger with something here, will be overwritten in __init__
@@ -93,7 +94,7 @@ class Application:
         self._hack_threading()
 
         # load config
-        log.info("Loading configuration from {0:s}...".format(self._config))
+        log.info("Loading configuration from %s...", self._config)
         with StringIO(pre_process_yaml(self._config)) as f:
             cfg: dict[str, Any] = yaml.safe_load(f)
 
@@ -106,7 +107,7 @@ class Application:
         asyncio.set_event_loop(self._loop)
 
         # create module and open it
-        log.info(f"Creating module from class {klass.__name__}...")
+        log.info("Creating module from class %s...", klass.__name__)
         self._module = get_object(cfg, Module)
 
     def run(self) -> None:
@@ -122,9 +123,9 @@ class Application:
         self._loop.run_until_complete(main)
 
         # main finished, cancel all tasks
-        tasks = asyncio.all_tasks()
+        tasks = asyncio.all_tasks(self._loop)
         for t in tasks:
-            log.debug(f"Task {t} still running, cancelling it...")
+            log.debug("Task %s still running, cancelling it...", t)
             t.cancel()
         group = asyncio.gather(*tasks, return_exceptions=True)
         self._loop.run_until_complete(group)
@@ -142,7 +143,7 @@ class Application:
         self._module.quit()
 
         # reset signal handlers
-        log.info(f"Got signal: {sig!s}, shutting down.")
+        log.info("Got signal: %s, shutting down.", sig)
         loop = asyncio.get_running_loop()
         loop.remove_signal_handler(signal.SIGTERM)
         loop.add_signal_handler(signal.SIGINT, lambda: None)
@@ -160,7 +161,7 @@ class Application:
             # run module
             await self._module.main()
 
-        except:
+        except Exception:
             # some exception was thrown
             log.exception("Something went wrong.")
 
@@ -173,7 +174,7 @@ class Application:
                 log.info("Closing module...")
                 try:
                     await self._module.close()
-                except:
+                except Exception:
                     log.exception("hey")
 
             # finished
@@ -210,9 +211,11 @@ class GuiApplication(Application):
         Application.__init__(self, **kwargs)
 
         # import Qt stuff
-        from PySide6.QtWidgets import QApplication
-        from pyobs.utils.modulegui import ModuleGui
         import sys
+
+        from PySide6.QtWidgets import QApplication
+
+        from pyobs.utils.modulegui import ModuleGui
 
         # create Qt app and window
         self._qapp = QApplication(sys.argv)

@@ -1,14 +1,14 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
 import numpy as np
 from astropy.io import fits
 
 from pyobs.modules.camera.basespectrograph import BaseSpectrograph
 from pyobs.utils.enums import ExposureStatus
-
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class DummySpectrograph(BaseSpectrograph):
         # do exposure
         log.info("Starting exposure...")
         exposure_time = 1.0
-        date_obs = datetime.now(timezone.utc)
+        date_obs = datetime.now(UTC)
         self._exposing = True
         steps = 10
         for i in range(steps):

@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import json
+import logging
 import time
 import uuid
-import logging
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class Event:
         return cls(**d)
 
 
-class EventFactory(object):
+class EventFactory:
     packages = [__package__]
 
     @staticmethod
@@ -69,14 +70,14 @@ class EventFactory(object):
         try:
             kwargs = obj_dict["data"] if "data" in obj_dict and obj_dict["data"] is not None else {}
             if not isinstance(kwargs, dict):
-                raise ValueError('Invalid event structure for event %s: "%s".' % (str(cls), str(kwargs)))
+                raise ValueError(f'Invalid event structure for event {str(cls)}: "{str(kwargs)}".')
             obj: Event = cls.from_dict(kwargs)
             obj.uuid = obj_dict["uuid"]
             obj.timestamp = obj_dict["timestamp"] if "timestamp" in obj_dict else 0
             return obj
 
         except ValueError as e:
-            log.warning(f"Could not create event {obj_dict['type']}: {e}")
+            log.warning("Could not create event %s: %s", obj_dict["type"], e)
             return None
 
 

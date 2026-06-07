@@ -1,10 +1,14 @@
 from __future__ import annotations
+
 from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 from pyobs.utils.enums import ExposureStatus
 
-DataType = TypedDict("DataType", {"last": str | None, "current": str})
+
+class DataType(TypedDict):
+    last: str | None
+    current: str
 
 
 class ExposureStatusChangedEvent(Event):

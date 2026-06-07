@@ -4,13 +4,14 @@ import asyncio
 import logging
 from typing import Any, cast
 from urllib.parse import urljoin
-from pydantic import Field, ConfigDict
-from astropydantic import AstroPydanticTime  # type: ignore
+
 import aiohttp
+from astropydantic import AstroPydanticTime  # type: ignore
+from pydantic import ConfigDict, Field
 
 from pyobs.object import Object
-from pyobs.utils.time import Time
 from pyobs.utils.serialization import BaseModel
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -298,7 +299,7 @@ class Portal(Object):
         # errors?
         if "errors" in data and len(data["errors"]) > 0:
             for err in data["errors"].values():
-                log.warning(f"Error from portal: {err}")
+                log.warning("Error from portal: %s", err)
 
     async def update_configuration_status(self, status_id: int, status: dict[str, Any]) -> None:
         """Send report to LCO portal
@@ -319,7 +320,7 @@ class Portal(Object):
                 if response.status != 200:
                     log.error("Could not update configuration status: %s", await response.text())
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # schedule re-attempt for sending
             asyncio.create_task(self._update_configuration_status_later(status_id, status))
 

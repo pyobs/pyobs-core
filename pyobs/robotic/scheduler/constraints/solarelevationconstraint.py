@@ -1,17 +1,20 @@
 from __future__ import annotations
+
+import logging
 from typing import TYPE_CHECKING, Literal
+
 import astroplan
 import astropy.units as u
-import logging
 from astropy.coordinates import get_sun
-from pydantic import Field
 from astropy.time import Time
+from pydantic import Field
 
 from .constraint import Constraint
 
 if TYPE_CHECKING:
-    from ..dataprovider import DataProvider
     from pyobs.robotic import Task
+
+    from ..dataprovider import DataProvider
 
 
 log = logging.getLogger(__name__)

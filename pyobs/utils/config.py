@@ -1,9 +1,9 @@
 import os
 import re
+from io import StringIO
 from typing import Any
 
 import yaml
-from io import StringIO
 
 
 def pre_process_yaml(config: str) -> str:
@@ -18,7 +18,7 @@ def pre_process_yaml(config: str) -> str:
     path = os.path.dirname(os.path.abspath(config))
 
     # read config
-    with open(config, "r") as f:
+    with open(config) as f:
         content = f.read()
 
     # find all include statements and its indentation level
@@ -71,7 +71,7 @@ def reload_anchors(filename: str) -> list[tuple[str, str]]:
         matches: list of (keyword, anchor) pairs from reload_anchors.
     """
     pattern = r"(\S*): &(\S*)"
-    with open(filename, "r") as f:
+    with open(filename) as f:
         include_full_string = f.read()
         matches = re.findall(pattern, include_full_string)
     return matches

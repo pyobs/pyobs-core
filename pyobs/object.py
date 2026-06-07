@@ -5,7 +5,8 @@ and helper methods for creating other Objects.
 There are a few convenience functions:
 
     - :func:`~pyobs.object.create_object` creates objects from dictionaries.
-    - :func:`~pyobs.object.get_object` is a wrapper around :func:`pyobs.object.create_object` that can do further checks.
+    - :func:`~pyobs.object.get_object` is a wrapper around :func:`pyobs.object.create_object` that can do further
+      checks.
     - :func:`~pyobs.object.get_safe_object` is a wrapper around :func:`~pyobs.object.get_object` that never raises
       exceptions.
 """
@@ -15,9 +16,10 @@ from __future__ import annotations
 import copy
 import datetime
 import inspect
-from collections.abc import Coroutine
-from typing import Callable, TypeVar, Type, Any, overload, TYPE_CHECKING, Literal
 import logging
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
+
 import pytz
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
@@ -110,7 +112,7 @@ def get_object(
 
     # do we need a type check and does the given object pass?
     if object_class is not None and not isinstance(obj, object_class):
-        raise TypeError("Provided object is not of requested type %s." % object_class.__name__)
+        raise TypeError(f"Provided object is not of requested type {object_class.__name__}.")
     return obj
 
 
@@ -264,8 +266,8 @@ class Object(PrivateAttrMixin):
         method as well as a watchdog thread that automatically restarts threads, if requested.
 
         Using :meth:`~pyobs.object.Object.add_child_object`, other objects can be (created an) attached to this object,
-        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and :meth:`~pyobs.object.Object.close`
-        on those objects.
+        which then automatically handles calls to :meth:`~pyobs.object.Object.open` and
+        :meth:`~pyobs.object.Object.close` on those objects.
 
         Args:
             vfs: VFS to use (either object or config)
@@ -497,7 +499,7 @@ class Object(PrivateAttrMixin):
     def get_safe_object(
         self,
         config_or_object: dict[str, Any] | ObjectClass | type[ObjectClass] | Any,
-        object_class: Type[ObjectClass],
+        object_class: type[ObjectClass],
         copy_comm: bool = True,
         **kwargs: Any,
     ) -> ObjectClass | None: ...

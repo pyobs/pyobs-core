@@ -3,8 +3,8 @@ import logging
 from asyncio import Task
 from typing import Any
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.interfaces import IFitsHeaderBefore
 
 log = logging.getLogger(__name__)

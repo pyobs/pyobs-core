@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyobs.modules import Module, timeout
 from pyobs.interfaces import IRunnable
+from pyobs.modules import Module, timeout
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
 
 
-async def calc_run_timeout(obj: "ScriptRunner", *args: Any, **kwargs: Any) -> float:
+async def calc_run_timeout(obj: ScriptRunner, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for run()."""
     return obj.timeout
 
@@ -57,7 +57,7 @@ class ScriptRunner(Module, IRunnable):
         """Run the script."""
         try:
             await self.run()
-        except:
+        except Exception:
             log.exception("Script failed.")
 
 

@@ -1,16 +1,15 @@
-import logging
 import asyncio
+import logging
 from enum import Enum
 from typing import Any, cast
 
-from pyobs.events import BadWeatherEvent, RoofClosingEvent, Event
-from pyobs.interfaces import IFlatField, IFilters, IBinning, ITelescope, ICamera
-from pyobs.modules import Module
-from pyobs.modules import timeout
-from pyobs.utils.enums import MotionStatus
-from pyobs.utils.publisher import CsvPublisher
+from pyobs.events import BadWeatherEvent, Event, RoofClosingEvent
+from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, ITelescope
+from pyobs.modules import Module, timeout
 from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import MotionStatus
+from pyobs.utils.publisher import CsvPublisher
 
 log = logging.getLogger(__name__)
 

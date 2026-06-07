@@ -5,17 +5,17 @@ import datetime
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, NamedTuple
+
 import numpy as np
 from astropy.io import fits
 
-from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
-from pyobs.utils.enums import ImageType, ExposureStatus
+from pyobs.events import ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
-from pyobs.modules import Module
-from pyobs.events import NewImageEvent, ExposureStatusChangedEvent
 from pyobs.interfaces import ICamera, IExposureTime, IImageType
-from pyobs.modules import timeout
+from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
+from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ExposureStatus, ImageType
 
 log = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # calculate difference between start of exposure and now, and return in ms
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
-        diff = self._exposure.start + duration - datetime.datetime.now(datetime.timezone.utc)
+        diff = self._exposure.start + duration - datetime.datetime.now(datetime.UTC)
         return diff.total_seconds()
 
     async def get_exposure_progress(self, **kwargs: Any) -> float:
@@ -193,7 +193,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             return 0.0
 
         # calculate difference between start of exposure and now
-        diff = datetime.datetime.now(datetime.timezone.utc) - self._exposure[0]
+        diff = datetime.datetime.now(datetime.UTC) - self._exposure[0]
 
         # zero exposure time?
         if self._exposure.exposure_time == 0.0 or self._camera_status == ExposureStatus.READOUT:
@@ -252,7 +252,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         self.expose_abort.clear()
 
         # do the exposure
-        self._exposure = ExposureInfo(start=datetime.datetime.now(datetime.timezone.utc), exposure_time=exposure_time)
+        self._exposure = ExposureInfo(start=datetime.datetime.now(datetime.UTC), exposure_time=exposure_time)
         try:
             image = await self._expose(exposure_time, open_shutter, abort_event=self.expose_abort)
             if image is None or image.safe_data is None:
@@ -425,7 +425,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # rectangle empty?
         if is_right <= is_left or is_bottom <= is_top:
             # easy case, all is BIASSEC, no TRIMSEC at all
-            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], hdr["NAXIS2"]), c1)
+            hdr["BIASSEC"] = ("[1:{},1:{}]".format(hdr["NAXIS1"], hdr["NAXIS2"]), c1)  # noqa: UP031
             return
 
         # we got a TRIMSEC, calculate its binned and windowd coordinates
@@ -435,23 +435,24 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         is_bottom_binned = np.ceil((is_bottom - hdr["YORGSUBF"]) / hdr["YBINNING"])
 
         # set it
-        hdr["TRIMSEC"] = ("[%d:%d,%d:%d]" % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
-        hdr["DATASEC"] = ("[%d:%d,%d:%d]" % (is_left_binned, is_right_binned, is_top_binned, is_bottom_binned), c2)
+        sec = f"[{is_left_binned:.0f}:{is_right_binned:.0f},{is_top_binned:.0f}:{is_bottom_binned:.0f}]"
+        hdr["TRIMSEC"] = (sec, c2)
+        hdr["DATASEC"] = (sec, c2)
 
         # now get BIASSEC -- whatever we do, we only take the last (!) one
         # which axis?
         if img_left + img_width > left + width:
             left_binned = np.floor((is_right - hdr["XORGSUBF"]) / hdr["XBINNING"]) + 1
-            hdr["BIASSEC"] = ("[%d:%d,1:%d]" % (left_binned, hdr["NAXIS1"], hdr["NAXIS2"]), c1)
+            hdr["BIASSEC"] = ("[{:.0f}:{},1:{}]".format(left_binned, hdr["NAXIS1"], hdr["NAXIS2"]), c1)
         elif img_left < left:
             right_binned = np.ceil((is_left - hdr["XORGSUBF"]) / hdr["XBINNING"])
-            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (right_binned, hdr["NAXIS2"]), c1)
+            hdr["BIASSEC"] = ("[1:{:.0f},1:{}]".format(right_binned, hdr["NAXIS2"]), c1)
         elif img_top + img_height > top + height:
             top_binned = np.floor((is_bottom - hdr["YORGSUBF"]) / hdr["YBINNING"]) + 1
-            hdr["BIASSEC"] = ("[1:%d,%d:%d]" % (hdr["NAXIS1"], top_binned, hdr["NAXIS2"]), c1)
+            hdr["BIASSEC"] = ("[1:{},{:.0f}:{}]".format(hdr["NAXIS1"], top_binned, hdr["NAXIS2"]), c1)
         elif img_top < top:
             bottom_binned = np.ceil((is_top - hdr["YORGSUBF"]) / hdr["YBINNING"])
-            hdr["BIASSEC"] = ("[1:%d,1:%d]" % (hdr["NAXIS1"], bottom_binned), c1)
+            hdr["BIASSEC"] = ("[1:{},1:{:.0f}]".format(hdr["NAXIS1"], bottom_binned), c1)
 
     async def apply_meridian_flip(self, image: Image) -> None:
         """If the telescope has a meridian flip (MERIDIAN keyword in header), flip the image on both axes.

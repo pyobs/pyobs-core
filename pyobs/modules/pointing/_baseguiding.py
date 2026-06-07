@@ -8,13 +8,14 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 
 from pyobs.images import Image
-from pyobs.interfaces import IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfter
+from pyobs.interfaces import IAutoGuiding, IFitsHeaderAfter, IFitsHeaderBefore
 from pyobs.utils.time import Time
-from ._base import BasePointing
-from .guidingstatistics import GuidingStatisticsUptime, GuidingStatisticsPixelOffset
-from .guidingstatistics.guidingstatistics import GuidingStatistics
+
 from ...interfaces import ITelescope
 from ...object import get_object
+from ._base import BasePointing
+from .guidingstatistics import GuidingStatisticsPixelOffset, GuidingStatisticsUptime
+from .guidingstatistics.guidingstatistics import GuidingStatistics
 
 log = logging.getLogger(__name__)
 

@@ -1,12 +1,12 @@
 import logging
+
 from slixmpp.plugins.base import BasePlugin
 from slixmpp.plugins.xep_0009.stanza import RPCQuery
-from slixmpp.xmlstream.stanzabase import register_stanza_plugin
 from slixmpp.xmlstream.handler import Callback
 from slixmpp.xmlstream.matcher import MatchXPath
+from slixmpp.xmlstream.stanzabase import register_stanza_plugin
 
 from . import stanza
-
 
 log = logging.getLogger(__name__)
 
@@ -26,8 +26,7 @@ class XEP_0009_timeout(BasePlugin):
             Callback(
                 "RPC Call",
                 MatchXPath(
-                    "{%s}iq/{%s}query/{%s}methodTimeout"
-                    % (self.xmpp.default_ns, RPCQuery.namespace, RPCQuery.namespace)
+                    f"{{{self.xmpp.default_ns}}}iq/{{{RPCQuery.namespace}}}query/{{{RPCQuery.namespace}}}methodTimeout"
                 ),
                 self._handle_method_timeout,
             )

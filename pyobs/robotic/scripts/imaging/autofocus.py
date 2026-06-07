@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import logging
 
-from pyobs.interfaces import IAutoFocus, IPointingRaDec, ITelescope, IMotion
+import logging
+from typing import TYPE_CHECKING
+
+from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
@@ -53,7 +54,7 @@ class AutoFocusScript(Script):
         target = data.task.target
         if target is None:
             raise ValueError("No target given.")
-        log.info(f"Picked target {target} for auto focus...")
+        log.info("Picked target %s for auto focus...", target)
 
         log.info("Moving telescope...")
         coord = target.coordinates(Time.now())

@@ -4,9 +4,9 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import IRoof, IFitsHeaderBefore
-from pyobs.modules import Module
+from pyobs.interfaces import IFitsHeaderBefore, IRoof
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
+from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
 log = logging.getLogger(__name__)

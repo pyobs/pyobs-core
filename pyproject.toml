@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.47.0"
+version = "1.48.0"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -83,6 +83,8 @@ dev = [
     "sphinx-rtd-theme>=3.0.2",
     "pyside6-stubs>=6.7.3.0",
     "radon>=6.0.1",
+    "ruff>=0.15.16",
+    "pylint>=4.0.5",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -97,6 +99,13 @@ build-backend = "hatchling.build"
 
 [tool.setuptools.package-data]
 "pyobs" = ["py.typed"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
 
 [tool.black]
 line-length = 120

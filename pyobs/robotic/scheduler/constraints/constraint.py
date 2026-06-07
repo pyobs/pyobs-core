@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import inspect
 from abc import ABCMeta, abstractmethod
-import astroplan
 from typing import TYPE_CHECKING, Any
+
+import astroplan
 
 from pyobs.object import Object
 from pyobs.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
     from astropy.time import Time
-    from ..dataprovider import DataProvider
+
     from pyobs.robotic import Task
+
+    from ..dataprovider import DataProvider
 
 
 class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):

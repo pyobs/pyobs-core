@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -6,6 +7,7 @@ if TYPE_CHECKING:
     from pyobs.application import Application
 
 from pyobs import version
+
 from ._cli import CLI
 
 

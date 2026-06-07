@@ -1,25 +1,27 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from pydantic import PrivateAttr, BaseModel, Field
-from typing import Any, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
+from pydantic import BaseModel, Field, PrivateAttr
+
+import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
-    IAutoGuiding,
-    ITelescope,
     IAcquisition,
-    ICamera,
-    IFilters,
-    IPointingRaDec,
+    IAutoGuiding,
     IBinning,
-    IWindow,
+    ICamera,
     IExposureTime,
+    IFilters,
     IImageType,
+    IPointingRaDec,
+    ITelescope,
+    IWindow,
 )
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType, MotionStatus
-import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
 
@@ -174,7 +176,7 @@ class ImagingScript(Script):
             log.info("Performing acquisition...")
             try:
                 await self._acquisition.acquire_target()
-            except:
+            except Exception:
                 if self.configuration.acquisition_config.optional:
                     log.warning("Could not acquire target, will continue without.")
                 else:
@@ -197,33 +199,33 @@ class ImagingScript(Script):
 
         # repeat configuration
         for repeat in range(self.configuration.repeats):
-            log.info(f"Starting configuration repeat {repeat + 1}/{self.configuration.repeats}...")
+            log.info("Starting configuration repeat %s/%s...", repeat + 1, self.configuration.repeats)
 
             # loop instrument configs
             for instrument_config in self.configuration.instrument_configs:
                 if isinstance(self._camera, IBinning):
-                    log.info(f"Setting binning to {instrument_config.binning[0]}x{instrument_config.binning[1]}...")
+                    log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
                     await self._camera.set_binning(*instrument_config.binning)
 
                 if isinstance(self._camera, IWindow):
                     wnd = instrument_config.window
                     if wnd is None:
                         wnd = await self._camera.get_full_frame()
-                    log.info(f"Setting window to {wnd[2]}x{wnd[3]} at {wnd[0]},{wnd[1]}...")
+                    log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
                     await self._camera.set_window(*wnd)
 
                 if isinstance(self._camera, IExposureTime):
-                    log.info(f"Setting exposure time to {instrument_config.exposure_time}s...")
+                    log.info("Setting exposure time to %ss...", instrument_config.exposure_time)
                     await self._camera.set_exposure_time(instrument_config.exposure_time)
 
                 # set image type
                 if isinstance(self._camera, IImageType):
-                    log.info(f"Setting image type to {instrument_config.image_type}...")
+                    log.info("Setting image type to %s...", instrument_config.image_type)
                     await self._camera.set_image_type(instrument_config.image_type)
 
                 set_filter: Future | asyncio.Task[Any] = Future(empty=True)
                 if instrument_config.optical_filter is not None and self._filters is not None:
-                    log.info(f"Setting filter to {instrument_config.optical_filter}...")
+                    log.info("Setting filter to %s...", instrument_config.optical_filter)
                     set_filter = asyncio.create_task(self._filters.set_filter(instrument_config.optical_filter))
 
                 # wait for tracking and filter
@@ -235,7 +237,7 @@ class ImagingScript(Script):
 
                 # do repeats
                 for repeat2 in range(instrument_config.count):
-                    log.info(f"Exposing image {repeat2 + 1}/{instrument_config.count}...")
+                    log.info("Exposing image %s/%s...", repeat2 + 1, instrument_config.count)
 
                     # grab image
                     await cast(ICamera, self._camera).grab_data()

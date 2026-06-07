@@ -8,3 +8,5 @@ __title__ = "Flatfielding"
 from .flatfield import FlatField
 from .pointing import FlatFieldPointing
 from .scheduler import FlatFieldScheduler
+
+__all__ = ["FlatField", "FlatFieldPointing", "FlatFieldScheduler"]

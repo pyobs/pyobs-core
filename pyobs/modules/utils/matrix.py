@@ -3,8 +3,8 @@ import logging
 from asyncio import Task
 from typing import Any
 
+from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
-from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class Matrix(Module):
             return False
 
         # build log message
-        message = "(%s) %s: %s" % (entry.level, sender, entry.message)
+        message = f"({entry.level}) {sender}: {entry.message}"
 
         # send it
         await self.client.room_send(

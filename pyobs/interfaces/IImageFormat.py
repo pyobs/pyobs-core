@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from .interface import Interface
 from pyobs.utils.enums import ImageFormat
+
+from .interface import Interface
 
 
 class IImageFormat(Interface, metaclass=ABCMeta):

@@ -6,14 +6,15 @@ import math
 import os
 from asyncio import Task
 from typing import Any, cast
+
 import astropy.units as u
 from astropy.io import fits
 
 from pyobs.images import Image
-from pyobs.interfaces import IFitsHeaderBefore, IFitsHeaderAfter
+from pyobs.interfaces import IFitsHeaderAfter, IFitsHeaderBefore
 from pyobs.modules import Module
-from pyobs.utils.fits import format_filename
 from pyobs.utils import exceptions as exc
+from pyobs.utils.fits import format_filename
 from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class FitsHeaderMixin:
         self._fitsheadermixin_night_obs = night_obs
 
         # night exposure number
-        self._fitsheadermixin_cache = "/pyobs/modules/%s/cache.yaml" % module.name
+        self._fitsheadermixin_cache = f"/pyobs/modules/{module.name}/cache.yaml"
         self._fitsheadermixin_enable_frame_number = frame_number
         self._fitsheadermixin_frame_number = 0
 
@@ -110,7 +111,7 @@ class FitsHeaderMixin:
 
             # add them to fits file
             if headers:
-                log.debug("Adding additional FITS headers from %s..." % client)
+                log.debug("Adding additional FITS headers from %s...", client)
                 for key, value in headers.items():
                     # if value is not a string, it may be a list of value and comment
                     if isinstance(value, list) and not isinstance(value, str):

@@ -1,8 +1,8 @@
 import logging
 from typing import cast
 
-import PIL.Image
 import numpy as np
+import PIL.Image
 from astropy.wcs import WCS
 
 from pyobs.images import Image

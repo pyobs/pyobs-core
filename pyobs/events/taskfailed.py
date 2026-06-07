@@ -2,7 +2,10 @@ from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 
-DataType = TypedDict("DataType", {"name": str, "id": Any})
+
+class DataType(TypedDict):
+    name: str
+    id: Any
 
 
 class TaskFailedEvent(Event):

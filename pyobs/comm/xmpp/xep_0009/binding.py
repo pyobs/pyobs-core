@@ -2,11 +2,12 @@
 # Copyright (C) 2011 Nathanael C. Fritz, Dann Martens (TOMOTON).
 # This file is part of Slixmpp.
 # See the file LICENSE for copying permission.
-from typing import Any
-from slixmpp.xmlstream import ET
 import base64
 import logging
 import time
+from typing import Any
+
+from slixmpp.xmlstream import ET
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ def fault2xml(code: int, message: str) -> ET.Element:
 
 def xml2fault(params: ET.Element) -> dict[str, Any]:
     vals = []
-    for value in params.findall("{%s}value" % _namespace):
+    for value in params.findall(f"{{{_namespace}}}value"):
         vals.append(_xml2py(value)[0])
     fault = dict()
     fault["code"] = vals[0]["faultCode"]
@@ -33,9 +34,9 @@ def xml2fault(params: ET.Element) -> dict[str, Any]:
 
 
 def py2xml(*args: Any) -> ET.Element:
-    params = ET.Element("{%s}params" % _namespace)
+    params = ET.Element(f"{{{_namespace}}}params")
     for x in args:
-        param = ET.Element("{%s}param" % _namespace)
+        param = ET.Element(f"{{{_namespace}}}param")
         param.append(_py2xml(x))
         params.append(param)  # <params><param>...
     return params
@@ -43,46 +44,46 @@ def py2xml(*args: Any) -> ET.Element:
 
 def _py2xml(*args: Any) -> ET.Element:
     for x in args:
-        val = ET.Element("{%s}value" % _namespace)
+        val = ET.Element(f"{{{_namespace}}}value")
         if x is None:
-            nil = ET.Element("{%s}nil" % _namespace)
+            nil = ET.Element(f"{{{_namespace}}}nil")
             val.append(nil)
         elif type(x) is int:
-            i4 = ET.Element("{%s}i4" % _namespace)
+            i4 = ET.Element(f"{{{_namespace}}}i4")
             i4.text = str(x)
             val.append(i4)
         elif type(x) is bool:
-            boolean = ET.Element("{%s}boolean" % _namespace)
+            boolean = ET.Element(f"{{{_namespace}}}boolean")
             boolean.text = str(int(x))
             val.append(boolean)
         elif type(x) is str:
-            string = ET.Element("{%s}string" % _namespace)
+            string = ET.Element(f"{{{_namespace}}}string")
             string.text = x
             val.append(string)
         elif type(x) is float:
-            double = ET.Element("{%s}double" % _namespace)
+            double = ET.Element(f"{{{_namespace}}}double")
             double.text = str(x)
             val.append(double)
         elif type(x) is rpcbase64:
-            b64 = ET.Element("{%s}base64" % _namespace)
+            b64 = ET.Element(f"{{{_namespace}}}base64")
             b64.text = x.encoded()
             val.append(b64)
         elif type(x) is rpctime:
-            iso = ET.Element("{%s}dateTime.iso8601" % _namespace)
+            iso = ET.Element(f"{{{_namespace}}}dateTime.iso8601")
             iso.text = str(x)
             val.append(iso)
         elif type(x) in (list, tuple):
-            array = ET.Element("{%s}array" % _namespace)
-            data = ET.Element("{%s}data" % _namespace)
+            array = ET.Element(f"{{{_namespace}}}array")
+            data = ET.Element(f"{{{_namespace}}}data")
             for y in x:
                 data.append(_py2xml(y))
             array.append(data)
             val.append(array)
         elif type(x) is dict:
-            struct = ET.Element("{%s}struct" % _namespace)
+            struct = ET.Element(f"{{{_namespace}}}struct")
             for y in x.keys():
-                member = ET.Element("{%s}member" % _namespace)
-                name = ET.Element("{%s}name" % _namespace)
+                member = ET.Element(f"{{{_namespace}}}member")
+                name = ET.Element(f"{{{_namespace}}}name")
                 name.text = y
                 member.append(name)
                 member.append(_py2xml(x[y]))
@@ -94,47 +95,47 @@ def _py2xml(*args: Any) -> ET.Element:
 def xml2py(params: ET.Element) -> list[Any]:
     namespace = "jabber:iq:rpc"
     vals: list[Any] = []
-    for param in params.findall("{%s}param" % namespace):
-        vals.append(_xml2py(param.find("{%s}value" % namespace)))
+    for param in params.findall(f"{{{namespace}}}param"):
+        vals.append(_xml2py(param.find(f"{{{namespace}}}value")))
     return vals
 
 
 def _xml2py(value: ET) -> Any:
     namespace = "jabber:iq:rpc"
     find_value = value.find
-    if find_value("{%s}nil" % namespace) is not None:
+    if find_value(f"{{{namespace}}}nil") is not None:
         return None
-    if find_value("{%s}i4" % namespace) is not None:
-        return int(find_value("{%s}i4" % namespace).text)
-    if find_value("{%s}int" % namespace) is not None:
-        return int(find_value("{%s}int" % namespace).text)
-    if find_value("{%s}boolean" % namespace) is not None:
-        return bool(int(find_value("{%s}boolean" % namespace).text))
-    if find_value("{%s}string" % namespace) is not None:
-        return find_value("{%s}string" % namespace).text
-    if find_value("{%s}double" % namespace) is not None:
-        return float(find_value("{%s}double" % namespace).text)
-    if find_value("{%s}base64" % namespace) is not None:
-        return rpcbase64(find_value("{%s}base64" % namespace).text.encode())
-    if find_value("{%s}Base64" % namespace) is not None:
+    if find_value(f"{{{namespace}}}i4") is not None:
+        return int(find_value(f"{{{namespace}}}i4").text)
+    if find_value(f"{{{namespace}}}int") is not None:
+        return int(find_value(f"{{{namespace}}}int").text)
+    if find_value(f"{{{namespace}}}boolean") is not None:
+        return bool(int(find_value(f"{{{namespace}}}boolean").text))
+    if find_value(f"{{{namespace}}}string") is not None:
+        return find_value(f"{{{namespace}}}string").text
+    if find_value(f"{{{namespace}}}double") is not None:
+        return float(find_value(f"{{{namespace}}}double").text)
+    if find_value(f"{{{namespace}}}base64") is not None:
+        return rpcbase64(find_value(f"{{{namespace}}}base64").text.encode())
+    if find_value(f"{{{namespace}}}Base64") is not None:
         # Older versions of XEP-0009 used Base64
-        return rpcbase64(find_value("{%s}Base64" % namespace).text.encode())
-    if find_value("{%s}dateTime.iso8601" % namespace) is not None:
-        return rpctime(find_value("{%s}dateTime.iso8601" % namespace).text)
-    if find_value("{%s}struct" % namespace) is not None:
+        return rpcbase64(find_value(f"{{{namespace}}}Base64").text.encode())
+    if find_value(f"{{{namespace}}}dateTime.iso8601") is not None:
+        return rpctime(find_value(f"{{{namespace}}}dateTime.iso8601").text)
+    if find_value(f"{{{namespace}}}struct") is not None:
         struct = {}
-        for member in find_value("{%s}struct" % namespace).findall("{%s}member" % namespace):
-            struct[member.find("{%s}name" % namespace).text] = _xml2py(member.find("{%s}value" % namespace))
+        for member in find_value(f"{{{namespace}}}struct").findall(f"{{{namespace}}}member"):
+            struct[member.find(f"{{{namespace}}}name").text] = _xml2py(member.find(f"{{{namespace}}}value"))
         return struct
-    if find_value("{%s}array" % namespace) is not None:
+    if find_value(f"{{{namespace}}}array") is not None:
         array = []
-        for val in find_value("{%s}array" % namespace).find("{%s}data" % namespace).findall("{%s}value" % namespace):
+        for val in find_value(f"{{{namespace}}}array").find(f"{{{namespace}}}data").findall(f"{{{namespace}}}value"):
             array.append(_xml2py(val))
         return array
     raise ValueError()
 
 
-class rpcbase64(object):
+class rpcbase64:
     def __init__(self, data: bytes):
         # base 64 encoded string
         self.data = data
@@ -149,7 +150,7 @@ class rpcbase64(object):
         return self.data.decode()
 
 
-class rpctime(object):
+class rpctime:
     def __init__(self, data: Any | None = None):
         # assume string data is in iso format YYYYMMDDTHH:MM:SS
         if type(data) is str:

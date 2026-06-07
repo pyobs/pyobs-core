@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import threading
+from typing import TYPE_CHECKING, Any
+
+import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-import astropy.units as u
-from typing import Any, TYPE_CHECKING
-import random
 
 from pyobs.object import Object
 from pyobs.utils.enums import MotionStatus
@@ -22,7 +23,7 @@ class SimTelescope(Object):
 
     def __init__(
         self,
-        world: "SimWorld",
+        world: SimWorld,
         position: tuple[float, float] | None = None,
         offsets: tuple[float, float] | None = None,
         pointing_offset: tuple[float, float] | None = None,

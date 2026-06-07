@@ -2,9 +2,14 @@ from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 
-DataType = TypedDict(
-    "DataType", {"time": str, "level": str, "filename": str, "function": str, "line": int, "message": str}
-)
+
+class DataType(TypedDict):
+    time: str
+    level: str
+    filename: str
+    function: str
+    line: int
+    message: str
 
 
 class LogEvent(Event):

@@ -2,7 +2,10 @@ from typing import Any, TypedDict
 
 from .event import Event
 
-DataType = TypedDict("DataType", {"group": str, "current": str})
+
+class DataType(TypedDict):
+    group: str
+    current: str
 
 
 class ModeChangedEvent(Event):

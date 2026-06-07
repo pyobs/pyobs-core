@@ -1,6 +1,6 @@
 from pathlib import Path
-from single_source import get_version
 
+from single_source import get_version
 
 __version__ = get_version("pyobs-core", Path(__file__).parent.parent)
 

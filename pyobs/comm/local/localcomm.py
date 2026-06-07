@@ -1,9 +1,11 @@
-from typing import Type, Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from pyobs.comm import Comm
 from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_response_to_real
+
 from .localnetwork import LocalNetwork
 
 
@@ -29,7 +31,7 @@ class LocalComm(Comm):
         """
         return self._network.get_client_names()
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """Returns list of interfaces for given client.
 
         Args:
@@ -45,7 +47,7 @@ class LocalComm(Comm):
         remote_client: LocalComm = self._network.get_client(client)
         return [] if remote_client.module is None else remote_client.module.interfaces
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.
 
         Args:
@@ -92,6 +94,6 @@ class LocalComm(Comm):
             client._send_event_to_module(event, self.name)
 
     async def _register_events(
-        self, events: list[Type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+        self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         pass

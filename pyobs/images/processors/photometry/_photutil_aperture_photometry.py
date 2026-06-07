@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 from typing import Any, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.stats import sigma_clipped_stats
 from astropy.table import QTable, Table
-from photutils.aperture import CircularAperture, CircularAnnulus, ApertureMask, aperture_photometry
+from photutils.aperture import (
+    ApertureMask,
+    CircularAnnulus,
+    CircularAperture,
+    aperture_photometry,
+)
 
 from pyobs.images import Image
-from pyobs.images.processors.photometry._photometry_calculator import _PhotometryCalculator
+from pyobs.images.processors.photometry._photometry_calculator import (
+    _PhotometryCalculator,
+)
 
 
 class _PhotUtilAperturePhotometry(_PhotometryCalculator):
@@ -97,7 +105,7 @@ class _PhotUtilAperturePhotometry(_PhotometryCalculator):
     ) -> None:
         if self._image is None or self._image.catalog is None:
             raise ValueError("No catalog.")
-        self._image.catalog["fluxaper%d" % diameter] = corrected_aperture_flux
+        self._image.catalog[f"fluxaper{diameter}"] = corrected_aperture_flux
         if aperture_error is not None:
-            self._image.catalog["fluxerr%d" % diameter] = aperture_error
-        self._image.catalog["bkgaper%d" % diameter] = median_background
+            self._image.catalog[f"fluxerr{diameter}"] = aperture_error
+        self._image.catalog[f"bkgaper{diameter}"] = median_background

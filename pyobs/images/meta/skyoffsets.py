@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from astropy.coordinates import SkyCoord, BaseCoordinateFrame, Angle
+from astropy.coordinates import Angle, BaseCoordinateFrame, SkyCoord
 
 
 class SkyOffsets:

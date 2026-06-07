@@ -1,10 +1,15 @@
 from __future__ import annotations
+
 from typing import Any, TypedDict
 
 from pyobs.events.event import Event
 from pyobs.utils.enums import ImageType
 
-DataType = TypedDict("DataType", {"filename": str, "image_type": str | None, "raw": str | None})
+
+class DataType(TypedDict):
+    filename: str
+    image_type: str | None
+    raw: str | None
 
 
 class NewImageEvent(Event):

@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.images.processors._daobackgroundremover import _DaoBackgroundRemover
 
 log = logging.getLogger(__name__)

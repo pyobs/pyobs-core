@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 from typing import Any, TypedDict
 
-from pyobs.utils.time import Time
 from pyobs.events.event import Event
+from pyobs.utils.time import Time
 
-DataType = TypedDict("DataType", {"eta": str | None})
+
+class DataType(TypedDict):
+    eta: str | None
 
 
 class GoodWeatherEvent(Event):

@@ -5,11 +5,12 @@ from enum import Enum
 from inspect import Parameter
 from pprint import pprint
 from typing import Any
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackQueryHandler, CallbackContext, Application
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CallbackContext, CallbackQueryHandler
+
+from pyobs.events import Event, LogEvent
 from pyobs.modules import Module
-from pyobs.events import LogEvent, Event
 
 log = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ class Telegram(Module):
         if self._is_user_authorized(context, update.message.from_user.id):
             # welcome him back
             await context.bot.send_message(
-                chat_id=update.effective_chat.id, text="Welcome back %s!" % update.message.from_user.first_name
+                chat_id=update.effective_chat.id, text=f"Welcome back {update.message.from_user.first_name}!"
             )
 
         else:
@@ -260,11 +261,11 @@ class Telegram(Module):
             proxy = await self.proxy(query.data)
 
             # show buttons for all modules
-            keyboard = [
-                [InlineKeyboardButton(m, callback_data="%s.%s" % (query.data, m))] for m in proxy.method_names
-            ] + [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
+            keyboard = [[InlineKeyboardButton(m, callback_data=f"{query.data}.{m}")] for m in proxy.method_names] + [
+                [InlineKeyboardButton("Cancel", callback_data="cancel")]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text="Chose method in %s:" % query.data)
+            await query.edit_message_text(text=f"Chose method in {query.data}:")
             await query.edit_message_reply_markup(reply_markup)
 
             # change to EXEC_MEHOD state
@@ -283,7 +284,7 @@ class Telegram(Module):
             # show buttons for all methods
             keyboard = [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text="Executing %s..." % query.data)
+            await query.edit_message_text(text=f"Executing {query.data}...")
             await query.edit_message_reply_markup(reply_markup)
 
             # go to EXEC_PARAMS state
@@ -299,7 +300,7 @@ class Telegram(Module):
             await self._save_storage(context)
 
             # change to IDLE state
-            await query.edit_message_text(text="Changed log level to %s." % query.data)
+            await query.edit_message_text(text=f"Changed log level to {query.data}.")
             context.user_data["state"] = TelegramUserState.IDLE
 
     def _handle_params(self, update: Update, context: CallbackContext[Any, Any, Any, Any]) -> None:
@@ -361,9 +362,8 @@ class Telegram(Module):
             call_id = context.user_data["ncalls"]
 
             # remove cancel button, and show command
-            msg = "Executing %s..." % context.user_data["method"]
             await context.bot.edit_message_text(
-                text=msg,
+                text=f"Executing {context.user_data['method']}...",
                 message_id=context.user_data["exec_query_message"],
                 chat_id=context.user_data["exec_query_chat"],
             )
@@ -372,12 +372,10 @@ class Telegram(Module):
             command = (
                 context.user_data["method"]
                 + "("
-                + ", ".join(['"%s"' % p if isinstance(p, str) else str(p) for p in context.user_data["params"]])
+                + ", ".join([f'"{p}"' if isinstance(p, str) else str(p) for p in context.user_data["params"]])
                 + ")"
             )
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id, text="Executing #%d:\n%s" % (call_id, command)
-            )
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Executing #{call_id}:\n{command}")
 
             # start call
             asyncio.create_task(
@@ -426,14 +424,14 @@ class Telegram(Module):
 
         # set message
         if response is None:
-            message = "Finished #%d." % call_id
+            message = f"Finished #{call_id}."
 
         else:
             # format message
             with io.StringIO() as sio:
                 # format response
                 pprint(response, stream=sio, indent=2)
-                message = "Finished #%d:\n%s" % (call_id, sio.getvalue())
+                message = f"Finished #{call_id}:\n{sio.getvalue()}"
 
         # send reply
         await context.bot.send_message(chat_id=chat_id, text=message)
@@ -517,7 +515,7 @@ class Telegram(Module):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "Current log level: %s\nPlease choose new log level:" % current_level, reply_markup=reply_markup
+            f"Current log level: {current_level}\nPlease choose new log level:", reply_markup=reply_markup
         )
 
     async def _process_log_entry(self, entry: Event, sender: str) -> bool:
@@ -534,7 +532,7 @@ class Telegram(Module):
         level = self._log_levels[entry.level]
 
         # build log message
-        message = "(%s) %s: %s" % (entry.level, sender, entry.message)
+        message = f"({entry.level}) {sender}: {entry.message}"
 
         # get storage
         if self._application is None:

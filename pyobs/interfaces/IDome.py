@@ -1,7 +1,7 @@
 from abc import ABCMeta
 
-from .IRoof import IRoof
 from .IPointingAltAz import IPointingAltAz
+from .IRoof import IRoof
 
 
 class IDome(IRoof, IPointingAltAz, metaclass=ABCMeta):

@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 import copy
 import io
-from typing import TypeVar, Type, Any, cast
+from typing import Any, TypeVar, cast
+
 import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
-from astropy.io.fits import table_to_hdu, ImageHDU
-from astropy.table import Table
+from astropy.io.fits import ImageHDU, table_to_hdu
 from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.table import Table
 from numpy.typing import NDArray
 
-from pyobs.utils.fits import FilenameFormatter
 import pyobs.utils.exceptions as exc
+from pyobs.utils.fits import FilenameFormatter
 
 MetaClass = TypeVar("MetaClass")
 
@@ -227,7 +229,7 @@ class Image:
         return image
 
     @classmethod
-    def _from_hdu_list(cls, data: fits.HDUList) -> "Image":
+    def _from_hdu_list(cls, data: fits.HDUList) -> Image:
         """Load Image from HDU list.
 
         Args:
@@ -447,11 +449,11 @@ class Image:
         # store it
         self._meta[meta.__class__] = meta
 
-    def has_meta(self, meta_class: Type[MetaClass]) -> bool:
+    def has_meta(self, meta_class: type[MetaClass]) -> bool:
         """Whether meta exists."""
         return meta_class in self._meta
 
-    def get_meta(self, meta_class: Type[MetaClass]) -> MetaClass:
+    def get_meta(self, meta_class: type[MetaClass]) -> MetaClass:
         """Returns meta information, assuming that it is stored under the class of the object.
 
         Args:
@@ -471,12 +473,12 @@ class Image:
         # return it
         return cast(MetaClass, self._meta[meta_class])
 
-    def get_meta_safe(self, meta_class: Type[MetaClass], default: MetaClass | None = None) -> MetaClass | None:
+    def get_meta_safe(self, meta_class: type[MetaClass], default: MetaClass | None = None) -> MetaClass | None:
         """Calls get_meta in a safe way and returns default value in case of an exception."""
 
         try:
             return self.get_meta(meta_class)
-        except:
+        except Exception:
             return default
 
     @property

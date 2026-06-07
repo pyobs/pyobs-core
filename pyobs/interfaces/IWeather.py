@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from .IStartStop import IStartStop
 from pyobs.utils.enums import WeatherSensors
+
+from .IStartStop import IStartStop
 
 
 class IWeather(IStartStop, metaclass=ABCMeta):

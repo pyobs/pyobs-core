@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Type
+from typing import Any
 
 from pyobs.comm import Comm
 from pyobs.events import Event
@@ -23,11 +23,11 @@ class DummyComm(Comm):
         """Always return zero clients."""
         return []
 
-    async def get_interfaces(self, client: str) -> list[Type[Interface]]:
+    async def get_interfaces(self, client: str) -> list[type[Interface]]:
         """No interfaces implemented."""
         return []
 
-    async def _supports_interface(self, client: str, interface: Type[Interface]) -> bool:
+    async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Interfaces are never supported."""
         return False
 

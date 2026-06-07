@@ -1,9 +1,9 @@
-from typing import Any
 import logging
+from typing import Any
 
 # PySide is no requirement for pyobs-core...
 try:
-    from PySide6 import QtWidgets, QtGui
+    from PySide6 import QtGui, QtWidgets
 
     class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
         def __init__(self, *args: Any, **kwargs: Any):
@@ -35,13 +35,13 @@ try:
 
         def emit(self, record: logging.LogRecord) -> None:  # type: ignore
             # format entry
-            log_entry = self.format(record)
+            log_entry = self.format(record)  # noqa: UP031
 
             # colors?
             if "[ERROR]" in log_entry:
-                log_entry = '<font color="red">%s</font>' % log_entry
+                log_entry = f'<font color="red">{log_entry}</font>'
             elif "[WARNING]" in log_entry:
-                log_entry = '<font color="orange">%s</font>' % log_entry
+                log_entry = f'<font color="orange">{log_entry}</font>'
 
             # append to log
             self.log.append(log_entry)

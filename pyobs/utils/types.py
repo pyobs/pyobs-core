@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import functools
 import inspect
-from inspect import BoundArguments, Parameter
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, get_args, Callable, Type, get_origin
+from inspect import BoundArguments, Parameter
+from typing import Any, get_args, get_origin
 
 
 def iterate_params(
     value: Any,
-    type_hint: Type[Any] | None = None,
+    type_hint: type[Any] | None = None,
     method: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
     """Iterate values and type_hints and call a given method.
@@ -37,17 +38,17 @@ def iterate_params(
 
     elif isinstance(value, tuple):
         # handle tuple
-        if type_hint and get_origin(type_hint) == tuple:
+        if type_hint and get_origin(type_hint) is tuple:
             return tuple(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
         else:
             return tuple(iterate_params(v, None, method) for v in value)
 
     elif isinstance(value, list):
         # handle lists
-        if type_hint and get_origin(type_hint) == tuple:
+        if type_hint and get_origin(type_hint) is tuple:
             # also convert a tuple, if type is actually a tuple
             return list(iterate_params(v, a, method) for v, a in zip(value, get_args(type_hint)))
-        elif type_hint and get_origin(type_hint) == list:
+        elif type_hint and get_origin(type_hint) is list:
             typ = get_args(type_hint)[0]
             return [iterate_params(v, typ, method) for v in value]
         else:
@@ -55,7 +56,7 @@ def iterate_params(
 
     elif isinstance(value, dict):
         # handle dict
-        if type_hint and get_origin(type_hint) == dict:
+        if type_hint and get_origin(type_hint) is dict:
             annk, annv = get_args(type_hint)
             return {iterate_params(k, annk, method): iterate_params(v, annv, method) for k, v in value.items()}
         else:
@@ -71,7 +72,7 @@ def iterate_params(
 
 def cast_bound_arguments_to_simple(
     bound_arguments: BoundArguments,
-    type_hints: dict[str, Type[Any]],
+    type_hints: dict[str, type[Any]],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
@@ -94,7 +95,7 @@ def cast_bound_arguments_to_simple(
 
 def cast_bound_arguments_to_real(
     bound_arguments: BoundArguments,
-    type_hints: dict[str, Type[Any]],
+    type_hints: dict[str, type[Any]],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> None:
@@ -115,7 +116,7 @@ def cast_bound_arguments_to_real(
 
 def cast_response_to_simple(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
@@ -138,7 +139,7 @@ def cast_response_to_simple(
 
 def cast_response_to_real(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> Any:
@@ -161,7 +162,7 @@ def cast_response_to_real(
 
 def __cast_to_simple(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> tuple[bool, Any]:
@@ -202,7 +203,7 @@ def __cast_to_simple(
 
 def __cast_to_real(
     value: Any,
-    type_hint: Type[Any],
+    type_hint: type[Any],
     pre: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
     post: Callable[[Any, Any], tuple[bool, Any | None]] | None = None,
 ) -> tuple[bool, Any]:

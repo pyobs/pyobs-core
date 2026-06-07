@@ -1,18 +1,32 @@
 from __future__ import annotations
+
 import asyncio
 import json
 import logging
 import time
 from typing import Any
+
 import astropy.units as u
 from astropy.time import TimeDelta
 
-from pyobs.events import GoodWeatherEvent, Event, TaskFailedEvent, TaskStartedEvent, TaskFinishedEvent
+from pyobs.events import (
+    Event,
+    GoodWeatherEvent,
+    TaskFailedEvent,
+    TaskFinishedEvent,
+    TaskStartedEvent,
+)
+from pyobs.interfaces import IRunnable, IStartStop
+from pyobs.modules import Module
+from pyobs.robotic import (
+    ObservationArchive,
+    ObservationList,
+    Project,
+    Task,
+    TaskArchive,
+)
 from pyobs.robotic.scheduler import TaskScheduler
 from pyobs.utils.time import Time
-from pyobs.interfaces import IStartStop, IRunnable
-from pyobs.modules import Module
-from pyobs.robotic import TaskArchive, ObservationArchive, Task, ObservationList, Project
 
 log = logging.getLogger(__name__)
 
@@ -147,7 +161,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             schedule = await self._schedule.get_schedule()
             removed_from_schedule = [s for s in schedule if s.task.id in removed]
             if len(removed_from_schedule) == 0:
-                log.info(f"Found {len(removed)} tasks, but none of them was scheduled.")
+                log.info("Found %s tasks, but none of them was scheduled.", len(removed))
                 self._need_update = False
 
         # store blocks
@@ -256,7 +270,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                 except asyncio.CancelledError:
                     return
 
-                except:
+                except Exception:
                     log.exception("Something went wrong")
 
             # sleep a little

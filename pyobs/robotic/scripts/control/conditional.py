@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
-from typing import Any, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -20,7 +20,7 @@ class ConditionalRunner(Script):
 
     def __get_script(self) -> Script | None:
         # evaluate condition
-        ret = eval(self.condition, {"now": datetime.now(timezone.utc)})
+        ret = eval(self.condition, {"now": datetime.now(UTC)})
 
         # run scripts
         if ret:

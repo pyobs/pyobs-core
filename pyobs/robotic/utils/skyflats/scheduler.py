@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 import logging
-from astroplan import Observer
 import operator
+
+from astroplan import Observer
+
+from pyobs.utils.time import Time
 
 from .exptimeeval import ExpTimeEval
 from .priorities import SkyflatPriorities
-from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -30,13 +33,8 @@ class SchedulerItem:
 
     def __repr__(self) -> str:
         """Nice string representation for item"""
-        return "%d - %d (%s %dx%d): %.2f" % (
-            self.start,
-            self.end,
-            self.filter_name,
-            self.binning[0],
-            self.binning[1],
-            self.priority,
+        return (
+            f"{self.start} - {self.end} ({self.filter_name} {self.binning[0]}x{self.binning[1]}): {self.priority:.2f}"
         )
 
 
@@ -135,7 +133,7 @@ class Scheduler:
         """
 
         # get readout time
-        sbin = "%dx%d" % binning
+        sbin = f"{binning}x{binning}"
         readout = self._readout[sbin] if sbin in self._readout else 0.0
 
         # find first possible start time

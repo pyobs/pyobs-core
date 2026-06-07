@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import logging
 from abc import ABCMeta
 from typing import Any
-import logging
 
-from pyobs.interfaces import ITelescope, ICamera
-from pyobs.mixins.pipeline import PipelineMixin
-from pyobs.object import get_object
-from pyobs.utils.offsets import ApplyOffsets
-from pyobs.modules import Module
 from pyobs.images import ImageProcessor
+from pyobs.interfaces import ICamera, ITelescope
+from pyobs.mixins.pipeline import PipelineMixin
+from pyobs.modules import Module
+from pyobs.object import get_object
 from pyobs.utils import exceptions as exc
+from pyobs.utils.offsets import ApplyOffsets
 
 log = logging.getLogger(__name__)
 

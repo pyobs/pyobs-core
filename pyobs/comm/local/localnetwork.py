@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -6,12 +7,12 @@ if TYPE_CHECKING:
 
 
 class LocalNetwork:
-    _instance: "LocalNetwork | None" = None
+    _instance: LocalNetwork | None = None
 
-    def __new__(cls) -> "LocalNetwork":
+    def __new__(cls) -> LocalNetwork:
         if cls._instance is None:
             print("Creating the object")
-            cls._instance = super(LocalNetwork, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
 
             cls._clients: dict[str, LocalComm] = {}
 

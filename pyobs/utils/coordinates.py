@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import astropy.units as u
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, ICRS
+from astropy.coordinates import ICRS, AltAz, EarthLocation, SkyCoord
 
 
 def offset_altaz_to_radec(altaz: SkyCoord, dalt: float, daz: float) -> tuple[float, float]:

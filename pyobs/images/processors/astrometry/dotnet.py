@@ -3,6 +3,7 @@ from typing import Any
 
 import pyobs.utils.exceptions as exc
 from pyobs.images import Image
+
 from ._dotnet_request_builder import _DotNetRequestBuilder
 from ._dotnet_request_logger import _RequestLogger
 from ._dotnet_response_saver import _ResponseImageWriter

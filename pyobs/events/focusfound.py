@@ -1,9 +1,14 @@
 from __future__ import annotations
+
 from typing import Any, TypedDict
 
 from .event import Event
 
-DataType = TypedDict("DataType", {"focus": float, "error": float | None, "filter_name": str | None})
+
+class DataType(TypedDict):
+    focus: float
+    error: float | None
+    filter_name: str | None
 
 
 class FocusFoundEvent(Event):

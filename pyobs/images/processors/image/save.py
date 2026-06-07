@@ -2,8 +2,8 @@ import logging
 from typing import Any
 
 from pyobs.events import NewImageEvent
-from pyobs.images.processor import ImageProcessor
 from pyobs.images import Image
+from pyobs.images.processor import ImageProcessor
 from pyobs.utils.enums import ImageType
 from pyobs.utils.fits import FilenameFormatter
 

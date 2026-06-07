@@ -1,10 +1,10 @@
 from __future__ import annotations
-import contextlib
-import time
+
 import asyncio
+import contextlib
 from asyncio import Task
 from collections.abc import Coroutine
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyobs.utils.types import cast_response_to_real
 
@@ -24,7 +24,7 @@ async def acquire_lock(lock: asyncio.Lock, timeout: float = 1.0) -> bool:
     try:
         await asyncio.wait_for(lock.acquire(), timeout)
         return True
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
 
 
@@ -61,34 +61,19 @@ class Future(asyncio.Future[Any]):
         """
         return self.timeout
 
-    def _wait_for_time(self, timeout: float = 0) -> None:
-        """Waits a little.
-
-        Args:
-            time: Time to wait in seconds.
-        """
-        start = time.time()
-        while not self.done() or time.time() - start > timeout:
-            return
-        raise TimeoutError
-
     def __await__(self) -> Any:
         # not finished? need to wait.
         if not self.done():
-            try:
-                # wait some 10s first
-                self._wait_for_time(10)
+            loop = asyncio.get_running_loop()
 
-            except TimeoutError:
-                # got an additional timeout?
-                if self.timeout is not None and self.timeout > 10:
-                    # we already waited 10s, so subtract it
-                    self._wait_for_time(self.timeout - 10.0)
+            # schedule timeout
+            timeout = self.timeout if self.timeout is not None else 10.0
+            handle = loop.call_later(timeout, self._on_timeout)
 
-        # not done? yield!
-        if not self.done():
             self._asyncio_future_blocking = True
-            yield self  # This tells Task to wait for completion.
+            yield self  # suspend until done or timeout
+
+            handle.cancel()  # cancel timeout if completed normally
 
         # still not done? raise exception.
         if not self.done():
@@ -107,6 +92,10 @@ class Future(asyncio.Future[Any]):
     @staticmethod
     async def wait_all(futures: list[Future | Coroutine[Any, Any, Any] | Task[Any] | None]) -> list[Any]:
         return [await fut for fut in futures if fut is not None]
+
+    def _on_timeout(self) -> None:
+        if not self.done():
+            self.set_exception(TimeoutError())
 
 
 __all__ = ["Future", "event_wait", "acquire_lock"]

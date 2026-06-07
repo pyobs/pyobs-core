@@ -1,7 +1,8 @@
-from qtpy import QtWidgets, QtCore
-from qfitswidget import QFitsWidget
-from astropy.io import fits
 import os
+
+from astropy.io import fits
+from qfitswidget import QFitsWidget
+from qtpy import QtCore, QtWidgets
 
 
 class DataDisplayWidget(QtWidgets.QWidget):

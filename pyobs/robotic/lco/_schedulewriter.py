@@ -1,12 +1,14 @@
 import logging
 from typing import Any, cast
+
 import astropy.units as u
 
 from pyobs.robotic.observation import ObservationList
 from pyobs.utils.time import Time
+
+from ...object import Object
 from ._portal import Portal
 from .configdb import ConfigDB
-from ...object import Object
 
 log = logging.getLogger(__name__)
 
@@ -99,10 +101,10 @@ class LcoScheduleWriter(Object):
                     config.instrument_type, site=self._site, enclosure=self._enclosure, telescope=self._telescope
                 )
                 if len(instruments) == 0:
-                    log.warning(f"Instrument type {config.instrument_type} not found. Skipping configuration.")
+                    log.warning("Instrument type %s not found. Skipping configuration.", config.instrument_type)
                     continue
                 if len(instruments) > 1:
-                    log.warning(f"More than one instrument of type {config.instrument_type} found. Using first one.")
+                    log.warning("More than one instrument of type %s found. Using first one.", config.instrument_type)
                 instrument = instruments[0].instrument
 
                 # add configuration status

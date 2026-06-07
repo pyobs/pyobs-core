@@ -57,7 +57,7 @@ def find_classes_in_modules(modules: ModuleType | list[ModuleType]) -> list[type
     for mod in modules:
         # no __all__?
         if not hasattr(mod, "__all__"):
-            print("No __all__ found in %s." % mod.__file__)
+            print(f"No __all__ found in {mod.__file__}.")
             continue
 
         # loop all elements in __all__
@@ -93,7 +93,7 @@ def write_class(
     name, module = cls.__name__, cls.__module__
     if title:
         write_title(rst, name, header_level)
-    rst.write(".. %s:: %s.%s\n" % (autotype, module, name))
+    rst.write(f".. {autotype}:: {module}.{name}\n")
     if members:
         rst.write("   :members:\n")
     if inheritance:
@@ -108,7 +108,7 @@ def write_class(
 
 
 def write_title(rst: TextIO, title: str, header_level: int) -> None:
-    rst.write("%s\n" % title)
+    rst.write(f"{title}\n")
     c = ["=", "-", "^", '"'][header_level]
     rst.write(c * len(title) + "\n\n")
 
@@ -150,12 +150,12 @@ def write_module(
 
     # does module have a title?
     if hasattr(mod, "__title__") and title is None:
-        title = "%s (%s)" % (mod.__title__, mod.__name__)
+        title = f"{mod.__title__} ({mod.__name__})"
     if title:
         write_title(rst, title, header_level)
 
     # automodule
-    rst.write(".. automodule:: %s\n\n" % mod.__name__)
+    rst.write(f".. automodule:: {mod.__name__}\n\n")
 
     # classes?
     if classes:
@@ -229,14 +229,14 @@ def write_index(
     # topics or files?
     if topics:
         for t in topics:
-            rst.write("   %s\n" % t)
+            rst.write(f"   {t}\n")
     else:
         # loop all files
         for f in sorted(glob.glob(os.path.join(path, "*.rst"))):
             filename = os.path.basename(f)
             if filename == "index.rst":
                 continue
-            rst.write("   %s\n" % filename[:-4])
+            rst.write(f"   {filename[:-4]}\n")
 
 
 def create_utils_rst() -> None:
@@ -296,7 +296,7 @@ def create_modules_rst() -> None:
     for module in find_submodules(pyobs.modules):
         # module
         write_module_rst(
-            "source/modules/%s.rst" % module.__name__,
+            f"source/modules/{module.__name__}.rst",
             module,
             classes=True,
             class_kwargs=dict(members=True, inheritance=True),
@@ -317,7 +317,7 @@ def create_image_processors_rst() -> None:
     for module in find_submodules(pyobs.images.processors):
         # module
         write_module_rst(
-            "source/api/image_processors/%s.rst" % module.__name__,
+            f"source/api/image_processors/{module.__name__}.rst",
             module,
             classes=True,
             class_kwargs=dict(members=True, undoc_members=True, class_doc_from="class"),

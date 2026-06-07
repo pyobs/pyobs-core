@@ -1,4 +1,4 @@
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
 from pyobs.utils.enums import ImageFormat
 

@@ -1,29 +1,30 @@
 import asyncio
 import logging
 import time
-
-import numpy as np
 from typing import Any, cast
 
+import numpy as np
+
+import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
-    IBinning,
-    IWindow,
-    IExposureTime,
-    IRoof,
-    IAutoGuiding,
-    ITelescope,
     IAcquisition,
+    IAutoGuiding,
+    IBinning,
     ICamera,
+    IExposureTime,
     IFilters,
     IImageType,
     IPointingRaDec,
+    IRoof,
+    ITelescope,
+    IWindow,
 )
-from .script import LcoScript
 from pyobs.robotic.task import TaskData
 from pyobs.utils.enums import ImageType
-import pyobs.utils.exceptions as exc
 from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
+
+from .script import LcoScript
 
 log = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class LcoDefaultScript(LcoScript):
 
             # loop instrument configs
             for ic in cfg.instrument_configs:
-                log.info('Using readout mode "%s"...' % ic.mode)
+                log.info('Using readout mode "%s"...', ic.mode)
 
                 # set filter
                 set_filter: Future | asyncio.Task[Any] = Future(empty=True)
@@ -222,7 +223,7 @@ class LcoDefaultScript(LcoScript):
                         await camera.set_image_type(self._image_type)
 
                     # log it
-                    log.info(f"{msg}...")
+                    log.info("%s...", msg)
 
                     # grab image
                     await cast(ICamera, camera).grab_data()

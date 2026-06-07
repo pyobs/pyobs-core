@@ -6,8 +6,8 @@ from typing import Any
 
 from pyobs.interfaces import IDome
 from pyobs.utils import exceptions as exc
-from .baseroof import BaseRoof
 
+from .baseroof import BaseRoof
 
 log = logging.getLogger(__name__)
 

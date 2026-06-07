@@ -1,6 +1,7 @@
 from typing import Any
 
 from pyobs.object import Object
+
 from .gridnode import GridNode
 
 

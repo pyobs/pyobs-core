@@ -4,10 +4,12 @@ import asyncio
 import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 import numpy.typing as npt
 
 from pyobs.images import Image
+
 from ._pysep_stats_calculator import PySepStatsCalculator
 from ._source_catalog import _SourceCatalog
 from .sourcedetection import SourceDetection
@@ -71,7 +73,8 @@ class SepSourceDetection(SourceDetection):
       at 90 degrees, converting angles to degrees, and applying FITS 1-based origin
       conventions.
     - The catalog is attached to the image using the keys:
-      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25", "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
+      ``["x", "y", "peak", "flux", "fwhm", "a", "b", "theta", "ellipticity", "tnpix", "kronrad", "fluxrad25",
+      "fluxrad50", "fluxrad75", "xwin", "ywin"]``.
 
     Input/Output
     ------------
@@ -216,7 +219,7 @@ class SepSourceDetection(SourceDetection):
     def remove_background(
         data: npt.NDArray[np.floating[Any]],
         mask: npt.NDArray[np.floating[Any]] | None = None,
-    ) -> tuple[npt.NDArray[np.floating[Any]], "Background"]:
+    ) -> tuple[npt.NDArray[np.floating[Any]], Background]:
         """Remove background from image in data.
 
         Args:
@@ -243,7 +246,7 @@ class SepSourceDetection(SourceDetection):
     async def _extract_sources(
         self,
         data: npt.NDArray[np.floating[Any]],
-        bkg: "Background",
+        bkg: Background,
         mask: npt.NDArray[np.floating[Any]],
     ) -> npt.NDArray[Any]:
         import sep

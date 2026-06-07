@@ -2,7 +2,7 @@ import asyncio
 import fnmatch
 import os
 from pathlib import PurePosixPath
-from typing import Any, IO
+from typing import IO, Any
 
 from .file import VFSFile
 

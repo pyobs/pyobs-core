@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import logging
 import asyncio
+import logging
 from typing import Any
 
+from pyobs.events import Event, NewImageEvent
 from pyobs.modules import Module
-from pyobs.events import NewImageEvent, Event
 from pyobs.utils.fits import format_filename
 
 log = logging.getLogger(__name__)

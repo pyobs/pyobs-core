@@ -6,3 +6,5 @@ __title__ = "Sky flats"
 
 from .flatfielder import FlatFielder
 from .scheduler import Scheduler
+
+__all__ = ["FlatFielder", "Scheduler"]

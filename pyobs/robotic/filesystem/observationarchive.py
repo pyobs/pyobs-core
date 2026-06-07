@@ -1,16 +1,18 @@
 from __future__ import annotations
+
+import abc
 import datetime
 import glob
 import os
 from typing import Any, Literal
-import abc
+
 import yaml
 from filelock import FileLock
 
 from pyobs.utils.time import Time
-from .. import ObservationArchive, TaskArchive
-from .. import Task
-from ..observation import ObservationList, Observation, ObservationState
+
+from .. import ObservationArchive, Task, TaskArchive
+from ..observation import Observation, ObservationList, ObservationState
 
 
 class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
@@ -239,7 +241,7 @@ class YamlObservationArchive(FileSystemObservationArchive):
         FileSystemObservationArchive.__init__(self, "yaml", **kwargs)
 
     async def _load_observations_from_file(self, path: str) -> ObservationList:
-        with open(path, "r") as f:
+        with open(path) as f:
             observations = yaml.safe_load(f)
             return ObservationList([self.pyobs_model_validate(Observation, obs) for obs in observations])
 

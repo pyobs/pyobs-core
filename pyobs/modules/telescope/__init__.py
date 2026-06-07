@@ -7,3 +7,5 @@ __title__ = "Telescopes"
 
 from .basetelescope import BaseTelescope
 from .dummytelescope import DummyTelescope
+
+__all__ = ["BaseTelescope", "DummyTelescope"]

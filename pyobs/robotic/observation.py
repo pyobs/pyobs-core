@@ -39,7 +39,7 @@ class Observation(BaseModel):
     def __str__(self) -> str:
         return (
             f"Observation {self.id} of {self.task.name} (#{self.task.id}) "
-            f"from {self.start} to {self.end} [{self.state.value}]"
+            f"from {self.start} to {self.end} [{self.state}]"
         )
 
     def __eq__(self, other: object) -> bool:

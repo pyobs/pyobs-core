@@ -288,7 +288,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         image.header["EXTNAME"] = "SCI"
 
         # add image type
-        image.header["IMAGETYP"] = image_type.value
+        image.header["IMAGETYP"] = image_type
 
         # add fits headers and format filename
         await self.add_custom_fits_headers(image)

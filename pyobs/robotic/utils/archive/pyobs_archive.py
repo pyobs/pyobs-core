@@ -138,7 +138,7 @@ class PyobsArchive(Archive):
         if instrument is not None:
             params["INSTRUMENT"] = instrument
         if image_type is not None:
-            params["IMAGETYPE"] = image_type.value
+            params["IMAGETYPE"] = image_type
         if binning is not None:
             params["binning"] = binning
         if filter_name is not None:

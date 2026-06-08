@@ -200,7 +200,7 @@ class Pipeline(Object, PipelineMixin):
         log.info(
             "Searching for %s %s master calibration frames%s from instrument %s.",
             binning,
-            image_type.value,
+            image_type,
             "" if filter_name is None else " in " + filter_name,
             instrument,
         )
@@ -216,7 +216,7 @@ class Pipeline(Object, PipelineMixin):
 
         # found none?
         if len(infos) == 0:
-            log.warning("Could not find any matching %s calibration frames.", image_type.value)
+            log.warning("Could not find any matching %s calibration frames.", image_type)
             return None
 
         # sort by diff to time and take first

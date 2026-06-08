@@ -206,7 +206,7 @@ class BackendObservationArchive(ObservationArchive):
         if task is not None:
             params["task"] = task.id
         if state is not None:
-            params["state"] = state.value
+            params["state"] = state
         if start_before is not None:
             params["start_before"] = start_before.isot
         if start_after is not None:

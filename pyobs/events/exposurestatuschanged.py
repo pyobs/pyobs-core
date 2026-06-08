@@ -19,8 +19,8 @@ class ExposureStatusChangedEvent(Event):
     def __init__(self, current: ExposureStatus, last: ExposureStatus | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {
-            "last": last.value if last is not None else None,
-            "current": current.value,
+            "last": last if last is not None else None,
+            "current": current,
         }
 
     @classmethod

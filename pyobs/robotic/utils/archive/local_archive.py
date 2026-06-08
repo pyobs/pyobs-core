@@ -91,7 +91,7 @@ class LocalArchive(Archive):
         if instrument is not None:
             data = data[data["instrument"] == instrument]
         if image_type is not None:
-            data = data[data["image_type"] == image_type.value]
+            data = data[data["image_type"] == image_type]
         if binning is not None:
             data = data[data["binning"] == binning]
         if filter_name is not None:

@@ -19,7 +19,7 @@ class MotionStatusChangedEvent(Event):
     def __init__(self, status: MotionStatus, interfaces: dict[str, MotionStatus] | None = None, **kwargs: Any):
         Event.__init__(self)
         self.data: DataType = {
-            "status": status.value,
+            "status": status,
             "interfaces": {k: v.value for k, v in interfaces.items()} if interfaces is not None else {},
         }
 

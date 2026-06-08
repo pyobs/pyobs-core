@@ -92,8 +92,8 @@ class LcoObservationArchive(ObservationArchive):
         if not isinstance(observation.task, LcoTask):
             return
         for config in observation.task.request.configurations:
-            status = ConfigStatus(state=observation.state.value)
-            status.finish(state=observation.state.value)
+            status = ConfigStatus(state=observation.state)
+            status.finish(state=observation.state)
             await self.send_update(config.configuration_status, status.to_json())
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:

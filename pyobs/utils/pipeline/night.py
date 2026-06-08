@@ -116,7 +116,7 @@ class Night:
 
         # log it
         fltr = "" if filter_name is None else " in " + filter_name
-        log.info("Found %d %s %s frames%s from instrument %s.", len(infos), binning, image_type.value, fltr, instrument)
+        log.info("Found %d %s %s frames%s from instrument %s.", len(infos), binning, image_type, fltr, instrument)
 
         # if too few, we're finished
         if len(infos) < 3:

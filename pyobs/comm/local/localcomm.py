@@ -43,9 +43,8 @@ class LocalComm(Comm):
         Raises:
             IndexError: If client cannot be found.
         """
-
-        remote_client: LocalComm = self._network.get_client(client)
-        return [] if remote_client.module is None else remote_client.module.interfaces
+        remote_client = self._network.get_client(client)
+        return [] if not remote_client.has_module else remote_client.module.interfaces
 
     async def _supports_interface(self, client: str, interface: type[Interface]) -> bool:
         """Checks, whether the given client supports the given interface.

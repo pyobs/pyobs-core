@@ -126,6 +126,8 @@ async def test_obs_get_next_returns_none_before_window(obs_archive) -> None:
 async def test_obs_get_next_returns_none_after_window(obs_archive) -> None:
     obs = make_obs(make_task(), start=T0, end=T1, state=ObservationState.PENDING)
     await obs_archive.add_observations(ObservationList([obs]))
+    # end is exclusive — T1 itself should not return the observation
+    assert await obs_archive.get_next_observation(T1) is None
     assert await obs_archive.get_next_observation(T2) is None
 
 
@@ -183,6 +185,23 @@ async def test_obs_get_current_returns_none_when_idle(obs_archive) -> None:
     obs = make_obs(make_task(), state=ObservationState.PENDING)
     await obs_archive.add_observations(ObservationList([obs]))
     assert await obs_archive.get_current_observation() is None
+
+
+@pytest.mark.asyncio
+async def test_obs_get_current_calls_fetch_task(obs_archive) -> None:
+    """get_current_observation restores resolved target via fetch_task."""
+    task = make_task()
+    resolved = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
+    obs = make_obs(task, state=ObservationState.IN_PROGRESS)
+    obs.target = resolved
+    await obs_archive.add_observations(ObservationList([obs]))
+
+    task_archive = MemoryTaskArchive([task])
+    result = await obs_archive.get_current_observation(task_archive=task_archive)
+
+    assert result is not None
+    assert isinstance(result.task.target, SiderealTarget)
+    assert result.task.target.name == "Vega"
 
 
 @pytest.mark.asyncio

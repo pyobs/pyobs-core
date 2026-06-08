@@ -58,7 +58,7 @@ class MemoryObservationArchive(ObservationArchive):
             Active pending observation, or None.
         """
         for obs in self._observations:
-            if obs.state == ObservationState.PENDING and obs.start <= time <= obs.end:
+            if obs.state == ObservationState.PENDING and obs.start <= time < obs.end:
                 if task_archive is not None:
                     await obs.fetch_task(task_archive)
                 return obs
@@ -70,7 +70,7 @@ class MemoryObservationArchive(ObservationArchive):
         """Returns the currently IN_PROGRESS observation.
 
         Args:
-            task_archive: Unused.
+            task_archive: Task archive to restore resolved target from.
             time: Unused.
 
         Returns:
@@ -78,17 +78,19 @@ class MemoryObservationArchive(ObservationArchive):
         """
         for obs in self._observations:
             if obs.state == ObservationState.IN_PROGRESS:
+                if task_archive is not None:
+                    await obs.fetch_task(task_archive)
                 return obs
         return None
 
     async def update_observation(self, observation: Observation) -> None:
-        """Update an existing observation, or append if not found.
+        """Update an existing observation by UUID, or append if not found.
 
         Args:
             observation: Observation to update.
         """
         for i, obs in enumerate(self._observations):
-            if obs.task.id == observation.task.id and obs.start == observation.start:
+            if obs.id == observation.id:
                 self._observations[i] = observation
                 return
         self._observations.append(observation)

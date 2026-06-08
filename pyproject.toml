@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.49.0"
+version = "1.49.1"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -106,6 +106,10 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
+
+[tool.pytest.ini_options]
+markers = ["integration: integration tests requiring multiple modules"]
+addopts = "-m 'not integration'"
 
 [tool.black]
 line-length = 120

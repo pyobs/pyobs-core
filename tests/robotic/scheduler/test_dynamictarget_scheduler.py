@@ -1,22 +1,23 @@
 from __future__ import annotations
+
 import io
-import pytest
+from unittest.mock import AsyncMock, MagicMock
+
+import astropy.units as u
 import pandas as pd
+import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
-import astropy.units as u
-from unittest.mock import AsyncMock, MagicMock
 
 from pyobs.robotic import Task
-from pyobs.robotic.observation import Observation
 from pyobs.robotic.scheduler import DataProvider
 from pyobs.robotic.scheduler.constraints import AirmassConstraint
 from pyobs.robotic.scheduler.merits import ConstantMerit
 from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
+from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scheduler.targets.dynamictarget import DynamicTarget
 from pyobs.robotic.scheduler.targets.picker.csvpicker import CsvPicker
-from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.utils.time import Time
 
 # One star well-placed from SAAO at night, one permanently below horizon (dec > +80)

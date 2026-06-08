@@ -393,7 +393,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # create image
         image = Image(data)
         image.header["DATE-OBS"] = next_image.date_obs
-        image.header["IMAGETYP"] = next_image.image_type.value
+        image.header["IMAGETYP"] = next_image.image_type
 
         # add fits headers and format filename
         await self.add_requested_fits_headers(image, next_image.header_futures)

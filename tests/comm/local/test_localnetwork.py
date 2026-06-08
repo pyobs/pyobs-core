@@ -1,44 +1,51 @@
-from pyobs.comm.local import LocalNetwork, LocalComm
+import pytest
+
+from pyobs.comm.local import LocalComm, LocalNetwork
 
 
-def test_singleton():
+@pytest.fixture(autouse=True)
+def reset_network() -> None:
+    LocalNetwork._instance = None
+    yield
+    LocalNetwork._instance = None
+
+
+def test_singleton() -> None:
     net1 = LocalNetwork()
     net2 = LocalNetwork()
+    assert net1 is net2
 
-    assert net1 == net2
 
-
-def test_connect_client():
+def test_connect_client() -> None:
     net = LocalNetwork()
     client = LocalComm("test")
-
-    net.connect_client(client)
-
-    assert client == net._clients["test"]
+    assert "test" in net._clients
+    assert net._clients["test"] is client
 
 
-def test_get_client():
+def test_get_client() -> None:
     net = LocalNetwork()
     client = LocalComm("test")
-
-    net._clients = {"test": client}
-
-    assert client == net.get_client("test")
+    assert net.get_client("test") is client
 
 
-def test_get_clients():
+def test_get_clients() -> None:
     net = LocalNetwork()
     client = LocalComm("test")
-
-    net._clients = {"test": client}
-
-    assert [client] == net.get_clients()
+    assert client in net.get_clients()
 
 
-def test_get_client_names():
+def test_get_client_names() -> None:
     net = LocalNetwork()
-    client = LocalComm("test")
+    LocalComm("cam")
+    LocalComm("tel")
+    names = net.get_client_names()
+    assert "cam" in names
+    assert "tel" in names
 
-    net._clients = {"test": client}
 
-    assert ["test"] == net.get_client_names()
+def test_multiple_clients() -> None:
+    net = LocalNetwork()
+    c1 = LocalComm("camera")  # noqa: F841
+    c2 = LocalComm("telescope")  # noqa: F841
+    assert len(net.get_clients()) == 2

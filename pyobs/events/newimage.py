@@ -28,7 +28,7 @@ class NewImageEvent(Event):
         Event.__init__(self)
         self.data: DataType = {
             "filename": filename,
-            "image_type": image_type.value if image_type is not None else None,
+            "image_type": image_type if image_type is not None else None,
             "raw": raw,
         }
 

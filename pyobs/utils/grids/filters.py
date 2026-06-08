@@ -7,7 +7,8 @@ from typing import Any
 import astropy.units as u
 import pandas as pd
 from astropy.coordinates import SkyCoord, get_body
-from astropy.time import Time
+
+from pyobs.utils.time import Time
 
 from .grid import Grid
 from .gridnode import GridNode

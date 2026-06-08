@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Self
 
 from astropy.coordinates import EarthLocation, SkyCoord
-from astropy.time import Time
 from pydantic import Field, PrivateAttr, model_validator
+
+from pyobs.utils.time import Time
 
 from .merit import Merit
 

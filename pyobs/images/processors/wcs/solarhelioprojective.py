@@ -1,10 +1,9 @@
 import logging
 from typing import Any
 
-from astropy.time import Time
-
 from pyobs.images import Image
 from pyobs.images.processor import ImageProcessor
+from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 

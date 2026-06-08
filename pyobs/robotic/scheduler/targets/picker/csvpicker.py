@@ -4,8 +4,9 @@ import random
 from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
-from astropy.time import Time
 from pydantic import PrivateAttr
+
+from pyobs.utils.time import Time
 
 from .picker import Picker
 

@@ -1,18 +1,20 @@
 from __future__ import annotations
+
 import io
+from unittest.mock import AsyncMock, MagicMock
+
+import astropy.units as u
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-import astropy.units as u
-from astropy.time import Time
-from unittest.mock import AsyncMock, MagicMock
 
 from pyobs.robotic import Task
-from pyobs.robotic.scheduler.constraints import AirmassConstraint, MoonSeparationConstraint, Constraint
+from pyobs.robotic.scheduler.constraints import AirmassConstraint, Constraint
 from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scheduler.targets.dynamictarget import DynamicTarget
 from pyobs.robotic.scheduler.targets.picker.csvpicker import CsvPicker
+from pyobs.utils.time import Time
 
 # Minimal CSV with three stars: one always visible, one always below horizon, one close to moon
 CSV_CONTENT = """HIP,RAICRS,DEICRS
@@ -118,6 +120,7 @@ async def test_csv_picker_filters_by_airmass(observer: Observer, data: DataProvi
             results.append(result)
 
     from typing import cast
+
     from pyobs.robotic.scheduler.targets import SiderealTarget as ST
 
     assert all(cast(ST, r).dec < 80.0 for r in results), "Below-horizon northern star should never be picked"

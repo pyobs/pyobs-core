@@ -115,7 +115,7 @@ class BackendObservationArchive(ObservationArchive):
             self._session, urljoin(self._url, "/api/cancel_observations/"), params={"after": start_time.isot}
         )
 
-    async def get_schedule(self) -> ObservationList:
+    async def get_schedule(self, time: Time | None = None) -> ObservationList:
         """Fetch schedule from portal.
 
         Returns:
@@ -145,7 +145,9 @@ class BackendObservationArchive(ObservationArchive):
         else:
             return None
 
-    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_current_observation(
+        self, task_archive: TaskArchive | None = None, time: Time | None = None
+    ) -> Observation | None:
         """Returns the currently running observation.
 
         Args:

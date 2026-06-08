@@ -115,7 +115,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
             )
             await self._save_observations(start_time, cleared)
 
-    async def get_schedule(self) -> ObservationList:
+    async def get_schedule(self, time: Time | None = None) -> ObservationList:
         """Fetch schedule from portal.
 
         Returns:
@@ -126,7 +126,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
             ValueError: If something goes wrong.
         """
         with self._lock:
-            return await self._load_observations(Time.now())
+            return await self._load_observations(time or Time.now())
 
     async def get_next_observation(self, time: Time, task_archive: TaskArchive | None = None) -> Observation | None:
         """Returns the active scheduled task at the given time.
@@ -160,11 +160,14 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         # nothing found
         return None
 
-    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_current_observation(
+        self, task_archive: TaskArchive | None = None, time: Time | None = None
+    ) -> Observation | None:
         """Returns the currently running observation.
 
         Args:
             task_archive: Task archive to get task from.
+            time: Time to check for. Defaults to now.
 
         Returns:
             Currently running observation.
@@ -172,7 +175,7 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
 
         # get schedule
         with self._lock:
-            observations = await self._load_observations(Time.now())
+            observations = await self._load_observations(time or Time.now())
 
         # find running one
         for obs in observations:

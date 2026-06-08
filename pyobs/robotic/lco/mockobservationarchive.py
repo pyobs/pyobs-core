@@ -175,7 +175,7 @@ class MockLcoObservationArchive(LcoObservationArchive):
     async def update_now(self, force: bool = False) -> None:
         pass
 
-    async def get_schedule(self) -> ObservationList:
+    async def get_schedule(self, time: Time | None = None) -> ObservationList:
         if self._task is None:
             return ObservationList()
         return ObservationList(

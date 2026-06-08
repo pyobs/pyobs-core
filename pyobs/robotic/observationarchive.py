@@ -34,8 +34,11 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_schedule(self) -> ObservationList:
-        """Fetch schedule from portal.
+    async def get_schedule(self, time: Time | None = None) -> ObservationList:
+        """Fetch schedule.
+
+        Args:
+            time: Time to fetch schedule for. Defaults to now.
 
         Returns:
             Dictionary with tasks.
@@ -60,11 +63,14 @@ class ObservationArchive(Object, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_current_observation(
+        self, task_archive: TaskArchive | None = None, time: Time | None = None
+    ) -> Observation | None:
         """Returns the currently running observation.
 
         Args:
             task_archive: Task archive to get task from.
+            time: Time to check for. Defaults to now.
 
         Returns:
             Currently running observation.

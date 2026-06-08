@@ -1,3 +1,246 @@
+v1.47.0 (2025-06-07)
+*********************
+* Set minimum Python version to 3.11.
+* Replaced old-style type hints (``Optional``, ``Union``, ``List``, etc.) with modern Python 3.11+ syntax throughout.
+* Replaced deprecated ``asyncio.ensure_future`` with ``asyncio.create_task``.
+* Replaced deprecated ``asyncio.get_event_loop`` with ``asyncio.get_running_loop``.
+* Replaced ``str, Enum`` with ``StrEnum`` throughout.
+* Replaced ``asyncio.gather`` with ``asyncio.TaskGroup`` where applicable.
+* Added ruff linting to CI and pre-commit.
+
+v1.46.0 (2025-05-27)
+*********************
+* Added ``DynamicTarget`` class for runtime target selection via a pluggable ``Picker`` interface.
+* Added ``CsvPicker`` for selecting targets from a CSV catalogue, with constraint-aware filtering.
+* ``OnDemandScheduler`` now resolves dynamic targets before evaluating constraints and merits.
+* Added ``direction`` parameter to ``SolarElevationConstraint`` for filtering on rising or setting sun.
+* Resolved target is now stored on ``Observation`` and restored by the mastermind via ``fetch_task``.
+* Target resolution result is cached per scheduling run.
+* Added ``set_resolved_target`` and ``estimate_duration`` to ``Task``.
+* ``LcoTaskRunner`` now correctly injects script before ``run_task``.
+* Added missing abstract method implementations to ``LcoTaskArchive`` and ``LcoObservationArchive``.
+* Fixed inverted ``PENDING`` filter in ``LcoTaskArchive.get_schedulable_tasks``.
+* Fixed ``LcoConfiguration.state`` default to ``"PENDING"``.
+* Portal now creates aiohttp session in ``open()`` instead of ``__init__()``.
+* Portal now managed via ``add_child_object`` for correct lifecycle.
+* Fixed ``SolarElevationConstraint`` direction logic using ``observer.midnight``.
+* Added ``AstroplanScheduler`` tests; fixed empty block list causing subprocess hang.
+* Fixed ``LcoRequest.location`` field name conflict with ``BaseModel.location``.
+* Added ``ImagingScript`` for standard science exposures with acquisition and guiding support.
+* Comprehensive test suite additions for LCO classes, scheduler, and scripts.
+
+v1.45.0 (2025-05-14)
+*********************
+* Added unified ``get_observations`` interface to ``ObservationArchive`` with state and time filters.
+* ``IntervalMerit`` and ``PerNightMerit`` now push filters directly to ``get_observations``.
+* Added ``ObservationArchiveEvolution.get_observations`` method.
+* Added ``min_safety_time`` parameter to ``Mastermind``.
+* Added ``active`` field to ``Task``.
+* Fixed telescope not stopping after auto focus.
+
+v1.44.0 (2025-04-24)
+*********************
+* Renamed ``SubClassBaseModel`` to ``PolymorphicBaseModel``.
+* Renamed ``MeritScheduler`` to ``OnDemandScheduler``.
+* Moved ``utils.archive`` and ``utils.skyflats`` into ``robotic.utils`` as pydantic models.
+* Moved ``serialization.py`` from ``robotic.utils`` to ``utils``.
+* Converted ``SkyFlatsBasePointing``, ``SkyflatPriorities``, ``Archive``, and ``PyobsArchive`` to ``PolymorphicBaseModel``.
+* Removed ``Object`` from ``Script`` base classes.
+* Context injection now propagates to all child pydantic models.
+* HTTP requests now use pagination; all list responses wrapped in ``{"results": [...]}`` format.
+* Added ``create_script`` method to ``Task``.
+* Added ``http_request_with_retries`` with tenacity-based retry logic.
+* ``BaseModel`` no longer inherits from ``Object``.
+* Added ``trigger_on_every_update`` parameter to ``Scheduler`` module.
+* Added Observation priority field.
+* Major documentation overhaul for the robotic subsystem.
+
+v1.43.0 (2025-04-20)
+*********************
+* Added ``http_request_with_retries`` utility.
+* Backend archives now use ``http_request_with_retries`` instead of direct HTTP calls.
+* Added ``ignore_cert_errors`` parameter to backend archives.
+* Added filesystem-based backend for robotic scheduling (``YamlTaskArchive``, ``YamlObservationArchive``).
+* Fixed ``inject_class_on_serialization`` for pydantic models.
+
+v1.42.0 (2025-03-08)
+*********************
+* Backend archives migrated from ``requests`` to ``aiohttp``.
+* Observation fetching moved to a background task.
+* Task changes now driven by ``on_tasks_changed`` callback.
+* Refactored robotic subsystem to support pluggable backends.
+
+v1.41.0 (2025-02-20)
+*********************
+* Added optional Qt widget dependencies for GUI support.
+* Added general-purpose Qt widgets.
+
+v1.40.0 (2025-02-10)
+*********************
+* XMPP communication now connects with TLS using slixmpp 1.4.1.
+* Fixed PyPy compatibility issues.
+* Added ``AvoidMoon`` constraint.
+* Added ``FromList`` grid filter.
+* ``PerNightMerit`` now uses last sunrise for night boundary.
+* Auto focus now uses actual measured focus position.
+
+v1.39.0 (2024-12-10)
+*********************
+* Major scheduler refactoring: introduced pluggable scheduler architecture.
+* Added ``OnDemandScheduler`` (merit-based greedy scheduler) with ``DataProvider`` context.
+* Added ``ABORTED``, ``IN_PROGRESS``, and ``FAILED`` observation states.
+* Added ``ConfigurationSummary`` to LCO integration.
+
+v1.38.0 (2024-11-05)
+*********************
+* Added config file support via ``--config`` flag.
+* Added InfluxDB logging handler.
+* Added ``CommLoggingHandler`` guard against duplicate logger registration.
+* Added ``--verbose`` CLI switch.
+
+v1.37.0 (2024-10-20)
+*********************
+* Added InfluxDB logging handler (``InfluxLoggingHandler``).
+
+v1.36.0 (2024-10-05)
+*********************
+* Improved exception handling in background tasks; ``BackgroundTask`` now receives parent reference.
+* Unknown remote exceptions now wrapped in ``RemoteError``.
+* Added SSL check option for XMPP.
+* Fixed: don't reconnect after intentional XMPP disconnect.
+* Added example systemd service file.
+
+v1.35.0 (2024-09-01)
+*********************
+* Added ``--verbose`` switch to CLI.
+* Added ``CALIBRATING`` motion status.
+* Refactored shell command handling into dedicated classes.
+
+v1.34.0 (2024-08-20)
+*********************
+* Refactored shell command and response into dedicated ``ShellCommand`` classes.
+
+v1.33.0 (2024-08-05)
+*********************
+* Added new grid creation for pointing series.
+* Configurable wait times in pointing module.
+
+v1.32.0 (2024-07-20)
+*********************
+* Moved exceptions to a dedicated module.
+* Added ``AcquisitionError`` for failed acquisitions.
+* Changed ``GeneralError`` to ``FocusError`` for focus-related errors.
+* Added 60s timeout to autoguider stop method.
+* LCO integration: use ConfigDB to fetch instrument; support multiple configurations.
+
+v1.31.0 (2024-05-25)
+*********************
+* Added documentation for image processors.
+* Registered ``pyobs`` exceptions now logged as ``INFO`` without stack trace.
+* Added ``overwrite`` parameter to image writing.
+* Added Matrix chat client module.
+
+v1.30.0 (2024-05-01)
+*********************
+* Added Matrix chat client module.
+* Fixed context propagation for non-dict objects.
+* Added reset method to ``BrightestStarGuiding``.
+* Added ``oneshot`` parameter to ``ScriptRunner``.
+* Added logging when a script cannot run.
+
+v1.29.0 (2024-03-15)
+*********************
+* Added ``PipelineCamera`` for running image pipeline on camera images.
+* Added ``Flip`` image processor.
+* Added TypeScript interface export.
+* Added ``HttpServer`` to serve images via HTTP.
+* Added ``SolarHelioprojective`` image processor.
+* Added ``Pipeline`` module.
+
+v1.28.0 (2024-02-20)
+*********************
+* Added offset parameter to ``IGain``.
+* Reduced httpx logging verbosity.
+
+v1.27.0 (2024-02-01)
+*********************
+* ``FilenameFormatter`` now supports formatting with FITS headers via ``GetFitsHeaders``.
+
+v1.26.0 (2024-01-15)
+*********************
+* Added comprehensive typing throughout using ``TypedDict`` and ``npt.NDArray``.
+* Improved ``get_object`` overloads.
+
+v1.25.0 (2024-01-01)
+*********************
+* Migrated build system to ``uv``.
+* Pointing module updated to use new grid classes.
+
+v1.24.0 (2023-12-30)
+*********************
+* Added new spherical grid classes (``RegularSphericalGrid``, filters, pipeline) with tests.
+
+v1.23.0 (2023-12-29)
+*********************
+* Improved spilled light guiding sigmoid function for more accurate relative offset calculation.
+* Added weather station workaround.
+
+v1.22.0 (2023-12-29)
+*********************
+* Added ``auto_focus`` integration to relevant modules.
+
+v1.21.0 (2023-12-28)
+*********************
+* Added ``init_offset_to_zero`` functionality.
+* Spilled light guiding: added binning correction, image trimming, and improved calculations.
+
+v1.20.0 (2023-12-28)
+*********************
+* VFS not created if none is configured.
+* Added pixel offset image processor for simplified acquisition workflow.
+* ``get_object`` no longer overwrites existing parameters.
+
+v1.19.0 (2023-12-28)
+*********************
+* Added spilled light guiding processor.
+* Added ``IMultiFiber`` interface.
+
+v1.18.0 (2023-12-28)
+*********************
+* ``ITelescope`` no longer directly implements ``IPointingRaDec``/``IPointingAltAz``; ``BaseTelescope`` handles dispatch.
+* Added bright star guiding.
+* Restore initial focus if focus series fails.
+
+v1.17.0 (2023-12-28)
+*********************
+* Added ``DummyMode`` module and ``ModeChangedEvent``.
+* Added ``ResolvableErrorLogger`` utility.
+* Reactivated publisher module.
+* Added XMPP auto-reconnect on connection loss.
+
+v1.16.0 (2023-12-28)
+*********************
+* New ``pyobsd`` daemon with improved module management and config testing.
+* Added several default scripts.
+* Added group support for module configuration.
+
+v1.15.0 (2023-12-28)
+*********************
+* Added group support for module configuration.
+
+v1.14.0 (2023-12-28)
+*********************
+* Stop telescope after autofocus completes.
+* Updated to Python 3.12; replaced deprecated ``datetime.utcnow()``.
+* Warn when no RA/Dec given for pointing.
+
+v1.13.0 (2023-12-28)
+*********************
+* Added acquisition support for bright central star.
+* Added derotator offset handling.
+* Added ``BackgroundTask`` class to simplify background task management in ``Object``.
+* Added unit tests for ``BackgroundTask`` and ``Object``.
+
 v1.12.0 (2023-12-28)
 *******************
 * Added `list` command for `pyobsd`, which outputs all configurations.

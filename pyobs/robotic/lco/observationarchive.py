@@ -65,7 +65,7 @@ class LcoObservationArchive(ObservationArchive):
             LcoScheduleWriter(self._portal, self._configdb, site, enclosure, telescope, period)
         )
 
-    async def get_schedule(self) -> ObservationList:
+    async def get_schedule(self, time: Time | None = None) -> ObservationList:
         """Fetch schedule from the portal.
 
         Returns:
@@ -77,9 +77,11 @@ class LcoObservationArchive(ObservationArchive):
         """
         return await self._schedule_reader.get_schedule()
 
-    async def get_current_observation(self, task_archive: TaskArchive | None = None) -> Observation | None:
+    async def get_current_observation(
+        self, task_archive: TaskArchive | None = None, time: Time | None = None
+    ) -> Observation | None:
         """Returns the currently running observation."""
-        return await self._schedule_reader.get_task(Time.now())
+        return await self._schedule_reader.get_task(time or Time.now())
 
     async def update_observation(self, observation: Observation) -> None:
         """Updates observation state in the portal."""

@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pyobs.events import LogEvent
@@ -34,7 +35,8 @@ class CommLoggingHandler(logging.Handler):
         msg = self._formatter.format(rec)  # noqa: UP031
 
         # create and send event
-        entry = LogEvent(rec.created, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg)
+        time = datetime.fromtimestamp(rec.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
+        entry = LogEvent(time, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg)
         self._comm.log_message(entry)
 
 

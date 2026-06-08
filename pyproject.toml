@@ -85,6 +85,7 @@ dev = [
     "radon>=6.0.1",
     "ruff>=0.15.16",
     "pylint>=4.0.5",
+    "pandas-stubs>=3.0.3.260530",
 ]
 
 [tool.hatch.build.targets.sdist]

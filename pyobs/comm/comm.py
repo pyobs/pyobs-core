@@ -39,6 +39,10 @@ class Comm:
         self._closing = asyncio.Event()
 
     @property
+    def has_module(self) -> bool:
+        return self._module is not None
+
+    @property
     def module(self) -> Module:
         """The module that this Comm object is attached to."""
         if self._module is None:

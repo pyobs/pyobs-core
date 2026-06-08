@@ -16,26 +16,52 @@ from pyobs.modules.robotic.mastermind import Mastermind
 from pyobs.robotic import Task
 from pyobs.robotic.filesystem.observationarchive import YamlObservationArchive
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
-from pyobs.robotic.scripts import Script
 from pyobs.robotic.taskrunner import TaskRunner
 from pyobs.utils.time import Time
 
 # ── module-level script stubs ─────────────────────────────────────────────────
 
 
-class QuickScript(Script):
-    async def can_run(self, data) -> bool:
+class QuickRunner(TaskRunner):
+    """TaskRunner that immediately completes any task."""
+
+    def __new__(cls):
+        obj = object.__new__(cls)
+        obj._comm = None
+        obj._observer = None
+        obj._vfs = None
+        obj._timezone = None
+        obj._location = None
+        obj.observation_archive = None
+        obj.task_archive = None
+        return obj
+
+    async def can_run(self, task) -> bool:
         return True
 
-    async def run(self, data) -> None:
+    async def run_task(self, task) -> bool:
         await asyncio.sleep(0.05)
-
-
-class FailingScript(Script):
-    async def can_run(self, data) -> bool:
         return True
 
-    async def run(self, data) -> None:
+
+class FailingRunner(TaskRunner):
+    """TaskRunner that always raises."""
+
+    def __new__(cls):
+        obj = object.__new__(cls)
+        obj._comm = None
+        obj._observer = None
+        obj._vfs = None
+        obj._timezone = None
+        obj._location = None
+        obj.observation_archive = None
+        obj.task_archive = None
+        return obj
+
+    async def can_run(self, task) -> bool:
+        return True
+
+    async def run_task(self, task) -> bool:
         raise RuntimeError("intentional failure")
 
 
@@ -61,15 +87,10 @@ def make_obs_archive(tmp_path) -> YamlObservationArchive:
     return archive
 
 
-def make_mastermind(obs_archive) -> Mastermind:
-    runner = TaskRunner.__new__(TaskRunner)
-    runner._comm = None
-    runner._observer = None
-    runner._vfs = None
-    runner._timezone = None
-    runner._location = None
+def make_mastermind(obs_archive, runner=None) -> Mastermind:
+    if runner is None:
+        runner = QuickRunner()
     runner.observation_archive = obs_archive
-    runner.task_archive = None
 
     mm = Mastermind.__new__(Mastermind)
     mm._comm = DummyComm()
@@ -88,9 +109,8 @@ def make_mastermind(obs_archive) -> Mastermind:
     return mm
 
 
-def make_obs(script: Script, duration: float = 60.0) -> Observation:
+def make_obs(duration: float = 60.0) -> Observation:
     task = Task(id=1, name="test_task", duration=duration)
-    task.script = script
     return Observation(
         task=task,
         start=NIGHT - TimeDelta(10 * u.second),
@@ -145,7 +165,7 @@ async def test_mastermind_runs_task_to_completion(tmp_path) -> None:
     """Mastermind picks up a pending observation and runs it to COMPLETED."""
     obs_archive = make_obs_archive(tmp_path)
     mm = make_mastermind(obs_archive)
-    await obs_archive.add_observations(ObservationList([make_obs(QuickScript())]))
+    await obs_archive.add_observations(ObservationList([make_obs()]))
 
     reached = await run_until_state(mm, obs_archive, ObservationState.COMPLETED)
 
@@ -159,8 +179,8 @@ async def test_mastermind_runs_task_to_completion(tmp_path) -> None:
 async def test_mastermind_marks_failed_on_exception(tmp_path) -> None:
     """Mastermind marks observation FAILED when script raises."""
     obs_archive = make_obs_archive(tmp_path)
-    mm = make_mastermind(obs_archive)
-    await obs_archive.add_observations(ObservationList([make_obs(FailingScript())]))
+    mm = make_mastermind(obs_archive, runner=FailingRunner())
+    await obs_archive.add_observations(ObservationList([make_obs()]))
 
     reached = await run_until_state(mm, obs_archive, ObservationState.FAILED)
 
@@ -177,7 +197,7 @@ async def test_mastermind_sends_task_started_event(tmp_path) -> None:
 
     obs_archive = make_obs_archive(tmp_path)
     mm = make_mastermind(obs_archive)
-    await obs_archive.add_observations(ObservationList([make_obs(QuickScript())]))
+    await obs_archive.add_observations(ObservationList([make_obs()]))
 
     events_sent = []
     original_send = mm._comm.send_event
@@ -221,7 +241,7 @@ async def test_mastermind_marks_observation_in_progress(tmp_path) -> None:
     """Mastermind sets observation to IN_PROGRESS before running the task."""
     obs_archive = make_obs_archive(tmp_path)
     mm = make_mastermind(obs_archive)
-    await obs_archive.add_observations(ObservationList([make_obs(QuickScript())]))
+    await obs_archive.add_observations(ObservationList([make_obs()]))
 
     reached = await run_until_state(mm, obs_archive, ObservationState.IN_PROGRESS)
     assert reached, "Observation did not reach IN_PROGRESS state"

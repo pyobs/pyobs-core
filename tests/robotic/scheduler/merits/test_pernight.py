@@ -1,14 +1,16 @@
 from __future__ import annotations
+
+import astropy.units as u
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-from astropy.time import Time, TimeDelta
-import astropy.units as u
+from astropy.time import TimeDelta
 
-from pyobs.robotic import Task, Observation
+from pyobs.robotic import Observation, Task
 from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.merits import PerNightMerit
 from pyobs.robotic.scheduler.observationarchiveevolution import ObservationArchiveEvolution
+from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio

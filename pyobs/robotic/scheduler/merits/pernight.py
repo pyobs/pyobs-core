@@ -7,9 +7,8 @@ from pydantic import Field
 from .merit import Merit
 
 if TYPE_CHECKING:
-    from astropy.time import Time
-
     from pyobs.robotic import Task
+    from pyobs.utils.time import Time
 
     from ..dataprovider import DataProvider
 

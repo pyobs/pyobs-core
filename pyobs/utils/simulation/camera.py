@@ -9,7 +9,6 @@ import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
-from astropy.time import Time
 from astropy.wcs import WCS
 from numpy.typing import NDArray
 from photutils.datasets import make_model_image, make_noise_image
@@ -17,6 +16,7 @@ from photutils.datasets import make_model_image, make_noise_image
 from pyobs.images import Image
 from pyobs.object import Object
 from pyobs.utils.enums import ImageFormat
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from .world import SimWorld

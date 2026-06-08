@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 
-from astropy.time import Time
+from pyobs.utils.time import Time
 
 
 def check_abort(abort_event: threading.Event, end: Time | None = None) -> None:

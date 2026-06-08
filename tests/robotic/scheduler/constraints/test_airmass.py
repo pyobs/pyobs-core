@@ -1,14 +1,15 @@
 from __future__ import annotations
+
+import astropy.units as u
 import pytest
 from astroplan import Observer
-import astropy.units as u
 from astropy.coordinates import EarthLocation, SkyCoord
 
 from pyobs.robotic import Task
-from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.constraints import AirmassConstraint
+from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.targets import SiderealTarget
-from astropy.time import Time
+from pyobs.utils.time import Time
 
 
 @pytest.mark.asyncio

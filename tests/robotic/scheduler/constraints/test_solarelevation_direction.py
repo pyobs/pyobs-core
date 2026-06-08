@@ -1,13 +1,14 @@
 from __future__ import annotations
+
+import astropy.units as u
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
-from astropy.time import Time
-import astropy.units as u
 
 from pyobs.robotic import Task
-from pyobs.robotic.scheduler.dataprovider import DataProvider
 from pyobs.robotic.scheduler.constraints import SolarElevationConstraint
+from pyobs.robotic.scheduler.dataprovider import DataProvider
+from pyobs.utils.time import Time
 
 # SAAO, 2025-11-03:
 # Sun passes -18deg going DOWN (setting) at ~18:34:36 UTC

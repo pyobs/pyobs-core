@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING, Literal
 import astroplan
 import astropy.units as u
 from astropy.coordinates import get_sun
-from astropy.time import Time
 from pydantic import Field
+
+from pyobs.utils.time import Time
 
 from .constraint import Constraint
 

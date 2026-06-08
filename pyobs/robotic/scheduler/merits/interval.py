@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal, Self
 
 import astropy.units as u
-from astropy.time import Time, TimeDelta
+from astropy.time import TimeDelta
 from pydantic import Field, PrivateAttr, model_validator
+
+from pyobs.utils.time import Time
 
 from .merit import Merit
 

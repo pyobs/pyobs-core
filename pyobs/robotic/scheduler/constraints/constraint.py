@@ -10,9 +10,8 @@ from pyobs.object import Object
 from pyobs.utils.serialization import PolymorphicBaseModel
 
 if TYPE_CHECKING:
-    from astropy.time import Time
-
     from pyobs.robotic import Task
+    from pyobs.utils.time import Time
 
     from ..dataprovider import DataProvider
 

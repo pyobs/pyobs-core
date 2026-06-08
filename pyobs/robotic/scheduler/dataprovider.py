@@ -30,14 +30,14 @@ class DataProvider:
         """Returns the time of the last sunset."""
 
         # get last sunset
-        return self.observer.sun_set_time(time, which="previous")
+        return Time(self.observer.sun_set_time(time, which="previous"))
 
     @cache
     def last_sunrise(self, time: Time) -> Time:
         """Returns the time of the last sunrise."""
 
         # get last sunset
-        return self.observer.sun_rise_time(time, which="previous")
+        return Time(self.observer.sun_rise_time(time, which="previous"))
 
     @cache
     def night(self, time: Time) -> datetime.date:

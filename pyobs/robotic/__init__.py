@@ -1,7 +1,8 @@
+from pyobs.robotic.storage.observationarchive import ObservationArchive
+from pyobs.robotic.storage.taskarchive import TaskArchive
+
 from .observation import Observation, ObservationList, ObservationState
-from .observationarchive import ObservationArchive
 from .task import Project, Task
-from .taskarchive import TaskArchive
 from .taskrunner import TaskRunner
 
 __all__ = [

@@ -10,9 +10,9 @@ import numpy as np
 from astropy.time import TimeDelta
 
 from pyobs.object import Object
+from pyobs.robotic.storage.observationarchive import ObservationArchive
 from pyobs.utils.time import Time
 
-from ..observationarchive import ObservationArchive
 from . import DataProvider
 from .constraints import Constraint
 from .observationarchiveevolution import ObservationArchiveEvolution

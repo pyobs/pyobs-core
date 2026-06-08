@@ -12,7 +12,6 @@ from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
 
 from pyobs.robotic import Task
-from pyobs.robotic.memory import MemoryTaskArchive
 from pyobs.robotic.observation import ObservationList, ObservationState
 from pyobs.robotic.scheduler.constraints import AirmassConstraint
 from pyobs.robotic.scheduler.dataprovider import DataProvider
@@ -21,6 +20,7 @@ from pyobs.robotic.scheduler.ondemandscheduler import OnDemandScheduler
 from pyobs.robotic.scheduler.targets import SiderealTarget
 from pyobs.robotic.scheduler.targets.dynamictarget import DynamicTarget
 from pyobs.robotic.scheduler.targets.picker.csvpicker import CsvPicker
+from pyobs.robotic.storage.memory import MemoryTaskArchive
 from tests.integration.test_mastermind import (
     NIGHT,
     QuickRunner,

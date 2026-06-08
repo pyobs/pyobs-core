@@ -11,8 +11,8 @@ from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic.observationarchive import ObservationArchive
-    from pyobs.robotic.taskarchive import TaskArchive
+    from pyobs.robotic.storage.observationarchive import ObservationArchive
+    from pyobs.robotic.storage.taskarchive import TaskArchive
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit

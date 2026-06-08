@@ -11,7 +11,7 @@ from ...utils.time import Time
 if TYPE_CHECKING:
     from pyobs.robotic import Observation, Task
     from pyobs.robotic.observation import ObservationList
-    from pyobs.robotic.observationarchive import ObservationArchive
+    from pyobs.robotic.storage.observationarchive import ObservationArchive
 
 
 class ObservationArchiveEvolution:

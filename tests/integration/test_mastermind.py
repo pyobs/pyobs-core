@@ -10,8 +10,8 @@ from astropy.time import TimeDelta
 from pyobs.comm.dummy.dummycomm import DummyComm
 from pyobs.modules.robotic.mastermind import Mastermind
 from pyobs.robotic import Task
-from pyobs.robotic.memory import MemoryObservationArchive
 from pyobs.robotic.observation import Observation, ObservationList, ObservationState
+from pyobs.robotic.storage.memory import MemoryObservationArchive
 from pyobs.robotic.taskrunner import TaskRunner
 from pyobs.utils.time import Time
 

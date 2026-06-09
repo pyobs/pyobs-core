@@ -38,9 +38,11 @@ class DarkBiasScript(Script):
         try:
             await self.comm.proxy(self.camera, IData)
         except ValueError:
+            self._cant_run_reason = "No camera found."
             return False
 
         # seems alright
+        self._cant_run_reason = None
         return True
 
     async def run(self, data: TaskData | None) -> None:

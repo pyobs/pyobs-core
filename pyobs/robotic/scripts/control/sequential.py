@@ -17,8 +17,15 @@ class SequentialRunner(Script):
     check_all_can_run: bool = True
 
     async def can_run(self, data: TaskData | None) -> bool:
-        results = [await s.can_run(data) for s in self.scripts]
-        return all(results) if self.check_all_can_run else results[0]
+        if self.check_all_can_run:
+            results = [await s.can_run(data) for s in self.scripts]
+            can_run = all(results)
+            reasons = [t for t in [s.cant_run_reason() for s in self.scripts] if t is not None]
+            self._cant_run_reason = None if can_run else "Reason(s): " + " ".join(reasons)
+        else:
+            can_run = await self.scripts[0].can_run(data)
+            self._cant_run_reason = self.scripts[0].cant_run_reason()
+        return can_run
 
     async def run(self, data: TaskData | None) -> None:
         for script in self.scripts:

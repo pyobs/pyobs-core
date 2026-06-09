@@ -26,7 +26,10 @@ class ParallelRunner(Script):
 
     async def can_run(self, data: TaskData | None) -> bool:
         results = [await s.can_run(data) for s in self.scripts]
-        return all(results) if self.check_all_can_run else any(results)
+        can_run = all(results) if self.check_all_can_run else any(results)
+        reasons = [t for t in [s.cant_run_reason() for s in self.scripts] if t is not None]
+        self._cant_run_reason = None if can_run else "Reason(s): " + " ".join(reasons)
+        return can_run
 
     async def run(self, data: TaskData | None) -> None:
         async with asyncio.TaskGroup() as tg:

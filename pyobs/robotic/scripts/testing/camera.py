@@ -20,8 +20,10 @@ class CameraTestScript(Script):
     async def can_run(self, data: TaskData | None) -> bool:
         try:
             await self.comm.proxy(self.camera)
+            self._cant_run_reason = None
             return True
         except ValueError:
+            self._cant_run_reason = "No camera found."
             return False
 
     async def run(self, data: TaskData | None) -> None:

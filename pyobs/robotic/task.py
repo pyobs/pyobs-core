@@ -39,6 +39,7 @@ class Task(BaseModel):
     active: bool = True
 
     _resolved_target: Target | None = PrivateAttr(default=None)
+    _cant_run_reason: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -61,8 +62,15 @@ class Task(BaseModel):
             True, if the task can run now.
         """
         if self.script is not None:
-            return await self.create_script().can_run(data)
+            script = self.create_script()
+            can_run = await script.can_run(data)
+            self._cant_run_reason = script.cant_run_reason()
+            return can_run
         return True
+
+    def cant_run_reason(self) -> str | None:
+        """Returns reason why task cannot run, or None if it can."""
+        return self._cant_run_reason
 
     @property
     def can_start_late(self) -> bool:

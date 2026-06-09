@@ -45,6 +45,10 @@ class TaskRunner(Object):
         """
         return await task.can_run(self.__task_data(task))
 
+    def cant_run_reason(self, task: Task) -> str | None:
+        """Returns reason why task cannot run, or None if it can."""
+        return task.cant_run_reason()
+
     async def run_task(self, task: Task) -> bool:
         """Run a task.
 

@@ -112,32 +112,33 @@ class ImagingScript(Script):
 
         # need camera
         if self._camera is None:
-            cannot_run_logger.info("Cannot run task, no camera found.")
+            self._cant_run_reason = "No camera found."
             return False
 
         # for OBJECT exposure we need more
         if ImageType.OBJECT in self._image_types():
             # we need a working telescope
             if self._telescope is None or not await self._telescope.is_ready():
-                cannot_run_logger.warning("Cannot run task, no telescope found or telescope not ready.")
+                self._cant_run_reason = "Telescope not found or not ready."
                 return False
 
             # we probably need filters and autoguider/acquisition
             if len(self._optical_filters()) > 0 and self._filters is None:
-                cannot_run_logger.warning("Cannot run task, No filter module found.")
+                self._cant_run_reason = "No filterwheel found."
                 return False
 
             # acquisition?
             if self.configuration.acquisition_config.enabled and self._acquisition is None:
-                cannot_run_logger.warning("Cannot run task, no acquisition found.")
+                self._cant_run_reason = "No acquisition found."
                 return False
 
             # guiding?
             if self.configuration.guiding_config.enabled and self._autoguider is None:
-                cannot_run_logger.warning("Cannot run task, no auto guider found.")
+                self._cant_run_reason = "No autoguider found."
                 return False
 
         # seems alright
+        self._cant_run_reason = None
         return True
 
     async def run(self, data: TaskData | None) -> None:

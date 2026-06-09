@@ -43,16 +43,30 @@ class SkyFlatsScript(Script):
         # get modules
         try:
             roof = await self.comm.proxy(self.roof, IRoof)
+        except ValueError:
+            self._cant_run_reason = "No roof found."
+            return False
+        try:
             telescope = await self.comm.proxy(self.telescope, ITelescope)
+        except ValueError:
+            self._cant_run_reason = "No telescope found."
+            return False
+        try:
             await self.comm.proxy(self.flatfield, IFlatField)
         except ValueError:
+            self._cant_run_reason = "No flatfielder found."
             return False
 
         # we need an open roof and a working telescope
-        if not await roof.is_ready() or not await telescope.is_ready():
+        if not await roof.is_ready():
+            self._cant_run_reason = "Roof not ready."
+            return False
+        if not await telescope.is_ready():
+            self._cant_run_reason = "Telescope not ready."
             return False
 
         # seems alright
+        self._cant_run_reason = None
         return True
 
     async def run(self, data: TaskData | None) -> None:

@@ -28,8 +28,10 @@ class SelectorScript(Script):
         selector = await self.comm.proxy(self.selector, IMode)
         status = await selector.get_motion_status()
         if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
+            self._cant_run_reason = None
             return True
         else:
+            self._cant_run_reason = f"Selector not ready: {status.name}"
             return False
 
     async def run(self, data: TaskData | None) -> None:

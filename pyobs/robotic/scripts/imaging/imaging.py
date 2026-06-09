@@ -21,7 +21,7 @@ from pyobs.interfaces import (
 )
 from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
-from pyobs.utils.enums import ImageType, MotionStatus
+from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import Future
 
 if TYPE_CHECKING:
@@ -269,15 +269,19 @@ class ImagingScript(Script):
         self.exptime_done += instrument_config.exposure_time
 
     async def _stop_all(self):
-        # stop auto guiding
         if self._autoguider is not None and self.configuration.guiding_config.enabled:
             log.info("Stopping auto-guiding...")
-            await self._autoguider.stop()
+            try:
+                await self._autoguider.stop()
+            except Exception:
+                log.exception("Could not stop auto-guider.")
 
-        # finally, stop telescope
-        if self._telescope is not None and await self._telescope.get_motion_status() != MotionStatus.IDLE:
+        if self._telescope is not None:
             log.info("Stopping telescope...")
-            await self._telescope.stop_motion()
+            try:
+                await self._telescope.stop_motion()
+            except Exception:
+                log.exception("Could not stop telescope.")
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

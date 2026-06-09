@@ -31,7 +31,9 @@ class CasesRunner(Script):
 
     async def can_run(self, data: TaskData | None) -> bool:
         script = self.__get_script()
-        return await script.can_run(data)
+        can_run = await script.can_run(data)
+        self._cant_run_reason = script.cant_run_reason()
+        return can_run
 
     async def run(self, data: TaskData | None) -> None:
         script = self.__get_script()

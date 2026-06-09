@@ -64,6 +64,12 @@ class Task(BaseModel):
             return await self.create_script().can_run(data)
         return True
 
+    def cant_run_reason(self) -> str | None:
+        """Returns reason why task cannot run, or None if it can."""
+        if self.script is not None:
+            return self.create_script().cant_run_reason()
+        return None
+
     @property
     def can_start_late(self) -> bool:
         """Whether this tasks is allowed to start later than the user-set time, e.g. for flatfields.

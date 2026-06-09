@@ -49,6 +49,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
         self._allowed_overrun = allowed_overrun
         self._running = False
         self._after_task_sleep = after_task_sleep
+        self._last_cant_run_reason: dict[Any, str] = {}
 
         # add thread func
         self.add_background_task(self._run_thread, True)
@@ -109,10 +110,22 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
             observation: Observation | None = await self._observation_archive.get_next_observation(
                 now, self._task_archive
             )
-            if observation is None or not await self._task_runner.can_run(observation.task):
-                # no task found
+            if observation is None:
                 await asyncio.sleep(10)
                 continue
+
+            if not await self._task_runner.can_run(observation.task):
+                reason = await self._task_runner.cant_run_reason(observation.task)
+                if reason is not None:
+                    last = self._last_cant_run_reason.get(observation.task.id)
+                    if last != reason:
+                        log.info("Task %s cannot run: %s", observation.task.name, reason)
+                        self._last_cant_run_reason[observation.task.id] = reason
+                await asyncio.sleep(10)
+                continue
+
+            # task can run — clear stored reason
+            self._last_cant_run_reason.pop(observation.task.id, None)
 
             # starting too late?
             if not observation.task.can_start_late:

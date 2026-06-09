@@ -31,14 +31,26 @@ class AutoFocusScript(Script):
         # we need a camera
         try:
             await self.comm.proxy(self.autofocus, IAutoFocus)
+        except ValueError:
+            self._cant_run_reason = "No autofocus found."
+            return False
+        try:
             telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
         except ValueError:
+            self._cant_run_reason = "No telescope found."
             return False
 
         # ready?
         if not isinstance(telescope, ITelescope):
+            self._cant_run_reason = "No ITelescope found."
             return False
-        return await telescope.is_ready()
+        if not await telescope.is_ready():
+            self._cant_run_reason = "Telescope not ready."
+            return False
+
+        # all good
+        self._cant_run_reason = None
+        return True
 
     async def run(self, data: TaskData | None) -> None:
         """Run script.

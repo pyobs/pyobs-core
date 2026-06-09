@@ -27,11 +27,14 @@ class PointingScript(Script):
         try:
             tel = await self.comm.proxy(self.telescope, IPointingAltAz)
         except ValueError:
+            self._cant_run_reason = "No telescope found."
             return False
 
         if not await tel.is_ready():
+            self._cant_run_reason = "Telescope not ready."
             return False
 
+        self._cant_run_reason = None
         return True
 
     async def run(self, data: TaskData | None) -> None:

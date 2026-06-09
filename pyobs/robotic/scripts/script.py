@@ -14,6 +14,8 @@ log = logging.getLogger(__name__)
 class Script(PolymorphicBaseModel):
     exptime_done: float = 0.0
 
+    _cant_run_reason: str | None = None
+
     async def can_run(self, data: TaskData | None) -> bool:
         """Checks whether this script could run now.
 
@@ -21,6 +23,10 @@ class Script(PolymorphicBaseModel):
             True, if the script can run now.
         """
         return True
+
+    def cant_run_reason(self) -> str | None:
+        """Returns reason why script cannot run, or None if it can."""
+        return self._cant_run_reason
 
     async def run(self, data: TaskData | None) -> None:
         """Run script.

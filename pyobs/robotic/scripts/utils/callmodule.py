@@ -51,8 +51,10 @@ class CallModuleScript(Script):
         try:
             cls = get_class_from_string(self.interface)
             await self.comm.proxy(self.module, cls)
+            self._cant_run_reason = None
             return True
         except ValueError:
+            self._cant_run_reason = f"Module {self.module} not found."
             return False
 
     async def run(self, data: TaskData | None) -> None:

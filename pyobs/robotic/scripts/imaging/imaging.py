@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from _asyncio import Task
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, Field, PrivateAttr
@@ -23,7 +22,6 @@ from pyobs.interfaces import (
 from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType, MotionStatus
-from pyobs.utils.logger import DuplicateFilter
 from pyobs.utils.parallel import Future
 
 if TYPE_CHECKING:
@@ -31,10 +29,6 @@ if TYPE_CHECKING:
 
 
 log = logging.getLogger(__name__)
-
-# logger for logging name of task
-cannot_run_logger = logging.getLogger(__name__ + ":cannot_run")
-cannot_run_logger.addFilter(DuplicateFilter())
 
 
 class AcquisitionConfig(BaseModel):
@@ -90,7 +84,7 @@ class ImagingScript(Script):
         self._acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
 
     def _image_types(self) -> list[ImageType]:
-        return list(set([instr.image_type for instr in self.configuration.instrument_configs]))
+        return list({instr.image_type for instr in self.configuration.instrument_configs})
 
     def _optical_filters(self) -> list[str]:
         return list(
@@ -169,7 +163,7 @@ class ImagingScript(Script):
         # stop auto guiding and telescope
         await self._stop_all()
 
-    async def _track_target(self, data: TaskData | None) -> tuple[Future | Task[Any], Target | None]:
+    async def _track_target(self, data: TaskData | None) -> tuple[Future | asyncio.Task[Any], Target | None]:
         # got a target?
         target = data.task.target if data is not None and data.task is not None else None
         track: Future | asyncio.Task[Any] = Future(empty=True)
@@ -186,7 +180,7 @@ class ImagingScript(Script):
                 raise exc.MotionError("Telescope can't move to RA/Dec.")
         return track, target
 
-    async def _perform_acquisition(self, track: Future | Task[Any]):
+    async def _perform_acquisition(self, track: Future | asyncio.Task[Any]):
         if self.configuration.acquisition_config.enabled:
             if self._acquisition is None:
                 raise ValueError("No acquisition given.")
@@ -204,7 +198,7 @@ class ImagingScript(Script):
                 else:
                     raise
 
-    async def _start_guiding(self, track: Future | Task[Any]):
+    async def _start_guiding(self, track: Future | asyncio.Task[Any]):
         if self.configuration.guiding_config.enabled:
             if self._autoguider is None:
                 raise ValueError("No autoguider given.")
@@ -216,11 +210,11 @@ class ImagingScript(Script):
             log.info("Starting auto-guiding...")
             await self._autoguider.start()
 
-    async def _run_configurations(self, target: Target | None, track: Future | Task[Any]):
+    async def _run_configurations(self, target: Target | None, track: Future | asyncio.Task[Any]):
         for repeat in range(self.configuration.repeats):
             await self._run_configuration(repeat, target, track)
 
-    async def _run_configuration(self, repeat: int, target: Target | None, track: Future | Task[Any]):
+    async def _run_configuration(self, repeat: int, target: Target | None, track: Future | asyncio.Task[Any]):
         log.info("Starting configuration repeat %s/%s...", repeat + 1, self.configuration.repeats)
 
         # loop instrument configs
@@ -235,7 +229,7 @@ class ImagingScript(Script):
             self._object_name = None
 
     async def _setup_instrument_config(
-        self, instrument_config: InstrumentConfig, target: Target | None, track: Future | Task[Any]
+        self, instrument_config: InstrumentConfig, target: Target | None, track: Future | asyncio.Task[Any]
     ):
         if isinstance(self._camera, IBinning):
             log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])

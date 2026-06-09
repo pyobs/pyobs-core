@@ -112,6 +112,10 @@ class Task(BaseModel):
         if self._resolved_target is None:
             self._resolved_target = target
 
+    def reset_resolved_target(self) -> None:
+        """Reset resolved target."""
+        self._resolved_target = None
+
     @property
     def target(self) -> Target | None:
         """The resolved target, or the static target if not dynamic."""

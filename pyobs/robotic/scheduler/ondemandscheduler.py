@@ -91,6 +91,10 @@ class OnDemandScheduler(TaskScheduler):
         while time < end:
             latest_end = start
 
+            # reset resolved targets for each new time slot
+            for task in tasks:
+                task.reset_resolved_target()
+
             # schedule first in this interval, could be one or two
             async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):
                 # yield it to caller

@@ -5,6 +5,8 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 import astroplan
+import numpy as np
+from astropy.coordinates import SkyCoord
 
 from pyobs.object import Object
 from pyobs.utils.serialization import PolymorphicBaseModel
@@ -50,3 +52,19 @@ class Constraint(PolymorphicBaseModel, metaclass=ABCMeta):
         from pyobs.robotic.scheduler import constraints
 
         return [name for name, obj in inspect.getmembers(constraints) if inspect.isclass(obj)]
+
+    async def filter_skycoord(self, time: Time, coords: SkyCoord, data: DataProvider) -> np.ndarray:
+        """Returns a boolean mask of candidates passing this constraint.
+
+        Default implementation passes all candidates. Override in target-dependent
+        subclasses to vectorise the constraint evaluation across a SkyCoord array.
+
+        Args:
+            time: Time to evaluate constraint at.
+            coords: Array of candidate coordinates.
+            data: Data provider.
+
+        Returns:
+            Boolean numpy array, True for candidates that pass the constraint.
+        """
+        return np.ones(len(coords), dtype=bool)

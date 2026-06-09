@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import astroplan
+import numpy as np
+from astropy.coordinates import SkyCoord
 from pydantic import Field
 
 from .constraint import Constraint
@@ -31,6 +33,10 @@ class AirmassConstraint(Constraint):
         altaz = data.observer.altaz(time, coord)
         airmass = float(altaz.secz)
         return bool(0.0 < airmass <= self.max_airmass and altaz.alt.degree > 0.0)
+
+    async def filter_skycoord(self, time: Time, coords: SkyCoord, data: DataProvider) -> np.ndarray:
+        altaz = self.observer.altaz(time, coords)
+        return (altaz.secz > 0.0) & (altaz.secz <= self.max_airmass) & (altaz.alt.deg > 0.0)
 
 
 __all__ = ["AirmassConstraint"]

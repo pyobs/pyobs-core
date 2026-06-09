@@ -3,7 +3,10 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Literal
 
+import astropy.units as u
+import numpy as np
 import pandas as pd
+from astropy.coordinates import SkyCoord
 from pydantic import PrivateAttr
 
 from pyobs.utils.time import Time
@@ -27,45 +30,42 @@ class CsvPicker(Picker):
     ra_unit: Literal["deg", "hour"] = "deg"
 
     _dataframe: pd.DataFrame | None = PrivateAttr(default=None)
+    _coords: SkyCoord | None = PrivateAttr(default=None)
+
+    async def _load(self) -> bool:
+        """Load CSV and build coordinate array. Returns False if loading failed."""
+        df = await self.vfs.read_csv(self.csv)
+        if df is None:
+            return False
+        ras = df[self.ra_col].values.astype(float)
+        if self.ra_unit == "hour":
+            ras = ras * 15.0
+        self._dataframe = df
+        self._dataframe[self.ra_col] = ras  # normalise RA to degrees in-place
+        self._coords = SkyCoord(ra=ras * u.deg, dec=df[self.dec_col].values.astype(float) * u.deg)
+        return True
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> Target | None:
         from pyobs.robotic.scheduler.targets import SiderealTarget
 
-        # get data
-        if self._dataframe is None:
-            self._dataframe = await self.vfs.read_csv(self.csv)
-            if self._dataframe is None:
+        # load catalogue on first call
+        if self._coords is None:
+            if not await self._load():
                 return None
 
-        # sort constraints by cost and remove non-target rependent
-        sorted_constraints = sorted(task.constraints, key=lambda c: c.cost)
-        sorted_constraints = [c for c in sorted_constraints if c.target_dependent]
+        # start with all candidates
+        mask = np.ones(len(self._coords), dtype=bool)
 
-        # evaluate constraints for each candidate
-        valid = []
-        for _, row in self._dataframe.iterrows():
-            ra = row[self.ra_col]
-            if self.ra_unit == "hour":
-                ra *= 15
-            candidate = SiderealTarget(name=row[self.name_col], ra=ra, dec=row[self.dec_col])
+        # apply all target-dependent constraints via filter_skycoord
+        for c in sorted((c for c in task.constraints if c.target_dependent), key=lambda c: c.cost):
+            mask &= await c.filter_skycoord(time, self._coords, data)
+            if not mask.any():
+                return None
 
-            # create a temporary task with this candidate as target
-            candidate_task = task.model_copy(update={"static_target": candidate})
-
-            # check constraints
-            valid_candidate = True
-            for c in sorted_constraints:
-                if not await c(time, candidate_task, data):
-                    valid_candidate = False
-                    break
-            if valid_candidate:
-                valid.append(candidate)
-
-        if not valid:
-            return None
-
-        # pick random
-        return random.choice(valid)
+        # pick a random surviving row and create one SiderealTarget
+        valid_indices = np.where(mask)[0]  # noqa: F821
+        row = self._dataframe.iloc[random.choice(valid_indices)]
+        return SiderealTarget(name=row[self.name_col], ra=float(row[self.ra_col]), dec=float(row[self.dec_col]))
 
 
 __all__ = ["CsvPicker"]

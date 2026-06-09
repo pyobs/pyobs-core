@@ -11,8 +11,8 @@ from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
-    from pyobs.robotic.observationarchive import ObservationArchive
-    from pyobs.robotic.taskarchive import TaskArchive
+    from pyobs.robotic.storage.observationarchive import ObservationArchive
+    from pyobs.robotic.storage.taskarchive import TaskArchive
 
 from pyobs.robotic.scheduler.constraints import Constraint
 from pyobs.robotic.scheduler.merits import Merit
@@ -111,6 +111,10 @@ class Task(BaseModel):
         """Set the resolved target if not already set, e.g. when restoring from an observation."""
         if self._resolved_target is None:
             self._resolved_target = target
+
+    def reset_resolved_target(self) -> None:
+        """Reset resolved target."""
+        self._resolved_target = None
 
     @property
     def target(self) -> Target | None:

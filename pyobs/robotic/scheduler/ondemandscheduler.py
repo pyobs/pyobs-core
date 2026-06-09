@@ -10,9 +10,9 @@ import numpy as np
 from astropy.time import TimeDelta
 
 from pyobs.object import Object
+from pyobs.robotic.storage.observationarchive import ObservationArchive
 from pyobs.utils.time import Time
 
-from ..observationarchive import ObservationArchive
 from . import DataProvider
 from .constraints import Constraint
 from .observationarchiveevolution import ObservationArchiveEvolution
@@ -90,6 +90,10 @@ class OnDemandScheduler(TaskScheduler):
         time = start
         while time < end:
             latest_end = start
+
+            # reset resolved targets for each new time slot
+            for task in tasks:
+                task.reset_resolved_target()
 
             # schedule first in this interval, could be one or two
             async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):

@@ -24,7 +24,7 @@ class TimeWindow(BaseModel):
 class TimeWindowMerit(Merit):
     """Merit function that uses time windows."""
 
-    windows: list[TimeWindow]
+    windows: list[TimeWindow] = Field(default_factory=list)
     inverse: bool = False
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:

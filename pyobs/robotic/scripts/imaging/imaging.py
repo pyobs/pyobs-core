@@ -178,7 +178,7 @@ class ImagingScript(Script):
                 raise exc.MotionError("Telescope can't move to RA/Dec.")
         return track, target
 
-    async def _perform_acquisition(self, track: Future | asyncio.Task[Any]):
+    async def _perform_acquisition(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.acquisition_config.enabled:
             if self._acquisition is None:
                 raise ValueError("No acquisition given.")
@@ -196,7 +196,7 @@ class ImagingScript(Script):
                 else:
                     raise
 
-    async def _start_guiding(self, track: Future | asyncio.Task[Any]):
+    async def _start_guiding(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.guiding_config.enabled:
             if self._autoguider is None:
                 raise ValueError("No autoguider given.")
@@ -208,11 +208,11 @@ class ImagingScript(Script):
             log.info("Starting auto-guiding...")
             await self._autoguider.start()
 
-    async def _run_configurations(self, target: Target | None, track: Future | asyncio.Task[Any]):
+    async def _run_configurations(self, target: Target | None, track: Future | asyncio.Task[Any]) -> None:
         for repeat in range(self.configuration.repeats):
             await self._run_configuration(repeat, target, track)
 
-    async def _run_configuration(self, repeat: int, target: Target | None, track: Future | asyncio.Task[Any]):
+    async def _run_configuration(self, repeat: int, target: Target | None, track: Future | asyncio.Task[Any]) -> None:
         log.info("Starting configuration repeat %s/%s...", repeat + 1, self.configuration.repeats)
 
         # loop instrument configs
@@ -228,7 +228,7 @@ class ImagingScript(Script):
 
     async def _setup_instrument_config(
         self, instrument_config: InstrumentConfig, target: Target | None, track: Future | asyncio.Task[Any]
-    ):
+    ) -> None:
         if isinstance(self._camera, IBinning):
             log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
             await self._camera.set_binning(*instrument_config.binning)
@@ -261,14 +261,14 @@ class ImagingScript(Script):
         if instrument_config.image_type == ImageType.OBJECT and target is not None:
             self._object_name = target.name
 
-    async def _expose_image(self, instrument_config: InstrumentConfig, repeat2: int):
+    async def _expose_image(self, instrument_config: InstrumentConfig, repeat2: int) -> None:
         log.info("Exposing image %s/%s...", repeat2 + 1, instrument_config.count)
 
         # grab image
         await cast(ICamera, self._camera).grab_data()
         self.exptime_done += instrument_config.exposure_time
 
-    async def _stop_all(self):
+    async def _stop_all(self) -> None:
         if self._autoguider is not None and self.configuration.guiding_config.enabled:
             log.info("Stopping auto-guiding...")
             try:

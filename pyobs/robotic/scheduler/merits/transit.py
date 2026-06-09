@@ -50,6 +50,17 @@ class TransitMerit(Merit):
         # check
         return float(1.0 - self._duration / 2.0 - self._ingress <= phi <= 1.0 - self._duration / 2.0 - self._over)
 
+    def transit_time(self) -> Time:
+        """Returns the time of the next mid-transit."""
+        n = self.periods_since_jd0()
+        return Time(self.jd0 + n * self.period, format="jd", scale="tdb")
+
+    def end_time(self) -> Time:
+        """Returns the time until which observations should run: mid-transit + duration/2 + ingress buffer."""
+        mid = self.transit_time()
+        end_offset = (self.duration / 2.0 + self.ingress * self.duration) / 86400.0
+        return Time(mid.jd + end_offset, format="jd", scale="tdb")
+
     def days_since_jd0(self) -> float:
         return float(Time.now().jd - self.jd0)
 

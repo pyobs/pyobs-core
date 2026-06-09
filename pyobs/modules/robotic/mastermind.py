@@ -115,7 +115,7 @@ class Mastermind(Module, IAutonomous, IFitsHeaderBefore):
                 continue
 
             if not await self._task_runner.can_run(observation.task):
-                reason = await self._task_runner.cant_run_reason(observation.task)
+                reason = self._task_runner.cant_run_reason(observation.task)
                 if reason is not None:
                     last = self._last_cant_run_reason.get(observation.task.id)
                     if last != reason:

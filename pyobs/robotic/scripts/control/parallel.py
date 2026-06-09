@@ -27,7 +27,7 @@ class ParallelRunner(Script):
     async def can_run(self, data: TaskData | None) -> bool:
         results = [await s.can_run(data) for s in self.scripts]
         can_run = all(results) if self.check_all_can_run else any(results)
-        reasons = filter(lambda s: s is not None, [s.cant_run_reason() for s in self.scripts])
+        reasons = [t for t in [s.cant_run_reason() for s in self.scripts] if t is not None]
         self._cant_run_reason = None if can_run else "Reason(s): " + " ".join(reasons)
         return can_run
 

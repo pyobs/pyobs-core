@@ -41,7 +41,6 @@ class CsvPicker(Picker):
         if self.ra_unit == "hour":
             df[self.ra_col] *= 15.0
         self._dataframe = df
-        self._dataframe[self.ra_col] = ras  # normalise RA to degrees in-place
         self._coords = SkyCoord(ra=ras * u.deg, dec=df[self.dec_col].values.astype(float) * u.deg)
         return True
 

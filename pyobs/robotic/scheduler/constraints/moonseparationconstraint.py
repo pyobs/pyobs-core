@@ -38,7 +38,7 @@ class MoonSeparationConstraint(Constraint):
     async def filter_skycoord(self, time: Time, coords: SkyCoord, data: DataProvider) -> np.ndarray:
         moon = astropy.coordinates.get_body("moon", time)
         separations = moon.separation(coords, origin_mismatch="ignore").deg
-        return separations >= self.min_distance
+        return np.asarray(separations >= self.min_distance, dtype=np.bool_)
 
 
 __all__ = ["MoonSeparationConstraint"]

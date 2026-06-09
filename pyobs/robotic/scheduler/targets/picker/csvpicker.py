@@ -39,7 +39,7 @@ class CsvPicker(Picker):
             return False
         ras = df[self.ra_col].values.astype(float)
         if self.ra_unit == "hour":
-            ras = ras * 15.0
+            df[self.ra_col] *= 15.0
         self._dataframe = df
         self._dataframe[self.ra_col] = ras  # normalise RA to degrees in-place
         self._coords = SkyCoord(ra=ras * u.deg, dec=df[self.dec_col].values.astype(float) * u.deg)
@@ -52,20 +52,22 @@ class CsvPicker(Picker):
         if self._coords is None:
             if not await self._load():
                 return None
+        if self._coords is None or self._dataframe is None:
+            return None
 
         # start with all candidates
-        mask = np.ones(len(self._coords), dtype=bool)
+        mask = np.ones(len(self._coords), dtype=np.bool_)
 
         # apply all target-dependent constraints via filter_skycoord
         for c in sorted((c for c in task.constraints if c.target_dependent), key=lambda c: c.cost):
-            mask &= await c.filter_skycoord(time, self._coords, data)
+            mask = mask & await c.filter_skycoord(time, self._coords, data)
             if not mask.any():
                 return None
 
         # pick a random surviving row and create one SiderealTarget
-        valid_indices = np.where(mask)[0]  # noqa: F821
-        row = self._dataframe.iloc[random.choice(valid_indices)]
-        return SiderealTarget(name=row[self.name_col], ra=float(row[self.ra_col]), dec=float(row[self.dec_col]))
+        valid_indices = np.where(mask)[0]
+        row = self._dataframe.iloc[int(random.choice(valid_indices))]
+        return SiderealTarget(name=str(row[self.name_col]), ra=float(row[self.ra_col]), dec=float(row[self.dec_col]))
 
 
 __all__ = ["CsvPicker"]

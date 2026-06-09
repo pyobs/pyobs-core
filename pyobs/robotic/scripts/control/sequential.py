@@ -21,7 +21,7 @@ class SequentialRunner(Script):
             results = [await s.can_run(data) for s in self.scripts]
             can_run = all(results)
             reasons = filter(lambda s: s is not None, [s.cant_run_reason() for s in self.scripts])
-            self._cant_run_reason = None if can_run else "Reasons:" + " ".join(reasons)
+            self._cant_run_reason = None if can_run else "Reason(s): " + " ".join(reasons)
         else:
             can_run = await self.scripts[0].can_run(data)
             self._cant_run_reason = self.scripts[0].cant_run_reason()

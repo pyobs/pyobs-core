@@ -88,13 +88,11 @@ class ImagingScript(Script):
 
     def _optical_filters(self) -> list[str]:
         return list(
-            set(
-                [
-                    instr.optical_filter
-                    for instr in self.configuration.instrument_configs
-                    if instr.optical_filter is not None
-                ]
-            )
+            {
+                instr.optical_filter
+                for instr in self.configuration.instrument_configs
+                if instr.optical_filter is not None
+            }
         )
 
     async def can_run(self, data: TaskData | None) -> bool:

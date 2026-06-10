@@ -88,5 +88,27 @@ class TransitImagingScript(ImagingScript):
 
         await super().run(data)
 
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the transit observation.
+
+        Args:
+            data: Task data containing the TransitMerit.
+            time: If given, return remaining time until end of transit window.
+                  If None, return the full observable window (ingress + duration + ingress).
+
+        Returns:
+            Estimated duration in seconds.
+        """
+        merit = self._get_transit_merit(data)
+        if merit is None:
+            return super().estimate_duration(data, time)
+
+        if time is None:
+            # full observable window: ingress + duration + ingress
+            return merit.duration * (1.0 + 2.0 * merit.ingress)
+        else:
+            # remaining time from now until end_time
+            return max(0.0, (merit.end_time().jd - time.jd) * 86400.0)
+
 
 __all__ = ["TransitImagingScript"]

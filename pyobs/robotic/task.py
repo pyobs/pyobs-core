@@ -101,9 +101,9 @@ class Task(BaseModel):
         """
         return {}
 
-    def estimate_duration(self) -> float:
+    def estimate_duration(self, time: Time | None = None) -> float:
         if self.script:
-            return self.create_script().estimate_duration()
+            return self.create_script().estimate_duration(TaskData(task=self), time)
         return self.duration
 
     async def resolve_target(self, time: Time, task: Task, data: DataProvider) -> bool:

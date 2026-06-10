@@ -23,6 +23,7 @@ from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import Future
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -304,7 +305,7 @@ class ImagingScript(Script):
         # return
         return hdr
 
-    def estimate_duration(self) -> float:
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate the duration of this script in seconds."""
         # TODO: get some good estimates for slewing/filter/acquisition etc
         duration = (

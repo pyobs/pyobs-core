@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pyobs.utils.serialization import PolymorphicBaseModel
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
@@ -47,7 +48,7 @@ class Script(PolymorphicBaseModel):
         """
         return {}
 
-    def estimate_duration(self) -> float:
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of this script in seconds."""
         return 0.0
 

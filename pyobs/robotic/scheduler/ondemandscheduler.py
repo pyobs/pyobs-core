@@ -156,7 +156,7 @@ class OnDemandScheduler(TaskScheduler):
         return Observation(
             task=task,
             start=time,
-            end=time + TimeDelta(task.duration * u.second),
+            end=time + TimeDelta(task.estimate_duration(time=time) * u.second),
             priority=merit,
             target=task.target,
         )
@@ -221,7 +221,7 @@ class OnDemandScheduler(TaskScheduler):
                     # no merits? evaluate to 1
                     merit = 1.0
 
-                elif start + TimeDelta(task.duration * u.second) > end:
+                elif start + TimeDelta(task.estimate_duration(time=start) * u.second) > end:
                     # if task is too long for the given slot, we evaluate its merits to zero
                     merit = 0.0
 
@@ -271,7 +271,7 @@ class OnDemandScheduler(TaskScheduler):
         step: float = 300,
     ) -> tuple[Task | None, Time | None, float | None]:
         t = start + TimeDelta(step * u.second)
-        while t < start + TimeDelta(task.duration * u.second):
+        while t < start + TimeDelta(task.estimate_duration(time=start) * u.second):
             merits = await self.evaluate_constraints_and_merits(tasks, projects, t, end, data)
             for i, m in enumerate(merits):
                 if m > merit:
@@ -290,7 +290,7 @@ class OnDemandScheduler(TaskScheduler):
         data: DataProvider,
     ) -> Time | None:
         # new start time of better_task would be after the execution of task
-        better_start: Time = start + TimeDelta(task.duration * u.second)
+        better_start: Time = start + TimeDelta(task.estimate_duration(time=start) * u.second)
 
         # evaluate merit of better_task at new start time
         merit = (await self.evaluate_constraints_and_merits([better_task], projects, better_start, end, data))[0]

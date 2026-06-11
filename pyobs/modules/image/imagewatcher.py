@@ -152,7 +152,7 @@ class ImageWatcher(Module):
         while True:
             # get next filename and wait some time
             filename, ready_at = await self._queue.get()
-            wait = ready_at - asyncio.get_event_loop().time()
+            wait = ready_at - time.time()
             if wait > 0:
                 await asyncio.sleep(wait)
             log.info("Working on file %s...", filename)

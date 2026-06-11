@@ -2,6 +2,7 @@ import asyncio
 import fnmatch
 import logging
 import os
+import time
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -142,7 +143,7 @@ class ImageWatcher(Module):
 
         # log and add file
         log.info("Adding new file %s...", filename)
-        self._queue.put_nowait((filename, asyncio.get_event_loop().time() + self._wait_time))
+        self._queue.put_nowait((filename, time.time() + self._wait_time))
 
     async def _worker(self) -> None:
         """Worker thread."""
@@ -204,7 +205,7 @@ class ImageWatcher(Module):
                 # no success?
                 if not success:
                     # re-queue file and skip file for now
-                    self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
+                    self._queue.put_nowait((filename, time.time() + self._wait_time))
                     continue
 
                 # close and delete files

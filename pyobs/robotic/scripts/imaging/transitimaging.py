@@ -108,7 +108,7 @@ class TransitImagingScript(ImagingScript):
             return merit.duration * (1.0 + 2.0 * merit.ingress)
         else:
             # remaining time from now until end_time
-            return max(0.0, (merit.end_time().jd - time.jd) * 86400.0)
+            return float(max(0.0, (merit.end_time().jd - time.jd) * 86400.0))
 
 
 __all__ = ["TransitImagingScript"]

@@ -132,7 +132,8 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
 
         # find peak in region
         flat_idx = np.argmax(region)
-        ry, rx = np.unravel_index(flat_idx, region.shape)
+        ry_, rx_ = np.unravel_index(flat_idx, region.shape)
+        ry, rx = int(ry_), int(rx_)
 
         # fit 2D Gaussian around peak
         fit_half = 10
@@ -155,8 +156,10 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
             fitter = fitting.LevMarLSQFitter()
             g_fit = fitter(g_init, x_grid, y_grid, stamp - np.median(stamp))
             peak = float(g_fit.amplitude) + float(np.median(stamp))
-            col: int = int(x0) + int(fx0) + int(g_fit.x_mean)
-            row: int = int(y0) + int(fy0) + int(g_fit.y_mean)
+            x_fit: float = float(g_fit.x_mean.value)
+            y_fit: float = float(g_fit.y_mean.value)
+            col: int = int(x0) + int(fx0) + int(x_fit)
+            row: int = int(y0) + int(fy0) + int(y_fit)
         except Exception:
             # fallback to raw peak if fitting fails
             peak = float(np.max(region))

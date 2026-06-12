@@ -315,10 +315,10 @@ class Object(PrivateAttrMixin):
         self._observer = observer
         if self._observer is None and self._location is not None and self._timezone is not None:
             log.info(
-                "Setting location to longitude=%s, latitude=%s, and elevation=%s.",
-                self._location.lon,
-                self._location.lat,
-                self._location.height,
+                "Setting location to longitude=%.4f°, latitude=%.4f°, and elevation=%.2fm.",
+                self._location.lon.degree,
+                self._location.lat.degree,
+                self._location.height.value,
             )
             self._observer = Observer(location=self._location, timezone=timezone)
 

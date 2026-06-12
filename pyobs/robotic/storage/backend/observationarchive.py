@@ -180,7 +180,7 @@ class BackendObservationArchive(ObservationArchive):
     async def get_observations(
         self,
         task: Task | None = None,
-        state: ObservationState | None = None,
+        state: ObservationState | list[ObservationState] | None = None,
         start_before: Time | None = None,
         start_after: Time | None = None,
         end_before: Time | None = None,
@@ -205,7 +205,10 @@ class BackendObservationArchive(ObservationArchive):
         if task is not None:
             params["task"] = task.id
         if state is not None:
-            params["state"] = state
+            if isinstance(state, str):
+                params["state"] = state
+            else:
+                params["state"] = ",".join(state)
         if start_before is not None:
             params["start_before"] = start_before.isot
         if start_after is not None:

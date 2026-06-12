@@ -109,8 +109,6 @@ line-length = 120
 select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
 
 [tool.pytest.ini_options]
-markers = ["integration: integration tests requiring multiple modules"]
-addopts = "-m 'not integration'"
 
 [tool.black]
 line-length = 120

@@ -97,6 +97,7 @@ def make_mastermind(obs_archive, runner=None) -> Mastermind:
     mm._running = True
     mm._task = None
     mm._task_archive = None
+    mm._last_cant_run_reason = {}
     mm._observation_archive = obs_archive
     mm._task_runner = runner
     return mm

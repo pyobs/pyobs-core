@@ -63,10 +63,14 @@ class BackendObservationArchive(ObservationArchive):
                 last_update = await self.last_update_time()
                 if self._last_update is None or self._last_update < last_update:
                     self._observations = await self._get_schedule()
-                    if len(self._observations) == 0:
+                    sorted_obs = sorted(
+                        filter(lambda o: o.state == ObservationState.PENDING, self._observations),
+                        key=lambda o: o.start,
+                    )
+                    if len(sorted_obs) == 0:
                         log.info("Downloaded new schedule.")
                     else:
-                        obs = self._observations[0]
+                        obs = sorted_obs[0]
                         log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
                     self._last_update = last_update
             except Exception as e:

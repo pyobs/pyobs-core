@@ -88,7 +88,9 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return await self.get_observations(end_after=Time.now())
+        return await self.get_observations(
+            end_after=Time.now(), state=[ObservationState.PENDING, ObservationState.IN_PROGRESS]
+        )
 
     async def add_observations(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.

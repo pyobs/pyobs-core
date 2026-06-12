@@ -83,8 +83,8 @@ class Application:
         logging.captureWarnings(True)
         warnings.simplefilter("always", DeprecationWarning)
 
-        # disable tornado logger
-        logging.getLogger("tornado.access").disabled = True
+        # change some loggers
+        logging.getLogger("slixmpp.util.sasl.client").setLevel(logging.WARNING)
 
         # set pyobs logger
         global log

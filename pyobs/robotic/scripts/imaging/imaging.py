@@ -21,6 +21,7 @@ from pyobs.interfaces import (
 )
 from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
+from pyobs.robotic.utils.exptime import ExposureTimeProvider
 from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import Future
 from pyobs.utils.time import Time
@@ -43,12 +44,18 @@ class GuidingConfig(BaseModel):
 
 
 class InstrumentConfig(BaseModel):
-    exposure_time: float
+    exposure_time: float | ExposureTimeProvider
     count: int = 1
     image_type: ImageType = ImageType.OBJECT
     binning: tuple[int, int] = (1, 1)
     window: tuple[int, int, int, int] | None = None
     optical_filter: str | None = None
+
+    async def get_exposure_time(self) -> float:
+        """Return the exposure time, computing it dynamically if needed."""
+        if isinstance(self.exposure_time, ExposureTimeProvider):
+            return await self.exposure_time()
+        return self.exposure_time
 
 
 class Configuration(BaseModel):
@@ -242,8 +249,9 @@ class ImagingScript(Script):
             await self._camera.set_window(*wnd)
 
         if isinstance(self._camera, IExposureTime):
-            log.info("Setting exposure time to %ss...", instrument_config.exposure_time)
-            await self._camera.set_exposure_time(instrument_config.exposure_time)
+            exposure_time = await instrument_config.get_exposure_time()
+            log.info("Setting exposure time to %ss...", exposure_time)
+            await self._camera.set_exposure_time(exposure_time)
 
         # set image type
         if isinstance(self._camera, IImageType):
@@ -267,7 +275,7 @@ class ImagingScript(Script):
 
         # grab image
         await cast(ICamera, self._camera).grab_data()
-        self.exptime_done += instrument_config.exposure_time
+        self.exptime_done += await instrument_config.get_exposure_time()
 
     async def _stop_all(self) -> None:
         if self._autoguider is not None and self.configuration.guiding_config.enabled:
@@ -309,7 +317,11 @@ class ImagingScript(Script):
         """Estimate the duration of this script in seconds."""
         # TODO: get some good estimates for slewing/filter/acquisition etc
         duration = (
-            sum(ic.exposure_time * ic.count for ic in self.configuration.instrument_configs)
+            sum(
+                (ic.exposure_time if isinstance(ic.exposure_time, float) else ic.exposure_time.default_exposure_time)
+                * ic.count
+                for ic in self.configuration.instrument_configs
+            )
             * self.configuration.repeats
             + 60.0
         )

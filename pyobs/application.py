@@ -19,6 +19,10 @@ from pyobs.utils.config import pre_process_yaml
 log = logging.getLogger(__name__)
 
 
+# turn RuntimeWarnings into errors
+warnings.filterwarnings("error", category=RuntimeWarning)
+
+
 class InfluxLogConfig(TypedDict):
     url: str
     token: str

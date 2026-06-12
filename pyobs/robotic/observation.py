@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from astropydantic import AstroPydanticTime  # type: ignore
 
-from pyobs.object import Object
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.task import Task
 from pyobs.utils.serialization import BaseModel
@@ -89,7 +88,7 @@ class Observation(BaseModel):
             self.task.set_resolved_target(self.target)
 
 
-class ObservationList(UserList[Observation], Object):  # noqa: F821
+class ObservationList(UserList[Observation]):  # noqa: F821
     def __init__(self, observations: list[Observation] | None = None):
         if observations is None:
             observations = []
@@ -121,9 +120,6 @@ class ObservationList(UserList[Observation], Object):  # noqa: F821
 
     def model_dump(self, **kwargs: Any) -> list[dict[str, Any]]:
         return [obs.model_dump(**kwargs) for obs in self.data]
-
-    def model_validate(self, data: list[dict[str, Any]], **kwargs: Any) -> ObservationList:
-        return ObservationList([self.pyobs_model_validate(Observation, obs, **kwargs) for obs in data])
 
 
 __all__ = ["Observation", "ObservationState", "ObservationList"]

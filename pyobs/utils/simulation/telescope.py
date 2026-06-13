@@ -77,9 +77,6 @@ class SimTelescope(Object):
         self._drift = (0.0, 0.0)
         self._dest_coords = None
 
-        # locks
-        self._pos_lock = asyncio.Lock()
-
         # threads
         self.add_background_task(self._move_task)
 
@@ -112,8 +109,7 @@ class SimTelescope(Object):
         ddec = self._offsets[1] * u.deg + self._drift[1] * u.arcsec
 
         # return position
-        with self._pos_lock:
-            return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+        return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
     def move_ra_dec(self, coords: SkyCoord) -> None:
         """Move telescope to given RA/Dec position.
@@ -168,17 +164,16 @@ class SimTelescope(Object):
                 # do we reach target?
                 if length < self.speed:
                     # set it
-                    with self._pos_lock:
-                        # set position and reset destination
-                        self._change_motion_status(MotionStatus.TRACKING)
-                        self._position = self._dest_coords
-                        self._dest_coords = None
+                    # set position and reset destination
+                    self._change_motion_status(MotionStatus.TRACKING)
+                    self._position = self._dest_coords
+                    self._dest_coords = None
 
-                        # set some random drift around the pointing error
-                        self._drift = (
-                            random.gauss(self.pointing_offset[0], self.pointing_offset[0] / 10.0),
-                            random.gauss(self.pointing_offset[1], self.pointing_offset[1] / 10.0),
-                        )
+                    # set some random drift around the pointing error
+                    self._drift = (
+                        random.gauss(self.pointing_offset[0], self.pointing_offset[0] / 10.0),
+                        random.gauss(self.pointing_offset[1], self.pointing_offset[1] / 10.0),
+                    )
 
                 else:
                     # norm vector and get movement
@@ -186,11 +181,8 @@ class SimTelescope(Object):
                     ddec = vdec / length * self.speed * u.deg
 
                     # apply it
-                    with self._pos_lock:
-                        self._change_motion_status(MotionStatus.SLEWING)
-                        self._position = SkyCoord(
-                            ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs"
-                        )
+                    self._change_motion_status(MotionStatus.SLEWING)
+                    self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
             else:
                 # no movement, just drift
@@ -199,8 +191,7 @@ class SimTelescope(Object):
                 drift_dec = random.gauss(self.drift[1], self.drift[1] / 10.0)
 
                 # and apply it
-                with self._pos_lock:
-                    self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
+                self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
 
             # sleep a second
             await asyncio.sleep(1)

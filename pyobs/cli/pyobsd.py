@@ -4,10 +4,13 @@ import glob
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 import time
 from typing import Any
+
+import psutil
 
 from ._cli import CLI
 
@@ -28,7 +31,6 @@ class PyobsDaemonCLI(CLI):
         "log_path",
         "log_level",
         "chuid",
-        "start_stop_daemon",
     ]
 
     def init_cli(self) -> None:
@@ -44,9 +46,6 @@ class PyobsDaemonCLI(CLI):
             default=self._config.get("log-level", "info"),
         )
         self._parser.add_argument("--chuid", type=str, default=self._config.get("chuid", "pyobs:pyobs"))
-        self._parser.add_argument(
-            "--start-stop-daemon", type=str, default=self._config.get("start_stop_daemon", "/sbin/start-stop-daemon")
-        )
         self._parser.add_argument("-v", "--verbose", action="store_true")
 
         # commands
@@ -65,7 +64,6 @@ class PyobsDaemonCLI(CLI):
             str(os.path.join(self._config["path"], self._config["log_path"])),
             log_level=self._config["log_level"],
             chuid=self._config["chuid"],
-            start_stop_daemon=self._config["start_stop_daemon"],
             verbose=self._config["verbose"],
         )
 
@@ -91,7 +89,6 @@ class PyobsDaemon:
         log_path: str,
         log_level: str = "info",
         chuid: str | None = None,
-        start_stop_daemon: str = "start-stop-daemon",
         verbose: bool = False,
         **kwargs: Any,
     ):
@@ -99,200 +96,248 @@ class PyobsDaemon:
         self._run_path = run_path
         self._log_path = log_path
         self._log_level = log_level
-        self._chuid = chuid
-        self._start_stop_daemon = start_stop_daemon
         self._verbose = verbose
 
+        # parse optional user/group from chuid (format: "user:group" or "user")
+        self._user: str | None = None
+        self._group: str | None = None
+        if chuid:
+            parts = chuid.split(":", 1)
+            self._user = parts[0] or None
+            self._group = parts[1] if len(parts) > 1 else None
+
         # find pyobs executable
-        filenames = [
+        candidates = [
             os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "pyobs"),
             "/usr/bin/pyobs",
             "/usr/local/bin/pyobs",
         ]
-        for filename in filenames:
-            if os.path.exists(filename):
-                self._pyobs_exec = filename
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                self._pyobs_exec = candidate
                 break
         else:
             self._error("Could not find pyobs executable.")
 
-        # get configs and running
-        self._configs = self._get_configs()
-        self._running = self._get_running()
+    # ── helpers ───────────────────────────────────────────────────────────────
 
     def _error(self, message: str) -> None:
         print(message)
         sys.exit(1)
 
-    def _get_configs(self) -> list[str]:
-        # get configuration files, ignore those ending on .shared.yaml
-        tmp = sorted(glob.glob(os.path.join(self._config_path, "*.yaml")))
-        return list(filter(lambda t: not t.endswith(".shared.yaml"), tmp))
+    @staticmethod
+    def _module(path: str) -> str:
+        """Return the bare module name from a config or PID file path."""
+        return os.path.splitext(os.path.basename(path))[0]
 
-    def _get_running(self) -> list[str]:
-        # get PID files
-        pid_files = sorted(glob.glob(os.path.join(self._run_path, "*.pid")))
+    def _config_file(self, module: str) -> str:
+        return os.path.join(self._config_path, module + ".yaml")
 
-        # loop files
-        running = []
-        for pid_file in pid_files:
-            # get pid
-            pid = self._pid(self._module(pid_file))
-            if pid is None:
-                print("No PID file found.")
-                continue
+    def _pid_file(self, module: str) -> str:
+        return os.path.join(self._run_path, module + ".pid")
 
-            # check for running
-            try:
-                os.kill(pid, 0)
-            except OSError:
-                print(f"Removing PID file {os.path.basename(pid_file)} without process...")
-                os.remove(pid_file)
-            else:
-                running.append(pid_file)
+    def _log_file(self, module: str) -> str:
+        return os.path.join(self._log_path, module + ".log")
 
-        # return running processes
-        return running
+    def _list_configs(self) -> list[str]:
+        """Return sorted module names from *.yaml files, excluding *.shared.yaml."""
+        paths = sorted(glob.glob(os.path.join(self._config_path, "*.yaml")))
+        return [self._module(p) for p in paths if not p.endswith(".shared.yaml")]
+
+    def _read_pid(self, module: str) -> int | None:
+        """Read and return the PID from the module's PID file, or None."""
+        pid_file = self._pid_file(module)
+        if not os.path.exists(pid_file):
+            return None
+        try:
+            with open(pid_file) as f:
+                return int(f.read().strip())
+        except (ValueError, OSError):
+            return None
+
+    def _is_alive(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+    def _running_pid(self, module: str) -> int | None:
+        """Return the live PID for a module, or None. Cleans up stale PID files."""
+        pid = self._read_pid(module)
+        if pid is None:
+            return None
+        if self._is_alive(pid):
+            return pid
+        # stale PID file — remove it
+        try:
+            os.remove(self._pid_file(module))
+        except OSError:
+            pass
+        return None
+
+    def _process_info(self, pid: int) -> dict[str, Any]:
+        """Return uptime (seconds), cpu_percent, and rss_mb for a running PID."""
+        try:
+            proc = psutil.Process(pid)
+            uptime = time.time() - proc.create_time()
+            cpu = proc.cpu_percent(interval=0.1)
+            rss_mb = proc.memory_info().rss / 1024 / 1024
+            return {"uptime": uptime, "cpu": cpu, "rss_mb": rss_mb}
+        except psutil.NoSuchProcess:
+            return {"uptime": 0.0, "cpu": 0.0, "rss_mb": 0.0}
+
+    @staticmethod
+    def _fmt_uptime(seconds: float) -> str:
+        seconds = int(seconds)
+        d, rem = divmod(seconds, 86400)
+        h, rem = divmod(rem, 3600)
+        m, s = divmod(rem, 60)
+        if d:
+            return f"{d}d {h:02d}:{m:02d}:{s:02d}"
+        return f"{h:02d}:{m:02d}:{s:02d}"
+
+    # ── public commands ───────────────────────────────────────────────────────
 
     def start(self, modules: list[str] | None = None) -> None:
-        # get list of running processes
-        running = [self._module(r) for r in self._running]
-        configs = [self._module(r) for r in self._configs]
+        configs = self._list_configs()
 
-        # if no modules are given, start all
-        if modules is None or len(modules) == 0:
-            # ignore all configs that start with an underscore, those need to be started explicitly
-            modules = [self._module(c) for c in configs if not os.path.basename(c).startswith("_")]
+        # if no modules given, start all non-underscore configs
+        if not modules:
+            modules = [m for m in configs if not m.startswith("_")]
 
-        # loop configs
         for module in sorted(modules):
-            # exists?
             if module not in configs:
-                print(f"module {module} does not exists.")
+                print(f"Module {module!r} does not exist.")
                 sys.exit(1)
-
-            # start it?
-            if module in running:
+            if self._running_pid(module) is not None:
                 print(f"{module} already running.")
             else:
                 print(f"Starting {module}...")
                 self._start_service(module)
 
     def stop(self, modules: list[str] | None = None) -> None:
-        # if no modules are given, stop all
-        if modules is None or len(modules) == 0:
-            modules = [self._module(r) for r in self._running]
+        # if no modules given, stop all that have a live PID
+        if not modules:
+            modules = [m for m in self._list_configs() if self._running_pid(m) is not None]
 
-        # loop running and stop them
         for module in modules:
             print(f"Stopping {module}...")
             self._stop_service(module)
 
     def restart(self, modules: list[str] | None = None) -> None:
-        # stop all modules
         self.stop(modules=modules)
-
-        # sleep a little and get running
         time.sleep(1)
-        self._running = self._get_running()
-
-        # start all modules
         self.start(modules=modules)
 
     def status(self, print_json: bool = False) -> None:
-        # get all configs and running
-        configs = [self._module(r) for r in self._configs]
-        running = [self._module(r) for r in self._running]
+        configs = self._list_configs()
+        # also include any orphaned PID files not backed by a config
+        pid_modules = [self._module(p) for p in glob.glob(os.path.join(self._run_path, "*.pid"))]
+        modules = sorted(set(configs) | set(pid_modules))
 
-        # if no modules are given, get all
-        modules = sorted(list(set(configs + running)))
-
-        # json or print them
         if print_json:
-            print(json.dumps({m: m in running for m in modules}))
+            result: dict[str, Any] = {}
+            for module in modules:
+                pid = self._running_pid(module)
+                if pid is not None:
+                    info = self._process_info(pid)
+                    result[module] = {"running": True, "pid": pid, **info}
+                else:
+                    result[module] = {"running": False}
+            print(json.dumps(result))
         else:
-            print("cfg run module")
-            for p in modules:
-                print(("[X]" if p in configs else "[ ]") + " " + ("[X]" if p in running else "[ ]") + " " + p)
+            # header
+            print(f"{'module':<30}  {'status':<8}  {'uptime':>12}  {'cpu':>6}  {'rss':>8}")
+            print("-" * 72)
+            for module in modules:
+                pid = self._running_pid(module)
+                if pid is not None:
+                    info = self._process_info(pid)
+                    print(
+                        f"{module:<30}  {'running':<8}  "
+                        f"{self._fmt_uptime(info['uptime']):>12}  "
+                        f"{info['cpu']:>5.1f}%  "
+                        f"{info['rss_mb']:>6.1f} MB"
+                    )
+                else:
+                    print(f"{module:<30}  {'stopped':<8}")
 
     def list(self) -> None:
-        configs = [self._module(r) for r in self._configs]
-        print("\n".join(configs))
+        print("\n".join(self._list_configs()))
+
+    # ── process management ────────────────────────────────────────────────────
 
     def _start_service(self, module: str) -> None:
-        # get PID file
-        pid_file = self._pid_file(module)
+        os.makedirs(self._run_path, exist_ok=True)
+        os.makedirs(self._log_path, exist_ok=True)
 
-        # define command
-        cmd = []
-        cmd.extend([self._start_stop_daemon, "--start", "--quiet", "--pidfile", pid_file])
+        cmd = [
+            self._pyobs_exec,
+            "--pid-file",
+            self._pid_file(module),
+            "--log-file",
+            self._log_file(module),
+            "--log-level",
+            self._log_level,
+            self._config_file(module),
+        ]
 
-        # change user?
-        if self._chuid:
-            cmd.extend(["--chuid", self._chuid])
+        if self._verbose:
+            print(f"[DEBUG] Executing: {' '.join(cmd)}")
 
-        # call to pyobs
-        cmd.extend(
-            [
-                "--exec",
-                self._pyobs_exec,
-                "--",
-                "--pid-file",
-                pid_file,
-                "--log-file",
-                self._log_file(module),
-                "--log-level",
-                self._log_level,
-                self._config_file(module),
-            ]
+        kwargs: dict[str, Any] = dict(
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,  # detach from pyobsd's process group
         )
+        if self._user:
+            kwargs["user"] = self._user
+        if self._group:
+            kwargs["group"] = self._group
 
-        if self._verbose:
-            print(f"[DEBUG] Executing command: {' '.join(cmd)}.")
+        subprocess.Popen(cmd, **kwargs)
 
-        # execute
-        res = subprocess.run(cmd, capture_output=True)
+        # pyobs daemonizes itself and writes the PID file asynchronously — wait for it
+        for _ in range(15):
+            pid = self._read_pid(module)
+            if pid and self._is_alive(pid):
+                if self._verbose:
+                    print(f"[DEBUG] {module} running with PID {pid}")
+                return
+            time.sleep(0.2)
 
-        if self._verbose:
-            print(f"[DEBUG] stdout: {res.stdout.decode('utf-8')}")
-            print(f"[DEBUG] stderr: {res.stderr.decode('utf-8')}")
+        print(f"Warning: {module} launched but PID not confirmed — check logs.")
 
     def _stop_service(self, module: str) -> None:
-        # get module name and PID
-        pid_file = self._pid_file(module)
+        pid = self._running_pid(module)
+        if pid is None:
+            print(f"{module} is not running.")
+            return
 
-        # stop module
-        cmd = [self._start_stop_daemon, "--stop", "--quiet", "--oknodo", "--pidfile", pid_file]
-        if self._chuid:
-            cmd.extend(["--user", self._chuid[: self._chuid.find(":")]])
-        subprocess.call(cmd)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            return
 
-    @staticmethod
-    def _module(config_file: str) -> str:
-        # get basename without extension
-        return os.path.splitext(os.path.basename(config_file))[0]
+        # wait up to 5 s for graceful shutdown, then SIGKILL
+        for _ in range(50):
+            if not self._is_alive(pid):
+                break
+            time.sleep(0.1)
+        else:
+            if self._verbose:
+                print(f"[DEBUG] {module} did not stop gracefully, sending SIGKILL")
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
 
-    def _config_file(self, module: str) -> str:
-        # get pid file
-        return os.path.join(self._config_path, module + ".yaml")
-
-    def _pid_file(self, module: str) -> str:
-        # get pid file
-        return os.path.join(self._run_path, module + ".pid")
-
-    def _log_file(self, module: str) -> str:
-        # get pid file
-        return os.path.join(self._log_path, module + ".log")
-
-    def _pid(self, module: str) -> int | None:
-        # get pid file
-        pid_file = self._pid_file(module)
-        if not os.path.exists(pid_file):
-            return None
-
-        # get pid
-        with open(pid_file) as f:
-            return int(f.read())
+        # clean up PID file
+        try:
+            os.remove(self._pid_file(module))
+        except OSError:
+            pass
 
 
 def main() -> None:

@@ -287,8 +287,8 @@ class PyobsDaemon:
             print(f"[DEBUG] Executing: {' '.join(cmd)}")
 
         kwargs: dict[str, Any] = dict(
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             start_new_session=True,  # detach from pyobsd's process group
         )
         if self._user:
@@ -296,7 +296,7 @@ class PyobsDaemon:
         if self._group:
             kwargs["group"] = self._group
 
-        subprocess.Popen(cmd, **kwargs)
+        proc = subprocess.Popen(cmd, **kwargs)
 
         # pyobs daemonizes itself and writes the PID file asynchronously — wait for it
         for _ in range(15):
@@ -307,7 +307,13 @@ class PyobsDaemon:
                 return
             time.sleep(0.2)
 
-        print(f"Warning: {module} launched but PID not confirmed — check logs.")
+        # launcher exited without confirming — show whatever it printed
+        stdout, stderr = proc.communicate(timeout=2)
+        print(f"Warning: {module} launched but PID not confirmed.")
+        if stdout:
+            print(f"  stdout: {stdout.decode(errors='replace').strip()}")
+        if stderr:
+            print(f"  stderr: {stderr.decode(errors='replace').strip()}")
 
     def _stop_service(self, module: str) -> None:
         pid = self._running_pid(module)

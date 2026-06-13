@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import time
+from asyncio import Lock
 from collections import namedtuple
-from threading import Lock
 from typing import Any
 
 

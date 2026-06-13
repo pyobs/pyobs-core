@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import random
-import threading
 from typing import TYPE_CHECKING, Any
 
 import astropy.units as u
@@ -79,7 +78,7 @@ class SimTelescope(Object):
         self._dest_coords = None
 
         # locks
-        self._pos_lock = threading.RLock()
+        self._pos_lock = asyncio.Lock()
 
         # threads
         self.add_background_task(self._move_task)

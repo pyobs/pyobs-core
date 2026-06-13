@@ -19,6 +19,10 @@ from pyobs.utils.config import pre_process_yaml
 log = logging.getLogger(__name__)
 
 
+# turn RuntimeWarnings into errors
+warnings.filterwarnings("error", category=RuntimeWarning)
+
+
 class InfluxLogConfig(TypedDict):
     url: str
     token: str
@@ -83,8 +87,8 @@ class Application:
         logging.captureWarnings(True)
         warnings.simplefilter("always", DeprecationWarning)
 
-        # disable tornado logger
-        logging.getLogger("tornado.access").disabled = True
+        # change some loggers
+        logging.getLogger("slixmpp.util.sasl.client").setLevel(logging.WARNING)
 
         # set pyobs logger
         global log

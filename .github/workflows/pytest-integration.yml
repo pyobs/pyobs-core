@@ -1,10 +1,13 @@
-name: PyTest
-on: push
+name: Integration Tests
+
+on:
+  release:
+    types: [published]
 
 jobs:
-  test:
+  integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository code
@@ -19,7 +22,5 @@ jobs:
       - name: Install packages
         run: uv sync --all-extras --dev
 
-      - name: Run tests
-        run: uv run pytest tests
-        env:
-          CI: true
+      - name: Run integration tests
+        run: uv run pytest -m integration

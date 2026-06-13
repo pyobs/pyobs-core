@@ -2,6 +2,7 @@ import asyncio
 import fnmatch
 import logging
 import os
+import time
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -62,7 +63,7 @@ class ImageWatcher(Module):
         # variables
         self._watchpath = watchpath
         self._notifier: Any | None = None
-        self._queue = asyncio.Queue[tuple[str, asyncio.Future[None]]]()
+        self._queue = asyncio.Queue[tuple[str, float]]()
         self._poll = poll
         self._poll_interval = poll_interval
         self._wait_time = wait_time
@@ -91,7 +92,7 @@ class ImageWatcher(Module):
                 filename = str(event.path).replace(local, self._watchpath)
 
                 # add file
-                self.add_file(filename)
+                await self.add_file(filename)
 
     async def _watch_poll(self) -> None:
         # init list
@@ -107,7 +108,7 @@ class ImageWatcher(Module):
             for f in new_files:
                 if f not in files:
                     print(str(path / f))
-                    self.add_file(str(path / f))
+                    await self.add_file(str(path / f))
 
             # store new list
             files = set(new_files)
@@ -118,7 +119,7 @@ class ImageWatcher(Module):
 
         # add all files from directory to queue
         for filename in await self.vfs.listdir(self._watchpath):
-            self.add_file(os.path.join(self._watchpath, filename))
+            await self.add_file(os.path.join(self._watchpath, filename))
 
     async def close(self) -> None:
         """Close image watcher."""
@@ -129,7 +130,7 @@ class ImageWatcher(Module):
             log.info("Stop watching directory...")
             self._notifier.stop()
 
-    def add_file(self, filename: str) -> None:
+    async def add_file(self, filename: str) -> None:
         """Add a file to the file queue.
 
         Args:
@@ -142,18 +143,18 @@ class ImageWatcher(Module):
 
         # log and add file
         log.info("Adding new file %s...", filename)
-        self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
+        self._queue.put_nowait((filename, time.time() + self._wait_time))
 
     async def _worker(self) -> None:
         """Worker thread."""
 
         # run forever
         while True:
-            # get next filename
-            filename, future = await self._queue.get()
-
-            # waiting for future, which is the wait time for new files
-            await future
+            # get next filename and wait some time
+            filename, ready_at = await self._queue.get()
+            wait = ready_at - time.time()
+            if wait > 0:
+                await asyncio.sleep(wait)
             log.info("Working on file %s...", filename)
 
             # better safe than sorry
@@ -204,7 +205,7 @@ class ImageWatcher(Module):
                 # no success?
                 if not success:
                     # re-queue file and skip file for now
-                    self._queue.put_nowait((filename, asyncio.create_task(asyncio.sleep(self._wait_time))))
+                    self._queue.put_nowait((filename, time.time() + self._wait_time))
                     continue
 
                 # close and delete files

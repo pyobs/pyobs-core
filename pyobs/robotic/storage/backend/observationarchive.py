@@ -63,10 +63,14 @@ class BackendObservationArchive(ObservationArchive):
                 last_update = await self.last_update_time()
                 if self._last_update is None or self._last_update < last_update:
                     self._observations = await self._get_schedule()
-                    if len(self._observations) == 0:
+                    sorted_obs = sorted(
+                        filter(lambda o: o.state == ObservationState.PENDING, self._observations),
+                        key=lambda o: o.start,
+                    )
+                    if len(sorted_obs) == 0:
                         log.info("Downloaded new schedule.")
                     else:
-                        obs = self._observations[0]
+                        obs = sorted_obs[0]
                         log.info("Downloaded new schedule. Next observation is task %s at %s.", obs.task, obs.start)
                     self._last_update = last_update
             except Exception as e:
@@ -88,7 +92,9 @@ class BackendObservationArchive(ObservationArchive):
             Timeout: If request timed out.
             ValueError: If something goes wrong.
         """
-        return await self.get_observations(end_after=Time.now())
+        return await self.get_observations(
+            end_after=Time.now(), state=[ObservationState.PENDING, ObservationState.IN_PROGRESS]
+        )
 
     async def add_observations(self, tasks: ObservationList) -> None:
         """Add the list of scheduled tasks to the schedule.
@@ -180,7 +186,7 @@ class BackendObservationArchive(ObservationArchive):
     async def get_observations(
         self,
         task: Task | None = None,
-        state: ObservationState | None = None,
+        state: ObservationState | list[ObservationState] | None = None,
         start_before: Time | None = None,
         start_after: Time | None = None,
         end_before: Time | None = None,
@@ -205,7 +211,10 @@ class BackendObservationArchive(ObservationArchive):
         if task is not None:
             params["task"] = task.id
         if state is not None:
-            params["state"] = state
+            if isinstance(state, str):
+                params["state"] = state
+            else:
+                params["state"] = ",".join(state)
         if start_before is not None:
             params["start_before"] = start_before.isot
         if start_after is not None:

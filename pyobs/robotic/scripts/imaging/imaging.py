@@ -19,21 +19,18 @@ from pyobs.interfaces import (
     ITelescope,
     IWindow,
 )
-from pyobs.robotic.scheduler.targets import SiderealTarget
+from pyobs.robotic.scheduler.targets import SiderealTarget, Target
 from pyobs.robotic.scripts import Script
-from pyobs.utils.enums import ImageType, MotionStatus
-from pyobs.utils.logger import DuplicateFilter
+from pyobs.robotic.utils.exptime import ExposureTimeProvider
+from pyobs.utils.enums import ImageType
 from pyobs.utils.parallel import Future
+from pyobs.utils.time import Time
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
 
 
 log = logging.getLogger(__name__)
-
-# logger for logging name of task
-cannot_run_logger = logging.getLogger(__name__ + ":cannot_run")
-cannot_run_logger.addFilter(DuplicateFilter())
 
 
 class AcquisitionConfig(BaseModel):
@@ -47,12 +44,18 @@ class GuidingConfig(BaseModel):
 
 
 class InstrumentConfig(BaseModel):
-    exposure_time: float
+    exposure_time: float | ExposureTimeProvider
     count: int = 1
     image_type: ImageType = ImageType.OBJECT
     binning: tuple[int, int] = (1, 1)
     window: tuple[int, int, int, int] | None = None
     optical_filter: str | None = None
+
+    async def get_exposure_time(self) -> float:
+        """Return the exposure time, computing it dynamically if needed."""
+        if isinstance(self.exposure_time, ExposureTimeProvider):
+            return await self.exposure_time()
+        return self.exposure_time
 
 
 class Configuration(BaseModel):
@@ -89,17 +92,15 @@ class ImagingScript(Script):
         self._acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
 
     def _image_types(self) -> list[ImageType]:
-        return list(set([instr.image_type for instr in self.configuration.instrument_configs]))
+        return list({instr.image_type for instr in self.configuration.instrument_configs})
 
     def _optical_filters(self) -> list[str]:
         return list(
-            set(
-                [
-                    instr.optical_filter
-                    for instr in self.configuration.instrument_configs
-                    if instr.optical_filter is not None
-                ]
-            )
+            {
+                instr.optical_filter
+                for instr in self.configuration.instrument_configs
+                if instr.optical_filter is not None
+            }
         )
 
     async def can_run(self, data: TaskData | None) -> bool:
@@ -150,6 +151,25 @@ class ImagingScript(Script):
         if self._camera is None:
             await self._get_proxies()
 
+        # start tracking target
+        track, target = await self._track_target(data)
+
+        # acquisition?
+        await self._perform_acquisition(track)
+
+        # guiding?
+        await self._start_guiding(track)
+
+        # total (exposure) time done in this config
+        self.exptime_done = 0.0
+
+        # repeat configuration
+        await self._run_configurations(target, track)
+
+        # stop auto guiding and telescope
+        await self._stop_all()
+
+    async def _track_target(self, data: TaskData | None) -> tuple[Future | asyncio.Task[Any], Target | None]:
         # got a target?
         target = data.task.target if data is not None and data.task is not None else None
         track: Future | asyncio.Task[Any] = Future(empty=True)
@@ -164,8 +184,9 @@ class ImagingScript(Script):
                     raise exc.MotionError("Only sidereal targets allowed.")
             else:
                 raise exc.MotionError("Telescope can't move to RA/Dec.")
+        return track, target
 
-        # acquisition?
+    async def _perform_acquisition(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.acquisition_config.enabled:
             if self._acquisition is None:
                 raise ValueError("No acquisition given.")
@@ -183,7 +204,7 @@ class ImagingScript(Script):
                 else:
                     raise
 
-        # guiding?
+    async def _start_guiding(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.guiding_config.enabled:
             if self._autoguider is None:
                 raise ValueError("No autoguider given.")
@@ -195,67 +216,81 @@ class ImagingScript(Script):
             log.info("Starting auto-guiding...")
             await self._autoguider.start()
 
-        # total (exposure) time done in this config
-        self.exptime_done = 0.0
-
-        # repeat configuration
+    async def _run_configurations(self, target: Target | None, track: Future | asyncio.Task[Any]) -> None:
         for repeat in range(self.configuration.repeats):
-            log.info("Starting configuration repeat %s/%s...", repeat + 1, self.configuration.repeats)
+            await self._run_configuration(repeat, target, track)
 
-            # loop instrument configs
-            for instrument_config in self.configuration.instrument_configs:
-                if isinstance(self._camera, IBinning):
-                    log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
-                    await self._camera.set_binning(*instrument_config.binning)
+    async def _run_configuration(self, repeat: int, target: Target | None, track: Future | asyncio.Task[Any]) -> None:
+        log.info("Starting configuration repeat %s/%s...", repeat + 1, self.configuration.repeats)
 
-                if isinstance(self._camera, IWindow):
-                    wnd = instrument_config.window
-                    if wnd is None:
-                        wnd = await self._camera.get_full_frame()
-                    log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
-                    await self._camera.set_window(*wnd)
+        # loop instrument configs
+        for instrument_config in self.configuration.instrument_configs:
+            await self._setup_instrument_config(instrument_config, target, track)
 
-                if isinstance(self._camera, IExposureTime):
-                    log.info("Setting exposure time to %ss...", instrument_config.exposure_time)
-                    await self._camera.set_exposure_time(instrument_config.exposure_time)
+            # do repeats
+            for repeat2 in range(instrument_config.count):
+                await self._expose_image(instrument_config, repeat2)
 
-                # set image type
-                if isinstance(self._camera, IImageType):
-                    log.info("Setting image type to %s...", instrument_config.image_type)
-                    await self._camera.set_image_type(instrument_config.image_type)
+            # reset object name
+            self._object_name = None
 
-                set_filter: Future | asyncio.Task[Any] = Future(empty=True)
-                if instrument_config.optical_filter is not None and self._filters is not None:
-                    log.info("Setting filter to %s...", instrument_config.optical_filter)
-                    set_filter = asyncio.create_task(self._filters.set_filter(instrument_config.optical_filter))
+    async def _setup_instrument_config(
+        self, instrument_config: InstrumentConfig, target: Target | None, track: Future | asyncio.Task[Any]
+    ) -> None:
+        if isinstance(self._camera, IBinning):
+            log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
+            await self._camera.set_binning(*instrument_config.binning)
 
-                # wait for tracking and filter
-                await Future.wait_all([track, set_filter])
+        if isinstance(self._camera, IWindow):
+            wnd = instrument_config.window
+            if wnd is None:
+                wnd = await self._camera.get_full_frame()
+            log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
+            await self._camera.set_window(*wnd)
 
-                # set object name?
-                if instrument_config.image_type == ImageType.OBJECT and target is not None:
-                    self._object_name = target.name
+        if isinstance(self._camera, IExposureTime):
+            exposure_time = await instrument_config.get_exposure_time()
+            log.info("Setting exposure time to %ss...", exposure_time)
+            await self._camera.set_exposure_time(exposure_time)
 
-                # do repeats
-                for repeat2 in range(instrument_config.count):
-                    log.info("Exposing image %s/%s...", repeat2 + 1, instrument_config.count)
+        # set image type
+        if isinstance(self._camera, IImageType):
+            log.info("Setting image type to %s...", instrument_config.image_type)
+            await self._camera.set_image_type(instrument_config.image_type)
 
-                    # grab image
-                    await cast(ICamera, self._camera).grab_data()
-                    self.exptime_done += instrument_config.exposure_time
+        set_filter: Future | asyncio.Task[Any] = Future(empty=True)
+        if instrument_config.optical_filter is not None and self._filters is not None:
+            log.info("Setting filter to %s...", instrument_config.optical_filter)
+            set_filter = asyncio.create_task(self._filters.set_filter(instrument_config.optical_filter))
 
-                # reset object name
-                self._object_name = None
+        # wait for tracking and filter
+        await Future.wait_all([track, set_filter])
 
-        # stop auto guiding
+        # set object name?
+        if instrument_config.image_type == ImageType.OBJECT and target is not None:
+            self._object_name = target.name
+
+    async def _expose_image(self, instrument_config: InstrumentConfig, repeat2: int) -> None:
+        log.info("Exposing image %s/%s...", repeat2 + 1, instrument_config.count)
+
+        # grab image
+        await cast(ICamera, self._camera).grab_data()
+        self.exptime_done += await instrument_config.get_exposure_time()
+
+    async def _stop_all(self) -> None:
         if self._autoguider is not None and self.configuration.guiding_config.enabled:
             log.info("Stopping auto-guiding...")
-            await self._autoguider.stop()
+            try:
+                await self._autoguider.stop()
+            except Exception:
+                log.exception("Could not stop auto-guider.")
 
-        # finally, stop telescope
-        if self._telescope is not None and await self._telescope.get_motion_status() != MotionStatus.IDLE:
+        if self._telescope is not None:
             log.info("Stopping telescope...")
-            await self._telescope.stop_motion()
+            try:
+                await self._telescope.stop_motion()
+            except Exception:
+                log.exception("Could not stop telescope.")
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.
@@ -278,11 +313,15 @@ class ImagingScript(Script):
         # return
         return hdr
 
-    def estimate_duration(self) -> float:
-        """Estimate duration of this script in seconds."""
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate the duration of this script in seconds."""
         # TODO: get some good estimates for slewing/filter/acquisition etc
         duration = (
-            sum(ic.exposure_time * ic.count for ic in self.configuration.instrument_configs)
+            sum(
+                (ic.exposure_time if isinstance(ic.exposure_time, float) else ic.exposure_time.default_exposure_time)
+                * ic.count
+                for ic in self.configuration.instrument_configs
+            )
             * self.configuration.repeats
             + 60.0
         )

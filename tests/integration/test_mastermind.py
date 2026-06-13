@@ -97,6 +97,7 @@ def make_mastermind(obs_archive, runner=None) -> Mastermind:
     mm._running = True
     mm._task = None
     mm._task_archive = None
+    mm._last_cant_run_reason = {}
     mm._observation_archive = obs_archive
     mm._task_runner = runner
     return mm
@@ -117,8 +118,15 @@ async def run_until_state(
     obs_archive: MemoryObservationArchive,
     target_state: ObservationState,
     timeout: float = 10.0,
+    now: Time | None = None,
 ) -> bool:
-    """Run mastermind _run_thread until the observation reaches target_state."""
+    """Run mastermind _run_thread until the observation reaches target_state.
+
+    Args:
+        now: Time to patch Time.now() with. Defaults to NIGHT.
+    """
+    if now is None:
+        now = NIGHT
     reached = asyncio.Event()
     original_update = obs_archive.update_observation
 
@@ -129,7 +137,7 @@ async def run_until_state(
 
     obs_archive.update_observation = tracking_update
 
-    with patch("pyobs.utils.time.Time.now", return_value=NIGHT):
+    with patch("pyobs.utils.time.Time.now", return_value=now):
         task_handle = asyncio.create_task(mm._run_thread())
         try:
             await asyncio.wait_for(reached.wait(), timeout=timeout)

@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from unittest.mock import AsyncMock
+
 import pytest
 import yaml
-from unittest.mock import AsyncMock
 
 from pyobs.robotic import Task
 from pyobs.robotic.observation import Observation
@@ -15,7 +17,7 @@ from pyobs.utils.time import Time
 
 
 class _TimedScript(Script):
-    def estimate_duration(self) -> float:
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         return 42.0
 
 
@@ -176,9 +178,10 @@ async def test_fetch_task_restores_resolved_target() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_target_caches_result() -> None:
+    import astropy.units as u
     from astroplan import Observer
     from astropy.coordinates import EarthLocation
-    import astropy.units as u
+
     from pyobs.robotic.scheduler.dataprovider import DataProvider
     from pyobs.robotic.scheduler.targets.dynamictarget import DynamicTarget
     from pyobs.robotic.scheduler.targets.picker.picker import Picker
@@ -209,9 +212,10 @@ async def test_resolve_target_caches_result() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_target_returns_false_when_no_candidate() -> None:
+    import astropy.units as u
     from astroplan import Observer
     from astropy.coordinates import EarthLocation
-    import astropy.units as u
+
     from pyobs.robotic.scheduler.dataprovider import DataProvider
     from pyobs.robotic.scheduler.targets.dynamictarget import DynamicTarget
     from pyobs.robotic.scheduler.targets.picker.picker import Picker

@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import threading
 from typing import Any
 
 import numpy as np
@@ -63,7 +63,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         self._filters = filters
         self._offset = offset
         self._init_offset_to_zero = init_offset_to_zero
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
         self._running = False
         self._broadcast = broadcast
         self._final_image = final_image
@@ -166,7 +166,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # reset
         self._series.reset()
-        self._abort = threading.Event()
+        self._abort = asyncio.Event()
 
         # loop focus values
         log.info("Starting focus series...")

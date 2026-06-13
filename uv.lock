@@ -3271,6 +3271,7 @@ dev = [
     { name = "types-enum34" },
     { name = "types-ipaddress" },
     { name = "types-paramiko" },
+    { name = "types-psutil" },
     { name = "types-pytz" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
@@ -3346,6 +3347,7 @@ dev = [
     { name = "types-enum34", specifier = ">=1.1.8,<2" },
     { name = "types-ipaddress", specifier = ">=1.0.8,<2" },
     { name = "types-paramiko", specifier = ">=3.5.0.20240928,<5" },
+    { name = "types-psutil", specifier = ">=7.2.2.20260518" },
     { name = "types-pytz", specifier = ">=2025.2.0.20250326,<2026" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20250402,<7" },
     { name = "types-requests", specifier = ">=2.32.0.20250328,<3" },
@@ -4567,6 +4569,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/aa/f5/2a556b03ba264508b6bc6a65131500265f210ff3ebf5d76dbe51b53c3979/types_paramiko-4.0.0.20260408.tar.gz", hash = "sha256:978191a2e11064fa4c7f9ada0fccf49159a17beb98b780310dd2c2d2b4106063", size = 29116, upload-time = "2026-04-08T04:35:04.631Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/e2/cf451598a6a8820139d021b2be08a836b9b905d744bcc73b72172e7e10b3/types_paramiko-4.0.0.20260408-py3-none-any.whl", hash = "sha256:350bf53edb4eb88181be68854d598e1cc3a8764fe905d49913025b86e831adbc", size = 38816, upload-time = "2026-04-08T04:35:03.503Z" },
+]
+
+[[package]]
+name = "types-psutil"
+version = "7.2.2.20260518"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/f1/6901857281d4e8d792492e1495eef6f4f01318a3b6a066486d81000a4511/types_psutil-7.2.2.20260518.tar.gz", hash = "sha256:9f825f631463a5b4d26f19f63aebc9ec25f01140d655026f3ad8a67841f9b331", size = 26660, upload-time = "2026-05-18T06:05:09.389Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/eb/f726339668879819599c74c2e1f0cab760912a4159046942bdae2ad37bd6/types_psutil-7.2.2.20260518-py3-none-any.whl", hash = "sha256:6a3d697665754a60d7b5a41d5a2cff12b53f5e0676d77810cd28ba5e14cb4049", size = 32820, upload-time = "2026-05-18T06:05:08.321Z" },
 ]
 
 [[package]]

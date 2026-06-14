@@ -16,6 +16,7 @@ from pyobs.utils.enums import ImageType
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -82,6 +83,12 @@ class DarkBiasScript(Script):
             await camera.grab_data()
         log.info("Finished series of %s with %s.", im_type, self.camera)
         return
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the dark/bias series."""
+        # TODO: get a better estimate for readout overhead
+        readout = 5.0
+        return self.count * (self.exptime + readout)
 
 
 __all__ = ["DarkBiasScript"]

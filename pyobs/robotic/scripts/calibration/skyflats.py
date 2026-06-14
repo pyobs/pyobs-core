@@ -122,5 +122,13 @@ class SkyFlatsScript(Script):
         # finished
         log.info("Finished all scheduled flat-fields.")
 
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the sky flats.
+
+        The actual schedule depends on sky conditions that can only be evaluated at runtime,
+        so this returns the configured timespan as a conservative upper bound.
+        """
+        return self.timespan
+
 
 __all__ = ["SkyFlatsScript"]

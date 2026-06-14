@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,11 @@ class ConditionalRunner(Script):
         """
         script = self.__get_script()
         return script.get_fits_headers(namespaces) if script is not None else {}
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the branch that would be run for the current condition."""
+        script = self.__get_script()
+        return 0.0 if script is None else script.estimate_duration(data, time)
 
 
 __all__ = ["ConditionalRunner"]

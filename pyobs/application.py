@@ -4,7 +4,6 @@ import logging.handlers
 import os
 import platform
 import signal
-import threading
 import warnings
 from io import StringIO
 from typing import Any, TypedDict
@@ -94,9 +93,6 @@ class Application:
         global log
         log = logging.getLogger(__name__)
 
-        # hack threading to set thread names on OS level
-        self._hack_threading()
-
         # load config
         log.info("Loading configuration from %s...", self._config)
         with StringIO(pre_process_yaml(self._config)) as f:
@@ -139,7 +135,7 @@ class Application:
         self._loop.close()
 
     def _signal_handler(self, sig: int) -> None:
-        """React to signals and quit module."""
+        """React to signals and quit the module."""
 
         # stop loop
         # loop = asyncio.get_running_loop()
@@ -183,28 +179,6 @@ class Application:
 
             # finished
             log.info("Finished shutting down.")
-
-    def _hack_threading(self) -> None:
-        """Bad hack to set thread name on OS level."""
-        try:
-            import prctl
-
-            def set_thread_name(name: str) -> None:
-                prctl.set_name(name)
-
-            def _thread_name_hack(this: Any) -> None:
-                set_thread_name(this.name)
-                threading.Thread.__bootstrap_original__(this)  # type: ignore
-
-            threading.Thread.__bootstrap_original__ = threading.Thread._bootstrap  # type: ignore
-            threading.Thread._bootstrap = _thread_name_hack  # type: ignore
-
-        except ImportError:
-            logger = logging.getLogger("pyobs")
-            logger.warning("prctl module is not installed. You will not be able to see thread names")
-
-            def set_thread_name(name: str) -> None:
-                pass
 
 
 class GuiApplication(Application):

@@ -21,8 +21,6 @@ from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 import pytz
-from astroplan import Observer
-from astropy.coordinates import EarthLocation
 from pydantic import BaseModel
 
 from pyobs.background_task import BackgroundTask
@@ -30,6 +28,9 @@ from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
 
 if TYPE_CHECKING:
+    from astroplan import Observer
+    from astropy.coordinates import EarthLocation
+
     from pyobs.vfs import VirtualFileSystem
 
 log = logging.getLogger(__name__)
@@ -300,20 +301,25 @@ class Object(PrivateAttrMixin):
         # location
         if location is None:
             self._location = None
-        elif isinstance(location, EarthLocation):
-            self._location = location
-        elif isinstance(location, str):
-            self._location = EarthLocation.of_site(location)
-        elif isinstance(location, dict):
-            self._location = EarthLocation.from_geodetic(
-                location["longitude"], location["latitude"], location["elevation"]
-            )
         else:
-            raise ValueError("Unknown format for location.")
+            from astropy.coordinates import EarthLocation
+
+            if isinstance(location, EarthLocation):
+                self._location = location
+            elif isinstance(location, str):
+                self._location = EarthLocation.of_site(location)
+            elif isinstance(location, dict):
+                self._location = EarthLocation.from_geodetic(
+                    location["longitude"], location["latitude"], location["elevation"]
+                )
+            else:
+                raise ValueError("Unknown format for location.")
 
         # create observer
         self._observer = observer
         if self._observer is None and self._location is not None and self._timezone is not None:
+            from astroplan import Observer
+
             log.info(
                 "Setting location to longitude=%.4f°, latitude=%.4f°, and elevation=%.2fm.",
                 self._location.lon.degree,

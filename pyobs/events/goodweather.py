@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from pyobs.events.event import Event
-from pyobs.utils.time import Time
+
+if TYPE_CHECKING:
+    from pyobs.utils.time import Time
 
 
 class DataType(TypedDict):
@@ -26,6 +28,8 @@ class GoodWeatherEvent(Event):
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Event:
+        from pyobs.utils.time import Time
+
         # get eta
         eta: Time | None = None
         if "eta" in d and isinstance(d["eta"], str):
@@ -36,6 +40,8 @@ class GoodWeatherEvent(Event):
 
     @property
     def eta(self) -> Time | None:
+        from pyobs.utils.time import Time
+
         return Time(self.data["eta"]) if self.data["eta"] is not None else None
 
 

@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import io
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
-import pandas as pd
 import yaml
-from astropy.io import fits
-
-from pyobs.images import Image
 
 from .file import VFSFile
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from astropy.io import fits
+
+    from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +100,8 @@ class VirtualFileSystem:
         Returns:
             A PrimaryHDU containing the FITS file.
         """
+        from astropy.io import fits
+
         async with self.open_file(filename, "rb") as f:
             data = await f.read()
             return fits.HDUList.fromstring(data)
@@ -123,6 +129,8 @@ class VirtualFileSystem:
         Returns:
             An image object
         """
+        from pyobs.images import Image
+
         async with self.open_file(filename, "rb") as f:
             data = await f.read()
             if isinstance(data, str):
@@ -164,6 +172,7 @@ class VirtualFileSystem:
         Returns:
             DataFrame with content of file.
         """
+        import pandas as pd
 
         try:
             # open file

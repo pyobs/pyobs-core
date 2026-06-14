@@ -56,16 +56,14 @@ The base class for all of these classes is :class:`~pyobs.vfs.VFSFile`.
 
 __title__ = "Virtual File System"
 
-from .vfs import VirtualFileSystem  # noqa: I001
+from importlib import import_module
+from typing import Any
+
 from .file import VFSFile
 from .localfile import LocalFile
-from .httpfile import HttpFile
 from .memfile import MemoryFile
-from .smbfile import SMBFile
-from .sftpfile import SFTPFile
-from .sshfile import SSHFile
 from .tempfile import TempFile
-from .archivefile import ArchiveFile
+from .vfs import VirtualFileSystem  # noqa: I001
 
 __all__ = [
     "VirtualFileSystem",
@@ -79,3 +77,23 @@ __all__ = [
     "TempFile",
     "ArchiveFile",
 ]
+
+# These backends pull in comparatively heavy optional dependencies
+# (paramiko, aiohttp, smbprotocol), so they're imported lazily on first
+# access rather than unconditionally at package-import time.
+_LAZY_SUBMODULES = {
+    "HttpFile": "httpfile",
+    "SMBFile": "smbfile",
+    "SFTPFile": "sftpfile",
+    "SSHFile": "sshfile",
+    "ArchiveFile": "archivefile",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _LAZY_SUBMODULES:
+        module = import_module(f".{_LAZY_SUBMODULES[name]}", __name__)
+        cls = getattr(module, name)
+        globals()[name] = cls
+        return cls
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

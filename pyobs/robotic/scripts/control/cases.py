@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -50,6 +51,11 @@ class CasesRunner(Script):
         """
         script = self.__get_script()
         return script.get_fits_headers(namespaces)
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the script for the current case."""
+        script = self.__get_script()
+        return script.estimate_duration(data, time)
 
 
 __all__ = ["CasesRunner"]

@@ -9,6 +9,7 @@ from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +48,11 @@ class PointingScript(Script):
 
         await self.pointing(telescope)
         log.info("Finished pointing telescope.")
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of slewing to the flat-field pointing."""
+        # TODO: get a better estimate for slewing
+        return 60.0
 
 
 __all__ = ["PointingScript"]

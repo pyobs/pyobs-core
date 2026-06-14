@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
@@ -36,6 +37,12 @@ class ParallelRunner(Script):
             for s in self.scripts:
                 if await s.can_run(data):
                     tg.create_task(_run_script(s, data))
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration as the longest duration of all sub-scripts, since they run in parallel."""
+        if not self.scripts:
+            return 0.0
+        return max(script.estimate_duration(data, time) for script in self.scripts)
 
 
 __all__ = ["ParallelRunner"]

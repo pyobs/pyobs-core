@@ -9,6 +9,7 @@ from pyobs.utils.enums import MotionStatus
 
 if TYPE_CHECKING:
     from pyobs.robotic.task import TaskData
+    from pyobs.utils.time import Time
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +42,11 @@ class SelectorScript(Script):
         """
         selector = await self.comm.proxy(self.selector, IMode)
         await selector.set_mode(self.mode)
+
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the mode change."""
+        # TODO: get a better estimate for mode-change durations
+        return 30.0
 
 
 __all__ = ["SelectorScript"]

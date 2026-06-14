@@ -82,5 +82,10 @@ class AutoFocusScript(Script):
                 await telescope.stop_motion()
             log.info("Done.")
 
+    def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
+        """Estimate duration of the autofocus run."""
+        # TODO: get a better estimate for slewing
+        return self.count * self.exposure_time + 60.0
+
 
 __all__ = ["AutoFocusScript"]

@@ -130,14 +130,24 @@ class PyobsDaemon:
         """Return the bare module name from a config or PID file path."""
         return os.path.splitext(os.path.basename(path))[0]
 
+    @staticmethod
+    def _strip_disabled(module: str) -> str:
+        """Strip a leading underscore, which marks a module as disabled.
+
+        PID and log files are named after the "active" form of a module, so that
+        toggling a module between enabled/disabled (by adding/removing the leading
+        underscore on its config file) does not change its PID/log file names.
+        """
+        return module[1:] if module.startswith("_") else module
+
     def _config_file(self, module: str) -> str:
         return os.path.join(self._config_path, module + ".yaml")
 
     def _pid_file(self, module: str) -> str:
-        return os.path.join(self._run_path, module + ".pid")
+        return os.path.join(self._run_path, self._strip_disabled(module) + ".pid")
 
     def _log_file(self, module: str) -> str:
-        return os.path.join(self._log_path, module + ".log")
+        return os.path.join(self._log_path, self._strip_disabled(module) + ".log")
 
     def _list_configs(self) -> list[str]:
         """Return sorted module names from *.yaml files, excluding *.shared.yaml."""
@@ -232,9 +242,14 @@ class PyobsDaemon:
 
     def status(self, print_json: bool = False) -> None:
         configs = self._list_configs()
+        # map "active" (no leading underscore) name -> config name, so that
+        # PID files (always named without underscore) can be matched back to
+        # their (possibly disabled) config
+        active_to_config = {self._strip_disabled(m): m for m in configs}
+
         # also include any orphaned PID files not backed by a config
-        pid_modules = [self._module(p) for p in glob.glob(os.path.join(self._run_path, "*.pid"))]
-        modules = sorted(set(configs) | set(pid_modules))
+        pid_stems = [self._module(p) for p in glob.glob(os.path.join(self._run_path, "*.pid"))]
+        modules = sorted(set(configs) | {active_to_config.get(s, s) for s in pid_stems})
 
         if print_json:
             result: dict[str, Any] = {}

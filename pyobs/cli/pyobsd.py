@@ -4,6 +4,7 @@ import glob
 import json
 import logging
 import os
+import pwd
 import signal
 import subprocess
 import sys
@@ -308,6 +309,19 @@ class PyobsDaemon:
         )
         if self._user:
             kwargs["user"] = self._user
+            # subprocess.Popen(user=...) switches uid but does NOT touch the
+            # environment, so HOME would stay /root — breaking anything that
+            # writes to $HOME (astropy cache, matplotlib config, etc.).
+            # Mimic `su`/`sudo -u` and set HOME/USER/LOGNAME for the target user.
+            try:
+                pw = pwd.getpwnam(self._user)
+                env = os.environ.copy()
+                env["HOME"] = pw.pw_dir
+                env["USER"] = self._user
+                env["LOGNAME"] = self._user
+                kwargs["env"] = env
+            except KeyError:
+                self._error(f"User {self._user!r} not found.")
         if self._group:
             kwargs["group"] = self._group
 

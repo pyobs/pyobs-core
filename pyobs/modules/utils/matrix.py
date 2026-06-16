@@ -36,13 +36,13 @@ class Matrix(Module):
         """
         Module.__init__(self, **kwargs)
 
-        from nio import AsyncClient  # type: ignore
-
-        self.client = AsyncClient(server, user_id)
+        self._server = server
+        self._user_id = user_id
         self._password = password
         self._room_id = room_id
         self._name = name
         self._log_level = log_level
+        self.client: Any = None
         self._sync: Task[Any] | None = None
 
         # get log levels
@@ -55,9 +55,12 @@ class Matrix(Module):
 
     async def open(self) -> None:
         """Open module."""
-        from nio import LoginResponse
+        from nio import AsyncClient, LoginResponse  # type: ignore
 
         await Module.open(self)
+
+        # create client here, inside the running event loop
+        self.client = AsyncClient(self._server, self._user_id)
 
         # log in
         resp = await self.client.login(self._password)
@@ -92,8 +95,9 @@ class Matrix(Module):
         await Module.close(self)
 
         # stop matrix client
-        self.client.stop_sync_forever()
-        await self.client.close()
+        if self.client is not None:
+            self.client.stop_sync_forever()
+            await self.client.close()
 
     async def _process_log_entry(self, entry: Event, sender: str) -> bool:
         """Process a new log entry.
@@ -111,6 +115,10 @@ class Matrix(Module):
 
         # if log level of message is too small, ignore it
         if self._log_levels[entry.level] < self._log_levels[self._log_level]:
+            return False
+
+        # client not yet connected
+        if self.client is None:
             return False
 
         # build log message

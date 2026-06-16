@@ -270,12 +270,14 @@ class OnDemandScheduler(TaskScheduler):
         data: DataProvider,
         step: float = 300,
     ) -> tuple[Task | None, Time | None, float | None]:
+        # exclude the already-selected task so it can't be picked as "better"
+        other_tasks = [t for t in tasks if t is not task]
         t = start + TimeDelta(step * u.second)
         while t < start + TimeDelta(task.estimate_duration(time=start) * u.second):
-            merits = await self.evaluate_constraints_and_merits(tasks, projects, t, end, data)
+            merits = await self.evaluate_constraints_and_merits(other_tasks, projects, t, end, data)
             for i, m in enumerate(merits):
                 if m > merit:
-                    return tasks[i], t, m
+                    return other_tasks[i], t, m
             t += TimeDelta(step * u.second)
         return None, None, None
 

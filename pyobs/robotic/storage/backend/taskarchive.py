@@ -36,8 +36,8 @@ class BackendTaskArchive(TaskArchive):
 
     async def open(self) -> None:
         """Opens the backend task archive."""
-        await TaskArchive.open(self)
         self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+        await TaskArchive.open(self)
 
     async def close(self) -> None:
         """Closes the backend observation archive."""

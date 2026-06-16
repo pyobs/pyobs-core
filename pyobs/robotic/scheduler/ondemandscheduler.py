@@ -45,12 +45,9 @@ class OnDemandScheduler(TaskScheduler):
         Object.__init__(self, **kwargs)
 
         # get obs archive
-        if isinstance(observation_archive, dict):
-            # create from config — register as child so lifecycle is managed here
-            self._obs_archive = self.add_child_object(observation_archive, ObservationArchive)
-        else:
-            # already-constructed instance passed in from parent — don't re-register
-            self._obs_archive = observation_archive
+        self._obs_archive = (
+            self.add_child_object(observation_archive, ObservationArchive) if observation_archive is not None else None
+        )
 
         # store
         self._twilight = twilight

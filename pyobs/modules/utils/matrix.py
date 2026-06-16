@@ -115,15 +115,36 @@ class Matrix(Module):
 
         Sending sequentially with a small delay between messages avoids
         rate limiting (HTTP 429) and keeps memory usage bounded.
+        Consecutive duplicate messages are suppressed; when the message
+        changes a summary of skipped repeats is sent first.
         """
+        last_message: str | None = None
+        repeat_count = 0
+
         while True:
             message = await self._queue.get()
             try:
+                if message == last_message:
+                    # duplicate — count and skip
+                    repeat_count += 1
+                    continue
+
+                # new message: flush repeat summary if needed
+                if repeat_count > 0:
+                    summary = f"(last message repeated {repeat_count} more time{'s' if repeat_count > 1 else ''})"
+                    await self.client.room_send(
+                        room_id=self._room_id,
+                        message_type="m.room.message",
+                        content={"msgtype": "m.text", "body": summary},
+                    )
+                    repeat_count = 0
+
                 await self.client.room_send(
                     room_id=self._room_id,
                     message_type="m.room.message",
                     content={"msgtype": "m.text", "body": message},
                 )
+                last_message = message
             except Exception:
                 log.exception("Failed to send Matrix message.")
             finally:

@@ -178,3 +178,64 @@ async def test_run_configurations_uses_modulo_repeats() -> None:
 
     # repeats should cycle through 0, 1, 0 (modulo 2)
     assert seen_repeats == [0, 1, 0]
+
+
+# ── estimate_duration ─────────────────────────────────────────────────────────
+
+
+def test_estimate_duration_no_data_returns_full_window() -> None:
+    """estimate_duration(data=None, time=None) returns ingress+duration+ingress."""
+    script = make_script()
+    merit = TransitMerit(jd0=2450000.0, period=1.0, duration=3600, ingress=0.5)
+    # full window = 3600 * (1 + 2*0.5) = 7200
+    task = Task(id=1, name="t", duration=7200, merits=[merit])
+    data = MagicMock()
+    data.task = task
+    result = script.estimate_duration(data=data, time=None)
+    assert result == pytest.approx(7200.0)
+
+
+def test_estimate_duration_with_time_never_returns_zero_outside_window() -> None:
+    """estimate_duration(time=t) must never return 0 just because the nearest
+    transit (as found by round()) already ended -- it should look forward to
+    the NEXT transit window using ceil()."""
+    script = make_script()
+
+    # Place a transit mid-point slightly in the past (round() would give past,
+    # ceil() gives the next future transit).
+    now = Time.now()
+    # jd0 = now - 0.6 * period  ->  raw periods = 0.6  ->  round=1 (past), ceil=1 also fine
+    # Use 0.51 * period so round gives 1 (just past) and we're between transits
+    period = 0.5  # days
+    jd0 = now.jd - 0.51 * period
+    merit = TransitMerit(jd0=jd0, period=period, duration=3600, ingress=0.5, over=0.1)
+
+    task = Task(id=1, name="t", duration=3600, merits=[merit])
+    data = MagicMock()
+    data.task = task
+
+    result = script.estimate_duration(data=data, time=now)
+    assert result > 0.0, f"estimate_duration returned {result}s -- scheduler would create a zero-length observation"
+
+
+def test_estimate_duration_with_time_decreases_through_window() -> None:
+    """Remaining duration should decrease monotonically as time advances inside
+    the window, and jump back up at the start of the next transit."""
+    script = make_script()
+
+    period = 0.10101597  # NY Vir period in days
+    # Place mid-transit 0.5h in the future so we're about to enter ingress
+    now = Time.now()
+    jd0 = now.jd + 0.5 / 24.0
+    merit = TransitMerit(jd0=jd0, period=period, duration=1800, ingress=0.5, over=0.1)
+
+    task = Task(id=1, name="t", duration=3600, merits=[merit])
+    data = MagicMock()
+    data.task = task
+
+    durations = []
+    for i in range(20):
+        t = Time(now.jd + i * period / 20.0, format="jd")
+        durations.append(script.estimate_duration(data=data, time=t))
+
+    assert all(d > 0.0 for d in durations), f"Got zero duration: {durations}"

@@ -76,12 +76,12 @@ async def test_passes_extra_kwargs_to_request() -> None:
 
 
 @pytest.mark.asyncio
-async def test_wrong_status_no_retry() -> None:
-    """RuntimeError from wrong status is NOT retried (only aiohttp.ClientError and TimeoutError are)."""
-    response = make_response(500, text="Server Error")
+async def test_wrong_status_is_retried() -> None:
+    """RuntimeError from a wrong status code (e.g. 502 Bad Gateway) is retried."""
+    response = make_response(502, text="Bad Gateway")
     session = make_session(response)
 
-    with pytest.raises(RuntimeError, match="Invalid response from server"):
+    with pytest.raises(RuntimeError, match="HTTP 502"):
         await http_request_with_retries.__wrapped__(session, "http://example.com/api")
 
 
@@ -111,8 +111,9 @@ async def test_unwrapped_success() -> None:
 
 @pytest.mark.asyncio
 async def test_unwrapped_raises_on_wrong_status() -> None:
+    """Error message contains the HTTP status code, not the response body."""
     response = make_response(403, text="Forbidden")
     session = make_session(response)
 
-    with pytest.raises(RuntimeError, match="Forbidden"):
+    with pytest.raises(RuntimeError, match="HTTP 403"):
         await http_request_with_retries.__wrapped__(session, "http://example.com/api")

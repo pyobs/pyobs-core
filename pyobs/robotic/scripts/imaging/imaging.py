@@ -44,7 +44,7 @@ class GuidingConfig(BaseModel):
 
 
 class InstrumentConfig(BaseModel):
-    exposure_time: float | ExposureTimeProvider
+    exposure_time: float | ExposureTimeProvider = 0.0
     count: int = 1
     image_type: ImageType = ImageType.OBJECT
     binning: tuple[int, int] = (1, 1)
@@ -61,14 +61,14 @@ class InstrumentConfig(BaseModel):
 class Configuration(BaseModel):
     acquisition_config: AcquisitionConfig = Field(default_factory=AcquisitionConfig)
     guiding_config: GuidingConfig = Field(default_factory=GuidingConfig)
-    instrument_configs: list[InstrumentConfig] = Field(default_factory=list)
+    instrument_configs: list[InstrumentConfig] = Field(default_factory=lambda: [InstrumentConfig()])
     repeats: int = 1
 
 
 class ImagingScript(Script):
     """Default script for imaging configs."""
 
-    configuration: Configuration
+    configuration: Configuration = Field(default_factory=Configuration)
 
     camera: str
     telescope: str | None = None

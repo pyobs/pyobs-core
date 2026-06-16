@@ -44,7 +44,14 @@ class TransitMerit(Merit):
         if task.target is None:
             return 0.0
 
-        # current phase
+        # fast-path: find nearest mid-transit to the given time and check distance
+        n = round((time.jd - self.jd0) / self.period)
+        mid_jd = self.jd0 + n * self.period
+        window_half = (self._duration / 2.0 + self._ingress) * self.period  # days
+        if abs(time.jd - mid_jd) > window_half:
+            return 0.0
+
+        # current phase (expensive barycentric correction only when near transit)
         phi = self.phase_for_jd(task.target.coordinates(time), data.observer.location, time)
 
         # check

@@ -93,7 +93,8 @@ class TransitImagingScript(ImagingScript):
 
         Args:
             data: Task data containing the TransitMerit.
-            time: If given, return remaining time until end of transit window.
+            time: If given, return remaining time until end of the *next* transit
+                  window that starts at or after ``time``.
                   If None, return the full observable window (ingress + duration + ingress).
 
         Returns:
@@ -107,8 +108,18 @@ class TransitImagingScript(ImagingScript):
             # full observable window: ingress + duration + ingress
             return merit.duration * (1.0 + 2.0 * merit.ingress)
         else:
-            # remaining time from now until end_time
-            return float(max(0.0, (merit.end_time().jd - time.jd) * 86400.0))
+            import math
+
+            # Find the next transit whose end_time is strictly after ``time``.
+            # TransitMerit.periods_since_jd0() uses round(), which can return
+            # a transit already in the past.  Use ceil() so we always get the
+            # next future window.
+            days = float(time.jd - merit.jd0)
+            p = days / merit.period
+            n = math.ceil(p)
+            end_offset_days = (merit.duration / 2.0 + merit.ingress * merit.duration) / 86400.0
+            end_jd = merit.jd0 + n * merit.period + end_offset_days
+            return float(max(0.0, (end_jd - time.jd) * 86400.0))
 
 
 __all__ = ["TransitImagingScript"]

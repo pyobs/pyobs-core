@@ -39,8 +39,8 @@ class BackendObservationArchive(ObservationArchive):
 
     async def open(self) -> None:
         """Opens the backend observation archive."""
-        await ObservationArchive.open(self)
         self._aiohttp_session = aiohttp.ClientSession(headers={"Authorization": f"Token {self._token}"})
+        await ObservationArchive.open(self)
 
     async def close(self) -> None:
         """Closes the backend observation archive."""

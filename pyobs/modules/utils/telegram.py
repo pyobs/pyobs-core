@@ -546,7 +546,7 @@ class Telegram(Module):
         s = self._application.bot_data["storage"]
 
         # loop users
-        for user_id, user in s["users"].items():
+        for user_id, user in s.get("users", {}).items():
             # get user log level
             user_level = self._log_levels[user["loglevel"]] if user["loglevel"] in self._log_levels else 100
 

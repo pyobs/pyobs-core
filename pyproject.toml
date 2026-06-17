@@ -60,17 +60,7 @@ pyobsw = "pyobs.cli.pyobsw:main"
 
 [dependency-groups]
 dev = [
-    "types-cryptography>=3.3.23.2,<4",
-    "types-enum34>=1.1.8,<2",
-    "types-ipaddress>=1.0.8,<2",
-    "types-paramiko>=3.5.0.20240928,<5",
-    "types-pytz>=2025.2.0.20250326,<2026",
-    "types-PyYAML>=6.0.12.20250402,<7",
-    "types-requests>=2.32.0.20250328,<3",
-    "types-setuptools>=80.3.0.20250505,<81",
-    "types-toml>=0.10.8.20240310,<0.11",
-    "types-tornado>=5.1.1,<6",
-    "mypy>=1.15.0,<2",
+    "pyrefly>=0.17.0",
     "pytest>=8.3.5,<10",
     "pytest-asyncio>=0.26.0,<1.4",
     "pytest-cov>=6.1.1,<8",
@@ -112,6 +102,23 @@ select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
 
 [tool.pytest.ini_options]
 
+[tool.pyrefly]
+python_version = "3.11"
+project_includes = ["pyobs"]
+project_excludes = ["docs/", "tests/"]
+
+# Suppress errors for untyped third-party packages (replaces per-module ignore_missing_imports in mypy.ini)
+use_untyped_imports = true
+
+# Suppress all errors in the generated XMPP XEP-0009 modules
+[[tool.pyrefly.per_project_config]]
+path = "pyobs/comm/xmpp/xep_0009"
+ignore_all_errors = true
+
+[[tool.pyrefly.per_project_config]]
+path = "pyobs/comm/xmpp/xep_0009_timeout"
+ignore_all_errors = true
+
 [tool.black]
 line-length = 120
 target-version = ['py311']
@@ -120,7 +127,7 @@ exclude = '''
 /(
     \.git
   | \.hg
-  | \.mypy_cache
+  | \.pyrefly
   | \.tox
   | \.venv
   | _build

@@ -22,5 +22,5 @@ jobs:
       - name: Run ruff
         run: uv run ruff check pyobs/
 
-      - name: Run mypy
-        run: uv run mypy pyobs/
+      - name: Run pyrefly
+        run: uv run pyrefly check

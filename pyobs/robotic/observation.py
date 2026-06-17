@@ -22,6 +22,7 @@ class ObservationState(StrEnum):
     ABORTED = "aborted"
     CANCELED = "canceled"
     FAILED = "failed"
+    WINDOW_EXPIRED = "window_expired"
 
 
 class Observation(BaseModel):

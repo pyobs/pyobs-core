@@ -14,6 +14,13 @@ from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
 
+# Maximum number of messages to buffer per user before dropping new ones.
+# Keeps RAM bounded during log bursts.
+_QUEUE_MAX = 50
+
+# Minimum delay between send_message calls to avoid rate limiting (in seconds).
+_SEND_INTERVAL = 0.5
+
 
 class TelegramUserState(Enum):
     IDLE = (0,)
@@ -44,7 +51,7 @@ class Telegram(Module):
         self._token = token
         self._password = password
         self._allow_new_users = allow_new_users
-        self._message_queue: asyncio.Queue[Any] = asyncio.Queue()
+        self._message_queue: asyncio.Queue[tuple[int, str]] = asyncio.Queue(maxsize=_QUEUE_MAX)
         self._loop: asyncio.AbstractEventLoop | None = None
         self._application: Application | None = None  # type: ignore
 
@@ -406,7 +413,6 @@ class Telegram(Module):
         self, context: CallbackContext[Any, Any, Any, Any], chat_id: int, call_id: int, method: str, params: list[Any]
     ) -> None:
         """
-
         Args:
             context: Telegram context.
             chat_id: Telegram chat ID.
@@ -536,38 +542,68 @@ class Telegram(Module):
 
         # get storage
         if self._application is None:
-            raise ValueError("No update initialised.")
+            return False
         s = self._application.bot_data["storage"]
 
         # loop users
-        for user_id, user in s["users"].items():
+        for user_id, user in s.get("users", {}).items():
             # get user log level
             user_level = self._log_levels[user["loglevel"]] if user["loglevel"] in self._log_levels else 100
 
             # is it larger than the log entry level?
             if level >= user_level:
+                # drop message if queue is full to prevent memory runaway during bursts
+                if self._message_queue.full():
+                    log.warning("Telegram message queue full, dropping message.")
+                    continue
+
                 # queue message
                 self._message_queue.put_nowait((user_id, message))
 
         return True
 
     async def _log_sender_thread(self) -> None:
-        """Thread for sending messages."""
+        """Drain the message queue and send messages one at a time.
+
+        Sending sequentially with a small delay between messages avoids
+        rate limiting and keeps memory usage bounded. Consecutive duplicate
+        messages are suppressed; when the message changes a summary of
+        skipped repeats is sent first.
+        """
+        last_messages: dict[int, str] = {}
+        repeat_counts: dict[int, int] = {}
 
         while True:
             # get next entry
             user_id, message = await self._message_queue.get()
 
-            # send message
             try:
                 if self._application is None:
-                    raise ValueError("No update initialised.")
+                    continue
+
+                if message == last_messages.get(user_id):
+                    # duplicate for this user — count and skip
+                    repeat_counts[user_id] = repeat_counts.get(user_id, 0) + 1
+                    continue
+
+                # new message: flush repeat summary for this user if needed
+                count = repeat_counts.pop(user_id, 0)
+                if count > 0:
+                    summary = f"(last message repeated {count} more time{'s' if count > 1 else ''})"
+                    await self._application.bot.send_message(chat_id=user_id, text=summary)
+                    await asyncio.sleep(_SEND_INTERVAL)
+
                 await self._application.bot.send_message(chat_id=user_id, text=message)
+                last_messages[user_id] = message
 
             except Exception:
-                # something went wrong, sleep a little and queue message again
-                await asyncio.sleep(10)
-                await self._message_queue.put((user_id, message))
+                log.exception("Failed to send Telegram message.")
+
+            finally:
+                self._message_queue.task_done()
+
+            # brief pause to stay under the server's rate limit
+            await asyncio.sleep(_SEND_INTERVAL)
 
 
 __all__ = ["Telegram"]

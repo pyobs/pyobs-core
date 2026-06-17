@@ -281,6 +281,7 @@ class Object(PrivateAttrMixin):
 
         # child objects
         self._child_objects: list[Any] = []
+        self._owned: bool = False
 
         # create vfs
         self._vfs: VirtualFileSystem | None
@@ -574,14 +575,13 @@ class Object(PrivateAttrMixin):
         Returns:
             The created module.
         """
-
         # get object
         obj = self.get_object(config_or_object, object_class=object_class, copy_comm=copy_comm, **kwargs)
 
-        # add to list
-        self._child_objects.append(obj)
-
-        # return it
+        # only register lifecycle if not already owned by another object
+        if not getattr(obj, "_owned", False):
+            obj._owned = True
+            self._child_objects.append(obj)
         return obj
 
     @overload

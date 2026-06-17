@@ -37,6 +37,7 @@ class Application:
         config: str,
         log_file: str | None = None,
         log_level: str = "info",
+        syslog: bool = False,
         influx_log: InfluxLogConfig | None = None,
         **kwargs: Any,
     ):
@@ -46,6 +47,8 @@ class Application:
             config: Name of config file.
             log_file: Name of log file, if any.
             log_level: Logging level.
+            syslog: Send log to systemd journal, tagged with SYSLOG_IDENTIFIER=pyobs
+                    and PYOBS_MODULE=<module name>. Requires logging-journald.
             influx_log: Log to influx DB.
         """
 
@@ -73,6 +76,27 @@ class Application:
             # add log file handler
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
+
+        # systemd journal handler?
+        if syslog:
+            from logging_journald import JournaldLogHandler  # type: ignore[import-untyped]
+
+            class PyobsJournaldLogHandler(JournaldLogHandler):  # type: ignore[misc]
+                """JournaldLogHandler subclass that adds SYSLOG_IDENTIFIER=pyobs and PYOBS_MODULE=<module>."""
+
+                def __init__(self, module: str, **kw: Any) -> None:
+                    super().__init__(identifier="pyobs", **kw)
+                    self._pyobs_module = module
+
+                def _format_record(self, record: logging.LogRecord) -> list[tuple[str, Any]]:
+                    pairs = super()._format_record(record)
+                    pairs.append(("PYOBS_MODULE", self._pyobs_module))
+                    return pairs
+
+            journal_handler = PyobsJournaldLogHandler(module=config_base)
+            # The journal captures timestamp and priority natively, so omit them from the formatter.
+            journal_handler.setFormatter(logging.Formatter("%(filename)s:%(lineno)d %(message)s"))
+            handlers.append(journal_handler)
 
         # influx handler?
         if influx_log is not None:

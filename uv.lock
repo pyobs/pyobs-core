@@ -1844,6 +1844,15 @@ wheels = [
 ]
 
 [[package]]
+name = "logging-journald"
+version = "0.6.11"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/07/77567e0001d3acffddc80470497f0eec3ccb544b72e672550b3c1f02e586/logging_journald-0.6.11.tar.gz", hash = "sha256:1741ae42cf8953e435489a82acf0e88bc21ad23351e867ca4453a354fc6d09e1", size = 5432, upload-time = "2024-12-13T08:17:10.147Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/7b/033a15aea43108af5049d8c0a09c3ea30519295aee1f3ed74c9efa1ee4cb/logging_journald-0.6.11-py3-none-any.whl", hash = "sha256:4d280eb0bddb4bf616297ee2428592b037618b6f0169c873f655aff92496c232", size = 5619, upload-time = "2024-12-13T08:17:09.127Z" },
+]
+
+[[package]]
 name = "mando"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3208,6 +3217,7 @@ dependencies = [
     { name = "dacite" },
     { name = "dbus-next" },
     { name = "influxdb-client" },
+    { name = "logging-journald" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "paramiko" },
@@ -3295,6 +3305,7 @@ requires-dist = [
     { name = "filelock", marker = "extra == 'full'", specifier = ">=3.28.0" },
     { name = "influxdb-client", specifier = ">=1.49.0" },
     { name = "lmfit", marker = "extra == 'full'", specifier = ">=1.3.3,<2" },
+    { name = "logging-journald", specifier = ">=0.6.11" },
     { name = "matrix-nio", marker = "extra == 'full'", specifier = ">=0.25.2" },
     { name = "numpy", specifier = ">=2.2.5,<3" },
     { name = "opencv-python-headless", marker = "extra == 'full'", specifier = ">=4.10.0.84" },

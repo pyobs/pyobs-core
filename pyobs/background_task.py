@@ -27,6 +27,13 @@ class BackgroundTask:
         self._task = asyncio.create_task(self._func_wrapper())
 
     async def _func_wrapper(self) -> None:
+        # stamp the module name into the context var so all logging within this task
+        # (and any tasks it spawns) carries the correct PYOBS_MODULE field
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
+        if hasattr(self._parent, "name"):
+            _module_name_var.set(self._parent.name)
+
         start = time.time()
         finish_count = 0
 

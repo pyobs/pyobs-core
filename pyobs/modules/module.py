@@ -543,5 +543,73 @@ class MultiModule(Module):
         """Returns module of given name."""
         return self._modules[name]
 
+    async def open(self) -> None:
+        """Open MultiModule.
+
+        Shared/non-module child objects are opened normally. Each sub-module is
+        spawned as its own asyncio task so that the module name context var — set
+        at the top of each task — is inherited by all background tasks that module
+        creates, giving correct PYOBS_MODULE attribution in log output.
+        """
+        # open shared objects (anything in _child_objects that is not a sub-module)
+        for obj in self._child_objects:
+            if obj not in self._modules.values() and hasattr(obj, "open"):
+                if inspect.iscoroutinefunction(obj.open):
+                    await obj.open()
+                else:
+                    obj.open()
+
+        # spawn each sub-module as its own task
+        self._module_tasks: list[asyncio.Task[None]] = []
+        for name, mod in self._modules.items():
+            task = asyncio.create_task(self._run_module(name, mod), name=f"pyobs.module.{name}")
+            self._module_tasks.append(task)
+
+        self._opened = True
+
+    async def _run_module(self, name: str, mod: Module) -> None:
+        """Run a single sub-module: open, main, close — all within one task.
+
+        Setting the context var here means every background task spawned by
+        mod.open() inherits it via asyncio's copy-on-create_task semantics.
+        """
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
+        _module_name_var.set(name)
+        try:
+            await mod.open()
+            await mod.main()
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            log.exception("Exception in sub-module %s.", name)
+        finally:
+            try:
+                await mod.close()
+            except Exception:
+                log.exception("Error closing sub-module %s.", name)
+
+    async def main(self) -> None:
+        """Wait until all sub-module tasks have finished."""
+        if self._module_tasks:
+            await asyncio.gather(*self._module_tasks, return_exceptions=True)
+
+    async def close(self) -> None:
+        """Cancel sub-module tasks and close shared objects."""
+        for task in getattr(self, "_module_tasks", []):
+            task.cancel()
+
+        for obj in self._child_objects:
+            if obj not in self._modules.values() and hasattr(obj, "close"):
+                await obj.close()
+
+        await Module.close(self)
+
+    def quit(self) -> None:
+        """Quit all sub-modules."""
+        for mod in self._modules.values():
+            mod.quit()
+        super().quit()
+
 
 __all__ = ["Module", "MultiModule", "timeout", "raises"]

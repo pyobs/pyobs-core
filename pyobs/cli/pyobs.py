@@ -42,6 +42,12 @@ class PyobsCLI(CLI):
             "-l", "--log-file", type=str, help="file to write log into", default=self._config.get("log_file", None)
         )
         self._parser.add_argument(
+            "--syslog",
+            action="store_true",
+            help="send log to systemd journal",
+            default=self._config.get("syslog", False),
+        )
+        self._parser.add_argument(
             "--influx-log",
             type=str,
             nargs=4,

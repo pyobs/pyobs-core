@@ -63,7 +63,7 @@ class Application:
         # formatters — file/stream include the module name as text; journal omits
         # timestamp/priority since those are captured natively by journald
         formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(pyobs_module)s %(filename)s:%(lineno)d %(message)s"
+            "%(asctime)s [%(levelname)s] (%(pyobs_module)s) %(filename)s:%(lineno)d %(message)s"
         )
         journal_formatter = logging.Formatter("%(pyobs_module)s %(filename)s:%(lineno)d %(message)s")
 

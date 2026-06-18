@@ -13,6 +13,7 @@ import yaml
 from pyobs.modules import Module
 from pyobs.object import get_class_from_string, get_object
 from pyobs.utils.config import pre_process_yaml
+from pyobs.utils.logging.context import ModuleNameFilter
 
 # just init logger with something here, will be overwritten in __init__
 log = logging.getLogger(__name__)
@@ -56,13 +57,22 @@ class Application:
         self._config = config
         config_base = os.path.splitext(os.path.basename(config))[0]
 
-        # formatter for logging, and list of logging handlers
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s")
+        # filter that injects %(pyobs_module)s into every LogRecord from the context var
+        module_name_filter = ModuleNameFilter()
+
+        # formatters — file/stream include the module name as text; journal omits
+        # timestamp/priority since those are captured natively by journald
+        formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(pyobs_module)s %(filename)s:%(lineno)d %(message)s"
+        )
+        journal_formatter = logging.Formatter("%(pyobs_module)s %(filename)s:%(lineno)d %(message)s")
+
         handlers: list[logging.Handler] = []
 
         # create stdout logging handler
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(formatter)
+        stream_handler.addFilter(module_name_filter)
         handlers.append(stream_handler)
 
         # create file logging handler, if log file is given
@@ -73,8 +83,8 @@ class Application:
             else:
                 file_handler = logging.handlers.WatchedFileHandler(log_file)
 
-            # add log file handler
             file_handler.setFormatter(formatter)
+            file_handler.addFilter(module_name_filter)
             handlers.append(file_handler)
 
         # systemd journal handler?
@@ -82,20 +92,19 @@ class Application:
             from logging_journald import JournaldLogHandler  # type: ignore[import-untyped]
 
             class PyobsJournaldLogHandler(JournaldLogHandler):  # type: ignore[misc]
-                """JournaldLogHandler subclass that adds SYSLOG_IDENTIFIER=pyobs and PYOBS_MODULE=<module>."""
+                """JournaldLogHandler that adds SYSLOG_IDENTIFIER=pyobs and PYOBS_MODULE per record."""
 
-                def __init__(self, module: str, **kw: Any) -> None:
+                def __init__(self, **kw: Any) -> None:
                     super().__init__(identifier="pyobs", **kw)
-                    self._pyobs_module = module
 
                 def _format_record(self, record: logging.LogRecord) -> list[tuple[str, Any]]:
                     pairs = super()._format_record(record)
-                    pairs.append(("PYOBS_MODULE", self._pyobs_module))
+                    pairs.append(("PYOBS_MODULE", getattr(record, "pyobs_module", "")))
                     return pairs
 
-            journal_handler = PyobsJournaldLogHandler(module=config_base)
-            # The journal captures timestamp and priority natively, so omit them from the formatter.
-            journal_handler.setFormatter(logging.Formatter("%(filename)s:%(lineno)d %(message)s"))
+            journal_handler = PyobsJournaldLogHandler()
+            journal_handler.setFormatter(journal_formatter)
+            journal_handler.addFilter(module_name_filter)
             handlers.append(journal_handler)
 
         # influx handler?
@@ -161,9 +170,6 @@ class Application:
     def _signal_handler(self, sig: int) -> None:
         """React to signals and quit the module."""
 
-        # stop loop
-        # loop = asyncio.get_running_loop()
-        # loop.stop()
         self._module.quit()
 
         # reset signal handlers

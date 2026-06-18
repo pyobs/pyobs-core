@@ -16,7 +16,7 @@ class WeatherApi:
         return await self._send("api/current/")
 
     async def get_sensor_value(self, station: str, sensor: WeatherSensors) -> dict[str, Any]:
-        path = f"api/stations/{station}/{sensor.value}/"
+        path = f"api/stations/{station}/{str(sensor)}/"
         return await self._send(path)
 
     async def _send(self, path: str) -> dict[str, Any]:

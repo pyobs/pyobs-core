@@ -124,7 +124,12 @@ class Application:
 
         # set pyobs logger
         global log
+        from pathlib import Path
+
+        from pyobs.utils.logging.context import module_name
+
         log = logging.getLogger(__name__)
+        module_name.set(Path(self._config).stem)
 
         # load config
         log.info("Loading configuration from %s...", self._config)

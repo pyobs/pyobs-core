@@ -28,16 +28,20 @@ class TransitMerit(Merit):
     ingress: float = Field(default=0.2, ge=0, le=5)
     # start observation not later than over*duration before 1st contact
     over: float = Field(default=0.0, ge=0, le=5)
+    # minimum scheduling window in minutes; ensures the transit can be picked even for short transits
+    min_window: float = Field(default=5.0, ge=0, le=60)
 
     _duration: float = PrivateAttr(default=0.0)
     _ingress: float = PrivateAttr(default=0.0)
     _over: float = PrivateAttr(default=0.0)
+    _min_window: float = PrivateAttr(default=0.0)
 
     @model_validator(mode="after")
     def calculate_derived(self) -> Self:
         self._duration = self.duration / 86400.0 / self.period
         self._ingress = self.ingress * self.duration / 86400.0 / self.period
         self._over = self.over * self.duration / 86400.0 / self.period
+        self._min_window = self.min_window / (24.0 * 60.0 * self.period)
         return self
 
     async def __call__(self, time: Time, task: Task, data: DataProvider) -> float:
@@ -47,7 +51,7 @@ class TransitMerit(Merit):
         # fast-path: find nearest mid-transit to the given time and check distance
         n = round((time.jd - self.jd0) / self.period)
         mid_jd = self.jd0 + n * self.period
-        window_half = (self._duration / 2.0 + self._ingress) * self.period  # days
+        window_half = max((self._duration / 2.0 + self._ingress) * self.period, self._min_window)  # days
         if abs(time.jd - mid_jd) > window_half:
             return 0.0
 

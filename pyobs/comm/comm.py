@@ -27,7 +27,7 @@ class Comm:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Creates a comm module."""
 
         self._proxies: dict[str, Proxy] = {}

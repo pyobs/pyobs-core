@@ -27,13 +27,12 @@ class Comm:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, cache_proxies: bool = True):
+    def __init__(self):
         """Creates a comm module."""
 
         self._proxies: dict[str, Proxy] = {}
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
-        self._cache_proxies = cache_proxies
         self._logging_task: asyncio.Task[Any] | None = None
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._closing = asyncio.Event()
@@ -117,7 +116,7 @@ class Comm:
             return None
 
         # if client doesn't exist or we disabled caching, fetch a new proxy
-        if client not in self._proxies or not self._cache_proxies:
+        if client not in self._proxies:
             # get interfaces
             try:
                 interfaces = await self.get_interfaces(client)

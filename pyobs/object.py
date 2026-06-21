@@ -609,5 +609,10 @@ class Object(PrivateAttrMixin):
         """
         return self.comm.proxy(name_or_object, obj_type)
 
+    async def has_proxy(self, name_or_object: str | object, obj_type: type[Any] | None = None) -> bool:
+        """True if a proxy of the given type can currently be resolved. Doesn't keep a reference
+        to it, so doesn't need async with the way proxy()/safe_proxy() do."""
+        return await self.comm.has_proxy(name_or_object, obj_type)
+
 
 __all__ = ["get_object", "get_class_from_string", "create_object", "Object", "PrivateAttrMixin"]

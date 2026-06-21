@@ -206,11 +206,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             # run until state is finished or we aborted
             state = None
             while state != FlatFielder.State.FINISHED:
-                async with (
-                    self.proxy(self._telescope, ITelescope) as telescope,
-                    self.proxy(self._camera, ICamera) as camera,
-                    self.safe_proxy(self._filter_wheel, IFilters) as filters,
-                ):
+                async with self.proxy(self._telescope, ITelescope) as telescope:
                     # can we run?
                     if not await telescope.is_ready():
                         log.error("Telescope not in valid state, aborting...")
@@ -219,15 +215,21 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
                         log.warning("Aborting flat-fielding...")
                         return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
-                    # do step
-                    state = await self._flat_fielder(
-                        telescope, camera, count=count, binning=self._binning, filters=filters, filter_name=self._filter
-                    )
+                # do step
+                state = await self._flat_fielder(
+                    self._telescope,
+                    self._camera,
+                    count=count,
+                    binning=self._binning,
+                    filters=self._filter_wheel,
+                    filter_name=self._filter,
+                )
 
-                    # stop telescope
-                    log.info("Stopping telescope...")
-                    await telescope.stop_motion()
-                    log.info("Flat-fielding finished.")
+            # stop telescope
+            log.info("Stopping telescope...")
+            async with self.proxy(self._telescope, ITelescope) as telescope:
+                await telescope.stop_motion()
+            log.info("Flat-fielding finished.")
 
             # return number of taken images
             return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)

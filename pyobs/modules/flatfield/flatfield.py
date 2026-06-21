@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from enum import Enum
-from typing import Any, cast
+from typing import Any
 
 from pyobs.events import BadWeatherEvent, Event, RoofClosingEvent
 from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, ITelescope
@@ -95,17 +95,17 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         await Module.open(self)
 
         # check telescope, camera, and filters
-        try:
-            await self.proxy(self._telescope, ITelescope)
-            await self.proxy(self._camera, ICamera)
-            await self.proxy(self._filter_wheel, IFilters)
-        except ValueError:
+        if (
+            not await self.has_proxy(self._telescope, ITelescope)
+            or not await self.has_proxy(self._camera, ICamera)
+            or not await self.has_proxy(self._filter_wheel, IFilters)
+        ):
             log.warning("Either telescope, camera or filters do not exist or are not of correct type at the moment.")
 
-            # subscribe to events
-            if self._comm:
-                await self.comm.register_event(BadWeatherEvent, self._abort_weather)
-                await self.comm.register_event(RoofClosingEvent, self._abort_weather)
+        # subscribe to events
+        if self._comm:
+            await self.comm.register_event(BadWeatherEvent, self._abort_weather)
+            await self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
     async def close(self) -> None:
         """Close module."""
@@ -128,9 +128,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             List of available binnings as (x, y) tuples.
         """
-        proxy = await self.proxy(self._camera, IBinning)
-        # for whatever reason mypy needs this cast...
-        return cast(list[tuple[int, int]], await proxy.list_binnings())
+        async with self.proxy(self._camera, IBinning) as proxy:
+            return await proxy.list_binnings()
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -158,9 +157,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
         Returns:
             List of available filters.
         """
-        proxy = await self.proxy(self._filter_wheel, IFilters)
-        # for whatever reason mypy needs this cast...
-        return cast(list[str], await proxy.list_filters())
+        async with self.proxy(self._filter_wheel, IFilters) as proxy:
+            return await proxy.list_filters()
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -202,43 +200,34 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             log.info("Performing flat fielding...")
             self._abort = asyncio.Event()
 
-            # get telescope
-            log.info("Getting proxy for telescope...")
-            telescope = await self.proxy(self._telescope, ITelescope)
-
-            # get camera
-            log.info("Getting proxy for camera...")
-            camera = await self.proxy(self._camera, ICamera)
-
-            # get filter wheel
-            filters: IFilters | None = None
-            if self._filter_wheel is not None:
-                log.info("Getting proxy for filter wheel...")
-                filters = await self.proxy(self._filter_wheel, IFilters)
-
             # reset
             await self._flat_fielder.reset()
 
             # run until state is finished or we aborted
             state = None
             while state != FlatFielder.State.FINISHED:
-                # can we run?
-                if not await telescope.is_ready():
-                    log.error("Telescope not in valid state, aborting...")
-                    return self._flat_fielder.image_count, self._flat_fielder.total_exptime
-                if self._abort.is_set():
-                    log.warning("Aborting flat-fielding...")
-                    return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+                async with (
+                    self.proxy(self._telescope, ITelescope) as telescope,
+                    self.proxy(self._camera, ICamera) as camera,
+                    self.safe_proxy(self._filter_wheel, IFilters) as filters,
+                ):
+                    # can we run?
+                    if not await telescope.is_ready():
+                        log.error("Telescope not in valid state, aborting...")
+                        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
+                    if self._abort.is_set():
+                        log.warning("Aborting flat-fielding...")
+                        return self._flat_fielder.image_count, self._flat_fielder.total_exptime
 
-                # do step
-                state = await self._flat_fielder(
-                    telescope, camera, count=count, binning=self._binning, filters=filters, filter_name=self._filter
-                )
+                    # do step
+                    state = await self._flat_fielder(
+                        telescope, camera, count=count, binning=self._binning, filters=filters, filter_name=self._filter
+                    )
 
-            # stop telescope
-            log.info("Stopping telescope...")
-            await telescope.stop_motion()
-            log.info("Flat-fielding finished.")
+                    # stop telescope
+                    log.info("Stopping telescope...")
+                    await telescope.stop_motion()
+                    log.info("Flat-fielding finished.")
 
             # return number of taken images
             return int(self._flat_fielder.image_count), float(self._flat_fielder.total_exptime)

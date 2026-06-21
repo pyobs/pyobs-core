@@ -6,7 +6,7 @@ __title__ = "Enumerations"
 
 from enum import StrEnum
 
-from astropy.units import u
+import astropy.units
 
 
 class ModuleState(StrEnum):
@@ -160,18 +160,18 @@ class Unit(StrEnum):
     HPA = "hpa"
     KM_PER_HOUR = "km/h"
 
-    def to_astropy(self) -> u.UnitBase:
+    def to_astropy(self) -> astropy.units.UnitBase:
         """The equivalent astropy.units unit, for code that needs to build a Quantity."""
         return _ASTROPY_UNITS[self]
 
 
-_ASTROPY_UNITS: dict["Unit", u.UnitBase] = {
-    Unit.DEGREES: u.deg,
-    Unit.CELSIUS: u.deg_C,
-    Unit.SECONDS: u.s,
-    Unit.PERCENT: u.percent,
-    Unit.HPA: u.hPa,
-    Unit.KM_PER_HOUR: u.km / u.h,
+_ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
+    Unit.DEGREES: astropy.units.deg,
+    Unit.CELSIUS: astropy.units.deg_C,
+    Unit.SECONDS: astropy.units.s,
+    Unit.PERCENT: astropy.units.percent,
+    Unit.HPA: astropy.units.hPa,
+    Unit.KM_PER_HOUR: astropy.units.km / astropy.units.h,
 }
 
 __all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors", "Unit"]

@@ -164,9 +164,9 @@ class ImagingScript(Script):
         track: Future | asyncio.Task[Any] = Future(empty=True)
         if ImageType.OBJECT in self._image_types() and target is not None:
             log.info("Moving to target %s...", target.name)
-            async with self.comm.proxy(self.telescope, IPointingRaDec) as self._telescope:
+            async with self.comm.proxy(self.telescope, IPointingRaDec) as telescope:
                 if isinstance(target, SiderealTarget):
-                    track = asyncio.create_task(self._telescope.move_radec(target.ra, target.dec))
+                    track = asyncio.create_task(telescope.move_radec(target.ra, target.dec))
                 else:
                     raise exc.MotionError("Only sidereal targets allowed.")
         return track, target

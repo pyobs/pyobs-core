@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
 from .ITemperatures import ITemperatures
 
 
+@dataclass
+class CoolingState:
+    temperature: Annotated[float, Unit.CELSIUS]
+    setpoint: Annotated[float, Unit.CELSIUS]
+    power: Annotated[int, Unit.PERCENT]
+    enabled: bool
+
+
 class ICooling(ITemperatures, metaclass=ABCMeta):
     """The module can control the cooling of a device."""
 
     __module__ = "pyobs.interfaces"
+    state = CoolingState
 
     @abstractmethod
     async def get_cooling(self, **kwargs: Any) -> tuple[bool, float, float]:

@@ -4,22 +4,19 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable, Coroutine
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
 
 from .commlogging import CommLoggingHandler
-from .proxy import Proxy
+from .proxy import Proxy, ProxyType, _ProxyContext
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
-
-
-ProxyType = TypeVar("ProxyType")
 
 
 class Comm:
@@ -130,13 +127,9 @@ class Comm:
         # return proxy
         return self._proxies[client]
 
-    @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> ProxyType: ...
-
-    @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any: ...
-
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
+    async def _resolve_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
+    ) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -183,15 +176,35 @@ class Comm:
             # completely wrong...
             raise ValueError(f'Given parameter is neither a name nor an object of requested type "{obj_type}".')
 
-    async def safe_proxy(
+    async def _safe_resolve_proxy(
         self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
     ) -> Any | ProxyType | None:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
-            return await self.proxy(name_or_object, obj_type)
+            return await self._resolve_proxy(name_or_object, obj_type)
         except ValueError:
             return None
+
+    @overload
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> _ProxyContext[ProxyType]: ...
+    @overload
+    def proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Returns a context manager; use as `async with self.proxy(...) as x:`."""
+        return _ProxyContext(self._resolve_proxy(name_or_object, obj_type))
+
+    @overload
+    def safe_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType]
+    ) -> _ProxyContext[ProxyType | None]: ...
+    @overload
+    def safe_proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def safe_proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Same as proxy(), but yields None inside the block instead of raising."""
+        return _ProxyContext(self._safe_resolve_proxy(name_or_object, obj_type))
 
     async def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.

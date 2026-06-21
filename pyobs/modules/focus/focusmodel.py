@@ -166,24 +166,22 @@ class FocusModel(Module, IFocusModel):
                 continue
 
             # get focuser
-            try:
-                focuser = await self.proxy(self._focuser, IFocuser)
-            except ValueError:
+            if not await self.has_proxy(self._focuser, IFocuser):
                 log.warning("Could not connect to focuser.")
                 await asyncio.sleep(10)
                 continue
 
             # is focuser ready?
-            status = await focuser.is_ready()
-            if status is False:
-                # log
-                if self._focuser_ready:
-                    log.info("Focuser not ready, waiting for it...")
-                    self._focuser_ready = False
+            async with self.proxy(self._focuser, IFocuser) as focuser:
+                if not await focuser.is_ready():
+                    # log
+                    if self._focuser_ready:
+                        log.info("Focuser not ready, waiting for it...")
+                        self._focuser_ready = False
 
-                # sleep a little and continue
-                await asyncio.sleep(10)
-                continue
+                    # sleep a little and continue
+                    await asyncio.sleep(10)
+                    continue
 
             # came from not ready state?
             if not self._focuser_ready:
@@ -228,11 +226,8 @@ class FocusModel(Module, IFocusModel):
             try:
                 # need a filter name?
                 if filter_name is None:
-                    # get proxy
-                    wheel = await self.proxy(self._filter_wheel, IFilters)
-
-                    # get filter
-                    filter_name = await wheel.get_filter()
+                    async with self.proxy(self._filter_wheel, IFilters) as wheel:
+                        filter_name = await wheel.get_filter()
 
                 # add offset
                 offset = self._filter_offsets[filter_name]
@@ -271,16 +266,10 @@ class FocusModel(Module, IFocusModel):
         if "temp" in self._temp_model.variables():
             log.info("Fetching temperature from weather module...")
 
-            # get weather proxy
-            try:
-                weather = await self.proxy(self._weather, IWeather)
-            except ValueError:
-                raise ValueError("Could not connect to weather module.")
-
-            # get value
-            time, val = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
-            if val is None:
-                raise ValueError("Received invalid temperature from weather station.")
+            async with self.proxy(self._weather, IWeather) as weather:
+                time, val = await weather.get_sensor_value(self._temp_station, self._temp_sensor)
+                if val is None:
+                    raise ValueError("Received invalid temperature from weather station.")
 
             # get temperature
             variables["temp"] = val
@@ -293,11 +282,9 @@ class FocusModel(Module, IFocusModel):
             if cfg["module"] not in module_temps:
                 log.info("Fetching temperatures from module %s...", cfg["module"])
 
-                # get proxy
-                proxy = await self.proxy(cfg["module"], ITemperatures)
-
                 # get temperatures
-                module_temps[cfg["module"]] = await proxy.get_temperatures()
+                async with self.proxy(cfg["module"], ITemperatures) as proxy:
+                    module_temps[cfg["module"]] = await proxy.get_temperatures()
 
                 # log
                 vals = ", ".join([f"{k}={v:.2f}" for k, v in module_temps[cfg["module"]].items()])
@@ -323,15 +310,13 @@ class FocusModel(Module, IFocusModel):
             ValueError: If anything went wrong.
         """
 
-        # get focuser
-        focuser = await self.proxy(self._focuser, IFocuser)
-
         # get focus
         focus = await self._get_optimal_focus(filter_name=filter_name)
 
         # set it
         log.info("Setting optimal focus...")
-        await focuser.set_focus(focus)
+        async with self.proxy(self._focuser, IFocuser) as focuser:
+            await focuser.set_focus(focus)
         log.info("Done.")
 
     @timeout(60)
@@ -367,7 +352,7 @@ class FocusModel(Module, IFocusModel):
 
         # write log
         if self._publisher is not None:
-            await self._publisher(**values)
+            self._publisher(**values)
 
         # finally, calculate new model
         log.info("Re-calculating model...")

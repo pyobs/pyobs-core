@@ -5,7 +5,7 @@ import logging
 import numpy as np
 from astropy.modeling import fitting, models
 
-from pyobs.interfaces import ICamera, IExposureTime, IImageType, IWindow
+from pyobs.interfaces import IData, IExposureTime, IImageType, IWindow
 from pyobs.utils.enums import ImageType
 
 from .exptime import ExposureTimeProvider
@@ -47,23 +47,24 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
         Returns:
             Optimal exposure time in seconds.
         """
-        camera = await self.comm.proxy(self.camera, ICamera)
-        camera_exptime = await self.comm.proxy(self.camera, IExposureTime)
-        camera_imagetype = await self.comm.proxy(self.camera, IImageType)
-        camera_window = await self.comm.proxy(self.camera, IWindow)
 
         # store original settings to restore afterward
-        orig_exptime = await camera_exptime.get_exposure_time()
-        orig_window = await camera_window.get_window()
+        async with self.comm.proxy(self.camera, IExposureTime) as camera:
+            orig_exptime = await camera.get_exposure_time()
+        async with self.comm.proxy(self.camera, IWindow) as camera:
+            orig_window = await camera.get_window()
 
         exptime = self.default_exposure_time
 
         try:
             # take bias once before all iterations
             log.info("Taking bias frame...")
-            await camera_exptime.set_exposure_time(0.0)
-            await camera_imagetype.set_image_type(ImageType.BIAS)
-            bias_filename = await camera.grab_data(broadcast=False)
+            async with self.comm.proxy(self.camera, IExposureTime) as camera:
+                await camera.set_exposure_time(0.0)
+            async with self.comm.proxy(self.camera, IImageType) as camera:
+                await camera.set_image_type(ImageType.BIAS)
+            async with self.comm.proxy(self.camera, IData) as camera:
+                bias_filename = await camera.grab_data(broadcast=False)
             bias_img = await self.vfs.read_image(bias_filename)
 
             for iteration in range(self.max_iterations):
@@ -71,9 +72,12 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
 
                 # take test exposure
                 log.info("Taking test exposure...")
-                await camera_exptime.set_exposure_time(exptime)
-                await camera_imagetype.set_image_type(ImageType.OBJECT)
-                sci_filename = await camera.grab_data(broadcast=False)
+                async with self.comm.proxy(self.camera, IExposureTime) as camera:
+                    await camera.set_exposure_time(exptime)
+                async with self.comm.proxy(self.camera, IImageType) as camera:
+                    await camera.set_image_type(ImageType.OBJECT)
+                async with self.comm.proxy(self.camera, IData) as camera:
+                    sci_filename = await camera.grab_data(broadcast=False)
                 sci_img = await self.vfs.read_image(sci_filename)
 
                 # subtract bias
@@ -102,9 +106,12 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
 
         finally:
             # restore original settings
-            await camera_exptime.set_exposure_time(orig_exptime)
-            await camera_window.set_window(*orig_window)
-            await camera_imagetype.set_image_type(ImageType.OBJECT)
+            async with self.comm.proxy(self.camera, IExposureTime) as camera:
+                await camera.set_exposure_time(orig_exptime)
+            async with self.comm.proxy(self.camera, IWindow) as camera:
+                await camera.set_window(*orig_window)
+            async with self.comm.proxy(self.camera, IImageType) as camera:
+                await camera.set_image_type(ImageType.OBJECT)
 
         return exptime
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from pyobs.interfaces import IPointingAltAz
+from pyobs.interfaces import IPointingAltAz, IReady
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
 
@@ -25,15 +25,14 @@ class PointingScript(Script):
         Returns:
             True if script can run now.
         """
-        try:
-            tel = await self.comm.proxy(self.telescope, IPointingAltAz)
-        except ValueError:
+        if not await self.comm.has_proxy(self.telescope, IPointingAltAz):
             self._cant_run_reason = "No telescope found."
             return False
 
-        if not await tel.is_ready():
-            self._cant_run_reason = "Telescope not ready."
-            return False
+        async with self.comm.proxy(self.telescope, IReady) as telescope:
+            if not await telescope.is_ready():
+                self._cant_run_reason = "Telescope not ready."
+                return False
 
         self._cant_run_reason = None
         return True
@@ -43,11 +42,9 @@ class PointingScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        log.info("Getting proxy for telescope...")
-        telescope = await self.comm.proxy(self.telescope, IPointingAltAz)
-
-        await self.pointing(telescope)
-        log.info("Finished pointing telescope.")
+        async with self.comm.proxy(self.telescope, IPointingAltAz) as telescope:
+            await self.pointing(telescope)
+            log.info("Finished pointing telescope.")
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of slewing to the flat-field pointing."""

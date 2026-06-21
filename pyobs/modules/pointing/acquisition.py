@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast
+from typing import Any
 
 import astropy.units as u
 import numpy as np
@@ -85,11 +85,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         await Module.open(self)
 
         # check telescope and camera
-        try:
-            await self.proxy(self._telescope, ITelescope)
-            await self.proxy(self._camera, ICamera)
-        except ValueError:
-            log.warning("Either camera or telescope do not exist or are not of correct type at the moment.")
+        if not await self.has_proxy(self._telescope, ITelescope):
+            log.warning("Telescope does not exist or is not of correct type at the moment.")
+        if not await self.has_proxy(self._camera, ICamera):
+            log.warning("Camera does not exist or is not of correct type at the moment.")
 
     async def is_running(self, **kwargs: Any) -> bool:
         """Whether a service is running."""
@@ -120,17 +119,10 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     async def _acquire(self, exposure_time: float) -> dict[str, Any]:
         """Actually acquire target."""
 
-        # get telescope
-        log.info("Getting proxy for telescope...")
-        telescope = await self.proxy(self._telescope, ITelescope)
-
-        # get camera
-        log.info("Getting proxy for camera...")
-        camera = await self.proxy(self._camera, IData)
-
         # do camera settings
-        await self._do_camera_settings(camera)
-        if isinstance(camera, IImageType):
+        async with self.proxy(self._camera, ICamera) as camera:
+            await self._do_camera_settings(camera)
+        async with self.proxy(self._camera, IImageType) as camera:
             await camera.set_image_type(ImageType.ACQUISITION)
 
         # try given number of attempts
@@ -140,15 +132,17 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 raise exc.AbortedError()
 
             # set exposure time and image type and take image
-            if isinstance(camera, IExposureTime):
-                log.info("Exposing image for %.1f seconds...", exposure_time)
-                await camera.set_exposure_time(exposure_time)
-            else:
-                log.info("Exposing image...")
-            if isinstance(camera, IData):
-                filename = await camera.grab_data(broadcast=self._broadcast)
-            else:
-                raise exc.GeneralError("Cannot grab data from camera.")
+            async with self.safe_proxy(self._camera, IExposureTime) as camera:
+                if camera:
+                    log.info("Exposing image for %.1f seconds...", exposure_time)
+                    await camera.set_exposure_time(exposure_time)
+                else:
+                    log.info("Exposing image...")
+            async with self.safe_proxy(self._camera, IData) as camera:
+                if camera:
+                    filename = await camera.grab_data(broadcast=self._broadcast)
+                else:
+                    raise exc.GeneralError("Cannot grab data from camera.")
 
             # download image
             log.info("Downloading image...")
@@ -180,7 +174,7 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
             if osd.distance < self._tolerance:
                 # we're finished!
                 log.info("Target successfully acquired.")
-                return await self._create_log_and_return(telescope)
+                return await self._create_log_and_return()
 
             # abort?
             if osd.distance > self._max_offset:
@@ -188,15 +182,16 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
                 raise exc.ImageError("Calculated offsets too large.")
 
             # apply offsets
-            if await self._apply(image, telescope, self._location):
-                log.info("Finished image.")
-            else:
-                log.warning("Could not apply offsets.")
+            async with self.proxy(self._telescope, ITelescope) as telescope:
+                if await self._apply(image, telescope, self._location):
+                    log.info("Finished image.")
+                else:
+                    log.warning("Could not apply offsets.")
 
             if self._oneshot:
                 # we're finished!
                 log.info("Finishing acquisition after oneshot.")
-                return await self._create_log_and_return(telescope)
+                return await self._create_log_and_return()
 
             # new exposure time?
             if image.has_meta(ExpTime):
@@ -205,19 +200,23 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # could not acquire target
         raise exc.AcquisitionError("Could not acquire target within given tolerance.")
 
-    async def _create_log_and_return(self, telescope: ITelescope) -> dict[str, Any]:
+    async def _create_log_and_return(self) -> dict[str, Any]:
         # get current Alt/Az
-        cur_alt, cur_az = await cast(IPointingAltAz, telescope).get_altaz()
-        cur_ra, cur_dec = await cast(IPointingRaDec, telescope).get_radec()
+        async with self.proxy(self._telescope, IPointingAltAz) as telescope:
+            cur_alt, cur_az = await telescope.get_altaz()
+        async with self.proxy(self._telescope, IPointingRaDec) as telescope:
+            cur_ra, cur_dec = await telescope.get_radec()
 
         # prepare log entry
         log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
 
         # Alt/Az or RA/Dec?
-        if isinstance(telescope, IOffsetsRaDec):
-            log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
-        elif isinstance(telescope, IOffsetsAltAz):
-            log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
+        async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
+            if telescope:
+                log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
+        async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
+            if telescope:
+                log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
 
         # write log
         if self._publisher is not None:

@@ -126,17 +126,16 @@ class ShellCommand:
         raise ValueError("Invalid parameters.")
 
     async def execute(self, comm: Comm) -> ShellCommandResponse:
-        try:
-            proxy = await comm.proxy(self.module)
-        except ValueError:
-            return self.__err(f"Could not find module: {self.module}")
+        async with comm.safe_proxy(self.module) as proxy:
+            if proxy is None:
+                return self.__err(f"Could not find module: {self.module}")
 
-        try:
-            response = await proxy.execute(self.command, *self.params)
-        except ValueError as e:
-            return self.__err(f"Invalid parameter: {str(e)}")
-        except exc.RemoteError as e:
-            return self.__err(f"Exception raised: {str(e)}")
+            try:
+                response = await proxy.execute(self.command, *self.params)
+            except ValueError as e:
+                return self.__err(f"Invalid parameter: {str(e)}")
+            except exc.RemoteError as e:
+                return self.__err(f"Exception raised: {str(e)}")
 
         # log response
         msg = "OK" if response is None else pprint.pformat(response)

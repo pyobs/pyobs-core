@@ -77,9 +77,9 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         """Stops auto-guiding."""
         log.info("Stopping auto-guiding...")
         await BaseGuiding.stop(self)
-        camera = await self.proxy(self._camera, ICamera)
-        while await camera.get_exposure_status() != ExposureStatus.IDLE:
-            await asyncio.sleep(1)
+        async with self.proxy(self._camera, ICamera) as camera:
+            while await camera.get_exposure_status() != ExposureStatus.IDLE:
+                await asyncio.sleep(1)
 
     async def _auto_guiding(self) -> None:
         # exposure time
@@ -93,22 +93,23 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
                 continue
 
             try:
-                # get camera
-                camera = await self.proxy(self._camera, IData)
-
                 # do camera settings
-                await self._do_camera_settings(camera)
+                async with self.proxy(self._camera, IData) as camera:
+                    await self._do_camera_settings(camera)
 
                 # take image
-                if isinstance(camera, IExposureTime):
-                    # set exposure time
-                    log.info("Taking image with an exposure time of %.2fs...", self._exposure_time)
-                    await camera.set_exposure_time(self._exposure_time)
-                else:
-                    log.info("Taking image...")
-                if isinstance(camera, IImageType):
-                    await camera.set_image_type(ImageType.GUIDING)
-                filename = await camera.grab_data(broadcast=self._broadcast)
+                async with self.safe_proxy(self._camera, IExposureTime) as camera:
+                    if camera:
+                        # set exposure time
+                        log.info("Taking image with an exposure time of %.2fs...", self._exposure_time)
+                        await camera.set_exposure_time(self._exposure_time)
+                    else:
+                        log.info("Taking image...")
+                async with self.safe_proxy(self._camera, IImageType) as camera:
+                    if camera:
+                        await camera.set_image_type(ImageType.GUIDING)
+                async with self.proxy(self._camera, IData) as camera:
+                    filename = await camera.grab_data(broadcast=self._broadcast)
 
                 # download image
                 image = await self.vfs.read_image(filename)

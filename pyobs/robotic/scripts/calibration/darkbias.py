@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from pyobs.interfaces import (
     IBinning,
-    ICamera,
     IData,
     IExposureTime,
     IImageType,
@@ -36,9 +35,7 @@ class DarkBiasScript(Script):
         """
 
         # we need a camera
-        try:
-            await self.comm.proxy(self.camera, IData)
-        except ValueError:
+        if not await self.comm.has_proxy(self.camera, IData):
             self._cant_run_reason = "No camera found."
             return False
 
@@ -54,21 +51,18 @@ class DarkBiasScript(Script):
 
         image_type = ImageType.BIAS if self.exptime == 0 else ImageType.DARK
 
-        # get modules
-        camera = await self.comm.proxy(self.camera, ICamera)
-
-        if isinstance(camera, IBinning):
+        async with self.comm.proxy(self.camera, IBinning) as camera:
             await camera.set_binning(*self.binning)
 
         # set full frame
-        if isinstance(camera, IWindow):
+        async with self.comm.proxy(self.camera, IWindow) as camera:
             full_frame = await camera.get_full_frame()
             await camera.set_window(*full_frame)
 
         # take image
-        if isinstance(camera, IExposureTime):
+        async with self.comm.proxy(self.camera, IExposureTime) as camera:
             await camera.set_exposure_time(self.exptime)
-        if isinstance(camera, IImageType):
+        async with self.comm.proxy(self.camera, IImageType) as camera:
             await camera.set_image_type(image_type)
 
         # image type for logger
@@ -79,8 +73,9 @@ class DarkBiasScript(Script):
             im_type = f"{self.count} darks ({self.exptime} s)"
 
         log.info("Starting a series of %s with %s...", im_type, self.camera)
-        for i in range(self.count):
-            await camera.grab_data()
+        async with self.comm.proxy(self.camera, IData) as camera:
+            for i in range(self.count):
+                await camera.grab_data()
         log.info("Finished series of %s with %s.", im_type, self.camera)
         return
 

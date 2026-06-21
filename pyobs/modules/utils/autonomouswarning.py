@@ -6,7 +6,7 @@ import os
 import subprocess
 from typing import Any
 
-from pyobs.interfaces import IAutonomous
+from pyobs.interfaces import IAutonomous, IRunning
 from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
@@ -87,15 +87,20 @@ class AutonomousWarning(Module):
             # sleep
             await asyncio.sleep(self._warn_interval)
 
+    async def _is_auto(self):
+        for a in list(await self.comm.clients_with_interface(IAutonomous)):
+            async with self.proxy(a, IRunning) as auto:
+                if await auto.is_running():
+                    return True
+        else:
+            return False
+
     async def _check_autonomous(self) -> None:
         """Checks for autonomous modules."""
 
         while True:
-            # check for autonomous modules
-            autonomous = list(await self.comm.clients_with_interface(IAutonomous))
-            is_auto = any([await (await self.comm.proxy(a, IAutonomous)).is_running().wait() for a in autonomous])
-
             # did it change?
+            is_auto = await self._is_auto()
             if is_auto != self._autonomous:
                 log.info("Robotic systems %s.", "started" if is_auto else "stopped")
                 if self._stop_sound is not None and is_auto:
@@ -116,8 +121,7 @@ class AutonomousWarning(Module):
             # does file exist?
             if self._trigger_file is not None and os.path.exists(self._trigger_file):
                 # check for autonomous modules
-                autonomous = list(await self.comm.clients_with_interface(IAutonomous))
-                is_auto = any([await (await self.proxy(a, IAutonomous)).is_running() for a in autonomous])
+                is_auto = await self._is_auto()
 
                 # play sound
                 if self._stop_sound is not None and is_auto:
@@ -127,16 +131,16 @@ class AutonomousWarning(Module):
 
                 # loop all modules
                 log.info("%s robotic systems:", "Stopping" if is_auto else "Starting")
-                for auto in autonomous:
+                for auto in list(await self.comm.clients_with_interface(IAutonomous)):
                     # get proxy
                     log.info("  - %s", auto)
-                    proxy = await self.comm.proxy(auto)
 
                     # start/stop
-                    if is_auto:
-                        await proxy.stop()
-                    else:
-                        await proxy.start()
+                    async with self.comm.proxy(auto) as proxy:
+                        if is_auto:
+                            await proxy.stop()
+                        else:
+                            await proxy.start()
                 log.info("Finished.")
 
                 # remove file

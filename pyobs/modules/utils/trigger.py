@@ -84,10 +84,8 @@ class Trigger(Module, IAutonomous):
 
                 # get proxy
                 try:
-                    proxy = await self.comm.proxy(trigger["module"])
-
-                    # call it
-                    await proxy.execute(trigger["method"])
+                    async with self.comm.proxy(trigger["module"]) as proxy:
+                        await proxy.execute(trigger["method"])
 
                 except ValueError:
                     log.exception("Could not execute command on proxy %s.", trigger["module"])

@@ -41,29 +41,25 @@ class SkyFlatsScript(Script):
         """
 
         # get modules
-        try:
-            roof = await self.comm.proxy(self.roof, IRoof)
-        except ValueError:
+        if not await self.comm.has_proxy(self.roof, IRoof):
             self._cant_run_reason = "No roof found."
             return False
-        try:
-            telescope = await self.comm.proxy(self.telescope, ITelescope)
-        except ValueError:
+        if not await self.comm.has_proxy(self.telescope, ITelescope):
             self._cant_run_reason = "No telescope found."
             return False
-        try:
-            await self.comm.proxy(self.flatfield, IFlatField)
-        except ValueError:
+        if not await self.comm.has_proxy(self.flatfield, IFlatField):
             self._cant_run_reason = "No flatfielder found."
             return False
 
         # we need an open roof and a working telescope
-        if not await roof.is_ready():
-            self._cant_run_reason = "Roof not ready."
-            return False
-        if not await telescope.is_ready():
-            self._cant_run_reason = "Telescope not ready."
-            return False
+        async with self.comm.proxy(self.roof, IRoof) as roof:
+            if not await roof.is_ready():
+                self._cant_run_reason = "Roof not ready."
+                return False
+        async with self.comm.proxy(self.telescope, ITelescope) as telescope:
+            if not await telescope.is_ready():
+                self._cant_run_reason = "Telescope not ready."
+                return False
 
         # seems alright
         self._cant_run_reason = None
@@ -89,9 +85,6 @@ class SkyFlatsScript(Script):
             readout=self.readout,
         )
 
-        # get proxy for flatfield
-        flatfield = await self.comm.proxy(self.flatfield, IFlatField)
-
         # schedule
         log.info("Scheduling flat-fields...")
         await scheduler(Time.now())
@@ -109,11 +102,15 @@ class SkyFlatsScript(Script):
         for item in scheduler:
             # do flat fields
             log.info("Performing flat-fields in %s %dx%d...", item.filter_name, *item.binning)
-            if isinstance(flatfield, IBinning):
-                await flatfield.set_binning(*item.binning)
-            if isinstance(flatfield, IFilters):
-                await flatfield.set_filter(item.filter_name)
-            done, exp_time = await flatfield.flat_field(self.count)
+
+            async with self.comm.proxy(self.flatfield, IBinning) as flatfield:
+                if flatfield:
+                    await flatfield.set_binning(*item.binning)
+            async with self.comm.safe_proxy(self.flatfield, IFilters) as flatfield:
+                if flatfield:
+                    await flatfield.set_filter(item.filter_name)
+            async with self.comm.proxy(self.flatfield, IFlatField) as flatfield:
+                done, exp_time = await flatfield.flat_field(self.count)
             log.info("Finished flat-fields.")
 
             # increase exposure time

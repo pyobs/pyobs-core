@@ -87,7 +87,7 @@ class AutonomousWarning(Module):
             # sleep
             await asyncio.sleep(self._warn_interval)
 
-    async def _is_auto(self):
+    async def _is_auto(self) -> bool:
         for a in list(await self.comm.clients_with_interface(IAutonomous)):
             async with self.proxy(a, IRunning) as auto:
                 if await auto.is_running():

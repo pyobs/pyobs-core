@@ -5,7 +5,6 @@ from typing import Any, cast
 
 import numpy as np
 
-import pyobs.utils.exceptions as exc
 from pyobs.interfaces import (
     IAcquisition,
     IAutoGuiding,
@@ -43,27 +42,6 @@ class LcoDefaultScript(LcoScript):
     autoguider: str | None = None
     acquisition: str | None = None
 
-    async def _get_proxies(
-        self,
-    ) -> tuple[
-        IRoof | None, ITelescope | None, ICamera | None, IFilters | None, IAutoGuiding | None, IAcquisition | None
-    ]:
-        """Get proxies for running the task
-
-        Returns:
-            Proxies for roof, telescope, camera, and filter wheel
-
-        Raises:
-            ValueError: Could not get proxies for all modules
-        """
-        roof = await self.comm.safe_proxy(self.roof, IRoof)
-        telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
-        camera = await self.comm.safe_proxy(self.camera, ICamera)
-        filters = await self.comm.safe_proxy(self.filters, IFilters)
-        autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
-        acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
-        return roof, telescope, camera, filters, autoguider, acquisition
-
     @property
     def _image_type(self) -> ImageType:
         if self.request.configurations[0].type == "BIAS":
@@ -79,37 +57,44 @@ class LcoDefaultScript(LcoScript):
             True, if the script can run now
         """
 
-        # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
-
         # need camera
-        if camera is None:
+        if not await self.comm.has_proxy(self.camera, ICamera):
             cannot_run_logger.info("Cannot run task, no camera found.")
             return False
 
         # for OBJECT exposure we need more
         if self._image_type == ImageType.OBJECT:
             # we need an open roof and a working telescope
-            if roof is None or not await roof.is_ready():
-                cannot_run_logger.warning("Cannot run task, no roof found or roof not ready.")
-                return False
-            if telescope is None or not await telescope.is_ready():
-                cannot_run_logger.warning("Cannot run task, no telescope found or telescope not ready.")
-                return False
+            async with self.comm.proxy(self.roof, IRoof) as roof:
+                if roof is None or not await roof.is_ready():
+                    cannot_run_logger.info("Cannot run task, no roof found or roof not ready.")
+                    return False
+            async with self.comm.proxy(self.telescope, ITelescope) as telescope:
+                if telescope is None or not await telescope.is_ready():
+                    cannot_run_logger.warning("Cannot run task, no telescope found or telescope not ready.")
+                    return False
 
             # we probably need filters and autoguider/acquisition
-            if filters is None:
+            if not await self.comm.has_proxy(self.filters, IFilters):
                 cannot_run_logger.warning("Cannot run task, No filter module found.")
                 return False
 
             # acquisition?
             cfg = self.request.configurations[0]
-            if cfg.acquisition_config is not None and cfg.acquisition_config.mode == "ON" and acquisition is None:
+            if (
+                cfg.acquisition_config is not None
+                and cfg.acquisition_config.mode == "ON"
+                and not await self.comm.has_proxy(self.acquisition, IAcquisition)
+            ):
                 cannot_run_logger.warning("Cannot run task, no acquisition found.")
                 return False
 
             # guiding?
-            if cfg.guiding_config is not None and cfg.guiding_config.mode == "ON" and autoguider is None:
+            if (
+                cfg.guiding_config is not None
+                and cfg.guiding_config.mode == "ON"
+                and not await self.comm.has_proxy(self.autoguider, IAutoGuiding)
+            ):
                 cannot_run_logger.warning("Cannot run task, no auto guider found.")
                 return False
 
@@ -123,20 +108,13 @@ class LcoDefaultScript(LcoScript):
             InterruptedError: If interrupted
         """
 
-        # get proxies
-        roof, telescope, camera, filters, autoguider, acquisition = await self._get_proxies()
-
         # got a target?
         cfg = self.request.configurations[0]
         track: Future | asyncio.Task[Any] = Future(empty=True)
         if self._image_type == ImageType.OBJECT:
-            if telescope is None:
-                raise ValueError("No telescope given.")
             log.info("Moving to target %s...", cfg.target.name)
-            if isinstance(telescope, IPointingRaDec):
+            async with self.comm.proxy(self.telescope, IPointingRaDec) as telescope:
                 track = asyncio.create_task(telescope.move_radec(cfg.target.ra, cfg.target.dec))
-            else:
-                raise exc.MotionError("Telescope can't move to RA/Dec.")
 
         # acquisition?
         if cfg.acquisition_config is not None and cfg.acquisition_config.mode == "ON":
@@ -144,17 +122,15 @@ class LcoDefaultScript(LcoScript):
             await track
 
             # do acquisition
-            if acquisition is None:
-                raise ValueError("No acquisition given.")
-            log.info("Performing acquisition...")
-            await acquisition.acquire_target()
+            async with self.comm.proxy(self.acquisition, IAcquisition) as acquisition:
+                log.info("Performing acquisition...")
+                await acquisition.acquire_target()
 
         # guiding?
         if cfg.guiding_config is not None and cfg.guiding_config.mode == "ON":
-            if autoguider is None:
-                raise ValueError("No autoguider given.")
-            log.info("Starting auto-guiding...")
-            await autoguider.start()
+            async with self.comm.proxy(self.autoguider, IAutoGuiding) as autoguider:
+                log.info("Starting auto-guiding...")
+                await autoguider.start()
 
         # total (exposure) time done in this config
         self.exptime_done = 0.0
@@ -191,21 +167,28 @@ class LcoDefaultScript(LcoScript):
 
                 # set filter
                 set_filter: Future | asyncio.Task[Any] = Future(empty=True)
-                if ic.optical_elements is not None and "filter" in ic.optical_elements and filters is not None:
+                if (
+                    ic.optical_elements is not None
+                    and "filter" in ic.optical_elements
+                    and await self.comm.has_proxy(self.filters, IFilters)
+                ):
                     log.info("Setting filter to %s...", ic.optical_elements["filter"])
-                    set_filter = asyncio.create_task(filters.set_filter(ic.optical_elements["filter"]))
+                    async with self.comm.proxy(self.filters, IFilters) as filters:
+                        set_filter = asyncio.create_task(filters.set_filter(ic.optical_elements["filter"]))
 
                 # wait for tracking and filter
                 await Future.wait_all([track, set_filter])
 
                 # set binning and window
-                if isinstance(camera, IBinning):
-                    binning = ic.extra_params["binning"]
-                    log.info("Set binning to %dx%d...", binning, binning)
-                    await camera.set_binning(binning, binning)
-                if isinstance(camera, IWindow):
-                    full_frame = await camera.get_full_frame()
-                    await camera.set_window(*full_frame)
+                async with self.comm.safe_proxy(self.camera, IBinning) as camera:
+                    if camera:
+                        binning = ic.extra_params["binning"]
+                        log.info("Set binning to %dx%d...", binning, binning)
+                        await camera.set_binning(binning, binning)
+                async with self.comm.safe_proxy(self.camera, IWindow) as camera:
+                    if camera:
+                        full_frame = await camera.get_full_frame()
+                        await camera.set_window(*full_frame)
 
                 # loop images
                 for exp in range(ic.exposure_count):
@@ -254,8 +237,9 @@ class LcoDefaultScript(LcoScript):
 
         # finally, stop telescope
         if self._image_type == ImageType.OBJECT:
-            log.info("Stopping telescope...")
-            await cast(ITelescope, telescope).stop_motion()
+            async with self.comm.proxy(self.telescope, ITelescope) as telescope:
+                log.info("Stopping telescope...")
+                await telescope.stop_motion()
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

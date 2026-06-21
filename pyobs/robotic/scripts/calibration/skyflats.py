@@ -114,7 +114,7 @@ class SkyFlatsScript(Script):
             log.info("Finished flat-fields.")
 
             # increase exposure time
-            exptime_done += exp_time
+            exptime_done += int(exp_time)
 
         # finished
         log.info("Finished all scheduled flat-fields.")

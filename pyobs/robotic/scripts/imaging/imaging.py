@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -76,20 +76,7 @@ class ImagingScript(Script):
     autoguider: str | None = None
     acquisition: str | None = None
 
-    _telescope: ITelescope | None = PrivateAttr(default=None)
-    _camera: ICamera | None = PrivateAttr(default=None)
-    _filters: IFilters | None = PrivateAttr(default=None)
-    _autoguider: IAutoGuiding | None = PrivateAttr(default=None)
-    _acquisition: IAcquisition | None = PrivateAttr(default=None)
-
     _object_name: str | None = PrivateAttr(default=None)
-
-    async def _get_proxies(self) -> None:
-        self._telescope = await self.comm.safe_proxy(self.telescope, ITelescope)
-        self._camera = await self.comm.safe_proxy(self.camera, ICamera)
-        self._filters = await self.comm.safe_proxy(self.filters, IFilters)
-        self._autoguider = await self.comm.safe_proxy(self.autoguider, IAutoGuiding)
-        self._acquisition = await self.comm.safe_proxy(self.acquisition, IAcquisition)
 
     def _image_types(self) -> list[ImageType]:
         return list({instr.image_type for instr in self.configuration.instrument_configs})
@@ -109,32 +96,36 @@ class ImagingScript(Script):
         Returns:
             True, if the script can run now
         """
-        await self._get_proxies()
 
         # need camera
-        if self._camera is None:
+        if not await self.comm.has_proxy(self.camera, ICamera):
             self._cant_run_reason = "No camera found."
             return False
 
         # for OBJECT exposure we need more
         if ImageType.OBJECT in self._image_types():
             # we need a working telescope
-            if self._telescope is None or not await self._telescope.is_ready():
-                self._cant_run_reason = "Telescope not found or not ready."
-                return False
+            async with self.comm.safe_proxy(self.telescope, ITelescope) as telescope:
+                if telescope is None or not await telescope.is_ready():
+                    self._cant_run_reason = "Telescope not found or not ready."
+                    return False
 
             # we probably need filters and autoguider/acquisition
-            if len(self._optical_filters()) > 0 and self._filters is None:
+            if len(self._optical_filters()) > 0 and not await self.comm.has_proxy(self.filters, IFilters):
                 self._cant_run_reason = "No filterwheel found."
                 return False
 
             # acquisition?
-            if self.configuration.acquisition_config.enabled and self._acquisition is None:
+            if self.configuration.acquisition_config.enabled and not await self.comm.has_proxy(
+                self.acquisition, IAcquisition
+            ):
                 self._cant_run_reason = "No acquisition found."
                 return False
 
             # guiding?
-            if self.configuration.guiding_config.enabled and self._autoguider is None:
+            if self.configuration.guiding_config.enabled and not await self.comm.has_proxy(
+                self.autoguider, IAutoGuiding
+            ):
                 self._cant_run_reason = "No autoguider found."
                 return False
 
@@ -148,8 +139,6 @@ class ImagingScript(Script):
         Raises:
             InterruptedError: If interrupted
         """
-        if self._camera is None:
-            await self._get_proxies()
 
         # start tracking target
         track, target = await self._track_target(data)
@@ -174,30 +163,24 @@ class ImagingScript(Script):
         target = data.task.target if data is not None and data.task is not None else None
         track: Future | asyncio.Task[Any] = Future(empty=True)
         if ImageType.OBJECT in self._image_types() and target is not None:
-            if self._telescope is None:
-                raise ValueError("No telescope given.")
             log.info("Moving to target %s...", target.name)
-            if isinstance(self._telescope, IPointingRaDec):
+            async with self.comm.proxy(self.telescope, IPointingRaDec) as self._telescope:
                 if isinstance(target, SiderealTarget):
                     track = asyncio.create_task(self._telescope.move_radec(target.ra, target.dec))
                 else:
                     raise exc.MotionError("Only sidereal targets allowed.")
-            else:
-                raise exc.MotionError("Telescope can't move to RA/Dec.")
         return track, target
 
     async def _perform_acquisition(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.acquisition_config.enabled:
-            if self._acquisition is None:
-                raise ValueError("No acquisition given.")
-
             # wait for track
             await track
 
             # do acquisition
-            log.info("Performing acquisition...")
             try:
-                await self._acquisition.acquire_target()
+                async with self.comm.proxy(self.acquisition, IAcquisition) as acquisition:
+                    log.info("Performing acquisition...")
+                    await acquisition.acquire_target()
             except Exception:
                 if self.configuration.acquisition_config.optional:
                     log.warning("Could not acquire target, will continue without.")
@@ -206,15 +189,13 @@ class ImagingScript(Script):
 
     async def _start_guiding(self, track: Future | asyncio.Task[Any]) -> None:
         if self.configuration.guiding_config.enabled:
-            if self._autoguider is None:
-                raise ValueError("No autoguider given.")
-
             # wait for track
             await track
 
             # start auto-guiding
-            log.info("Starting auto-guiding...")
-            await self._autoguider.start()
+            async with self.comm.proxy(self.autoguider, IAutoGuiding) as autoguider:
+                log.info("Starting auto-guiding...")
+                await autoguider.start()
 
     async def _run_configurations(self, target: Target | None, track: Future | asyncio.Task[Any]) -> None:
         for repeat in range(self.configuration.repeats):
@@ -237,31 +218,36 @@ class ImagingScript(Script):
     async def _setup_instrument_config(
         self, instrument_config: InstrumentConfig, target: Target | None, track: Future | asyncio.Task[Any]
     ) -> None:
-        if isinstance(self._camera, IBinning):
-            log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
-            await self._camera.set_binning(*instrument_config.binning)
+        async with self.comm.safe_proxy(self.camera, IBinning) as camera:
+            if camera:
+                log.info("Setting binning to %sx%s...", instrument_config.binning[0], instrument_config.binning[1])
+                await camera.set_binning(*instrument_config.binning)
 
-        if isinstance(self._camera, IWindow):
-            wnd = instrument_config.window
-            if wnd is None:
-                wnd = await self._camera.get_full_frame()
-            log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
-            await self._camera.set_window(*wnd)
+        async with self.comm.safe_proxy(self.camera, IWindow) as camera:
+            if camera:
+                wnd = instrument_config.window
+                if wnd is None:
+                    wnd = await camera.get_full_frame()
+                log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
+                await camera.set_window(*wnd)
 
-        if isinstance(self._camera, IExposureTime):
-            exposure_time = await instrument_config.get_exposure_time()
-            log.info("Setting exposure time to %ss...", exposure_time)
-            await self._camera.set_exposure_time(exposure_time)
+        async with self.comm.safe_proxy(self.camera, IExposureTime) as camera:
+            if camera:
+                exposure_time = await instrument_config.get_exposure_time()
+                log.info("Setting exposure time to %ss...", exposure_time)
+                await camera.set_exposure_time(exposure_time)
 
         # set image type
-        if isinstance(self._camera, IImageType):
-            log.info("Setting image type to %s...", instrument_config.image_type)
-            await self._camera.set_image_type(instrument_config.image_type)
+        async with self.comm.safe_proxy(self.camera, IImageType) as camera:
+            if camera:
+                log.info("Setting image type to %s...", instrument_config.image_type)
+                await camera.set_image_type(instrument_config.image_type)
 
         set_filter: Future | asyncio.Task[Any] = Future(empty=True)
-        if instrument_config.optical_filter is not None and self._filters is not None:
-            log.info("Setting filter to %s...", instrument_config.optical_filter)
-            set_filter = asyncio.create_task(self._filters.set_filter(instrument_config.optical_filter))
+        if instrument_config.optical_filter is not None:
+            async with self.comm.proxy(self.filters, IFilters) as filters:
+                log.info("Setting filter to %s...", instrument_config.optical_filter)
+                set_filter = asyncio.create_task(filters.set_filter(instrument_config.optical_filter))
 
         # wait for tracking and filter
         await Future.wait_all([track, set_filter])
@@ -274,23 +260,20 @@ class ImagingScript(Script):
         log.info("Exposing image %s/%s...", repeat2 + 1, instrument_config.count)
 
         # grab image
-        await cast(ICamera, self._camera).grab_data()
+        async with self.comm.proxy(self.camera, ICamera) as camera:
+            await camera.grab_data()
         self.exptime_done += await instrument_config.get_exposure_time()
 
     async def _stop_all(self) -> None:
-        if self._autoguider is not None and self.configuration.guiding_config.enabled:
+        if self.autoguider is not None and self.configuration.guiding_config.enabled:
             log.info("Stopping auto-guiding...")
-            try:
-                await self._autoguider.stop()
-            except Exception:
-                log.exception("Could not stop auto-guider.")
+            async with self.comm.proxy(self.autoguider, IAutoGuiding) as autoguider:
+                await autoguider.stop()
 
         if self._telescope is not None:
             log.info("Stopping telescope...")
-            try:
-                await self._telescope.stop_motion()
-            except Exception:
-                log.exception("Could not stop telescope.")
+            async with self.comm.proxy(self.telescope, ITelescope) as telescope:
+                await telescope.stop_motion()
 
     def get_fits_headers(self, namespaces: list[str] | None = None) -> dict[str, Any]:
         """Returns FITS header for the current status of this module.

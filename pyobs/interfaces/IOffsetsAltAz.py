@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -13,7 +14,9 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def set_offsets_altaz(self, dalt: float, daz: float, **kwargs: Any) -> None:
+    async def set_offsets_altaz(
+        self, dalt: Annotated[float, Unit.DEGREES], daz: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Move an Alt/Az offset.
 
         Args:
@@ -26,7 +29,9 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_offsets_altaz(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_offsets_altaz(
+        self, **kwargs: Any
+    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Get Alt/Az offset.
 
         Returns:

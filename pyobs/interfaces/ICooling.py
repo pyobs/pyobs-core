@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .ITemperatures import ITemperatures
 
 
@@ -24,7 +25,7 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
+    async def set_cooling(self, enabled: bool, setpoint: Annotated[float, Unit.CELSIUS], **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -12,7 +13,7 @@ class ITemperatures(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> dict[str, Annotated[float, Unit.CELSIUS]]:
         """Returns all temperatures measured by this module.
 
         Returns:

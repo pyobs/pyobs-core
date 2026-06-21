@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -12,7 +13,9 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def move_hgs_lon_lat(self, lon: float, lat: float, **kwargs: Any) -> None:
+    async def move_hgs_lon_lat(
+        self, lon: Annotated[float, Unit.DEGREES], lat: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Moves on given coordinates.
 
         Args:
@@ -25,7 +28,9 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_hgs_lon_lat(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_hgs_lon_lat(
+        self, **kwargs: Any
+    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Returns current longitude and latitude position.
 
         Returns:

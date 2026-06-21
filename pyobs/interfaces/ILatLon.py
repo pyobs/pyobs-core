@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -13,7 +14,9 @@ class ILatLon(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def move_latlon(self, lat: float, lon: float, **kwargs: Any) -> None:
+    async def move_latlon(
+        self, lat: Annotated[float, Unit.DEGREES], lon: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Moves to given coordinates.
 
         Args:

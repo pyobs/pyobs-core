@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import functools
 import json
 import logging
@@ -9,7 +10,8 @@ import ssl
 import time
 import xml.sax.saxutils
 from collections.abc import Callable, Coroutine
-from typing import TYPE_CHECKING, Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, get_type_hints
 
 import slixmpp
 import slixmpp.exceptions
@@ -34,6 +36,11 @@ log = logging.getLogger(__name__)
 class EventStanza(ElementBase):
     name = "event"
     namespace = "pyobs:event"
+
+
+class StateStanza(ElementBase):
+    name = "state"
+    namespace = "pyobs:state"
 
 
 class XmppComm(Comm):
@@ -157,6 +164,11 @@ class XmppComm(Comm):
         self._xmpp: XmppClient | None = None
         self._rpc: RPC | None = None
 
+        # pubsub for states
+        self._pubsub_service = f"pubsub.{self._domain}"
+        self._state_node_handlers: dict[str, tuple[type[Interface], Callable[[Any], None]]] = {}
+        self._state_subscriptions: dict[str, list[tuple[type[Interface], Callable[[Any], None]]]] = {}
+
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
 
@@ -190,6 +202,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
         self._xmpp.add_event_handler("disconnected", self._disconnected)
+        self._xmpp.add_event_handler("pyobs_state", self._handle_state_update)
 
         # server given?
         server: str = "localhost"
@@ -628,6 +641,121 @@ class XmppComm(Comm):
             return True, xml.sax.saxutils.unescape(value)
         else:
             return False, value
+
+    @staticmethod
+    def _state_namespace(interface: type[Interface]) -> str:
+        return f"urn:pyobs:state:{interface.__name__}:{interface.version}"
+
+    @staticmethod
+    def _state_node(module: str, interface: type[Interface]) -> str:
+        return f"pyobs:state:{module}:{interface.__name__}:{interface.version}"
+
+    @staticmethod
+    def _dataclass_to_xml(state: Any, namespace: str) -> ET.Element:
+        root = ET.Element(f"{{{namespace}}}state")
+        for f in dataclasses.fields(state):
+            value = getattr(state, f.name)
+            child = ET.SubElement(root, f.name)
+            if isinstance(value, bool):
+                child.text = "true" if value else "false"
+            elif isinstance(value, StrEnum):
+                child.text = value.value
+            else:
+                child.text = str(value)
+        return root
+
+    @staticmethod
+    def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
+        hints = get_type_hints(state_cls)
+        kwargs = {}
+        for f in dataclasses.fields(state_cls):
+            child = elem.find(f.name)
+            if child is None or child.text is None:
+                continue
+            field_type = hints[f.name]
+            if field_type is bool:
+                kwargs[f.name] = child.text == "true"
+            elif field_type is float:
+                kwargs[f.name] = float(child.text)
+            elif field_type is int:
+                kwargs[f.name] = int(child.text)
+            elif isinstance(field_type, type) and issubclass(field_type, StrEnum):
+                kwargs[f.name] = field_type(child.text)
+            else:
+                kwargs[f.name] = child.text
+        return state_cls(**kwargs)
+
+    async def set_state(self, interface: type[Interface], state: Any) -> None:
+        stanza = StateStanza()
+        stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
+        node = self._state_node(self._module.name, interface)
+        await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
+
+    async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
+        node = self._state_node(module, interface)
+        # routes this node's notifications to a dedicated slixmpp event name,
+        # distinct from "pubsub_publish" (which _handle_event already owns)
+        self.client["xep_0060"].map_node_event(node, "pyobs_state")
+        self._state_node_handlers[node] = (interface, callback)
+
+        await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+
+        # "deliver the current value immediately on subscribe" -- hard requirement above
+        try:
+            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            items = result["pubsub"]["items"]
+            if len(items) > 0:
+                callback(self._xml_to_dataclass(items[0]["payload"], interface.State))
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass  # node exists but nothing published yet
+
+    async def _unsubscribe_state(
+        self, module: str, interface: type[Interface], callback: Callable[[Any], None]
+    ) -> None:
+        node = self._state_node(module, interface)
+        self._state_node_handlers.pop(node, None)
+        try:
+            await self._safe_send(self.client["xep_0060"].unsubscribe, self._pubsub_service, node)
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass  # already gone server-side
+
+    async def _handle_state_update(self, msg: Any) -> None:
+        # mirrors _handle_event's shape exactly: same delay/self-sent checks --
+        # different dispatch target, kept as a separate handler rather than
+        # extending _handle_event so neither path needs to inspect the other's payload
+        node = msg["pubsub_event"]["items"]["node"]
+        if node not in self._state_node_handlers:
+            return
+        if len(msg.xml.findall("{urn:sleekxmpp:delay}delay")) > 0:
+            return
+        if msg["from"] == self.client.boundjid.bare:
+            return
+        interface, callback = self._state_node_handlers[node]
+        payload = msg["pubsub_event"]["items"]["item"]["payload"]
+        callback(self._xml_to_dataclass(payload, interface.State))
+
+    async def subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
+        """Subscribe to state updates for a given module and interface.
+
+        Delivers the current value immediately on subscribe.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to subscribe to.
+            callback: Called with state object on each update.
+        """
+        self._state_subscriptions.setdefault(module, []).append((interface, callback))
+        await self._subscribe_state(module, interface, callback)  # base class no-op; XmppComm overrides it
+
+    async def unsubscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
+        """Unsubscribe from state updates.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to unsubscribe from.
+            callback: Callback that was registered.
+        """
+        await self._unsubscribe_state(module, interface, callback)
 
 
 __all__ = ["XmppComm"]

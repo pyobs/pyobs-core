@@ -432,7 +432,12 @@ class Comm:
         """
         raise NotImplementedError()
 
-    async def subscribe_state(self, module: str, interface: type[Interface], callback: StateCallback) -> None:
+    async def subscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: Callable[[Any], None],
+    ) -> None:
         """Subscribe to state updates for a given module and interface.
 
         Delivers the current value immediately on subscribe.
@@ -444,7 +449,12 @@ class Comm:
         """
         raise NotImplementedError()
 
-    async def unsubscribe_state(self, module: str, interface: type[Interface], callback: StateCallback) -> None:
+    async def unsubscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: Callable[[Any], None],
+    ) -> None:
         """Unsubscribe from state updates.
 
         Args:

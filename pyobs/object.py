@@ -609,6 +609,17 @@ class Object(PrivateAttrMixin):
         """
         return self.comm.proxy(name_or_object, obj_type)
 
+    @overload
+    def safe_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType]
+    ) -> _ProxyContext[ProxyType | None]: ...
+    @overload
+    def safe_proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def safe_proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Same as proxy(), but yields None inside the block instead of raising."""
+        return self.comm.safe_proxy(name_or_object, obj_type)
+
     async def has_proxy(self, name_or_object: str | object, obj_type: type[Any] | None = None) -> bool:
         """True if a proxy of the given type can currently be resolved. Doesn't keep a reference
         to it, so doesn't need async with the way proxy()/safe_proxy() do."""

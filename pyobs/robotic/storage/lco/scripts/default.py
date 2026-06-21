@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 
@@ -197,19 +197,22 @@ class LcoDefaultScript(LcoScript):
                     msg = f"Exposing {cfg.type} image #{image_no} ({exp + 1}/{ic.exposure_count})"
 
                     # set exposure time
-                    if isinstance(camera, IExposureTime):
-                        await camera.set_exposure_time(ic.exposure_time)
-                        msg += f" for {ic.exposure_time:2f}s"
+                    async with self.comm.safe_proxy(self.camera, IExposureTime) as camera:
+                        if camera is not None:
+                            await camera.set_exposure_time(ic.exposure_time)
+                            msg += f" for {ic.exposure_time:2f}s"
 
                     # set image type
-                    if isinstance(camera, IImageType):
-                        await camera.set_image_type(self._image_type)
+                    async with self.comm.safe_proxy(self.camera, IImageType) as camera:
+                        if camera is not None:
+                            await camera.set_image_type(self._image_type)
 
                     # log it
                     log.info("%s...", msg)
 
                     # grab image
-                    await cast(ICamera, camera).grab_data()
+                    async with self.comm.proxy(self.camera, ICamera) as camera:
+                        await camera.grab_data()
                     self.exptime_done += ic.exposure_time
                     image_no += 1
 

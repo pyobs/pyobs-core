@@ -147,15 +147,16 @@ class Kiosk(Module, IStartStop):
             self._image = await asyncio.get_running_loop().run_in_executor(None, image.to_jpeg)
 
             # adjust exposure time?
-            if isinstance(camera, IExposureTime):
-                # get max value in image
-                max_val = np.max(image.data)
+            async with self.safe_proxy(self._camera, IExposureTime) as camera:
+                if camera:
+                    # get max value in image
+                    max_val = np.max(image.data)
 
-                # adjust
-                self._exp_time = self._exp_time / max_val * 40000
+                    # adjust
+                    self._exp_time = self._exp_time / max_val * 40000
 
-                # cut
-                self._exp_time = max(self._exp_time, 30)
+                    # cut
+                    self._exp_time = max(self._exp_time, 30)
 
 
 __all__ = ["Kiosk"]

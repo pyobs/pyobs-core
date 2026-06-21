@@ -270,7 +270,7 @@ class ImagingScript(Script):
             async with self.comm.proxy(self.autoguider, IAutoGuiding) as autoguider:
                 await autoguider.stop()
 
-        if self._telescope is not None:
+        if self.telescope is not None:
             log.info("Stopping telescope...")
             async with self.comm.proxy(self.telescope, ITelescope) as telescope:
                 await telescope.stop_motion()

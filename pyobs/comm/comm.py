@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import inspect
 import logging
 from collections.abc import Callable, Coroutine
@@ -15,6 +16,8 @@ from .proxy import Proxy, ProxyType, _ProxyContext
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
+
+StateCallback = Callable[[Any], None]
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +125,12 @@ class Comm:
 
             # create new proxy
             proxy = Proxy(self, client, interfaces)
+
+            # subscribe to state
+            for interface in interfaces:
+                if getattr(interface, "State", None) is not None:
+                    await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
+
             self._proxies[client] = proxy
 
         # return proxy
@@ -413,6 +422,37 @@ class Comm:
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
     ) -> None:
         pass
+
+    async def set_state(self, interface: type[Interface], state: Any) -> None:
+        """Publish state for this module.
+
+        Args:
+            interface: Interface type for the state.
+            state: State object to publish.
+        """
+        raise NotImplementedError()
+
+    async def subscribe_state(self, module: str, interface: type[Interface], callback: StateCallback) -> None:
+        """Subscribe to state updates for a given module and interface.
+
+        Delivers the current value immediately on subscribe.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to subscribe to.
+            callback: Called with state object on each update.
+        """
+        raise NotImplementedError()
+
+    async def unsubscribe_state(self, module: str, interface: type[Interface], callback: StateCallback) -> None:
+        """Unsubscribe from state updates.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to unsubscribe from.
+            callback: Callback that was registered.
+        """
+        raise NotImplementedError()
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:
         """Send an event to all connected modules.

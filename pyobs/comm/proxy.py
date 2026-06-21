@@ -52,6 +52,9 @@ class Proxy:
         # create methods
         self._methods = self._create_methods()
 
+        # store state
+        self._state: dict[type[Interface], Any] = {}
+
     @property
     def name(self) -> str:
         """Name of the client."""
@@ -153,6 +156,14 @@ class Proxy:
             return await this.execute(method, *args, **kwargs)
 
         return inner
+
+    def update_state(self, interface: type[Interface], state: Any) -> None:
+        """Called by Comm whenever a new state arrives. Not intended to be called directly by module code."""
+        self._state[interface] = state
+
+    def state(self, interface: type[Interface]) -> Any | None:
+        """Latest known state for the given interface, or None if nothing has arrived yet."""
+        return self._state.get(interface)
 
 
 class _ProxyContext(Generic[ProxyType]):

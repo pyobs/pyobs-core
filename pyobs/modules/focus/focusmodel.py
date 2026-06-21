@@ -352,7 +352,7 @@ class FocusModel(Module, IFocusModel):
 
         # write log
         if self._publisher is not None:
-            self._publisher(**values)
+            await self._publisher(**values)
 
         # finally, calculate new model
         log.info("Re-calculating model...")

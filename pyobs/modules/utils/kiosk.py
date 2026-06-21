@@ -130,7 +130,6 @@ class Kiosk(Module, IStartStop):
                     await camera.set_exposure_time(self._exp_time)
             async with self.safe_proxy(self._camera, IWindow) as camera:
                 if camera:
-                    # set full frame
                     full_frame = await camera.get_full_frame()
                     await camera.set_window(*full_frame)
 

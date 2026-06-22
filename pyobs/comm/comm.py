@@ -128,7 +128,7 @@ class Comm:
 
             # subscribe to state
             for interface in interfaces:
-                if getattr(interface, "State", None) is not None:
+                if getattr(interface, "state", None) is not None:
                     await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
 
             self._proxies[client] = proxy

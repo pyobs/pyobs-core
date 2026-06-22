@@ -17,6 +17,8 @@ import slixmpp
 import slixmpp.exceptions
 from slixmpp import ElementBase
 from slixmpp.xmlstream import ET
+from slixmpp.xmlstream.handler import Callback
+from slixmpp.xmlstream.matcher import MatchXMLMask
 
 from pyobs.comm import Comm
 from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
@@ -166,7 +168,7 @@ class XmppComm(Comm):
 
         # pubsub for states
         self._pubsub_service = f"pubsub.{self._domain}"
-        self._state_node_handlers: dict[str, tuple[type[Interface], Callable[[Any], None]]] = {}
+        self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -197,11 +199,25 @@ class XmppComm(Comm):
         self._xmpp = XmppClient(self._jid, self._password)
 
         # self._xmpp = slixmpp.ClientXMPP(self._jid, password)
-        self._xmpp.add_event_handler("pubsub_publish", self._handle_event)
+        # Register directly with an XML mask rather than via pubsub_publish.
+        # slixmpp's StanzaPath matcher requires plugins to be lazily loaded
+        # before matching — for live notifications (not triggered by an IQ)
+        # this never happens, so pubsub_publish is never fired. MatchXMLMask
+        # works on raw XML and fires reliably for every pubsub notification.
+        self._xmpp.register_handler(
+            Callback(
+                "pyobs pubsub event",
+                MatchXMLMask(
+                    '<message xmlns="jabber:client">'
+                    '<event xmlns="http://jabber.org/protocol/pubsub#event">'
+                    "<items /></event></message>"
+                ),
+                self._handle_event_sync,
+            )
+        )
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
         self._xmpp.add_event_handler("disconnected", self._disconnected)
-        self._xmpp.add_event_handler("pyobs_state_publish", self._handle_state_update)
 
         # server given?
         server: str = "localhost"
@@ -433,8 +449,11 @@ class XmppComm(Comm):
             log.debug("Module %s does not seem to implement IModule, ignoring.", module)
             return
 
-        # store interfaces
-        self._interface_cache[jid].set_result(self._interface_names_to_classes(interface_names))
+        # store interfaces — guard against a second _got_online for the same JID
+        # (ejabberd may send multiple presence stanzas) racing against the first
+        future = self._interface_cache.get(jid)
+        if future is not None and not future.done():
+            future.set_result(self._interface_names_to_classes(interface_names))
 
         # append to list
         if jid not in self._online_clients:
@@ -545,6 +564,14 @@ class XmppComm(Comm):
         await self._safe_send(self.client["xep_0115"].update_caps)
         self.client.send_presence()
 
+    def _handle_event_sync(self, msg: Any) -> None:
+        """Synchronous entry point for the MatchXMLMask Callback.
+
+        Callback handlers must be synchronous; this creates an asyncio task
+        so that _handle_event can await safely.
+        """
+        asyncio.create_task(self._handle_event(msg))
+
     async def _handle_event(self, msg: Any) -> None:
         """Handles an event.
 
@@ -552,12 +579,24 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        # skip state-node notifications — those are handled by _handle_state_update.
-        # Check by node prefix rather than _state_node_handlers membership so this
-        # guard fires on both the subscriber (which has a handler) and the publisher
-        # (which doesn't register a handler for its own node but still gets the notification).
         node = msg["pubsub_event"]["items"]["node"]
+
+        # State-node notifications: dispatch to handler if registered, then return.
+        # map_node_event() cannot be used here because the XEP-0060 plugin iterates
+        # Items.iterables (empty) to fire mapped events, so live notifications are
+        # silently dropped. _handle_event (pubsub_publish) fires reliably for all nodes.
         if node.startswith("pyobs:state:"):
+            if node in self._state_node_handlers:
+                if len(msg.xml.findall("{urn:sleekxmpp:delay}delay")) == 0:
+                    interface, callbacks = self._state_node_handlers[node]
+                    payload = msg["pubsub_event"]["items"]["item"]["payload"]
+                    if payload is not None:
+                        state_obj = self._xml_to_dataclass(payload, interface.state)
+                        for callback in callbacks:
+                            callback(state_obj)
+                    # If payload is None it's a retract notification for the old
+                    # max_items:1 slot — the matching publish notification (with
+                    # payload) arrives in the next pubsub_publish event.
             return
 
         # get body, unescape it, parse it
@@ -707,20 +746,36 @@ class XmppComm(Comm):
                 kwargs[f.name] = child.text
         return state_cls(**kwargs)
 
+    async def _fetch_and_dispatch_state(
+        self, node: str, interface: type[Interface], callback: Callable[[Any], None]
+    ) -> None:
+        """Fetch the current item for *node* and dispatch it to *callback*.
+
+        Called when a live notification arrives without a payload — either a
+        retract stanza or a node whose deliver_payloads flag is off.
+        """
+        try:
+            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            item_list = result["pubsub"]["items"]["items"]
+            if item_list:
+                callback(self._xml_to_dataclass(item_list[0]["payload"], interface.state))
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass
+
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
+        node = self._state_node(self._module.name, interface)
         stanza = StateStanza()
         stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
-        node = self._state_node(self._module.name, interface)
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
 
     async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
         node = self._state_node(module, interface)
-        # routes this node's notifications to a dedicated slixmpp event name,
-        # distinct from "pubsub_publish" (which _handle_event already owns)
-        self.client["xep_0060"].map_node_event(node, "pyobs_state")
-        self._state_node_handlers[node] = (interface, callback)
-
-        await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+        if node in self._state_node_handlers:
+            # Node already subscribed — just add the callback
+            self._state_node_handlers[node][1].append(callback)
+        else:
+            self._state_node_handlers[node] = (interface, [callback])
+            await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
 
         # "deliver the current value immediately on subscribe" -- hard requirement above
         try:
@@ -731,7 +786,9 @@ class XmppComm(Comm):
             # it calls ElementBase.__getitem__("0") which returns a string.
             item_list = result["pubsub"]["items"]["items"]
             if item_list:
-                callback(self._xml_to_dataclass(item_list[0]["payload"], interface.state))
+                state_obj = self._xml_to_dataclass(item_list[0]["payload"], interface.state)
+                for cb in self._state_node_handlers.get(node, (None, []))[1]:
+                    cb(state_obj)
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass  # node exists but nothing published yet
 
@@ -739,26 +796,19 @@ class XmppComm(Comm):
         self, module: str, interface: type[Interface], callback: Callable[[Any], None]
     ) -> None:
         node = self._state_node(module, interface)
-        self._state_node_handlers.pop(node, None)
-        try:
-            await self._safe_send(self.client["xep_0060"].unsubscribe, self._pubsub_service, node)
-        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-            pass  # already gone server-side
-
-    async def _handle_state_update(self, msg: Any) -> None:
-        # mirrors _handle_event's shape exactly: same delay/self-sent checks --
-        # different dispatch target, kept as a separate handler rather than
-        # extending _handle_event so neither path needs to inspect the other's payload
-        node = msg["pubsub_event"]["items"]["node"]
-        if node not in self._state_node_handlers:
-            return
-        if len(msg.xml.findall("{urn:sleekxmpp:delay}delay")) > 0:
-            return
-        if msg["from"] == self.client.boundjid.bare:
-            return
-        interface, callback = self._state_node_handlers[node]
-        payload = msg["pubsub_event"]["items"]["item"]["payload"]
-        callback(self._xml_to_dataclass(payload, interface.state))
+        if node in self._state_node_handlers:
+            _, callbacks = self._state_node_handlers[node]
+            try:
+                callbacks.remove(callback)
+            except ValueError:
+                pass
+            if not callbacks:
+                # Last subscriber — unsubscribe from ejabberd and remove handler
+                del self._state_node_handlers[node]
+                try:
+                    await self._safe_send(self.client["xep_0060"].unsubscribe, self._pubsub_service, node)
+                except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+                    pass  # already gone server-side
 
 
 __all__ = ["XmppComm"]

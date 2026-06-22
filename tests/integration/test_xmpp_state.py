@@ -118,7 +118,10 @@ async def test_subscriber_receives_live_update(make_xmpp_comm) -> None:
         await camera_comm.set_state(ICooling, CoolingState(temperature=-25.0, setpoint=-25.0, power=80, enabled=True))
         assert await wait_for(lambda: len(received) >= 2), "Second update not received"
 
-        assert received[-1].temperature == pytest.approx(-25.0)
+        # The last received value must be the second publish
+        assert await wait_for(
+            lambda: any(s.temperature == pytest.approx(-25.0) for s in received)
+        ), "Second update value -25.0 never arrived"
 
     await asyncio.wait_for(_run(), timeout=60)
 

@@ -731,6 +731,10 @@ class XmppComm(Comm):
             if child is None or child.text is None:
                 continue
             field_type = hints[f.name]
+            # strip Optional (T | None) to get the concrete type
+            args = get_args(field_type)
+            if args and type(None) in args:
+                field_type = next(a for a in args if a is not type(None))
             # unwrap Annotated[T, ...] → T for type dispatch
             if get_origin(field_type) is Annotated:
                 field_type = get_args(field_type)[0]

@@ -59,8 +59,9 @@ async def test_dummy_camera_publishes_cooling_state(make_xmpp_comm, xmpp_config)
             ), f"Expected >= 3 state updates, got {len(received)}."
 
             last = received[-1]
-            assert 0.0 <= last.power <= 100.0
-            assert isinstance(last.enabled, bool)
+            assert last.setpoint == pytest.approx(-10.0)
+            assert 0 <= last.power <= 100
+            assert last.enabled is True
 
         finally:
             await camera.close()

@@ -93,6 +93,8 @@ async def test_subscriber_receives_initial_value_on_subscribe(make_xmpp_comm) ->
         await observer_comm.subscribe_state("camera", ICooling, received.append)
 
         assert await wait_for(lambda: len(received) > 0), "No state received within timeout"
+        assert received[0].setpoint == pytest.approx(-20.0)
+        assert received[0].power == 65
         assert received[0].enabled is True
 
     await asyncio.wait_for(_run(), timeout=60)
@@ -115,7 +117,9 @@ async def test_subscriber_receives_live_update(make_xmpp_comm) -> None:
         assert await wait_for(lambda: len(received) >= 1), "First update not received"
 
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-25.0, power=80, enabled=True))
-        assert await wait_for(lambda: len(received) >= 2), "Second update not received"
+        assert await wait_for(
+            lambda: any(s.setpoint == pytest.approx(-25.0) for s in received)
+        ), "Second update not received"
 
     await asyncio.wait_for(_run(), timeout=60)
 
@@ -133,6 +137,10 @@ async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm) -> None:
 
         async with observer_comm.proxy("camera", ICooling) as camera:
             assert await wait_for(lambda: camera.state(ICooling) is not None), "Proxy state never populated"
+            state = camera.state(ICooling)
+            assert state.setpoint == pytest.approx(-15.0)
+            assert state.power == 50
+            assert state.enabled is True
 
     await asyncio.wait_for(_run(), timeout=60)
 
@@ -193,5 +201,8 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm) -> None:
             assert await wait_for(
                 lambda: camera2.state(ICooling) is not None
             ), "No state received from reconnected camera"
+            state = camera2.state(ICooling)
+            assert state.setpoint == pytest.approx(-30.0)
+            assert state.enabled is True
 
     await asyncio.wait_for(_run(), timeout=60)

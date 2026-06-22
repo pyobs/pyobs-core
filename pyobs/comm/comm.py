@@ -230,8 +230,9 @@ class Comm:
 
         """
 
-        # if a client disconnects, we remove its proxy
+        # if a client disconnects, clear its proxy state then evict it
         if sender in self._proxies:
+            self._proxies[sender].clear_state()
             del self._proxies[sender]
 
         # tear down any state subscriptions held for that client

@@ -161,6 +161,10 @@ class Proxy:
         """Called by Comm whenever a new state arrives. Not intended to be called directly by module code."""
         self._state[interface] = state
 
+    def clear_state(self) -> None:
+        """Clear all cached state. Called by Comm when the remote module disconnects."""
+        self._state.clear()
+
     def state(self, interface: type[Interface]) -> Any | None:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
         return self._state.get(interface)

@@ -201,7 +201,7 @@ class XmppComm(Comm):
         self._xmpp.add_event_handler("got_online", self._got_online)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
         self._xmpp.add_event_handler("disconnected", self._disconnected)
-        self._xmpp.add_event_handler("pyobs_state", self._handle_state_update)
+        self._xmpp.add_event_handler("pyobs_state_publish", self._handle_state_update)
 
         # server given?
         server: str = "localhost"
@@ -552,6 +552,14 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
+        # skip state-node notifications — those are handled by _handle_state_update.
+        # Check by node prefix rather than _state_node_handlers membership so this
+        # guard fires on both the subscriber (which has a handler) and the publisher
+        # (which doesn't register a handler for its own node but still gets the notification).
+        node = msg["pubsub_event"]["items"]["node"]
+        if node.startswith("pyobs:state:"):
+            return
+
         # get body, unescape it, parse it
         # node = msg['pubsub_event'][items']['node']
         body = json.loads(xml.sax.saxutils.unescape(msg["pubsub_event"]["items"]["item"]["payload"].text))
@@ -654,21 +662,33 @@ class XmppComm(Comm):
         root = ET.Element(f"{{{namespace}}}state")
         for f in dataclasses.fields(state):
             value = getattr(state, f.name)
-            child = ET.SubElement(root, f.name)
+            # Use ET.Element + append (not SubElement) so children stay in the
+            # empty namespace and elem.find("fieldname") works on the receiving side.
+            child = ET.Element(f.name)
             if isinstance(value, bool):
                 child.text = "true" if value else "false"
             elif isinstance(value, StrEnum):
                 child.text = value.value
             else:
                 child.text = str(value)
+            root.append(child)
         return root
 
     @staticmethod
     def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
         hints = get_type_hints(state_cls, include_extras=True)
+        # Extract namespace from root element tag, e.g. "{urn:pyobs:state:ICooling:1}state"
+        # Children may arrive namespaced (after ejabberd round-trip) or plain (locally),
+        # so try both forms.
+        ns = ""
+        if elem.tag.startswith("{"):
+            ns = elem.tag[1 : elem.tag.index("}")]
         kwargs = {}
         for f in dataclasses.fields(state_cls):
-            child = elem.find(f.name)
+            # Try namespaced lookup first, then plain
+            child = elem.find(f"{{{ns}}}{f.name}") if ns else None
+            if child is None:
+                child = elem.find(f.name)
             if child is None or child.text is None:
                 continue
             field_type = hints[f.name]
@@ -705,9 +725,13 @@ class XmppComm(Comm):
         # "deliver the current value immediately on subscribe" -- hard requirement above
         try:
             result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            items = result["pubsub"]["items"]
-            if len(items) > 0:
-                callback(self._xml_to_dataclass(items[0]["payload"], interface.state))
+            # result["pubsub"]["items"]["items"] uses plugin_multi_attrib to get
+            # the list of Item stanzas; item["payload"] returns the XML element
+            # via Item.get_payload(). Integer indexing items[0] is wrong here —
+            # it calls ElementBase.__getitem__("0") which returns a string.
+            item_list = result["pubsub"]["items"]["items"]
+            if item_list:
+                callback(self._xml_to_dataclass(item_list[0]["payload"], interface.state))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass  # node exists but nothing published yet
 

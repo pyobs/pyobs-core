@@ -44,6 +44,13 @@ def make_autofocus() -> MagicMock:
     return af
 
 
+def make_proxy_cm(value: object) -> MagicMock:
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=value)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return cm
+
+
 # ── can_run ───────────────────────────────────────────────────────────────────
 
 
@@ -51,15 +58,15 @@ def make_autofocus() -> MagicMock:
 async def test_can_run_true_when_ready() -> None:
     script = make_script()
     telescope = make_telescope(ready=True)
-    autofocus = make_autofocus()
-    script._comm.proxy = AsyncMock(side_effect=[autofocus, telescope])
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
     assert await script.can_run(None) is True
 
 
 @pytest.mark.asyncio
 async def test_can_run_false_when_autofocus_unavailable() -> None:
     script = make_script()
-    script._comm.proxy = AsyncMock(side_effect=ValueError("not found"))
+    script._comm.has_proxy = AsyncMock(return_value=False)
     assert await script.can_run(None) is False
 
 
@@ -67,8 +74,8 @@ async def test_can_run_false_when_autofocus_unavailable() -> None:
 async def test_can_run_false_when_telescope_not_ready() -> None:
     script = make_script()
     telescope = make_telescope(ready=False)
-    autofocus = make_autofocus()
-    script._comm.proxy = AsyncMock(side_effect=[autofocus, telescope])
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
     assert await script.can_run(None) is False
 
 
@@ -84,10 +91,6 @@ async def test_run_raises_when_no_data() -> None:
 @pytest.mark.asyncio
 async def test_run_raises_when_no_target() -> None:
     script = make_script()
-    telescope = make_telescope()
-    autofocus = make_autofocus()
-    script._comm.proxy = AsyncMock(side_effect=[autofocus, telescope])
-
     data = make_task(target=None)
     with pytest.raises(ValueError, match="No target"):
         await script.run(data)
@@ -98,7 +101,11 @@ async def test_run_moves_telescope_and_focuses() -> None:
     script = make_script(count=3, step=0.1, exposure_time=2.0)
     telescope = make_telescope()
     autofocus = make_autofocus()
-    script._comm.proxy = AsyncMock(side_effect=[autofocus, telescope])
+
+    # proxy is called twice: (telescope, IPointingRaDec) then (autofocus, IAutoFocus)
+    script._comm.proxy = MagicMock(side_effect=[make_proxy_cm(telescope), make_proxy_cm(autofocus)])
+    # safe_proxy is called once in finally: (telescope, IMotion)
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
 
     target = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
     data = make_task(target=target)
@@ -116,7 +123,9 @@ async def test_run_stops_telescope_in_finally() -> None:
     telescope = make_telescope()
     autofocus = make_autofocus()
     autofocus.auto_focus = AsyncMock(side_effect=RuntimeError("focus failed"))
-    script._comm.proxy = AsyncMock(side_effect=[autofocus, telescope])
+
+    script._comm.proxy = MagicMock(side_effect=[make_proxy_cm(telescope), make_proxy_cm(autofocus)])
+    script._comm.safe_proxy = MagicMock(return_value=make_proxy_cm(telescope))
 
     target = SiderealTarget(name="Vega", ra=279.23, dec=38.78)
     data = make_task(target=target)

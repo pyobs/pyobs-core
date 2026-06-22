@@ -87,7 +87,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             await self.comm.set_state(
                 ICooling,
                 CoolingState(
-                    temperature=temps["CCD"],
                     setpoint=self._cooling.set_point,
                     power=int(power),
                     enabled=self._cooling.enabled,

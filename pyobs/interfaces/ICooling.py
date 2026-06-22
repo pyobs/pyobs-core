@@ -10,9 +10,8 @@ from .ITemperatures import ITemperatures
 
 @dataclass
 class CoolingState:
-    temperature: Annotated[float, Unit.CELSIUS]
-    setpoint: Annotated[float, Unit.CELSIUS]
-    power: Annotated[int, Unit.PERCENT]
+    setpoint: Annotated[float, Unit.CELSIUS] | None
+    power: Annotated[int, Unit.PERCENT] | None
     enabled: bool
 
 

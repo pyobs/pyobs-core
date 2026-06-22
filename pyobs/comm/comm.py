@@ -31,6 +31,7 @@ class Comm:
         """Creates a comm module."""
 
         self._proxies: dict[str, Proxy] = {}
+        self._state_subscriptions: dict[str, list[tuple[type[Interface], StateCallback]]] = {}
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
         self._logging_task: asyncio.Task[Any] | None = None
@@ -232,6 +233,11 @@ class Comm:
         # if a client disconnects, we remove its proxy
         if sender in self._proxies:
             del self._proxies[sender]
+
+        # tear down any state subscriptions held for that client
+        for interface, callback in self._state_subscriptions.pop(sender, []):
+            await self.unsubscribe_state(sender, interface, callback)
+
         return True
 
     @property
@@ -430,13 +436,16 @@ class Comm:
             interface: Interface type for the state.
             state: State object to publish.
         """
-        raise NotImplementedError()
+        await self._set_state(interface, state)
+
+    async def _set_state(self, interface: type[Interface], state: Any) -> None:
+        pass
 
     async def subscribe_state(
         self,
         module: str,
         interface: type[Interface],
-        callback: Callable[[Any], None],
+        callback: StateCallback,
     ) -> None:
         """Subscribe to state updates for a given module and interface.
 
@@ -447,13 +456,22 @@ class Comm:
             interface: Interface type to subscribe to.
             callback: Called with state object on each update.
         """
-        raise NotImplementedError()
+        self._state_subscriptions.setdefault(module, []).append((interface, callback))
+        await self._subscribe_state(module, interface, callback)
+
+    async def _subscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
+    ) -> None:
+        pass
 
     async def unsubscribe_state(
         self,
         module: str,
         interface: type[Interface],
-        callback: Callable[[Any], None],
+        callback: StateCallback,
     ) -> None:
         """Unsubscribe from state updates.
 
@@ -462,7 +480,15 @@ class Comm:
             interface: Interface type to unsubscribe from.
             callback: Callback that was registered.
         """
-        raise NotImplementedError()
+        await self._unsubscribe_state(module, interface, callback)
+
+    async def _unsubscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
+    ) -> None:
+        pass
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:
         """Send an event to all connected modules.

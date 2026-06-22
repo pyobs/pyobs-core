@@ -11,7 +11,7 @@ import time
 import xml.sax.saxutils
 from collections.abc import Callable, Coroutine
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, get_type_hints
+from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin, get_type_hints
 
 import slixmpp
 import slixmpp.exceptions
@@ -167,7 +167,6 @@ class XmppComm(Comm):
         # pubsub for states
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], Callable[[Any], None]]] = {}
-        self._state_subscriptions: dict[str, list[tuple[type[Interface], Callable[[Any], None]]]] = {}
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -666,13 +665,16 @@ class XmppComm(Comm):
 
     @staticmethod
     def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
-        hints = get_type_hints(state_cls)
+        hints = get_type_hints(state_cls, include_extras=True)
         kwargs = {}
         for f in dataclasses.fields(state_cls):
             child = elem.find(f.name)
             if child is None or child.text is None:
                 continue
             field_type = hints[f.name]
+            # unwrap Annotated[T, ...] → T for type dispatch
+            if get_origin(field_type) is Annotated:
+                field_type = get_args(field_type)[0]
             if field_type is bool:
                 kwargs[f.name] = child.text == "true"
             elif field_type is float:
@@ -685,7 +687,7 @@ class XmppComm(Comm):
                 kwargs[f.name] = child.text
         return state_cls(**kwargs)
 
-    async def set_state(self, interface: type[Interface], state: Any) -> None:
+    async def _set_state(self, interface: type[Interface], state: Any) -> None:
         stanza = StateStanza()
         stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
         node = self._state_node(self._module.name, interface)
@@ -705,7 +707,7 @@ class XmppComm(Comm):
             result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
             items = result["pubsub"]["items"]
             if len(items) > 0:
-                callback(self._xml_to_dataclass(items[0]["payload"], interface.State))
+                callback(self._xml_to_dataclass(items[0]["payload"], interface.state))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass  # node exists but nothing published yet
 
@@ -732,30 +734,7 @@ class XmppComm(Comm):
             return
         interface, callback = self._state_node_handlers[node]
         payload = msg["pubsub_event"]["items"]["item"]["payload"]
-        callback(self._xml_to_dataclass(payload, interface.State))
-
-    async def subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
-        """Subscribe to state updates for a given module and interface.
-
-        Delivers the current value immediately on subscribe.
-
-        Args:
-            module: Name of remote module.
-            interface: Interface type to subscribe to.
-            callback: Called with state object on each update.
-        """
-        self._state_subscriptions.setdefault(module, []).append((interface, callback))
-        await self._subscribe_state(module, interface, callback)  # base class no-op; XmppComm overrides it
-
-    async def unsubscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
-        """Unsubscribe from state updates.
-
-        Args:
-            module: Name of remote module.
-            interface: Interface type to unsubscribe from.
-            callback: Callback that was registered.
-        """
-        await self._unsubscribe_state(module, interface, callback)
+        callback(self._xml_to_dataclass(payload, interface.state))
 
 
 __all__ = ["XmppComm"]

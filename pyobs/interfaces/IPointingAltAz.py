@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -12,7 +13,9 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def move_altaz(self, alt: float, az: float, **kwargs: Any) -> None:
+    async def move_altaz(
+        self, alt: Annotated[float, Unit.DEGREES], az: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Moves to given coordinates.
 
         Args:
@@ -25,7 +28,7 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_altaz(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_altaz(self, **kwargs: Any) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Returns current Alt and Az.
 
         Returns:

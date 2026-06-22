@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .IAbortable import IAbortable
 
 
@@ -12,7 +13,9 @@ class IAutoFocus(IAbortable, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
+    async def auto_focus(
+        self, count: int, step: float, exposure_time: Annotated[float, Unit.SECONDS], **kwargs: Any
+    ) -> tuple[float, float]:
         """Perform an auto-focus series.
 
         This method performs an auto-focus series with "count" images on each side of the initial guess and the given

@@ -241,21 +241,20 @@ class BaseGuiding(BasePointing, IAutoGuiding, IFitsHeaderBefore, IFitsHeaderAfte
         self._statistics.add_data(image)
 
         # get telescope
-        try:
-            telescope = await self.proxy(self._telescope, ITelescope)
-        except ValueError:
+        if not await self.has_proxy(self._telescope, ITelescope):
             log.error("Given telescope does not exist or is not of correct type.")
             self._set_loop_state(False)
             return image
 
         # apply offsets
         try:
-            if await self._apply(image, telescope, self._location):
-                self._set_loop_state(True)
-                log.info("Finished image.")
-            else:
-                log.info("Could not apply offsets.")
-                self._set_loop_state(False)
+            async with self.proxy(self._telescope, ITelescope) as telescope:
+                if await self._apply(image, telescope, self._location):
+                    self._set_loop_state(True)
+                    log.info("Finished image.")
+                else:
+                    log.info("Could not apply offsets.")
+                    self._set_loop_state(False)
         except ValueError as e:
             log.info("Could not apply offsets: %s", e)
             self._set_loop_state(False)

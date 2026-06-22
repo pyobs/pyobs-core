@@ -62,15 +62,11 @@ class BasePointing(Module, PipelineMixin, metaclass=ABCMeta):
         await Module.open(self)
 
         # check telescope
-        try:
-            await self.proxy(self._telescope, ITelescope)
-        except ValueError:
+        if not await self.has_proxy(self._telescope, ITelescope):
             log.warning("Given telescope does not exist or is not of correct type at the moment.")
 
         # check camera
-        try:
-            await self.proxy(self._camera, ICamera)
-        except ValueError:
+        if not await self.has_proxy(self._camera, ICamera):
             log.warning("Given camera does not exist or is not of correct type at the moment.")
 
 

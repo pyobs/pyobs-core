@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from pyobs.background_task import BackgroundTask
 from pyobs.comm import Comm
 from pyobs.comm.dummy import DummyComm
+from pyobs.comm.proxy import ProxyType, _ProxyContext
 
 if TYPE_CHECKING:
     from astroplan import Observer
@@ -41,10 +42,6 @@ ObjectClass = TypeVar("ObjectClass")
 
 """Class of a pydantic model."""
 PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
-
-
-"""Class of a proxy."""
-ProxyType = TypeVar("ProxyType")
 
 
 @overload
@@ -585,12 +582,11 @@ class Object(PrivateAttrMixin):
         return obj
 
     @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> ProxyType: ...
-
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> _ProxyContext[ProxyType]: ...
     @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any: ...
+    def proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
 
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -611,7 +607,23 @@ class Object(PrivateAttrMixin):
         Raises:
             ValueError: If proxy does not exist or wrong type.
         """
-        return await self.comm.proxy(name_or_object, obj_type)
+        return self.comm.proxy(name_or_object, obj_type)
+
+    @overload
+    def safe_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType]
+    ) -> _ProxyContext[ProxyType | None]: ...
+    @overload
+    def safe_proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def safe_proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Same as proxy(), but yields None inside the block instead of raising."""
+        return self.comm.safe_proxy(name_or_object, obj_type)
+
+    async def has_proxy(self, name_or_object: str | object, obj_type: type[Any] | None = None) -> bool:
+        """True if a proxy of the given type can currently be resolved. Doesn't keep a reference
+        to it, so doesn't need async with the way proxy()/safe_proxy() do."""
+        return await self.comm.has_proxy(name_or_object, obj_type)
 
 
 __all__ = ["get_object", "get_class_from_string", "create_object", "Object", "PrivateAttrMixin"]

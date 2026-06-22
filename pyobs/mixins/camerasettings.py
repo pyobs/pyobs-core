@@ -44,12 +44,9 @@ class CameraSettingsMixin:
         # filter
         if self.__camerasettings_filters is not None and self.__camerasettings_filter is not None:
             # get proxy
-            log.info("Getting proxy for filter wheel...")
-            filters = await cast(Module, self).proxy(self.__camerasettings_filters, IFilters)
-
-            # set it
-            log.info("Setting filter to %s...", self.__camerasettings_filter)
-            await filters.set_filter(self.__camerasettings_filter)
+            async with cast(Module, cast(object, self)).proxy(self.__camerasettings_filters, IFilters) as proxy:
+                log.info("Setting filter to %s...", self.__camerasettings_filter)
+                await proxy.set_filter(self.__camerasettings_filter)
 
         # camera settings
         if self.__camerasettings_binning is not None and isinstance(camera, IBinning):

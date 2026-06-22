@@ -13,7 +13,8 @@ class Event:
     """Base class for all events."""
 
     __module__ = "pyobs.events"
-    local = False
+    local: bool = False
+    version: int = 1
 
     def __init__(self, **kwargs: Any):
         self.uuid = str(uuid.uuid4())

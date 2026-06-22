@@ -1,0 +1,18 @@
+services:
+  ejabberd:
+    image: ejabberd/ecs:latest
+    ports:
+      - "5222:5222"
+    volumes:
+      - ./ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:ro
+    environment:
+      # Register accounts used by the integration tests on first start
+      CTL_ON_CREATE: >-
+        register camera localhost pyobs ;
+        register observer localhost pyobs
+    healthcheck:
+      test: ["CMD", "ejabberdctl", "status"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 10s

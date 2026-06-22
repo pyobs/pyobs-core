@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyobs.interfaces import IRunnable, ITelescope
+from pyobs.interfaces import IPointingAltAz, IRunnable
 from pyobs.modules import Module, timeout
 from pyobs.object import get_object
 from pyobs.robotic.utils.skyflats.pointing import SkyFlatsBasePointing
@@ -16,7 +16,7 @@ class FlatFieldPointing(Module, IRunnable):
 
     __module__ = "pyobs.modules.flatfield"
 
-    def __init__(self, telescope: str | ITelescope, pointing: dict[str, Any] | SkyFlatsBasePointing, **kwargs: Any):
+    def __init__(self, telescope: str | IPointingAltAz, pointing: dict[str, Any] | SkyFlatsBasePointing, **kwargs: Any):
         """Initialize a new flat field pointing.
 
         Args:
@@ -33,15 +33,10 @@ class FlatFieldPointing(Module, IRunnable):
     async def run(self, **kwargs: Any) -> None:
         """Move telescope to pointing."""
 
-        # get telescope
-        log.info("Getting proxy for telescope...")
-        telescope = await self.proxy(self._telescope, ITelescope)
-
-        # pointing
         pointing = get_object(self._pointing, SkyFlatsBasePointing, observer=self._observer)
-
-        # point
-        await pointing(telescope)
+        async with self.proxy(self._telescope, IPointingAltAz) as proxy:
+            log.info("Pointing telescope...")
+            await pointing(proxy)
         log.info("Finished pointing telescope.")
 
     async def abort(self, **kwargs: Any) -> None:

@@ -123,9 +123,7 @@ class FollowMixin:
                     continue
 
             # get other device
-            try:
-                device = await module.proxy(this.__follow_device, this.__follow_mode)
-            except ValueError:
+            if not await module.has_proxy(this.__follow_device, this.__follow_mode):
                 # cannot follow, wait a little longer
                 log.warning("Cannot follow module, since it is of wrong type.")
                 await asyncio.sleep(this.__follow_interval * 10)
@@ -137,7 +135,8 @@ class FollowMixin:
                     my_coords = build_skycoord(await get_coords(module, this.__follow_mode), this.__follow_mode)
                 else:
                     continue
-                xy_coords = await get_coords(device, this.__follow_mode)
+                async with module.proxy(this.__follow_device, this.__follow_mode) as proxy:
+                    xy_coords = await get_coords(proxy, this.__follow_mode)
                 if xy_coords is None:
                     continue
                 other_coords = build_skycoord(xy_coords, this.__follow_mode)

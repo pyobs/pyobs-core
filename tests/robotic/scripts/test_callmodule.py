@@ -1,6 +1,8 @@
 from __future__ import annotations
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from pydantic import ValidationError
 
 from pyobs.interfaces import IExposureTime
@@ -17,6 +19,13 @@ def script() -> CallModuleScript:
     )
     s._comm = MagicMock()
     return s
+
+
+def make_proxy_cm(value: object) -> MagicMock:
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=value)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return cm
 
 
 # ── param validation ──────────────────────────────────────────────────────────
@@ -91,21 +100,21 @@ def test_default_params_is_empty_dict() -> None:
 
 @pytest.mark.asyncio
 async def test_can_run_true_when_module_available(script: CallModuleScript) -> None:
-    script._comm.proxy = AsyncMock(return_value=MagicMock())
+    script._comm.has_proxy = AsyncMock(return_value=True)
     assert await script.can_run(None) is True
 
 
 @pytest.mark.asyncio
 async def test_can_run_false_when_module_unavailable(script: CallModuleScript) -> None:
-    script._comm.proxy = AsyncMock(side_effect=ValueError("module not found"))
+    script._comm.has_proxy = AsyncMock(return_value=False)
     assert await script.can_run(None) is False
 
 
 @pytest.mark.asyncio
 async def test_can_run_uses_interface_for_proxy(script: CallModuleScript) -> None:
-    script._comm.proxy = AsyncMock(return_value=MagicMock())
+    script._comm.has_proxy = AsyncMock(return_value=True)
     await script.can_run(None)
-    assert script._comm.proxy.call_args[0][1] is IExposureTime
+    assert script._comm.has_proxy.call_args[0][1] is IExposureTime
 
 
 # ── run ───────────────────────────────────────────────────────────────────────
@@ -115,7 +124,7 @@ async def test_can_run_uses_interface_for_proxy(script: CallModuleScript) -> Non
 async def test_run_calls_method_with_named_params(script: CallModuleScript) -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock()
-    script._comm.proxy = AsyncMock(return_value=proxy)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     await script.run(None)
     proxy.execute.assert_called_once_with("set_exposure_time", exposure_time=30.0)
@@ -125,7 +134,7 @@ async def test_run_calls_method_with_named_params(script: CallModuleScript) -> N
 async def test_run_uses_interface_for_proxy(script: CallModuleScript) -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock()
-    script._comm.proxy = AsyncMock(return_value=proxy)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     await script.run(None)
     assert script._comm.proxy.call_args[0][1] is IExposureTime

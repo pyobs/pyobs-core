@@ -6,7 +6,7 @@ import math
 import time
 from asyncio import Server
 from struct import pack, unpack
-from typing import Any, NoReturn, cast
+from typing import Any, cast
 
 from pyobs.interfaces import IPointingRaDec
 from pyobs.modules import Module
@@ -102,24 +102,23 @@ class Stellarium(Module):
 
     async def move_telescope(self, ra: float, dec: float) -> None:
         try:
-            telescope = await self.proxy(self._telescope, IPointingRaDec)
-            await telescope.move_radec(ra, dec)
+            async with self.proxy(self._telescope, IPointingRaDec) as telescope:
+                await telescope.move_radec(ra, dec)
         except ValueError:
             return
 
-    async def _send_task(self) -> NoReturn:
+    async def _send_task(self) -> None:
         """Send coordinates to clients."""
 
         while True:
             # get telescope
-            try:
-                telescope = await self.proxy(self._telescope, IPointingRaDec)
-            except ValueError:
+            if not await self.has_proxy(self._telescope, IPointingRaDec):
                 await asyncio.sleep(10)
                 continue
 
             # get RA/Dec
-            ra, dec = await telescope.get_radec()
+            async with self.proxy(self._telescope, IPointingRaDec) as telescope:
+                ra, dec = await telescope.get_radec()
 
             # send to all clients
             for client in self._clients:

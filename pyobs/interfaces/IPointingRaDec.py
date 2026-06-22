@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -12,7 +13,9 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def move_radec(self, ra: float, dec: float, **kwargs: Any) -> None:
+    async def move_radec(
+        self, ra: Annotated[float, Unit.DEGREES], dec: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Starts tracking on given coordinates.
 
         Args:
@@ -25,7 +28,7 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_radec(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_radec(self, **kwargs: Any) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Returns current RA and Dec.
 
         Returns:

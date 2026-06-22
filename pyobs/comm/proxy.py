@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import inspect
 import types
-from typing import TYPE_CHECKING, Any, get_type_hints
+from collections.abc import Coroutine
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_type_hints
 
 from pyobs.interfaces import Interface
 from pyobs.utils.types import cast_bound_arguments_to_simple
 
 if TYPE_CHECKING:
     from pyobs.comm import Comm
+
+"""Class of a proxy."""
+ProxyType = TypeVar("ProxyType")
 
 
 class Proxy:
@@ -47,6 +51,9 @@ class Proxy:
 
         # create methods
         self._methods = self._create_methods()
+
+        # store state
+        self._state: dict[type[Interface], Any] = {}
 
     @property
     def name(self) -> str:
@@ -149,6 +156,36 @@ class Proxy:
             return await this.execute(method, *args, **kwargs)
 
         return inner
+
+    def update_state(self, interface: type[Interface], state: Any) -> None:
+        """Called by Comm whenever a new state arrives. Not intended to be called directly by module code."""
+        self._state[interface] = state
+
+    def clear_state(self) -> None:
+        """Clear all cached state. Called by Comm when the remote module disconnects."""
+        self._state.clear()
+
+    def state(self, interface: type[Interface]) -> Any | None:
+        """Latest known state for the given interface, or None if nothing has arrived yet."""
+        return self._state.get(interface)
+
+
+class _ProxyContext(Generic[ProxyType]):
+    """Returned by Comm.proxy() / Object.proxy() / Comm.safe_proxy(). Must be used as:
+    async with self.proxy("camera", ICooling) as camera:
+        ...
+    """
+
+    def __init__(self, coro: Coroutine[Any, Any, ProxyType]) -> None:
+        self._coro = coro
+
+    async def __aenter__(self) -> ProxyType:
+        return await self._coro
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        # intentionally a no-op: the underlying Proxy is owned and cached
+        # by Comm, not by this block, and stays alive for other callers.
+        pass
 
 
 __all__ = ["Proxy"]

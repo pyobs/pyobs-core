@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import inspect
 import logging
 from collections.abc import Callable, Coroutine
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
 
 from .commlogging import CommLoggingHandler
-from .proxy import Proxy
+from .proxy import Proxy, ProxyType, _ProxyContext
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
 
+StateCallback = Callable[[Any], None]
+
 log = logging.getLogger(__name__)
-
-
-ProxyType = TypeVar("ProxyType")
 
 
 class Comm:
@@ -27,13 +27,13 @@ class Comm:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, cache_proxies: bool = True):
+    def __init__(self) -> None:
         """Creates a comm module."""
 
         self._proxies: dict[str, Proxy] = {}
+        self._state_subscriptions: dict[str, list[tuple[type[Interface], StateCallback]]] = {}
         self._module: Module | None = None
         self._log_queue: asyncio.Queue[LogEvent] = asyncio.Queue()
-        self._cache_proxies = cache_proxies
         self._logging_task: asyncio.Task[Any] | None = None
         self._event_handlers: dict[type[Event], list[Callable[[Event, str], Coroutine[Any, Any, bool]]]] = {}
         self._closing = asyncio.Event()
@@ -117,7 +117,7 @@ class Comm:
             return None
 
         # if client doesn't exist or we disabled caching, fetch a new proxy
-        if client not in self._proxies or not self._cache_proxies:
+        if client not in self._proxies:
             # get interfaces
             try:
                 interfaces = await self.get_interfaces(client)
@@ -126,18 +126,20 @@ class Comm:
 
             # create new proxy
             proxy = Proxy(self, client, interfaces)
+
+            # subscribe to state
+            for interface in interfaces:
+                if getattr(interface, "state", None) is not None:
+                    await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
+
             self._proxies[client] = proxy
 
         # return proxy
         return self._proxies[client]
 
-    @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> ProxyType: ...
-
-    @overload
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any: ...
-
-    async def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> Any | ProxyType:
+    async def _resolve_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
+    ) -> Any | ProxyType:
         """Returns object directly if it is of given type. Otherwise get proxy of client with given name and check type.
 
         If name_or_object is an object:
@@ -184,15 +186,40 @@ class Comm:
             # completely wrong...
             raise ValueError(f'Given parameter is neither a name nor an object of requested type "{obj_type}".')
 
-    async def safe_proxy(
+    async def _safe_resolve_proxy(
         self, name_or_object: str | object, obj_type: type[ProxyType] | None = None
     ) -> Any | ProxyType | None:
         """Calls proxy() in a safe way and returns None instead of raising an exception."""
 
         try:
-            return await self.proxy(name_or_object, obj_type)
+            return await self._resolve_proxy(name_or_object, obj_type)
         except ValueError:
             return None
+
+    @overload
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType]) -> _ProxyContext[ProxyType]: ...
+    @overload
+    def proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Returns a context manager; use as `async with self.proxy(...) as x:`."""
+        return _ProxyContext(self._resolve_proxy(name_or_object, obj_type))
+
+    @overload
+    def safe_proxy(
+        self, name_or_object: str | object, obj_type: type[ProxyType]
+    ) -> _ProxyContext[ProxyType | None]: ...
+    @overload
+    def safe_proxy(self, name_or_object: str | object, obj_type: None = None) -> _ProxyContext[Any]: ...
+
+    def safe_proxy(self, name_or_object: str | object, obj_type: type[ProxyType] | None = None) -> _ProxyContext[Any]:
+        """Same as proxy(), but yields None inside the block instead of raising."""
+        return _ProxyContext(self._safe_resolve_proxy(name_or_object, obj_type))
+
+    async def has_proxy(self, name_or_object: str | object, obj_type: type[Any] | None = None) -> bool:
+        """True if a proxy of the given type can currently be resolved. Doesn't keep a reference
+        to it, so doesn't need async with the way proxy()/safe_proxy() do."""
+        return await self._safe_resolve_proxy(name_or_object, obj_type) is not None
 
     async def _client_disconnected(self, event: Event, sender: str) -> bool:
         """Called when a client disconnects.
@@ -203,9 +230,15 @@ class Comm:
 
         """
 
-        # if a client disconnects, we remove its proxy
+        # if a client disconnects, clear its proxy state then evict it
         if sender in self._proxies:
+            self._proxies[sender].clear_state()
             del self._proxies[sender]
+
+        # tear down any state subscriptions held for that client
+        for interface, callback in self._state_subscriptions.pop(sender, []):
+            await self.unsubscribe_state(sender, interface, callback)
+
         return True
 
     @property
@@ -394,6 +427,67 @@ class Comm:
 
     async def _register_events(
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None
+    ) -> None:
+        pass
+
+    async def set_state(self, interface: type[Interface], state: Any) -> None:
+        """Publish state for this module.
+
+        Args:
+            interface: Interface type for the state.
+            state: State object to publish.
+        """
+        await self._set_state(interface, state)
+
+    async def _set_state(self, interface: type[Interface], state: Any) -> None:
+        pass
+
+    async def subscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
+    ) -> None:
+        """Subscribe to state updates for a given module and interface.
+
+        Delivers the current value immediately on subscribe.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to subscribe to.
+            callback: Called with state object on each update.
+        """
+        self._state_subscriptions.setdefault(module, []).append((interface, callback))
+        await self._subscribe_state(module, interface, callback)
+
+    async def _subscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
+    ) -> None:
+        pass
+
+    async def unsubscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
+    ) -> None:
+        """Unsubscribe from state updates.
+
+        Args:
+            module: Name of remote module.
+            interface: Interface type to unsubscribe from.
+            callback: Callback that was registered.
+        """
+        await self._unsubscribe_state(module, interface, callback)
+
+    async def _unsubscribe_state(
+        self,
+        module: str,
+        interface: type[Interface],
+        callback: StateCallback,
     ) -> None:
         pass
 

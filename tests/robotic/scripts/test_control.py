@@ -305,6 +305,13 @@ async def test_conditional_get_fits_headers_no_script() -> None:
 # ── SelectorScript ────────────────────────────────────────────────────────────
 
 
+def make_proxy_cm(value: object) -> MagicMock:
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=value)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return cm
+
+
 @pytest.mark.asyncio
 async def test_selector_can_run_when_parked() -> None:
     selector = MagicMock()
@@ -312,7 +319,8 @@ async def test_selector_can_run_when_parked() -> None:
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()
-    script._comm.proxy = AsyncMock(return_value=selector)
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
 
     assert await script.can_run(None) is True
 
@@ -324,7 +332,8 @@ async def test_selector_can_run_when_positioned() -> None:
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()
-    script._comm.proxy = AsyncMock(return_value=selector)
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
 
     assert await script.can_run(None) is True
 
@@ -336,7 +345,8 @@ async def test_selector_cannot_run_when_moving() -> None:
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()
-    script._comm.proxy = AsyncMock(return_value=selector)
+    script._comm.has_proxy = AsyncMock(return_value=True)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
 
     assert await script.can_run(None) is False
 
@@ -348,7 +358,7 @@ async def test_selector_run_sets_mode() -> None:
 
     script = SelectorScript(mode="spectroscopy", selector="selector")
     script._comm = MagicMock()
-    script._comm.proxy = AsyncMock(return_value=selector)
+    script._comm.proxy = MagicMock(return_value=make_proxy_cm(selector))
 
     await script.run(None)
     selector.set_mode.assert_called_once_with("spectroscopy")

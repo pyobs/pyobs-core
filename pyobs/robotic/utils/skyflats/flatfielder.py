@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections.abc import Callable, Coroutine
 from enum import Enum
-from typing import Any, cast
+from typing import Any
 
 import astropy.units as u
 import numpy as np
@@ -134,9 +134,9 @@ class FlatFielder(Object):
 
     async def __call__(
         self,
-        telescope: ITelescope,
-        camera: ICamera,
-        filters: IFilters | None = None,
+        telescope: ITelescope | str,
+        camera: ICamera | str,
+        filters: IFilters | str | None = None,
         filter_name: str | None = None,
         count: int = 20,
         binning: tuple[int, int] = (1, 1),
@@ -156,7 +156,7 @@ class FlatFielder(Object):
         """
 
         # camera must support exposure times
-        if not isinstance(camera, IExposureTime):
+        if not await self.has_proxy(camera, IExposureTime):
             raise ValueError("Camera must support exposure times.")
 
         # store
@@ -173,10 +173,10 @@ class FlatFielder(Object):
             await self._wait()
         elif self._state == FlatFielder.State.TESTING:
             # do actual tests on sky for exposure time
-            await self._testing(cast(ICamera, camera))
+            await self._testing(camera)
         elif self._state == FlatFielder.State.RUNNING:
             # take flat fields
-            await self._flat_field(telescope, cast(ICamera, camera))
+            await self._flat_field(telescope, camera)
 
         # return current state
         return self._state
@@ -230,7 +230,7 @@ class FlatFielder(Object):
             return True
 
     async def _init_system(
-        self, telescope: ITelescope, camera: ICamera | IExposureTime, filters: IFilters | None = None
+        self, telescope: ITelescope | str, camera: ICamera | str, filters: IFilters | str | None = None
     ) -> None:
         """Initialize whole system."""
 
@@ -249,23 +249,28 @@ class FlatFielder(Object):
             return
 
         # set binning
-        if isinstance(camera, IBinning):
-            log.info("Setting binning to %dx%d...", self._cur_binning[0], self._cur_binning[1])
-            await camera.set_binning(*self._cur_binning)
+        async with self.safe_proxy(camera, IBinning) as cam:
+            if cam is not None:
+                log.info("Setting binning to %dx%d...", self._cur_binning[0], self._cur_binning[1])
+                await cam.set_binning(*self._cur_binning)
 
         # get bias level
-        self._bias_level = await self._get_bias(camera) if isinstance(camera, ICamera) else 0.0
+        self._bias_level = await self._get_bias(camera)
 
         # move telescope
-        future_track = (
-            self._pointing(telescope) if self._pointing is not None and isinstance(telescope, IPointingAltAz) else None
-        )
+        future_track: Coroutine[Any, Any, None] | None
+        if self._pointing is not None:
+            async with self.proxy(telescope, IPointingAltAz) as tel:
+                future_track = self._pointing(tel)
+        else:
+            future_track = None
 
         # get filter from first step and set it
         future_filter: asyncio.Task[Any] | Future
-        if filters is not None and self._cur_filter is not None:
-            log.info("Setting filter to %s...", self._cur_filter)
-            future_filter = asyncio.create_task(filters.set_filter(self._cur_filter))
+        if self._cur_filter is not None:
+            async with self.proxy(filters, IFilters) as fltr:
+                log.info("Setting filter to %s...", self._cur_filter)
+                future_filter = asyncio.create_task(fltr.set_filter(self._cur_filter))
         else:
             future_filter = Future(empty=True)
 
@@ -277,7 +282,7 @@ class FlatFielder(Object):
         log.info("Waiting for flat-field time...")
         self._state = FlatFielder.State.WAITING
 
-    async def _get_bias(self, camera: ICamera) -> float:
+    async def _get_bias(self, camera: ICamera | str) -> float:
         """Take bias image to determine bias level.
 
         Returns:
@@ -286,17 +291,20 @@ class FlatFielder(Object):
         log.info("Taking BIAS image to determine median level...")
 
         # set full frame
-        cam = camera
-        if isinstance(camera, IWindow):
-            full_frame = await camera.get_full_frame()
-            await camera.set_window(*full_frame)
+        async with self.safe_proxy(camera, IWindow) as cam:
+            if cam is not None:
+                full_frame = await cam.get_full_frame()
+                await cam.set_window(*full_frame)
 
         # take image
-        if isinstance(camera, IExposureTime):
-            await camera.set_exposure_time(0.0)
-        if isinstance(camera, IImageType):
-            await camera.set_image_type(ImageType.BIAS)
-        filename = await cam.grab_data(broadcast=False)
+        async with self.safe_proxy(camera, IExposureTime) as cam:
+            if cam is not None:
+                await cam.set_exposure_time(0.0)
+        async with self.safe_proxy(camera, IImageType) as cam:
+            if cam is not None:
+                await cam.set_image_type(ImageType.BIAS)
+        async with self.proxy(camera, ICamera) as cam:
+            filename = await cam.grab_data(broadcast=False)
 
         # download image
         bias = await self.vfs.read_image(filename)
@@ -380,7 +388,7 @@ class FlatFielder(Object):
             # otherwise it seems that we're in the middle of flat-fielding time
             return 0
 
-    async def _testing(self, camera: ICamera) -> None:
+    async def _testing(self, camera: ICamera | str) -> None:
         """Take flat-fields but don't store them."""
 
         # set window
@@ -388,12 +396,7 @@ class FlatFielder(Object):
 
         # do exposures, do not broadcast while testing
         log.info("Exposing test flat field for %.2fs...", self._exptime)
-        cam = camera
-        if isinstance(camera, IExposureTime):
-            await camera.set_exposure_time(float(self._exptime))
-        if isinstance(camera, IImageType):
-            await camera.set_image_type(ImageType.SKYFLAT)
-        filename = await cam.grab_data(broadcast=False)
+        filename = await self._take_image(camera, broadcast=False)
 
         # analyse image
         await self._analyse_image(filename)
@@ -410,28 +413,40 @@ class FlatFielder(Object):
             log.info("Missed flat-fielding time, finish task...")
             self._state = FlatFielder.State.FINISHED
 
-    async def _set_window(self, camera: ICamera | IExposureTime, testing: bool) -> None:
+    async def _take_image(self, camera: ICamera | str, broadcast: bool = True) -> str:
+        async with self.safe_proxy(camera, IExposureTime) as cam:
+            if cam is not None:
+                await cam.set_exposure_time(float(self._exptime))
+        async with self.safe_proxy(camera, IImageType) as cam:
+            if cam is not None:
+                await cam.set_image_type(ImageType.SKYFLAT)
+        async with self.proxy(camera, ICamera) as cam:
+            filename = await cam.grab_data(broadcast=broadcast)
+        return filename
+
+    async def _set_window(self, camera: ICamera | str, testing: bool) -> None:
         """Set camera window.
 
         Args:
             testing: Whether we're in testing mode or not.
         """
-        if isinstance(camera, IWindow):
-            # get full frame
-            left, top, width, height = await camera.get_full_frame()
+        async with self.safe_proxy(camera, IWindow) as cam:
+            if cam is not None:
+                # get full frame
+                left, top, width, height = await cam.get_full_frame()
 
-            # if testing, take test frame, otherwise use full frame
-            if testing:
-                left, top, width, height = (
-                    int(left + self._test_frame[0] / 100 * width),
-                    int(top + self._test_frame[1] / 100 * width),
-                    int(self._test_frame[2] / 100 * width),
-                    int(self._test_frame[3] / 100 * height),
-                )
+                # if testing, take test frame, otherwise use full frame
+                if testing:
+                    left, top, width, height = (
+                        int(left + self._test_frame[0] / 100 * width),
+                        int(top + self._test_frame[1] / 100 * width),
+                        int(self._test_frame[2] / 100 * width),
+                        int(self._test_frame[3] / 100 * height),
+                    )
 
-            # set it
-            log.info("Setting camera window to %dx%d at %d,%d...", width, height, left, top)
-            await camera.set_window(left, top, width, height)
+                # set it
+                log.info("Setting camera window to %dx%d at %d,%d...", width, height, left, top)
+                await cam.set_window(left, top, width, height)
 
     async def _analyse_image(self, filename: str) -> bool:
         """Analyze image and return whether it's okay.
@@ -509,26 +524,23 @@ class FlatFielder(Object):
         # calculate next exposure time
         self._exptime *= factor
 
-    async def _flat_field(self, telescope: ITelescope, camera: ICamera) -> None:
+    async def _flat_field(self, telescope: ITelescope | str, camera: ICamera | str) -> None:
         """Take flat-fields."""
 
         # set window
         await self._set_window(camera, testing=False)
 
         # move telescope
-        if self._pointing is not None and isinstance(telescope, IPointingAltAz):
-            await self._pointing(telescope)
+        if self._pointing is not None:
+            async with self.proxy(telescope, IPointingAltAz) as tel:
+                await self._pointing(tel)
 
         # do exposures, do not broadcast while testing
         now = Time.now()
         log.info(
             "Exposing flat field %d/%d for %.2fs...", self._exposures_done + 1, self._exposures_total, self._exptime
         )
-        if isinstance(camera, IExposureTime):
-            await camera.set_exposure_time(float(self._exptime))
-        if isinstance(camera, IImageType):
-            await camera.set_image_type(ImageType.SKYFLAT)
-        filename = await camera.grab_data()
+        filename = await self._take_image(camera)
 
         # analyse image
         if await self._analyse_image(filename):

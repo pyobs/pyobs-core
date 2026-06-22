@@ -1,5 +1,7 @@
 import inspect
+import os
 from typing import Any
+
 import pytest
 
 
@@ -9,6 +11,11 @@ def pytest_addoption(parser: Any) -> None:
 
 def pytest_configure(config: Any) -> None:
     config.addinivalue_line("markers", "ssh: mark test as using SSH")
+    config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line(
+        "markers",
+        "xmpp: mark test as requiring a live ejabberd server " "(set PYOBS_TEST_XMPP_HOST to enable)",
+    )
 
 
 def pytest_collection_modifyitems(config: Any, items: Any) -> None:
@@ -23,6 +30,13 @@ def pytest_collection_modifyitems(config: Any, items: Any) -> None:
         for item in items:
             if "ssh" in item.keywords:
                 item.add_marker(nossh)
+
+    # do XMPP tests?
+    if not os.environ.get("PYOBS_TEST_XMPP_HOST"):
+        noxmpp = pytest.mark.skip(reason="XMPP testing disabled (set PYOBS_TEST_XMPP_HOST to enable)")
+        for item in items:
+            if "xmpp" in item.keywords:
+                item.add_marker(noxmpp)
 
 
 @pytest.fixture(scope="session", autouse=True)

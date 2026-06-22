@@ -1,0 +1,46 @@
+hosts:
+  - "localhost"
+
+loglevel: warning
+
+# Plain TCP only — no TLS needed for testing
+listen:
+  - port: 5222
+    ip: "::"
+    module: ejabberd_c2s
+    starttls: false
+
+auth_method:
+  - internal
+
+acl:
+  local:
+    user_regexp: ""
+
+access_rules:
+  local:
+    allow: local
+  pubsub_createnode:
+    allow: local
+  announce:
+    allow: admins
+
+modules:
+  mod_caps: {}
+  mod_disco: {}
+  mod_ping: {}
+  mod_pubsub:
+    access_createnode: pubsub_createnode
+    plugins:
+      - flat
+    default_node_config:
+      # Keep only the latest value — state has no history
+      max_items: 1
+      persist_items: true
+      deliver_payloads: true
+      deliver_notifications: true
+      # Hand the current value to a new subscriber immediately on subscribe
+      send_last_published_item: on_sub_and_presence
+      notify_retract: false
+  mod_roster: {}
+  mod_vcard: {}

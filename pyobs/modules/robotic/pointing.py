@@ -100,24 +100,23 @@ class PointingSeries(Module, IAutonomous):
         log.info("Pointing series finished.")
 
     async def _process_point(self, coord: SkyCoord) -> bool:
-        # get acquisition and telescope units
-        acquisition = await self.proxy(self._acquisition, IAcquisition)
-        telescope = await self.proxy(self._telescope, IPointingRaDec)
-
         # acquire target and process result
         try:
             # move telescope
-            await telescope.move_radec(float(coord.ra.degree), float(coord.dec.degree))
+            async with self.proxy(self._telescope, IPointingRaDec) as telescope:
+                await telescope.move_radec(float(coord.ra.degree), float(coord.dec.degree))
 
             # acquire target
-            acq = await acquisition.acquire_target()
+            async with self.proxy(self._acquisition, IAcquisition) as acquisition:
+                acq = await acquisition.acquire_target()
 
             #  process result
             await self._process_acquisition(**acq)
 
             # if telescope implements IPointingSeries, let it know
-            if isinstance(telescope, IPointingSeries):
-                await telescope.add_pointing_measurement()
+            async with self.safe_proxy(self._telescope, IPointingSeries) as telescope:
+                if telescope:
+                    await telescope.add_pointing_measurement()
 
             return True
 

@@ -94,12 +94,19 @@ def test_str_representation() -> None:
 # ── ShellCommand.execute ──────────────────────────────────────────────────────
 
 
+def make_proxy_cm(value: object) -> MagicMock:
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=value)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return cm
+
+
 @pytest.mark.asyncio
 async def test_execute_success() -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock(return_value=None)
     comm = MagicMock()
-    comm.proxy = AsyncMock(return_value=proxy)
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     cmd = ShellCommand.parse("camera.abort()")
     response = await cmd.execute(comm)
@@ -113,7 +120,7 @@ async def test_execute_with_return_value() -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock(return_value=30.0)
     comm = MagicMock()
-    comm.proxy = AsyncMock(return_value=proxy)
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     cmd = ShellCommand.parse("camera.get_exposure_time()")
     response = await cmd.execute(comm)
@@ -125,7 +132,7 @@ async def test_execute_with_return_value() -> None:
 @pytest.mark.asyncio
 async def test_execute_module_not_found() -> None:
     comm = MagicMock()
-    comm.proxy = AsyncMock(side_effect=ValueError("module not found"))
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(None))
 
     cmd = ShellCommand.parse("nonexistent.abort()")
     response = await cmd.execute(comm)
@@ -139,7 +146,7 @@ async def test_execute_invalid_param() -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock(side_effect=ValueError("bad param"))
     comm = MagicMock()
-    comm.proxy = AsyncMock(return_value=proxy)
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     cmd = ShellCommand.parse("camera.set_exposure_time(30.0)")
     response = await cmd.execute(comm)
@@ -153,7 +160,7 @@ async def test_execute_remote_error() -> None:
     proxy = MagicMock()
     proxy.execute = AsyncMock(side_effect=exc.RemoteError("something failed"))
     comm = MagicMock()
-    comm.proxy = AsyncMock(return_value=proxy)
+    comm.safe_proxy = MagicMock(return_value=make_proxy_cm(proxy))
 
     cmd = ShellCommand.parse("camera.abort()")
     response = await cmd.execute(comm)

@@ -93,10 +93,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         await self.comm.register_event(BadWeatherEvent, self._on_bad_weather)
 
         # check focuser and camera
-        try:
-            await self.proxy(self._focuser, IFocuser)
-            await self.proxy(self._camera, IData)
-        except ValueError:
+        if not await self.has_proxy(self._focuser, IFocuser) or not await self.has_proxy(self._camera, IData):
             log.warning("Either camera or focuser do not exist or are not of correct type at the moment.")
 
     @raises(exc.AbortedError, exc.FocusError)
@@ -129,35 +126,31 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             self._running = False
 
     async def _auto_focus(self, count: int, step: float, exposure_time: float, **kwargs: Any) -> tuple[float, float]:
-        # get focuser
-        log.info("Getting proxy for focuser...")
-        focuser = await self.proxy(self._focuser, IFocuser)
-
-        # get camera
-        log.info("Getting proxy for camera...")
-        camera = await self.proxy(self._camera, IData)
+        # async with self.proxy(self._focuser, IFocuser) as focuser, :
 
         # do camera settings
-        await self._do_camera_settings(camera)
-        if isinstance(camera, IImageType):
-            await camera.set_image_type(ImageType.FOCUS)
+        async with self.proxy(self._camera, ICamera) as camera:
+            await self._do_camera_settings(camera)
+        async with self.proxy(self._camera, IImageType) as proxy:
+            await proxy.set_image_type(ImageType.FOCUS)
 
         # get filter wheel and current filter
         filter_name = "unknown"
         try:
-            filter_wheel = await self.proxy(self._filters, IFilters)
-            filter_name = await filter_wheel.get_filter()
+            async with self.proxy(self._filters, IFilters) as proxy:
+                filter_name = await proxy.get_filter()
         except ValueError:
             log.warning("Filter module is not of type IFilters. Could not get filter.")
 
         # get focus as first guess
         try:
-            if self._offset:
-                guess = 0.0 if self._init_offset_to_zero else await focuser.get_focus_offset()
-                log.info("Using focus offset of %.2fmm as initial guess.", guess)
-            else:
-                guess = await focuser.get_focus()
-                log.info("Using current focus of %.2fmm as initial guess.", guess)
+            async with self.proxy(self._focuser, IFocuser) as focuser:
+                if self._offset:
+                    guess = 0.0 if self._init_offset_to_zero else await focuser.get_focus_offset()
+                    log.info("Using focus offset of %.2fmm as initial guess.", guess)
+                else:
+                    guess = await focuser.get_focus()
+                    log.info("Using current focus of %.2fmm as initial guess.", guess)
         except exc.RemoteError:
             raise exc.FocusError("Could not fetch current focus value.")
 
@@ -179,10 +172,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise exc.AbortedError()
             try:
-                if self._offset:
-                    await focuser.set_focus_offset(float(foc))
-                else:
-                    await focuser.set_focus(float(foc))
+                async with self.proxy(self._focuser, IFocuser) as focuser:
+                    if self._offset:
+                        await focuser.set_focus_offset(float(foc))
+                    else:
+                        await focuser.set_focus(float(foc))
 
             except exc.RemoteError:
                 raise exc.FocusError("Could not set new focus value.")
@@ -192,7 +186,7 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             if self._abort.is_set():
                 raise exc.AbortedError()
             try:
-                filename = await self._take_image(camera, exposure_time)
+                filename = await self._take_image(exposure_time)
             except exc.RemoteError:
                 log.error("Could not take image.")
                 continue
@@ -202,10 +196,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             image = await self.vfs.read_image(filename)
 
             # get actual focus
-            if self._offset:
-                actual_focus = await focuser.get_focus_offset()
-            else:
-                actual_focus = await focuser.get_focus()
+            async with self.proxy(self._focuser, IFocuser) as focuser:
+                if self._offset:
+                    actual_focus = await focuser.get_focus_offset()
+                else:
+                    actual_focus = await focuser.get_focus()
 
             # analyse
             log.info("Analysing picture...")
@@ -223,10 +218,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             focus = self._series.fit_focus()
         except Exception as e:
             # restore initial guess
-            if self._offset:
-                await focuser.set_focus_offset(float(guess))
-            else:
-                await focuser.set_focus(float(guess))
+            async with self.proxy(self._focuser, IFocuser) as focuser:
+                if self._offset:
+                    await focuser.set_focus_offset(float(guess))
+                else:
+                    await focuser.set_focus(float(guess))
             raise exc.FocusError(f"Could not calculate best focus: {e}")
 
         # did focus series fail?
@@ -234,25 +230,27 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
             log.warning("Focus series failed.")
 
             # reset to initial values
-            if self._offset:
-                log.info("Resetting focus offset to 0.")
-                await focuser.set_focus_offset(0)
-            else:
-                log.info("Resetting focus to initial guess of %.3f mm.", guess)
-                await focuser.set_focus(guess)
+            async with self.proxy(self._focuser, IFocuser) as focuser:
+                if self._offset:
+                    log.info("Resetting focus offset to 0.")
+                    await focuser.set_focus_offset(0)
+                else:
+                    log.info("Resetting focus to initial guess of %.3f mm.", guess)
+                    await focuser.set_focus(guess)
 
             # raise error
             raise exc.FocusError("Could not find best focus.")
 
         # log and set focus
-        if self._offset:
-            log.info("Setting new focus offset of (%.3f+-%.3f) mm.", focus[0], focus[1])
-            absolute = focus[0] + await focuser.get_focus()
-            await focuser.set_focus_offset(focus[0])
-        else:
-            log.info("Setting new focus value of (%.3f+-%.3f) mm.", focus[0], focus[1])
-            absolute = focus[0] + await focuser.get_focus_offset()
-            await focuser.set_focus(focus[0])
+        async with self.proxy(self._focuser, IFocuser) as focuser:
+            if self._offset:
+                log.info("Setting new focus offset of (%.3f+-%.3f) mm.", focus[0], focus[1])
+                absolute = focus[0] + await focuser.get_focus()
+                await focuser.set_focus_offset(focus[0])
+            else:
+                log.info("Setting new focus value of (%.3f+-%.3f) mm.", focus[0], focus[1])
+                absolute = focus[0] + await focuser.get_focus_offset()
+                await focuser.set_focus(focus[0])
 
         # send event
         await self.comm.send_event(FocusFoundEvent(absolute, focus[1], filter_name))
@@ -260,21 +258,19 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         # take final image?
         if self._final_image:
             log.info("Exposing final image at %.2f mm and broadcasting it...", absolute)
-            if isinstance(camera, IExposureTime):
+            async with self.proxy(self._camera, IExposureTime) as camera:
                 await camera.set_exposure_time(exposure_time)
-            if isinstance(camera, IData):
+            async with self.proxy(self._camera, IData) as camera:
                 await camera.grab_data()
 
         # return result
         return focus[0], focus[1]
 
-    async def _take_image(self, camera: ICamera, exposure_time: float) -> str:
-        if isinstance(camera, IExposureTime):
+    async def _take_image(self, exposure_time: float) -> str:
+        async with self.proxy(self._camera, IExposureTime) as camera:
             await camera.set_exposure_time(exposure_time)
-        if isinstance(camera, IData):
+        async with self.proxy(self._camera, IData) as camera:
             return await camera.grab_data(broadcast=self._broadcast)
-        else:
-            raise exc.GeneralError("Cannot grab data from camera.")
 
     async def auto_focus_status(self, **kwargs: Any) -> dict[str, Any]:
         """Returns current status of auto focus.

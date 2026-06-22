@@ -72,9 +72,7 @@ class FlatFieldScheduler(Module, IRunnable):
         await Module.open(self)
 
         # check flat field
-        try:
-            await self.proxy(self._flatfield, IFlatField)
-        except ValueError:
+        if not await self.has_proxy(self._flatfield, IFlatField):
             log.warning("Flatfield module does not exist or is not of correct type at the moment.")
 
     @timeout(7200)
@@ -91,10 +89,6 @@ class FlatFieldScheduler(Module, IRunnable):
             log.info("Performing flat fielding...")
             self._abort = asyncio.Event()
 
-            # get flat fielder
-            log.info("Getting proxy for flat fielder...")
-            flatfield = await self.proxy(self._flatfield, IFlatField)
-
             # do schedule
             log.info("Scheduling flats...")
             await self._scheduler(Time.now())
@@ -108,24 +102,26 @@ class FlatFieldScheduler(Module, IRunnable):
 
                 # start
                 log.info("Taking %d flats in %s %dx%d...", self._count, item.filter_name, item.binning, item.binning)
-                if isinstance(flatfield, IFilters):
-                    await flatfield.set_filter(item.filter_name)
-                if isinstance(flatfield, IBinning):
-                    await flatfield.set_binning(*item.binning)
-                future = asyncio.create_task(flatfield.flat_field(self._count))
+                async with self.proxy(self._flatfield, IFilters) as proxy:
+                    await proxy.set_filter(item.filter_name)
+                async with self.proxy(self._flatfield, IBinning) as proxy:
+                    await proxy.set_binning(*item.binning)
+                async with self.proxy(self._flatfield, IFlatField) as proxy:
+                    future = asyncio.create_task(proxy.flat_field(self._count))
 
                 # wait for it
                 while not future.done():
                     # aborted?
                     if self._abort.is_set():
                         log.info("Aborting current flat field...")
-                        await flatfield.abort()
+                        async with self.proxy(self._flatfield, IFlatField) as proxy:
+                            await proxy.abort()
 
                     # sleep a little
                     await event_wait(self._abort, 1)
 
-            # finished
-            log.info("Finished.")
+                # finished
+                log.info("Finished.")
 
         finally:
             self._running = False

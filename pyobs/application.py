@@ -98,7 +98,7 @@ class Application:
                     super().__init__(identifier="pyobs", **kw)
 
                 def _format_record(self, record: logging.LogRecord) -> list[tuple[str, Any]]:
-                    pairs = super()._format_record(record)
+                    pairs: list[tuple[str, Any]] = super()._format_record(record)
                     pairs.append(("PYOBS_MODULE", getattr(record, "pyobs_module", "")))
                     return pairs
 

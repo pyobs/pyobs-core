@@ -264,13 +264,11 @@ class Telegram(Module):
 
         # what state are we in?
         if context.user_data["state"] == TelegramUserState.EXEC_MODULE:
-            # get proxy for selected module
-            proxy = await self.proxy(query.data)
-
             # show buttons for all modules
-            keyboard = [[InlineKeyboardButton(m, callback_data=f"{query.data}.{m}")] for m in proxy.method_names] + [
-                [InlineKeyboardButton("Cancel", callback_data="cancel")]
-            ]
+            async with self.proxy(query.data) as proxy:
+                keyboard = [
+                    [InlineKeyboardButton(m, callback_data=f"{query.data}.{m}")] for m in proxy.method_names
+                ] + [[InlineKeyboardButton("Cancel", callback_data="cancel")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=f"Chose method in {query.data}:")
             await query.edit_message_reply_markup(reply_markup)
@@ -340,8 +338,8 @@ class Telegram(Module):
 
         # get proxy and method signature
         module, method = context.user_data["method"].split(".")
-        proxy = await self.proxy(module)
-        signature = proxy.signature(method)
+        async with self.proxy(module) as proxy:
+            signature = proxy.signature(method)
 
         # get list of parameters
         params = [
@@ -422,11 +420,10 @@ class Telegram(Module):
         """
         # get proxy
         module, method_name = method.split(".")
-        proxy = await self.proxy(module)
-
-        # call it
-        func = getattr(proxy, method_name)
-        response = await func(*params)
+        async with self.proxy(module) as proxy:
+            # call it
+            func = getattr(proxy, method_name)
+            response = await func(*params)
 
         # set message
         if response is None:

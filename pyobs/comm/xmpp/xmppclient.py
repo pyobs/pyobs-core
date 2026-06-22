@@ -29,7 +29,6 @@ class XmppClient(slixmpp.ClientXMPP):
 
         # stuff
         self._connect_event = asyncio.Event()
-        self._logs_node = "logs"
         self._auth_event = asyncio.Event()
         self._auth_success = False
         self._jid_conflict = False

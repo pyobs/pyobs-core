@@ -17,7 +17,7 @@ class ModuleNameFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.pyobs_module = module_name.get()  # type: ignore[attr-defined]
+        record.pyobs_module = module_name.get()
         return True
 
 

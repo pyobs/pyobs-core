@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -13,7 +14,9 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
+    async def set_offsets_radec(
+        self, dra: Annotated[float, Unit.DEGREES], ddec: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Move an RA/Dec offset.
 
         Args:
@@ -26,7 +29,9 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_offsets_radec(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_offsets_radec(
+        self, **kwargs: Any
+    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Get RA/Dec offset.
 
         Returns:

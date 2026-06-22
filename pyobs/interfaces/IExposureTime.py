@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -10,7 +11,7 @@ class IExposureTime(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
+    async def set_exposure_time(self, exposure_time: Annotated[float, Unit.SECONDS], **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
         Args:
@@ -22,7 +23,7 @@ class IExposureTime(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_exposure_time(self, **kwargs: Any) -> float:
+    async def get_exposure_time(self, **kwargs: Any) -> Annotated[float, Unit.SECONDS]:
         """Returns the exposure time in seconds.
 
         Returns:
@@ -31,7 +32,7 @@ class IExposureTime(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_exposure_time_left(self, **kwargs: Any) -> float:
+    async def get_exposure_time_left(self, **kwargs: Any) -> Annotated[float, Unit.SECONDS]:
         """Returns the remaining exposure time on the current exposure in seconds.
 
         Returns:

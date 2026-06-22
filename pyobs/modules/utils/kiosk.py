@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 from aiohttp import web
 
-from pyobs.interfaces import ICamera, IExposureTime, IStartStop, IWindow
+from pyobs.interfaces import ICamera, IData, IExposureTime, IStartStop, IWindow
 from pyobs.modules import Module
 
 log = logging.getLogger(__name__)
@@ -120,23 +120,22 @@ class Kiosk(Module, IStartStop):
                 continue
 
             # get camera
-            try:
-                camera = await self.proxy(self._camera, ICamera)
-            except ValueError:
+            if not await self.has_proxy(self._camera, ICamera):
                 await asyncio.sleep(10)
                 continue
 
             # do settings
-            if isinstance(camera, IExposureTime):
-                # set exposure time
-                await camera.set_exposure_time(self._exp_time)
-            if isinstance(camera, IWindow):
-                # set full frame
-                full_frame = await camera.get_full_frame()
-                await camera.set_window(*full_frame)
+            async with self.safe_proxy(self._camera, IExposureTime) as camera:
+                if camera:
+                    await camera.set_exposure_time(self._exp_time)
+            async with self.safe_proxy(self._camera, IWindow) as camera:
+                if camera:
+                    full_frame = await camera.get_full_frame()
+                    await camera.set_window(*full_frame)
 
             # do exposure
-            filename = await camera.grab_data(False)
+            async with self.proxy(self._camera, IData) as camera:
+                filename = await camera.grab_data(False)
 
             # download image
             try:
@@ -148,15 +147,16 @@ class Kiosk(Module, IStartStop):
             self._image = await asyncio.get_running_loop().run_in_executor(None, image.to_jpeg)
 
             # adjust exposure time?
-            if isinstance(camera, IExposureTime):
-                # get max value in image
-                max_val = np.max(image.data)
+            async with self.safe_proxy(self._camera, IExposureTime) as camera:
+                if camera:
+                    # get max value in image
+                    max_val = np.max(image.data)
 
-                # adjust
-                self._exp_time = self._exp_time / max_val * 40000
+                    # adjust
+                    self._exp_time = self._exp_time / max_val * 40000
 
-                # cut
-                self._exp_time = max(self._exp_time, 30)
+                    # cut
+                    self._exp_time = max(self._exp_time, 30)
 
 
 __all__ = ["Kiosk"]

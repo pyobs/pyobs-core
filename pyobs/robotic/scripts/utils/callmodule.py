@@ -48,19 +48,17 @@ class CallModuleScript(Script):
         return self
 
     async def can_run(self, data: TaskData | None) -> bool:
-        try:
-            cls = get_class_from_string(self.interface)
-            await self.comm.proxy(self.module, cls)
-            self._cant_run_reason = None
-            return True
-        except ValueError:
+        cls = get_class_from_string(self.interface)
+        if not await self.comm.has_proxy(self.module, cls):
             self._cant_run_reason = f"Module {self.module} not found."
             return False
+        self._cant_run_reason = None
+        return True
 
     async def run(self, data: TaskData | None) -> None:
         cls = get_class_from_string(self.interface)
-        proxy = await self.comm.proxy(self.module, cls)
-        await proxy.execute(self.method, **self.params)
+        async with self.comm.proxy(self.module, cls) as proxy:
+            await proxy.execute(self.method, **self.params)
 
 
 __all__ = ["CallModuleScript"]

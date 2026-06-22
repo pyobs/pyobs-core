@@ -51,13 +51,15 @@ class DarkBiasScript(Script):
 
         image_type = ImageType.BIAS if self.exptime == 0 else ImageType.DARK
 
-        async with self.comm.proxy(self.camera, IBinning) as camera:
-            await camera.set_binning(*self.binning)
+        async with self.comm.safe_proxy(self.camera, IBinning) as camera:
+            if camera is not None:
+                await camera.set_binning(*self.binning)
 
         # set full frame
-        async with self.comm.proxy(self.camera, IWindow) as camera:
-            full_frame = await camera.get_full_frame()
-            await camera.set_window(*full_frame)
+        async with self.comm.safe_proxy(self.camera, IWindow) as camera:
+            if camera is not None:
+                full_frame = await camera.get_full_frame()
+                await camera.set_window(*full_frame)
 
         # take image
         async with self.comm.proxy(self.camera, IExposureTime) as camera:

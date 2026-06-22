@@ -299,9 +299,9 @@ class SpilledLightGuiding(Offsets):
         return image
 
     async def _load_fibre_information(self) -> None:
-        fibers = await self.comm.proxy(self._fibers, IMultiFiber)
-        self._fibre_position = await fibers.get_pixel_position()
-        self._inner_radius = await fibers.get_radius()
+        async with self.comm.proxy(self._fibers, IMultiFiber) as proxy:
+            self._fibre_position = await proxy.get_pixel_position()
+            self._inner_radius = await proxy.get_radius()
 
     async def _correct_for_binning(self, binning: int) -> None:
         self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)

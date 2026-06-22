@@ -101,11 +101,9 @@ class GetFitsHeaders(ImageProcessor):
         # loop all modules
         requests: list[Task[Any]] = []
         for sender in self._senders:
-            # get proxy
-            proxy = await self.proxy(sender, IFitsHeaderBefore)
-
             # request headers
-            requests.append(asyncio.create_task(proxy.get_fits_header_before(self._namespace)))
+            async with self.proxy(sender, IFitsHeaderBefore) as proxy:
+                requests.append(asyncio.create_task(proxy.get_fits_header_before(self._namespace)))
 
         # copy image
         out = image.copy()

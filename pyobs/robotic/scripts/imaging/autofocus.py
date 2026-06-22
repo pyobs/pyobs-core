@@ -29,24 +29,18 @@ class AutoFocusScript(Script):
         """
 
         # we need a camera
-        try:
-            await self.comm.proxy(self.autofocus, IAutoFocus)
-        except ValueError:
+        if not await self.comm.has_proxy(self.autofocus, IAutoFocus):
             self._cant_run_reason = "No autofocus found."
-            return False
-        try:
-            telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
-        except ValueError:
-            self._cant_run_reason = "No telescope found."
             return False
 
         # ready?
-        if not isinstance(telescope, ITelescope):
-            self._cant_run_reason = "No ITelescope found."
-            return False
-        if not await telescope.is_ready():
-            self._cant_run_reason = "Telescope not ready."
-            return False
+        async with self.comm.safe_proxy(self.telescope, ITelescope) as telescope:
+            if telescope is None:
+                self._cant_run_reason = "No ITelescope found."
+                return False
+            if not await telescope.is_ready():
+                self._cant_run_reason = "Telescope not ready."
+                return False
 
         # all good
         self._cant_run_reason = None
@@ -60,9 +54,6 @@ class AutoFocusScript(Script):
         if data is None or data.task is None:
             return
 
-        autofocus = await self.comm.proxy(self.autofocus, IAutoFocus)
-        telescope = await self.comm.proxy(self.telescope, IPointingRaDec)
-
         target = data.task.target
         if target is None:
             raise ValueError("No target given.")
@@ -70,16 +61,19 @@ class AutoFocusScript(Script):
 
         log.info("Moving telescope...")
         coord = target.coordinates(Time.now())
-        await telescope.move_radec(coord.ra.degree, coord.dec.degree)
+        async with self.comm.proxy(self.telescope, IPointingRaDec) as telescope:
+            await telescope.move_radec(coord.ra.degree, coord.dec.degree)
 
         try:
             log.info("Performing auto focus...")
-            await autofocus.auto_focus(self.count, self.step, self.exposure_time)
+            async with self.comm.proxy(self.autofocus, IAutoFocus) as autofocus:
+                await autofocus.auto_focus(self.count, self.step, self.exposure_time)
 
         finally:
-            if isinstance(telescope, IMotion):
-                log.info("Stopping telescope...")
-                await telescope.stop_motion()
+            async with self.comm.safe_proxy(self.telescope, IMotion) as telescope:
+                if telescope is not None:
+                    log.info("Stopping telescope...")
+                    await telescope.stop_motion()
             log.info("Done.")
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:

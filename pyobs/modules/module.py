@@ -187,9 +187,9 @@ class Module(Object, IModule, IConfig):
             return False
 
         # get proxy and version
-        proxy = await self.proxy(sender, IModule)
         try:
-            module_version = await proxy.get_version()
+            async with self.proxy(sender, IModule) as proxy:
+                module_version = await proxy.get_version()
         except exc.RemoteError:
             return True
 

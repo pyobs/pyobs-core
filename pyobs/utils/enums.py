@@ -6,6 +6,8 @@ __title__ = "Enumerations"
 
 from enum import StrEnum
 
+import astropy.units
+
 
 class ModuleState(StrEnum):
     """Enumerator for module states.
@@ -139,4 +141,37 @@ class WeatherSensors(StrEnum):
     SKYMAG = "skymag"
 
 
-__all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors"]
+class Unit(StrEnum):
+    """Enumerator for canonical physical units used on the wire.
+
+    Attributes:
+        DEGREES: Angle, in degrees.
+        CELSIUS: Temperature, in degrees Celsius.
+        SECONDS: Duration, in seconds.
+        PERCENT: Percentage, 0-100.
+        HPA: Pressure, in hectopascals.
+        KM_PER_HOUR: Speed, in kilometers per hour.
+    """
+
+    DEGREES = "deg"
+    CELSIUS = "celsius"
+    SECONDS = "seconds"
+    PERCENT = "percent"
+    HPA = "hpa"
+    KM_PER_HOUR = "km/h"
+
+    def to_astropy(self) -> astropy.units.UnitBase:
+        """The equivalent astropy.units unit, for code that needs to build a Quantity."""
+        return _ASTROPY_UNITS[self]
+
+
+_ASTROPY_UNITS: dict["Unit", astropy.units.UnitBase] = {
+    Unit.DEGREES: astropy.units.deg,
+    Unit.CELSIUS: astropy.units.deg_C,
+    Unit.SECONDS: astropy.units.s,
+    Unit.PERCENT: astropy.units.percent,
+    Unit.HPA: astropy.units.hPa,
+    Unit.KM_PER_HOUR: astropy.units.km / astropy.units.h,
+}
+
+__all__ = ["ModuleState", "ExposureStatus", "ImageType", "ImageFormat", "MotionStatus", "WeatherSensors", "Unit"]

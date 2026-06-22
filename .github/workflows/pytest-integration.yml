@@ -22,5 +22,31 @@ jobs:
       - name: Install packages
         run: uv sync --all-extras --dev
 
+      - name: Start ejabberd
+        run: docker compose -f tests/xmpp/docker-compose.yml up -d
+
+      - name: Wait for ejabberd to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose -f tests/xmpp/docker-compose.yml ps | grep -q "healthy"; then
+              echo "ejabberd is healthy"
+              exit 0
+            fi
+            echo "Waiting for ejabberd... ($i/30)"
+            sleep 2
+          done
+          echo "ejabberd failed to become healthy"
+          docker compose -f tests/xmpp/docker-compose.yml logs
+          exit 1
+
       - name: Run integration tests
+        env:
+          PYOBS_TEST_XMPP_HOST: localhost
+          PYOBS_TEST_XMPP_DOMAIN: localhost
+          PYOBS_TEST_XMPP_PORT: "5222"
+          PYOBS_TEST_XMPP_PASSWORD: pyobs
         run: uv run pytest -m integration
+
+      - name: Stop ejabberd
+        if: always()
+        run: docker compose -f tests/xmpp/docker-compose.yml down

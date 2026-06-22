@@ -1,8 +1,8 @@
-name: Lint
+name: ruff
 on: push
 
 jobs:
-  lint:
+  ruff:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -21,6 +21,3 @@ jobs:
 
       - name: Run ruff
         run: uv run ruff check pyobs/
-
-      - name: Run mypy
-        run: uv run mypy pyobs/

@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "1.53.0"
+version = "2.0.0.dev1"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -89,6 +89,7 @@ dev = [
     "pylint>=4.0.5",
     "pandas-stubs>=3.0.3.260530",
     "types-psutil>=7.2.2.20260518",
+    "pyrefly>=1.1.1",
 ]
 
 [tool.hatch.build.targets.sdist]

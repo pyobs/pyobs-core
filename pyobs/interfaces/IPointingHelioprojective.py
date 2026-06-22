@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Annotated, Any
 
+from ..utils.enums import Unit
 from .interface import Interface
 
 
@@ -12,7 +13,9 @@ class IPointingHelioprojective(Interface, metaclass=ABCMeta):
     __module__ = "pyobs.interfaces"
 
     @abstractmethod
-    async def move_helioprojective(self, theta_x: float, theta_y: float, **kwargs: Any) -> None:
+    async def move_helioprojective(
+        self, theta_x: Annotated[float, Unit.DEGREES], theta_y: Annotated[float, Unit.DEGREES], **kwargs: Any
+    ) -> None:
         """Moves on given coordinates.
 
         Args:
@@ -25,7 +28,9 @@ class IPointingHelioprojective(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_helioprojective(self, **kwargs: Any) -> tuple[float, float]:
+    async def get_helioprojective(
+        self, **kwargs: Any
+    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
         """Returns current theta x/y
 
         Returns:

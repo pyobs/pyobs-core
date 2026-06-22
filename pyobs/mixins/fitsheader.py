@@ -69,7 +69,7 @@ class FitsHeaderMixin:
         futures: dict[str, Task[Any]] = {}
 
         # we can only do this with a comm module
-        module = cast(Module, self)
+        module = cast(Module, cast(object, self))
         if module._comm:
             # get clients that provide fits headers
             clients = await module._comm.clients_with_interface(IFitsHeaderBefore if before else IFitsHeaderAfter)
@@ -78,15 +78,15 @@ class FitsHeaderMixin:
             for client in clients:
                 log.debug("Requesting FITS headers from %s...", client)
                 if before:
-                    proxy1 = await module.proxy(client, IFitsHeaderBefore)
-                    futures[client] = asyncio.create_task(
-                        proxy1.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
-                    )
+                    async with module.proxy(client, IFitsHeaderBefore) as proxy:
+                        futures[client] = asyncio.create_task(
+                            proxy.get_fits_header_before(self._fitsheadermixin_fits_namespaces)
+                        )
                 else:
-                    proxy2 = await module.proxy(client, IFitsHeaderAfter)
-                    futures[client] = asyncio.create_task(
-                        proxy2.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
-                    )
+                    async with module.proxy(client, IFitsHeaderAfter) as proxy:
+                        futures[client] = asyncio.create_task(
+                            proxy.get_fits_header_after(self._fitsheadermixin_fits_namespaces)
+                        )
 
         # finished
         return futures

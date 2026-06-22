@@ -61,11 +61,8 @@ class WaitForMotionMixin:
         if not isinstance(self, Module):
             raise ValueError("This is not a module.")
 
-        # get all proxies
-        proxies = [await self.proxy(device) for device in this.__wait_for_modules]
-
         # all need to be derived from IMotion
-        if not all([isinstance(p, IMotion) for p in proxies]):
+        if not all([self.has_proxy(device, IMotion) for device in this.__wait_for_modules]):
             raise ValueError("Not all given devices are derived from IMotion!")
 
         # run until timeout
@@ -76,14 +73,14 @@ class WaitForMotionMixin:
             if time.time() > start + this.__wait_for_timeout:
                 raise TimeoutError
 
-            # get all states and compare them
-            states = [await p.get_motion_status() for p in proxies]
-
-            # in a good state?
-            good = [s in this.__wait_for_states for s in states]
-
-            # if all good, we're finished waiting
-            if all(good):
+            # loop all modules
+            for module in this.__wait_for_modules:
+                async with self.proxy(module, IMotion) as proxy:
+                    state = await proxy.get_motion_status()
+                    if state not in this.__wait_for_states:
+                        break
+            else:
+                # if all good, we're finished waiting
                 log.info("All other modules have finished moving.")
                 break
 

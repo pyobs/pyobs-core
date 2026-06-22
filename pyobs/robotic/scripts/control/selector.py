@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pyobs.interfaces import IMotion
 from pyobs.interfaces.IMode import IMode
 from pyobs.robotic.scripts import Script
 from pyobs.utils.enums import MotionStatus
@@ -26,22 +27,25 @@ class SelectorScript(Script):
             True if script can run now.
         """
         # check if selector is ready
-        selector = await self.comm.proxy(self.selector, IMode)
-        status = await selector.get_motion_status()
-        if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
-            self._cant_run_reason = None
-            return True
-        else:
-            self._cant_run_reason = f"Selector not ready: {status.name}"
+        if not await self.comm.has_proxy(self.selector, IMode):
+            self._cant_run_reason = "No selector found."
             return False
+        async with self.comm.proxy(self.selector, IMotion) as selector:
+            status = await selector.get_motion_status()
+            if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
+                self._cant_run_reason = None
+                return True
+            else:
+                self._cant_run_reason = f"Selector not ready: {status.name}"
+                return False
 
     async def run(self, data: TaskData | None) -> None:
         """Run script.
         Raises:
             InterruptedError: If interrupted
         """
-        selector = await self.comm.proxy(self.selector, IMode)
-        await selector.set_mode(self.mode)
+        async with self.comm.proxy(self.selector, IMode) as selector:
+            await selector.set_mode(self.mode)
 
     def estimate_duration(self, data: TaskData | None = None, time: Time | None = None) -> float:
         """Estimate duration of the mode change."""

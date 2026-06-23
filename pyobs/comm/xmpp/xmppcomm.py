@@ -567,10 +567,31 @@ class XmppComm(Comm):
     def _handle_event_sync(self, msg: Any) -> None:
         """Synchronous entry point for the MatchXMLMask Callback.
 
-        Callback handlers must be synchronous; this creates an asyncio task
-        so that _handle_event can await safely.
+        State-node dispatch is done synchronously here (no awaits needed).
+        Non-state messages (pyobs events) are dispatched via asyncio.create_task
+        since they need JSON parsing and event routing.
         """
-        asyncio.create_task(self._handle_event(msg))
+        pubsub_ns = "http://jabber.org/protocol/pubsub#event"
+        event_xml = msg.xml.find(f"{{{pubsub_ns}}}event")
+        if event_xml is None:
+            return
+        items_xml = event_xml.find(f"{{{pubsub_ns}}}items")
+        if items_xml is None:
+            return
+        node = items_xml.get("node", "")
+
+        if node.startswith("pyobs:state:"):
+            if node in self._state_node_handlers:
+                if len(msg.xml.findall("{urn:xmpp:delay}delay")) == 0:
+                    interface, callbacks = self._state_node_handlers[node]
+                    item_xml = items_xml.find(f"{{{pubsub_ns}}}item")
+                    payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+                    if payload is not None:
+                        state_obj = self._xml_to_dataclass(payload, interface.state)
+                        for callback in callbacks:
+                            callback(state_obj)
+        else:
+            asyncio.create_task(self._handle_event(msg))
 
     async def _handle_event(self, msg: Any) -> None:
         """Handles an event.
@@ -579,28 +600,9 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        node = msg["pubsub_event"]["items"]["node"]
-
-        # State-node notifications: dispatch to handler if registered, then return.
-        # map_node_event() cannot be used here because the XEP-0060 plugin iterates
-        # Items.iterables (empty) to fire mapped events, so live notifications are
-        # silently dropped. _handle_event (pubsub_publish) fires reliably for all nodes.
-        if node.startswith("pyobs:state:"):
-            if node in self._state_node_handlers:
-                if len(msg.xml.findall("{urn:sleekxmpp:delay}delay")) == 0:
-                    interface, callbacks = self._state_node_handlers[node]
-                    payload = msg["pubsub_event"]["items"]["item"]["payload"]
-                    if payload is not None:
-                        state_obj = self._xml_to_dataclass(payload, interface.state)
-                        for callback in callbacks:
-                            callback(state_obj)
-                    # If payload is None it's a retract notification for the old
-                    # max_items:1 slot — the matching publish notification (with
-                    # payload) arrives in the next pubsub_publish event.
-            return
-
         # get body, unescape it, parse it
-        # node = msg['pubsub_event'][items']['node']
+        # State-node messages are handled synchronously in _handle_event_sync
+        # before this async task runs. By the time we get here it's a pyobs event.
         body = json.loads(xml.sax.saxutils.unescape(msg["pubsub_event"]["items"]["item"]["payload"].text))
 
         # do we have a <delay> element?
@@ -760,9 +762,14 @@ class XmppComm(Comm):
         """
         try:
             result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            item_list = result["pubsub"]["items"]["items"]
-            if item_list:
-                callback(self._xml_to_dataclass(item_list[0]["payload"], interface.state))
+            # Use raw XML to avoid lazy-loading issues with plugin_multi_attrib
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None:
+                callback(self._xml_to_dataclass(payload, interface.state))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
 
@@ -779,18 +786,28 @@ class XmppComm(Comm):
             self._state_node_handlers[node][1].append(callback)
         else:
             self._state_node_handlers[node] = (interface, [callback])
-            await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+            # Retry subscribe until the node exists — the publisher may not have
+            # created it yet (e.g. GUI subscribes before camera's first publish).
+            for _attempt in range(30):
+                try:
+                    await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+                    break
+                except slixmpp.exceptions.IqError:
+                    await asyncio.sleep(1)
+            else:
+                raise slixmpp.exceptions.IqError(None)
 
         # "deliver the current value immediately on subscribe" -- hard requirement above
         try:
             result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            # result["pubsub"]["items"]["items"] uses plugin_multi_attrib to get
-            # the list of Item stanzas; item["payload"] returns the XML element
-            # via Item.get_payload(). Integer indexing items[0] is wrong here —
-            # it calls ElementBase.__getitem__("0") which returns a string.
-            item_list = result["pubsub"]["items"]["items"]
-            if item_list:
-                state_obj = self._xml_to_dataclass(item_list[0]["payload"], interface.state)
+            # Use raw XML to avoid lazy-loading issues with plugin_multi_attrib
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None:
+                state_obj = self._xml_to_dataclass(payload, interface.state)
                 for cb in self._state_node_handlers.get(node, (None, []))[1]:
                     cb(state_obj)
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):

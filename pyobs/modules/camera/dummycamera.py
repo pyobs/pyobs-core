@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class CoolingStatus(NamedTuple):
     enabled: bool = True
     set_point: float = -10.0
-    power: float = 80.0
+    power: int = 80
     temperatures: dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
@@ -67,6 +67,16 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
         # simulator
         self._sim_images = sorted(glob.glob(self._sim["images"])) if self._sim["images"] else None
+
+    async def open(self) -> None:
+        """Opens camera."""
+        await BaseCamera.open(self)
+
+        # init all states
+        await self.comm.set_state(
+            ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
+        )
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
 
     async def _cooling_thread(self) -> None:
         while True:

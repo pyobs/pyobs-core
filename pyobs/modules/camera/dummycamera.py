@@ -292,6 +292,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         log.info("Setting gain to %.2f...", gain)
         self._gain = gain
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
 
     async def get_gain(self, **kwargs: Any) -> float:
         """Returns the camera binning.

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyobs.images import Image
 from pyobs.interfaces import IBinning, ICooling, IGain, IWindow
-from pyobs.interfaces.ICooling import CoolingState
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus
 
@@ -85,8 +84,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
             # send state
             await self.comm.set_state(
-                ICooling,
-                CoolingState(
+                ICooling.State(
                     setpoint=self._cooling.set_point,
                     power=int(power),
                     enabled=self._cooling.enabled,

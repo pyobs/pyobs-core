@@ -779,6 +779,38 @@ class XmppComm(Comm):
         stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
 
+    async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
+        """Subscribe to a pubsub node, retrying until the node exists.
+
+        Runs as a background task so _subscribe_state returns immediately.
+        Once subscribed, fetches the current value and dispatches it.
+        """
+        for _attempt in range(30):
+            try:
+                await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+                break
+            except slixmpp.exceptions.IqError:
+                await asyncio.sleep(1)
+        else:
+            log.warning("Could not subscribe to state node %s after 30 attempts", node)
+            return
+
+        # Fetch current value immediately after subscribing
+        try:
+            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None and node in self._state_node_handlers:
+                _, callbacks = self._state_node_handlers[node]
+                state_obj = self._xml_to_dataclass(payload, interface.State)
+                for cb in callbacks:
+                    cb(state_obj)
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass
+
     async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
         node = self._state_node(module, interface)
         if node in self._state_node_handlers:
@@ -786,32 +818,12 @@ class XmppComm(Comm):
             self._state_node_handlers[node][1].append(callback)
         else:
             self._state_node_handlers[node] = (interface, [callback])
-            # Retry subscribe until the node exists — the publisher may not have
-            # created it yet (e.g. GUI subscribes before camera's first publish).
-            for _attempt in range(30):
-                try:
-                    await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
-                    break
-                except slixmpp.exceptions.IqError:
-                    await asyncio.sleep(1)
-            else:
-                raise slixmpp.exceptions.IqError(None)
+            # Subscribe in a background task so _get_client() returns immediately.
+            # The retry loop handles the case where the publisher hasn't created
+            # the node yet (e.g. GUI connects before camera's first publish).
+            asyncio.create_task(self._subscribe_with_retry(node, interface))
 
-        # "deliver the current value immediately on subscribe" -- hard requirement above
-        try:
-            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            # Use raw XML to avoid lazy-loading issues with plugin_multi_attrib
-            pubsub_ns = "http://jabber.org/protocol/pubsub"
-            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
-            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
-            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
-            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None:
-                state_obj = self._xml_to_dataclass(payload, interface.State)
-                for cb in self._state_node_handlers.get(node, (None, []))[1]:
-                    cb(state_obj)
-        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-            pass  # node exists but nothing published yet
+        # Initial value is fetched in _subscribe_with_retry after the subscribe IQ succeeds
 
     async def _unsubscribe_state(
         self, module: str, interface: type[Interface], callback: Callable[[Any], None]

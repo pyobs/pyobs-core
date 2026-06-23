@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from time import Time
 from typing import Any
 
+from ..utils.time import Time
 from .IMotion import IMotion
 
 

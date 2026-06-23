@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from time import Time
 from typing import Any
 
 from pyobs.utils.enums import MotionStatus
 
+from ..utils.time import Time
 from .IReady import IReady
 
 

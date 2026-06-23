@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .IMotion import IMotion
 
 
@@ -10,6 +12,11 @@ class IFilters(IMotion, metaclass=ABCMeta):
     """The module can change filters in a device."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        filter: str
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def list_filters(self, **kwargs: Any) -> list[str]:

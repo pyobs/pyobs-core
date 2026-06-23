@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+from time import Time
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
@@ -12,6 +14,12 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     :class:`~pyobs.interfaces.IPointingAltAz`."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        alt: Annotated[float, Unit.DEGREES]
+        az: Annotated[float, Unit.DEGREES]
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_offsets_altaz(
@@ -29,9 +37,7 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_offsets_altaz(
-        self, **kwargs: Any
-    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
+    async def get_offsets_altaz(self, **kwargs: Any) -> State:
         """Get Alt/Az offset.
 
         Returns:

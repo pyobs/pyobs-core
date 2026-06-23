@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -9,6 +11,12 @@ class IExposureTime(Interface, metaclass=ABCMeta):
     """The camera supports exposure times, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        exposure_time: Annotated[float, Unit.SECONDS]
+        exposure_time_left: Annotated[float, Unit.SECONDS]
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_exposure_time(self, exposure_time: Annotated[float, Unit.SECONDS], **kwargs: Any) -> None:

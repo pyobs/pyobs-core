@@ -1,8 +1,10 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
 from pyobs.utils.enums import ExposureStatus
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -10,6 +12,12 @@ class IExposure(Interface, metaclass=ABCMeta):
     """The module controls a camera."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        status: ExposureStatus
+        progress: float
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:

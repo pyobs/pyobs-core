@@ -1,4 +1,6 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+from time import Time
 from typing import Any
 
 from .IMotion import IMotion
@@ -8,6 +10,12 @@ class IFocuser(IMotion, metaclass=ABCMeta):
     """The module is a focusing device."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        focus: float
+        focus_offset: float
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_focus(self, focus: float, **kwargs: Any) -> None:

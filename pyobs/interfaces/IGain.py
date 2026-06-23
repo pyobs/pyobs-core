@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -8,6 +10,12 @@ class IGain(Interface, metaclass=ABCMeta):
     """The camera supports setting of gain, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        gain: float
+        offset: float
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_gain(self, gain: float, **kwargs: Any) -> None:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+from time import Time
 from typing import Any
 
 from pyobs.utils.enums import MotionStatus
@@ -12,6 +14,17 @@ class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class DeviceMotionStatus:
+        name: str
+        status: MotionStatus
+
+    @dataclass
+    class State:
+        status: MotionStatus
+        devices: list[IMotion.DeviceMotionStatus] = field(default_factory=list)
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def init(self, **kwargs: Any) -> None:

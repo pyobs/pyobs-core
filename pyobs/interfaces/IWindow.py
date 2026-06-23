@@ -1,18 +1,30 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
+
+
+@dataclass
+class WindowState:
+    x: int
+    y: int
+    width: int
+    height: int
+    time: Time = field(default_factory=Time.now)
 
 
 class IWindow(Interface, metaclass=ABCMeta):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
+    state = WindowState
 
     @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> WindowState:
         """Returns full size of CCD.
 
         Returns:
@@ -36,7 +48,7 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_window(self, **kwargs: Any) -> tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> WindowState:
         """Returns the camera window.
 
         Returns:

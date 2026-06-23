@@ -77,6 +77,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
         )
         await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
+        await self.comm.set_state(IWindow.State(*self._camera.full_frame))
+        await self.comm.set_state(IBinning.State(*self._camera.binning))
 
     async def _cooling_thread(self) -> None:
         while True:
@@ -211,6 +213,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._camera.window = (left, top, width, height)
+        await self.comm.set_state(IWindow.State(*self._camera.window))
 
     async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
         """List available binnings.
@@ -241,6 +244,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         log.info("Set binning to %dx%d.", x, y)
         self._camera.binning = (x, y)
+        await self.comm.set_state(IBinning.State(*self._camera.binning))
 
     async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.

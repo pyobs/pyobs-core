@@ -7,17 +7,15 @@ from ..utils.enums import Unit
 from .IMotion import IMotion
 
 
-@dataclass
-class RotationState:
-    rotation: Annotated[float, Unit.DEGREES]
-    time: Time = field(default_factory=Time.now)
-
-
 class IRotation(IMotion, metaclass=ABCMeta):
     """The module controls a device that can rotate."""
 
     __module__ = "pyobs.interfaces"
-    state = RotationState
+
+    @dataclass
+    class State:
+        rotation: Annotated[float, Unit.DEGREES]
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_rotation(self, angle: Annotated[float, Unit.DEGREES], **kwargs: Any) -> None:

@@ -8,23 +8,21 @@ from ..utils.time import Time
 from .interface import Interface
 
 
-@dataclass
-class WindowState:
-    x: int
-    y: int
-    width: int
-    height: int
-    time: Time = field(default_factory=Time.now)
-
-
 class IWindow(Interface, metaclass=ABCMeta):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
-    state = WindowState
+
+    @dataclass
+    class State:
+        x: int
+        y: int
+        width: int
+        height: int
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> WindowState:
+    async def get_full_frame(self, **kwargs: Any) -> State:
         """Returns full size of CCD.
 
         Returns:
@@ -48,7 +46,7 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_window(self, **kwargs: Any) -> WindowState:
+    async def get_window(self, **kwargs: Any) -> State:
         """Returns the camera window.
 
         Returns:

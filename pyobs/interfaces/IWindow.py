@@ -22,7 +22,7 @@ class IWindow(Interface, metaclass=ABCMeta):
         time: Time = field(default_factory=Time.now)
 
     @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> State:
+    async def get_full_frame(self, **kwargs: Any) -> IWindow.State:
         """Returns full size of CCD.
 
         Returns:
@@ -46,7 +46,7 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_window(self, **kwargs: Any) -> State:
+    async def get_window(self, **kwargs: Any) -> IWindow.State:
         """Returns the camera window.
 
         Returns:

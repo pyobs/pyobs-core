@@ -27,7 +27,7 @@ class ITemperatures(Interface, metaclass=ABCMeta):
         time: Time = field(default_factory=Time.now)
 
     @abstractmethod
-    async def get_temperatures(self, **kwargs: Any) -> State:
+    async def get_temperatures(self, **kwargs: Any) -> ITemperatures.State:
         """Returns all temperatures measured by this module.
 
         Returns:

@@ -36,7 +36,7 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_radec(self, **kwargs: Any) -> State:
+    async def get_radec(self, **kwargs: Any) -> IPointingRaDec.State:
         """Returns current RA and Dec.
 
         Returns:

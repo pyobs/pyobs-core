@@ -36,7 +36,7 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_altaz(self, **kwargs: Any) -> State:
+    async def get_altaz(self, **kwargs: Any) -> IPointingAltAz.State:
         """Returns current Alt and Az.
 
         Returns:

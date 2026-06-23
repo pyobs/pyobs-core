@@ -22,7 +22,7 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
         time: Time = field(default_factory=Time.now)
 
     @abstractmethod
-    async def get_cooling(self, **kwargs: Any) -> State:
+    async def get_cooling(self, **kwargs: Any) -> ICooling.State:
         """Returns the current status for the cooling.
 
         Returns:

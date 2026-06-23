@@ -36,7 +36,7 @@ class IPointingHelioprojective(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_helioprojective(self, **kwargs: Any) -> State:
+    async def get_helioprojective(self, **kwargs: Any) -> IPointingHelioprojective.State:
         """Returns current theta x/y
 
         Returns:

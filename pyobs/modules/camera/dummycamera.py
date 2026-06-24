@@ -269,6 +269,9 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self._cooling = CoolingStatus(
             enabled=enabled, set_point=setpoint, power=self._cooling.power, temperatures=self._cooling.temperatures
         )
+        await self.comm.set_state(
+            ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
+        )
 
     async def get_cooling(self, **kwargs: Any) -> ICooling.State:
         """Returns the current status for the cooling.

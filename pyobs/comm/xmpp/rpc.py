@@ -144,7 +144,9 @@ def _xml_to_value(pyobs_value: ET.Element, type_hint: Any) -> Any:
         return None  # void / None
 
     child = children[0]
-    tag = child.tag  # plain tag name (no namespace)
+    # Strip namespace if present — ejabberd re-serializes plain child elements
+    # with the parent's namespace (e.g. <double> becomes <{urn:pyobs:rpc:1}double>)
+    tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
 
     if tag == "boolean":
         return child.text == "true"

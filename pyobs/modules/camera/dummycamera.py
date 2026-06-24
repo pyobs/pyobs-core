@@ -64,6 +64,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._cooling = CoolingStatus()
         self._exposing = True
         self._gain = 10.0
+        self._gain_offset = 0.0
         self._image_format = ImageFormat.INT16
         self._image_type = ImageType.OBJECT
 
@@ -78,7 +79,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         await self.comm.set_state(
             ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
         )
-        await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
         await self.comm.set_state(IWindow.State(*self._camera.full_frame))
         await self.comm.set_state(IBinning.State(*self._camera.binning))
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
@@ -332,10 +333,11 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         return self._gain
 
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
-        pass
+        self._gain_offset = offset
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
 
     async def get_offset(self, **kwargs: Any) -> float:
-        return 0.0
+        return self._gain_offset
 
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         self._image_format = fmt

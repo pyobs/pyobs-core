@@ -157,11 +157,14 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
     if get_origin(type_hint) is Annotated:
         type_hint = get_args(type_hint)[0]
 
-    # Unwrap Optional[T] / T | None → T
+    # Unwrap Optional[T] / T | None → T, then Annotated[T, ...]
     args = get_args(type_hint) if type_hint else ()
     if args and type(None) in args:
         non_none = [a for a in args if a is not type(None)]
         type_hint = non_none[0] if non_none else Any
+    # Unwrap Annotated after Optional
+    if get_origin(type_hint) is Annotated:
+        type_hint = get_args(type_hint)[0]
 
     # Strip namespace from tag — ejabberd may re-serialize plain children
     # with the parent element's namespace prefix.
@@ -284,13 +287,13 @@ def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
             continue
 
         field_type = hints.get(f.name, Any)
-        # Unwrap Annotated
-        if get_origin(field_type) is Annotated:
-            field_type = get_args(field_type)[0]
-        # Unwrap Optional
+        # Unwrap Optional (T | None) first
         ft_args = get_args(field_type)
         if ft_args and type(None) in ft_args:
             field_type = next(a for a in ft_args if a is not type(None))
+        # Unwrap Annotated[T, ...]
+        if get_origin(field_type) is Annotated:
+            field_type = get_args(field_type)[0]
 
         # The child element wraps the value — it may contain a vocabulary
         # element (post-round-trip: the child IS the value element) or

@@ -761,6 +761,8 @@ class XmppComm(Comm):
         if node in self._state_node_handlers:
             # Node already subscribed — just add the callback
             self._state_node_handlers[node][1].append(callback)
+            # Deliver the current cached value immediately to the new callback
+            asyncio.create_task(self._fetch_and_dispatch_state(node, interface, callback))
         else:
             self._state_node_handlers[node] = (interface, [callback])
             # Subscribe in a background task so _get_client() returns immediately.

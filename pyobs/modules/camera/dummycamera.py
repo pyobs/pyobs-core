@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyobs.images import Image
-from pyobs.interfaces import IBinning, ICooling, IGain, ITemperatures, IWindow
+from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, IImageType, ITemperatures, IWindow
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.enums import ExposureStatus
+from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -25,7 +25,7 @@ class CoolingStatus(NamedTuple):
     temperatures: dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
-class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
+class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     """A dummy camera for testing."""
 
     __module__ = "pyobs.modules.camera"
@@ -64,6 +64,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self._cooling = CoolingStatus()
         self._exposing = True
         self._gain = 10.0
+        self._image_format = ImageFormat.INT16
+        self._image_type = ImageType.OBJECT
 
         # simulator
         self._sim_images = sorted(glob.glob(self._sim["images"])) if self._sim["images"] else None
@@ -79,6 +81,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
         await self.comm.set_state(IWindow.State(*self._camera.full_frame))
         await self.comm.set_state(IBinning.State(*self._camera.binning))
+        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+        await self.comm.set_state(IImageType.State(image_type=self._image_type))
 
     async def _cooling_thread(self) -> None:
         while True:
@@ -332,6 +336,16 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
 
     async def get_offset(self, **kwargs: Any) -> float:
         return 0.0
+
+    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
+        self._image_format = fmt
+        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+
+    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
+        return self._image_format
+
+    async def list_image_formats(self, **kwargs: Any) -> list[str]:
+        return [ImageFormat.INT8, ImageFormat.INT16]
 
 
 __all__ = ["DummyCamera"]

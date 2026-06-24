@@ -23,10 +23,25 @@ from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ModuleState
 
 from .rpc import RPC
 from .serializer import _dataclass_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
+
+_CAPABILITY_NS = "urn:pyobs:capability:1"
+
+
+def _capability_type(value: object) -> str:
+    """Map a Python value to a pyobs wire type string for capability elements."""
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int32"
+    if isinstance(value, float):
+        return "float64"
+    return "string"
+
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -168,6 +183,7 @@ class XmppComm(Comm):
         # pubsub for states
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
+        self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -234,6 +250,10 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"pyobs:interface:{i.__name__}")
+
+        # register custom disco#info handler to inject <capability> elements
+        if self._module is not None:
+            self._xmpp["xep_0030"].set_node_handler("get_info", None, None, self._get_disco_info)
 
         # RPC
         self._rpc = RPC(self, self._xmpp, None)
@@ -454,12 +474,30 @@ class XmppComm(Comm):
         if future is not None and not future.done():
             future.set_result(self._interface_names_to_classes(interface_names))
 
+        # store incoming presence state
+        show = msg.get("show", "")
+        status = msg.get("status", "")
+        if show == "dnd":
+            client_state = ModuleState.ERROR
+        elif show == "away":
+            client_state = ModuleState.LOCAL
+        else:
+            client_state = ModuleState.READY
+        self._client_states[jid] = (client_state, status)
+
         # append to list
         if jid not in self._online_clients:
             self._online_clients.append(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
+
+    def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        """Return cached presence state for a connected module."""
+        for jid, state in self._client_states.items():
+            if jid.startswith(f"{module}@"):
+                return state
+        return None
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
@@ -479,6 +517,7 @@ class XmppComm(Comm):
         # remove from list
         if jid in self._online_clients:
             self._online_clients.remove(jid)
+        self._client_states.pop(jid, None)
 
         # clear interface cache
         if jid in self._interface_cache:
@@ -723,6 +762,47 @@ class XmppComm(Comm):
         stanza = StateStanza()
         stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
+
+    async def _get_disco_info(self, jid, node, ifrom, data):
+        """Custom disco#info handler that adds <capability> elements for static module values."""
+        # Get the default info from the static handler
+        info = self._xmpp["xep_0030"].static.get_info(jid, node, ifrom, data)
+        if info is None:
+            from slixmpp.plugins.xep_0030.stanza import DiscoInfo
+
+            info = DiscoInfo()
+
+        # Append capabilities if we have a module
+        if self._module is not None:
+            caps = await self._module.get_capabilities()
+            for name, value in caps.items():
+                cap_elem = ET.SubElement(
+                    info.xml,
+                    f"{{{_CAPABILITY_NS}}}capability",
+                    attrib={"name": name, "type": _capability_type(value)},
+                )
+                cap_elem.text = str(value)
+
+        return info
+
+    async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        """Send XMPP presence stanza reflecting the module lifecycle state.
+
+        ModuleState maps onto XMPP <show>:
+            READY  → no <show> (available, the XMPP default)
+            ERROR  → dnd
+            LOCAL  → away
+            CLOSED → handled by normal disconnect (unavailable)
+        error_string rides as <status> text when state is ERROR.
+        """
+        _show_map: dict[ModuleState, str | None] = {
+            ModuleState.READY: None,
+            ModuleState.ERROR: "dnd",
+            ModuleState.LOCAL: "away",
+        }
+        show = _show_map.get(state)
+        status = error_string if state == ModuleState.ERROR and error_string else None
+        self.client.send_presence(pshow=show, pstatus=status)
 
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
         """Subscribe to a pubsub node, retrying until the node exists.

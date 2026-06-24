@@ -45,14 +45,5 @@ class IWindow(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_window(self, **kwargs: Any) -> IWindow.State:
-        """Returns the camera window.
-
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        ...
-
 
 __all__ = ["IWindow"]

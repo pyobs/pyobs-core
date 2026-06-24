@@ -107,6 +107,14 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                     enabled=self._cooling.enabled,
                 ),
             )
+            await self.comm.set_state(
+                ITemperatures.State(
+                    readings=[
+                        ITemperatures.Temperature(name=name, value=value)
+                        for name, value in self._cooling.temperatures.items()
+                    ]
+                )
+            )
 
             # sleep for 1 second
             await asyncio.sleep(1)
@@ -197,15 +205,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         """
         self._exposing = False
 
-    async def get_window(self, **kwargs: Any) -> IWindow.State:
-        """Returns the camera window.
-
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        w = self._camera.window
-        return IWindow.State(x=w[0], y=w[1], width=w[2], height=w[3])
-
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
@@ -230,14 +229,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         """
 
         return [IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]
-
-    async def get_binning(self, **kwargs: Any) -> IBinning.State:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        return IBinning.State(x=self._camera.binning[0], y=self._camera.binning[1])
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -278,31 +269,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
         )
 
-    async def get_cooling(self, **kwargs: Any) -> ICooling.State:
-        """Returns the current status for the cooling.
-
-        Returns:
-            (tuple): Tuple containing:
-                Enabled:  Whether the cooling is enabled
-                SetPoint: Setpoint for the cooling in celsius.
-                Power:    Current cooling power in percent or None.
-        """
-        return ICooling.State(
-            enabled=self._cooling.enabled, setpoint=self._cooling.set_point, power=self._cooling.power
-        )
-
-    async def get_temperatures(self, **kwargs: Any) -> ITemperatures.State:
-        """Returns all temperatures measured by this module.
-
-        Returns:
-            Dict containing temperatures.
-        """
-        return ITemperatures.State(
-            readings=[
-                ITemperatures.Temperature(name=name, value=value) for name, value in self._cooling.temperatures.items()
-            ]
-        )
-
     async def _set_config_readout_time(self, readout_time: float) -> None:
         """Set readout time."""
         self._readout_time = readout_time
@@ -324,27 +290,13 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._gain = gain
         await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
 
-    async def get_gain(self, **kwargs: Any) -> float:
-        """Returns the camera binning.
-
-        Returns:
-            Current gain.
-        """
-        return self._gain
-
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
         self._gain_offset = offset
         await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
 
-    async def get_offset(self, **kwargs: Any) -> float:
-        return self._gain_offset
-
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         self._image_format = fmt
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
-
-    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
-        return self._image_format
 
     async def list_image_formats(self, **kwargs: Any) -> list[str]:
         return [ImageFormat.INT8, ImageFormat.INT16]

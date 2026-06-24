@@ -33,15 +33,6 @@ class IBinning(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_binning(self, **kwargs: Any) -> IBinning.State:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        ...
-
-    @abstractmethod
     async def list_binnings(self, **kwargs: Any) -> list[IBinning.State]:
         """List available binnings.
 

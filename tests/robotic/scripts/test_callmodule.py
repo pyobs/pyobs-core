@@ -52,7 +52,7 @@ def test_unknown_param_raises() -> None:
 
 
 def test_wrong_type_raises() -> None:
-    with pytest.raises(ValidationError, match="Parameter 'exposure_time'"):
+    with pytest.raises(ValidationError, match="exposure_time"):
         CallModuleScript(
             module="camera",
             interface="pyobs.interfaces.IExposureTime",

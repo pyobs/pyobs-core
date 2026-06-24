@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 def _build_params_model(method):
     sig = inspect.signature(method)
     hints = get_type_hints(method, include_extras=True)
-
     fields = {}
 
     for name, param in sig.parameters.items():
@@ -26,9 +25,7 @@ def _build_params_model(method):
             continue
 
         annotation = hints.get(name, param.annotation)
-
         default = ... if param.default is inspect.Parameter.empty else param.default
-
         fields[name] = (annotation, default)
 
     return create_model(

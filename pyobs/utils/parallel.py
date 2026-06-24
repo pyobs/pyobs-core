@@ -43,6 +43,7 @@ class Future(asyncio.Future[Any]):
         self.timeout: float | None = None
         self.annotation = annotation
         self.comm = comm
+        self._timeout_handle: asyncio.TimerHandle | None = None
 
         # already set?
         if empty:
@@ -51,9 +52,17 @@ class Future(asyncio.Future[Any]):
 
     def set_timeout(self, timeout: float) -> None:
         """
-        Sets a new timeout for the method call.
+        Sets a new timeout for the method call. Cancels any existing timeout
+        handle and schedules a new one at the extended deadline.
         """
         self.timeout = timeout
+        if self._timeout_handle is not None:
+            self._timeout_handle.cancel()
+            try:
+                loop = asyncio.get_running_loop()
+                self._timeout_handle = loop.call_later(timeout, self._on_timeout)
+            except RuntimeError:
+                pass  # no running loop — handle will be set when __await__ runs
 
     def get_timeout(self) -> float | None:
         """
@@ -68,12 +77,15 @@ class Future(asyncio.Future[Any]):
 
             # schedule timeout
             timeout = self.timeout if self.timeout is not None else 10.0
-            handle = loop.call_later(timeout, self._on_timeout)
+            self._timeout_handle = loop.call_later(timeout, self._on_timeout)
 
             self._asyncio_future_blocking = True
             yield self  # suspend until done or timeout
 
-            handle.cancel()  # cancel timeout if completed normally
+            # cancel timeout handle if completed normally
+            if self._timeout_handle is not None:
+                self._timeout_handle.cancel()
+                self._timeout_handle = None
 
         # still not done? raise exception.
         if not self.done():

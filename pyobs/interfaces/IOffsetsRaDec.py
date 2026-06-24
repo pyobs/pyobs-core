@@ -36,14 +36,5 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_offsets_radec(self, **kwargs: Any) -> IOffsetsRaDec.State:
-        """Get RA/Dec offset.
-
-        Returns:
-            Tuple with RA and Dec offsets.
-        """
-        ...
-
 
 __all__ = ["IOffsetsRaDec"]

@@ -35,14 +35,5 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_hgs_lon_lat(self, **kwargs: Any) -> IPointingHGS.State:
-        """Returns current longitude and latitude position.
-
-        Returns:
-            Tuple of current lon, lat in degrees.
-        """
-        ...
-
 
 __all__ = ["IPointingHGS"]

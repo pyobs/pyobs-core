@@ -45,18 +45,6 @@ class IMotion(IReady, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
-        """
-        ...
-
-    @abstractmethod
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         """Stop the motion.
 

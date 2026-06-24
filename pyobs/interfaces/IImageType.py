@@ -29,14 +29,5 @@ class IImageType(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_image_type(self, **kwargs: Any) -> ImageType:
-        """Returns the current image type.
-
-        Returns:
-            Current image type.
-        """
-        ...
-
 
 __all__ = ["IImageType"]

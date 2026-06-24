@@ -35,14 +35,5 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_altaz(self, **kwargs: Any) -> IPointingAltAz.State:
-        """Returns current Alt and Az.
-
-        Returns:
-            Tuple of current Alt and Az in degrees.
-        """
-        ...
-
 
 __all__ = ["IPointingAltAz"]

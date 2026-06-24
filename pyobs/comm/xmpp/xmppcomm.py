@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import functools
 import json
 import logging
@@ -10,8 +9,7 @@ import ssl
 import time
 import xml.sax.saxutils
 from collections.abc import Callable, Coroutine
-from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, Any
 
 import slixmpp
 import slixmpp.exceptions
@@ -27,6 +25,7 @@ from pyobs.interfaces import Interface
 from pyobs.utils import exceptions as exc
 
 from .rpc import RPC
+from .serializer import _dataclass_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
 
 if TYPE_CHECKING:
@@ -587,7 +586,7 @@ class XmppComm(Comm):
                     item_xml = items_xml.find(f"{{{pubsub_ns}}}item")
                     payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
                     if payload is not None:
-                        state_obj = self._xml_to_dataclass(payload, interface.State)
+                        state_obj = _xml_to_dataclass(payload, interface.State)
                         for callback in callbacks:
                             callback(state_obj)
         else:
@@ -698,60 +697,6 @@ class XmppComm(Comm):
     def _state_node(module: str, interface: type[Interface]) -> str:
         return f"pyobs:state:{module}:{interface.__name__}:{interface.version}"
 
-    @staticmethod
-    def _dataclass_to_xml(state: Any, namespace: str) -> ET.Element:
-        root = ET.Element(f"{{{namespace}}}state")
-        for f in dataclasses.fields(state):
-            value = getattr(state, f.name)
-            # Use ET.Element + append (not SubElement) so children stay in the
-            # empty namespace and elem.find("fieldname") works on the receiving side.
-            child = ET.Element(f.name)
-            if isinstance(value, bool):
-                child.text = "true" if value else "false"
-            elif isinstance(value, StrEnum):
-                child.text = value.value
-            else:
-                child.text = str(value)
-            root.append(child)
-        return root
-
-    @staticmethod
-    def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
-        hints = get_type_hints(state_cls, include_extras=True)
-        # Extract namespace from root element tag, e.g. "{urn:pyobs:state:ICooling:1}state"
-        # Children may arrive namespaced (after ejabberd round-trip) or plain (locally),
-        # so try both forms.
-        ns = ""
-        if elem.tag.startswith("{"):
-            ns = elem.tag[1 : elem.tag.index("}")]
-        kwargs = {}
-        for f in dataclasses.fields(state_cls):
-            # Try namespaced lookup first, then plain
-            child = elem.find(f"{{{ns}}}{f.name}") if ns else None
-            if child is None:
-                child = elem.find(f.name)
-            if child is None or child.text is None:
-                continue
-            field_type = hints[f.name]
-            # strip Optional (T | None) to get the concrete type
-            args = get_args(field_type)
-            if args and type(None) in args:
-                field_type = next(a for a in args if a is not type(None))
-            # unwrap Annotated[T, ...] → T for type dispatch
-            if get_origin(field_type) is Annotated:
-                field_type = get_args(field_type)[0]
-            if field_type is bool:
-                kwargs[f.name] = child.text == "true"
-            elif field_type is float:
-                kwargs[f.name] = float(child.text)
-            elif field_type is int:
-                kwargs[f.name] = int(child.text)
-            elif isinstance(field_type, type) and issubclass(field_type, StrEnum):
-                kwargs[f.name] = field_type(child.text)
-            else:
-                kwargs[f.name] = child.text
-        return state_cls(**kwargs)
-
     async def _fetch_and_dispatch_state(
         self, node: str, interface: type[Interface], callback: Callable[[Any], None]
     ) -> None:
@@ -769,14 +714,14 @@ class XmppComm(Comm):
             item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
             if payload is not None:
-                callback(self._xml_to_dataclass(payload, interface.State))
+                callback(_xml_to_dataclass(payload, interface.State))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         node = self._state_node(self._module.name, interface)
         stanza = StateStanza()
-        stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
+        stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
 
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
@@ -805,7 +750,7 @@ class XmppComm(Comm):
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
             if payload is not None and node in self._state_node_handlers:
                 _, callbacks = self._state_node_handlers[node]
-                state_obj = self._xml_to_dataclass(payload, interface.State)
+                state_obj = _xml_to_dataclass(payload, interface.State)
                 for cb in callbacks:
                     cb(state_obj)
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):

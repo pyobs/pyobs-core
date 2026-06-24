@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import copy
-import dataclasses
 import inspect
 import logging
 from collections.abc import Callable
-from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin
+from typing import TYPE_CHECKING, Any
 
 import slixmpp
 import slixmpp.exceptions
@@ -16,189 +14,15 @@ import pyobs.utils.exceptions as exc
 from pyobs.modules import Module
 from pyobs.utils.parallel import Future
 
+from .serializer import PYOBS_NS as _PYOBS_NS
+from .serializer import value_to_xml, xml_to_value
+
 if TYPE_CHECKING:
     from .xmppcomm import XmppComm
 
 log = logging.getLogger(__name__)
 
 _NS = "jabber:iq:rpc"
-_PYOBS_NS = "urn:pyobs:rpc:1"
-
-
-# ---------------------------------------------------------------------------
-# Serializer — params ↔ XML
-# ---------------------------------------------------------------------------
-
-
-def _value_to_xml(value: Any, type_hint: Any) -> ET.Element:
-    """Serialize a single value to a <pyobs:value> element."""
-    pyobs_value = ET.Element(f"{{{_PYOBS_NS}}}value")
-
-    # Unwrap Annotated[T, ...]
-    if get_origin(type_hint) is Annotated:
-        type_hint = get_args(type_hint)[0]
-
-    # None / void
-    if value is None:
-        return pyobs_value  # empty element
-
-    # bool (before int — bool is subclass of int)
-    if isinstance(value, bool):
-        child = ET.Element("boolean")
-        child.text = "true" if value else "false"
-        pyobs_value.append(child)
-
-    # int
-    elif isinstance(value, int):
-        child = ET.Element("int")
-        child.text = str(value)
-        pyobs_value.append(child)
-
-    # float
-    elif isinstance(value, float):
-        child = ET.Element("double")
-        child.text = repr(value)
-        pyobs_value.append(child)
-
-    # str
-    elif isinstance(value, str):
-        child = ET.Element("string")
-        child.text = value
-        pyobs_value.append(child)
-
-    # StrEnum
-    elif isinstance(value, StrEnum):
-        child = ET.Element("string")
-        child.text = value.value
-        pyobs_value.append(child)
-
-    # dataclass (State objects, etc.)
-    elif dataclasses.is_dataclass(value) and not isinstance(value, type):
-        # Use _dataclass_to_xml with the pyobs:rpc namespace
-        from .xmppcomm import XmppComm
-
-        dc_elem = XmppComm._dataclass_to_xml(value, _PYOBS_NS)
-        pyobs_value.append(dc_elem)
-
-    # list
-    elif isinstance(value, list):
-        items_elem = ET.Element("items")
-        item_type = get_args(type_hint)[0] if type_hint and get_origin(type_hint) is list else Any
-        for item in value:
-            item_elem = ET.Element("item")
-            item_elem.append(_value_to_xml(item, item_type))
-            items_elem.append(item_elem)
-        pyobs_value.append(items_elem)
-
-    # tuple
-    elif isinstance(value, tuple):
-        tuple_elem = ET.Element("tuple")
-        item_types = get_args(type_hint) if type_hint and get_origin(type_hint) is tuple else []
-        for i, item in enumerate(value):
-            item_type = item_types[i] if i < len(item_types) else Any
-            item_elem = ET.Element("item")
-            item_elem.append(_value_to_xml(item, item_type))
-            tuple_elem.append(item_elem)
-        pyobs_value.append(tuple_elem)
-
-    # dict
-    elif isinstance(value, dict):
-        dict_elem = ET.Element("dict")
-        key_type, val_type = get_args(type_hint)[:2] if type_hint and get_origin(type_hint) is dict else (Any, Any)
-        for k, v in value.items():
-            entry = ET.Element("entry")
-            key_elem = ET.Element("key")
-            key_elem.append(_value_to_xml(k, key_type))
-            val_elem = ET.Element("val")
-            val_elem.append(_value_to_xml(v, val_type))
-            entry.append(key_elem)
-            entry.append(val_elem)
-            dict_elem.append(entry)
-        pyobs_value.append(dict_elem)
-
-    else:
-        # fallback: stringify
-        child = ET.Element("string")
-        child.text = str(value)
-        pyobs_value.append(child)
-
-    return pyobs_value
-
-
-def _xml_to_value(pyobs_value: ET.Element, type_hint: Any) -> Any:
-    """Deserialize a <pyobs:value> element to a Python value."""
-    # Unwrap Annotated[T, ...]
-    if get_origin(type_hint) is Annotated:
-        type_hint = get_args(type_hint)[0]
-
-    # Unwrap Optional[T] → T
-    if get_origin(type_hint) is type(None):
-        return None
-    args = get_args(type_hint)
-    if type(None) in args:
-        non_none = [a for a in args if a is not type(None)]
-        type_hint = non_none[0] if non_none else Any
-
-    children = list(pyobs_value)
-    if not children:
-        return None  # void / None
-
-    child = children[0]
-    # Strip namespace if present — ejabberd re-serializes plain child elements
-    # with the parent's namespace (e.g. <double> becomes <{urn:pyobs:rpc:1}double>)
-    tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-
-    if tag == "boolean":
-        return child.text == "true"
-
-    elif tag == "int":
-        return int(child.text)
-
-    elif tag == "double":
-        return float(child.text)
-
-    elif tag == "string":
-        text = child.text or ""
-        # try to cast to enum if type_hint is an enum
-        if type_hint and inspect.isclass(type_hint) and issubclass(type_hint, StrEnum):
-            return type_hint(text)
-        return text
-
-    elif tag == "items":
-        item_type = get_args(type_hint)[0] if type_hint and get_origin(type_hint) is list else Any
-        result = []
-        for item_elem in child.findall("item"):
-            pv = list(item_elem)[0] if list(item_elem) else item_elem
-            result.append(_xml_to_value(pv, item_type))
-        return result
-
-    elif tag == "tuple":
-        item_types = get_args(type_hint) if type_hint and get_origin(type_hint) is tuple else []
-        result = []
-        for i, item_elem in enumerate(child.findall("item")):
-            item_type = item_types[i] if i < len(item_types) else Any
-            pv = list(item_elem)[0] if list(item_elem) else item_elem
-            result.append(_xml_to_value(pv, item_type))
-        return tuple(result)
-
-    elif tag == "dict":
-        key_type, val_type = get_args(type_hint)[:2] if type_hint and get_origin(type_hint) is dict else (Any, Any)
-        result = {}
-        for entry in child.findall("entry"):
-            key_pv = list(entry.find("key"))[0]
-            val_pv = list(entry.find("val"))[0]
-            k = _xml_to_value(key_pv, key_type)
-            v = _xml_to_value(val_pv, val_type)
-            result[k] = v
-        return result
-
-    else:
-        # dataclass / State — child is a <{ns}state> or similar element
-        from .xmppcomm import XmppComm
-
-        if type_hint and dataclasses.is_dataclass(type_hint):
-            return XmppComm._xml_to_dataclass(child, type_hint)
-        return child.text
 
 
 def params_to_xml(names: list[str], values: list[Any], types: dict[str, Any]) -> ET.Element:
@@ -208,7 +32,9 @@ def params_to_xml(names: list[str], values: list[Any], types: dict[str, Any]) ->
         type_hint = types.get(name, Any)
         param = ET.Element(f"{{{_NS}}}param")
         value_elem = ET.Element(f"{{{_NS}}}value")
-        value_elem.append(_value_to_xml(value, type_hint))
+        pyobs_value = ET.Element(f"{{{_PYOBS_NS}}}value")
+        pyobs_value.append(value_to_xml(value, type_hint))
+        value_elem.append(pyobs_value)
         param.append(value_elem)
         params.append(param)
     return params
@@ -228,7 +54,8 @@ def xml_to_params(params_elem: ET.Element, names: list[str], types: dict[str, An
         if pyobs_value is None:
             result.append(None)
             continue
-        result.append(_xml_to_value(pyobs_value, type_hint))
+        children = list(pyobs_value)
+        result.append(xml_to_value(children[0], type_hint) if children else None)
     return result
 
 
@@ -239,7 +66,9 @@ def return_to_xml(value: Any, type_hint: Any) -> ET.Element:
         return params  # void return: empty <params/>
     param = ET.Element(f"{{{_NS}}}param")
     value_elem = ET.Element(f"{{{_NS}}}value")
-    value_elem.append(_value_to_xml(value, type_hint))
+    pyobs_value = ET.Element(f"{{{_PYOBS_NS}}}value")
+    pyobs_value.append(value_to_xml(value, type_hint))
+    value_elem.append(pyobs_value)
     param.append(value_elem)
     params.append(param)
     return params
@@ -256,7 +85,8 @@ def xml_to_return(params_elem: ET.Element, type_hint: Any) -> Any:
     pyobs_value = value_elem.find(f"{{{_PYOBS_NS}}}value")
     if pyobs_value is None:
         return None
-    return _xml_to_value(pyobs_value, type_hint)
+    children = list(pyobs_value)
+    return xml_to_value(children[0], type_hint) if children else None
 
 
 def fault_to_xml(exception: Exception) -> ET.Element:

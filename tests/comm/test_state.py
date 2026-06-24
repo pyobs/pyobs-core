@@ -1,189 +1,163 @@
-"""Tests for state serialization and deserialization in XMPP backend."""
+"""Tests for state serialization and deserialization."""
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
+from slixmpp.xmlstream import ET
 
+from pyobs.comm.xmpp.serializer import (
+    _dataclass_to_xml,
+    _xml_to_dataclass,
+    value_to_xml,
+)
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import ICooling
-from pyobs.interfaces.ICooling import CoolingState
+from pyobs.interfaces import IBinning, ICooling
+
+NS = f"urn:pyobs:state:ICooling:{ICooling.version}"
 
 
-class TestStateXmlSerialization:
-    """Test XML serialization of state dataclasses."""
+class TestDataclassToXml:
+    """Test _dataclass_to_xml serialization."""
 
-    def test_cooling_state_to_xml(self) -> None:
-        """Test CoolingState → XML."""
-        state = CoolingState(setpoint=20.0, power=75, enabled=True)
-        namespace = f"urn:pyobs:state:{ICooling.__name__}:{ICooling.version}"
-        xml = XmppComm._dataclass_to_xml(state, namespace)
+    def test_root_element_namespace(self) -> None:
+        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
+        assert xml.tag == f"{{{NS}}}state"
 
-        assert xml.tag == f"{{{namespace}}}state"
-        assert len(xml) == 3  # 3 fields
+    def test_field_count(self) -> None:
+        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
+        # One child per dataclass field (setpoint, power, enabled + time)
+        assert len(xml) == len(dataclasses.fields(ICooling.State))
 
-        # Check field order and values
-        children = {child.tag: child.text for child in xml}
-        assert children["setpoint"] == "20.0"
-        assert children["power"] == "75"
-        assert children["enabled"] == "true"
-
-    def test_cooling_state_bool_true(self) -> None:
-        """Test boolean True serialization."""
-        state = CoolingState(setpoint=15.0, power=50, enabled=True)
-        namespace = "urn:pyobs:state:ICooling:1"
-        xml = XmppComm._dataclass_to_xml(state, namespace)
-
+    def test_bool_true_serialized_as_boolean_element(self) -> None:
+        state = ICooling.State(setpoint=0.0, power=0, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
         enabled_elem = xml.find("enabled")
         assert enabled_elem is not None
-        assert enabled_elem.text == "true"
+        boolean_elem = list(enabled_elem)[0]
+        assert boolean_elem.tag.split("}")[-1] == "boolean"
+        assert boolean_elem.text == "true"
 
-    def test_cooling_state_bool_false(self) -> None:
-        """Test boolean False serialization."""
-        state = CoolingState(setpoint=15.0, power=50, enabled=False)
-        namespace = "urn:pyobs:state:ICooling:1"
-        xml = XmppComm._dataclass_to_xml(state, namespace)
-
+    def test_bool_false_serialized_as_boolean_element(self) -> None:
+        state = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        xml = _dataclass_to_xml(state, NS)
         enabled_elem = xml.find("enabled")
         assert enabled_elem is not None
-        assert enabled_elem.text == "false"
+        boolean_elem = list(enabled_elem)[0]
+        assert boolean_elem.text == "false"
 
-    def test_cooling_state_numeric_types(self) -> None:
-        """Test that float and int are serialized as strings."""
-        state = CoolingState(setpoint=100, power=0, enabled=False)
-        namespace = "urn:pyobs:state:ICooling:1"
-        xml = XmppComm._dataclass_to_xml(state, namespace)
+    def test_float_serialized_as_double_element(self) -> None:
+        state = ICooling.State(setpoint=-25.5, power=0, enabled=False)
+        xml = _dataclass_to_xml(state, NS)
+        setpoint_elem = xml.find("setpoint")
+        assert setpoint_elem is not None
+        double_elem = list(setpoint_elem)[0]
+        assert double_elem.tag.split("}")[-1] == "double"
+        assert float(double_elem.text) == pytest.approx(-25.5)
 
-        setpoint = xml.find("setpoint")
-        power = xml.find("power")
+    def test_int_serialized_as_int_element(self) -> None:
+        state = ICooling.State(setpoint=0.0, power=75, enabled=False)
+        xml = _dataclass_to_xml(state, NS)
+        power_elem = xml.find("power")
+        assert power_elem is not None
+        int_elem = list(power_elem)[0]
+        assert int_elem.tag.split("}")[-1] == "int"
+        assert int(int_elem.text) == 75
 
-        assert setpoint is not None and setpoint.text == "100"
-        assert power is not None and power.text == "0"
 
+class TestXmlToDataclass:
+    """Test _xml_to_dataclass deserialization."""
 
-class TestStateXmlDeserialization:
-    """Test XML deserialization to state dataclasses."""
+    def test_basic_roundtrip(self) -> None:
+        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
+        result = _xml_to_dataclass(xml, ICooling.State)
+        assert isinstance(result, ICooling.State)
+        assert result.setpoint == pytest.approx(-20.0)
+        assert result.power == 65
+        assert result.enabled is True
 
-    def test_cooling_state_from_xml(self) -> None:
-        """Test XML → CoolingState."""
-        # Create XML the way it would arrive
-        state_orig = CoolingState(setpoint=20.0, power=75, enabled=True)
-        namespace = f"urn:pyobs:state:{ICooling.__name__}:{ICooling.version}"
-        xml = XmppComm._dataclass_to_xml(state_orig, namespace)
+    def test_bool_false_roundtrip(self) -> None:
+        state = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        xml = _dataclass_to_xml(state, NS)
+        result = _xml_to_dataclass(xml, ICooling.State)
+        assert result.enabled is False
 
-        # Deserialize
-        state = XmppComm._xml_to_dataclass(xml, CoolingState)
+    def test_correct_types_after_roundtrip(self) -> None:
+        state = ICooling.State(setpoint=25.0, power=100, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
+        result = _xml_to_dataclass(xml, ICooling.State)
+        assert isinstance(result.setpoint, float)
+        assert isinstance(result.power, int)
+        assert isinstance(result.enabled, bool)
 
-        assert isinstance(state, CoolingState)
-        assert state.setpoint == 20.0
-        assert state.power == 75
-        assert state.enabled is True
+    def test_missing_required_field_raises(self) -> None:
+        xml = ET.Element(f"{{{NS}}}state")
+        child = ET.Element("setpoint")
+        child.append(value_to_xml(-10.0, float))
+        xml.append(child)
+        # power and enabled missing — should raise TypeError
+        with pytest.raises(TypeError, match="missing.*required positional argument"):
+            _xml_to_dataclass(xml, ICooling.State)
 
-    def test_cooling_state_bool_deserialization(self) -> None:
-        """Test boolean deserialization from 'true'/'false' strings."""
-        state_true = CoolingState(setpoint=15.0, power=50, enabled=True)
-        state_false = CoolingState(setpoint=15.0, power=50, enabled=False)
-        namespace = "urn:pyobs:state:ICooling:1"
-
-        xml_true = XmppComm._dataclass_to_xml(state_true, namespace)
-        xml_false = XmppComm._dataclass_to_xml(state_false, namespace)
-
-        result_true = XmppComm._xml_to_dataclass(xml_true, CoolingState)
-        result_false = XmppComm._xml_to_dataclass(xml_false, CoolingState)
-
-        assert result_true.enabled is True
-        assert result_false.enabled is False
-
-    def test_cooling_state_numeric_deserialization(self) -> None:
-        """Test that numeric strings are converted back to int/float."""
-        state_orig = CoolingState(setpoint=25, power=100, enabled=True)
-        namespace = "urn:pyobs:state:ICooling:1"
-        xml = XmppComm._dataclass_to_xml(state_orig, namespace)
-
-        state = XmppComm._xml_to_dataclass(xml, CoolingState)
-
-        assert isinstance(state.setpoint, float)  # setpoint is Annotated[float, ...]
-        assert isinstance(state.power, int)
-        assert state.setpoint == 25.0
-        assert state.power == 100
-
-    def test_cooling_state_missing_fields_raises(self) -> None:
-        """Test that missing required fields raise TypeError (as expected without defaults)."""
-        import xml.etree.ElementTree as ET
-
-        xml = ET.Element("state")
-        ET.SubElement(xml, "setpoint").text = "10.0"
-        # Intentionally omit power and enabled
-
-        # Should fail since CoolingState has no defaults for power and enabled
-        with pytest.raises(TypeError, match="missing.*required positional arguments"):
-            XmppComm._xml_to_dataclass(xml, CoolingState)
+    def test_namespaced_children_deserialized(self) -> None:
+        """ejabberd re-serializes children with parent namespace — must still deserialize."""
+        state = ICooling.State(setpoint=-30.0, power=80, enabled=True)
+        xml = _dataclass_to_xml(state, NS)
+        # Simulate ejabberd namespace inheritance on vocabulary elements
+        raw = ET.tostring(xml).decode()
+        raw = raw.replace("<double>", f'<double xmlns="{NS}">')
+        raw = raw.replace("<int>", f'<int xmlns="{NS}">')
+        raw = raw.replace("<boolean>", f'<boolean xmlns="{NS}">')
+        reparsed = ET.fromstring(raw)
+        result = _xml_to_dataclass(reparsed, ICooling.State)
+        assert result.setpoint == pytest.approx(-30.0)
+        assert result.power == 80
+        assert result.enabled is True
 
 
 class TestStateRoundTrip:
-    """Test round-trip serialization and deserialization."""
+    """End-to-end serialization round-trips."""
 
-    def test_cooling_state_roundtrip_all_values(self) -> None:
-        """Test CoolingState round-trip with various values."""
-        original = CoolingState(setpoint=22.5, power=42, enabled=True)
-        namespace = f"urn:pyobs:state:{ICooling.__name__}:{ICooling.version}"
-
-        # Serialize
-        xml = XmppComm._dataclass_to_xml(original, namespace)
-
-        # Deserialize
-        recovered = XmppComm._xml_to_dataclass(xml, CoolingState)
-
-        # Verify
-        assert recovered.setpoint == original.setpoint
+    def test_cooling_state_roundtrip(self) -> None:
+        original = ICooling.State(setpoint=22.5, power=42, enabled=True)
+        xml = _dataclass_to_xml(original, NS)
+        recovered = _xml_to_dataclass(xml, ICooling.State)
+        assert recovered.setpoint == pytest.approx(original.setpoint)
         assert recovered.power == original.power
         assert recovered.enabled == original.enabled
 
     def test_cooling_state_roundtrip_disabled(self) -> None:
-        """Test round-trip with disabled cooling."""
-        original = CoolingState(setpoint=0.0, power=0, enabled=False)
-        namespace = "urn:pyobs:state:ICooling:1"
+        original = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        xml = _dataclass_to_xml(original, NS)
+        recovered = _xml_to_dataclass(xml, ICooling.State)
+        assert recovered.setpoint == pytest.approx(0.0)
+        assert recovered.power == 0
+        assert recovered.enabled is False
 
-        xml = XmppComm._dataclass_to_xml(original, namespace)
-        recovered = XmppComm._xml_to_dataclass(xml, CoolingState)
-
-        assert recovered == original
-
-    def test_cooling_state_roundtrip_edge_values(self) -> None:
-        """Test round-trip with edge case numeric values."""
-        original = CoolingState(setpoint=0.0, power=100, enabled=True)
-        namespace = "urn:pyobs:state:ICooling:1"
-
-        xml = XmppComm._dataclass_to_xml(original, namespace)
-        recovered = XmppComm._xml_to_dataclass(xml, CoolingState)
-
-        assert recovered.setpoint == 0.0
-        assert recovered.power == 100
-        assert recovered.enabled is True
+    def test_binning_state_roundtrip(self) -> None:
+        ns = f"urn:pyobs:state:IBinning:{IBinning.version}"
+        original = IBinning.State(x=2, y=4)
+        xml = _dataclass_to_xml(original, ns)
+        recovered = _xml_to_dataclass(xml, IBinning.State)
+        assert recovered.x == 2
+        assert recovered.y == 4
 
 
 class TestStateNamespaceAndNode:
-    """Test state namespace and node generation helpers."""
+    """Test namespace and node name generation helpers."""
 
-    def test_state_namespace_generation(self) -> None:
-        """Test _state_namespace generates correct namespace."""
-        namespace = XmppComm._state_namespace(ICooling)
-        assert namespace == f"urn:pyobs:state:ICooling:{ICooling.version}"
+    def test_state_namespace(self) -> None:
+        assert XmppComm._state_namespace(ICooling) == f"urn:pyobs:state:ICooling:{ICooling.version}"
 
-    def test_state_node_generation(self) -> None:
-        """Test _state_node generates correct node path."""
-        node = XmppComm._state_node("camera_module", ICooling)
-        assert node == f"pyobs:state:camera_module:ICooling:{ICooling.version}"
+    def test_state_node(self) -> None:
+        node = XmppComm._state_node("camera", ICooling)
+        assert node == f"pyobs:state:camera:ICooling:{ICooling.version}"
 
-    def test_state_node_with_special_module_name(self) -> None:
-        """Test _state_node with module names containing underscores/hyphens."""
+    def test_state_node_special_chars(self) -> None:
         node = XmppComm._state_node("my-camera_01", ICooling)
         assert "my-camera_01" in node
         assert "ICooling" in node
-
-
-__all__ = [
-    "TestStateXmlSerialization",
-    "TestStateXmlDeserialization",
-    "TestStateRoundTrip",
-    "TestStateNamespaceAndNode",
-]

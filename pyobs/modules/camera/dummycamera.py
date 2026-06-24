@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyobs.images import Image
-from pyobs.interfaces import IBinning, ICooling, IGain, IWindow
+from pyobs.interfaces import IBinning, ICooling, IGain, ITemperatures, IWindow
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus
 
@@ -106,13 +106,14 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             # sleep for 1 second
             await asyncio.sleep(1)
 
-    async def get_full_frame(self, **kwargs: Any) -> tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> IWindow.State:
         """Returns full size of CCD.
 
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return self._camera.full_frame
+        w = self._camera.full_frame
+        return IWindow.State(x=w[0], y=w[1], width=w[2], height=w[3])
 
     def _get_image(self, exp_time: float, open_shutter: bool) -> Image:
         """Actually get (i.e. simulate) the image."""
@@ -191,13 +192,14 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         self._exposing = False
 
-    async def get_window(self, **kwargs: Any) -> tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> IWindow.State:
         """Returns the camera window.
 
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return self._camera.window
+        w = self._camera.window
+        return IWindow.State(x=w[0], y=w[1], width=w[2], height=w[3])
 
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
@@ -215,22 +217,22 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self._camera.window = (left, top, width, height)
         await self.comm.set_state(IWindow.State(*self._camera.window))
 
-    async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> list[IBinning.State]:
         """List available binnings.
 
         Returns:
             List of available binnings as (x, y) tuples.
         """
 
-        return [(1, 1), (2, 2), (3, 3)]
+        return [IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]
 
-    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> IBinning.State:
         """Returns the camera binning.
 
         Returns:
             Tuple with x and y.
         """
-        return self._camera.binning
+        return IBinning.State(x=self._camera.binning[0], y=self._camera.binning[1])
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -268,7 +270,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             enabled=enabled, set_point=setpoint, power=self._cooling.power, temperatures=self._cooling.temperatures
         )
 
-    async def get_cooling(self, **kwargs: Any) -> tuple[bool, float, float]:
+    async def get_cooling(self, **kwargs: Any) -> ICooling.State:
         """Returns the current status for the cooling.
 
         Returns:
@@ -277,15 +279,21 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
                 SetPoint: Setpoint for the cooling in celsius.
                 Power:    Current cooling power in percent or None.
         """
-        return self._cooling.enabled, self._cooling.set_point, self._cooling.power
+        return ICooling.State(
+            enabled=self._cooling.enabled, setpoint=self._cooling.set_point, power=self._cooling.power
+        )
 
-    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> ITemperatures.State:
         """Returns all temperatures measured by this module.
 
         Returns:
             Dict containing temperatures.
         """
-        return self._cooling.temperatures
+        return ITemperatures.State(
+            readings=[
+                ITemperatures.Temperature(name=name, value=value) for name, value in self._cooling.temperatures.items()
+            ]
+        )
 
     async def _set_config_readout_time(self, readout_time: float) -> None:
         """Set readout time."""

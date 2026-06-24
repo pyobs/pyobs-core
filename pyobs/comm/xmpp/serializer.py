@@ -157,14 +157,11 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
     if get_origin(type_hint) is Annotated:
         type_hint = get_args(type_hint)[0]
 
-    # Unwrap Optional[T] / T | None → T, then Annotated[T, ...]
+    # Unwrap Optional[T] / T | None → T
     args = get_args(type_hint) if type_hint else ()
     if args and type(None) in args:
         non_none = [a for a in args if a is not type(None)]
         type_hint = non_none[0] if non_none else Any
-    # Unwrap Annotated after Optional
-    if get_origin(type_hint) is Annotated:
-        type_hint = get_args(type_hint)[0]
 
     # Strip namespace from tag — ejabberd may re-serialize plain children
     # with the parent element's namespace prefix.
@@ -192,28 +189,37 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
     if tag == "items":
         item_type = get_args(type_hint)[0] if type_hint and get_origin(type_hint) is list else Any
         result = []
-        for item_elem in elem.findall("item"):
-            children = list(item_elem)
-            if children:
-                result.append(xml_to_value(children[0], item_type))
+        # findall with namespace stripping — ejabberd may namespace <item> elements
+        for item_elem in elem:
+            if item_elem.tag.split("}")[-1] == "item":
+                children = list(item_elem)
+                if children:
+                    result.append(xml_to_value(children[0], item_type))
         return result
 
     if tag == "tuple":
         item_types = get_args(type_hint) if type_hint and get_origin(type_hint) is tuple else []
         result = []
-        for i, item_elem in enumerate(elem.findall("item")):
-            item_type = item_types[i] if i < len(item_types) else Any
-            children = list(item_elem)
-            if children:
-                result.append(xml_to_value(children[0], item_type))
+        i = 0
+        for item_elem in elem:
+            if item_elem.tag.split("}")[-1] == "item":
+                item_type = item_types[i] if i < len(item_types) else Any
+                children = list(item_elem)
+                if children:
+                    result.append(xml_to_value(children[0], item_type))
+                i += 1
         return tuple(result)
 
     if tag == "dict":
         key_type, val_type = get_args(type_hint)[:2] if type_hint and get_origin(type_hint) is dict else (Any, Any)
         result = {}
-        for entry in elem.findall("entry"):
-            key_children = list(entry.find("key") or [])
-            val_children = list(entry.find("val") or [])
+        for entry in elem:
+            if entry.tag.split("}")[-1] != "entry":
+                continue
+            key_elem = next((c for c in entry if c.tag.split("}")[-1] == "key"), None)
+            val_elem = next((c for c in entry if c.tag.split("}")[-1] == "val"), None)
+            key_children = list(key_elem) if key_elem is not None else []
+            val_children = list(val_elem) if val_elem is not None else []
             if key_children and val_children:
                 k = xml_to_value(key_children[0], key_type)
                 v = xml_to_value(val_children[0], val_type)
@@ -287,13 +293,13 @@ def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
             continue
 
         field_type = hints.get(f.name, Any)
-        # Unwrap Optional (T | None) first
+        # Unwrap Annotated
+        if get_origin(field_type) is Annotated:
+            field_type = get_args(field_type)[0]
+        # Unwrap Optional
         ft_args = get_args(field_type)
         if ft_args and type(None) in ft_args:
             field_type = next(a for a in ft_args if a is not type(None))
-        # Unwrap Annotated[T, ...]
-        if get_origin(field_type) is Annotated:
-            field_type = get_args(field_type)[0]
 
         # The child element wraps the value — it may contain a vocabulary
         # element (post-round-trip: the child IS the value element) or

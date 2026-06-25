@@ -231,6 +231,7 @@ class XmppComm(Comm):
             )
         )
         self._xmpp.add_event_handler("got_online", self._got_online)
+        self._xmpp.add_event_handler("changed_status", self._got_presence_update)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
         self._xmpp.add_event_handler("disconnected", self._disconnected)
 
@@ -498,6 +499,21 @@ class XmppComm(Comm):
             if jid.startswith(f"{module}@"):
                 return state
         return None
+
+    def _got_presence_update(self, msg: Any) -> None:
+        """Handle presence changes from already-connected modules."""
+        jid = msg["from"].full
+        if jid == self._jid or jid not in self._online_clients:
+            return
+        show = msg.get("show", "")
+        status = msg.get("status", "")
+        if show == "dnd":
+            client_state = ModuleState.ERROR
+        elif show == "away":
+            client_state = ModuleState.LOCAL
+        else:
+            client_state = ModuleState.READY
+        self._client_states[jid] = (client_state, status)
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.

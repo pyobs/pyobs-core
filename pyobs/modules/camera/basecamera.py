@@ -107,12 +107,13 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             await self.comm.register_event(ExposureStatusChangedEvent)
 
         # publish initial states
-        await self.comm.set_state(IExposureTime.State(exposure_time=self._exposure_time, exposure_time_left=0.0))
+        await self.comm.set_state(IExposureTime.State(exposure_time=self._exposure_time))
         await self.comm.set_state(IImageType.State(image_type=self._image_type))
         await self.comm.set_state(
             IExposure.State(
                 status=self._camera_status,
                 progress=0.0,
+                exposure_time_left=0.0,
             )
         )
 
@@ -156,6 +157,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             IExposure.State(
                 status=status,
                 progress=await self._get_exposure_progress(),
+                exposure_time_left=await self._get_exposure_time_left(),
             )
         )
 

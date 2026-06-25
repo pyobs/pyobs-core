@@ -81,14 +81,3 @@ class DummySpectrograph(BaseSpectrograph):
             Success or not.
         """
         self._exposing = False
-
-    async def get_exposure_progress(self, **kwargs: Any) -> float:
-        """Returns the progress of the current exposure in percent.
-
-        Returns:
-            Progress of the current exposure in percent.
-        """
-        return 1.0
-
-
-__all__ = ["DummySpectrograph"]

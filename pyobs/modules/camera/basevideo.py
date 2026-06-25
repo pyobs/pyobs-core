@@ -165,6 +165,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         await self._site.start()
         self._is_listening = True
 
+        # publish video URL as capability
+        await self.comm.set_capabilities(IVideo.Capabilities(url=self._video_path))
+
     async def close(self) -> None:
         """Close server"""
         await Module.close(self)
@@ -465,14 +468,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # finished
         return image_request.filename
-
-    async def get_video(self, **kwargs: Any) -> str:
-        """Returns path to video.
-
-        Returns:
-            Path to video.
-        """
-        return self._video_path
 
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.

@@ -203,10 +203,12 @@ class Module(Object, IModule, IConfig):
         if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
             return False
 
-        # get proxy and version
+        # get capabilities and version
         try:
-            async with self.proxy(sender, IModule) as proxy:
-                module_version = await proxy.get_version()
+            caps = await self.comm.get_capabilities(sender, IModule)
+            if caps is None:
+                return True
+            module_version = caps.version
         except exc.RemoteError:
             return True
 

@@ -39,8 +39,8 @@ INDEX_HTML = """
 
 async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for grabe_image()."""
-    if hasattr(webcam, "get_exposure_time"):
-        return 2.0 * await webcam.get_exposure_time() + 30.0
+    if hasattr(webcam, "_exposure_time"):
+        return 2.0 * webcam._exposure_time + 30.0
     else:
         return 30.0
 
@@ -482,14 +482,3 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
-
-    async def get_image_type(self, **kwargs: Any) -> ImageType:
-        """Returns the current image type.
-
-        Returns:
-            Current image type.
-        """
-        return self._image_type
-
-
-__all__ = ["BaseVideo", "NextImage"]

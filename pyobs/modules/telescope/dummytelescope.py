@@ -15,6 +15,7 @@ from pyobs.interfaces import (
     IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
+    IReady,
     ITemperatures,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
@@ -81,6 +82,25 @@ class DummyTelescope(
         # init status
         await self._change_motion_status(MotionStatus.IDLE)
 
+        # publish initial states
+        await self.comm.set_capabilities(IFilters.Capabilities(filters=self._telescope.filters))
+        await self.comm.set_state(IFocuser.State(focus=self._telescope.focus))
+        await self.comm.set_state(IFilters.State(filter=self._telescope.filter_name))
+        await self.comm.set_state(
+            ITemperatures.State(
+                readings=[
+                    ITemperatures.Temperature(name="M1", value=10.0),
+                    ITemperatures.Temperature(name="M2", value=12.0),
+                ]
+            )
+        )
+        await self.comm.set_state(IReady.State(ready=True))
+        ra = float(self._telescope.position.ra.degree)
+        dec = float(self._telescope.position.dec.degree)
+        await self.comm.set_state(IPointingRaDec.State(ra=ra, dec=dec))
+        dra, ddec = self._telescope.offsets
+        await self.comm.set_state(IOffsetsRaDec.State(dra=dra, ddec=ddec))
+
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
 
@@ -133,13 +153,13 @@ class DummyTelescope(
         while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
             await asyncio.sleep(self._wait_secs)
 
-    async def get_focus(self, **kwargs: Any) -> float:
-        """Return current focus.
-
-        Returns:
-            Current focus.
-        """
-        return self._telescope.focus
+        # publish updated position
+        await self.comm.set_state(
+            IPointingRaDec.State(
+                ra=float(self._telescope.position.ra.degree),
+                dec=float(self._telescope.position.dec.degree),
+            )
+        )
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -172,22 +192,7 @@ class DummyTelescope(
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
             self._telescope.focus = focus
-
-    async def list_filters(self, **kwargs: Any) -> list[str]:
-        """List available filters.
-
-        Returns:
-            List of available filters.
-        """
-        return self._telescope.filters
-
-    async def get_filter(self, **kwargs: Any) -> str:
-        """Get currently set filter.
-
-        Returns:
-            Name of currently set filter.
-        """
-        return self._telescope.filter_name
+            await self.comm.set_state(IFocuser.State(focus=focus))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -214,6 +219,7 @@ class DummyTelescope(
 
             # send event
             await self.comm.send_event(FilterChangedEvent(filter_name))
+            await self.comm.set_state(IFilters.State(filter=filter_name))
             logging.info("New filter set.")
 
     @timeout(60)
@@ -260,34 +266,7 @@ class DummyTelescope(
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
-
-    async def get_offsets_radec(self, **kwargs: Any) -> tuple[float, float]:
-        """Get RA/Dec offset.
-
-        Returns:
-            Tuple with RA and Dec offsets.
-        """
-        return self._telescope.offsets
-
-    async def get_radec(self, **kwargs: Any) -> tuple[float, float]:
-        """Returns current RA and Dec.
-
-        Returns:
-            Tuple of current RA and Dec in degrees.
-        """
-        return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
-
-    async def get_altaz(self, **kwargs: Any) -> tuple[float, float]:
-        """Returns current Alt and Az.
-
-        Returns:
-            Tuple of current Alt and Az in degrees.
-        """
-        if self._observer is not None:
-            alt_az = self.observer.altaz(Time.now(), self._telescope.position)
-            return float(alt_az.alt.degree), float(alt_az.az.degree)
-        else:
-            raise ValueError("No observer given.")
+        await self.comm.set_state(IOffsetsRaDec.State(dra=dra, ddec=ddec))
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
@@ -318,29 +297,8 @@ class DummyTelescope(
         """
         pass
 
-    async def get_focus_offset(self, **kwargs: Any) -> float:
-        """Return current focus offset.
-
-        Returns:
-            Current focus offset.
-        """
-        return 0
-
-    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
-        """Returns all temperatures measured by this module.
-
-        Returns:
-            Dict containing temperatures.
-        """
-
-        return {"M1": 10.0, "M2": 12.0}
-
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
         log.error("Not implemented")
-
-    async def is_ready(self, **kwargs: Any) -> bool:
-        log.error("Not implemented")
-        return True
 
 
 __all__ = ["DummyTelescope"]

@@ -471,8 +471,8 @@ class Module(Object, IModule, IConfig):
             self.set_error_string(error_string)
 
         # push presence automatically — no module author involvement required
-        if self.comm is not None:
-            await self.comm.set_presence(state, self._error_string)
+        if self._comm is not None:
+            await self._comm.set_presence(state, self._error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""

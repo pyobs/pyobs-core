@@ -88,6 +88,7 @@ async def test_open_publishes_imodule_capabilities() -> None:
     module._label = "Test Camera"
     module._child_objects = []
     module._own_comm = False  # skip comm.open()
+    module._config_caps = {}  # no config caps for stub
 
     comm = MagicMock()
     comm.set_capabilities = AsyncMock()
@@ -98,9 +99,10 @@ async def test_open_publishes_imodule_capabilities() -> None:
         module.get_label = AsyncMock(return_value="Test Camera")
         await module.open()
 
-    comm.set_capabilities.assert_called_once()
-    caps = comm.set_capabilities.call_args[0][0]
-    assert isinstance(caps, IModule.Capabilities)
+    # set_capabilities called for IModule.Capabilities and IConfig.Capabilities
+    assert comm.set_capabilities.call_count >= 1
+    imodule_call = next(c for c in comm.set_capabilities.call_args_list if isinstance(c[0][0], IModule.Capabilities))
+    caps = imodule_call[0][0]
     assert caps.version == "2.0.0"
     assert caps.label == "Test Camera"
 
@@ -114,6 +116,7 @@ async def test_open_publishes_empty_label_when_none() -> None:
     module._label = None
     module._child_objects = []
     module._own_comm = False
+    module._config_caps = {}
 
     comm = MagicMock()
     comm.set_capabilities = AsyncMock()
@@ -124,7 +127,8 @@ async def test_open_publishes_empty_label_when_none() -> None:
         module.get_label = AsyncMock(return_value="")
         await module.open()
 
-    caps = comm.set_capabilities.call_args[0][0]
+    imodule_call = next(c for c in comm.set_capabilities.call_args_list if isinstance(c[0][0], IModule.Capabilities))
+    caps = imodule_call[0][0]
     assert isinstance(caps, IModule.Capabilities)
     assert caps.label == ""
 

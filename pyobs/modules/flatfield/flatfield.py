@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any
 
 from pyobs.events import BadWeatherEvent, Event, RoofClosingEvent
-from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, ITelescope
+from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, IReady, ITelescope
 from pyobs.modules import Module, timeout
 from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
@@ -106,6 +106,12 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             await self.comm.register_event(BadWeatherEvent, self._abort_weather)
             await self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
+        # publish initial states
+        await self.comm.set_state(IBinning.State(x=self._binning[0], y=self._binning[1]))
+        if self._filter is not None:
+            await self.comm.set_state(IFilters.State(filter=self._filter))
+        await self.comm.set_state(IReady.State(ready=True))
+
     async def close(self) -> None:
         """Close module."""
         await Module.close(self)
@@ -141,14 +147,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             ValueError: If binning could not be set.
         """
         self._binning = (x, y)
-
-    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        return self._binning
+        await self.comm.set_state(IBinning.State(x=x, y=y))
 
     async def list_filters(self, **kwargs: Any) -> list[str]:
         """List available filters.
@@ -169,14 +168,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             ValueError: If binning could not be set.
         """
         self._filter = filter_name
-
-    async def get_filter(self, **kwargs: Any) -> str:
-        """Get currently set filter.
-
-        Returns:
-            Name of currently set filter.
-        """
-        return "" if self._filter is None else self._filter
+        await self.comm.set_state(IFilters.State(filter=filter_name))
 
     @timeout(3600)
     async def flat_field(self, count: int = 20, **kwargs: Any) -> tuple[int, float]:
@@ -254,9 +246,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
-
-    async def is_ready(self, **kwargs: Any) -> bool:
-        return True
 
 
 __all__ = ["FlatField"]

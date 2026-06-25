@@ -193,14 +193,6 @@ class BaseSpectrograph(Module, SpectrumFitsHeaderMixin, ISpectrograph, metaclass
         # set it
         self._spectrograph_status = status
 
-    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
-        """Returns the current status of the spectrograph, which is one of 'idle', 'exposing', or 'readout'.
-
-        Returns:
-            Current status of spectrograph.
-        """
-        return self._spectrograph_status
-
     async def abort(self, **kwargs: Any) -> None:
         """Aborts the current exposure.
 

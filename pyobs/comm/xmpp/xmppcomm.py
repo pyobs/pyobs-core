@@ -185,6 +185,7 @@ class XmppComm(Comm):
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
         self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
+        self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -488,6 +489,11 @@ class XmppComm(Comm):
             client_state = ModuleState.READY
         self._client_states[jid] = (client_state, status)
 
+        # fire presence callbacks
+        module_name = jid[: jid.index("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(client_state, status)
+
         # append to list
         if jid not in self._online_clients:
             self._online_clients.append(jid)
@@ -517,6 +523,11 @@ class XmppComm(Comm):
             client_state = ModuleState.READY
         self._client_states[jid] = (client_state, status)
 
+        # fire presence callbacks
+        module_name = jid[: jid.index("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(client_state, status)
+
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
 
@@ -537,13 +548,17 @@ class XmppComm(Comm):
             self._online_clients.remove(jid)
         self._client_states.pop(jid, None)
 
+        # notify presence subscribers that the module is gone
+        module_name = jid[: jid.find("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(ModuleState.CLOSED, "")
+
         # clear interface cache
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
         # send event
-        username = jid[: jid.find("@")]
-        self._send_event_to_module(ModuleClosedEvent(), username)
+        self._send_event_to_module(ModuleClosedEvent(), module_name)
 
     @property
     def clients(self) -> list[str]:
@@ -854,6 +869,12 @@ class XmppComm(Comm):
         show = _show_map.get(state)
         status = error_string if state == ModuleState.ERROR and error_string else None
         self.client.send_presence(pshow=show, pstatus=status)
+
+    async def _subscribe_presence(self, module: str, callback: Callable[[ModuleState, str], None]) -> None:
+        self._presence_callbacks.setdefault(module, []).append(callback)
+        result = self._get_client_state(module)
+        if result is not None:
+            callback(*result)
 
     async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
         """Subscribe to a pubsub node, retrying until the node exists.

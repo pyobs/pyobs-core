@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from pyobs.modules import Module
 
 StateCallback = Callable[[Any], None]
+PresenceCallback = Callable[["ModuleState", str], None]
 
 log = logging.getLogger(__name__)
 
@@ -559,6 +560,20 @@ class Comm:
         interface: type[Interface],
         callback: StateCallback,
     ) -> None:
+        pass
+
+    async def subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
+        """Subscribe to presence updates for a given module.
+
+        Delivers the current value immediately, then on every change.
+
+        Args:
+            module: Name of remote module.
+            callback: Called with (ModuleState, error_string) on each update.
+        """
+        await self._subscribe_presence(module, callback)
+
+    async def _subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
         pass
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:

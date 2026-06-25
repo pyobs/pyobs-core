@@ -4,6 +4,7 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from pyobs.comm import Comm
+from pyobs.comm.comm import PresenceCallback
 from pyobs.events import Event
 from pyobs.interfaces import Interface
 from pyobs.utils.enums import ModuleState
@@ -25,6 +26,7 @@ class LocalComm(Comm):
         self._state_handlers: dict[str, list[tuple[type[Interface], Callable[[Any], None]]]] = {}
         self._capabilities: dict[type[Interface], Any] = {}  # interface -> Capabilities object
         self._presence: tuple[ModuleState, str] = (ModuleState.READY, "")
+        self._presence_callbacks: dict[str, list[PresenceCallback]] = {}
 
     @property
     def name(self) -> str:
@@ -126,8 +128,11 @@ class LocalComm(Comm):
     # -------------------------------------------------------------------------
 
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
-        """Store presence state locally."""
+        """Store presence state and dispatch to all subscribers."""
         self._presence = (state, error_string)
+        for client in self._network.get_clients():
+            for cb in client._presence_callbacks.get(self._name, []):
+                cb(state, error_string)
 
     def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
         """Return presence state of a connected module."""
@@ -136,3 +141,12 @@ class LocalComm(Comm):
             return remote._presence
         except KeyError:
             return None
+
+    async def _subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
+        """Register a presence callback and deliver the current state immediately."""
+        self._presence_callbacks.setdefault(module, []).append(callback)
+        try:
+            remote = self._network.get_client(module)
+            callback(*remote._presence)
+        except KeyError:
+            pass

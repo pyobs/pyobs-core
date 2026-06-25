@@ -85,6 +85,13 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
         await self.comm.set_state(IImageType.State(image_type=self._image_type))
 
+    async def get_capabilities(self) -> dict:
+        """Extend base capabilities with the full CCD frame dimensions."""
+        caps = await super().get_capabilities()
+        x, y, w, h = self._camera.full_frame
+        caps["full_frame"] = f"{x},{y},{w},{h}"
+        return caps
+
     async def _cooling_thread(self) -> None:
         while True:
             # adjust temperature

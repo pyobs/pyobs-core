@@ -215,10 +215,7 @@ async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame_x=0,
-                full_frame_y=0,
-                full_frame_width=4096,
-                full_frame_height=4096,
+                full_frame=IWindow.State(x=0, y=0, width=4096, height=4096),
             )
         )
 
@@ -229,9 +226,7 @@ async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
         result = await observer_comm.client["xep_0030"].get_info(jid=camera_jid)
         caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IWINDOW)
 
-        assert "full_frame_width" in caps, f"full_frame_width missing; got: {caps}"
-        assert caps["full_frame_width"] == "4096"
-        assert caps["full_frame_height"] == "4096"
+        assert "full_frame" in caps, f"full_frame missing; got: {caps}"
 
     await asyncio.wait_for(_run(), timeout=60)
 
@@ -246,10 +241,7 @@ async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="Multi Cap Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame_x=0,
-                full_frame_y=0,
-                full_frame_width=512,
-                full_frame_height=512,
+                full_frame=IWindow.State(x=0, y=0, width=512, height=512),
             )
         )
 
@@ -263,7 +255,7 @@ async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
         iwindow_caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IWINDOW)
 
         assert "version" in imodule_caps
-        assert "full_frame_width" in iwindow_caps
+        assert "full_frame" in iwindow_caps
 
     await asyncio.wait_for(_run(), timeout=60)
 
@@ -278,10 +270,7 @@ async def test_get_capabilities_api(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame_x=0,
-                full_frame_y=0,
-                full_frame_width=4096,
-                full_frame_height=4096,
+                full_frame=IWindow.State(x=0, y=0, width=4096, height=4096),
             )
         )
 
@@ -299,7 +288,7 @@ async def test_get_capabilities_api(make_xmpp_comm) -> None:
         iwindow_caps = await observer_comm.get_capabilities("camera", IWindow)
         assert iwindow_caps is not None
         assert isinstance(iwindow_caps, IWindow.Capabilities)
-        assert iwindow_caps.full_frame_width == 4096
-        assert iwindow_caps.full_frame_height == 4096
+        assert iwindow_caps.full_frame.width == 4096
+        assert iwindow_caps.full_frame.height == 4096
 
     await asyncio.wait_for(_run(), timeout=60)

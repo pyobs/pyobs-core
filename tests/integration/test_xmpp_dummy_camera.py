@@ -124,10 +124,10 @@ async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, xmpp_
 
             assert caps is not None, "IWindow.Capabilities not found in disco#info"
             assert isinstance(caps, IWindow.Capabilities)
-            assert caps.full_frame_width > 0, "full_frame_width should be > 0"
-            assert caps.full_frame_height > 0, "full_frame_height should be > 0"
-            assert caps.full_frame_x == 0
-            assert caps.full_frame_y == 0
+            assert caps.full_frame.width > 0, "full_frame.width should be > 0"
+            assert caps.full_frame.height > 0, "full_frame.height should be > 0"
+            assert caps.full_frame.x == 0
+            assert caps.full_frame.y == 0
 
         finally:
             await camera.close()

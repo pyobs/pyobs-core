@@ -18,7 +18,7 @@ import asyncio
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import IBinning, ICooling
+from pyobs.interfaces import IBinning, ICooling, IGain
 from pyobs.modules.camera.dummycamera import DummyCamera
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
@@ -66,7 +66,7 @@ async def test_rpc_void_return_bool_float_params(make_xmpp_comm, xmpp_config) ->
 
 
 async def test_rpc_float_return(make_xmpp_comm, xmpp_config) -> None:
-    """get_gain() -> float: scalar float return."""
+    """set_gain(float) -> None and verify via IGain state: float param, state readback."""
 
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
@@ -76,12 +76,12 @@ async def test_rpc_float_return(make_xmpp_comm, xmpp_config) -> None:
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
 
-            from pyobs.interfaces import IGain
+            received = []
+            await observer_comm.subscribe_state("camera", IGain, received.append)
+            assert await wait_for(lambda: len(received) >= 1, timeout=5.0), "No initial IGain state"
 
-            async with observer_comm.proxy("camera", IGain) as cam:
-                result = await cam.get_gain()
-
-            assert isinstance(result, float)
+            initial_gain = received[-1].gain
+            assert isinstance(initial_gain, float)
 
         finally:
             await camera.close()
@@ -90,7 +90,7 @@ async def test_rpc_float_return(make_xmpp_comm, xmpp_config) -> None:
 
 
 async def test_rpc_float_param_float_return(make_xmpp_comm, xmpp_config) -> None:
-    """set_gain(float) then get_gain() -> float: float param and return."""
+    """set_gain(float) then verify via IGain state: float param round-trip."""
 
     async def _run():
         camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
@@ -100,13 +100,17 @@ async def test_rpc_float_param_float_return(make_xmpp_comm, xmpp_config) -> None
             ok = await wait_for(lambda: "camera" in observer_comm.clients)
             assert ok
 
-            from pyobs.interfaces import IGain
+            received = []
+            await observer_comm.subscribe_state("camera", IGain, received.append)
+            assert await wait_for(lambda: len(received) >= 1, timeout=5.0), "No initial IGain state"
 
             async with observer_comm.proxy("camera", IGain) as cam:
                 await cam.set_gain(42.0)
-                result = await cam.get_gain()
 
-            assert result == pytest.approx(42.0)
+            assert await wait_for(
+                lambda: any(s.gain == pytest.approx(42.0) for s in received),
+                timeout=5.0,
+            ), "IGain state did not reflect new gain after set_gain RPC"
 
         finally:
             await camera.close()

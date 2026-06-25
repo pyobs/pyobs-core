@@ -33,15 +33,6 @@ class IImageFormat(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
-        """Returns the camera image format.
-
-        Returns:
-            Current image format.
-        """
-        ...
-
-    @abstractmethod
     async def list_image_formats(self, **kwargs: Any) -> list[str]:
         """List available image formats.
 

@@ -45,23 +45,5 @@ class IFocuser(IMotion, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_focus(self, **kwargs: Any) -> float:
-        """Return current focus.
-
-        Returns:
-            Current focus.
-        """
-        ...
-
-    @abstractmethod
-    async def get_focus_offset(self, **kwargs: Any) -> float:
-        """Return current focus offset.
-
-        Returns:
-            Current focus offset.
-        """
-        ...
-
 
 __all__ = ["IFocuser"]

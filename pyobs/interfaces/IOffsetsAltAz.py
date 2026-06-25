@@ -36,14 +36,5 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_offsets_altaz(self, **kwargs: Any) -> IOffsetsAltAz.State:
-        """Get Alt/Az offset.
-
-        Returns:
-            Tuple with alt and az offsets.
-        """
-        ...
-
 
 __all__ = ["IOffsetsAltAz"]

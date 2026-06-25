@@ -15,13 +15,17 @@ from pyobs.robotic.scripts import Script
 log = logging.getLogger(__name__)
 
 
-def _build_params_model(method):
+def _get_valid_param_names(method) -> set[str]:
+    return {name for name in inspect.signature(method).parameters if name not in ("self", "kwargs")}
+
+
+def _build_params_model(method, provided_keys):
     sig = inspect.signature(method)
     hints = get_type_hints(method, include_extras=True)
     fields = {}
 
     for name, param in sig.parameters.items():
-        if name in ("self", "kwargs"):
+        if name not in provided_keys:
             continue
 
         annotation = hints.get(name, param.annotation)
@@ -50,12 +54,18 @@ class CallModuleScript(Script):
             raise ValueError(f"Method '{self.method}' not found on {self.interface}")
 
         method = getattr(cls, self.method)
+        valid_names = _get_valid_param_names(method)
 
-        try:
-            ParamsModel = _build_params_model(method)
-            ParamsModel.model_validate(self.params)
-        except ValidationError as e:
-            raise ValueError(str(e))
+        for key in self.params:
+            if key not in valid_names:
+                raise ValueError(f"Unknown parameter '{key}'")
+
+        if self.params:
+            try:
+                ParamsModel = _build_params_model(method, set(self.params.keys()))
+                ParamsModel.model_validate(self.params)
+            except ValidationError as e:
+                raise ValueError(str(e))
 
         return self
 

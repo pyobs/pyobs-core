@@ -40,14 +40,5 @@ class IFilters(IMotion, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_filter(self, **kwargs: Any) -> str:
-        """Get currently set filter.
-
-        Returns:
-            Name of currently set filter.
-        """
-        ...
-
 
 __all__ = ["IFilters"]

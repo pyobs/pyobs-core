@@ -32,15 +32,6 @@ class IGain(Interface, metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    async def get_gain(self, **kwargs: Any) -> float:
-        """Returns the camera gain.
-
-        Returns:
-            Current gain.
-        """
-        ...
-
-    @abstractmethod
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
         """Set the camera offset.
 
@@ -49,15 +40,6 @@ class IGain(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If offset could not be set.
-        """
-        ...
-
-    @abstractmethod
-    async def get_offset(self, **kwargs: Any) -> float:
-        """Returns the camera offset.
-
-        Returns:
-            Current offset.
         """
         ...
 

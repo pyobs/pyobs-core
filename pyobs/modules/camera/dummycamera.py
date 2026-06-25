@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyobs.images import Image
-from pyobs.interfaces import IBinning, ICooling, IGain, ITemperatures, IWindow
+from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, IImageType, ITemperatures, IWindow
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.enums import ExposureStatus
+from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
 
 if TYPE_CHECKING:
     from pyobs.utils.simulation import SimWorld
@@ -25,7 +25,7 @@ class CoolingStatus(NamedTuple):
     temperatures: dict[str, float] = {"CCD": 0.0, "Back": 3.14}
 
 
-class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
+class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     """A dummy camera for testing."""
 
     __module__ = "pyobs.modules.camera"
@@ -64,6 +64,9 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self._cooling = CoolingStatus()
         self._exposing = True
         self._gain = 10.0
+        self._gain_offset = 0.0
+        self._image_format = ImageFormat.INT16
+        self._image_type = ImageType.OBJECT
 
         # simulator
         self._sim_images = sorted(glob.glob(self._sim["images"])) if self._sim["images"] else None
@@ -76,9 +79,11 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         await self.comm.set_state(
             ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
         )
-        await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
         await self.comm.set_state(IWindow.State(*self._camera.full_frame))
         await self.comm.set_state(IBinning.State(*self._camera.binning))
+        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+        await self.comm.set_state(IImageType.State(image_type=self._image_type))
 
     async def _cooling_thread(self) -> None:
         while True:
@@ -101,6 +106,14 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
                     power=int(power),
                     enabled=self._cooling.enabled,
                 ),
+            )
+            await self.comm.set_state(
+                ITemperatures.State(
+                    readings=[
+                        ITemperatures.Temperature(name=name, value=value)
+                        for name, value in self._cooling.temperatures.items()
+                    ]
+                )
             )
 
             # sleep for 1 second
@@ -192,15 +205,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
         self._exposing = False
 
-    async def get_window(self, **kwargs: Any) -> IWindow.State:
-        """Returns the camera window.
-
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        w = self._camera.window
-        return IWindow.State(x=w[0], y=w[1], width=w[2], height=w[3])
-
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
@@ -225,14 +229,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         """
 
         return [IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]
-
-    async def get_binning(self, **kwargs: Any) -> IBinning.State:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        return IBinning.State(x=self._camera.binning[0], y=self._camera.binning[1])
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -273,31 +269,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
             ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
         )
 
-    async def get_cooling(self, **kwargs: Any) -> ICooling.State:
-        """Returns the current status for the cooling.
-
-        Returns:
-            (tuple): Tuple containing:
-                Enabled:  Whether the cooling is enabled
-                SetPoint: Setpoint for the cooling in celsius.
-                Power:    Current cooling power in percent or None.
-        """
-        return ICooling.State(
-            enabled=self._cooling.enabled, setpoint=self._cooling.set_point, power=self._cooling.power
-        )
-
-    async def get_temperatures(self, **kwargs: Any) -> ITemperatures.State:
-        """Returns all temperatures measured by this module.
-
-        Returns:
-            Dict containing temperatures.
-        """
-        return ITemperatures.State(
-            readings=[
-                ITemperatures.Temperature(name=name, value=value) for name, value in self._cooling.temperatures.items()
-            ]
-        )
-
     async def _set_config_readout_time(self, readout_time: float) -> None:
         """Set readout time."""
         self._readout_time = readout_time
@@ -319,19 +290,16 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain):
         self._gain = gain
         await self.comm.set_state(IGain.State(gain=self._gain, offset=0))
 
-    async def get_gain(self, **kwargs: Any) -> float:
-        """Returns the camera binning.
-
-        Returns:
-            Current gain.
-        """
-        return self._gain
-
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
-        pass
+        self._gain_offset = offset
+        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
 
-    async def get_offset(self, **kwargs: Any) -> float:
-        return 0.0
+    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
+        self._image_format = fmt
+        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+
+    async def list_image_formats(self, **kwargs: Any) -> list[str]:
+        return [ImageFormat.INT8, ImageFormat.INT16]
 
 
 __all__ = ["DummyCamera"]

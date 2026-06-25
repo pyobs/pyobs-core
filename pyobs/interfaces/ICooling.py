@@ -22,18 +22,6 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
         time: Time = field(default_factory=Time.now)
 
     @abstractmethod
-    async def get_cooling(self, **kwargs: Any) -> ICooling.State:
-        """Returns the current status for the cooling.
-
-        Returns:
-            (tuple): Tuple containing:
-                Enabled:  Whether the cooling is enabled
-                SetPoint: Setpoint for the cooling in celsius.
-                Power:    Current cooling power in percent or None.
-        """
-        ...
-
-    @abstractmethod
     async def set_cooling(self, enabled: bool, setpoint: Annotated[float, Unit.CELSIUS], **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 

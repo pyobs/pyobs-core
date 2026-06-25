@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, overload
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
+from pyobs.utils.enums import ModuleState
 
 from .commlogging import CommLoggingHandler
 from .proxy import Proxy, ProxyType, _ProxyContext
@@ -448,6 +449,32 @@ class Comm:
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         pass
+
+    async def set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        """Publish presence for this module (module lifecycle state).
+
+        Called automatically by Module.set_state — not intended to be called
+        directly by module authors.
+
+        Args:
+            state: Current module lifecycle state.
+            error_string: Error message, used when state is ERROR.
+        """
+        await self._set_presence(state, error_string)
+
+    async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        pass
+
+    def get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        """Return the last known presence state of a connected module.
+
+        Returns (ModuleState, error_string) or None if the module is not connected.
+        This replaces the old get_state()/get_error_string() RPC pattern.
+        """
+        return self._get_client_state(module)
+
+    def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        return None
 
     async def subscribe_state(
         self,

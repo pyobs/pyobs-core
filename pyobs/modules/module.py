@@ -181,6 +181,18 @@ class Module(Object, IModule, IConfig):
         """Returns pyobs version of module."""
         return version()
 
+    async def get_capabilities(self) -> dict[str, Any]:
+        """Returns static capabilities for this module, published in disco#info.
+
+        These are values that are fixed for the module's lifetime — software
+        version, human-readable label, and any hardware-specific constants
+        added by subclasses. Override and call super() to extend.
+        """
+        return {
+            "version": await self.get_version(),
+            "label": await self.get_label(),
+        }
+
     async def _on_module_opened(self, event: Event, sender: str) -> bool:
         """React to other modules connecting."""
         if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
@@ -457,6 +469,10 @@ class Module(Object, IModule, IConfig):
         self._state = state
         if error_string is not None:
             self.set_error_string(error_string)
+
+        # push presence automatically — no module author involvement required
+        if self._comm is not None:
+            await self._comm.set_presence(state, self._error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""

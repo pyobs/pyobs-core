@@ -36,8 +36,6 @@ def test_proxy_interfaces() -> None:
 def test_proxy_method_names() -> None:
     proxy, _ = make_proxy([IExposureTime])
     assert "set_exposure_time" in proxy.method_names
-    assert "get_exposure_time" in proxy.method_names
-    assert "get_exposure_time_left" in proxy.method_names
 
 
 def test_proxy_deduplicates_parent_interfaces() -> None:
@@ -88,7 +86,7 @@ async def test_execute_calls_comm() -> None:
 @pytest.mark.asyncio
 async def test_execute_returns_value() -> None:
     proxy, _ = make_proxy([IExposureTime], return_value=30.0)
-    result = await proxy.execute("get_exposure_time")
+    result = await proxy.execute("set_exposure_time", 30.0)
     assert result == 30.0
 
 

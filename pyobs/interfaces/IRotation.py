@@ -24,10 +24,5 @@ class IRotation(IMotion, metaclass=ABCMeta):
         """Sets the rotation angle to the given value in degrees."""
         ...
 
-    @abstractmethod
-    async def get_rotation(self) -> Annotated[float, Unit.DEGREES]:
-        """Returns the current rotation angle."""
-        ...
-
 
 __all__ = ["IRotation"]

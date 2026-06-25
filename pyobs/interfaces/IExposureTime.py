@@ -32,23 +32,5 @@ class IExposureTime(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_exposure_time(self, **kwargs: Any) -> Annotated[float, Unit.SECONDS]:
-        """Returns the exposure time in seconds.
-
-        Returns:
-            Exposure time in seconds.
-        """
-        ...
-
-    @abstractmethod
-    async def get_exposure_time_left(self, **kwargs: Any) -> Annotated[float, Unit.SECONDS]:
-        """Returns the remaining exposure time on the current exposure in seconds.
-
-        Returns:
-            Remaining exposure time in seconds.
-        """
-        ...
-
 
 __all__ = ["IExposureTime"]

@@ -35,14 +35,5 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
         """
         ...
 
-    @abstractmethod
-    async def get_radec(self, **kwargs: Any) -> IPointingRaDec.State:
-        """Returns current RA and Dec.
-
-        Returns:
-            Tuple of current RA and Dec in degrees.
-        """
-        ...
-
 
 __all__ = ["IPointingRaDec"]

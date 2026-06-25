@@ -104,6 +104,55 @@ async def test_presence_default_ready() -> None:
 
 
 @pytest.mark.asyncio
+async def test_subscribe_presence_delivers_current() -> None:
+    """subscribe_presence fires callback immediately with the current presence state."""
+    camera = LocalComm("camera")
+    observer = LocalComm("observer")
+
+    await camera._set_presence(ModuleState.ERROR, "sensor failure")
+
+    received: list[tuple[ModuleState, str]] = []
+    await observer.subscribe_presence("camera", lambda s, e: received.append((s, e)))
+
+    assert received == [(ModuleState.ERROR, "sensor failure")]
+
+
+@pytest.mark.asyncio
+async def test_subscribe_presence_called_on_change() -> None:
+    """subscribe_presence callback is called whenever presence changes."""
+    camera = LocalComm("camera")
+    observer = LocalComm("observer")
+
+    received: list[tuple[ModuleState, str]] = []
+    await observer.subscribe_presence("camera", lambda s, e: received.append((s, e)))
+    received.clear()  # discard the immediate delivery
+
+    await camera._set_presence(ModuleState.ERROR, "disk full")
+
+    assert received == [(ModuleState.ERROR, "disk full")]
+
+
+@pytest.mark.asyncio
+async def test_subscribe_presence_multiple_callbacks() -> None:
+    """All registered callbacks receive each presence update."""
+    camera = LocalComm("camera")
+    obs1 = LocalComm("obs1")
+    obs2 = LocalComm("obs2")
+
+    r1: list[tuple[ModuleState, str]] = []
+    r2: list[tuple[ModuleState, str]] = []
+    await obs1.subscribe_presence("camera", lambda s, e: r1.append((s, e)))
+    await obs2.subscribe_presence("camera", lambda s, e: r2.append((s, e)))
+    r1.clear()
+    r2.clear()
+
+    await camera._set_presence(ModuleState.LOCAL)
+
+    assert (ModuleState.LOCAL, "") in r1
+    assert (ModuleState.LOCAL, "") in r2
+
+
+@pytest.mark.asyncio
 async def test_iwindow_capabilities_roundtrip() -> None:
     """IWindow.Capabilities round-trips through LocalComm."""
     camera = LocalComm("camera")

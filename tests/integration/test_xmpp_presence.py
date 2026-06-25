@@ -175,6 +175,38 @@ async def test_set_state_automatically_updates_presence(make_xmpp_comm) -> None:
     await asyncio.wait_for(_run(), timeout=60)
 
 
+async def test_subscribe_presence_delivers_initial_and_changes(make_xmpp_comm) -> None:
+    """subscribe_presence fires immediately with current state and again on each change."""
+
+    async def _run():
+        module = make_module([ICooling])
+        camera_comm = await make_xmpp_comm("camera", module)
+        await camera_comm.set_presence(ModuleState.READY)
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        received: list[tuple[ModuleState, str]] = []
+
+        def _on_presence(state: ModuleState, error: str) -> None:
+            received.append((state, error))
+
+        await observer_comm.subscribe_presence("camera", _on_presence)
+
+        # immediate delivery of current state
+        assert len(received) == 1, f"Expected 1 immediate delivery, got {received}"
+        assert received[0][0] == ModuleState.READY
+
+        # change state and verify callback fires
+        await camera_comm.set_presence(ModuleState.ERROR, "disk full")
+
+        ok = await wait_for(lambda: len(received) >= 2 and received[-1][0] == ModuleState.ERROR)
+        assert ok, f"Presence change not received via subscribe_presence; got: {received}"
+        assert "disk full" in received[-1][1]
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
 # ---------------------------------------------------------------------------
 # Discovery / Capability tests
 # ---------------------------------------------------------------------------

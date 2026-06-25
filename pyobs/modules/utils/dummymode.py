@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from pyobs.events import ModeChangedEvent
-from pyobs.interfaces import IMode, IMotion
+from pyobs.interfaces import IMode, IMotion, IReady
 from pyobs.mixins import MotionStatusMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -42,6 +42,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         # subscribe to events
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(ModeChangedEvent)
+            await self.comm.set_state(IReady.State(ready=True))
 
     async def list_mode_groups(self, **kwargs: Any) -> list[str]:
         """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
@@ -105,9 +106,6 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass
-
-    async def is_ready(self, **kwargs: Any) -> bool:
-        return True
 
 
 __all__ = ["DummyMode"]

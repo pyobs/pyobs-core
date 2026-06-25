@@ -114,7 +114,7 @@ class BaseTelescope(
             raise NotImplementedError
 
         # do nothing, if initializing, parking or parked
-        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check observer
@@ -187,7 +187,7 @@ class BaseTelescope(
             raise NotImplementedError
 
         # do nothing, if initializing, parking or parked
-        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check altitude

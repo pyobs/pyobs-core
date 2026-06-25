@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -37,7 +37,7 @@ async def test_open(mocker):
 async def test_get_fits_header_before_open():
     telescope = MockBaseRoof()
 
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.POSITIONED)
+    telescope.motion_status = MagicMock(return_value=MotionStatus.POSITIONED)
     header = await telescope.get_fits_header_before()
 
     assert header["ROOF-OPN"] == (True, "True for open, false for closed roof")
@@ -47,7 +47,7 @@ async def test_get_fits_header_before_open():
 async def test_get_fits_header_before_closed():
     telescope = MockBaseRoof()
 
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.PARKED)
+    telescope.motion_status = MagicMock(return_value=MotionStatus.PARKED)
     header = await telescope.get_fits_header_before()
 
     assert header["ROOF-OPN"] == (False, "True for open, false for closed roof")
@@ -57,7 +57,7 @@ async def test_get_fits_header_before_closed():
 async def test_ready():
     telescope = MockBaseRoof()
 
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.TRACKING)
+    telescope.motion_status = MagicMock(return_value=MotionStatus.TRACKING)
     assert await telescope.is_ready() is True
 
 
@@ -65,5 +65,5 @@ async def test_ready():
 async def test_not_ready():
     telescope = MockBaseRoof()
 
-    telescope.get_motion_status = AsyncMock(return_value=MotionStatus.PARKING)
+    telescope.motion_status = MagicMock(return_value=MotionStatus.PARKING)
     assert await telescope.is_ready() is False

@@ -34,7 +34,6 @@ from .IFocusModel import IFocusModel
 from .IGain import IGain
 from .IImageFormat import IImageFormat
 from .IImageType import IImageType
-from .ILatLon import ILatLon
 from .IMode import IMode
 from .IModule import IModule
 from .IMotion import IMotion

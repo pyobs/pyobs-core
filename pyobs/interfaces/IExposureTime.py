@@ -17,7 +17,6 @@ class IExposureTime(Interface, metaclass=ABCMeta):
     @dataclass
     class State:
         exposure_time: Annotated[float, Unit.SECONDS]
-        exposure_time_left: Annotated[float, Unit.SECONDS]
         time: Time = field(default_factory=Time.now)
 
     @abstractmethod

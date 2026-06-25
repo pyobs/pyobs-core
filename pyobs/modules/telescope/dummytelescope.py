@@ -70,6 +70,10 @@ class DummyTelescope(
         self._lock_focus = asyncio.Lock()
         self._abort_focus = asyncio.Event()
 
+    @property
+    def _position_radec(self) -> tuple[float, float] | None:
+        return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
+
     async def open(self) -> None:
         """Open module."""
         await BaseTelescope.open(self)
@@ -84,7 +88,7 @@ class DummyTelescope(
 
         # publish initial states
         await self.comm.set_capabilities(IFilters.Capabilities(filters=self._telescope.filters))
-        await self.comm.set_state(IFocuser.State(focus=self._telescope.focus))
+        await self.comm.set_state(IFocuser.State(focus=self._telescope.focus, focus_offset=0.0))
         await self.comm.set_state(IFilters.State(filter=self._telescope.filter_name))
         await self.comm.set_state(
             ITemperatures.State(
@@ -99,7 +103,7 @@ class DummyTelescope(
         dec = float(self._telescope.position.dec.degree)
         await self.comm.set_state(IPointingRaDec.State(ra=ra, dec=dec))
         dra, ddec = self._telescope.offsets
-        await self.comm.set_state(IOffsetsRaDec.State(dra=dra, ddec=ddec))
+        await self.comm.set_state(IOffsetsRaDec.State(ra=dra, dec=ddec))
 
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         """Actually starts tracking on given coordinates. Must be implemented by derived classes.
@@ -154,12 +158,9 @@ class DummyTelescope(
             await asyncio.sleep(self._wait_secs)
 
         # publish updated position
-        await self.comm.set_state(
-            IPointingRaDec.State(
-                ra=float(self._telescope.position.ra.degree),
-                dec=float(self._telescope.position.dec.degree),
-            )
-        )
+        ra = float(self._telescope.position.ra.degree)
+        dec = float(self._telescope.position.dec.degree)
+        await self.comm.set_state(IPointingRaDec.State(ra=ra, dec=dec))
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -192,7 +193,7 @@ class DummyTelescope(
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
             self._telescope.focus = focus
-            await self.comm.set_state(IFocuser.State(focus=focus))
+            await self.comm.set_state(IFocuser.State(focus=focus, focus_offset=0.0))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -266,7 +267,7 @@ class DummyTelescope(
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         self._telescope.set_offsets(dra, ddec)
-        await self.comm.set_state(IOffsetsRaDec.State(dra=dra, ddec=ddec))
+        await self.comm.set_state(IOffsetsRaDec.State(ra=dra, dec=ddec))
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

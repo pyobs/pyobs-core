@@ -8,7 +8,6 @@ from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, ITelescope
 from pyobs.modules import Module, timeout
 from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
-from pyobs.utils.enums import MotionStatus
 from pyobs.utils.publisher import CsvPublisher
 
 log = logging.getLogger(__name__)
@@ -252,9 +251,6 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
 
     async def park(self, **kwargs: Any) -> None:
         pass
-
-    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
-        return MotionStatus.IDLE
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
         pass

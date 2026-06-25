@@ -19,6 +19,10 @@ class IBinning(Interface, metaclass=ABCMeta):
         y: int
         time: Time = field(default_factory=Time.now)
 
+    @dataclass
+    class Capabilities:
+        binnings: list[IBinning.State] = field(default_factory=list)
+
     @abstractmethod
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -29,15 +33,6 @@ class IBinning(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If binning could not be set.
-        """
-        ...
-
-    @abstractmethod
-    async def list_binnings(self, **kwargs: Any) -> list[IBinning.State]:
-        """List available binnings.
-
-        Returns:
-            List of available binnings as (x, y) tuples.
         """
         ...
 

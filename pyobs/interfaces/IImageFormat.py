@@ -20,6 +20,10 @@ class IImageFormat(Interface, metaclass=ABCMeta):
         image_format: ImageFormat
         time: Time = field(default_factory=Time.now)
 
+    @dataclass
+    class Capabilities:
+        image_formats: list[str] = field(default_factory=list)
+
     @abstractmethod
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.
@@ -29,15 +33,6 @@ class IImageFormat(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If format could not be set.
-        """
-        ...
-
-    @abstractmethod
-    async def list_image_formats(self, **kwargs: Any) -> list[str]:
-        """List available image formats.
-
-        Returns:
-            List of available image formats.
         """
         ...
 

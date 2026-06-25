@@ -18,14 +18,9 @@ class IFilters(IMotion, metaclass=ABCMeta):
         filter: str
         time: Time = field(default_factory=Time.now)
 
-    @abstractmethod
-    async def list_filters(self, **kwargs: Any) -> list[str]:
-        """List available filters.
-
-        Returns:
-            List of available filters.
-        """
-        ...
+    @dataclass
+    class Capabilities:
+        filters: list[str] = field(default_factory=list)
 
     @abstractmethod
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:

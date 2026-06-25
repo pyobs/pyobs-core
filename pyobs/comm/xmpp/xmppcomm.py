@@ -184,7 +184,7 @@ class XmppComm(Comm):
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
-        self._capabilities: dict[str, object] | None = None  # cached after first READY
+        self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -304,7 +304,7 @@ class XmppComm(Comm):
         if self._closing.is_set():
             return
         log.info("Disconnected from server, waiting for reconnect...")
-        self._capabilities = None  # re-fetch on next READY after reconnect
+        self._capabilities = {}  # clear capabilities on reconnect
 
         # disconnect all clients
         for jid in self._online_clients:
@@ -790,16 +790,18 @@ class XmppComm(Comm):
 
             info = DiscoInfo()
 
-        # Append cached capabilities (populated on first READY presence after open())
-        for name, value in (self._capabilities or {}).items():
-            cap_elem = ET.SubElement(
-                info.xml,
-                f"{{{_CAPABILITY_NS}}}capability",
-                attrib={"name": name, "type": _capability_type(value)},
-            )
-            cap_elem.text = str(value)
+        # Append capabilities published via set_capabilities()
+        for interface, caps in self._capabilities.items():
+            ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
+            cap_xml = _dataclass_to_xml(caps, ns, tag="capabilities")
+            info.xml.append(cap_xml)
 
         return info
+
+    async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
+        """Store published capabilities for inclusion in disco#info responses."""
+        self._capabilities[interface] = capabilities
+        log.info("Published capabilities for %s", interface.__name__)
 
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
         """Send XMPP presence stanza reflecting the module lifecycle state.
@@ -811,11 +813,6 @@ class XmppComm(Comm):
             CLOSED → handled by normal disconnect (unavailable)
         error_string rides as <status> text when state is ERROR.
         """
-        # Cache capabilities on first READY — guaranteed to be after open()
-        if state == ModuleState.READY and self._capabilities is None and self._module is not None:
-            self._capabilities = await self._module.get_capabilities()
-            log.debug("Cached %d capability/ies for %s", len(self._capabilities), self._module.name)
-
         _show_map: dict[ModuleState, str | None] = {
             ModuleState.READY: None,
             ModuleState.ERROR: "dnd",

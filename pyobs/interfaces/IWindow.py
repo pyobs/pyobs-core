@@ -21,6 +21,13 @@ class IWindow(Interface, metaclass=ABCMeta):
         height: int
         time: Time = field(default_factory=Time.now)
 
+    @dataclass
+    class Capabilities:
+        full_frame_x: int = 0
+        full_frame_y: int = 0
+        full_frame_width: int = 0
+        full_frame_height: int = 0
+
     @abstractmethod
     async def get_full_frame(self, **kwargs: Any) -> IWindow.State:
         """Returns full size of CCD.

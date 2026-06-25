@@ -73,6 +73,17 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
     async def open(self) -> None:
         """Opens camera."""
+        # publish IWindow capabilities before super().open() calls set_capabilities(IModule.Capabilities)
+        x, y, w, h = self._camera.full_frame
+        await self.comm.set_capabilities(
+            IWindow.Capabilities(
+                full_frame_x=x,
+                full_frame_y=y,
+                full_frame_width=w,
+                full_frame_height=h,
+            )
+        )
+
         await BaseCamera.open(self)
 
         # init all states
@@ -84,13 +95,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         await self.comm.set_state(IBinning.State(*self._camera.binning))
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
         await self.comm.set_state(IImageType.State(image_type=self._image_type))
-
-    async def get_capabilities(self) -> dict:
-        """Extend base capabilities with the full CCD frame dimensions."""
-        caps = await super().get_capabilities()
-        x, y, w, h = self._camera.full_frame
-        caps["full_frame"] = f"{x},{y},{w},{h}"
-        return caps
 
     async def _cooling_thread(self) -> None:
         while True:

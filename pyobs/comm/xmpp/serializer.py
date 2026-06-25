@@ -239,7 +239,7 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _dataclass_to_xml(state: Any, namespace: str = PYOBS_NS) -> ET.Element:
+def _dataclass_to_xml(state: Any, namespace: str = PYOBS_NS, tag: str = "state") -> ET.Element:
     """Serialize a dataclass to ``<{namespace}state>`` with plain field children.
 
     Each field is serialized using ``value_to_xml`` so the full vocabulary
@@ -252,7 +252,7 @@ def _dataclass_to_xml(state: Any, namespace: str = PYOBS_NS) -> ET.Element:
     Returns:
         ``<{namespace}state>`` element.
     """
-    root = ET.Element(f"{{{namespace}}}state")
+    root = ET.Element(f"{{{namespace}}}{tag}")
     hints = get_type_hints(type(state), include_extras=True)
     for f in dataclasses.fields(state):
         field_val = getattr(state, f.name)

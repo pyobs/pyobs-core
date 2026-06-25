@@ -450,6 +450,27 @@ class Comm:
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         pass
 
+    @staticmethod
+    def _interface_from_capabilities(caps_cls: type) -> type:
+        outer_name = caps_cls.__qualname__.rsplit(".", 1)[0]
+        return getattr(sys.modules[caps_cls.__module__], outer_name)
+
+    async def set_capabilities(self, capabilities: Any) -> None:
+        """Publish capabilities for this module.
+
+        Called by Module.open() for each interface that defines a Capabilities
+        dataclass. Not intended to be called directly by module authors after
+        that point — capabilities are fixed for the module lifetime.
+
+        Args:
+            capabilities: Capabilities dataclass instance.
+        """
+        interface = Comm._interface_from_capabilities(type(capabilities))
+        await self._set_capabilities(interface, capabilities)
+
+    async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
+        pass
+
     async def set_presence(self, state: ModuleState, error_string: str = "") -> None:
         """Publish presence for this module (module lifecycle state).
 

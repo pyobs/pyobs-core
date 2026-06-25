@@ -151,6 +151,16 @@ class Module(Object, IModule, IConfig):
         """Open module."""
         await Object.open(self)
 
+        # publish base capabilities — subclasses call set_capabilities() for their
+        # interface-specific caps before calling super().open()
+        if self._comm is not None:
+            await self._comm.set_capabilities(
+                IModule.Capabilities(
+                    version=await self.get_version(),
+                    label=await self.get_label(),
+                )
+            )
+
     async def close(self) -> None:
         """Close module."""
         await Object.close(self)
@@ -180,18 +190,6 @@ class Module(Object, IModule, IConfig):
     async def get_version(self, **kwargs: Any) -> str:
         """Returns pyobs version of module."""
         return version()
-
-    async def get_capabilities(self) -> dict[str, Any]:
-        """Returns static capabilities for this module, published in disco#info.
-
-        These are values that are fixed for the module's lifetime — software
-        version, human-readable label, and any hardware-specific constants
-        added by subclasses. Override and call super() to extend.
-        """
-        return {
-            "version": await self.get_version(),
-            "label": await self.get_label(),
-        }
 
     async def _on_module_opened(self, event: Event, sender: str) -> bool:
         """React to other modules connecting."""

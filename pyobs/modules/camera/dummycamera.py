@@ -75,6 +75,10 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         """Opens camera."""
         # publish IWindow capabilities before super().open() calls set_capabilities(IModule.Capabilities)
         await self.comm.set_capabilities(IWindow.Capabilities(full_frame=IWindow.State(*self._camera.full_frame)))
+        await self.comm.set_capabilities(
+            IBinning.Capabilities(binnings=[IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]])
+        )
+        await self.comm.set_capabilities(IImageFormat.Capabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16]))
 
         await BaseCamera.open(self)
 
@@ -120,15 +124,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
             # sleep for 1 second
             await asyncio.sleep(1)
-
-    async def get_full_frame(self, **kwargs: Any) -> IWindow.State:
-        """Returns full size of CCD.
-
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        w = self._camera.full_frame
-        return IWindow.State(x=w[0], y=w[1], width=w[2], height=w[3])
 
     def _get_image(self, exp_time: float, open_shutter: bool) -> Image:
         """Actually get (i.e. simulate) the image."""
@@ -223,15 +218,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._camera.window = (left, top, width, height)
         await self.comm.set_state(IWindow.State(*self._camera.window))
 
-    async def list_binnings(self, **kwargs: Any) -> list[IBinning.State]:
-        """List available binnings.
-
-        Returns:
-            List of available binnings as (x, y) tuples.
-        """
-
-        return [IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]
-
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
@@ -299,9 +285,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         self._image_format = fmt
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
-
-    async def list_image_formats(self, **kwargs: Any) -> list[str]:
-        return [ImageFormat.INT8, ImageFormat.INT16]
 
 
 __all__ = ["DummyCamera"]

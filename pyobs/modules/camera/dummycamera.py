@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyobs.images import Image
-from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, IImageType, ITemperatures, IWindow
+from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, ITemperatures, IWindow
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
 
@@ -86,7 +86,6 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         await self.comm.set_state(IWindow.State(*self._camera.full_frame))
         await self.comm.set_state(IBinning.State(*self._camera.binning))
         await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
-        await self.comm.set_state(IImageType.State(image_type=self._image_type))
 
     async def _cooling_thread(self) -> None:
         while True:

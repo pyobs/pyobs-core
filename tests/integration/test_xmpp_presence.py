@@ -1,211 +1,268 @@
-"""Tests for Phase 2.5 Presence and Capabilities implementation."""
+"""Integration tests for Phase 2.5 Presence and Discovery.
+
+Requires a live ejabberd server. Uses the same env vars as the other
+XMPP integration tests. Run with:
+
+    PYOBS_TEST_XMPP_HOST=localhost PYOBS_TEST_XMPP_DOMAIN=localhost \\
+    PYOBS_TEST_XMPP_TLS=1 PYOBS_TEST_XMPP_IGNORE_CERT=1 \\
+    pytest -m xmpp tests/integration/test_xmpp_presence.py -v
+"""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyobs.comm.comm import Comm
-from pyobs.modules.module import Module
+from pyobs.interfaces import ICooling, IModule, IWindow
 from pyobs.utils.enums import ModuleState
 
-# ---------------------------------------------------------------------------
-# Module.set_state → set_presence hook
-# ---------------------------------------------------------------------------
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
 
-
-@pytest.mark.asyncio
-async def test_set_state_calls_set_presence() -> None:
-    """set_state() must automatically call comm.set_presence()."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.READY
-    module._error_string = ""
-
-    comm = MagicMock()
-    comm.set_presence = AsyncMock()
-    module._comm = comm
-
-    await module.set_state(ModuleState.ERROR, "sensor failure")
-
-    comm.set_presence.assert_called_once_with(ModuleState.ERROR, "sensor failure")
-
-
-@pytest.mark.asyncio
-async def test_set_state_no_comm_does_not_raise() -> None:
-    """set_state() must not raise when comm is None."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.READY
-    module._error_string = ""
-    module._comm = None
-
-    await module.set_state(ModuleState.ERROR)  # should not raise
-
-
-@pytest.mark.asyncio
-async def test_set_state_passes_current_error_string() -> None:
-    """set_state() without explicit error_string passes the stored error string."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.READY
-    module._error_string = "existing error"
-
-    comm = MagicMock()
-    comm.set_presence = AsyncMock()
-    module._comm = comm
-
-    await module.set_state(ModuleState.ERROR)
-
-    comm.set_presence.assert_called_once_with(ModuleState.ERROR, "existing error")
-
-
-@pytest.mark.asyncio
-async def test_set_state_ready_clears_error() -> None:
-    """set_state(READY) passes empty error string."""
-    module = Module.__new__(Module)
-    module._state = ModuleState.ERROR
-    module._error_string = "previous error"
-
-    comm = MagicMock()
-    comm.set_presence = AsyncMock()
-    module._comm = comm
-
-    await module.set_state(ModuleState.READY, "")
-
-    comm.set_presence.assert_called_once_with(ModuleState.READY, "")
+_CAPABILITIES_NS_IMODULE = f"urn:pyobs:capabilities:IModule:{IModule.version}"
+_CAPABILITIES_NS_IWINDOW = f"urn:pyobs:capabilities:IWindow:{IWindow.version}"
 
 
 # ---------------------------------------------------------------------------
-# Module.get_capabilities
+# helpers
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_open_publishes_imodule_capabilities() -> None:
-    """Module.open() must call set_capabilities with IModule.Capabilities."""
-    from pyobs.interfaces import IModule
-
-    module = Module.__new__(Module)
-    module._label = "Test Camera"
-    module._child_objects = []
-    module._own_comm = False  # skip comm.open()
-
-    comm = MagicMock()
-    comm.set_capabilities = AsyncMock()
-    module._comm = comm
-
-    with patch("pyobs.object.Object.open", new_callable=AsyncMock):
-        module.get_version = AsyncMock(return_value="2.0.0")
-        module.get_label = AsyncMock(return_value="Test Camera")
-        await module.open()
-
-    comm.set_capabilities.assert_called_once()
-    caps = comm.set_capabilities.call_args[0][0]
-    assert isinstance(caps, IModule.Capabilities)
-    assert caps.version == "2.0.0"
-    assert caps.label == "Test Camera"
+def make_module(interfaces: list, label: str = "Test Camera") -> MagicMock:
+    m = MagicMock()
+    m.interfaces = list({IModule} | set(interfaces))
+    m.name = "camera"
+    m._label = label
+    m.get_label = AsyncMock(return_value=label)
+    m.get_version = AsyncMock(return_value="2.0.0.dev1")
+    return m
 
 
-@pytest.mark.asyncio
-async def test_open_publishes_empty_label_when_none() -> None:
-    """Module.open() passes empty string for label when _label is None."""
-    from pyobs.interfaces import IModule
+async def wait_for(condition, *, timeout: float = 10.0, interval: float = 0.1) -> bool:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        if condition():
+            return True
+        await asyncio.sleep(interval)
+    return False
 
-    module = Module.__new__(Module)
-    module._label = None
-    module._child_objects = []
-    module._own_comm = False
 
-    comm = MagicMock()
-    comm.set_capabilities = AsyncMock()
-    module._comm = comm
+async def wait_for_peer(comm, peer: str, *, timeout: float = 15.0) -> None:
+    ok = await wait_for(lambda: peer in comm.clients, timeout=timeout)
+    assert ok, f"{peer!r} did not appear in client list within {timeout}s"
 
-    with patch("pyobs.object.Object.open", new_callable=AsyncMock):
-        module.get_version = AsyncMock(return_value="2.0.0")
-        module.get_label = AsyncMock(return_value="")
-        await module.open()
 
-    caps = comm.set_capabilities.call_args[0][0]
-    assert isinstance(caps, IModule.Capabilities)
-    assert caps.label == ""
+def get_capabilities_from_disco(result_xml, namespace: str) -> dict[str, str]:
+    """Extract field name → text from a <capabilities> element in a disco#info result."""
+
+    caps = {}
+    for cap_elem in result_xml.iter(f"{{{namespace}}}capabilities"):
+        for child in cap_elem:
+            tag = child.tag.split("}")[-1]
+            # value is wrapped in a vocabulary element e.g. <string>foo</string>
+            value_elem = list(child)
+            if value_elem:
+                caps[tag] = value_elem[0].text
+            else:
+                caps[tag] = child.text
+    return caps
 
 
 # ---------------------------------------------------------------------------
-# Comm.get_client_state / _get_client_state
+# Presence tests
 # ---------------------------------------------------------------------------
 
 
-def test_comm_get_client_state_delegates() -> None:
-    """get_client_state() delegates to _get_client_state()."""
-    comm = Comm.__new__(Comm)
-    comm._get_client_state = MagicMock(return_value=(ModuleState.READY, ""))
+async def test_presence_ready_visible_to_observer(make_xmpp_comm) -> None:
+    """A module in READY state should appear as available to observers."""
 
-    result = comm.get_client_state("camera")
+    async def _run():
+        module = make_module([ICooling])
+        camera_comm = await make_xmpp_comm("camera", module)
+        await camera_comm.set_presence(ModuleState.READY)
 
-    comm._get_client_state.assert_called_once_with("camera")
-    assert result == (ModuleState.READY, "")
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        result = observer_comm.get_client_state("camera")
+        assert result is not None
+        state, error = result
+        assert state == ModuleState.READY
+        assert error == ""
+
+    await asyncio.wait_for(_run(), timeout=60)
 
 
-def test_comm_get_client_state_base_returns_none() -> None:
-    """Base Comm._get_client_state returns None (no presence info)."""
-    comm = Comm.__new__(Comm)
+async def test_presence_error_state_delivered(make_xmpp_comm) -> None:
+    """ERROR state must arrive as dnd presence with error string in <status>."""
 
-    assert comm._get_client_state("camera") is None
-    assert comm.get_client_state("camera") is None
+    async def _run():
+        module = make_module([ICooling])
+        camera_comm = await make_xmpp_comm("camera", module)
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        await camera_comm.set_presence(ModuleState.ERROR, "sensor overheated")
+
+        ok = await wait_for(
+            lambda: (
+                observer_comm.get_client_state("camera") is not None
+                and observer_comm.get_client_state("camera")[0] == ModuleState.ERROR
+            )
+        )
+        assert ok, "ERROR state not received within timeout"
+
+        state, error = observer_comm.get_client_state("camera")
+        assert state == ModuleState.ERROR
+        assert "overheated" in error
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_presence_local_state_delivered(make_xmpp_comm) -> None:
+    """LOCAL state must arrive as away presence."""
+
+    async def _run():
+        module = make_module([ICooling])
+        camera_comm = await make_xmpp_comm("camera", module)
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        await camera_comm.set_presence(ModuleState.LOCAL)
+
+        ok = await wait_for(
+            lambda: (
+                observer_comm.get_client_state("camera") is not None
+                and observer_comm.get_client_state("camera")[0] == ModuleState.LOCAL
+            )
+        )
+        assert ok, "LOCAL state not received within timeout"
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_set_state_automatically_updates_presence(make_xmpp_comm) -> None:
+    """Module.set_state() must automatically push presence — no explicit call."""
+
+    async def _run():
+        from pyobs.modules.module import Module
+
+        module = make_module([ICooling])
+        camera_comm = await make_xmpp_comm("camera", module)
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        m = Module.__new__(Module)
+        m._state = ModuleState.READY
+        m._error_string = ""
+        m._comm = camera_comm
+
+        await m.set_state(ModuleState.ERROR, "disk full")
+
+        ok = await wait_for(
+            lambda: (
+                observer_comm.get_client_state("camera") is not None
+                and observer_comm.get_client_state("camera")[0] == ModuleState.ERROR
+            )
+        )
+        assert ok, "Presence not updated after set_state()"
+        _, error = observer_comm.get_client_state("camera")
+        assert "disk full" in error
+
+    await asyncio.wait_for(_run(), timeout=60)
 
 
 # ---------------------------------------------------------------------------
-# XmppComm presence state tracking
+# Discovery / Capability tests
 # ---------------------------------------------------------------------------
 
 
-def make_xmpp_comm() -> object:
-    """Create a minimal XmppComm instance for testing."""
-    from pyobs.comm.xmpp.xmppcomm import XmppComm
+async def test_imodule_capabilities_in_disco_info(make_xmpp_comm) -> None:
+    """disco#info must contain IModule.Capabilities with version and label."""
 
-    comm = XmppComm.__new__(XmppComm)
-    comm._client_states = {}
-    comm._online_clients = []
-    comm._interface_cache = {}
-    return comm
+    async def _run():
+        module = make_module([ICooling], label="My Camera")
+        camera_comm = await make_xmpp_comm("camera", module)
 
+        # publish capabilities explicitly (normally done by Module.open())
+        await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
 
-def test_xmpp_get_client_state_unknown_module() -> None:
-    """_get_client_state returns None for unknown module."""
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
 
-    comm = make_xmpp_comm()
-    assert comm._get_client_state("camera") is None
+        camera_jid = next(jid for jid in observer_comm._online_clients if jid.startswith("camera@"))
+        result = await observer_comm.client["xep_0030"].get_info(jid=camera_jid)
+        caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IMODULE)
 
+        assert "version" in caps, f"version missing; got: {caps}"
+        assert "label" in caps, f"label missing; got: {caps}"
+        assert caps["label"] == "My Camera"
+        assert caps["version"] == "2.0.0.dev1"
 
-def test_xmpp_get_client_state_known_module() -> None:
-    """_get_client_state returns stored state by module name prefix."""
-
-    comm = make_xmpp_comm()
-    comm._client_states["camera@localhost/pyobs"] = (ModuleState.READY, "")
-
-    result = comm._get_client_state("camera")
-    assert result == (ModuleState.READY, "")
+    await asyncio.wait_for(_run(), timeout=60)
 
 
-def test_xmpp_get_client_state_error_module() -> None:
-    """_get_client_state returns ERROR state with error string."""
+async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
+    """disco#info must contain IWindow.Capabilities with full_frame fields."""
 
-    comm = make_xmpp_comm()
-    comm._client_states["telescope@localhost/pyobs"] = (ModuleState.ERROR, "mount stalled")
+    async def _run():
+        module = make_module([ICooling, IWindow])
+        camera_comm = await make_xmpp_comm("camera", module)
 
-    result = comm._get_client_state("telescope")
-    assert result is not None
-    assert result[0] == ModuleState.ERROR
-    assert result[1] == "mount stalled"
+        await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
+        await camera_comm.set_capabilities(
+            IWindow.Capabilities(
+                full_frame_x=0,
+                full_frame_y=0,
+                full_frame_width=4096,
+                full_frame_height=4096,
+            )
+        )
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        camera_jid = next(jid for jid in observer_comm._online_clients if jid.startswith("camera@"))
+        result = await observer_comm.client["xep_0030"].get_info(jid=camera_jid)
+        caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IWINDOW)
+
+        assert "full_frame_width" in caps, f"full_frame_width missing; got: {caps}"
+        assert caps["full_frame_width"] == "4096"
+        assert caps["full_frame_height"] == "4096"
+
+    await asyncio.wait_for(_run(), timeout=60)
 
 
-def test_xmpp_presence_show_mapping() -> None:
-    """ModuleState maps to the correct XMPP <show> values."""
-    # Test the mapping logic directly without needing a live connection
-    show_map = {
-        ModuleState.READY: None,
-        ModuleState.ERROR: "dnd",
-        ModuleState.LOCAL: "away",
-    }
-    assert show_map[ModuleState.READY] is None
-    assert show_map[ModuleState.ERROR] == "dnd"
-    assert show_map[ModuleState.LOCAL] == "away"
+async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
+    """Multiple set_capabilities() calls must all appear in disco#info."""
+
+    async def _run():
+        module = make_module([ICooling, IWindow])
+        camera_comm = await make_xmpp_comm("camera", module)
+
+        await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="Multi Cap Camera"))
+        await camera_comm.set_capabilities(
+            IWindow.Capabilities(
+                full_frame_x=0,
+                full_frame_y=0,
+                full_frame_width=512,
+                full_frame_height=512,
+            )
+        )
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        camera_jid = next(jid for jid in observer_comm._online_clients if jid.startswith("camera@"))
+        result = await observer_comm.client["xep_0030"].get_info(jid=camera_jid)
+
+        imodule_caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IMODULE)
+        iwindow_caps = get_capabilities_from_disco(result.xml, _CAPABILITIES_NS_IWINDOW)
+
+        assert "version" in imodule_caps
+        assert "full_frame_width" in iwindow_caps
+
+    await asyncio.wait_for(_run(), timeout=60)

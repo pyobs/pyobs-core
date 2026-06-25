@@ -53,17 +53,13 @@ async def test_get_fits_header_before_closed():
     assert header["ROOF-OPN"] == (False, "True for open, false for closed roof")
 
 
-@pytest.mark.asyncio
-async def test_ready():
+def test_ready():
     telescope = MockBaseRoof()
-
     telescope.motion_status = MagicMock(return_value=MotionStatus.TRACKING)
-    assert await telescope.is_ready() is True
+    assert telescope._is_ready() is True
 
 
-@pytest.mark.asyncio
-async def test_not_ready():
+def test_not_ready():
     telescope = MockBaseRoof()
-
     telescope.motion_status = MagicMock(return_value=MotionStatus.PARKING)
-    assert await telescope.is_ready() is False
+    assert telescope._is_ready() is False

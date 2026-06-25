@@ -803,6 +803,22 @@ class XmppComm(Comm):
         self._capabilities[interface] = capabilities
         log.info("Published capabilities for %s", interface.__name__)
 
+    async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        """Fetch and deserialize capabilities for a remote module's interface."""
+        if not hasattr(interface, "Capabilities"):
+            return None
+        jid = f"{module}@{self._domain}"
+        ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
+        try:
+            result = await asyncio.wait_for(self.client["xep_0030"].get_info(jid=jid), timeout=10.0)
+        except (TimeoutError, Exception) as e:
+            log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
+            return None
+        for elem in result.xml:
+            if elem.tag.split("}")[-1] == "capabilities" and f"{{{ns}}}" in elem.tag:
+                return _xml_to_dataclass(elem, interface.Capabilities)
+        return None
+
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
         """Send XMPP presence stanza reflecting the module lifecycle state.
 

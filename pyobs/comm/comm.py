@@ -471,6 +471,21 @@ class Comm:
     async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
         pass
 
+    async def get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        """Fetch and deserialize capabilities for a remote module's interface.
+
+        Args:
+            module: Module name (e.g. "camera").
+            interface: Interface class whose Capabilities dataclass to fetch.
+
+        Returns:
+            Deserialized Capabilities dataclass instance, or None if not published.
+        """
+        return await self._get_capabilities(module, interface)
+
+    async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        return None
+
     async def set_presence(self, state: ModuleState, error_string: str = "") -> None:
         """Publish presence for this module (module lifecycle state).
 

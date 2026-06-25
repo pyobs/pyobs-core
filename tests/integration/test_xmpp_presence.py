@@ -266,3 +266,40 @@ async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
         assert "full_frame_width" in iwindow_caps
 
     await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_get_capabilities_api(make_xmpp_comm) -> None:
+    """comm.get_capabilities() must return a deserialized Capabilities dataclass."""
+
+    async def _run():
+        module = make_module([ICooling, IWindow])
+        camera_comm = await make_xmpp_comm("camera", module)
+
+        await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
+        await camera_comm.set_capabilities(
+            IWindow.Capabilities(
+                full_frame_x=0,
+                full_frame_y=0,
+                full_frame_width=4096,
+                full_frame_height=4096,
+            )
+        )
+
+        observer_comm = await make_xmpp_comm("observer")
+        await wait_for_peer(observer_comm, "camera")
+
+        # Fetch IModule capabilities
+        imodule_caps = await observer_comm.get_capabilities("camera", IModule)
+        assert imodule_caps is not None
+        assert isinstance(imodule_caps, IModule.Capabilities)
+        assert imodule_caps.version == "2.0.0.dev1"
+        assert imodule_caps.label == "My Camera"
+
+        # Fetch IWindow capabilities
+        iwindow_caps = await observer_comm.get_capabilities("camera", IWindow)
+        assert iwindow_caps is not None
+        assert isinstance(iwindow_caps, IWindow.Capabilities)
+        assert iwindow_caps.full_frame_width == 4096
+        assert iwindow_caps.full_frame_height == 4096
+
+    await asyncio.wait_for(_run(), timeout=60)

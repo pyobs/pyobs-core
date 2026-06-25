@@ -209,3 +209,46 @@ def test_xmpp_presence_show_mapping() -> None:
     assert show_map[ModuleState.READY] is None
     assert show_map[ModuleState.ERROR] == "dnd"
     assert show_map[ModuleState.LOCAL] == "away"
+
+
+# ---------------------------------------------------------------------------
+# Comm.get_capabilities / _get_capabilities
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_comm_get_capabilities_delegates() -> None:
+    """get_capabilities() delegates to _get_capabilities()."""
+    from pyobs.interfaces import IWindow
+
+    comm = Comm.__new__(Comm)
+    comm._get_capabilities = AsyncMock(return_value=IWindow.Capabilities())
+
+    result = await comm.get_capabilities("camera", IWindow)
+
+    comm._get_capabilities.assert_called_once_with("camera", IWindow)
+    assert isinstance(result, IWindow.Capabilities)
+
+
+@pytest.mark.asyncio
+async def test_comm_get_capabilities_base_returns_none() -> None:
+    """Base Comm._get_capabilities returns None."""
+    from pyobs.interfaces import IWindow
+
+    comm = Comm.__new__(Comm)
+    assert await comm._get_capabilities("camera", IWindow) is None
+    assert await comm.get_capabilities("camera", IWindow) is None
+
+
+@pytest.mark.asyncio
+async def test_get_capabilities_no_capabilities_class() -> None:
+    """_get_capabilities returns None for interfaces without a Capabilities class."""
+    from pyobs.comm.xmpp.xmppcomm import XmppComm
+    from pyobs.interfaces import ICooling  # has no Capabilities
+
+    comm = XmppComm.__new__(XmppComm)
+    comm._client_states = {}
+    comm._online_clients = []
+
+    result = await comm._get_capabilities("camera", ICooling)
+    assert result is None

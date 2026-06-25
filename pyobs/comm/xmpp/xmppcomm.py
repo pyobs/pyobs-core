@@ -807,16 +807,25 @@ class XmppComm(Comm):
         """Fetch and deserialize capabilities for a remote module's interface."""
         if not hasattr(interface, "Capabilities"):
             return None
-        jid = f"{module}@{self._domain}"
+        # Use full JID (with resource) if we know it — bare JID may not route correctly
+        full_jid = next(
+            (jid for jid in self._online_clients if jid.startswith(f"{module}@")),
+            f"{module}@{self._domain}",
+        )
+        jid = full_jid
         ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
         try:
             result = await asyncio.wait_for(self.client["xep_0030"].get_info(jid=jid), timeout=10.0)
         except (TimeoutError, Exception) as e:
             log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
             return None
-        for elem in result.xml:
-            if elem.tag.split("}")[-1] == "capabilities" and f"{{{ns}}}" in elem.tag:
-                return _xml_to_dataclass(elem, interface.Capabilities)
+        log.debug("get_capabilities disco result XML: %s", ET.tostring(result.xml).decode()[:500])
+        # result.xml is the <iq> — the <query> is its child, capabilities are grandchildren
+        for child in result.xml:
+            for elem in child:
+                tag = elem.tag.split("}")[-1]
+                if tag == "capabilities" and f"{{{ns}}}" in elem.tag:
+                    return _xml_to_dataclass(elem, interface.Capabilities)
         return None
 
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:

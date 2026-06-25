@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import ICooling
+from pyobs.interfaces import ICooling, IModule, IWindow
 from pyobs.modules.camera.dummycamera import DummyCamera
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
@@ -101,6 +101,81 @@ async def test_dummy_camera_cooling_state_reflects_set_cooling(make_xmpp_comm, x
 
             matching = [s for s in received if s.setpoint == pytest.approx(-25.0)]
             assert matching[-1].enabled is True
+
+        finally:
+            await camera.close()
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, xmpp_config) -> None:
+    """DummyCamera.open() must publish IWindow.Capabilities with the SimCamera full frame."""
+
+    async def _run():
+        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        try:
+            await camera.open()
+
+            observer_comm = await make_xmpp_comm("observer")
+            ok = await wait_for(lambda: "camera" in observer_comm.clients)
+            assert ok, "camera did not appear in observer's client list"
+
+            caps = await observer_comm.get_capabilities("camera", IWindow)
+
+            assert caps is not None, "IWindow.Capabilities not found in disco#info"
+            assert isinstance(caps, IWindow.Capabilities)
+            assert caps.full_frame_width > 0, "full_frame_width should be > 0"
+            assert caps.full_frame_height > 0, "full_frame_height should be > 0"
+            assert caps.full_frame_x == 0
+            assert caps.full_frame_y == 0
+
+        finally:
+            await camera.close()
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, xmpp_config) -> None:
+    """DummyCamera.open() must publish IModule.Capabilities with version and label."""
+
+    async def _run():
+        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        try:
+            await camera.open()
+
+            observer_comm = await make_xmpp_comm("observer")
+            ok = await wait_for(lambda: "camera" in observer_comm.clients)
+            assert ok, "camera did not appear in observer's client list"
+
+            caps = await observer_comm.get_capabilities("camera", IModule)
+
+            assert caps is not None, "IModule.Capabilities not found in disco#info"
+            assert isinstance(caps, IModule.Capabilities)
+            assert isinstance(caps.version, str) and len(caps.version) > 0
+            assert isinstance(caps.label, str)
+
+        finally:
+            await camera.close()
+
+    await asyncio.wait_for(_run(), timeout=60)
+
+
+async def test_dummy_camera_no_capabilities_for_unconfigured_interface(make_xmpp_comm, xmpp_config) -> None:
+    """get_capabilities() must return None for an interface DummyCamera doesn't publish."""
+
+    async def _run():
+        from pyobs.interfaces import IFocuser
+
+        camera = DummyCamera(name="camera", comm=make_camera_comm(xmpp_config))
+        try:
+            await camera.open()
+
+            observer_comm = await make_xmpp_comm("observer")
+            ok = await wait_for(lambda: "camera" in observer_comm.clients)
+            assert ok, "camera did not appear in observer's client list"
+
+            caps = await observer_comm.get_capabilities("camera", IFocuser)
+            assert caps is None, "IFocuser.Capabilities should not be published by DummyCamera"
 
         finally:
             await camera.close()

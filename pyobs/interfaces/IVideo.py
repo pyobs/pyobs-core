@@ -1,5 +1,7 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any
+from __future__ import annotations
+
+from abc import ABCMeta
+from dataclasses import dataclass
 
 from .IData import IData
 
@@ -9,14 +11,9 @@ class IVideo(IData, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_video(self, **kwargs: Any) -> str:
-        """Returns path to video.
-
-        Returns:
-            Path to video.
-        """
-        ...
+    @dataclass
+    class Capabilities:
+        url: str = ""
 
 
 __all__ = ["IVideo"]

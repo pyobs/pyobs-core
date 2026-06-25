@@ -790,7 +790,15 @@ class XmppComm(Comm):
 
             info = DiscoInfo()
 
-        # Append capabilities published via set_capabilities()
+        # Remove any previously appended capability elements (info.xml is cached
+        # by slixmpp and reused across calls — without this, each query appends
+        # another copy of every capability element)
+        _CAP_TAG = "capabilities"
+        for old_cap in list(info.xml):
+            if old_cap.tag.split("}")[-1] == _CAP_TAG:
+                info.xml.remove(old_cap)
+
+        # Append current capabilities
         for interface, caps in self._capabilities.items():
             ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
             cap_xml = _dataclass_to_xml(caps, ns, tag="capabilities")

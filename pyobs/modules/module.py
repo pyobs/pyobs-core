@@ -160,6 +160,13 @@ class Module(Object, IModule, IConfig):
                     label=await self.get_label(),
                 )
             )
+            await self._comm.set_capabilities(
+                IConfig.Capabilities(
+                    readable=[n for n, (r, w, o) in self._config_caps.items() if r],
+                    writable=[n for n, (r, w, o) in self._config_caps.items() if w],
+                    options={n: [] for n, (r, w, o) in self._config_caps.items() if o},
+                )
+            )
 
     async def close(self) -> None:
         """Close module."""
@@ -374,15 +381,6 @@ class Module(Object, IModule, IConfig):
             hasattr(self, "_set_config_" + name),
             hasattr(self, "_get_config_options_" + name),
         )
-
-    async def get_config_caps(self, **kwargs: Any) -> dict[str, tuple[bool, bool, bool]]:
-        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
-        third is for a list of possible options..
-
-        Returns:
-            Dict with config caps
-        """
-        return self._config_caps
 
     async def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.

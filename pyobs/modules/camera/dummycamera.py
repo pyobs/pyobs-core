@@ -74,15 +74,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     async def open(self) -> None:
         """Opens camera."""
         # publish IWindow capabilities before super().open() calls set_capabilities(IModule.Capabilities)
-        x, y, w, h = self._camera.full_frame
-        await self.comm.set_capabilities(
-            IWindow.Capabilities(
-                full_frame_x=x,
-                full_frame_y=y,
-                full_frame_width=w,
-                full_frame_height=h,
-            )
-        )
+        await self.comm.set_capabilities(IWindow.Capabilities(full_frame=IWindow.State(*self._camera.full_frame)))
 
         await BaseCamera.open(self)
 

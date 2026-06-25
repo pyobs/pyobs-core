@@ -23,19 +23,7 @@ class IWindow(Interface, metaclass=ABCMeta):
 
     @dataclass
     class Capabilities:
-        full_frame_x: int = 0
-        full_frame_y: int = 0
-        full_frame_width: int = 0
-        full_frame_height: int = 0
-
-    @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> IWindow.State:
-        """Returns full size of CCD.
-
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        ...
+        full_frame: IWindow.State = field(default_factory=lambda: IWindow.State(0, 0, 0, 0))
 
     @abstractmethod
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:

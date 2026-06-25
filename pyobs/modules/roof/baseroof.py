@@ -45,7 +45,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """
         return {
             "ROOF-OPN": (
-                await self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
+                self.motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                 "True for open, false for closed roof",
             )
         }
@@ -58,7 +58,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """
 
         # check that motion is not in one of the states listed below
-        return await self.get_motion_status() not in [
+        return self.motion_status() not in [
             MotionStatus.PARKED,
             MotionStatus.INITIALIZING,
             MotionStatus.PARKING,

@@ -36,7 +36,7 @@ async def connect(client):
 
 
 async def main():
-    pw = os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "../../pyobs")
+    pw = os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "pyobs")
     node = "test:notify:1"
     service = "pubsub.localhost"
 

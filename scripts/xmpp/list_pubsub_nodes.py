@@ -20,7 +20,7 @@ async def main(user: str, prefix: str) -> None:
     host = os.environ.get("PYOBS_TEST_XMPP_HOST", "localhost")
     domain = os.environ.get("PYOBS_TEST_XMPP_DOMAIN", "localhost")
     port = int(os.environ.get("PYOBS_TEST_XMPP_PORT", "5222"))
-    password = os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "../../pyobs")
+    password = os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "pyobs")
     ignore_cert = os.environ.get("PYOBS_TEST_XMPP_IGNORE_CERT", "0") == "1"
 
     client = slixmpp.ClientXMPP(f"{user}@{domain}/pyobs", password)

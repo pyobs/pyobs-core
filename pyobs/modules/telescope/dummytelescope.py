@@ -151,7 +151,7 @@ class DummyTelescope(
         """
 
         # simulate slew
-        self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs"))
+        await self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs"))
 
         # wait for it
         while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
@@ -266,7 +266,7 @@ class DummyTelescope(
 
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
-        self._telescope.set_offsets(dra, ddec)
+        await self._telescope.set_offsets(dra, ddec)
         await self.comm.set_state(IOffsetsRaDec.State(ra=dra, dec=ddec))
 
     async def get_fits_header_before(

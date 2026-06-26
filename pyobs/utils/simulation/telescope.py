@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+from collections.abc import Coroutine
 from typing import TYPE_CHECKING, Any
 
 import astropy.units as u
@@ -55,7 +56,7 @@ class SimTelescope(Object):
         # store
         self.world = world
         self.status = MotionStatus.IDLE
-        self.status_callback = None
+        self.status_callback: Coroutine | None = None
 
         # init
         self._position = (
@@ -88,18 +89,10 @@ class SimTelescope(Object):
     def offsets(self) -> tuple[float, float]:
         return self._offsets
 
-    def _change_motion_status(self, status: MotionStatus) -> None:
-        """Change the current motion status.
-
-        Args:
-            status: New motion status
-        """
-
-        # call callback
+    async def _change_motion_status(self, status: MotionStatus) -> None:
+        """Change the current motion status."""
         if self.status_callback is not None and status != self.status:
-            asyncio.create_task(self.status_callback(status))
-
-        # set it
+            await self.status_callback(status)
         self.status = status
 
     @property
@@ -111,7 +104,7 @@ class SimTelescope(Object):
         # return position
         return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
-    def move_ra_dec(self, coords: SkyCoord) -> None:
+    async def move_ra_dec(self, coords: SkyCoord) -> None:
         """Move telescope to given RA/Dec position.
 
         Args:
@@ -119,7 +112,7 @@ class SimTelescope(Object):
         """
 
         # change status
-        self._change_motion_status(MotionStatus.SLEWING)
+        await self._change_motion_status(MotionStatus.SLEWING)
 
         # calculate random RA/Dec offsets
         acc = self.move_accuracy / 3600.0
@@ -129,7 +122,7 @@ class SimTelescope(Object):
         # set coordinates
         self._dest_coords = SkyCoord(ra=ra, dec=dec, frame="icrs")
 
-    def set_offsets(self, dra: float, ddec: float) -> None:
+    async def set_offsets(self, dra: float, ddec: float) -> None:
         """Move RA/Dec offsets.
 
         Args:
@@ -165,7 +158,7 @@ class SimTelescope(Object):
                 if length < self.speed:
                     # set it
                     # set position and reset destination
-                    self._change_motion_status(MotionStatus.TRACKING)
+                    await self._change_motion_status(MotionStatus.TRACKING)
                     self._position = self._dest_coords
                     self._dest_coords = None
 
@@ -181,7 +174,7 @@ class SimTelescope(Object):
                     ddec = vdec / length * self.speed * u.deg
 
                     # apply it
-                    self._change_motion_status(MotionStatus.SLEWING)
+                    await self._change_motion_status(MotionStatus.SLEWING)
                     self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
 
             else:

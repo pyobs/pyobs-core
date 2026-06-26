@@ -97,7 +97,7 @@ class SimTelescope(Object):
 
         # call callback
         if self.status_callback is not None and status != self.status:
-            self.status_callback(status)
+            asyncio.create_task(self.status_callback(status))
 
         # set it
         self.status = status

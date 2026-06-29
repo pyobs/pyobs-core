@@ -588,10 +588,18 @@ class MultiModule(Module):
                 else:
                     obj.open()
 
-        # spawn each sub-module as its own task
+        # spawn each sub-module as its own task, each with a fresh context
+        # so that module_name ContextVar is isolated per module from the start
+        from contextvars import copy_context
+
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
         self._module_tasks: list[asyncio.Task[None]] = []
         for name, mod in self._modules.items():
-            task = asyncio.create_task(self._run_module(name, mod), name=f"pyobs.module.{name}")
+            # create a fresh context for each module with module_name pre-set
+            ctx = copy_context()
+            ctx.run(_module_name_var.set, name)
+            task = asyncio.create_task(self._run_module(name, mod), name=f"pyobs.module.{name}", context=ctx)
             self._module_tasks.append(task)
 
         self._opened = True

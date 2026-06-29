@@ -1,11 +1,12 @@
 import io
 from typing import Any
+
+import astropy.units as u
 import pandas as pd
 from astroplan import Observer
-from astropy.coordinates import SkyCoord, EarthLocation
-import astropy.units as u
+from astropy.coordinates import EarthLocation, SkyCoord
 
-from pyobs.utils.grids.filters import GridFilterValue, FromList, ConvertGridToSkyCoord, ConvertGridFrame
+from pyobs.utils.grids.filters import ConvertGridFrame, ConvertGridToSkyCoord, FromList, GridFilterValue
 from pyobs.utils.grids.grid import RegularSphericalGrid
 from pyobs.utils.time import Time
 

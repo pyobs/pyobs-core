@@ -1,6 +1,5 @@
-import pytest
-
 from datetime import datetime
+
 from pyobs.modules.pointing.guidingstatistics import GuidingStatisticsUptime
 
 

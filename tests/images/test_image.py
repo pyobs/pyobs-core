@@ -1,17 +1,16 @@
 import io
 from copy import copy
 
-import PIL.Image
 import astropy.nddata
 import astropy.table
 import numpy as np
+import PIL.Image
 import pytest
 from astropy.io import fits
 from astropy.io.fits import table_to_hdu
 
 import pyobs
 from pyobs.images import Image
-
 
 pytest_plugins = ("pytest_mock",)
 
@@ -325,7 +324,9 @@ def test_to_ccddata(mock_image):
 
 
 def test_format_filename():
-    formatter = lambda _: 1
+    def formatter(_):
+        return 1
+
     image = Image()
 
     assert "1" == image.format_filename(formatter)

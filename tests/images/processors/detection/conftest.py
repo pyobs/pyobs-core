@@ -6,8 +6,8 @@ from pyobs.images import Image
 
 @pytest.fixture()
 def gaussian_sources_image() -> Image:
-    from photutils.datasets import make_model_image, make_noise_image
     from astropy.modeling import models
+    from photutils.datasets import make_model_image, make_noise_image
 
     shape = (100, 100)
     model = models.Moffat2D()

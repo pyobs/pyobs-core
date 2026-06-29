@@ -317,7 +317,12 @@ class Module(Object, IModule, IConfig):
         # cast to types requested by method
         cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
-        # call method
+        # call method — set module name context var so log messages from RPC calls
+        # carry the correct module name rather than the caller's context
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
+        _module_name_var.set(self._device_name or "")
+
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as e:

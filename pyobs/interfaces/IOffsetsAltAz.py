@@ -9,17 +9,20 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class AltAzOffsetState:
+    alt: Annotated[float, Unit.DEGREES]
+    az: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
 class IOffsetsAltAz(Interface, metaclass=ABCMeta):
     """The module supports Alt/Az offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IPointingAltAz`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        alt: Annotated[float, Unit.DEGREES]
-        az: Annotated[float, Unit.DEGREES]
-        time: Time = field(default_factory=Time.now)
+    state = AltAzOffsetState
 
     @abstractmethod
     async def set_offsets_altaz(
@@ -37,4 +40,4 @@ class IOffsetsAltAz(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IOffsetsAltAz"]
+__all__ = ["IOffsetsAltAz", "AltAzOffsetState"]

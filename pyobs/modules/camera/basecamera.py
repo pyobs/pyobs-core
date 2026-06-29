@@ -11,7 +11,15 @@ from astropy.io import fits
 
 from pyobs.events import ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import ICamera, IExposure, IExposureTime, IImageType
+from pyobs.interfaces import (
+    ExposureState,
+    ExposureTimeState,
+    ICamera,
+    IExposure,
+    IExposureTime,
+    IImageType,
+    ImageTypeState,
+)
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -107,14 +115,15 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             await self.comm.register_event(ExposureStatusChangedEvent)
 
         # publish initial states
-        await self.comm.set_state(IExposureTime.State(exposure_time=self._exposure_time))
-        await self.comm.set_state(IImageType.State(image_type=self._image_type))
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=self._exposure_time))
+        await self.comm.set_state(IImageType, ImageTypeState(image_type=self._image_type))
         await self.comm.set_state(
-            IExposure.State(
+            IExposure,
+            ExposureState(
                 status=self._camera_status,
                 progress=0.0,
                 exposure_time_left=0.0,
-            )
+            ),
         )
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
@@ -128,7 +137,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         log.info("Setting exposure time to %.5fs...", exposure_time)
         self._exposure_time = exposure_time
-        await self.comm.set_state(IExposureTime.State(exposure_time=exposure_time))
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=exposure_time))
 
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
@@ -138,7 +147,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
-        await self.comm.set_state(IImageType.State(image_type=image_type))
+        await self.comm.set_state(IImageType, ImageTypeState(image_type=image_type))
 
     async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
@@ -154,11 +163,12 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         # set it
         self._camera_status = status
         await self.comm.set_state(
-            IExposure.State(
+            IExposure,
+            ExposureState(
                 status=status,
                 progress=await self._get_exposure_progress(),
                 exposure_time_left=await self._get_exposure_time_left(),
-            )
+            ),
         )
 
     async def _get_exposure_time_left(self) -> float:

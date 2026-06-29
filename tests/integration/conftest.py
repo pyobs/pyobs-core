@@ -37,12 +37,12 @@ def connect(module, name: str):
 # XMPP helpers
 #
 # Connection details come from environment variables:
-#   PYOBS_TEST_XMPP_HOST          hostname of the ejabberd server (required)
+#   PYOBS_TEST_XMPP_HOST          hostname of the ejabberd server (default: localhost)
 #   PYOBS_TEST_XMPP_DOMAIN        XMPP domain          (default: PYOBS_TEST_XMPP_HOST)
 #   PYOBS_TEST_XMPP_PORT          port                 (default: 5222)
 #   PYOBS_TEST_XMPP_PASSWORD      shared test password (default: pyobs)
-#   PYOBS_TEST_XMPP_TLS           use TLS              (default: 0; set to 1 to enable)
-#   PYOBS_TEST_XMPP_IGNORE_CERT   ignore cert errors   (default: 0; set to 1 for self-signed certs)
+#   PYOBS_TEST_XMPP_TLS           use TLS              (default: 1; set to 0 to disable)
+#   PYOBS_TEST_XMPP_IGNORE_CERT   ignore cert errors   (default: 1; set to 0 to enforce)
 # ---------------------------------------------------------------------------
 
 
@@ -58,14 +58,14 @@ class XmppConfig:
 
 @pytest.fixture(scope="session")
 def xmpp_config() -> XmppConfig:
-    host = os.environ["PYOBS_TEST_XMPP_HOST"]
+    host = os.environ.get("PYOBS_TEST_XMPP_HOST", "localhost")
     return XmppConfig(
         host=host,
         domain=os.environ.get("PYOBS_TEST_XMPP_DOMAIN", host),
         port=int(os.environ.get("PYOBS_TEST_XMPP_PORT", "5222")),
         password=os.environ.get("PYOBS_TEST_XMPP_PASSWORD", "pyobs"),
-        use_tls=os.environ.get("PYOBS_TEST_XMPP_TLS", "0") == "1",
-        ignore_cert_errors=os.environ.get("PYOBS_TEST_XMPP_IGNORE_CERT", "0") == "1",
+        use_tls=os.environ.get("PYOBS_TEST_XMPP_TLS", "1") == "1",
+        ignore_cert_errors=os.environ.get("PYOBS_TEST_XMPP_IGNORE_CERT", "1") == "1",
     )
 
 

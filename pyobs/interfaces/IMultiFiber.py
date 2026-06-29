@@ -8,24 +8,27 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class MultiFiberState:
+    fiber: str = ""
+    pixel_x: float = 0.0
+    pixel_y: float = 0.0
+    radius: float = 0.0
+    time: Time = field(default_factory=Time.now)
+
+
 class IMultiFiber(Interface, metaclass=ABCMeta):
     """An interface for multi-fiber setups that helps to set/get a fiber and retrieve position and size of the
     current fiber on the acquisition/guiding image."""
 
     __module__ = "pyobs.interfaces"
 
+    state = MultiFiberState
+
     @dataclass
     class Capabilities:
         fiber_count: int = 0
         fiber_names: list[str] = field(default_factory=list)
-
-    @dataclass
-    class State:
-        fiber: str = ""
-        pixel_x: float = 0.0
-        pixel_y: float = 0.0
-        radius: float = 0.0
-        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def abort(self, **kwargs: Any) -> None:
@@ -42,4 +45,4 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IMultiFiber"]
+__all__ = ["IMultiFiber", "MultiFiberState"]

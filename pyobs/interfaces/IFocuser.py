@@ -8,16 +8,19 @@ from ..utils.time import Time
 from .IMotion import IMotion
 
 
+@dataclass
+class FocuserState:
+    focus: float
+    focus_offset: float
+    time: Time = field(default_factory=Time.now)
+
+
 class IFocuser(IMotion, metaclass=ABCMeta):
     """The module is a focusing device."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        focus: float
-        focus_offset: float
-        time: Time = field(default_factory=Time.now)
+    state = FocuserState
 
     @abstractmethod
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -46,4 +49,4 @@ class IFocuser(IMotion, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IFocuser"]
+__all__ = ["IFocuser", "FocuserState"]

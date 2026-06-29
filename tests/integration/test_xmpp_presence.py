@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyobs.interfaces import ICooling, IModule, IWindow
+from pyobs.interfaces import ICooling, IModule, IWindow, WindowState
 from pyobs.utils.enums import ModuleState
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
@@ -247,7 +247,7 @@ async def test_iwindow_capabilities_in_disco_info(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame=IWindow.State(x=0, y=0, width=4096, height=4096),
+                full_frame=WindowState(x=0, y=0, width=4096, height=4096),
             )
         )
 
@@ -273,7 +273,7 @@ async def test_multiple_interface_capabilities(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="Multi Cap Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame=IWindow.State(x=0, y=0, width=512, height=512),
+                full_frame=WindowState(x=0, y=0, width=512, height=512),
             )
         )
 
@@ -302,7 +302,7 @@ async def test_get_capabilities_api(make_xmpp_comm) -> None:
         await camera_comm.set_capabilities(IModule.Capabilities(version="2.0.0.dev1", label="My Camera"))
         await camera_comm.set_capabilities(
             IWindow.Capabilities(
-                full_frame=IWindow.State(x=0, y=0, width=4096, height=4096),
+                full_frame=WindowState(x=0, y=0, width=4096, height=4096),
             )
         )
 

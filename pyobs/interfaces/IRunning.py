@@ -8,15 +8,18 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class RunningState:
+    running: bool
+    time: Time = field(default_factory=Time.now)
+
+
 class IRunning(Interface, metaclass=ABCMeta):
     """The module can be running."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        running: bool
-        time: Time = field(default_factory=Time.now)
+    state = RunningState
 
     @abstractmethod
     async def is_running(self, **kwargs: Any) -> bool:
@@ -24,4 +27,4 @@ class IRunning(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IRunning"]
+__all__ = ["IRunning", "RunningState"]

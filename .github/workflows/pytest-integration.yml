@@ -45,6 +45,8 @@ jobs:
           PYOBS_TEST_XMPP_DOMAIN: localhost
           PYOBS_TEST_XMPP_PORT: "5222"
           PYOBS_TEST_XMPP_PASSWORD: pyobs
+          PYOBS_TEST_XMPP_TLS: "0"
+          PYOBS_TEST_XMPP_IGNORE_CERT: "0"
         run: uv run pytest -m integration
 
       - name: Stop ejabberd

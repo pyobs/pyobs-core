@@ -8,7 +8,17 @@ from ..utils.enums import Unit
 from ..utils.time import Time
 from .interface import Interface
 
-# --- ITemperatures / IWeather support ---
+
+@dataclass
+class SensorReading:
+    name: str
+    value: Annotated[float, Unit.CELSIUS]
+
+
+@dataclass
+class TemperaturesState:
+    readings: list[SensorReading] = field(default_factory=list)
+    time: Time = field(default_factory=Time.now)
 
 
 class ITemperatures(Interface, metaclass=ABCMeta):
@@ -16,15 +26,7 @@ class ITemperatures(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class Temperature:
-        name: str
-        value: Annotated[float, Unit.CELSIUS]
-
-    @dataclass
-    class State:
-        readings: list[ITemperatures.Temperature] = field(default_factory=list)
-        time: Time = field(default_factory=Time.now)
+    state = TemperaturesState
 
 
-__all__ = ["ITemperatures"]
+__all__ = ["ITemperatures", "SensorReading", "TemperaturesState"]

@@ -37,7 +37,7 @@ def connect(module, name: str):
 # XMPP helpers
 #
 # Connection details come from environment variables:
-#   PYOBS_TEST_XMPP_HOST          hostname of the ejabberd server (default: localhost)
+#   PYOBS_TEST_XMPP_HOST          hostname of the ejabberd server (required)
 #   PYOBS_TEST_XMPP_DOMAIN        XMPP domain          (default: PYOBS_TEST_XMPP_HOST)
 #   PYOBS_TEST_XMPP_PORT          port                 (default: 5222)
 #   PYOBS_TEST_XMPP_PASSWORD      shared test password (default: pyobs)
@@ -58,7 +58,7 @@ class XmppConfig:
 
 @pytest.fixture(scope="session")
 def xmpp_config() -> XmppConfig:
-    host = os.environ.get("PYOBS_TEST_XMPP_HOST", "localhost")
+    host = os.environ["PYOBS_TEST_XMPP_HOST"]
     return XmppConfig(
         host=host,
         domain=os.environ.get("PYOBS_TEST_XMPP_DOMAIN", host),

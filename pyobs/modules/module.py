@@ -137,6 +137,7 @@ class Module(Object, IModule, IConfig):
 
         # close
         self._closing = asyncio.Event()
+        self._quit_parent: Callable[[], None] | None = None  # set by MultiModule
 
     async def open(self) -> None:
         # open comm
@@ -250,7 +251,10 @@ class Module(Object, IModule, IConfig):
     def quit(self) -> None:
         """Quit module."""
         self._closing.set()
-        asyncio.get_running_loop().stop()
+        if self._quit_parent is not None:
+            self._quit_parent()
+        else:
+            asyncio.get_running_loop().stop()
 
     async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
@@ -531,6 +535,11 @@ class MultiModule(Module):
                 # dictionary, create it
                 self._modules[name] = self.add_child_object(mod, None, **self._shared, copy_comm=False)
 
+        # register ourselves as quit parent on each child so any child quitting
+        # propagates to the MultiModule
+        for mod in self._modules.values():
+            mod._quit_parent = self.quit
+
     @property
     def modules(self) -> dict[str, Module]:
         return self._modules
@@ -607,7 +616,10 @@ class MultiModule(Module):
 
     def quit(self) -> None:
         """Quit all sub-modules."""
+        # temporarily clear _quit_parent on children to avoid recursion
+        # (children would otherwise call back into this method)
         for mod in self._modules.values():
+            mod._quit_parent = None
             mod.quit()
         super().quit()
 

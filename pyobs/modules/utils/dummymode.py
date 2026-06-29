@@ -66,7 +66,12 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
             MoveError: If mode selector cannot be moved.
         """
         await self._change_motion_status(MotionStatus.SLEWING)
-        await asyncio.sleep(3)
+        try:
+            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=3.0)
+            # closing was set — abort
+            return
+        except TimeoutError:
+            pass  # normal case: 3 seconds elapsed
         self._modes[self._group_name(group)] = mode
         await self._change_motion_status(MotionStatus.POSITIONED)
         await self.comm.send_event(ModeChangedEvent(list(self._mode_options.keys())[group], mode))

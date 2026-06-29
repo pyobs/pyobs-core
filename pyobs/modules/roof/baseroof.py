@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import IFitsHeaderBefore, IReady, IRoof
+from pyobs.interfaces import IFitsHeaderBefore, IReady, IRoof, ReadyState
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -33,7 +33,7 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await MotionStatusMixin.open(self)
 
         # publish initial ready state
-        await self.comm.set_state(IReady.State(ready=self._is_ready()))
+        await self.comm.set_state(IReady, ReadyState(ready=self._is_ready()))
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

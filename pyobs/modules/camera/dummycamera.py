@@ -17,7 +17,23 @@ from numpy.typing import NDArray
 from photutils.datasets import make_model_image, make_noise_image
 
 from pyobs.images import Image
-from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, IPointingRaDec, ITemperatures, IWindow
+from pyobs.interfaces import (
+    BinningState,
+    CoolingState,
+    GainState,
+    IBinning,
+    ICooling,
+    IGain,
+    IImageFormat,
+    ImageFormatState,
+    IPointingRaDec,
+    ITemperatures,
+    IWindow,
+    RaDecState,
+    SensorReading,
+    TemperaturesState,
+    WindowState,
+)
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ExposureStatus, ImageFormat, ImageType
 from pyobs.utils.time import Time
@@ -98,16 +114,16 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         self._catalog: Table | None = None
         self._catalog_coords: SkyCoord | None = None
 
-    def _on_telescope_state(self, state: IPointingRaDec.State) -> None:
+    def _on_telescope_state(self, state: RaDecState) -> None:
         """Update cached telescope position from IPointingRaDec state."""
         self._telescope_pos = SkyCoord(ra=state.ra * u.deg, dec=state.dec * u.deg, frame="icrs")
 
     async def open(self) -> None:
         """Opens camera."""
         # publish capabilities before super().open()
-        await self.comm.set_capabilities(IWindow.Capabilities(full_frame=IWindow.State(*self._full_frame)))
+        await self.comm.set_capabilities(IWindow.Capabilities(full_frame=WindowState(*self._full_frame)))
         await self.comm.set_capabilities(
-            IBinning.Capabilities(binnings=[IBinning.State(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]])
+            IBinning.Capabilities(binnings=[BinningState(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]])
         )
         await self.comm.set_capabilities(IImageFormat.Capabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16]))
 
@@ -119,12 +135,13 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
 
         # publish initial states
         await self.comm.set_state(
-            ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
+            ICooling,
+            CoolingState(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled),
         )
-        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
-        await self.comm.set_state(IWindow.State(*self._full_frame))
-        await self.comm.set_state(IBinning.State(*self._binning))
-        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
+        await self.comm.set_state(IWindow, WindowState(*self._full_frame))
+        await self.comm.set_state(IBinning, BinningState(*self._binning))
+        await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
 
     async def _cooling_thread(self) -> None:
         while True:
@@ -138,12 +155,12 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
                 temperatures=temps,
             )
             await self.comm.set_state(
-                ICooling.State(setpoint=self._cooling.set_point, power=int(power), enabled=self._cooling.enabled)
+                ICooling,
+                CoolingState(setpoint=self._cooling.set_point, power=int(power), enabled=self._cooling.enabled),
             )
             await self.comm.set_state(
-                ITemperatures.State(
-                    readings=[ITemperatures.Temperature(name=name, value=value) for name, value in temps.items()]
-                )
+                ITemperatures,
+                TemperaturesState(readings=[SensorReading(name=name, value=value) for name, value in temps.items()]),
             )
             await asyncio.sleep(1)
 
@@ -283,12 +300,12 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         log.info("Set window to %dx%d at %d,%d.", width, height, top, left)
         self._window = (left, top, width, height)
-        await self.comm.set_state(IWindow.State(*self._window))
+        await self.comm.set_state(IWindow, WindowState(*self._window))
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         log.info("Set binning to %dx%d.", x, y)
         self._binning = (x, y)
-        await self.comm.set_state(IBinning.State(*self._binning))
+        await self.comm.set_state(IBinning, BinningState(*self._binning))
 
     async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         if enabled:
@@ -302,21 +319,22 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             temperatures=self._cooling.temperatures,
         )
         await self.comm.set_state(
-            ICooling.State(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled)
+            ICooling,
+            CoolingState(setpoint=self._cooling.set_point, power=self._cooling.power, enabled=self._cooling.enabled),
         )
 
     async def set_gain(self, gain: float, **kwargs: Any) -> None:
         log.info("Setting gain to %.2f...", gain)
         self._gain = gain
-        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
+        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
 
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
         self._gain_offset = offset
-        await self.comm.set_state(IGain.State(gain=self._gain, offset=self._gain_offset))
+        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
 
     async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         self._image_format = fmt
-        await self.comm.set_state(IImageFormat.State(image_format=self._image_format))
+        await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
 
     async def _set_config_readout_time(self, readout_time: float) -> None:
         self._readout_time = readout_time

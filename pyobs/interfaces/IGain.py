@@ -8,16 +8,19 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class GainState:
+    gain: float
+    offset: float
+    time: Time = field(default_factory=Time.now)
+
+
 class IGain(Interface, metaclass=ABCMeta):
     """The camera supports setting of gain, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        gain: float
-        offset: float
-        time: Time = field(default_factory=Time.now)
+    state = GainState
 
     @abstractmethod
     async def set_gain(self, gain: float, **kwargs: Any) -> None:
@@ -44,4 +47,4 @@ class IGain(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IGain"]
+__all__ = ["IGain", "GainState"]

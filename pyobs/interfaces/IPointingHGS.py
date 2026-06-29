@@ -9,16 +9,19 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class HGSState:
+    lon: Annotated[float, Unit.DEGREES]
+    lat: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
 class IPointingHGS(Interface, metaclass=ABCMeta):
     """The module can move to Mu/Psi coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        lon: Annotated[float, Unit.DEGREES]
-        lat: Annotated[float, Unit.DEGREES]
-        time: Time = field(default_factory=Time.now)
+    state = HGSState
 
     @abstractmethod
     async def move_hgs_lon_lat(
@@ -36,4 +39,4 @@ class IPointingHGS(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IPointingHGS"]
+__all__ = ["IPointingHGS", "HGSState"]

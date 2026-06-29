@@ -10,15 +10,18 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class ImageFormatState:
+    image_format: ImageFormat
+    time: Time = field(default_factory=Time.now)
+
+
 class IImageFormat(Interface, metaclass=ABCMeta):
     """The module supports different image formats (e.g. INT16, FLOAT32), mainly used by cameras."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        image_format: ImageFormat
-        time: Time = field(default_factory=Time.now)
+    state = ImageFormatState
 
     @dataclass
     class Capabilities:
@@ -37,4 +40,4 @@ class IImageFormat(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IImageFormat"]
+__all__ = ["IImageFormat", "ImageFormatState"]

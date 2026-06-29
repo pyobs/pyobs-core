@@ -4,7 +4,17 @@ from enum import Enum
 from typing import Any
 
 from pyobs.events import BadWeatherEvent, Event, RoofClosingEvent
-from pyobs.interfaces import IBinning, ICamera, IFilters, IFlatField, IReady, ITelescope
+from pyobs.interfaces import (
+    BinningState,
+    FilterState,
+    IBinning,
+    ICamera,
+    IFilters,
+    IFlatField,
+    IReady,
+    ITelescope,
+    ReadyState,
+)
 from pyobs.modules import Module, timeout
 from pyobs.robotic.utils.skyflats import FlatFielder
 from pyobs.utils import exceptions as exc
@@ -107,10 +117,10 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             await self.comm.register_event(RoofClosingEvent, self._abort_weather)
 
         # publish initial states
-        await self.comm.set_state(IBinning.State(x=self._binning[0], y=self._binning[1]))
+        await self.comm.set_state(IBinning, BinningState(x=self._binning[0], y=self._binning[1]))
         if self._filter is not None:
-            await self.comm.set_state(IFilters.State(filter=self._filter))
-        await self.comm.set_state(IReady.State(ready=True))
+            await self.comm.set_state(IFilters, FilterState(filter=self._filter))
+        await self.comm.set_state(IReady, ReadyState(ready=True))
 
     async def close(self) -> None:
         """Close module."""
@@ -147,7 +157,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             ValueError: If binning could not be set.
         """
         self._binning = (x, y)
-        await self.comm.set_state(IBinning.State(x=x, y=y))
+        await self.comm.set_state(IBinning, BinningState(x=x, y=y))
 
     async def list_filters(self, **kwargs: Any) -> list[str]:
         """List available filters.
@@ -168,7 +178,7 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             ValueError: If binning could not be set.
         """
         self._filter = filter_name
-        await self.comm.set_state(IFilters.State(filter=filter_name))
+        await self.comm.set_state(IFilters, FilterState(filter=filter_name))
 
     @timeout(3600)
     async def flat_field(self, count: int = 20, **kwargs: Any) -> tuple[int, float]:

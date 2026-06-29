@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from pyobs.interfaces import IExposureTime
+from pyobs.interfaces import ExposureTimeState, IExposureTime
 from pyobs.modules.camera.basevideo import BaseVideo
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class DummyVideo(BaseVideo, IExposureTime):
     async def open(self) -> None:
         """Open module."""
         await BaseVideo.open(self)
-        await self.comm.set_state(IExposureTime.State(exposure_time=self._exposure_time))
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=self._exposure_time))
 
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time (frame interval).
@@ -48,7 +48,7 @@ class DummyVideo(BaseVideo, IExposureTime):
         """
         self._exposure_time = exposure_time
         self._fps = 1.0 / exposure_time if exposure_time > 0 else 1.0
-        await self.comm.set_state(IExposureTime.State(exposure_time=exposure_time))
+        await self.comm.set_state(IExposureTime, ExposureTimeState(exposure_time=exposure_time))
 
     async def _frame_task(self) -> None:
         """Background task that generates simulated frames."""

@@ -11,6 +11,8 @@ from astropy.coordinates import SkyCoord
 
 from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import (
+    FilterState,
+    FocuserState,
     IFilters,
     IFitsHeaderBefore,
     IFocuser,
@@ -19,6 +21,11 @@ from pyobs.interfaces import (
     IPointingRaDec,
     IReady,
     ITemperatures,
+    RaDecOffsetState,
+    RaDecState,
+    ReadyState,
+    SensorReading,
+    TemperaturesState,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
 from pyobs.modules import timeout
@@ -147,10 +154,11 @@ class DummyTelescope(
                     )
                     # publish updated position
                     await self.comm.set_state(
-                        IPointingRaDec.State(
+                        IPointingRaDec,
+                        RaDecState(
                             ra=float(self._position.ra.degree),
                             dec=float(self._position.dec.degree),
-                        )
+                        ),
                     )
                 else:
                     dra = vra / length * self._speed / np.cos(np.radians(self._position.dec.degree)) * u.deg
@@ -176,24 +184,26 @@ class DummyTelescope(
 
         # publish initial states and capabilities
         await self.comm.set_capabilities(IFilters.Capabilities(filters=self._filters))
-        await self.comm.set_state(IFocuser.State(focus=self._focus, focus_offset=0.0))
-        await self.comm.set_state(IFilters.State(filter=self._filter_name))
+        await self.comm.set_state(IFocuser, FocuserState(focus=self._focus, focus_offset=0.0))
+        await self.comm.set_state(IFilters, FilterState(filter=self._filter_name))
         await self.comm.set_state(
-            ITemperatures.State(
+            ITemperatures,
+            TemperaturesState(
                 readings=[
-                    ITemperatures.Temperature(name="M1", value=10.0),
-                    ITemperatures.Temperature(name="M2", value=12.0),
+                    SensorReading(name="M1", value=10.0),
+                    SensorReading(name="M2", value=12.0),
                 ]
-            )
+            ),
         )
-        await self.comm.set_state(IReady.State(ready=True))
+        await self.comm.set_state(IReady, ReadyState(ready=True))
         await self.comm.set_state(
-            IPointingRaDec.State(
+            IPointingRaDec,
+            RaDecState(
                 ra=float(self._position.ra.degree),
                 dec=float(self._position.dec.degree),
-            )
+            ),
         )
-        await self.comm.set_state(IOffsetsRaDec.State(ra=self._offsets[0], dec=self._offsets[1]))
+        await self.comm.set_state(IOffsetsRaDec, RaDecOffsetState(ra=self._offsets[0], dec=self._offsets[1]))
 
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
         acc = self._move_accuracy / 3600.0
@@ -230,7 +240,7 @@ class DummyTelescope(
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
             self._focus = focus
-            await self.comm.set_state(IFocuser.State(focus=focus, focus_offset=0.0))
+            await self.comm.set_state(IFocuser, FocuserState(focus=focus, focus_offset=0.0))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter."""
@@ -248,7 +258,7 @@ class DummyTelescope(
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFilters")
             self._filter_name = filter_name
             await self.comm.send_event(FilterChangedEvent(filter_name))
-            await self.comm.set_state(IFilters.State(filter=filter_name))
+            await self.comm.set_state(IFilters, FilterState(filter=filter_name))
             logging.info("New filter set.")
 
     @timeout(60)
@@ -283,7 +293,7 @@ class DummyTelescope(
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
         acc = self._move_accuracy / 3600.0
         self._offsets = (random.gauss(dra, acc), random.gauss(ddec, acc))
-        await self.comm.set_state(IOffsetsRaDec.State(ra=dra, dec=ddec))
+        await self.comm.set_state(IOffsetsRaDec, RaDecOffsetState(ra=dra, dec=ddec))
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any

@@ -9,16 +9,19 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class RaDecState:
+    ra: Annotated[float, Unit.DEGREES]
+    dec: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
 class IPointingRaDec(Interface, metaclass=ABCMeta):
     """The module can move to RA/Dec coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        ra: Annotated[float, Unit.DEGREES]
-        dec: Annotated[float, Unit.DEGREES]
-        time: Time = field(default_factory=Time.now)
+    state = RaDecState
 
     @abstractmethod
     async def move_radec(
@@ -36,4 +39,4 @@ class IPointingRaDec(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IPointingRaDec"]
+__all__ = ["IPointingRaDec", "RaDecState"]

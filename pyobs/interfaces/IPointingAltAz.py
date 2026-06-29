@@ -9,16 +9,19 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class AltAzState:
+    alt: Annotated[float, Unit.DEGREES]
+    az: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
 class IPointingAltAz(Interface, metaclass=ABCMeta):
     """The module can move to Alt/Az coordinates, usually combined with :class:`~pyobs.interfaces.ITelescope`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        alt: Annotated[float, Unit.DEGREES]
-        az: Annotated[float, Unit.DEGREES]
-        time: Time = field(default_factory=Time.now)
+    state = AltAzState
 
     @abstractmethod
     async def move_altaz(
@@ -36,4 +39,4 @@ class IPointingAltAz(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IPointingAltAz"]
+__all__ = ["IPointingAltAz", "AltAzState"]

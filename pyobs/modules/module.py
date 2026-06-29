@@ -152,6 +152,22 @@ class Module(Object, IModule, IConfig):
         """Open module."""
         await Object.open(self)
 
+        # publish base capabilities
+        if self._comm is not None:
+            await self._comm.set_capabilities(
+                IModule.Capabilities(
+                    version=await self.get_version(),
+                    label=await self.get_label(),
+                )
+            )
+            await self._comm.set_capabilities(
+                IConfig.Capabilities(
+                    readable=[n for n, (r, w, o) in self._config_caps.items() if r],
+                    writable=[n for n, (r, w, o) in self._config_caps.items() if w],
+                    options={n: [] for n, (r, w, o) in self._config_caps.items() if o},
+                )
+            )
+
     async def close(self) -> None:
         """Close module."""
         await Object.close(self)
@@ -461,6 +477,10 @@ class Module(Object, IModule, IConfig):
         self._state = state
         if error_string is not None:
             self.set_error_string(error_string)
+
+        # publish presence
+        if self._comm is not None:
+            await self._comm.set_presence(state, error_string if error_string is not None else self._error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 import pyobs
-from pyobs.events import RoofOpenedEvent, RoofClosingEvent
+from pyobs.events import RoofClosingEvent, RoofOpenedEvent
 from pyobs.modules.roof import DummyRoof
 from pyobs.utils.enums import MotionStatus
 

@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from pyobs.events import MotionStatusChangedEvent
+from pyobs.interfaces import IMotion
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
 
@@ -29,6 +30,7 @@ class MotionStatusMixin:
         # subscribe to events
         if isinstance(self, Module) and self._comm:
             await self.comm.register_event(MotionStatusChangedEvent)
+            await self.comm.set_state(IMotion.State(status=self.__motion_status))
 
     async def _change_motion_status(self, status: MotionStatus, interface: str | None = None) -> None:
         """Change motion status and send event,
@@ -85,6 +87,7 @@ class MotionStatusMixin:
             await self.comm.send_event(
                 MotionStatusChangedEvent(status=this.__motion_status, interfaces=this.__motion_status_single)
             )
+            await self.comm.set_state(IMotion.State(status=this.__motion_status))
 
     def _combine_motion_status(self) -> MotionStatus:
         """Method for combining motion statuses for individual interfaces into the global one. Can be overriden."""
@@ -108,26 +111,20 @@ class MotionStatusMixin:
         # otherwise just take status of first interface
         return self.__motion_status_single[self.__motion_status_interfaces[0]]
 
-    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
-        """Returns current motion status.
+    def motion_status(self, device: str | None = None) -> MotionStatus:
+        """Returns current motion status (synchronous, for internal use).
 
         Args:
             device: Name of device to get status for, or None.
 
         Returns:
-            A string from the Status enumerator.
+            Current motion status.
         """
-
-        # global or individual?
         if device is None:
             return self.__motion_status
-
-        else:
-            # does it exist?
-            if device in self.__motion_status_single:
-                return self.__motion_status_single[device]
-            else:
-                raise KeyError
+        if device in self.__motion_status_single:
+            return self.__motion_status_single[device]
+        raise KeyError
 
 
 __all__ = ["MotionStatusMixin"]

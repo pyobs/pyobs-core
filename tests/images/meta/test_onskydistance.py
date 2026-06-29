@@ -1,4 +1,5 @@
 from astropy.coordinates import Angle
+
 from pyobs.images.meta import OnSkyDistance
 
 

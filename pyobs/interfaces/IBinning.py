@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -10,6 +12,16 @@ class IBinning(Interface, metaclass=ABCMeta):
     """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        x: int
+        y: int
+        time: Time = field(default_factory=Time.now)
+
+    @dataclass
+    class Capabilities:
+        binnings: list[IBinning.State] = field(default_factory=list)
 
     @abstractmethod
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
@@ -21,24 +33,6 @@ class IBinning(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If binning could not be set.
-        """
-        ...
-
-    @abstractmethod
-    async def get_binning(self, **kwargs: Any) -> tuple[int, int]:
-        """Returns the camera binning.
-
-        Returns:
-            Tuple with x and y.
-        """
-        ...
-
-    @abstractmethod
-    async def list_binnings(self, **kwargs: Any) -> list[tuple[int, int]]:
-        """List available binnings.
-
-        Returns:
-            List of available binnings as (x, y) tuples.
         """
         ...
 

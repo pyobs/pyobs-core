@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from typing import Annotated, Any
+from abc import ABCMeta
+from dataclasses import dataclass, field
+from typing import Annotated
 
 from ..utils.enums import Unit
+from ..utils.time import Time
 from .interface import Interface
+
+# --- ITemperatures / IWeather support ---
 
 
 class ITemperatures(Interface, metaclass=ABCMeta):
@@ -12,14 +16,15 @@ class ITemperatures(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_temperatures(self, **kwargs: Any) -> dict[str, Annotated[float, Unit.CELSIUS]]:
-        """Returns all temperatures measured by this module.
+    @dataclass
+    class Temperature:
+        name: str
+        value: Annotated[float, Unit.CELSIUS]
 
-        Returns:
-            Dict containing temperatures.
-        """
-        ...
+    @dataclass
+    class State:
+        readings: list[ITemperatures.Temperature] = field(default_factory=list)
+        time: Time = field(default_factory=Time.now)
 
 
 __all__ = ["ITemperatures"]

@@ -1,10 +1,10 @@
-from astroplan import Observer
+import astropy.units as u
 import pytest
+from astroplan import Observer
 
 from pyobs.robotic.utils.skyflats import Scheduler
 from pyobs.robotic.utils.skyflats.priorities import ConstSkyflatPriorities
 from pyobs.utils.time import Time
-import astropy.units as u
 
 pytest_plugins = ("pytest_asyncio",)
 

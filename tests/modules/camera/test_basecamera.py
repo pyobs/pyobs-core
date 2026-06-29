@@ -1,7 +1,7 @@
-from astropy.io import fits
 import pytest
-from pyobs.modules.camera import DummyCamera
+from astropy.io import fits
 
+from pyobs.modules.camera import DummyCamera
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -25,8 +25,8 @@ async def test_remaining():
     await camera.open()
 
     # no exposure, so both should be zero
-    assert 0 == await camera.get_exposure_time_left()
-    assert 0 == await camera.get_exposure_progress()
+    assert 0 == await camera._get_exposure_time_left()
+    assert 0 == await camera._get_exposure_progress()
 
     # more tests will be done with DummyCamera
 

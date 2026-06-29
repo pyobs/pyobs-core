@@ -3,7 +3,7 @@ import logging
 from slixmpp.plugins.base import BasePlugin
 from slixmpp.plugins.xep_0009.stanza import RPCQuery
 from slixmpp.xmlstream.handler import Callback
-from slixmpp.xmlstream.matcher import MatchXPath
+from slixmpp.xmlstream.matcher import MatchXMLMask
 from slixmpp.xmlstream.stanzabase import register_stanza_plugin
 
 from . import stanza
@@ -24,15 +24,15 @@ class XEP_0009_timeout(BasePlugin):
 
         self.xmpp.register_handler(
             Callback(
-                "RPC Call",
-                MatchXPath(
-                    f"{{{self.xmpp.default_ns}}}iq/{{{RPCQuery.namespace}}}query/{{{RPCQuery.namespace}}}methodTimeout"
+                "RPC Timeout",
+                MatchXMLMask(
+                    f"<iq xmlns='{self.xmpp.default_ns}'>"
+                    f"<query xmlns='{RPCQuery.namespace}'>"
+                    f"<methodTimeout /></query></iq>"
                 ),
                 self._handle_method_timeout,
             )
         )
-
-        self.xmpp.add_event_handler("jabber_rpc_method_timeout", self._on_jabber_rpc_method_timeout)
 
     def make_iq_method_timeout(self, pid, pto, timeout):
         iq = self.xmpp.make_iq_result(pid)
@@ -45,16 +45,3 @@ class XEP_0009_timeout(BasePlugin):
     def _handle_method_timeout(self, iq):
         log.debug("Incoming Jabber-RPC timeout from %s", iq["from"])
         self.xmpp.event("jabber_rpc_method_timeout", iq)
-
-    def _on_jabber_rpc_method_timeout(self, iq, forwarded=False):
-        """A default handler for Jabber-RPC method timeout. If another handler is registered,
-        this one will defer and not run.
-
-        If this handler is called by your own custom handler with forwarded set to True, then it will run as normal.
-        """
-        if not forwarded and self.xmpp.event_handled("jabber_rpc_method_timeout") > 1:
-            return
-
-        # Reply with error by default
-        error = self.xmpp["xep_0009"]._item_not_found(iq)
-        error.send()

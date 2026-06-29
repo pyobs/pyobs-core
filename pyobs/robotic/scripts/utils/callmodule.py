@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, get_type_hints
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, create_model, model_validator
 
 from pyobs.object import get_class_from_string
 
@@ -13,6 +13,29 @@ if TYPE_CHECKING:
 from pyobs.robotic.scripts import Script
 
 log = logging.getLogger(__name__)
+
+
+def _get_valid_param_names(method) -> set[str]:
+    return {name for name in inspect.signature(method).parameters if name not in ("self", "kwargs")}
+
+
+def _build_params_model(method, provided_keys):
+    sig = inspect.signature(method)
+    hints = get_type_hints(method, include_extras=True)
+    fields = {}
+
+    for name, param in sig.parameters.items():
+        if name not in provided_keys:
+            continue
+
+        annotation = hints.get(name, param.annotation)
+        default = ... if param.default is inspect.Parameter.empty else param.default
+        fields[name] = (annotation, default)
+
+    return create_model(
+        f"{method.__qualname__.replace('.', '_')}_Params",
+        **fields,
+    )
 
 
 class CallModuleScript(Script):
@@ -26,24 +49,23 @@ class CallModuleScript(Script):
     @model_validator(mode="after")
     def _validate_params(self) -> CallModuleScript:
         cls = get_class_from_string(self.interface)
+
         if not hasattr(cls, self.method):
             raise ValueError(f"Method '{self.method}' not found on {self.interface}")
 
-        sig = inspect.signature(getattr(cls, self.method))
-        valid_params = {name: param for name, param in sig.parameters.items() if name not in ("self", "kwargs")}
+        method = getattr(cls, self.method)
+        valid_names = _get_valid_param_names(method)
 
-        for name, value in self.params.items():
-            if name not in valid_params:
-                raise ValueError(f"Unknown parameter '{name}' for {self.interface}.{self.method}")
-            annotation = valid_params[name].annotation
-            if annotation is not inspect.Parameter.empty and annotation is not Any:
-                origin = getattr(annotation, "__origin__", None)
-                args = getattr(annotation, "__args__", ())
-                if origin is type(None):
-                    continue
-                types = tuple(a for a in args if a is not type(None)) if args else (annotation,)
-                if not isinstance(value, types):
-                    raise ValueError(f"Parameter '{name}' should be {annotation}, got {type(value).__name__}")
+        for key in self.params:
+            if key not in valid_names:
+                raise ValueError(f"Unknown parameter '{key}'")
+
+        if self.params:
+            try:
+                ParamsModel = _build_params_model(method, set(self.params.keys()))
+                ParamsModel.model_validate(self.params)
+            except ValidationError as e:
+                raise ValueError(str(e))
 
         return self
 

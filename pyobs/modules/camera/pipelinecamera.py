@@ -7,7 +7,7 @@ from pyobs.interfaces import ICamera
 from pyobs.mixins import ImageFitsHeaderMixin
 from pyobs.mixins.pipeline import PipelineMixin
 from pyobs.modules import Module
-from pyobs.utils.enums import ExposureStatus, ImageType
+from pyobs.utils.enums import ImageType
 from pyobs.utils.exceptions import GrabImageError
 
 log = logging.getLogger(__name__)
@@ -61,12 +61,3 @@ class PipelineCamera(Module, ICamera, ImageFitsHeaderMixin, PipelineMixin):
 
         # return filename
         return filename
-
-    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
-        return ExposureStatus.IDLE
-
-    async def get_exposure_progress(self, **kwargs: Any) -> float:
-        return 0.0
-
-
-__all__ = ["PipelineCamera"]

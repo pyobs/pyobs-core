@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock
 
 import pyobs
-from pyobs.background_task import BackgroundTask
 from pyobs.object import Object
 
 

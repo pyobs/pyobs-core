@@ -1,7 +1,6 @@
-from astropy.io import fits
 import pytest
+from astropy.io import fits
 
-import astropy.units as u
 from pyobs.utils.fits import format_filename
 
 

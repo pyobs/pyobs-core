@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pyobs.interfaces import IMotion
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.scripts.control.cases import CasesRunner
 from pyobs.robotic.scripts.control.conditional import ConditionalRunner
@@ -315,7 +316,7 @@ def make_proxy_cm(value: object) -> MagicMock:
 @pytest.mark.asyncio
 async def test_selector_can_run_when_parked() -> None:
     selector = MagicMock()
-    selector.get_motion_status = AsyncMock(return_value=MotionStatus.PARKED)
+    selector.wait_for_state = AsyncMock(return_value=IMotion.State(status=MotionStatus.PARKED))
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()
@@ -328,7 +329,7 @@ async def test_selector_can_run_when_parked() -> None:
 @pytest.mark.asyncio
 async def test_selector_can_run_when_positioned() -> None:
     selector = MagicMock()
-    selector.get_motion_status = AsyncMock(return_value=MotionStatus.POSITIONED)
+    selector.wait_for_state = AsyncMock(return_value=IMotion.State(status=MotionStatus.POSITIONED))
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()
@@ -341,7 +342,7 @@ async def test_selector_can_run_when_positioned() -> None:
 @pytest.mark.asyncio
 async def test_selector_cannot_run_when_moving() -> None:
     selector = MagicMock()
-    selector.get_motion_status = AsyncMock(return_value=MotionStatus.SLEWING)
+    selector.wait_for_state = AsyncMock(return_value=IMotion.State(status=MotionStatus.SLEWING))
 
     script = SelectorScript(mode="imaging", selector="selector")
     script._comm = MagicMock()

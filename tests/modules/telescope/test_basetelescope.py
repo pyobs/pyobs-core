@@ -1,6 +1,6 @@
+import astropy.units as u
 import numpy as np
 from astroplan import Observer
-import astropy.units as u
 
 from pyobs.modules.telescope import DummyTelescope
 from pyobs.utils.time import Time

@@ -1,8 +1,8 @@
 import astropy
 import pytest
+from astropy.coordinates import BaseCoordinateFrame, SkyCoord
 
 from pyobs.images.meta import SkyOffsets
-from astropy.coordinates import SkyCoord, BaseCoordinateFrame
 
 
 def test_init():

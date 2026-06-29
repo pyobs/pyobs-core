@@ -55,17 +55,7 @@ class AutoGuiding(BaseGuiding, CameraSettingsMixin):
         self._exposure_time = None
         self._loop_closed = False
         await self._reset_guiding(enabled=self._enabled)
-
-    async def get_exposure_time(self, **kwargs: Any) -> float:
-        """Returns the exposure time in seconds.
-
-        Returns:
-            Exposure time in seconds.
-        """
-        return self._default_exposure_time
-
-    async def get_exposure_time_left(self, **kwargs: Any) -> float:
-        return 0.0
+        await self.comm.set_state(IExposureTime.State(exposure_time=exposure_time))
 
     async def start(self, **kwargs: Any) -> None:
         """Starts/resets auto-guiding."""

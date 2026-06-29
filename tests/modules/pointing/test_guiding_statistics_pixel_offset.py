@@ -1,7 +1,7 @@
 import pytest
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, SkyOffsets
+from pyobs.images.meta import PixelOffsets
 from pyobs.modules.pointing.guidingstatistics import GuidingStatisticsPixelOffset
 
 

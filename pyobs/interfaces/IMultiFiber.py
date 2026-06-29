@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -10,62 +14,30 @@ class IMultiFiber(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
+    @dataclass
+    class Capabilities:
+        fiber_count: int = 0
+        fiber_names: list[str] = field(default_factory=list)
+
+    @dataclass
+    class State:
+        fiber: str = ""
+        pixel_x: float = 0.0
+        pixel_y: float = 0.0
+        radius: float = 0.0
+        time: Time = field(default_factory=Time.now)
+
     @abstractmethod
     async def abort(self, **kwargs: Any) -> None:
         """Abort current actions."""
         ...
 
     @abstractmethod
-    async def get_fiber_count(self, **kwargs: Any) -> int:
-        """Returns the number of available fibers in the setup.
-
-        Returns:
-            Number of fibers.
-        """
-        ...
-
-    @abstractmethod
-    async def list_fiber_names(self, **kwargs: Any) -> list[str]:
-        """Returns the names of all available fibers.
-
-        Returns:
-            List of fiber names.
-        """
-        ...
-
-    @abstractmethod
-    async def get_fiber(self, **kwargs: Any) -> str:
-        """Returns the name of the currently active fiber.
-
-        Returns:
-            Name of currently active fiber.
-        """
-        ...
-
-    @abstractmethod
     async def set_fiber(self, fiber: str, **kwargs: Any) -> None:
-        """Sets the currently active filter. Must be in list returned by @list_fiber_names.
+        """Sets the currently active fiber. Must be in fiber_names capability.
 
         Args:
             fiber: Name of fiber to set.
-        """
-        ...
-
-    @abstractmethod
-    async def get_pixel_position(self, **kwargs: Any) -> tuple[float, float]:
-        """Get pixel position of currently active fiber on acquisition/guiding image.
-
-        Returns:
-            x/y pixel position of fiber on image.
-        """
-        ...
-
-    @abstractmethod
-    async def get_radius(self, **kwargs: Any) -> float:
-        """Get radius of currently active fiber on acquisition/guiding image.
-
-        Returns:
-            radius of fiber on image.
         """
         ...
 

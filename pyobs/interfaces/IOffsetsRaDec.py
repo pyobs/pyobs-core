@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 from ..utils.enums import Unit
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -12,6 +14,12 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
     :class:`~pyobs.interfaces.IPointingRaDec`."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        ra: Annotated[float, Unit.DEGREES]
+        dec: Annotated[float, Unit.DEGREES]
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_offsets_radec(
@@ -25,17 +33,6 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
 
         Raises:
             MoveError: If telescope cannot be moved.
-        """
-        ...
-
-    @abstractmethod
-    async def get_offsets_radec(
-        self, **kwargs: Any
-    ) -> tuple[Annotated[float, Unit.DEGREES], Annotated[float, Unit.DEGREES]]:
-        """Get RA/Dec offset.
-
-        Returns:
-            Tuple with RA and Dec offsets.
         """
         ...
 

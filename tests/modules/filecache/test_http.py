@@ -1,9 +1,3 @@
-import time
-import requests
-
-from pyobs.modules.utils import HttpFileCache
-
-
 """
 def test_upload_download():
     # create server

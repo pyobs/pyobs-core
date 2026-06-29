@@ -1,7 +1,6 @@
 from unittest.mock import Mock
 
 import numpy as np
-import photutils.background
 import pytest
 
 from pyobs.images import Image

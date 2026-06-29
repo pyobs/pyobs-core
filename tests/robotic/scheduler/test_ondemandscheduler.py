@@ -1,8 +1,8 @@
+import astropy.units as u
 import pytest
 from astroplan import Observer
 from astropy.coordinates import EarthLocation
 from astropy.time import TimeDelta
-import astropy.units as u
 
 from pyobs.robotic import Task
 from pyobs.robotic.scheduler import DataProvider

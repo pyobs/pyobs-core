@@ -40,6 +40,9 @@ class DummyRoof(BaseRoof, IRoof):
         await self.comm.register_event(RoofOpenedEvent)
         await self.comm.register_event(RoofClosingEvent)
 
+        # publish initial status — roof starts closed/parked
+        await self._change_motion_status(MotionStatus.PARKED)
+
     @timeout(15)
     async def init(self, **kwargs: Any) -> None:
         """Open the roof.

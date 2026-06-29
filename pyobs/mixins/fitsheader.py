@@ -7,7 +7,6 @@ import os
 from asyncio import Task
 from typing import Any, cast
 
-import astropy.units as u
 from astropy.io import fits
 
 from pyobs.images import Image
@@ -178,7 +177,11 @@ class FitsHeaderMixin:
             # add local sidereal time
             if module._observer is not None:
                 lst = module._observer.local_sidereal_time(date_obs)
-                hdr["LST"] = (lst.to_string(unit=u.hour, sep=":"), "Local sidereal time")
+                lst_hours = float(lst.hour)
+                h = int(lst_hours)
+                m = int((lst_hours - h) * 60)
+                s = (lst_hours - h - m / 60) * 3600
+                hdr["LST"] = (f"{h:02d}:{m:02d}:{s:05.2f}", "Local sidereal time")
 
         # date of night this observation is in
         if self._fitsheadermixin_night_obs:

@@ -1,5 +1,4 @@
 import pytest
-from astropy.table import QTable
 
 from pyobs.images import Image
 from pyobs.images.processors.detection import DaophotSourceDetection

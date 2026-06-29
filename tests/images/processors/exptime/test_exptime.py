@@ -1,7 +1,7 @@
 import pytest
 
-from pyobs.images.processors.exptime import ExpTimeEstimator
 from pyobs.images import Image
+from pyobs.images.processors.exptime import ExpTimeEstimator
 
 
 class ExpTimeEstimatorTest(ExpTimeEstimator):

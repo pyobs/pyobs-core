@@ -39,8 +39,8 @@ INDEX_HTML = """
 
 async def calc_expose_timeout(webcam: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for grabe_image()."""
-    if hasattr(webcam, "get_exposure_time"):
-        return 2.0 * await webcam.get_exposure_time() + 30.0
+    if hasattr(webcam, "_exposure_time"):
+        return 2.0 * webcam._exposure_time + 30.0
     else:
         return 30.0
 
@@ -164,6 +164,9 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._site = web.TCPSite(self._runner, "0.0.0.0", self._port)
         await self._site.start()
         self._is_listening = True
+
+        # publish video URL as capability
+        await self.comm.set_capabilities(IVideo.Capabilities(url=self._video_path))
 
     async def close(self) -> None:
         """Close server"""
@@ -466,14 +469,6 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         # finished
         return image_request.filename
 
-    async def get_video(self, **kwargs: Any) -> str:
-        """Returns path to video.
-
-        Returns:
-            Path to video.
-        """
-        return self._video_path
-
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
 
@@ -482,14 +477,3 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         """
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
-
-    async def get_image_type(self, **kwargs: Any) -> ImageType:
-        """Returns the current image type.
-
-        Returns:
-            Current image type.
-        """
-        return self._image_type
-
-
-__all__ = ["BaseVideo", "NextImage"]

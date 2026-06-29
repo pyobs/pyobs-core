@@ -140,8 +140,17 @@ class Application:
         class_name = cfg["class"]
         klass = get_class_from_string(class_name)
 
-        # create event loop
-        self._loop = klass.new_event_loop()
+        # create event loop — if top-level class doesn't override new_event_loop,
+        # check child modules for one that does (e.g. pyobs_gui.GUI in a MultiModule)
+        loop_class = klass
+        if klass.new_event_loop is Module.new_event_loop:
+            for mod_cfg in cfg.get("modules", {}).values():
+                if isinstance(mod_cfg, dict) and "class" in mod_cfg:
+                    child_klass = get_class_from_string(mod_cfg["class"])
+                    if child_klass.new_event_loop is not Module.new_event_loop:
+                        loop_class = child_klass
+                        break
+        self._loop = loop_class.new_event_loop()
         asyncio.set_event_loop(self._loop)
 
         # create module and open it

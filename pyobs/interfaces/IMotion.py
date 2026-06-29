@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
 from pyobs.utils.enums import MotionStatus
 
+from ..utils.time import Time
 from .IReady import IReady
 
 
@@ -12,6 +14,17 @@ class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class DeviceMotionStatus:
+        name: str
+        status: MotionStatus
+
+    @dataclass
+    class State:
+        status: MotionStatus
+        devices: list[IMotion.DeviceMotionStatus] = field(default_factory=list)
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def init(self, **kwargs: Any) -> None:
@@ -28,18 +41,6 @@ class IMotion(IReady, metaclass=ABCMeta):
 
         Raises:
             ParkError: If device could not be parked.
-        """
-        ...
-
-    @abstractmethod
-    async def get_motion_status(self, device: str | None = None, **kwargs: Any) -> MotionStatus:
-        """Returns current motion status.
-
-        Args:
-            device: Name of device to get status for, or None.
-
-        Returns:
-            A string from the Status enumerator.
         """
         ...
 

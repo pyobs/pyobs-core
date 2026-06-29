@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 import pytest
-
 import scipy.ndimage
 
 from pyobs.images import Image

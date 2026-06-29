@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-
 from astropy.table import Table
+
 from pyobs.images import Image
 from pyobs.images.processors.misc import CatalogCircularMask
 

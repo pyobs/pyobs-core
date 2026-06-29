@@ -1,8 +1,9 @@
 import asyncio
+
 import pytest
+
 from pyobs.utils import exceptions as exc
 from pyobs.utils.exceptions import PyObsError
-
 
 pytest_plugins = ("pytest_asyncio",)
 

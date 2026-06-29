@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import IFitsHeaderBefore, IRoof
+from pyobs.interfaces import IFitsHeaderBefore, IReady, IRoof
 from pyobs.mixins import MotionStatusMixin, WeatherAwareMixin
 from pyobs.modules import Module
 from pyobs.utils.enums import MotionStatus
@@ -32,6 +32,9 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         await WeatherAwareMixin.open(self)
         await MotionStatusMixin.open(self)
 
+        # publish initial ready state
+        await self.comm.set_state(IReady.State(ready=self._is_ready()))
+
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, tuple[Any, str]]:
@@ -45,20 +48,14 @@ class BaseRoof(WeatherAwareMixin, MotionStatusMixin, IRoof, IFitsHeaderBefore, M
         """
         return {
             "ROOF-OPN": (
-                await self.get_motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
+                self.motion_status() in [MotionStatus.POSITIONED, MotionStatus.TRACKING],
                 "True for open, false for closed roof",
             )
         }
 
-    async def is_ready(self, **kwargs: Any) -> bool:
-        """The roof is ready, if it is open.
-
-        Returns:
-            True, if roof is open.
-        """
-
-        # check that motion is not in one of the states listed below
-        return await self.get_motion_status() not in [
+    def _is_ready(self) -> bool:
+        """The roof is ready if it is open (not parked, initializing, parking, error, or unknown)."""
+        return self.motion_status() not in [
             MotionStatus.PARKED,
             MotionStatus.INITIALIZING,
             MotionStatus.PARKING,

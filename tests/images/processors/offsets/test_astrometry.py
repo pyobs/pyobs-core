@@ -4,7 +4,7 @@ from astropy.io import fits
 from astropy.utils.data import get_pkg_data_filename
 
 from pyobs.images import Image
-from pyobs.images.meta import PixelOffsets, OnSkyDistance
+from pyobs.images.meta import OnSkyDistance, PixelOffsets
 from pyobs.images.processors.offsets import AstrometryOffsets
 
 

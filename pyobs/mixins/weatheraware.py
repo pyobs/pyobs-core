@@ -65,7 +65,7 @@ class WeatherAwareMixin:
             # get motion status and error state
             msi = self
             if isinstance(msi, MotionStatusMixin) and isinstance(msi, IMotion):
-                motion_status = await msi.get_motion_status()
+                motion_status = msi.motion_status() if hasattr(msi, "motion_status") else MotionStatus.UNKNOWN
                 is_error_state = motion_status == MotionStatus.ERROR
             else:
                 log.error("This is not a MotionStatusMixin/IMotion.")

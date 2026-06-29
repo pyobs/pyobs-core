@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import types
 from collections.abc import Coroutine
@@ -167,6 +168,30 @@ class Proxy:
 
     def state(self, interface: type[Interface]) -> Any | None:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
+        return self._state.get(interface)
+
+    async def wait_for_state(
+        self,
+        interface: type[Interface],
+        timeout: float = 10.0,
+    ) -> Any:
+        """Return state immediately if available, otherwise wait for the first update."""
+        if self._state.get(interface) is not None:
+            return self._state[interface]
+
+        event = asyncio.Event()
+
+        def _notify(state: Any) -> None:
+            self._state[interface] = state
+            event.set()
+
+        # patch in a one-shot notifier alongside the existing callback
+        await self._comm.subscribe_state(self._client, interface, _notify)
+        try:
+            await asyncio.wait_for(event.wait(), timeout=timeout)
+        finally:
+            await self._comm.unsubscribe_state(self._client, interface, _notify)
+
         return self._state.get(interface)
 
 

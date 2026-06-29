@@ -1,8 +1,12 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any
+from __future__ import annotations
 
-from pyobs.utils.enums import ExposureStatus
+from abc import ABCMeta
+from dataclasses import dataclass, field
+from typing import Annotated
 
+from pyobs.utils.enums import ExposureStatus, Unit
+
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -11,23 +15,12 @@ class IExposure(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
-        """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
-
-        Returns:
-            Current status of camera.
-        """
-        ...
-
-    @abstractmethod
-    async def get_exposure_progress(self, **kwargs: Any) -> float:
-        """Returns the progress of the current exposure in percent.
-
-        Returns:
-            Progress of the current exposure in percent.
-        """
-        ...
+    @dataclass
+    class State:
+        status: ExposureStatus
+        progress: Annotated[float, Unit.PERCENT]
+        exposure_time_left: Annotated[float, Unit.SECONDS] = 0.0
+        time: Time = field(default_factory=Time.now)
 
 
 __all__ = ["IExposure"]

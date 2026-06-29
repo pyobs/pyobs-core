@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import functools
 import json
 import logging
@@ -10,8 +9,7 @@ import ssl
 import time
 import xml.sax.saxutils
 from collections.abc import Callable, Coroutine
-from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, Any
 
 import slixmpp
 import slixmpp.exceptions
@@ -25,9 +23,25 @@ from pyobs.events import Event, LogEvent, ModuleClosedEvent, ModuleOpenedEvent
 from pyobs.events.event import EventFactory
 from pyobs.interfaces import Interface
 from pyobs.utils import exceptions as exc
+from pyobs.utils.enums import ModuleState
 
 from .rpc import RPC
+from .serializer import _dataclass_to_xml, _xml_to_dataclass
 from .xmppclient import XmppClient
+
+_CAPABILITY_NS = "urn:pyobs:capability:1"
+
+
+def _capability_type(value: object) -> str:
+    """Map a Python value to a pyobs wire type string for capability elements."""
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int32"
+    if isinstance(value, float):
+        return "float64"
+    return "string"
+
 
 if TYPE_CHECKING:
     from pyobs.modules import Module
@@ -169,6 +183,9 @@ class XmppComm(Comm):
         # pubsub for states
         self._pubsub_service = f"pubsub.{self._domain}"
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
+        self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
+        self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
+        self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
 
     def _set_module(self, module: Module) -> None:
         """Called, when the module connected to this Comm changes.
@@ -216,6 +233,7 @@ class XmppComm(Comm):
             )
         )
         self._xmpp.add_event_handler("got_online", self._got_online)
+        self._xmpp.add_event_handler("changed_status", self._got_presence_update)
         self._xmpp.add_event_handler("got_offline", self._got_offline)
         self._xmpp.add_event_handler("disconnected", self._disconnected)
 
@@ -235,6 +253,10 @@ class XmppComm(Comm):
         if self._module is not None:
             for i in self._module.interfaces:
                 self._xmpp["xep_0030"].add_feature(f"pyobs:interface:{i.__name__}")
+
+        # register custom disco#info handler to inject <capability> elements
+        if self._module is not None:
+            self._xmpp["xep_0030"].set_node_handler("get_info", None, None, self._get_disco_info)
 
         # RPC
         self._rpc = RPC(self, self._xmpp, None)
@@ -283,6 +305,7 @@ class XmppComm(Comm):
         if self._closing.is_set():
             return
         log.info("Disconnected from server, waiting for reconnect...")
+        self._capabilities = {}  # clear capabilities on reconnect
 
         # disconnect all clients
         for jid in self._online_clients:
@@ -455,12 +478,55 @@ class XmppComm(Comm):
         if future is not None and not future.done():
             future.set_result(self._interface_names_to_classes(interface_names))
 
+        # store incoming presence state
+        show = msg.get("show", "")
+        status = msg.get("status", "")
+        if show == "dnd":
+            client_state = ModuleState.ERROR
+        elif show == "away":
+            client_state = ModuleState.LOCAL
+        else:
+            client_state = ModuleState.READY
+        self._client_states[jid] = (client_state, status)
+
+        # fire presence callbacks
+        module_name = jid[: jid.index("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(client_state, status)
+
         # append to list
         if jid not in self._online_clients:
             self._online_clients.append(jid)
 
         # send event
         self._send_event_to_module(ModuleOpenedEvent(), msg["from"].username)
+
+    def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        """Return cached presence state for a connected module."""
+        for jid, state in self._client_states.items():
+            if jid.startswith(f"{module}@"):
+                return state
+        return None
+
+    def _got_presence_update(self, msg: Any) -> None:
+        """Handle presence changes from already-connected modules."""
+        jid = msg["from"].full
+        if jid == self._jid or jid not in self._online_clients:
+            return
+        show = msg.get("show", "")
+        status = msg.get("status", "")
+        if show == "dnd":
+            client_state = ModuleState.ERROR
+        elif show == "away":
+            client_state = ModuleState.LOCAL
+        else:
+            client_state = ModuleState.READY
+        self._client_states[jid] = (client_state, status)
+
+        # fire presence callbacks
+        module_name = jid[: jid.index("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(client_state, status)
 
     def _got_offline(self, msg: Any) -> None:
         """If a new client disconnects, remove it from list.
@@ -480,14 +546,19 @@ class XmppComm(Comm):
         # remove from list
         if jid in self._online_clients:
             self._online_clients.remove(jid)
+        self._client_states.pop(jid, None)
+
+        # notify presence subscribers that the module is gone
+        module_name = jid[: jid.find("@")]
+        for cb in self._presence_callbacks.get(module_name, []):
+            cb(ModuleState.CLOSED, "")
 
         # clear interface cache
         if jid in self._interface_cache:
             del self._interface_cache[jid]
 
         # send event
-        username = jid[: jid.find("@")]
-        self._send_event_to_module(ModuleClosedEvent(), username)
+        self._send_event_to_module(ModuleClosedEvent(), module_name)
 
     @property
     def clients(self) -> list[str]:
@@ -567,10 +638,31 @@ class XmppComm(Comm):
     def _handle_event_sync(self, msg: Any) -> None:
         """Synchronous entry point for the MatchXMLMask Callback.
 
-        Callback handlers must be synchronous; this creates an asyncio task
-        so that _handle_event can await safely.
+        State-node dispatch is done synchronously here (no awaits needed).
+        Non-state messages (pyobs events) are dispatched via asyncio.create_task
+        since they need JSON parsing and event routing.
         """
-        asyncio.create_task(self._handle_event(msg))
+        pubsub_ns = "http://jabber.org/protocol/pubsub#event"
+        event_xml = msg.xml.find(f"{{{pubsub_ns}}}event")
+        if event_xml is None:
+            return
+        items_xml = event_xml.find(f"{{{pubsub_ns}}}items")
+        if items_xml is None:
+            return
+        node = items_xml.get("node", "")
+
+        if node.startswith("pyobs:state:"):
+            if node in self._state_node_handlers:
+                if len(msg.xml.findall("{urn:xmpp:delay}delay")) == 0:
+                    interface, callbacks = self._state_node_handlers[node]
+                    item_xml = items_xml.find(f"{{{pubsub_ns}}}item")
+                    payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+                    if payload is not None:
+                        state_obj = _xml_to_dataclass(payload, interface.State)
+                        for callback in callbacks:
+                            callback(state_obj)
+        else:
+            asyncio.create_task(self._handle_event(msg))
 
     async def _handle_event(self, msg: Any) -> None:
         """Handles an event.
@@ -579,28 +671,9 @@ class XmppComm(Comm):
             msg: Received XMPP message.
         """
 
-        node = msg["pubsub_event"]["items"]["node"]
-
-        # State-node notifications: dispatch to handler if registered, then return.
-        # map_node_event() cannot be used here because the XEP-0060 plugin iterates
-        # Items.iterables (empty) to fire mapped events, so live notifications are
-        # silently dropped. _handle_event (pubsub_publish) fires reliably for all nodes.
-        if node.startswith("pyobs:state:"):
-            if node in self._state_node_handlers:
-                if len(msg.xml.findall("{urn:sleekxmpp:delay}delay")) == 0:
-                    interface, callbacks = self._state_node_handlers[node]
-                    payload = msg["pubsub_event"]["items"]["item"]["payload"]
-                    if payload is not None:
-                        state_obj = self._xml_to_dataclass(payload, interface.state)
-                        for callback in callbacks:
-                            callback(state_obj)
-                    # If payload is None it's a retract notification for the old
-                    # max_items:1 slot — the matching publish notification (with
-                    # payload) arrives in the next pubsub_publish event.
-            return
-
         # get body, unescape it, parse it
-        # node = msg['pubsub_event'][items']['node']
+        # State-node messages are handled synchronously in _handle_event_sync
+        # before this async task runs. By the time we get here it's a pyobs event.
         body = json.loads(xml.sax.saxutils.unescape(msg["pubsub_event"]["items"]["item"]["payload"].text))
 
         # do we have a <delay> element?
@@ -696,56 +769,6 @@ class XmppComm(Comm):
     def _state_node(module: str, interface: type[Interface]) -> str:
         return f"pyobs:state:{module}:{interface.__name__}:{interface.version}"
 
-    @staticmethod
-    def _dataclass_to_xml(state: Any, namespace: str) -> ET.Element:
-        root = ET.Element(f"{{{namespace}}}state")
-        for f in dataclasses.fields(state):
-            value = getattr(state, f.name)
-            # Use ET.Element + append (not SubElement) so children stay in the
-            # empty namespace and elem.find("fieldname") works on the receiving side.
-            child = ET.Element(f.name)
-            if isinstance(value, bool):
-                child.text = "true" if value else "false"
-            elif isinstance(value, StrEnum):
-                child.text = value.value
-            else:
-                child.text = str(value)
-            root.append(child)
-        return root
-
-    @staticmethod
-    def _xml_to_dataclass(elem: ET.Element, state_cls: type) -> Any:
-        hints = get_type_hints(state_cls, include_extras=True)
-        # Extract namespace from root element tag, e.g. "{urn:pyobs:state:ICooling:1}state"
-        # Children may arrive namespaced (after ejabberd round-trip) or plain (locally),
-        # so try both forms.
-        ns = ""
-        if elem.tag.startswith("{"):
-            ns = elem.tag[1 : elem.tag.index("}")]
-        kwargs = {}
-        for f in dataclasses.fields(state_cls):
-            # Try namespaced lookup first, then plain
-            child = elem.find(f"{{{ns}}}{f.name}") if ns else None
-            if child is None:
-                child = elem.find(f.name)
-            if child is None or child.text is None:
-                continue
-            field_type = hints[f.name]
-            # unwrap Annotated[T, ...] → T for type dispatch
-            if get_origin(field_type) is Annotated:
-                field_type = get_args(field_type)[0]
-            if field_type is bool:
-                kwargs[f.name] = child.text == "true"
-            elif field_type is float:
-                kwargs[f.name] = float(child.text)
-            elif field_type is int:
-                kwargs[f.name] = int(child.text)
-            elif isinstance(field_type, type) and issubclass(field_type, StrEnum):
-                kwargs[f.name] = field_type(child.text)
-            else:
-                kwargs[f.name] = child.text
-        return state_cls(**kwargs)
-
     async def _fetch_and_dispatch_state(
         self, node: str, interface: type[Interface], callback: Callable[[Any], None]
     ) -> None:
@@ -756,41 +779,150 @@ class XmppComm(Comm):
         """
         try:
             result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            item_list = result["pubsub"]["items"]["items"]
-            if item_list:
-                callback(self._xml_to_dataclass(item_list[0]["payload"], interface.state))
+            # Use raw XML to avoid lazy-loading issues with plugin_multi_attrib
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None:
+                callback(_xml_to_dataclass(payload, interface.State))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         node = self._state_node(self._module.name, interface)
         stanza = StateStanza()
-        stanza.xml = self._dataclass_to_xml(state, self._state_namespace(interface))
+        stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
+
+    async def _get_disco_info(self, jid, node, ifrom, data):
+        """Custom disco#info handler that adds <capability> elements for static module values."""
+        # Get the default info from the static handler
+        info = self._xmpp["xep_0030"].static.get_info(jid, node, ifrom, data)
+        if info is None:
+            from slixmpp.plugins.xep_0030.stanza import DiscoInfo
+
+            info = DiscoInfo()
+
+        # Remove any previously appended capability elements (info.xml is cached
+        # by slixmpp and reused across calls — without this, each query appends
+        # another copy of every capability element)
+        _CAP_TAG = "capabilities"
+        for old_cap in list(info.xml):
+            if old_cap.tag.split("}")[-1] == _CAP_TAG:
+                info.xml.remove(old_cap)
+
+        # Append current capabilities
+        for interface, caps in self._capabilities.items():
+            ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
+            cap_xml = _dataclass_to_xml(caps, ns, tag="capabilities")
+            info.xml.append(cap_xml)
+
+        return info
+
+    async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
+        """Store published capabilities for inclusion in disco#info responses."""
+        self._capabilities[interface] = capabilities
+        log.info("Published capabilities for %s", interface.__name__)
+
+    async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        """Fetch and deserialize capabilities for a remote module's interface."""
+        if not hasattr(interface, "Capabilities"):
+            return None
+        # Use full JID (with resource) if we know it — bare JID may not route correctly
+        full_jid = next(
+            (jid for jid in self._online_clients if jid.startswith(f"{module}@")),
+            f"{module}@{self._domain}",
+        )
+        jid = full_jid
+        ns = f"urn:pyobs:capabilities:{interface.__name__}:{interface.version}"
+        try:
+            result = await asyncio.wait_for(self.client["xep_0030"].get_info(jid=jid), timeout=10.0)
+        except (TimeoutError, Exception) as e:
+            log.warning("Failed to get capabilities for %s from %s: %s", interface.__name__, module, e)
+            return None
+        log.debug("get_capabilities disco result XML: %s", ET.tostring(result.xml).decode()[:500])
+        # result.xml is the <iq> — the <query> is its child, capabilities are grandchildren
+        for child in result.xml:
+            for elem in child:
+                tag = elem.tag.split("}")[-1]
+                if tag == "capabilities" and f"{{{ns}}}" in elem.tag:
+                    return _xml_to_dataclass(elem, interface.Capabilities)
+        return None
+
+    async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        """Send XMPP presence stanza reflecting the module lifecycle state.
+
+        ModuleState maps onto XMPP <show>:
+            READY  → no <show> (available, the XMPP default)
+            ERROR  → dnd
+            LOCAL  → away
+            CLOSED → handled by normal disconnect (unavailable)
+        error_string rides as <status> text when state is ERROR.
+        """
+        _show_map: dict[ModuleState, str | None] = {
+            ModuleState.READY: None,
+            ModuleState.ERROR: "dnd",
+            ModuleState.LOCAL: "away",
+        }
+        show = _show_map.get(state)
+        status = error_string if state == ModuleState.ERROR and error_string else None
+        self.client.send_presence(pshow=show, pstatus=status)
+
+    async def _subscribe_presence(self, module: str, callback: Callable[[ModuleState, str], None]) -> None:
+        self._presence_callbacks.setdefault(module, []).append(callback)
+        result = self._get_client_state(module)
+        if result is not None:
+            callback(*result)
+
+    async def _subscribe_with_retry(self, node: str, interface: type[Interface]) -> None:
+        """Subscribe to a pubsub node, retrying until the node exists.
+
+        Runs as a background task so _subscribe_state returns immediately.
+        Once subscribed, fetches the current value and dispatches it.
+        """
+        for _attempt in range(30):
+            try:
+                await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+                break
+            except slixmpp.exceptions.IqError:
+                await asyncio.sleep(1)
+        else:
+            log.warning("Could not subscribe to state node %s after 30 attempts", node)
+            return
+
+        # Fetch current value immediately after subscribing
+        try:
+            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
+            pubsub_ns = "http://jabber.org/protocol/pubsub"
+            pubsub_xml = result.xml.find(f"{{{pubsub_ns}}}pubsub")
+            items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
+            item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
+            payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
+            if payload is not None and node in self._state_node_handlers:
+                _, callbacks = self._state_node_handlers[node]
+                state_obj = _xml_to_dataclass(payload, interface.State)
+                for cb in callbacks:
+                    cb(state_obj)
+        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
+            pass
 
     async def _subscribe_state(self, module: str, interface: type[Interface], callback: Callable[[Any], None]) -> None:
         node = self._state_node(module, interface)
         if node in self._state_node_handlers:
             # Node already subscribed — just add the callback
             self._state_node_handlers[node][1].append(callback)
+            # Deliver the current cached value immediately to the new callback
+            asyncio.create_task(self._fetch_and_dispatch_state(node, interface, callback))
         else:
             self._state_node_handlers[node] = (interface, [callback])
-            await self._safe_send(self.client["xep_0060"].subscribe, self._pubsub_service, node)
+            # Subscribe in a background task so _get_client() returns immediately.
+            # The retry loop handles the case where the publisher hasn't created
+            # the node yet (e.g. GUI connects before camera's first publish).
+            asyncio.create_task(self._subscribe_with_retry(node, interface))
 
-        # "deliver the current value immediately on subscribe" -- hard requirement above
-        try:
-            result = await self._safe_send(self.client["xep_0060"].get_items, self._pubsub_service, node, max_items=1)
-            # result["pubsub"]["items"]["items"] uses plugin_multi_attrib to get
-            # the list of Item stanzas; item["payload"] returns the XML element
-            # via Item.get_payload(). Integer indexing items[0] is wrong here —
-            # it calls ElementBase.__getitem__("0") which returns a string.
-            item_list = result["pubsub"]["items"]["items"]
-            if item_list:
-                state_obj = self._xml_to_dataclass(item_list[0]["payload"], interface.state)
-                for cb in self._state_node_handlers.get(node, (None, []))[1]:
-                    cb(state_obj)
-        except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
-            pass  # node exists but nothing published yet
+        # Initial value is fetched in _subscribe_with_retry after the subscribe IQ succeeds
 
     async def _unsubscribe_state(
         self, module: str, interface: type[Interface], callback: Callable[[Any], None]

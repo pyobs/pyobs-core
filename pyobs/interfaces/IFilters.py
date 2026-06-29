@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .IMotion import IMotion
 
 
@@ -11,14 +13,14 @@ class IFilters(IMotion, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def list_filters(self, **kwargs: Any) -> list[str]:
-        """List available filters.
+    @dataclass
+    class State:
+        filter: str
+        time: Time = field(default_factory=Time.now)
 
-        Returns:
-            List of available filters.
-        """
-        ...
+    @dataclass
+    class Capabilities:
+        filters: list[str] = field(default_factory=list)
 
     @abstractmethod
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
@@ -30,15 +32,6 @@ class IFilters(IMotion, metaclass=ABCMeta):
         Raises:
             ValueError: If an invalid filter was given.
             MoveError: If filter wheel cannot be moved.
-        """
-        ...
-
-    @abstractmethod
-    async def get_filter(self, **kwargs: Any) -> str:
-        """Get currently set filter.
-
-        Returns:
-            Name of currently set filter.
         """
         ...
 

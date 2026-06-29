@@ -11,7 +11,7 @@ from astropy.io import fits
 
 from pyobs.events import ExposureStatusChangedEvent, NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import ICamera, IExposureTime, IImageType
+from pyobs.interfaces import ICamera, IExposure, IExposureTime, IImageType
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils import exceptions as exc
@@ -33,7 +33,7 @@ class ExposureInfo(NamedTuple):
 
 async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for expose()."""
-    return await camera.get_exposure_time() + 30
+    return camera._exposure_time + 30
 
 
 class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageType, metaclass=ABCMeta):
@@ -106,6 +106,17 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
             await self.comm.register_event(NewImageEvent)
             await self.comm.register_event(ExposureStatusChangedEvent)
 
+        # publish initial states
+        await self.comm.set_state(IExposureTime.State(exposure_time=self._exposure_time))
+        await self.comm.set_state(IImageType.State(image_type=self._image_type))
+        await self.comm.set_state(
+            IExposure.State(
+                status=self._camera_status,
+                progress=0.0,
+                exposure_time_left=0.0,
+            )
+        )
+
     async def set_exposure_time(self, exposure_time: float, **kwargs: Any) -> None:
         """Set the exposure time in seconds.
 
@@ -117,14 +128,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         log.info("Setting exposure time to %.5fs...", exposure_time)
         self._exposure_time = exposure_time
-
-    async def get_exposure_time(self, **kwargs: Any) -> float:
-        """Returns the exposure time in seconds.
-
-        Returns:
-            Exposure time in seconds.
-        """
-        return self._exposure_time
+        await self.comm.set_state(IExposureTime.State(exposure_time=exposure_time))
 
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
         """Set the image type.
@@ -134,14 +138,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         """
         log.info("Setting image type to %s...", image_type)
         self._image_type = image_type
-
-    async def get_image_type(self, **kwargs: Any) -> ImageType:
-        """Returns the current image type.
-
-        Returns:
-            Current image type.
-        """
-        return self._image_type
+        await self.comm.set_state(IImageType.State(image_type=image_type))
 
     async def _change_exposure_status(self, status: ExposureStatus) -> None:
         """Change exposure status and send event,
@@ -156,32 +153,23 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
 
         # set it
         self._camera_status = status
+        await self.comm.set_state(
+            IExposure.State(
+                status=status,
+                progress=await self._get_exposure_progress(),
+                exposure_time_left=await self._get_exposure_time_left(),
+            )
+        )
 
-    async def get_exposure_status(self, **kwargs: Any) -> ExposureStatus:
-        """Returns the current status of the camera, which is one of 'idle', 'exposing', or 'readout'.
-
-        Returns:
-            Current status of camera.
-        """
-        return self._camera_status
-
-    async def get_exposure_time_left(self, **kwargs: Any) -> float:
-        """Returns the remaining exposure time on the current exposure in seconds.
-
-        Returns:
-            Remaining exposure time in seconds.
-        """
-
-        # if we're not exposing, there is nothing left
+    async def _get_exposure_time_left(self) -> float:
+        """Returns the remaining exposure time on the current exposure in seconds."""
         if self._exposure is None:
             return 0.0
-
-        # calculate difference between start of exposure and now, and return in ms
         duration = datetime.timedelta(seconds=self._exposure.exposure_time)
         diff = self._exposure.start + duration - datetime.datetime.now(datetime.UTC)
         return diff.total_seconds()
 
-    async def get_exposure_progress(self, **kwargs: Any) -> float:
+    async def _get_exposure_progress(self) -> float:
         """Returns the progress of the current exposure in percent.
 
         Returns:
@@ -386,7 +374,7 @@ class BaseCamera(Module, ImageFitsHeaderMixin, ICamera, IExposureTime, IImageTyp
         await self._abort_exposure()
 
         # wait until state is not EXPOSING anymore
-        while await self.get_exposure_status() == ExposureStatus.EXPOSING:
+        while self._camera_status == ExposureStatus.EXPOSING:
             await asyncio.sleep(0.1)
 
     @staticmethod

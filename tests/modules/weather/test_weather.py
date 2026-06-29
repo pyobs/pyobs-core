@@ -6,7 +6,7 @@ import pytest
 
 import pyobs
 from pyobs.comm.dummy import DummyComm
-from pyobs.events import GoodWeatherEvent, BadWeatherEvent
+from pyobs.events import BadWeatherEvent, GoodWeatherEvent
 from pyobs.modules import Module
 from pyobs.modules.weather import Weather
 from pyobs.utils.enums import WeatherSensors

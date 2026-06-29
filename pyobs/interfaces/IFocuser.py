@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .IMotion import IMotion
 
 
@@ -8,6 +12,12 @@ class IFocuser(IMotion, metaclass=ABCMeta):
     """The module is a focusing device."""
 
     __module__ = "pyobs.interfaces"
+
+    @dataclass
+    class State:
+        focus: float
+        focus_offset: float
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
@@ -32,24 +42,6 @@ class IFocuser(IMotion, metaclass=ABCMeta):
         Raises:
             ValueError: If given value is invalid.
             MoveError: If telescope cannot be moved.
-        """
-        ...
-
-    @abstractmethod
-    async def get_focus(self, **kwargs: Any) -> float:
-        """Return current focus.
-
-        Returns:
-            Current focus.
-        """
-        ...
-
-    @abstractmethod
-    async def get_focus_offset(self, **kwargs: Any) -> float:
-        """Return current focus offset.
-
-        Returns:
-            Current focus offset.
         """
         ...
 

@@ -74,12 +74,15 @@ class WaitForMotionMixin:
                 raise TimeoutError
 
             # loop all modules
+            all_done = True
             for module in this.__wait_for_modules:
                 async with self.proxy(module, IMotion) as proxy:
-                    state = await proxy.get_motion_status()
-                    if state not in this.__wait_for_states:
+                    motion_state = await proxy.wait_for_state(IMotion, timeout=1.0)
+                    status = motion_state.status if motion_state is not None else MotionStatus.UNKNOWN
+                    if status not in this.__wait_for_states:
+                        all_done = False
                         break
-            else:
+            if all_done:
                 # if all good, we're finished waiting
                 log.info("All other modules have finished moving.")
                 break

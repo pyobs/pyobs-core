@@ -1,6 +1,6 @@
 [project]
 name = "pyobs-core"
-version = "2.0.0.dev1"
+version = "2.0.0.dev3"
 description = "robotic telescope software"
 authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
 requires-python = ">=3.11"
@@ -113,6 +113,12 @@ line-length = 120
 select = ["E", "F", "W", "I", "UP", "G"]  # G catches the logging format issues
 
 [tool.pytest.ini_options]
+addopts = "-m 'not integration and not xmpp'"
+asyncio_mode = "strict"
+markers = [
+    "integration: marks tests that require external services",
+    "xmpp: marks tests that require a live ejabberd server",
+]
 
 [tool.black]
 line-length = 120

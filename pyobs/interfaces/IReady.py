@@ -1,6 +1,9 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any
+from __future__ import annotations
 
+from abc import ABCMeta
+from dataclasses import dataclass, field
+
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -9,14 +12,10 @@ class IReady(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def is_ready(self, **kwargs: Any) -> bool:
-        """Returns the device is "ready", whatever that means for the specific device.
-
-        Returns:
-            Whether device is ready
-        """
-        ...
+    @dataclass
+    class State:
+        ready: bool
+        time: Time = field(default_factory=Time.now)
 
 
 __all__ = ["IReady"]

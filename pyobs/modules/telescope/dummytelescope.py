@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any
+import random
+from typing import Any
 
 import astropy.units as u
+import numpy as np
 from astropy.coordinates import SkyCoord
 
 from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
@@ -15,6 +17,7 @@ from pyobs.interfaces import (
     IOffsetsRaDec,
     IPointingAltAz,
     IPointingRaDec,
+    IReady,
     ITemperatures,
 )
 from pyobs.mixins.fitsnamespace import FitsNamespaceMixin
@@ -23,10 +26,6 @@ from pyobs.modules.telescope.basetelescope import BaseTelescope
 from pyobs.utils.enums import MotionStatus
 from pyobs.utils.threads import LockWithAbort
 from pyobs.utils.time import Time
-
-if TYPE_CHECKING:
-    from pyobs.utils.simulation import SimWorld
-
 
 log = logging.getLogger(__name__)
 
@@ -46,301 +45,258 @@ class DummyTelescope(
 
     __module__ = "pyobs.modules.telescope"
 
-    def __init__(self, world: SimWorld | None = None, wait_secs: float = 1.0, **kwargs: Any):
+    def __init__(
+        self,
+        position: tuple[float, float] | None = None,
+        offsets: tuple[float, float] | None = None,
+        pointing_offset: tuple[float, float] | None = None,
+        move_accuracy: float = 2.0,
+        speed: float = 20.0,
+        focus: float = 50.0,
+        filters: list[str] | None = None,
+        filter_name: str = "clear",
+        drift: tuple[float, float] | None = None,
+        focal_length: float = 5000.0,
+        wait_secs: float = 1.0,
+        **kwargs: Any,
+    ):
         """Creates a new dummy telescope.
 
         Args:
-            world: Optional SimWorld object.
+            position: Initial RA/Dec position in degrees.
+            offsets: Initial RA/Dec offsets in degrees.
+            pointing_offset: Pointing offset in RA/Dec in arcsecs.
+            move_accuracy: Accuracy of movements in arcsec (random error after any movement).
+            speed: Speed of telescope in deg/sec.
+            focus: Initial focus value.
+            filters: List of available filters.
+            filter_name: Initial filter name.
+            drift: RA/Dec drift in arcsec/sec.
+            focal_length: Focal length in mm.
+            wait_secs: Wait time between slew checks in seconds.
         """
         BaseTelescope.__init__(self, **kwargs, motion_status_interfaces=["ITelescope", "IFocuser", "IFilters"])
         FitsNamespaceMixin.__init__(self, **kwargs)
 
-        # init world and get telescope
-        from pyobs.utils.simulation import SimWorld
-
-        self._world = world if world is not None else self.add_child_object(SimWorld, None)
-        self._telescope = self._world.telescope
+        # telescope state
+        self._position = (
+            SkyCoord(0.0 * u.deg, 0.0 * u.deg, frame="icrs")
+            if position is None
+            else SkyCoord(position[0] * u.deg, position[1] * u.deg, frame="icrs")
+        )
+        self._offsets = (0.0, 0.0) if offsets is None else tuple(offsets)
+        self._pointing_offset = (20.0, 2.0) if pointing_offset is None else tuple(pointing_offset)
+        self._move_accuracy = move_accuracy
+        self._speed = speed
+        self._focus = focus
+        self._filters = ["clear", "B", "V", "R"] if filters is None else filters
+        self._filter_name = filter_name
+        self._drift_rate = (0.0, 0.0) if drift is None else tuple(drift)
+        self._focal_length = focal_length
         self._wait_secs = wait_secs
 
-        # automatically send status updates
-        self._telescope.status_callback = self._change_motion_status
+        # internal slewing state
+        self._dest_coords: SkyCoord | None = None
+        self._drift = (0.0, 0.0)
+        self._sim_status = MotionStatus.IDLE
 
-        # stuff
+        # locks
         self._lock_focus = asyncio.Lock()
         self._abort_focus = asyncio.Event()
+
+        # background slewing task
+        self.add_background_task(self._move_task)
+
+    @property
+    def focal_length(self) -> float:
+        return self._focal_length
+
+    @property
+    def real_pos(self) -> SkyCoord:
+        """Current position including offsets and drift."""
+        dra = (self._offsets[0] * u.deg + self._drift[0] * u.arcsec) / np.cos(np.radians(self._position.dec.degree))
+        ddec = self._offsets[1] * u.deg + self._drift[1] * u.arcsec
+        return SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+
+    @property
+    def _position_radec(self) -> tuple[float, float] | None:
+        return float(self._position.ra.degree), float(self._position.dec.degree)
+
+    async def _sim_change_status(self, status: MotionStatus) -> None:
+        if status != self._sim_status:
+            self._sim_status = status
+            await self._change_motion_status(status)
+
+    async def _move_task(self) -> None:
+        """Background task that simulates telescope motion."""
+        while True:
+            if self._dest_coords is not None:
+                vra = (self._dest_coords.ra.degree - self._position.ra.degree) * np.cos(
+                    np.radians(self._position.dec.degree)
+                )
+                vdec = self._dest_coords.dec.degree - self._position.dec.degree
+                length = np.sqrt(vra**2 + vdec**2)
+
+                if length < self._speed:
+                    await self._sim_change_status(MotionStatus.TRACKING)
+                    self._position = self._dest_coords
+                    self._dest_coords = None
+                    self._drift = (
+                        random.gauss(self._pointing_offset[0], self._pointing_offset[0] / 10.0),
+                        random.gauss(self._pointing_offset[1], self._pointing_offset[1] / 10.0),
+                    )
+                    # publish updated position
+                    await self.comm.set_state(
+                        IPointingRaDec.State(
+                            ra=float(self._position.ra.degree),
+                            dec=float(self._position.dec.degree),
+                        )
+                    )
+                else:
+                    dra = vra / length * self._speed / np.cos(np.radians(self._position.dec.degree)) * u.deg
+                    ddec = vdec / length * self._speed * u.deg
+                    await self._sim_change_status(MotionStatus.SLEWING)
+                    self._position = SkyCoord(ra=self._position.ra + dra, dec=self._position.dec + ddec, frame="icrs")
+            else:
+                drift_ra = random.gauss(self._drift_rate[0], max(self._drift_rate[0] / 10.0, 1e-9))
+                drift_dec = random.gauss(self._drift_rate[1], max(self._drift_rate[1] / 10.0, 1e-9))
+                self._drift = (self._drift[0] + drift_ra, self._drift[1] + drift_dec)
+
+            await asyncio.sleep(1)
 
     async def open(self) -> None:
         """Open module."""
         await BaseTelescope.open(self)
 
-        # subscribe to events
         if self._comm:
             await self.comm.register_event(FilterChangedEvent)
             await self.comm.register_event(OffsetsRaDecEvent)
 
-        # init status
         await self._change_motion_status(MotionStatus.IDLE)
 
+        # publish initial states and capabilities
+        await self.comm.set_capabilities(IFilters.Capabilities(filters=self._filters))
+        await self.comm.set_state(IFocuser.State(focus=self._focus, focus_offset=0.0))
+        await self.comm.set_state(IFilters.State(filter=self._filter_name))
+        await self.comm.set_state(
+            ITemperatures.State(
+                readings=[
+                    ITemperatures.Temperature(name="M1", value=10.0),
+                    ITemperatures.Temperature(name="M2", value=12.0),
+                ]
+            )
+        )
+        await self.comm.set_state(IReady.State(ready=True))
+        await self.comm.set_state(
+            IPointingRaDec.State(
+                ra=float(self._position.ra.degree),
+                dec=float(self._position.dec.degree),
+            )
+        )
+        await self.comm.set_state(IOffsetsRaDec.State(ra=self._offsets[0], dec=self._offsets[1]))
+
     async def _move_radec(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
-        """Actually starts tracking on given coordinates. Must be implemented by derived classes.
+        acc = self._move_accuracy / 3600.0
+        ra_dest = random.gauss(ra, acc / np.cos(np.radians(self._position.dec.degree)))
+        dec_dest = random.gauss(dec, acc)
+        self._dest_coords = SkyCoord(ra=ra_dest * u.deg, dec=dec_dest * u.deg, frame="icrs")
+        await self._sim_change_status(MotionStatus.SLEWING)
 
-        Args:
-            ra: RA in deg to track.
-            dec: Dec in deg to track.
-            abort_event: Event that gets triggered when movement should be aborted.
-
-        Raises:
-            MoveError: If telescope cannot be moved.
-        """
-
-        # start slewing
-        await self.__move(ra, dec, abort_event)
+        while self._sim_status == MotionStatus.SLEWING and not abort_event.is_set():
+            await asyncio.sleep(self._wait_secs)
 
     async def _move_altaz(self, alt: float, az: float, abort_event: asyncio.Event) -> None:
-        """Actually moves to given coordinates. Must be implemented by derived classes.
-
-        Args:
-            alt: Alt in deg to move to.
-            az: Az in deg to move to.
-            abort_event: Event that gets triggered when movement should be aborted.
-
-        Raises:
-            MoveError: If telescope cannot be moved.
-        """
-
-        # alt/az coordinates to ra/dec
         coords = SkyCoord(
             alt=alt * u.degree, az=az * u.degree, obstime=Time.now(), location=self._location, frame="altaz"
         )
         icrs = coords.icrs
-
-        # start slewing
-        await self.__move(icrs.ra.degree, icrs.dec.degree, abort_event)
-
-    async def __move(self, ra: float, dec: float, abort_event: asyncio.Event) -> None:
-        """Simulate move.
-
-        Args:
-            ra: RA in deg to track.
-            dec: Dec in deg to track.
-            abort_event: Event that gets triggered when movement should be aborted.
-        """
-
-        # simulate slew
-        self._telescope.move_ra_dec(SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs"))
-
-        # wait for it
-        while self._telescope.status == MotionStatus.SLEWING and not abort_event.is_set():
-            await asyncio.sleep(self._wait_secs)
-
-    async def get_focus(self, **kwargs: Any) -> float:
-        """Return current focus.
-
-        Returns:
-            Current focus.
-        """
-        return self._telescope.focus
+        await self._move_radec(icrs.ra.degree, icrs.dec.degree, abort_event)
 
     @timeout(60)
     async def set_focus(self, focus: float, **kwargs: Any) -> None:
-        """Sets new focus.
-
-        Args:
-            focus: New focus value.
-
-        Raises:
-            MoveError: If telescope cannot be moved.
-        """
-
-        # check
+        """Sets new focus."""
         if focus < 0 or focus > 100:
             raise ValueError("Invalid focus value.")
 
-        # acquire lock
         async with LockWithAbort(self._lock_focus, self._abort_focus):
             log.info("Setting focus to %.2f...", focus)
             await self._change_motion_status(MotionStatus.SLEWING, interface="IFocuser")
-            ifoc = self._telescope.focus * 1.0
+            ifoc = self._focus * 1.0
             dfoc = (focus - ifoc) / 300.0
             for i in range(300):
-                # abort?
                 if self._abort_focus.is_set():
                     raise InterruptedError("Setting focus was interrupted.")
-
-                # move focus and sleep a little
-                self._telescope.focus = ifoc + i * dfoc
+                self._focus = ifoc + i * dfoc
                 await asyncio.sleep(0.01)
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFocuser")
-            self._telescope.focus = focus
-
-    async def list_filters(self, **kwargs: Any) -> list[str]:
-        """List available filters.
-
-        Returns:
-            List of available filters.
-        """
-        return self._telescope.filters
-
-    async def get_filter(self, **kwargs: Any) -> str:
-        """Get currently set filter.
-
-        Returns:
-            Name of currently set filter.
-        """
-        return self._telescope.filter_name
+            self._focus = focus
+            await self.comm.set_state(IFocuser.State(focus=focus, focus_offset=0.0))
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
-        """Set the current filter.
-
-        Args:
-            filter_name: Name of filter to set.
-
-        Raises:
-            MoveError: If filter wheel cannot be moved.
-        """
-
-        # valid filter?
-        if filter_name not in self._telescope.filters:
+        """Set the current filter."""
+        if filter_name not in self._filters:
             raise ValueError("Invalid filter name.")
 
-        # log and send event
-        if filter_name != self._telescope.filter_name:
-            # set it
+        if filter_name != self._filter_name:
             logging.info("Setting filter to %s", filter_name)
             await self._change_motion_status(MotionStatus.SLEWING, interface="IFilters")
-            await asyncio.sleep(3)
+            try:
+                await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=3.0)
+                return
+            except TimeoutError:
+                pass
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFilters")
-            self._telescope.filter_name = filter_name
-
-            # send event
+            self._filter_name = filter_name
             await self.comm.send_event(FilterChangedEvent(filter_name))
+            await self.comm.set_state(IFilters.State(filter=filter_name))
             logging.info("New filter set.")
 
     @timeout(60)
     async def init(self, **kwargs: Any) -> None:
-        """Initialize telescope.
-
-        Raises:
-            InitError: If device could not be initialized.
-        """
-
-        # INIT, wait a little, then IDLE
+        """Initialize telescope."""
         log.info("Initializing telescope...")
         await self._change_motion_status(MotionStatus.INITIALIZING)
-        await asyncio.sleep(5)
+        try:
+            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+            return
+        except TimeoutError:
+            pass
         await self._change_motion_status(MotionStatus.IDLE)
         log.info("Telescope initialized.")
 
     @timeout(60)
     async def park(self, **kwargs: Any) -> None:
-        """Park telescope.
-
-        Raises:
-            ParkError: If telescope could not be parked.
-        """
-
-        # PARK, wait a little, then PARKED
+        """Park telescope."""
         log.info("Parking telescope...")
         await self._change_motion_status(MotionStatus.PARKING)
-        await asyncio.sleep(5)
+        try:
+            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+            return
+        except TimeoutError:
+            pass
         await self._change_motion_status(MotionStatus.PARKED)
         log.info("Telescope parked.")
 
     async def set_offsets_radec(self, dra: float, ddec: float, **kwargs: Any) -> None:
-        """Move an RA/Dec offset.
-
-        Args:
-            dra: RA offset in degrees.
-            ddec: Dec offset in degrees.
-
-        Raises:
-            MoveError: If telescope cannot be moved.
-        """
-
+        """Move an RA/Dec offset."""
         log.info("Moving offset dra=%.5f, ddec=%.5f", dra, ddec)
         await self.comm.send_event(OffsetsRaDecEvent(ra=dra, dec=ddec))
-        self._telescope.set_offsets(dra, ddec)
-
-    async def get_offsets_radec(self, **kwargs: Any) -> tuple[float, float]:
-        """Get RA/Dec offset.
-
-        Returns:
-            Tuple with RA and Dec offsets.
-        """
-        return self._telescope.offsets
-
-    async def get_radec(self, **kwargs: Any) -> tuple[float, float]:
-        """Returns current RA and Dec.
-
-        Returns:
-            Tuple of current RA and Dec in degrees.
-        """
-        return float(self._telescope.position.ra.degree), float(self._telescope.position.dec.degree)
-
-    async def get_altaz(self, **kwargs: Any) -> tuple[float, float]:
-        """Returns current Alt and Az.
-
-        Returns:
-            Tuple of current Alt and Az in degrees.
-        """
-        if self._observer is not None:
-            alt_az = self.observer.altaz(Time.now(), self._telescope.position)
-            return float(alt_az.alt.degree), float(alt_az.az.degree)
-        else:
-            raise ValueError("No observer given.")
+        acc = self._move_accuracy / 3600.0
+        self._offsets = (random.gauss(dra, acc), random.gauss(ddec, acc))
+        await self.comm.set_state(IOffsetsRaDec.State(ra=dra, dec=ddec))
 
     async def get_fits_header_before(
         self, namespaces: list[str] | None = None, **kwargs: Any
     ) -> dict[str, tuple[Any, str]]:
-        """Returns FITS header for the current status of this module.
-
-        Args:
-            namespaces: If given, only return FITS headers for the given namespaces.
-
-        Returns:
-            Dictionary containing FITS headers.
-        """
-
-        # fetch from BaseTelescope
         hdr = await BaseTelescope.get_fits_header_before(self)
-
-        # focus
-        hdr["TEL-FOCU"] = (self._telescope.focus, "Focus position [mm]")
-
-        # finished
+        hdr["TEL-FOCU"] = (self._focus, "Focus position [mm]")
         return self._filter_fits_namespace(hdr, namespaces=namespaces, **kwargs)
 
     async def stop_motion(self, device: str | None = None, **kwargs: Any) -> None:
-        """Stop the motion.
-
-        Args:
-            device: Name of device to stop, or None for all.
-        """
         pass
-
-    async def get_focus_offset(self, **kwargs: Any) -> float:
-        """Return current focus offset.
-
-        Returns:
-            Current focus offset.
-        """
-        return 0
-
-    async def get_temperatures(self, **kwargs: Any) -> dict[str, float]:
-        """Returns all temperatures measured by this module.
-
-        Returns:
-            Dict containing temperatures.
-        """
-
-        return {"M1": 10.0, "M2": 12.0}
 
     async def set_focus_offset(self, offset: float, **kwargs: Any) -> None:
         log.error("Not implemented")
-
-    async def is_ready(self, **kwargs: Any) -> bool:
-        log.error("Not implemented")
-        return True
 
 
 __all__ = ["DummyTelescope"]

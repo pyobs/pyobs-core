@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -11,14 +13,17 @@ class IWindow(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    @abstractmethod
-    async def get_full_frame(self, **kwargs: Any) -> tuple[int, int, int, int]:
-        """Returns full size of CCD.
+    @dataclass
+    class State:
+        x: int
+        y: int
+        width: int
+        height: int
+        time: Time = field(default_factory=Time.now)
 
-        Returns:
-            Tuple with left, top, width, and height set.
-        """
-        ...
+    @dataclass
+    class Capabilities:
+        full_frame: IWindow.State = field(default_factory=lambda: IWindow.State(0, 0, 0, 0))
 
     @abstractmethod
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
@@ -32,15 +37,6 @@ class IWindow(Interface, metaclass=ABCMeta):
 
         Raises:
             ValueError: If window could not be set.
-        """
-        ...
-
-    @abstractmethod
-    async def get_window(self, **kwargs: Any) -> tuple[int, int, int, int]:
-        """Returns the camera window.
-
-        Returns:
-            Tuple with left, top, width, and height set.
         """
         ...
 

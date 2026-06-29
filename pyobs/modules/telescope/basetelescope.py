@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import astropy.units as u
-from astropy.coordinates import ICRS, AltAz, SkyCoord
+from astropy.coordinates import ICRS, SkyCoord
 
 from pyobs.events import MoveAltAzEvent, MoveRaDecEvent
 from pyobs.interfaces import (
@@ -75,6 +75,11 @@ class BaseTelescope(
         # register exception
         exc.register_exception(exc.MotionError, 3, timespan=600, callback=self._default_remote_error_callback)
 
+    @property
+    def _position_radec(self) -> tuple[float, float] | None:
+        """Current RA/Dec position in degrees, or None if unknown. Override in subclasses."""
+        return None
+
     async def open(self) -> None:
         """Open module."""
         await Module.open(self)
@@ -114,7 +119,7 @@ class BaseTelescope(
             raise NotImplementedError
 
         # do nothing, if initializing, parking or parked
-        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check observer
@@ -187,7 +192,7 @@ class BaseTelescope(
             raise NotImplementedError
 
         # do nothing, if initializing, parking or parked
-        if await self.get_motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
+        if self.motion_status() in [MotionStatus.INITIALIZING, MotionStatus.PARKING, MotionStatus.PARKED]:
             return
 
         # check altitude
@@ -232,19 +237,12 @@ class BaseTelescope(
 
         # positions
         coords_ra_dec = None
-        if isinstance(self, IPointingRaDec):
-            try:
-                ra, dec = await self.get_radec()
-                coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
-            except Exception as e:
-                log.warning("Could not fetch telescope RA/Dec: %s", e)
+        if isinstance(self, IPointingRaDec) and self._position_radec is not None:
+            ra, dec = self._position_radec
+            coords_ra_dec = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame=ICRS)
         coords_alt_az = None
-        if isinstance(self, IPointingAltAz):
-            try:
-                alt, az = await self.get_altaz()
-                coords_alt_az = SkyCoord(alt=alt * u.deg, az=az * u.deg, frame=AltAz)
-            except Exception as e:
-                log.warning("Could not fetch telescope Alt/Az: %s", e)
+        if isinstance(self, IPointingAltAz) and coords_ra_dec is not None and self._observer is not None:
+            coords_alt_az = self.observer.altaz(Time.now(), coords_ra_dec)
 
         # set coordinate headers
         if coords_ra_dec is not None:
@@ -299,8 +297,6 @@ class BaseTelescope(
         """Calculate positions and distances to celestial objects like moon and sun."""
         # get now
         now = Time.now()
-        alt: float | None
-        az: float | None
 
         # no observer?
         if self._observer is None:
@@ -308,16 +304,9 @@ class BaseTelescope(
 
         # get telescope alt/az
         tel_altaz = None
-        observer = self.observer
-        if isinstance(self, IPointingAltAz):
-            try:
-                alt, az = await self.get_altaz()
-                tel_altaz = SkyCoord(
-                    alt=alt * u.deg, az=az * u.deg, location=observer.location, obstime=now, frame="altaz"
-                )
-            except Exception:
-                log.exception("Could not fetch telescope Alt/Az: %s", self)
-                return
+        if isinstance(self, IPointingAltAz) and self._position_radec is not None:
+            radec = SkyCoord(ra=self._position_radec[0] * u.deg, dec=self._position_radec[1] * u.deg, frame=ICRS)
+            tel_altaz = self.observer.altaz(now, radec)
 
         # get current moon and sun information
         moon_altaz = self.observer.moon_altaz(now)

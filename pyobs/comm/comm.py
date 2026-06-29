@@ -4,12 +4,14 @@ import asyncio
 import functools
 import inspect
 import logging
+import sys
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, overload
 
 import pyobs.interfaces
 from pyobs.events import Event, LogEvent, ModuleClosedEvent
 from pyobs.interfaces import Interface
+from pyobs.utils.enums import ModuleState
 
 from .commlogging import CommLoggingHandler
 from .proxy import Proxy, ProxyType, _ProxyContext
@@ -18,6 +20,7 @@ if TYPE_CHECKING:
     from pyobs.modules import Module
 
 StateCallback = Callable[[Any], None]
+PresenceCallback = Callable[["ModuleState", str], None]
 
 log = logging.getLogger(__name__)
 
@@ -64,9 +67,14 @@ class Comm:
         """Open module."""
 
         # add handler to global logger
-        handler = CommLoggingHandler(self)
-        handler.setLevel(logging.INFO)
-        logging.getLogger().addHandler(handler)
+        root_logger = logging.getLogger()
+        if not any(isinstance(h, CommLoggingHandler) for h in root_logger.handlers):
+            from pyobs.utils.logging.context import ModuleNameFilter
+
+            handler = CommLoggingHandler(self)
+            handler.setLevel(logging.INFO)
+            handler.addFilter(ModuleNameFilter())
+            root_logger.addHandler(handler)
 
         # start logging thread
         self._logging_task = asyncio.create_task(self._logging())
@@ -129,7 +137,7 @@ class Comm:
 
             # subscribe to state
             for interface in interfaces:
-                if getattr(interface, "state", None) is not None:
+                if getattr(interface, "State", None) is not None:
                     await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
 
             self._proxies[client] = proxy
@@ -430,17 +438,85 @@ class Comm:
     ) -> None:
         pass
 
-    async def set_state(self, interface: type[Interface], state: Any) -> None:
+    @staticmethod
+    def _interface_from_state(state_cls: type) -> type:
+        outer_name = state_cls.__qualname__.rsplit(".", 1)[0]
+        return getattr(sys.modules[state_cls.__module__], outer_name)
+
+    async def set_state(self, state: Any) -> None:
         """Publish state for this module.
 
         Args:
             interface: Interface type for the state.
             state: State object to publish.
         """
+        interface = Comm._interface_from_state(type(state))
         await self._set_state(interface, state)
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         pass
+
+    @staticmethod
+    def _interface_from_capabilities(caps_cls: type) -> type:
+        outer_name = caps_cls.__qualname__.rsplit(".", 1)[0]
+        return getattr(sys.modules[caps_cls.__module__], outer_name)
+
+    async def set_capabilities(self, capabilities: Any) -> None:
+        """Publish capabilities for this module.
+
+        Called by Module.open() for each interface that defines a Capabilities
+        dataclass. Not intended to be called directly by module authors after
+        that point — capabilities are fixed for the module lifetime.
+
+        Args:
+            capabilities: Capabilities dataclass instance.
+        """
+        interface = Comm._interface_from_capabilities(type(capabilities))
+        await self._set_capabilities(interface, capabilities)
+
+    async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
+        pass
+
+    async def get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        """Fetch and deserialize capabilities for a remote module's interface.
+
+        Args:
+            module: Module name (e.g. "camera").
+            interface: Interface class whose Capabilities dataclass to fetch.
+
+        Returns:
+            Deserialized Capabilities dataclass instance, or None if not published.
+        """
+        return await self._get_capabilities(module, interface)
+
+    async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
+        return None
+
+    async def set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        """Publish presence for this module (module lifecycle state).
+
+        Called automatically by Module.set_state — not intended to be called
+        directly by module authors.
+
+        Args:
+            state: Current module lifecycle state.
+            error_string: Error message, used when state is ERROR.
+        """
+        await self._set_presence(state, error_string)
+
+    async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:
+        pass
+
+    def get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        """Return the last known presence state of a connected module.
+
+        Returns (ModuleState, error_string) or None if the module is not connected.
+        This replaces the old get_state()/get_error_string() RPC pattern.
+        """
+        return self._get_client_state(module)
+
+    def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
+        return None
 
     async def subscribe_state(
         self,
@@ -489,6 +565,20 @@ class Comm:
         interface: type[Interface],
         callback: StateCallback,
     ) -> None:
+        pass
+
+    async def subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
+        """Subscribe to presence updates for a given module.
+
+        Delivers the current value immediately, then on every change.
+
+        Args:
+            module: Name of remote module.
+            callback: Called with (ModuleState, error_string) on each update.
+        """
+        await self._subscribe_presence(module, callback)
+
+    async def _subscribe_presence(self, module: str, callback: PresenceCallback) -> None:
         pass
 
     def _send_event_to_module(self, event: Event, from_client: str) -> None:

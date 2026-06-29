@@ -1,4 +1,4 @@
-from pyobs.utils.grids.grid import RegularSphericalGrid, GraticuleSphericalGrid
+from pyobs.utils.grids.grid import GraticuleSphericalGrid, RegularSphericalGrid
 
 
 def test_regularsphericalgrid() -> None:

@@ -240,7 +240,11 @@ class DummyTelescope(
         if filter_name != self._filter_name:
             logging.info("Setting filter to %s", filter_name)
             await self._change_motion_status(MotionStatus.SLEWING, interface="IFilters")
-            await asyncio.sleep(3)
+            try:
+                await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=3.0)
+                return
+            except TimeoutError:
+                pass
             await self._change_motion_status(MotionStatus.POSITIONED, interface="IFilters")
             self._filter_name = filter_name
             await self.comm.send_event(FilterChangedEvent(filter_name))
@@ -252,7 +256,11 @@ class DummyTelescope(
         """Initialize telescope."""
         log.info("Initializing telescope...")
         await self._change_motion_status(MotionStatus.INITIALIZING)
-        await asyncio.sleep(5)
+        try:
+            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+            return
+        except TimeoutError:
+            pass
         await self._change_motion_status(MotionStatus.IDLE)
         log.info("Telescope initialized.")
 
@@ -261,7 +269,11 @@ class DummyTelescope(
         """Park telescope."""
         log.info("Parking telescope...")
         await self._change_motion_status(MotionStatus.PARKING)
-        await asyncio.sleep(5)
+        try:
+            await asyncio.wait_for(asyncio.shield(self._closing.wait()), timeout=5.0)
+            return
+        except TimeoutError:
+            pass
         await self._change_motion_status(MotionStatus.PARKED)
         log.info("Telescope parked.")
 

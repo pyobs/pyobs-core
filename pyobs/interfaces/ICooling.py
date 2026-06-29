@@ -9,17 +9,20 @@ from ..utils.time import Time
 from .ITemperatures import ITemperatures
 
 
+@dataclass
+class CoolingState:
+    setpoint: Annotated[float, Unit.CELSIUS] | None
+    power: Annotated[int, Unit.PERCENT] | None
+    enabled: bool
+    time: Time = field(default_factory=Time.now)
+
+
 class ICooling(ITemperatures, metaclass=ABCMeta):
     """The module can control the cooling of a device."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        setpoint: Annotated[float, Unit.CELSIUS] | None
-        power: Annotated[int, Unit.PERCENT] | None
-        enabled: bool
-        time: Time = field(default_factory=Time.now)
+    state = CoolingState
 
     @abstractmethod
     async def set_cooling(self, enabled: bool, setpoint: Annotated[float, Unit.CELSIUS], **kwargs: Any) -> None:
@@ -35,4 +38,4 @@ class ICooling(ITemperatures, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["ICooling"]
+__all__ = ["ICooling", "CoolingState"]

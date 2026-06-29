@@ -13,7 +13,7 @@ from pyobs.comm.xmpp.serializer import (
     value_to_xml,
 )
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import IBinning, ICooling
+from pyobs.interfaces import BinningState, CoolingState, IBinning, ICooling
 
 NS = f"urn:pyobs:state:ICooling:{ICooling.version}"
 
@@ -22,18 +22,18 @@ class TestDataclassToXml:
     """Test _dataclass_to_xml serialization."""
 
     def test_root_element_namespace(self) -> None:
-        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        state = CoolingState(setpoint=-20.0, power=65, enabled=True)
         xml = _dataclass_to_xml(state, NS)
         assert xml.tag == f"{{{NS}}}state"
 
     def test_field_count(self) -> None:
-        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        state = CoolingState(setpoint=-20.0, power=65, enabled=True)
         xml = _dataclass_to_xml(state, NS)
         # One child per dataclass field (setpoint, power, enabled + time)
-        assert len(xml) == len(dataclasses.fields(ICooling.State))
+        assert len(xml) == len(dataclasses.fields(CoolingState))
 
     def test_bool_true_serialized_as_boolean_element(self) -> None:
-        state = ICooling.State(setpoint=0.0, power=0, enabled=True)
+        state = CoolingState(setpoint=0.0, power=0, enabled=True)
         xml = _dataclass_to_xml(state, NS)
         enabled_elem = xml.find("enabled")
         assert enabled_elem is not None
@@ -42,7 +42,7 @@ class TestDataclassToXml:
         assert boolean_elem.text == "true"
 
     def test_bool_false_serialized_as_boolean_element(self) -> None:
-        state = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        state = CoolingState(setpoint=0.0, power=0, enabled=False)
         xml = _dataclass_to_xml(state, NS)
         enabled_elem = xml.find("enabled")
         assert enabled_elem is not None
@@ -50,7 +50,7 @@ class TestDataclassToXml:
         assert boolean_elem.text == "false"
 
     def test_float_serialized_as_double_element(self) -> None:
-        state = ICooling.State(setpoint=-25.5, power=0, enabled=False)
+        state = CoolingState(setpoint=-25.5, power=0, enabled=False)
         xml = _dataclass_to_xml(state, NS)
         setpoint_elem = xml.find("setpoint")
         assert setpoint_elem is not None
@@ -59,7 +59,7 @@ class TestDataclassToXml:
         assert float(double_elem.text) == pytest.approx(-25.5)
 
     def test_int_serialized_as_int_element(self) -> None:
-        state = ICooling.State(setpoint=0.0, power=75, enabled=False)
+        state = CoolingState(setpoint=0.0, power=75, enabled=False)
         xml = _dataclass_to_xml(state, NS)
         power_elem = xml.find("power")
         assert power_elem is not None
@@ -72,24 +72,24 @@ class TestXmlToDataclass:
     """Test _xml_to_dataclass deserialization."""
 
     def test_basic_roundtrip(self) -> None:
-        state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+        state = CoolingState(setpoint=-20.0, power=65, enabled=True)
         xml = _dataclass_to_xml(state, NS)
-        result = _xml_to_dataclass(xml, ICooling.State)
-        assert isinstance(result, ICooling.State)
+        result = _xml_to_dataclass(xml, CoolingState)
+        assert isinstance(result, CoolingState)
         assert result.setpoint == pytest.approx(-20.0)
         assert result.power == 65
         assert result.enabled is True
 
     def test_bool_false_roundtrip(self) -> None:
-        state = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        state = CoolingState(setpoint=0.0, power=0, enabled=False)
         xml = _dataclass_to_xml(state, NS)
-        result = _xml_to_dataclass(xml, ICooling.State)
+        result = _xml_to_dataclass(xml, CoolingState)
         assert result.enabled is False
 
     def test_correct_types_after_roundtrip(self) -> None:
-        state = ICooling.State(setpoint=25.0, power=100, enabled=True)
+        state = CoolingState(setpoint=25.0, power=100, enabled=True)
         xml = _dataclass_to_xml(state, NS)
-        result = _xml_to_dataclass(xml, ICooling.State)
+        result = _xml_to_dataclass(xml, CoolingState)
         assert isinstance(result.setpoint, float)
         assert isinstance(result.power, int)
         assert isinstance(result.enabled, bool)
@@ -101,11 +101,11 @@ class TestXmlToDataclass:
         xml.append(child)
         # power and enabled missing — should raise TypeError
         with pytest.raises(TypeError, match="missing.*required positional argument"):
-            _xml_to_dataclass(xml, ICooling.State)
+            _xml_to_dataclass(xml, CoolingState)
 
     def test_namespaced_children_deserialized(self) -> None:
         """ejabberd re-serializes children with parent namespace — must still deserialize."""
-        state = ICooling.State(setpoint=-30.0, power=80, enabled=True)
+        state = CoolingState(setpoint=-30.0, power=80, enabled=True)
         xml = _dataclass_to_xml(state, NS)
         # Simulate ejabberd namespace inheritance on vocabulary elements
         raw = ET.tostring(xml).decode()
@@ -113,7 +113,7 @@ class TestXmlToDataclass:
         raw = raw.replace("<int>", f'<int xmlns="{NS}">')
         raw = raw.replace("<boolean>", f'<boolean xmlns="{NS}">')
         reparsed = ET.fromstring(raw)
-        result = _xml_to_dataclass(reparsed, ICooling.State)
+        result = _xml_to_dataclass(reparsed, CoolingState)
         assert result.setpoint == pytest.approx(-30.0)
         assert result.power == 80
         assert result.enabled is True
@@ -123,26 +123,26 @@ class TestStateRoundTrip:
     """End-to-end serialization round-trips."""
 
     def test_cooling_state_roundtrip(self) -> None:
-        original = ICooling.State(setpoint=22.5, power=42, enabled=True)
+        original = CoolingState(setpoint=22.5, power=42, enabled=True)
         xml = _dataclass_to_xml(original, NS)
-        recovered = _xml_to_dataclass(xml, ICooling.State)
+        recovered = _xml_to_dataclass(xml, CoolingState)
         assert recovered.setpoint == pytest.approx(original.setpoint)
         assert recovered.power == original.power
         assert recovered.enabled == original.enabled
 
     def test_cooling_state_roundtrip_disabled(self) -> None:
-        original = ICooling.State(setpoint=0.0, power=0, enabled=False)
+        original = CoolingState(setpoint=0.0, power=0, enabled=False)
         xml = _dataclass_to_xml(original, NS)
-        recovered = _xml_to_dataclass(xml, ICooling.State)
+        recovered = _xml_to_dataclass(xml, CoolingState)
         assert recovered.setpoint == pytest.approx(0.0)
         assert recovered.power == 0
         assert recovered.enabled is False
 
     def test_binning_state_roundtrip(self) -> None:
         ns = f"urn:pyobs:state:IBinning:{IBinning.version}"
-        original = IBinning.State(x=2, y=4)
+        original = BinningState(x=2, y=4)
         xml = _dataclass_to_xml(original, ns)
-        recovered = _xml_to_dataclass(xml, IBinning.State)
+        recovered = _xml_to_dataclass(xml, BinningState)
         assert recovered.x == 2
         assert recovered.y == 4
 

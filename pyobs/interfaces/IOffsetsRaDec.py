@@ -9,17 +9,20 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class RaDecOffsetState:
+    ra: Annotated[float, Unit.DEGREES]
+    dec: Annotated[float, Unit.DEGREES]
+    time: Time = field(default_factory=Time.now)
+
+
 class IOffsetsRaDec(Interface, metaclass=ABCMeta):
     """The module supports RA/Dec offsets, usually combined with :class:`~pyobs.interfaces.ITelescope` and
     :class:`~pyobs.interfaces.IPointingRaDec`."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        ra: Annotated[float, Unit.DEGREES]
-        dec: Annotated[float, Unit.DEGREES]
-        time: Time = field(default_factory=Time.now)
+    state = RaDecOffsetState
 
     @abstractmethod
     async def set_offsets_radec(
@@ -37,4 +40,4 @@ class IOffsetsRaDec(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IOffsetsRaDec"]
+__all__ = ["IOffsetsRaDec", "RaDecOffsetState"]

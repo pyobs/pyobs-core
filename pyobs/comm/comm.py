@@ -438,19 +438,13 @@ class Comm:
     ) -> None:
         pass
 
-    @staticmethod
-    def _interface_from_state(state_cls: type) -> type:
-        outer_name = state_cls.__qualname__.rsplit(".", 1)[0]
-        return getattr(sys.modules[state_cls.__module__], outer_name)
-
-    async def set_state(self, state: Any) -> None:
+    async def set_state(self, interface: type[Interface], state: Any) -> None:
         """Publish state for this module.
 
         Args:
             interface: Interface type for the state.
             state: State object to publish.
         """
-        interface = Comm._interface_from_state(type(state))
         await self._set_state(interface, state)
 
     async def _set_state(self, interface: type[Interface], state: Any) -> None:

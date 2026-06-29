@@ -4,7 +4,7 @@ import importlib
 import inspect
 import os
 from types import ModuleType
-from typing import TextIO, Any
+from typing import Any, TextIO
 
 import pyobs.vfs
 
@@ -240,14 +240,14 @@ def write_index(
 
 
 def create_utils_rst() -> None:
-    import pyobs.utils.focusseries
-    import pyobs.utils.simulation
-    import pyobs.utils.enums
-    import pyobs.utils.time
-    import pyobs.utils.fits
-    import pyobs.utils.exceptions
-    import pyobs.utils.parallel
     import pyobs.robotic.utils.skyflats.priorities
+    import pyobs.utils.enums
+    import pyobs.utils.exceptions
+    import pyobs.utils.fits
+    import pyobs.utils.focusseries
+    import pyobs.utils.parallel
+    import pyobs.utils.simulation
+    import pyobs.utils.time
 
     # clean up
     os.system("rm -rf source/api/utils/*")
@@ -336,8 +336,8 @@ def create_image_processors_rst() -> None:
 
 if __name__ == "__main__":
     import pyobs.events
-    import pyobs.interfaces
     import pyobs.images
+    import pyobs.interfaces
 
     # command line parser
     parser = argparse.ArgumentParser()

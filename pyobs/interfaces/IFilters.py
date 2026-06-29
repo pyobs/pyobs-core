@@ -8,15 +8,18 @@ from ..utils.time import Time
 from .IMotion import IMotion
 
 
+@dataclass
+class FilterState:
+    filter: str
+    time: Time = field(default_factory=Time.now)
+
+
 class IFilters(IMotion, metaclass=ABCMeta):
     """The module can change filters in a device."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        filter: str
-        time: Time = field(default_factory=Time.now)
+    state = FilterState
 
     @dataclass
     class Capabilities:
@@ -36,4 +39,4 @@ class IFilters(IMotion, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IFilters"]
+__all__ = ["IFilters", "FilterState"]

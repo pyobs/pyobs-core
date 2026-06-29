@@ -10,21 +10,25 @@ from ..utils.time import Time
 from .IReady import IReady
 
 
+@dataclass
+class DeviceMotionStatus:
+    name: str
+    status: MotionStatus
+
+
+@dataclass
+class MotionState:
+    status: MotionStatus
+    devices: list[DeviceMotionStatus] = field(default_factory=list)
+    time: Time = field(default_factory=Time.now)
+
+
 class IMotion(IReady, metaclass=ABCMeta):
     """The module controls a device that can move."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class DeviceMotionStatus:
-        name: str
-        status: MotionStatus
-
-    @dataclass
-    class State:
-        status: MotionStatus
-        devices: list[IMotion.DeviceMotionStatus] = field(default_factory=list)
-        time: Time = field(default_factory=Time.now)
+    state = MotionState
 
     @abstractmethod
     async def init(self, **kwargs: Any) -> None:
@@ -54,4 +58,4 @@ class IMotion(IReady, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IMotion"]
+__all__ = ["IMotion", "DeviceMotionStatus", "MotionState"]

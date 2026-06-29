@@ -8,19 +8,22 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class ModeState:
+    modes: dict[str, str] = field(default_factory=dict)  # group -> current mode
+    time: Time = field(default_factory=Time.now)
+
+
 class IMode(Interface, metaclass=ABCMeta):
     """The module can change modes in a device."""
 
     __module__ = "pyobs.interfaces"
 
+    state = ModeState
+
     @dataclass
     class Capabilities:
         modes: dict[str, list[str]] = field(default_factory=dict)  # group -> list of modes
-
-    @dataclass
-    class State:
-        modes: dict[str, str] = field(default_factory=dict)  # group -> current mode
-        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
@@ -37,4 +40,4 @@ class IMode(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IMode"]
+__all__ = ["IMode", "ModeState"]

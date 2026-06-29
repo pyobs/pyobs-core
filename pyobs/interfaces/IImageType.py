@@ -10,15 +10,18 @@ from ..utils.time import Time
 from .interface import Interface
 
 
+@dataclass
+class ImageTypeState:
+    image_type: ImageType
+    time: Time = field(default_factory=Time.now)
+
+
 class IImageType(Interface, metaclass=ABCMeta):
     """The module supports different image types (e.g. object, bias, dark, etc), mainly used by cameras."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class State:
-        image_type: ImageType
-        time: Time = field(default_factory=Time.now)
+    state = ImageTypeState
 
     @abstractmethod
     async def set_image_type(self, image_type: ImageType, **kwargs: Any) -> None:
@@ -30,4 +33,4 @@ class IImageType(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IImageType"]
+__all__ = ["IImageType", "ImageTypeState"]

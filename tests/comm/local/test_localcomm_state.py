@@ -6,7 +6,7 @@ import pytest
 
 from pyobs.comm.local.localcomm import LocalComm
 from pyobs.comm.local.localnetwork import LocalNetwork
-from pyobs.interfaces import ICooling, IModule, IWindow
+from pyobs.interfaces import CoolingState, ICooling, IModule, IWindow, WindowState
 from pyobs.utils.enums import ModuleState
 
 
@@ -27,7 +27,7 @@ async def test_set_and_get_state() -> None:
     received = []
     await observer._subscribe_state("camera", ICooling, received.append)
 
-    state = ICooling.State(setpoint=-20.0, power=65, enabled=True)
+    state = CoolingState(setpoint=-20.0, power=65, enabled=True)
     await camera._set_state(ICooling, state)
 
     assert len(received) == 1
@@ -42,7 +42,7 @@ async def test_subscribe_delivers_current_value() -> None:
     observer = LocalComm("observer")
 
     # Camera publishes first
-    state = ICooling.State(setpoint=-10.0, power=80, enabled=True)
+    state = CoolingState(setpoint=-10.0, power=80, enabled=True)
     await camera._set_state(ICooling, state)
 
     # Observer subscribes later — should get current value
@@ -158,7 +158,7 @@ async def test_iwindow_capabilities_roundtrip() -> None:
     camera = LocalComm("camera")
     observer = LocalComm("observer")
 
-    caps = IWindow.Capabilities(full_frame=IWindow.State(x=0, y=0, width=4096, height=4096))
+    caps = IWindow.Capabilities(full_frame=WindowState(x=0, y=0, width=4096, height=4096))
     await camera._set_capabilities(IWindow, caps)
 
     result = await observer._get_capabilities("camera", IWindow)

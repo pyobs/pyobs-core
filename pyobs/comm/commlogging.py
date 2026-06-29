@@ -36,7 +36,10 @@ class CommLoggingHandler(logging.Handler):
 
         # create and send event
         time = datetime.fromtimestamp(rec.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
-        entry = LogEvent(time, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg)
+        sender = getattr(rec, "pyobs_module", "") or ""
+        entry = LogEvent(
+            time, rec.levelname, os.path.basename(rec.pathname), rec.funcName, rec.lineno, msg, sender=sender
+        )
         self._comm.log_message(entry)
 
 

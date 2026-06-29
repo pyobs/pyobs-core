@@ -61,9 +61,14 @@ class LocalComm(Comm):
 
     async def send_event(self, event: Event) -> None:
         """Send an event to other clients."""
+        from pyobs.events import LogEvent as _LogEvent
+
+        sender = self.name
+        if isinstance(event, _LogEvent) and event.sender:
+            sender = event.sender
         remote_clients = self._network.get_clients()
         for client in remote_clients:
-            client._send_event_to_module(event, self.name)
+            client._send_event_to_module(event, sender)
 
     async def _register_events(
         self, events: list[type[Event]], handler: Callable[[Event, str], Coroutine[Any, Any, bool]] | None = None

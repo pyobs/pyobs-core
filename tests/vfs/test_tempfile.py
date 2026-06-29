@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 from pyobs.vfs import TempFile

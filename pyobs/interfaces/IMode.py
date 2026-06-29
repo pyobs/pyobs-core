@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
+from ..utils.time import Time
 from .interface import Interface
 
 
@@ -11,26 +13,14 @@ class IMode(Interface, metaclass=ABCMeta):
 
     __module__ = "pyobs.interfaces"
 
-    async def list_mode_groups(self) -> list[str]:
-        """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
-        methods.
+    @dataclass
+    class Capabilities:
+        modes: dict[str, list[str]] = field(default_factory=dict)  # group -> list of modes
 
-        Returns:
-            List of names of mode groups.
-        """
-        return []
-
-    @abstractmethod
-    async def list_modes(self, group: int = 0, **kwargs: Any) -> list[str]:
-        """List available modes.
-
-        Args:
-            group: Group number
-
-        Returns:
-            List of available modes.
-        """
-        ...
+    @dataclass
+    class State:
+        modes: dict[str, str] = field(default_factory=dict)  # group -> current mode
+        time: Time = field(default_factory=Time.now)
 
     @abstractmethod
     async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
@@ -43,18 +33,6 @@ class IMode(Interface, metaclass=ABCMeta):
         Raises:
             ValueError: If an invalid mode was given.
             MoveError: If mode selector cannot be moved.
-        """
-        ...
-
-    @abstractmethod
-    async def get_mode(self, group: int = 0, **kwargs: Any) -> str:
-        """Get currently set mode.
-
-        Args:
-            group: Group number
-
-        Returns:
-            Name of currently set mode.
         """
         ...
 

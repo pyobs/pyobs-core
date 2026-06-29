@@ -1,25 +1,25 @@
 import enum
-from types import NoneType
-from typing import get_type_hints, Any, get_origin, get_args, Union
 import inspect
+from types import NoneType
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from pyobs import interfaces
 
 
 def hint_to_ts(hint: Any) -> str:
-    if hint == int or hint == float:
+    if hint is int or hint is float:
         return "number"
     if hint is NoneType:
         return "void"
-    if hint == str:
+    if hint is str:
         return "string"
-    if hint == bool:
+    if hint is bool:
         return "boolean"
     if hint is Any:
         return "any"
-    if get_origin(hint) == tuple or get_origin(hint) == list:
+    if get_origin(hint) is tuple or get_origin(hint) is list:
         return "[" + ", ".join([hint_to_ts(h) for h in get_args(hint)]) + "]"
-    if get_origin(hint) == dict:
+    if get_origin(hint) is dict:
         args = get_args(hint)
         return "{" + hint_to_ts(args[0]) + ": " + hint_to_ts(args[1]) + "}"
     if get_origin(hint) is Union:

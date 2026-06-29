@@ -3,7 +3,6 @@ from aioresponses import aioresponses
 
 from pyobs.vfs import HttpFile
 
-
 uploaded = None
 
 

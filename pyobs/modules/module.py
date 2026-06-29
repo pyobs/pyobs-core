@@ -137,6 +137,7 @@ class Module(Object, IModule, IConfig):
 
         # close
         self._closing = asyncio.Event()
+        self._quit_parent: Callable[[], None] | None = None  # set by MultiModule
 
     async def open(self) -> None:
         # open comm
@@ -151,8 +152,7 @@ class Module(Object, IModule, IConfig):
         """Open module."""
         await Object.open(self)
 
-        # publish base capabilities — subclasses call set_capabilities() for their
-        # interface-specific caps before calling super().open()
+        # publish base capabilities
         if self._comm is not None:
             await self._comm.set_capabilities(
                 IModule.Capabilities(
@@ -203,12 +203,10 @@ class Module(Object, IModule, IConfig):
         if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
             return False
 
-        # get capabilities and version
+        # get proxy and version
         try:
-            caps = await self.comm.get_capabilities(sender, IModule)
-            if caps is None:
-                return True
-            module_version = caps.version
+            async with self.proxy(sender, IModule) as proxy:
+                module_version = await proxy.get_version()
         except exc.RemoteError:
             return True
 
@@ -269,7 +267,10 @@ class Module(Object, IModule, IConfig):
     def quit(self) -> None:
         """Quit module."""
         self._closing.set()
-        asyncio.get_running_loop().stop()
+        if self._quit_parent is not None:
+            self._quit_parent()
+        else:
+            asyncio.get_running_loop().stop()
 
     async def execute(self, method: str, *args: Any, **kwargs: Any) -> Any:
         """Execute a local method safely with type conversion
@@ -316,7 +317,12 @@ class Module(Object, IModule, IConfig):
         # cast to types requested by method
         cast_bound_arguments_to_real(ba, type_hints, self.comm.cast_to_real_pre, self.comm.cast_to_real_post)
 
-        # call method
+        # call method — set module name context var so log messages from RPC calls
+        # carry the correct module name rather than the caller's context
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
+        _module_name_var.set(self._device_name or "")
+
         try:
             response = await func(*func_args, **ba.arguments, **func_kwargs)
         except Exception as e:
@@ -383,6 +389,15 @@ class Module(Object, IModule, IConfig):
             hasattr(self, "_set_config_" + name),
             hasattr(self, "_get_config_options_" + name),
         )
+
+    async def get_config_caps(self, **kwargs: Any) -> dict[str, tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
+
+        Returns:
+            Dict with config caps
+        """
+        return self._config_caps
 
     async def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
@@ -468,9 +483,9 @@ class Module(Object, IModule, IConfig):
         if error_string is not None:
             self.set_error_string(error_string)
 
-        # push presence automatically — no module author involvement required
+        # publish presence
         if self._comm is not None:
-            await self._comm.set_presence(state, self._error_string)
+            await self._comm.set_presence(state, error_string if error_string is not None else self._error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""
@@ -545,6 +560,11 @@ class MultiModule(Module):
                 # dictionary, create it
                 self._modules[name] = self.add_child_object(mod, None, **self._shared, copy_comm=False)
 
+        # register ourselves as quit parent on each child so any child quitting
+        # propagates to the MultiModule
+        for mod in self._modules.values():
+            mod._quit_parent = self.quit
+
     @property
     def modules(self) -> dict[str, Module]:
         return self._modules
@@ -573,10 +593,18 @@ class MultiModule(Module):
                 else:
                     obj.open()
 
-        # spawn each sub-module as its own task
+        # spawn each sub-module as its own task, each with a fresh context
+        # so that module_name ContextVar is isolated per module from the start
+        from contextvars import copy_context
+
+        from pyobs.utils.logging.context import module_name as _module_name_var
+
         self._module_tasks: list[asyncio.Task[None]] = []
         for name, mod in self._modules.items():
-            task = asyncio.create_task(self._run_module(name, mod), name=f"pyobs.module.{name}")
+            # create a fresh context for each module with module_name pre-set
+            ctx = copy_context()
+            ctx.run(_module_name_var.set, name)
+            task = asyncio.create_task(self._run_module(name, mod), name=f"pyobs.module.{name}", context=ctx)
             self._module_tasks.append(task)
 
         self._opened = True
@@ -621,7 +649,10 @@ class MultiModule(Module):
 
     def quit(self) -> None:
         """Quit all sub-modules."""
+        # temporarily clear _quit_parent on children to avoid recursion
+        # (children would otherwise call back into this method)
         for mod in self._modules.values():
+            mod._quit_parent = None
             mod.quit()
         super().quit()
 

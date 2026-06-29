@@ -44,31 +44,15 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
             await self.comm.register_event(ModeChangedEvent)
             await self.comm.set_state(IReady.State(ready=True))
 
-    async def list_mode_groups(self, **kwargs: Any) -> list[str]:
-        """List names of mode groups that can be set. The index is used as the `group` parameter in the individual
-        methods.
-
-        Returns:
-            List of names of mode groups.
-        """
-        return list(self._mode_options.keys())
+        # publish capabilities and initial state
+        await self.comm.set_capabilities(IMode.Capabilities(modes=self._mode_options))
+        await self.comm.set_state(IMode.State(modes=dict(self._modes)))
 
     def _group_name(self, group: int) -> str:
         try:
             return list(self._mode_options.keys())[group]
         except IndexError:
             return ""
-
-    async def list_modes(self, group: int = 0, **kwargs: Any) -> list[str]:
-        """List available modes.
-
-        Args:
-            group: Group number
-
-        Returns:
-            List of available modes.
-        """
-        return self._mode_options[self._group_name(group)]
 
     async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
         """Set the current mode.
@@ -86,17 +70,7 @@ class DummyMode(MotionStatusMixin, Module, IMode, IMotion):
         self._modes[self._group_name(group)] = mode
         await self._change_motion_status(MotionStatus.POSITIONED)
         await self.comm.send_event(ModeChangedEvent(list(self._mode_options.keys())[group], mode))
-
-    async def get_mode(self, group: int = 0, **kwargs: Any) -> str:
-        """Get currently set mode.
-
-        Args:
-            group: Group number
-
-        Returns:
-            Name of currently set mode.
-        """
-        return self._modes[self._group_name(group)]
+        await self.comm.set_state(IMode.State(modes=dict(self._modes)))
 
     async def init(self, **kwargs: Any) -> None:
         pass

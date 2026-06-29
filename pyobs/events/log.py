@@ -3,13 +3,14 @@ from typing import Any, TypedDict
 from pyobs.events.event import Event
 
 
-class DataType(TypedDict):
+class DataType(TypedDict, total=False):
     time: str
     level: str
     filename: str
     function: str
     line: int
     message: str
+    sender: str
 
 
 class LogEvent(Event):
@@ -17,7 +18,17 @@ class LogEvent(Event):
 
     __module__ = "pyobs.events"
 
-    def __init__(self, time: str, level: str, filename: str, function: str, line: int, message: str, **kwargs: Any):
+    def __init__(
+        self,
+        time: str,
+        level: str,
+        filename: str,
+        function: str,
+        line: int,
+        message: str,
+        sender: str = "",
+        **kwargs: Any,
+    ):
         Event.__init__(self)
         self.data: DataType = {
             "time": time,
@@ -26,7 +37,12 @@ class LogEvent(Event):
             "function": function,
             "line": line,
             "message": message,
+            "sender": sender,
         }
+
+    @property
+    def sender(self) -> str:
+        return str(self.data.get("sender", ""))
 
     @property
     def time(self) -> str:

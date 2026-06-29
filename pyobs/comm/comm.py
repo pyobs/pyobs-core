@@ -67,9 +67,14 @@ class Comm:
         """Open module."""
 
         # add handler to global logger
-        handler = CommLoggingHandler(self)
-        handler.setLevel(logging.INFO)
-        logging.getLogger().addHandler(handler)
+        root_logger = logging.getLogger()
+        if not any(isinstance(h, CommLoggingHandler) for h in root_logger.handlers):
+            from pyobs.utils.logging.context import ModuleNameFilter
+
+            handler = CommLoggingHandler(self)
+            handler.setLevel(logging.INFO)
+            handler.addFilter(ModuleNameFilter())
+            root_logger.addHandler(handler)
 
         # start logging thread
         self._logging_task = asyncio.create_task(self._logging())

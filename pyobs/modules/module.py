@@ -151,23 +151,6 @@ class Module(Object, IModule, IConfig):
         """Open module."""
         await Object.open(self)
 
-        # publish base capabilities — subclasses call set_capabilities() for their
-        # interface-specific caps before calling super().open()
-        if self._comm is not None:
-            await self._comm.set_capabilities(
-                IModule.Capabilities(
-                    version=await self.get_version(),
-                    label=await self.get_label(),
-                )
-            )
-            await self._comm.set_capabilities(
-                IConfig.Capabilities(
-                    readable=[n for n, (r, w, o) in self._config_caps.items() if r],
-                    writable=[n for n, (r, w, o) in self._config_caps.items() if w],
-                    options={n: [] for n, (r, w, o) in self._config_caps.items() if o},
-                )
-            )
-
     async def close(self) -> None:
         """Close module."""
         await Object.close(self)
@@ -203,12 +186,10 @@ class Module(Object, IModule, IConfig):
         if sender == self.comm.name or not isinstance(event, ModuleOpenedEvent):
             return False
 
-        # get capabilities and version
+        # get proxy and version
         try:
-            caps = await self.comm.get_capabilities(sender, IModule)
-            if caps is None:
-                return True
-            module_version = caps.version
+            async with self.proxy(sender, IModule) as proxy:
+                module_version = await proxy.get_version()
         except exc.RemoteError:
             return True
 
@@ -384,6 +365,15 @@ class Module(Object, IModule, IConfig):
             hasattr(self, "_get_config_options_" + name),
         )
 
+    async def get_config_caps(self, **kwargs: Any) -> dict[str, tuple[bool, bool, bool]]:
+        """Returns dict of all config capabilities. First value is whether it has a getter, second is for the setter,
+        third is for a list of possible options..
+
+        Returns:
+            Dict with config caps
+        """
+        return self._config_caps
+
     async def get_config_value(self, name: str, **kwargs: Any) -> Any:
         """Returns current value of config item with given name.
 
@@ -467,10 +457,6 @@ class Module(Object, IModule, IConfig):
         self._state = state
         if error_string is not None:
             self.set_error_string(error_string)
-
-        # push presence automatically — no module author involvement required
-        if self._comm is not None:
-            await self._comm.set_presence(state, self._error_string)
 
     async def get_state(self, **kwargs: Any) -> ModuleState:
         """Returns current state of module."""

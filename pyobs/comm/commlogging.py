@@ -34,7 +34,7 @@ class CommLoggingHandler(logging.Handler):
         # format message
         msg = self._formatter.format(rec)  # noqa: UP031
 
-        # create and send event
+        # create and send event — use pyobs_module if set (MultiModule context)
         time = datetime.fromtimestamp(rec.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
         sender = getattr(rec, "pyobs_module", "") or ""
         entry = LogEvent(

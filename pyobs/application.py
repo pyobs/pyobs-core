@@ -19,6 +19,26 @@ from pyobs.utils.logging.context import ModuleNameFilter
 log = logging.getLogger(__name__)
 
 
+# --- IERS offline fallback ---------------------------------------------
+# When PYOBS_IERS_OFFLINE=1, skip live IERS/USNO downloads and rely on the
+# astropy-iers-data snapshot bundled with the installed astropy package.
+# Useful when the upstream IERS servers are down/unreachable, or when
+# running on a telescope control machine without outbound internet access.
+if os.environ.get("PYOBS_IERS_OFFLINE", "").lower() in ("1", "true", "yes"):
+    from astropy.utils.iers import conf as iers_conf
+
+    iers_conf.auto_download = False
+    iers_conf.auto_max_age = None
+    iers_conf.iers_degraded_accuracy = "warn"
+
+    log.warning(
+        "PYOBS_IERS_OFFLINE is set — disabling IERS auto-download and "
+        "relying on the bundled astropy-iers-data snapshot. Earth "
+        "orientation/UT1-UTC accuracy may degrade for predictions far "
+        "from the snapshot date."
+    )
+# -------------------------------------------------------------------------
+
 # turn RuntimeWarnings into errors
 warnings.filterwarnings("error", category=RuntimeWarning)
 

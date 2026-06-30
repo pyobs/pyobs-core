@@ -30,9 +30,13 @@ def make_camera(
     if supports_imagetype:
         interfaces.append(IImageType)
 
+    from pyobs.interfaces.IWindow import WindowCapabilities
+
     camera = MagicMock(spec=interfaces)
     camera.set_binning = AsyncMock()
-    camera.get_full_frame = AsyncMock(return_value=(0, 0, 1024, 1024))
+    camera.get_capabilities = MagicMock(
+        return_value=WindowCapabilities(full_frame_x=0, full_frame_y=0, full_frame_width=1024, full_frame_height=1024)
+    )
     camera.set_window = AsyncMock()
     camera.set_exposure_time = AsyncMock()
     camera.set_image_type = AsyncMock()
@@ -149,7 +153,7 @@ async def test_sets_full_frame_when_window_supported() -> None:
     setup_run_comm(script, camera)
 
     await script.run(None)
-    camera.get_full_frame.assert_called_once()
+    camera.get_capabilities.assert_called_once()
     camera.set_window.assert_called_once_with(0, 0, 1024, 1024)
 
 

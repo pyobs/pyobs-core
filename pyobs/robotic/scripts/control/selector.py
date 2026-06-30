@@ -31,7 +31,7 @@ class SelectorScript(Script):
             self._cant_run_reason = "No selector found."
             return False
         async with self.comm.proxy(self.selector, IMotion) as selector:
-            motion_state = await selector.wait_for_state(IMotion, timeout=5.0)  # type: ignore[attr-defined]
+            motion_state = await selector.wait_for_state(IMotion, timeout=5.0)
             status = motion_state.status if motion_state is not None else MotionStatus.UNKNOWN
             if status == MotionStatus.PARKED or status == MotionStatus.POSITIONED:
                 self._cant_run_reason = None

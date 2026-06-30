@@ -19,5 +19,9 @@ class Interface(metaclass=ABCMeta):
         """Return the capabilities for the given interface, or None."""
         return None
 
+    async def wait_for_state(self, interface: "type[Interface]", timeout: float = 10.0) -> Any | None:
+        """Return state immediately if available, otherwise wait for the first update."""
+        return None
+
 
 __all__ = ["Interface"]

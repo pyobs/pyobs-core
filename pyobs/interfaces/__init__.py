@@ -64,8 +64,6 @@ from .IWindow import IWindow, WindowCapabilities, WindowState
 __all__ = [
     "IAbortable",
     "IAcquisition",
-    "ILatLon",
-    "LatLonCapabilities",
     "IAutoFocus",
     "IAutoGuiding",
     "IAutonomous",

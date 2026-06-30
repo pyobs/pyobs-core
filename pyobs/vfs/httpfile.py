@@ -43,7 +43,7 @@ class HttpFile(BufferedFile):
         """
 
         # init
-        io.RawIOBase.__init__(self)
+        io.RawIOBase.__init__(self)  # type: ignore[arg-type]
         BufferedFile.__init__(self)
         self._verify_tls = verify_tls
         self._timeout = aiohttp.ClientTimeout(total=timeout)

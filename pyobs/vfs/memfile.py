@@ -21,7 +21,7 @@ class MemoryFile(BufferedFile):
         """
 
         # init
-        io.RawIOBase.__init__(self)
+        io.RawIOBase.__init__(self)  # type: ignore[arg-type]
         BufferedFile.__init__(self)
 
         # store

@@ -14,16 +14,18 @@ class ModeState:
     time: Time = field(default_factory=Time.now)
 
 
+@dataclass
+class ModeCapabilities:
+    modes: dict[str, list[str]] = field(default_factory=dict)  # group -> list of modes
+
+
 class IMode(Interface, metaclass=ABCMeta):
     """The module can change modes in a device."""
 
     __module__ = "pyobs.interfaces"
 
     state = ModeState
-
-    @dataclass
-    class Capabilities:
-        modes: dict[str, list[str]] = field(default_factory=dict)  # group -> list of modes
+    capabilities = ModeCapabilities
 
     @abstractmethod
     async def set_mode(self, mode: str, group: int = 0, **kwargs: Any) -> None:
@@ -40,4 +42,4 @@ class IMode(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IMode", "ModeState"]
+__all__ = ["IMode", "ModeState", "ModeCapabilities"]

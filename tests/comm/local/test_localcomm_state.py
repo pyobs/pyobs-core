@@ -6,7 +6,7 @@ import pytest
 
 from pyobs.comm.local.localcomm import LocalComm
 from pyobs.comm.local.localnetwork import LocalNetwork
-from pyobs.interfaces import CoolingState, ICooling, IModule, IWindow, WindowState
+from pyobs.interfaces import CoolingState, ICooling, IModule, IWindow, ModuleCapabilities, WindowCapabilities
 from pyobs.utils.enums import ModuleState
 
 
@@ -59,12 +59,12 @@ async def test_set_and_get_capabilities() -> None:
     camera = LocalComm("camera")
     observer = LocalComm("observer")
 
-    caps = IModule.Capabilities(version="2.0.0", label="Test Camera")
+    caps = ModuleCapabilities(version="2.0.0", label="Test Camera")
     await camera._set_capabilities(IModule, caps)
 
     result = await observer._get_capabilities("camera", IModule)
     assert result is not None
-    assert isinstance(result, IModule.Capabilities)
+    assert isinstance(result, ModuleCapabilities)
     assert result.version == "2.0.0"
     assert result.label == "Test Camera"
 
@@ -154,14 +154,14 @@ async def test_subscribe_presence_multiple_callbacks() -> None:
 
 @pytest.mark.asyncio
 async def test_iwindow_capabilities_roundtrip() -> None:
-    """IWindow.Capabilities round-trips through LocalComm."""
+    """WindowCapabilities round-trips through LocalComm."""
     camera = LocalComm("camera")
     observer = LocalComm("observer")
 
-    caps = IWindow.Capabilities(full_frame=WindowState(x=0, y=0, width=4096, height=4096))
+    caps = WindowCapabilities(full_frame_x=0, full_frame_y=0, full_frame_width=4096, full_frame_height=4096)
     await camera._set_capabilities(IWindow, caps)
 
     result = await observer._get_capabilities("camera", IWindow)
     assert result is not None
-    assert result.full_frame.width == 4096
-    assert result.full_frame.height == 4096
+    assert result.full_frame_width == 4096
+    assert result.full_frame_height == 4096

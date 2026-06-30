@@ -15,16 +15,18 @@ class BinningState:
     time: Time = field(default_factory=Time.now)
 
 
+@dataclass
+class BinningCapabilities:
+    binnings: list[BinningState] = field(default_factory=list)
+
+
 class IBinning(Interface, metaclass=ABCMeta):
     """The camera supports binning, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
 
     state = BinningState
-
-    @dataclass
-    class Capabilities:
-        binnings: list[BinningState] = field(default_factory=list)
+    capabilities = BinningCapabilities
 
     @abstractmethod
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
@@ -40,4 +42,4 @@ class IBinning(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IBinning", "BinningState"]
+__all__ = ["IBinning", "BinningState", "BinningCapabilities"]

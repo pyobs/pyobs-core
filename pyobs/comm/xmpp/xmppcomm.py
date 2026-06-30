@@ -828,7 +828,7 @@ class XmppComm(Comm):
 
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
         """Fetch and deserialize capabilities for a remote module's interface."""
-        if not hasattr(interface, "Capabilities"):
+        if interface.capabilities is None:
             return None
         # Use full JID (with resource) if we know it — bare JID may not route correctly
         full_jid = next(
@@ -848,7 +848,7 @@ class XmppComm(Comm):
             for elem in child:
                 tag = elem.tag.split("}")[-1]
                 if tag == "capabilities" and f"{{{ns}}}" in elem.tag:
-                    return _xml_to_dataclass(elem, interface.Capabilities)
+                    return _xml_to_dataclass(elem, interface.capabilities)
         return None
 
     async def _set_presence(self, state: ModuleState, error_string: str = "") -> None:

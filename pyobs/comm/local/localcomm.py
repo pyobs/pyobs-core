@@ -120,7 +120,7 @@ class LocalComm(Comm):
 
     async def _get_capabilities(self, module: str, interface: type[Interface]) -> Any | None:
         """Fetch capabilities from a remote module."""
-        if not hasattr(interface, "Capabilities"):
+        if interface.capabilities is None:
             return None
         try:
             remote = self._network.get_client(module)

@@ -7,15 +7,18 @@ from typing import Any
 from .interface import Interface
 
 
+@dataclass
+class ModuleCapabilities:
+    label: str = ""
+    version: str = ""
+
+
 class IModule(Interface, metaclass=ABCMeta):
     """The module is actually a module. Implemented by all modules."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class Capabilities:
-        version: str = ""
-        label: str = ""
+    capabilities = ModuleCapabilities
 
     @abstractmethod
     async def reset_error(self, **kwargs: Any) -> bool:
@@ -23,4 +26,4 @@ class IModule(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IModule"]
+__all__ = ["IModule", "ModuleCapabilities"]

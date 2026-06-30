@@ -7,16 +7,17 @@ from typing import Any
 from .interface import Interface
 
 
+@dataclass
+class ConfigCapabilities:
+    caps: dict[str, tuple[bool, bool, bool]] = field(default_factory=dict)
+
+
 class IConfig(Interface, metaclass=ABCMeta):
     """The module allows access to some of its configuration options."""
 
     __module__ = "pyobs.interfaces"
 
-    @dataclass
-    class Capabilities:
-        readable: list[str] = field(default_factory=list)
-        writable: list[str] = field(default_factory=list)
-        options: dict[str, list[str]] = field(default_factory=dict)
+    capabilities = ConfigCapabilities
 
     @abstractmethod
     async def get_config_value(self, name: str, **kwargs: Any) -> Any:
@@ -47,4 +48,4 @@ class IConfig(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IConfig"]
+__all__ = ["IConfig", "ConfigCapabilities"]

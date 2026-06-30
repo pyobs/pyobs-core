@@ -14,16 +14,18 @@ class FilterState:
     time: Time = field(default_factory=Time.now)
 
 
+@dataclass
+class FiltersCapabilities:
+    filters: list[str] = field(default_factory=list)
+
+
 class IFilters(IMotion, metaclass=ABCMeta):
     """The module can change filters in a device."""
 
     __module__ = "pyobs.interfaces"
 
     state = FilterState
-
-    @dataclass
-    class Capabilities:
-        filters: list[str] = field(default_factory=list)
+    capabilities = FiltersCapabilities
 
     @abstractmethod
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
@@ -39,4 +41,4 @@ class IFilters(IMotion, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IFilters", "FilterState"]
+__all__ = ["IFilters", "FilterState", "FiltersCapabilities"]

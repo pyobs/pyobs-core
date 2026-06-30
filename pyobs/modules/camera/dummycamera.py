@@ -18,6 +18,7 @@ from photutils.datasets import make_model_image, make_noise_image
 
 from pyobs.images import Image
 from pyobs.interfaces import (
+    BinningCapabilities,
     BinningState,
     CoolingState,
     GainState,
@@ -25,6 +26,7 @@ from pyobs.interfaces import (
     ICooling,
     IGain,
     IImageFormat,
+    ImageFormatCapabilities,
     ImageFormatState,
     IPointingRaDec,
     ITemperatures,
@@ -32,6 +34,7 @@ from pyobs.interfaces import (
     RaDecState,
     SensorReading,
     TemperaturesState,
+    WindowCapabilities,
     WindowState,
 )
 from pyobs.modules.camera.basecamera import BaseCamera
@@ -121,11 +124,22 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
     async def open(self) -> None:
         """Opens camera."""
         # publish capabilities before super().open()
-        await self.comm.set_capabilities(IWindow.Capabilities(full_frame=WindowState(*self._full_frame)))
         await self.comm.set_capabilities(
-            IBinning.Capabilities(binnings=[BinningState(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]])
+            IWindow,
+            WindowCapabilities(
+                full_frame_x=self._full_frame[0],
+                full_frame_y=self._full_frame[1],
+                full_frame_width=self._full_frame[2],
+                full_frame_height=self._full_frame[3],
+            ),
         )
-        await self.comm.set_capabilities(IImageFormat.Capabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16]))
+        await self.comm.set_capabilities(
+            IBinning,
+            BinningCapabilities(binnings=[BinningState(x=i[0], y=i[1]) for i in [(1, 1), (2, 2), (3, 3)]]),
+        )
+        await self.comm.set_capabilities(
+            IImageFormat, ImageFormatCapabilities(image_formats=[ImageFormat.INT8, ImageFormat.INT16])
+        )
 
         await BaseCamera.open(self)
 

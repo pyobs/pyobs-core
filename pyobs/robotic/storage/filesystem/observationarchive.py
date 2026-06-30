@@ -97,9 +97,9 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
             return
         with self._lock:
             time = observations[0].start
-            schedule = await self._load_observations(time)
+            schedule = await self._load_observations(time)  # type: ignore[arg-type]
             schedule += observations
-            await self._save_observations(time, schedule)
+            await self._save_observations(time, schedule)  # type: ignore[arg-type]
 
     async def clear_schedule(self, start_time: Time) -> None:
         """Clear schedule after given start time.
@@ -192,14 +192,14 @@ class FileSystemObservationArchive(ObservationArchive, metaclass=abc.ABCMeta):
         """
 
         with self._lock:
-            observations = await self._load_observations(observation.start)
+            observations = await self._load_observations(observation.start)  # type: ignore[arg-type]
             for i in range(len(observations)):
                 if observations[i].id == observation.id:
                     observations[i] = observation
                     break
             else:
                 observations.append(observation)
-            await self._save_observations(observation.start, observations)
+            await self._save_observations(observation.start, observations)  # type: ignore[arg-type]
 
     async def get_observations(
         self,

@@ -40,7 +40,7 @@ class BaseModel(PydanticBaseModel, PrivateAttrMixin):
         return self
 
 
-class PolymorphicBaseModel(BaseModel, metaclass=ABCMeta):
+class PolymorphicBaseModel(BaseModel, metaclass=ABCMeta):  # type: ignore[misc]
     """Pydantic base model for pyobs sub classes that need to be serialized."""
 
     @model_serializer(mode="wrap")

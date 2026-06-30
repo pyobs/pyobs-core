@@ -94,7 +94,7 @@ class FlatFielder(Object):
         self._callback = callback
 
         # parse function
-        self._eval = ExpTimeEval(self._observer, functions)
+        self._eval = ExpTimeEval(self._observer, functions)  # type: ignore[arg-type]
 
         # abort event
         self._abort = asyncio.Event()
@@ -293,8 +293,11 @@ class FlatFielder(Object):
         # set full frame
         async with self.safe_proxy(camera, IWindow) as cam:
             if cam is not None:
-                full_frame = await cam.get_full_frame()
-                await cam.set_window(*full_frame)
+                cap = cam.get_capabilities(IWindow)
+                if cap is not None:
+                    await cam.set_window(
+                        cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height
+                    )
 
         # take image
         async with self.safe_proxy(camera, IExposureTime) as cam:
@@ -433,7 +436,12 @@ class FlatFielder(Object):
         async with self.safe_proxy(camera, IWindow) as cam:
             if cam is not None:
                 # get full frame
-                left, top, width, height = await cam.get_full_frame()
+                cap = cam.get_capabilities(IWindow)
+                left, top, width, height = (
+                    (cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height)
+                    if cap is not None
+                    else (0, 0, 0, 0)
+                )
 
                 # if testing, take test frame, otherwise use full frame
                 if testing:

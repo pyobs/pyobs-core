@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 class ExpTimeEval:
     """Exposure time evaluator for skyflats."""
 
-    def __init__(self, observer: Observer, functions: str | dict[str, str | dict[str, str]]):
+    def __init__(self, observer: Observer | None, functions: str | dict[str, str | dict[str, str]]):
         """Initializes a new evaluator.
 
         Args:
@@ -98,7 +98,7 @@ class ExpTimeEval:
         keys = list(set([k[i] for k in self._functions.keys()]))
         if None in keys:
             keys.remove(None)
-        return sorted(keys)
+        return sorted(keys)  # type: ignore[type-var]
 
     @property
     def binnings(self) -> list[tuple[int, int]]:
@@ -146,8 +146,8 @@ class ExpTimeEval:
         self._time = time
 
         # get sun now and in 10 minutes
-        sun_now = self._observer.sun_altaz(time)
-        sun_10min = self._observer.sun_altaz(time + TimeDelta(10 * u.minute))
+        sun_now = self._observer.sun_altaz(time)  # type: ignore[union-attr]
+        sun_10min = self._observer.sun_altaz(time + TimeDelta(10 * u.minute))  # type: ignore[union-attr]
 
         # get m, b for calculating sun_alt=m*time+b
         self._b = sun_now.alt.degree

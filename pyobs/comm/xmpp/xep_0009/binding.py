@@ -42,7 +42,7 @@ def py2xml(*args: Any) -> ET.Element:
     return params
 
 
-def _py2xml(*args: Any) -> ET.Element:
+def _py2xml(*args: Any) -> ET.Element:  # type: ignore[return]
     for x in args:
         val = ET.Element(f"{{{_namespace}}}value")
         if x is None:
@@ -100,7 +100,7 @@ def xml2py(params: ET.Element) -> list[Any]:
     return vals
 
 
-def _xml2py(value: ET) -> Any:
+def _xml2py(value: Any) -> Any:
     namespace = "jabber:iq:rpc"
     find_value = value.find
     if find_value(f"{{{namespace}}}nil") is not None:

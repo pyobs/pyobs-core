@@ -115,8 +115,8 @@ def xml_to_fault(fault_elem: ET.Element) -> tuple[str, str]:
         return "RemoteError", "Unknown error"
     exc_el = pyobs_fault.find("exception")
     msg_el = pyobs_fault.find("message")
-    exc_name = exc_el.text if exc_el is not None else "RemoteError"
-    msg = msg_el.text if msg_el is not None else ""
+    exc_name = (exc_el.text if exc_el is not None else None) or "RemoteError"
+    msg = (msg_el.text if msg_el is not None else None) or ""
     return exc_name, msg
 
 
@@ -201,7 +201,7 @@ class RPC:
             if hasattr(method, "timeout"):
                 timeout = await getattr(method, "timeout")(self._handler, **ba.arguments)
                 if timeout:
-                    response = self._client.plugin["xep_0009_timeout"].make_iq_method_timeout(
+                    response = self._client.plugin["xep_0009_timeout"].make_iq_method_timeout(  # type: ignore[typeddict-item]
                         iq["id"], iq["from"], int(timeout)
                     )
                     response.send()
@@ -272,7 +272,7 @@ class RPC:
         if issubclass(exception_class, exc.RemoteError):
             exception = exception_class(message=msg, module=sender)
         else:
-            exception = exception_class(message=msg)
+            exception = exception_class(msg)  # type: ignore[call-arg]
 
         if not future.done():
             future.set_exception(exc.InvocationError(module=sender, exception=exception))

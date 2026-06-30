@@ -70,15 +70,15 @@ class DataDisplayWidget(QtWidgets.QWidget):
 
         # variables
         self._count = 0
-        self.data: fits.ImageHDU | None = None
+        self.data: fits.ImageHDU | fits.PrimaryHDU | None = None
 
-    def set_data(self, data: fits.ImageHDU) -> None:
+    def set_data(self, data: fits.ImageHDU | fits.PrimaryHDU) -> None:
         """Show data."""
         self.button_save_to.setEnabled(True)
         self.data = data
-        self.data.header["FNAME"] = f"image_{self._count:04d}.fits"
+        self.data.header["FNAME"] = f"image_{self._count:04d}.fits"  # type: ignore[union-attr]
         self._count += 1
-        self.fits_widget.display(self.data)
+        self.fits_widget.display(self.data)  # type: ignore[arg-type]
         self._show_fits_headers()
         if self.check_auto_save.isChecked():
             self._auto_save()
@@ -119,7 +119,7 @@ class DataDisplayWidget(QtWidgets.QWidget):
             filename = os.path.join(path, self.data.header["FNAME"])
             fits.writeto(filename, self.data.data, self.data.header, overwrite=True)
 
-    @QtCore.Slot()  # type: ignore
+    @QtCore.Slot()
     def select_autosave_path(self) -> None:
         """Select path for auto-saving."""
 
@@ -132,7 +132,7 @@ class DataDisplayWidget(QtWidgets.QWidget):
         else:
             self.text_autosave_path.clear()
 
-    @QtCore.Slot()  # type: ignore
+    @QtCore.Slot()
     def save_data(self) -> None:
         """Save image."""
         if self.data is None:

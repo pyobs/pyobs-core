@@ -14,6 +14,7 @@ from pyobs.interfaces import (
     IFilters,
     IImageType,
     IPointingRaDec,
+    IReady,
     IRoof,
     ITelescope,
     IWindow,
@@ -66,11 +67,13 @@ class LcoDefaultScript(LcoScript):
         if self._image_type == ImageType.OBJECT:
             # we need an open roof and a working telescope
             async with self.comm.proxy(self.roof, IRoof) as roof:
-                if roof is None or not await roof.is_ready():
+                roof_ready = roof.get_state(IReady)
+                if roof is None or roof_ready is None or not roof_ready.ready:
                     cannot_run_logger.info("Cannot run task, no roof found or roof not ready.")
                     return False
             async with self.comm.proxy(self.telescope, ITelescope) as telescope:
-                if telescope is None or not await telescope.is_ready():
+                tel_ready = telescope.get_state(IReady)
+                if telescope is None or tel_ready is None or not tel_ready.ready:
                     cannot_run_logger.warning("Cannot run task, no telescope found or telescope not ready.")
                     return False
 
@@ -187,8 +190,11 @@ class LcoDefaultScript(LcoScript):
                         await camera.set_binning(binning, binning)
                 async with self.comm.safe_proxy(self.camera, IWindow) as camera:
                     if camera:
-                        full_frame = await camera.get_full_frame()
-                        await camera.set_window(*full_frame)
+                        cap = camera.get_capabilities(IWindow)
+                        if cap is not None:
+                            await camera.set_window(
+                                cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height
+                            )
 
                 # loop images
                 for exp in range(ic.exposure_count):

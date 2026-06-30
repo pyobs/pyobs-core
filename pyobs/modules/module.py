@@ -204,7 +204,8 @@ class Module(Object, IModule, IConfig):
         # get proxy and version
         try:
             async with self.proxy(sender, IModule) as proxy:
-                module_version = await proxy.get_version()
+                caps = proxy.get_capabilities(IModule)
+                module_version = caps.version if caps is not None else ""
         except exc.RemoteError:
             return True
 
@@ -485,7 +486,7 @@ class Module(Object, IModule, IConfig):
         if self._comm is not None:
             await self._comm.set_presence(state, error_string if error_string is not None else self._error_string)
 
-    async def get_state(self, **kwargs: Any) -> ModuleState:
+    async def get_state(self, **kwargs: Any) -> ModuleState:  # type: ignore[override]
         """Returns current state of module."""
         return self._state
 

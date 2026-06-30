@@ -55,7 +55,7 @@ class Proxy:
 
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})  # type: ignore
+        self.__class__ = type("Proxy", tuple([cls] + interfaces), {})
 
         # create methods
         self._methods = self._create_methods()
@@ -139,6 +139,9 @@ class Proxy:
         for interface in self._interfaces:
             # loop all methods:
             for func_name, func in inspect.getmembers(interface, predicate=inspect.isfunction):
+                # skip base Interface infrastructure methods — Proxy provides its own implementations
+                if func_name in Interface.__dict__:
+                    continue
                 # set method
                 my_func = types.MethodType(self._remote_function_wrapper(func_name), self)
                 setattr(self, func_name, my_func)
@@ -174,11 +177,11 @@ class Proxy:
         """Clear all cached state. Called by Comm when the remote module disconnects."""
         self._state.clear()
 
-    def state(self, interface: type[Interface]) -> Any | None:
+    def get_state(self, interface: type[Interface]) -> Any | None:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
         return self._state.get(interface)
 
-    def capabilities(self, interface: type[Interface]) -> Any | None:
+    def get_capabilities(self, interface: type[Interface]) -> Any | None:
         """Capabilities for the given interface, populated once at Proxy construction."""
         return self._capabilities.get(interface)
 

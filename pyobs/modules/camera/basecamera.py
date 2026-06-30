@@ -39,7 +39,7 @@ class ExposureInfo(NamedTuple):
     exposure_time: float
 
 
-async def calc_expose_timeout(camera: IExposureTime, *args: Any, **kwargs: Any) -> float:
+async def calc_expose_timeout(camera: BaseCamera, *args: Any, **kwargs: Any) -> float:
     """Calculates timeout for expose()."""
     return camera._exposure_time + 30
 

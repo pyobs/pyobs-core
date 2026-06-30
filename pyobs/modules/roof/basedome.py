@@ -4,7 +4,7 @@ import logging
 from abc import ABCMeta
 from typing import Any
 
-from pyobs.interfaces import IDome
+from pyobs.interfaces import AltAzState, IDome, IPointingAltAz
 from pyobs.utils import exceptions as exc
 
 from .baseroof import BaseRoof
@@ -37,7 +37,8 @@ class BaseDome(IDome, BaseRoof, metaclass=ABCMeta):
 
         hdr = await BaseRoof.get_fits_header_before(self, namespaces, **kwargs)
 
-        _, az = await self.get_altaz()
+        altaz: AltAzState | None = self.comm.get_own_state(IPointingAltAz)
+        az = altaz.az if altaz is not None else 0.0
         hdr["ROOF-AZ"] = (az, "Azimuth of roof slit, deg E of N")
         return hdr
 

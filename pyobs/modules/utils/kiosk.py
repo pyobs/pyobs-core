@@ -35,7 +35,7 @@ class Kiosk(Module, IStartStop):
         self._is_listening = False
         self._camera = camera
         self._port = port
-        self._exp_time = 2
+        self._exp_time: float = 2.0
         self._running = False
         self._image: bytes | None = None
 
@@ -130,8 +130,11 @@ class Kiosk(Module, IStartStop):
                     await camera.set_exposure_time(self._exp_time)
             async with self.safe_proxy(self._camera, IWindow) as camera:
                 if camera:
-                    full_frame = await camera.get_full_frame()
-                    await camera.set_window(*full_frame)
+                    cap = camera.get_capabilities(IWindow)
+                    if cap is not None:
+                        await camera.set_window(
+                            cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height
+                        )
 
             # do exposure
             async with self.proxy(self._camera, IData) as camera:
@@ -153,7 +156,7 @@ class Kiosk(Module, IStartStop):
                     max_val = np.max(image.data)
 
                     # adjust
-                    self._exp_time = self._exp_time / max_val * 40000
+                    self._exp_time = float(self._exp_time / max_val * 40000)
 
                     # cut
                     self._exp_time = max(self._exp_time, 30)

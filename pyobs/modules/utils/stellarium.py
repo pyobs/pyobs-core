@@ -118,7 +118,8 @@ class Stellarium(Module):
 
             # get RA/Dec
             async with self.proxy(self._telescope, IPointingRaDec) as telescope:
-                ra, dec = await telescope.get_radec()
+                radec = telescope.get_state(IPointingRaDec)
+                ra, dec = (radec.ra, radec.dec) if radec is not None else (0.0, 0.0)
 
             # send to all clients
             for client in self._clients:

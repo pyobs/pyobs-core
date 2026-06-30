@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from astropydantic import AstroPydanticTime  # type: ignore
+from astropydantic import AstroPydanticTime
 from pydantic import Field
 
 from pyobs.utils.serialization import BaseModel

@@ -165,7 +165,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             self._cooling = CoolingStatus(
                 enabled=self._cooling.enabled,
                 set_point=self._cooling.set_point,
-                power=power,
+                power=int(power),
                 temperatures=temps,
             )
             await self.comm.set_state(
@@ -242,7 +242,7 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
             job = tap.launch_job(query)
             self._catalog = job.get_results()
             self._catalog_coords = self._telescope_pos
-        return self._catalog
+        return self._catalog  # type: ignore[return-value]
 
     def _get_sources_table(self, exp_time: float) -> Table:
         tmp = 360.0 / (2.0 * np.pi) * self._pixel_size / self._focal_length

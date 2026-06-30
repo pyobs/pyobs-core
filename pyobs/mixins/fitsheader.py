@@ -185,7 +185,7 @@ class FitsHeaderMixin:
 
         # date of night this observation is in
         if self._fitsheadermixin_night_obs:
-            hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")
+            hdr["DAY-OBS"] = (date_obs.night_obs(module._observer).strftime("%Y-%m-%d"), "Night of observation")  # type: ignore[arg-type]
         else:
             hdr["DAY-OBS"] = (date_obs.strftime("%Y-%m-%d"), "Day of observation")
 

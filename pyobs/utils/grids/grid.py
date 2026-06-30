@@ -54,7 +54,7 @@ class Grid(GridNode, metaclass=abc.ABCMeta):
 
     def log_last(self) -> None:
         """Log the last yielded point, if logging is enabled."""
-        self.log(self._last)
+        self.log(self._last)  # type: ignore[arg-type]
 
 
 class RegularSphericalGrid(Grid):
@@ -85,7 +85,7 @@ class RegularSphericalGrid(Grid):
         for lon in np.linspace(0.0, 360.0 - 360.0 / n_lon, n_lon):
             for lat in np.linspace(-90.0, 90.0, n_lat):
                 points.append((float(lon), float(lat)))
-        Grid.__init__(self, points=points, **kwargs)
+        Grid.__init__(self, points=points, **kwargs)  # type: ignore[arg-type]
 
 
 class GraticuleSphericalGrid(Grid):
@@ -135,7 +135,7 @@ class GraticuleSphericalGrid(Grid):
                 # append to grid
                 points.append((lon * r2d, lat * r2d - 90.0))
 
-        Grid.__init__(self, points=points, **kwargs)
+        Grid.__init__(self, points=points, **kwargs)  # type: ignore[arg-type]
 
 
 __all__ = ["RegularSphericalGrid", "GraticuleSphericalGrid"]

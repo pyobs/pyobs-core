@@ -340,9 +340,9 @@ class PyobsDaemon:
         stdout, stderr = proc.communicate(timeout=2)
         print(f"Warning: {module} launched but PID not confirmed.")
         if stdout:
-            print(f"  stdout: {stdout.decode(errors='replace').strip()}")
+            print(f"  stdout: {stdout.decode(errors='replace').strip()}")  # type: ignore[attr-defined]
         if stderr:
-            print(f"  stderr: {stderr.decode(errors='replace').strip()}")
+            print(f"  stderr: {stderr.decode(errors='replace').strip()}")  # type: ignore[attr-defined]
 
     def _stop_service(self, module: str) -> None:
         pid = self._running_pid(module)

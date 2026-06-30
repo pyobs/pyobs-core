@@ -157,7 +157,7 @@ class MockLcoObservationArchive(LcoObservationArchive):
         cfg = copy.deepcopy(REQUEST)
         cfg["request"]["configurations"][0]["instrument_configs"][0]["mode"] = mode
         cfg["request"]["configurations"][0]["instrument_type"] = instrument_type
-        cfg["start"] = Time.now()
+        cfg["start"] = Time.now()  # type: ignore[assignment]
         cfg["end"] = Time.now() + TimeDelta(5.0 * u.minute)
 
         # create task

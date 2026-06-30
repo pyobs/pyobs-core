@@ -6,7 +6,8 @@ from typing import Any
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
-from pyobs.interfaces import IPointingAltAz, IPointingRaDec, IReady
+from pyobs.comm import Proxy
+from pyobs.interfaces import AltAzState, IPointingAltAz, IPointingRaDec, IReady, RaDecState, ReadyState
 from pyobs.modules import Module
 from pyobs.utils import exceptions as exc
 
@@ -26,10 +27,26 @@ async def get_coords(
         Return from method call.
     """
 
-    if mode == IPointingAltAz and isinstance(obj, IPointingAltAz):
-        return await obj.get_altaz()
-    elif mode == IPointingRaDec and isinstance(obj, IPointingRaDec):
-        return await obj.get_radec()
+    if mode == IPointingAltAz:
+        if isinstance(obj, Proxy):
+            state: AltAzState | None = obj.get_state(IPointingAltAz)
+        elif isinstance(obj, Module):
+            state = obj.comm.get_own_state(IPointingAltAz)
+        else:
+            state = None
+        if state is None:
+            raise ValueError("No AltAz state available.")
+        return state.alt, state.az
+    elif mode == IPointingRaDec:
+        if isinstance(obj, Proxy):
+            state2: RaDecState | None = obj.get_state(IPointingRaDec)
+        elif isinstance(obj, Module):
+            state2 = obj.comm.get_own_state(IPointingRaDec)
+        else:
+            state2 = None
+        if state2 is None:
+            raise ValueError("No RaDec state available.")
+        return state2.ra, state2.dec
     else:
         raise ValueError("Unknown mode.")
 
@@ -117,8 +134,9 @@ class FollowMixin:
         connected = True
         while True:
             # not ready?
-            if isinstance(self, IReady):
-                if not await self.is_ready() and this.__follow_only_when_ready:
+            if isinstance(self, IReady) and isinstance(self, Module):
+                ready_state: ReadyState | None = self.comm.get_own_state(IReady)
+                if (ready_state is None or not ready_state.ready) and this.__follow_only_when_ready:
                     await asyncio.sleep(this.__follow_interval)
                     continue
 

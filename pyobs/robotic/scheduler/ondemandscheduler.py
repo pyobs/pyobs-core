@@ -96,7 +96,7 @@ class OnDemandScheduler(TaskScheduler):
                 task.reset_resolved_target()
 
             # schedule first in this interval, could be one or two
-            async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):
+            async for scheduled_task in self.schedule_first_in_interval(tasks, projects, time, end, data):  # type: ignore[arg-type]
                 # yield it to caller
                 yield scheduled_task
 

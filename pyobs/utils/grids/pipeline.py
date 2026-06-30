@@ -58,7 +58,7 @@ class GridPipeline(GridNode):
         """
         if self._grid_pipeline is None:
             raise StopIteration
-        return next(self._grid_pipeline)
+        return next(self._grid_pipeline)  # type: ignore[return-value]
 
     def __len__(self) -> int:
         """Return the number of points remaining in the pipeline.

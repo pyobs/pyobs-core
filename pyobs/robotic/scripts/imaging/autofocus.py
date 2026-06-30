@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, ITelescope
+from pyobs.interfaces import IAutoFocus, IMotion, IPointingRaDec, IReady, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.utils.time import Time
 
@@ -38,7 +38,8 @@ class AutoFocusScript(Script):
             if telescope is None:
                 self._cant_run_reason = "No ITelescope found."
                 return False
-            if not await telescope.is_ready():
+            ready_state = telescope.get_state(IReady)
+            if ready_state is None or not ready_state.ready:
                 self._cant_run_reason = "Telescope not ready."
                 return False
 

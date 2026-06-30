@@ -32,7 +32,7 @@ class PyobsArchiveFrameInfo(FrameInfo):
         self.info = info
         self.id = self.info["id"]
         self.filename = self.info["basename"]
-        self.dateobs = Time(self.info["DATE_OBS"])
+        self.dateobs = Time(self.info["DATE_OBS"])  # type: ignore[assignment]
         self.filter_name = self.info["FILTER"]
         self.binning = int(self.info["binning"][0])
         self.url = self.info["url"]

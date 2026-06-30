@@ -142,7 +142,7 @@ class DaophotSourceDetection(SourceDetection):
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold * std)
 
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, daofind, data)
+        return await loop.run_in_executor(None, daofind, data)  # type: ignore[arg-type]
 
     async def __call__(self, image: Image) -> Image:
         """Find stars in given image and append catalog.
@@ -164,7 +164,7 @@ class DaophotSourceDetection(SourceDetection):
         _, median, std = sigma_clipped_stats(background_corrected_data, sigma=3.0)
 
         median_corrected_data = background_corrected_data - median
-        sources = await self._find_stars(median_corrected_data, std)
+        sources = await self._find_stars(median_corrected_data, int(std))
 
         sources_catalog = _SourceCatalog.from_table(sources)
         sources_catalog.apply_fits_origin_convention()

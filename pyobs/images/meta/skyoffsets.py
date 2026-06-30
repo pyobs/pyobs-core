@@ -8,7 +8,7 @@ class SkyOffsets:
         self.coord0 = coord0
         self.coord1 = coord1
 
-    def separation(self, frame: BaseCoordinateFrame = None) -> Angle:
+    def separation(self, frame: BaseCoordinateFrame | None = None) -> Angle:
         """Returns separatation between both coordinates, either in their own or a given frame.
 
         Args:
@@ -22,7 +22,7 @@ class SkyOffsets:
         coord0, coord1 = self._to_frame(frame)
         return coord0.separation(coord1)
 
-    def spherical_offsets(self, frame: BaseCoordinateFrame = None) -> tuple[Angle, Angle]:
+    def spherical_offsets(self, frame: BaseCoordinateFrame | None = None) -> tuple[Angle, Angle]:
         """Calculates spherical offset from first coordinate to second.
 
         Args:
@@ -37,7 +37,7 @@ class SkyOffsets:
         off0, off1 = coord0.spherical_offsets_to(coord1.frame)
         return off0, off1
 
-    def _to_frame(self, frame: BaseCoordinateFrame = None) -> tuple[SkyCoord, SkyCoord]:
+    def _to_frame(self, frame: BaseCoordinateFrame | None = None) -> tuple[SkyCoord, SkyCoord]:
         """
 
         Args:

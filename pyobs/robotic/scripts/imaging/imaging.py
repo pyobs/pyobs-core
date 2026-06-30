@@ -16,6 +16,7 @@ from pyobs.interfaces import (
     IFilters,
     IImageType,
     IPointingRaDec,
+    IReady,
     ITelescope,
     IWindow,
 )
@@ -106,7 +107,8 @@ class ImagingScript(Script):
         if ImageType.OBJECT in self._image_types():
             # we need a working telescope
             async with self.comm.safe_proxy(self.telescope, ITelescope) as telescope:
-                if telescope is None or not await telescope.is_ready():
+                tel_ready = telescope.get_state(IReady) if telescope is not None else None
+                if telescope is None or tel_ready is None or not tel_ready.ready:
                     self._cant_run_reason = "Telescope not found or not ready."
                     return False
 
@@ -230,9 +232,15 @@ class ImagingScript(Script):
             if camera:
                 wnd = instrument_config.window
                 if wnd is None:
-                    wnd = await camera.get_full_frame()
-                log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
-                await camera.set_window(*wnd)
+                    cap = camera.get_capabilities(IWindow)
+                    wnd = (
+                        (cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height)
+                        if cap is not None
+                        else None
+                    )
+                if wnd is not None:
+                    log.info("Setting window to %sx%s at %s,%s...", wnd[2], wnd[3], wnd[0], wnd[1])
+                    await camera.set_window(*wnd)
 
         async with self.comm.safe_proxy(self.camera, IExposureTime) as camera:
             if camera:

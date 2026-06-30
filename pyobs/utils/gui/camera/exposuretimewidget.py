@@ -15,9 +15,9 @@ class ExposureTimeWidget(QtWidgets.QGroupBox):
         self.spin_exposure_time.valueChanged.connect(self._exposure_time_changed)
         layout.addRow("ExpTime:", self.spin_exposure_time)
 
-    @QtCore.Slot(float)  # type: ignore
+    @QtCore.Slot(float)
     def _exposure_time_changed(self, value: float) -> None:
-        self.exposure_time_changed.emit(value)
+        self.exposure_time_changed.emit(value)  # type: ignore[attr-defined]
 
     @property
     def value(self) -> float:

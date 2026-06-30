@@ -47,7 +47,7 @@ class Scheduler:
         self,
         functions: str | dict[str, str | dict[str, str]],
         priorities: SkyflatPriorities,
-        observer: Observer,
+        observer: Observer | None,
         min_exptime: float = 0.5,
         max_exptime: float = 5,
         timespan: float = 7200,

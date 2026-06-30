@@ -103,7 +103,7 @@ class GetFitsHeaders(ImageProcessor):
         for sender in self._senders:
             # request headers
             async with self.proxy(sender, IFitsHeaderBefore) as proxy:
-                requests.append(asyncio.create_task(proxy.get_fits_header_before(self._namespace)))
+                requests.append(asyncio.create_task(proxy.get_fits_header_before(self._namespace)))  # type: ignore[arg-type]
 
         # copy image
         out = image.copy()

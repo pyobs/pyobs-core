@@ -53,7 +53,7 @@ class Telegram(Module):
         self._allow_new_users = allow_new_users
         self._message_queue: asyncio.Queue[tuple[int, str]] = asyncio.Queue(maxsize=_QUEUE_MAX)
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._application: Application | None = None  # type: ignore
+        self._application: Application | None = None
 
         # get log levels
         self._log_levels = {

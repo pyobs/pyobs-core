@@ -2,9 +2,13 @@
 Description=pyobsd
 
 [Service]
+EnvironmentFile=-/etc/default/pyobs
 ExecStart=/usr/local/bin/pyobsd start
 ExecStop=/usr/local/bin/pyobsd stop
 Type=forking
 
 [Install]
 WantedBy=multi-user.target
+
+# /etc/default/pyobs
+# PYOBS_IERS_OFFLINE=1

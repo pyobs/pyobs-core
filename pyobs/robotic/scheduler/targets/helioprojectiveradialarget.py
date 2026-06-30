@@ -14,7 +14,7 @@ class HelioprojectiveRadialTarget(Target):
         return self.coordinates(Time.now())
 
     def coordinates(self, time: Time) -> SkyCoord:
-        from sunpy.coordinates import HelioprojectiveRadial  # type: ignore
+        from sunpy.coordinates import HelioprojectiveRadial
 
         return SkyCoord(
             self.psi,

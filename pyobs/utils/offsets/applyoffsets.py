@@ -29,7 +29,7 @@ class ApplyOffsets(Object):
         self._publisher = None if log_file is None else CsvPublisher(log_file)
         self._log_absolute = log_absolute
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -42,7 +42,7 @@ class ApplyOffsets(Object):
         """
         return False
 
-    def _get_radec_center_target(self, image: Image, location: EarthLocation) -> tuple[SkyCoord, SkyCoord]:
+    def _get_radec_center_target(self, image: Image, location: EarthLocation | None) -> tuple[SkyCoord, SkyCoord]:
         """Return RA/Dec of central pixel and of central pixel plus offsets.
 
         Args:
@@ -97,11 +97,15 @@ class ApplyOffsets(Object):
 
         # RA/Dec?
         if isinstance(telescope, IPointingRaDec):
-            log_entry["ra"], log_entry["dec"] = await telescope.get_radec()
+            s = telescope.get_state(IPointingRaDec)
+            if s is not None:
+                log_entry["ra"], log_entry["dec"] = s.ra, s.dec
 
         # Alt/Az?
         if isinstance(telescope, IPointingAltAz):
-            log_entry["alt"], log_entry["az"] = await telescope.get_altaz()
+            s = telescope.get_state(IPointingAltAz)
+            if s is not None:
+                log_entry["alt"], log_entry["az"] = s.alt, s.az
 
         # add entry
         log_entry[x_header] = x_delta + (x_cur if self._log_absolute else 0.0)

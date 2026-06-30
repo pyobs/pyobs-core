@@ -569,7 +569,7 @@ class Image:
     @property
     def meta(self) -> dict[Any, Any]:
         if self._meta is None:
-            self._meta = {}
+            self._meta = {}  # type: ignore[assignment]
         return self._meta
 
     @meta.setter

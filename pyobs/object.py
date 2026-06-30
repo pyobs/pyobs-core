@@ -577,7 +577,7 @@ class Object(PrivateAttrMixin):
 
         # only register lifecycle if not already owned by another object
         if not getattr(obj, "_owned", False):
-            obj._owned = True
+            obj._owned = True  # type: ignore[attr-defined]
             self._child_objects.append(obj)
         return obj
 

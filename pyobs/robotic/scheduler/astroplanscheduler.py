@@ -127,7 +127,7 @@ class AstroplanScheduler(TaskScheduler):
     ) -> list[ObservingBlock]:
 
         # run actual scheduler in separate process and wait for it
-        queue_out: mp.Queue[ObservingBlock] = mp.Queue()
+        queue_out: mp.Queue[list[ObservingBlock]] = mp.Queue()
         p = mp.Process(target=self._schedule_process, args=(blocks, start, end, constraints, self.observer, queue_out))
         p.start()
 
@@ -135,7 +135,7 @@ class AstroplanScheduler(TaskScheduler):
         # note that the process only finishes, when the queue is empty! so we have to poll the queue first
         # and then the process.
         loop = asyncio.get_running_loop()
-        future = loop.run_in_executor(None, queue_out.get, True)
+        future = loop.run_in_executor(None, queue_out.get, True)  # type: ignore[arg-type]
         while not future.done():
             if abort.is_set():
                 p.kill()
@@ -154,7 +154,7 @@ class AstroplanScheduler(TaskScheduler):
         end: Time,
         constraints: list[Any],
         observer: Any,
-        scheduled_blocks: mp.Queue[ObservingBlock],
+        scheduled_blocks: mp.Queue[list[ObservingBlock]],
     ) -> None:
         """Actually do the scheduling, usually run in a separate process."""
 

@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from pyobs.comm.xmpp.xmppcomm import XmppComm
-from pyobs.interfaces import ICooling, IModule, IWindow
+from pyobs.interfaces import ICooling, IModule, IWindow, ModuleCapabilities, WindowCapabilities
 from pyobs.modules.camera.dummycamera import DummyCamera
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration, pytest.mark.xmpp]
@@ -122,12 +122,12 @@ async def test_dummy_camera_publishes_iwindow_capabilities(make_xmpp_comm, xmpp_
 
             caps = await observer_comm.get_capabilities("camera", IWindow)
 
-            assert caps is not None, "IWindow.Capabilities not found in disco#info"
-            assert isinstance(caps, IWindow.Capabilities)
-            assert caps.full_frame.width > 0, "full_frame.width should be > 0"
-            assert caps.full_frame.height > 0, "full_frame.height should be > 0"
-            assert caps.full_frame.x == 0
-            assert caps.full_frame.y == 0
+            assert caps is not None, "WindowCapabilities not found in disco#info"
+            assert isinstance(caps, WindowCapabilities)
+            assert caps.full_frame_width > 0, "full_frame_width should be > 0"
+            assert caps.full_frame_height > 0, "full_frame_height should be > 0"
+            assert caps.full_frame_x == 0
+            assert caps.full_frame_y == 0
 
         finally:
             await camera.close()
@@ -149,8 +149,8 @@ async def test_dummy_camera_publishes_imodule_capabilities(make_xmpp_comm, xmpp_
 
             caps = await observer_comm.get_capabilities("camera", IModule)
 
-            assert caps is not None, "IModule.Capabilities not found in disco#info"
-            assert isinstance(caps, IModule.Capabilities)
+            assert caps is not None, "ModuleCapabilities not found in disco#info"
+            assert isinstance(caps, ModuleCapabilities)
             assert isinstance(caps.version, str) and len(caps.version) > 0
             assert isinstance(caps.label, str)
 

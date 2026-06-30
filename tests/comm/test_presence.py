@@ -99,10 +99,10 @@ async def test_open_publishes_imodule_capabilities() -> None:
         module.get_label = AsyncMock(return_value="Test Camera")
         await module.open()
 
-    # set_capabilities called for IModule.Capabilities and IConfig.Capabilities
+    # set_capabilities called for IModule and IConfig
     assert comm.set_capabilities.call_count >= 1
-    imodule_call = next(c for c in comm.set_capabilities.call_args_list if isinstance(c[0][0], IModule.Capabilities))
-    caps = imodule_call[0][0]
+    imodule_call = next(c for c in comm.set_capabilities.call_args_list if c[0][0] is IModule)
+    caps = imodule_call[0][1]
     assert caps.version == "2.0.0"
     assert caps.label == "Test Camera"
 
@@ -127,9 +127,11 @@ async def test_open_publishes_empty_label_when_none() -> None:
         module.get_label = AsyncMock(return_value="")
         await module.open()
 
-    imodule_call = next(c for c in comm.set_capabilities.call_args_list if isinstance(c[0][0], IModule.Capabilities))
-    caps = imodule_call[0][0]
-    assert isinstance(caps, IModule.Capabilities)
+    from pyobs.interfaces import ModuleCapabilities
+
+    imodule_call = next(c for c in comm.set_capabilities.call_args_list if c[0][0] is IModule)
+    caps = imodule_call[0][1]
+    assert isinstance(caps, ModuleCapabilities)
     assert caps.label == ""
 
 
@@ -223,15 +225,15 @@ def test_xmpp_presence_show_mapping() -> None:
 @pytest.mark.asyncio
 async def test_comm_get_capabilities_delegates() -> None:
     """get_capabilities() delegates to _get_capabilities()."""
-    from pyobs.interfaces import IWindow
+    from pyobs.interfaces import IWindow, WindowCapabilities
 
     comm = Comm.__new__(Comm)
-    comm._get_capabilities = AsyncMock(return_value=IWindow.Capabilities())
+    comm._get_capabilities = AsyncMock(return_value=WindowCapabilities())
 
     result = await comm.get_capabilities("camera", IWindow)
 
     comm._get_capabilities.assert_called_once_with("camera", IWindow)
-    assert isinstance(result, IWindow.Capabilities)
+    assert isinstance(result, WindowCapabilities)
 
 
 @pytest.mark.asyncio

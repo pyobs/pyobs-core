@@ -7,6 +7,7 @@ class Interface(metaclass=ABCMeta):
 
     version: int = 1
     state: ClassVar[type | None] = None
+    capabilities: ClassVar[type | None] = None
 
     __module__ = "pyobs.interfaces"
     pass

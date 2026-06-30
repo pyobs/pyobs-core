@@ -1,6 +1,6 @@
 import logging
 
-from pyobs.interfaces import IAcquisition, IAutoFocus, IPointingRaDec, IRoof, ITelescope
+from pyobs.interfaces import IAcquisition, IAutoFocus, IPointingRaDec, IReady, IRoof, ITelescope
 from pyobs.robotic.task import TaskData
 from pyobs.utils.logger import DuplicateFilter
 
@@ -54,10 +54,12 @@ class LcoAutoFocusScript(LcoScript):
 
         # we need an open roof and a working telescope
         async with self.comm.proxy(self.roof, IRoof) as roof, self.comm.proxy(self.telescope, ITelescope) as telescope:
-            if not await roof.is_ready():
+            roof_ready = roof.get_state(IReady)
+            if roof_ready is None or not roof_ready.ready:
                 cannot_run_logger.info("Cannot run task, roof not ready.")
                 return False
-            if not await telescope.is_ready():
+            tel_ready = telescope.get_state(IReady)
+            if tel_ready is None or not tel_ready.ready:
                 cannot_run_logger.info("Cannot run task, telescope not ready.")
                 return False
 

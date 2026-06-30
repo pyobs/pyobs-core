@@ -72,7 +72,7 @@ class DataDisplayWidget(QtWidgets.QWidget):
         self._count = 0
         self.data: fits.ImageHDU | None = None
 
-    def set_data(self, data: fits.ImageHDU) -> None:
+    def set_data(self, data: fits.ImageHDU | fits.PrimaryHDU) -> None:
         """Show data."""
         self.button_save_to.setEnabled(True)
         self.data = data

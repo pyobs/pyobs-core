@@ -34,7 +34,6 @@ from .IFocusModel import IFocusModel
 from .IGain import GainState, IGain
 from .IImageFormat import IImageFormat, ImageFormatCapabilities, ImageFormatState
 from .IImageType import IImageType, ImageTypeState
-from .ILatLon import ILatLon, LatLonCapabilities
 from .IMode import IMode, ModeCapabilities, ModeState
 from .IModule import IModule, ModuleCapabilities
 from .IMotion import DeviceMotionStatus, IMotion, MotionState
@@ -65,8 +64,6 @@ from .IWindow import IWindow, WindowCapabilities, WindowState
 __all__ = [
     "IAbortable",
     "IAcquisition",
-    "ILatLon",
-    "LatLonCapabilities",
     "IAutoFocus",
     "IAutoGuiding",
     "IAutonomous",

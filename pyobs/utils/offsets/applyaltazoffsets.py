@@ -8,7 +8,7 @@ from astropy.coordinates import AltAz, Angle, EarthLocation
 from pyobs.images import Image
 
 from ...images.meta import AltAzOffsets, PixelOffsets, RaDecOffsets
-from ...interfaces import IOffsetsAltAz, ITelescope
+from ...interfaces import AltAzOffsetState, IOffsetsAltAz, ITelescope
 from ..time import Time
 from .applyoffsets import ApplyOffsets
 
@@ -33,7 +33,7 @@ class ApplyAltAzOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -82,7 +82,8 @@ class ApplyAltAzOffsets(ApplyOffsets):
             raise ValueError("No offsets found.")
 
         # get current offset
-        cur_dalt, cur_daz = await telescope.get_offsets_altaz()
+        off_state: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
+        cur_dalt, cur_daz = (off_state.alt, off_state.az) if off_state is not None else (0.0, 0.0)
 
         # log it
         await self._log_offset(tel, "dalt", cur_dalt, dalt.degree, "daz", cur_daz, daz.degree)

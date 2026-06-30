@@ -50,9 +50,13 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
 
         # store original settings to restore afterward
         async with self.comm.proxy(self.camera, IExposureTime) as camera:
-            orig_exptime = await camera.get_exposure_time()
+            etime_state = camera.get_state(IExposureTime)
+            orig_exptime = etime_state.exposure_time if etime_state is not None else 0.0
         async with self.comm.proxy(self.camera, IWindow) as camera:
-            orig_window = await camera.get_window()
+            wnd_state = camera.get_state(IWindow)
+            orig_window = (
+                (wnd_state.x, wnd_state.y, wnd_state.width, wnd_state.height) if wnd_state is not None else None
+            )
 
         exptime = self.default_exposure_time
 
@@ -109,7 +113,8 @@ class StellarExposureTimeProvider(ExposureTimeProvider):
             async with self.comm.proxy(self.camera, IExposureTime) as camera:
                 await camera.set_exposure_time(orig_exptime)
             async with self.comm.proxy(self.camera, IWindow) as camera:
-                await camera.set_window(*orig_window)
+                if orig_window is not None:
+                    await camera.set_window(*orig_window)
             async with self.comm.proxy(self.camera, IImageType) as camera:
                 await camera.set_image_type(ImageType.OBJECT)
 

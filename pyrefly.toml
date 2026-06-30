@@ -1,0 +1,32 @@
+project-includes = ["pyobs"]
+project-excludes = [
+    "**/docs/",
+    "**/test/",
+]
+python-version = "3.11.0"
+preset = "legacy"
+ignore-missing-imports = [
+    "astropy.*",
+    "astroplan.*",
+    "astroquery.*",
+    "ccdproc.*",
+    "photutils.*",
+    "sleekxmpp.*",
+    "pil.*",
+    "scipy.*",
+    "sep.*",
+    "pandas.*",
+    "daemon.*",
+    "prctl.*",
+    "pyqt5.*",
+    "py_expression_eval.*",
+    "fluent.*",
+    "lmfit.*",
+    "matplotlib.*",
+    "urllib3.*",
+    "pyinotify.*",
+]
+replace-imports-with-any = ["qtpy.*"]
+
+[errors]
+redundant-cast = "warn"

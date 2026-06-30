@@ -4,7 +4,7 @@ from collections import UserList
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from astropydantic import AstroPydanticTime  # type: ignore
+from astropydantic import AstroPydanticTime
 
 from pyobs.robotic.scheduler.targets import Target
 from pyobs.robotic.task import Task

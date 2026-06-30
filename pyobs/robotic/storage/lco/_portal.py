@@ -6,7 +6,7 @@ from typing import Any, cast
 from urllib.parse import urljoin
 
 import aiohttp
-from astropydantic import AstroPydanticTime  # type: ignore
+from astropydantic import AstroPydanticTime
 from pydantic import ConfigDict, Field
 
 from pyobs.object import Object

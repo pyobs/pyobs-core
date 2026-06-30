@@ -333,7 +333,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
 
         # flip image?
         if self._flip:
-            data: NDArray[Any] = np.flip(data, axis=0)  # type: ignore
+            data: NDArray[Any] = np.flip(data, axis=0)
 
         # got a requested image in the queue?
         image, filename = None, None

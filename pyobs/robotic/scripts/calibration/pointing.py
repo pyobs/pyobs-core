@@ -30,7 +30,8 @@ class PointingScript(Script):
             return False
 
         async with self.comm.proxy(self.telescope, IReady) as telescope:
-            if not await telescope.is_ready():
+            ready_state = telescope.get_state(IReady)
+            if ready_state is None or not ready_state.ready:
                 self._cant_run_reason = "Telescope not ready."
                 return False
 

@@ -52,6 +52,8 @@ class EventFactory:
         # create class
         cls: Event | None = None
         for p in EventFactory.packages:
+            if p is None:
+                continue
             # import package
             parts = p.split(".")
             pkg = __import__(parts[0])

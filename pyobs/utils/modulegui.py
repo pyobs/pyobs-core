@@ -5,7 +5,7 @@ from typing import Any
 try:
     from PySide6 import QtGui, QtWidgets
 
-    class ModuleGui(QtWidgets.QMainWindow, logging.Handler):  # type: ignore
+    class ModuleGui(QtWidgets.QMainWindow, logging.Handler):
         def __init__(self, *args: Any, **kwargs: Any):
             QtWidgets.QMainWindow.__init__(self, *args, **kwargs)
             logging.Handler.__init__(self, *args, **kwargs)

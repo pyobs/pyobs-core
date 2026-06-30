@@ -66,7 +66,7 @@ class Matrix(Module):
 
     async def open(self) -> None:
         """Open module."""
-        from nio import AsyncClient, LoginResponse  # type: ignore
+        from nio import AsyncClient, LoginResponse
 
         await Module.open(self)
 

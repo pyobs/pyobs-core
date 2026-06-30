@@ -79,8 +79,8 @@ class Ring:
         ny, nx = self.data.shape
         x, y = np.arange(0, nx), np.arange(0, ny)
         x_coordinates, y_coordinates = np.meshgrid(x, y)
-        section_mask = (min_angle < self.get_angle_from_position(x_coordinates, y_coordinates)) & (
-            max_angle > self.get_angle_from_position(x_coordinates, y_coordinates)
+        section_mask = (min_angle < self.get_angle_from_position(x_coordinates, y_coordinates)) & (  # type: ignore[call-overload]
+            max_angle > self.get_angle_from_position(x_coordinates, y_coordinates)  # type: ignore[call-overload]
         )
         section = self.data.copy()
         section *= section_mask
@@ -251,8 +251,8 @@ class SpilledLightGuiding(Offsets):
         Offsets.__init__(self, **kwargs)
 
         self._fibers = fibers
-        self._fibre_position: Any[tuple[float, float], None] = None
-        self._inner_radius: Any[float, None] = None
+        self._fibre_position: tuple[float, float] = (0.0, 0.0)
+        self._inner_radius: float = 0.0
         self._radius_ratio = radius_ratio
         self._max_relative_sigma = max_relative_sigma
         self._section_angular_width = section_angular_width
@@ -300,8 +300,9 @@ class SpilledLightGuiding(Offsets):
 
     async def _load_fibre_information(self) -> None:
         async with self.comm.proxy(self._fibers, IMultiFiber) as proxy:
-            self._fibre_position = await proxy.get_pixel_position()
-            self._inner_radius = await proxy.get_radius()
+            fiber_state = proxy.get_state(IMultiFiber)
+            self._fibre_position = (fiber_state.pixel_x, fiber_state.pixel_y) if fiber_state is not None else (0.0, 0.0)
+            self._inner_radius = fiber_state.radius if fiber_state is not None else 0.0
 
     async def _correct_for_binning(self, binning: int) -> None:
         self._fibre_position = (self._fibre_position[0] / binning, self._fibre_position[1] / binning)

@@ -185,6 +185,7 @@ class XmppComm(Comm):
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
         self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
+        self._own_states: dict[type, Any] = {}  # interface → last published state for this module
         self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
 
     def _set_module(self, module: Module) -> None:
@@ -273,7 +274,7 @@ class XmppComm(Comm):
 
         # connect
         await self._xmpp.connect(host=server, port=port)
-        self._xmpp.init_plugins()  # type: ignore
+        self._xmpp.init_plugins()
 
         # wait for connected
         if not await self._xmpp.wait_connect():
@@ -657,7 +658,7 @@ class XmppComm(Comm):
                     interface, callbacks = self._state_node_handlers[node]
                     item_xml = items_xml.find(f"{{{pubsub_ns}}}item")
                     payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-                    if payload is not None:
+                    if payload is not None and interface.state is not None:
                         state_obj = _xml_to_dataclass(payload, interface.state)
                         for callback in callbacks:
                             callback(state_obj)
@@ -727,7 +728,7 @@ class XmppComm(Comm):
                 await asyncio.sleep(self._safe_send_wait)
 
         # never should reach this
-        raise slixmpp.exceptions.IqTimeout(iq)  # type: ignore
+        raise slixmpp.exceptions.IqTimeout(iq)
 
     def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.
@@ -785,13 +786,17 @@ class XmppComm(Comm):
             items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
             item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None:
+            if payload is not None and interface.state is not None:
                 callback(_xml_to_dataclass(payload, interface.state))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
 
+    def _get_own_state(self, interface: type[Interface]) -> Any:
+        return self._own_states.get(interface)
+
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
-        node = self._state_node(self._module.name, interface)
+        self._own_states[interface] = state
+        node = self._state_node(self._module.name, interface)  # type: ignore[union-attr]
         stanza = StateStanza()
         stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)
@@ -900,7 +905,7 @@ class XmppComm(Comm):
             items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
             item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None and node in self._state_node_handlers:
+            if payload is not None and node in self._state_node_handlers and interface.state is not None:
                 _, callbacks = self._state_node_handlers[node]
                 state_obj = _xml_to_dataclass(payload, interface.state)
                 for cb in callbacks:

@@ -54,9 +54,9 @@ class CameraSettingsMixin:
             await camera.set_binning(self.__camerasettings_binning, self.__camerasettings_binning)
         if isinstance(camera, IWindow):
             log.info("Set window to full frame...")
-            full_frame = await camera.get_full_frame()
-            if full_frame is not None:
-                await camera.set_window(*full_frame)
+            cap = camera.get_capabilities(IWindow)
+            if cap is not None:
+                await camera.set_window(cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height)
             else:
                 raise ValueError("Could not get full frame size.")
 

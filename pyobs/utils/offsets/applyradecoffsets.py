@@ -8,7 +8,7 @@ from astropy.coordinates import Angle, EarthLocation
 from pyobs.images import Image
 
 from ...images.meta import AltAzOffsets, PixelOffsets, RaDecOffsets
-from ...interfaces import IOffsetsRaDec, ITelescope
+from ...interfaces import IOffsetsRaDec, ITelescope, RaDecOffsetState
 from .applyoffsets import ApplyOffsets
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class ApplyRaDecOffsets(ApplyOffsets):
         self._min_offset = min_offset
         self._max_offset = max_offset
 
-    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation) -> bool:
+    async def __call__(self, image: Image, telescope: ITelescope, location: EarthLocation | None) -> bool:
         """Take the pixel offsets stored in the meta data of the image and apply them to the given telescope.
 
         Args:
@@ -76,7 +76,8 @@ class ApplyRaDecOffsets(ApplyOffsets):
             raise ValueError("No offsets found.")
 
         # get current offset
-        cur_dra, cur_ddec = await telescope.get_offsets_radec()
+        off_state: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
+        cur_dra, cur_ddec = (off_state.ra, off_state.dec) if off_state is not None else (0.0, 0.0)
 
         # log it
         await self._log_offset(tel, "dra", cur_dra, dra.degree, "ddec", cur_ddec, ddec.degree)

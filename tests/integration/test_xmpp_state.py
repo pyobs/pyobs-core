@@ -124,7 +124,7 @@ async def test_subscriber_receives_live_update(make_xmpp_comm) -> None:
 
 
 async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm) -> None:
-    """proxy.state(ICooling) must return the latest value without an RPC round-trip."""
+    """proxy.get_state(ICooling) must return the latest value without an RPC round-trip."""
 
     async def _run():
         camera_comm = await make_xmpp_comm("camera", make_module([ICooling]))
@@ -135,8 +135,8 @@ async def test_proxy_state_method_reflects_latest_value(make_xmpp_comm) -> None:
         await wait_for_peer(observer_comm, "camera")
 
         async with observer_comm.proxy("camera", ICooling) as camera:
-            assert await wait_for(lambda: camera.state(ICooling) is not None), "Proxy state never populated"
-            state = camera.state(ICooling)
+            assert await wait_for(lambda: camera.get_state(ICooling) is not None), "Proxy state never populated"
+            state = camera.get_state(ICooling)
             assert state.setpoint == pytest.approx(-15.0)
             assert state.power == 50
             assert state.enabled is True
@@ -159,13 +159,13 @@ async def test_disconnect_cleans_up_subscriptions(make_xmpp_comm) -> None:
         await camera_comm.set_state(ICooling, CoolingState(setpoint=-5.0, power=20, enabled=True))
 
         async with observer_comm.proxy("camera", ICooling) as camera:
-            assert await wait_for(lambda: camera.state(ICooling) is not None)
+            assert await wait_for(lambda: camera.get_state(ICooling) is not None)
 
             await camera_comm.close()
             observer_comm._send_event_to_module(ModuleClosedEvent(), "camera")
 
             assert await wait_for(
-                lambda: camera.state(ICooling) is None
+                lambda: camera.get_state(ICooling) is None
             ), "Proxy state did not collapse to None after disconnect"
             assert "camera" not in observer_comm._state_subscriptions
 
@@ -185,7 +185,7 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm) -> None:
 
         await camera_comm.set_state(ICooling, CoolingState(setpoint=0.0, power=10, enabled=False))
         async with observer_comm.proxy("camera", ICooling) as camera:
-            assert await wait_for(lambda: camera.state(ICooling) is not None)
+            assert await wait_for(lambda: camera.get_state(ICooling) is not None)
 
         await camera_comm.close()
         observer_comm._send_event_to_module(ModuleClosedEvent(), "camera")
@@ -198,9 +198,9 @@ async def test_reconnect_resubscribes_with_fresh_proxy(make_xmpp_comm) -> None:
 
         async with observer_comm.proxy("camera", ICooling) as camera2:
             assert await wait_for(
-                lambda: camera2.state(ICooling) is not None
+                lambda: camera2.get_state(ICooling) is not None
             ), "No state received from reconnected camera"
-            state = camera2.state(ICooling)
+            state = camera2.get_state(ICooling)
             assert state.setpoint == pytest.approx(-30.0)
             assert state.enabled is True
 

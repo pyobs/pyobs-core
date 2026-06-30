@@ -29,7 +29,7 @@ class PillowHelper:
     @staticmethod
     def value(image: Image, value: float | int | str) -> float | int:
         if isinstance(value, str):
-            return image.header[value]  # type: ignore
+            return image.header[value]
         return value
 
     @staticmethod

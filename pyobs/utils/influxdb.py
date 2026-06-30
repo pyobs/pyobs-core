@@ -39,7 +39,7 @@ class InfluxHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         point = (
-            Point(self.measurement)  # type: ignore
+            Point(self.measurement)
             .tag("timestamp", Time.now().isot)
             .tag("module", self.module)
             .tag("logger", record.name)
@@ -69,9 +69,9 @@ class InfluxHandler(logging.Handler):
         self.write_api.write(self.bucket, self.org, point)
 
     def flush(self) -> None:
-        self.write_api.flush()  # type: ignore
+        self.write_api.flush()
         return super().flush()
 
     def close(self) -> None:
-        self.write_api.close()  # type: ignore
+        self.write_api.close()
         return super().close()

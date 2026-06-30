@@ -138,7 +138,8 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         filter_name = "unknown"
         try:
             async with self.proxy(self._filters, IFilters) as proxy:
-                filter_name = await proxy.get_filter()
+                filter_state = proxy.get_state(IFilters)
+                filter_name = filter_state.filter if filter_state is not None else "unknown"
         except ValueError:
             log.warning("Filter module is not of type IFilters. Could not get filter.")
 
@@ -146,10 +147,14 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
         try:
             async with self.proxy(self._focuser, IFocuser) as focuser:
                 if self._offset:
-                    guess = 0.0 if self._init_offset_to_zero else await focuser.get_focus_offset()
+                    foc_state = focuser.get_state(IFocuser)
+                    guess = (
+                        0.0 if self._init_offset_to_zero else (foc_state.focus_offset if foc_state is not None else 0.0)
+                    )
                     log.info("Using focus offset of %.2fmm as initial guess.", guess)
                 else:
-                    guess = await focuser.get_focus()
+                    foc_state = focuser.get_state(IFocuser)
+                    guess = foc_state.focus if foc_state is not None else 0.0
                     log.info("Using current focus of %.2fmm as initial guess.", guess)
         except exc.RemoteError:
             raise exc.FocusError("Could not fetch current focus value.")
@@ -197,10 +202,11 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
             # get actual focus
             async with self.proxy(self._focuser, IFocuser) as focuser:
+                foc_state = focuser.get_state(IFocuser)
                 if self._offset:
-                    actual_focus = await focuser.get_focus_offset()
+                    actual_focus = foc_state.focus_offset if foc_state is not None else 0.0
                 else:
-                    actual_focus = await focuser.get_focus()
+                    actual_focus = foc_state.focus if foc_state is not None else 0.0
 
             # analyse
             log.info("Analysing picture...")
@@ -243,13 +249,14 @@ class AutoFocusSeries(Module, CameraSettingsMixin, IAutoFocus):
 
         # log and set focus
         async with self.proxy(self._focuser, IFocuser) as focuser:
+            foc_state = focuser.get_state(IFocuser)
             if self._offset:
                 log.info("Setting new focus offset of (%.3f+-%.3f) mm.", focus[0], focus[1])
-                absolute = focus[0] + await focuser.get_focus()
+                absolute = focus[0] + (foc_state.focus if foc_state is not None else 0.0)
                 await focuser.set_focus_offset(focus[0])
             else:
                 log.info("Setting new focus value of (%.3f+-%.3f) mm.", focus[0], focus[1])
-                absolute = focus[0] + await focuser.get_focus_offset()
+                absolute = focus[0] + (foc_state.focus_offset if foc_state is not None else 0.0)
                 await focuser.set_focus(focus[0])
 
         # send event

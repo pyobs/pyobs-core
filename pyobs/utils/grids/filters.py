@@ -59,7 +59,7 @@ class GridFilter(GridNode, metaclass=abc.ABCMeta):
     def log_last(self) -> None:
         """Log the last point via the underlying grid, then log locally if enabled."""
         self._grid.log_last()
-        self.log(self._last)
+        self.log(self._last)  # type: ignore[arg-type]
 
 
 class GridFilterValue(GridFilter):

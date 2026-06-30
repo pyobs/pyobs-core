@@ -403,10 +403,12 @@ class Image:
         # import PIL Image
         import PIL.Image
 
-        # copy data
-        data: NDArray[Any] = np.copy(self._data)  # type: ignore
-        if data is None:
+        # check data
+        if self._data is None:
             raise ValueError("No data in image.")
+
+        # copy data
+        data: NDArray[Any] = np.copy(self._data)
 
         # no vmin/vmax?
         if vmin is None or vmax is None:
@@ -569,7 +571,7 @@ class Image:
     @property
     def meta(self) -> dict[Any, Any]:
         if self._meta is None:
-            self._meta = {}
+            self._meta = {}  # type: ignore[assignment]
         return self._meta
 
     @meta.setter

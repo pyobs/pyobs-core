@@ -514,6 +514,13 @@ class Comm:
     def _get_client_state(self, module: str) -> tuple[ModuleState, str] | None:
         return None
 
+    def get_own_state(self, interface: type[Interface]) -> Any:
+        """Return the last state published by this module for the given interface, or None."""
+        return self._get_own_state(interface)
+
+    def _get_own_state(self, interface: type[Interface]) -> Any:
+        return None
+
     async def subscribe_state(
         self,
         module: str,

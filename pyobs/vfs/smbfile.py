@@ -109,7 +109,7 @@ class SMBFile(VFSFile):
         Returns:
             List of files in path.
         """
-        import smbclient
+        import smbclient  # type: ignore[import-not-found]
 
         # get settings
         hostname = kwargs["hostname"]

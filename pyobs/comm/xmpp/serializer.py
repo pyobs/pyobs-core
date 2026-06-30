@@ -174,10 +174,10 @@ def xml_to_value(elem: ET.Element, type_hint: Any) -> Any:
         return elem.text == "true"
 
     if tag == "int":
-        return int(elem.text)
+        return int(elem.text) if elem.text is not None else 0
 
     if tag == "double":
-        return float(elem.text)
+        return float(elem.text) if elem.text is not None else 0.0
 
     if tag == "string":
         text = elem.text or ""

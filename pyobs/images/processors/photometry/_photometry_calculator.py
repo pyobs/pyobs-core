@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from astropy.table import QTable
+from astropy.table import Table
 
 from pyobs.images import Image
 
@@ -10,7 +10,7 @@ class _PhotometryCalculator(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def catalog(self) -> QTable: ...
+    def catalog(self) -> Table | None: ...
 
     @abstractmethod
     def set_data(self, image: Image) -> None: ...

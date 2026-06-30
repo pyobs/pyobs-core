@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class CurrentFile:
     filename: str
-    data: fits.HDUList
+    data: bytes | str
     out_filename: str | None = None
     hdu_list: fits.HDUList | None = None
 

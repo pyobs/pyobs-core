@@ -23,13 +23,14 @@ def make_task(target=None) -> TaskData:
 
 def make_telescope(ready=True, is_motion=True) -> MagicMock:
     from pyobs.interfaces import IMotion, IPointingRaDec, ITelescope
+    from pyobs.interfaces.IReady import ReadyState
 
     interfaces = [IPointingRaDec, ITelescope]
     if is_motion:
         interfaces.append(IMotion)
 
     tel = MagicMock(spec=interfaces)
-    tel.is_ready = AsyncMock(return_value=ready)
+    tel.get_state = MagicMock(return_value=ReadyState(ready=ready))
     tel.move_radec = AsyncMock()
     tel.stop_motion = AsyncMock()
     tel.__class__ = type("Telescope", tuple(interfaces), {})

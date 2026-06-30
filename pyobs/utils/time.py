@@ -12,7 +12,7 @@ import astropy.units as u
 from astroplan import Observer
 
 
-class Time(astropy.time.Time):  # type: ignore
+class Time(astropy.time.Time):
     """Hashable Time class."""
 
     _now_offset = astropy.time.TimeDelta(0 * u.second)
@@ -58,7 +58,7 @@ class Time(astropy.time.Time):  # type: ignore
 
         # get closest sunset
         sunset = observer.sun_set_time(self, which="nearest")
-        return sunset.to_datetime().date()  # type: ignore
+        return sunset.to_datetime().date()
 
 
 __all__ = ["Time"]

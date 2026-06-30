@@ -21,13 +21,20 @@ class Proxy:
 
     __module__ = "pyobs.comm"
 
-    def __init__(self, comm: Comm, client: str, interfaces: list[type[Interface]]):
+    def __init__(
+        self,
+        comm: Comm,
+        client: str,
+        interfaces: list[type[Interface]],
+        capabilities: dict[type[Interface], Any] | None = None,
+    ):
         """Creates a new proxy.
 
         Args:
             comm: Comm object to use for connection.
             client: Name of client to connect to.
             interfaces: List of interfaces supported by client.
+            capabilities: Pre-populated capabilities dict, keyed by interface type.
         """
 
         # set client and interfaces
@@ -53,8 +60,9 @@ class Proxy:
         # create methods
         self._methods = self._create_methods()
 
-        # store state
+        # store state and capabilities
         self._state: dict[type[Interface], Any] = {}
+        self._capabilities: dict[type[Interface], Any] = capabilities if capabilities is not None else {}
 
     @property
     def name(self) -> str:
@@ -169,6 +177,10 @@ class Proxy:
     def state(self, interface: type[Interface]) -> Any | None:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
         return self._state.get(interface)
+
+    def capabilities(self, interface: type[Interface]) -> Any | None:
+        """Capabilities for the given interface, populated once at Proxy construction."""
+        return self._capabilities.get(interface)
 
     async def wait_for_state(
         self,

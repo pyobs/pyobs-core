@@ -17,16 +17,21 @@ class WindowState:
     time: Time = field(default_factory=Time.now)
 
 
+@dataclass
+class WindowCapabilities:
+    full_frame_x: int = 0
+    full_frame_y: int = 0
+    full_frame_width: int = 0
+    full_frame_height: int = 0
+
+
 class IWindow(Interface, metaclass=ABCMeta):
     """The camera supports windows, to be used together with :class:`~pyobs.interfaces.ICamera`."""
 
     __module__ = "pyobs.interfaces"
 
     state = WindowState
-
-    @dataclass
-    class Capabilities:
-        full_frame: WindowState = field(default_factory=lambda: WindowState(0, 0, 0, 0))
+    capabilities = WindowCapabilities
 
     @abstractmethod
     async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
@@ -44,4 +49,4 @@ class IWindow(Interface, metaclass=ABCMeta):
         ...
 
 
-__all__ = ["IWindow", "WindowState"]
+__all__ = ["IWindow", "WindowState", "WindowCapabilities"]

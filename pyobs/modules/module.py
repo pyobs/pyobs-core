@@ -11,7 +11,7 @@ import packaging.version
 from py_expression_eval import Parser
 
 from pyobs.events import Event, ModuleOpenedEvent
-from pyobs.interfaces import IConfig, IModule, Interface
+from pyobs.interfaces import ConfigCapabilities, IConfig, IModule, Interface, ModuleCapabilities
 from pyobs.object import Object
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
@@ -155,17 +155,15 @@ class Module(Object, IModule, IConfig):
         # publish base capabilities
         if self._comm is not None:
             await self._comm.set_capabilities(
-                IModule.Capabilities(
+                IModule,
+                ModuleCapabilities(
                     version=await self.get_version(),
                     label=await self.get_label(),
-                )
+                ),
             )
             await self._comm.set_capabilities(
-                IConfig.Capabilities(
-                    readable=[n for n, (r, w, o) in self._config_caps.items() if r],
-                    writable=[n for n, (r, w, o) in self._config_caps.items() if w],
-                    options={n: [] for n, (r, w, o) in self._config_caps.items() if o},
-                )
+                IConfig,
+                ConfigCapabilities(caps=self._config_caps),
             )
 
     async def close(self) -> None:

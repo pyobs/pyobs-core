@@ -4,7 +4,6 @@ import asyncio
 import functools
 import inspect
 import logging
-import sys
 from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, overload
 
@@ -132,12 +131,20 @@ class Comm:
             except IndexError:
                 return None
 
+            # collect capabilities (fixed at proxy construction time)
+            capabilities: dict[type[Interface], Any] = {}
+            for interface in interfaces:
+                if interface.capabilities is not None:
+                    cap = await self._get_capabilities(client, interface)
+                    if cap is not None:
+                        capabilities[interface] = cap
+
             # create new proxy
-            proxy = Proxy(self, client, interfaces)
+            proxy = Proxy(self, client, interfaces, capabilities)
 
             # subscribe to state
             for interface in interfaces:
-                if getattr(interface, "State", None) is not None:
+                if interface.state is not None:
                     await self.subscribe_state(client, interface, functools.partial(proxy.update_state, interface))
 
             self._proxies[client] = proxy
@@ -450,22 +457,17 @@ class Comm:
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         pass
 
-    @staticmethod
-    def _interface_from_capabilities(caps_cls: type) -> type:
-        outer_name = caps_cls.__qualname__.rsplit(".", 1)[0]
-        return getattr(sys.modules[caps_cls.__module__], outer_name)
-
-    async def set_capabilities(self, capabilities: Any) -> None:
+    async def set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:
         """Publish capabilities for this module.
 
-        Called by Module.open() for each interface that defines a Capabilities
+        Called by Module.open() for each interface that defines a capabilities
         dataclass. Not intended to be called directly by module authors after
         that point — capabilities are fixed for the module lifetime.
 
         Args:
+            interface: Interface type the capabilities belong to.
             capabilities: Capabilities dataclass instance.
         """
-        interface = Comm._interface_from_capabilities(type(capabilities))
         await self._set_capabilities(interface, capabilities)
 
     async def _set_capabilities(self, interface: type[Interface], capabilities: Any) -> None:

@@ -11,6 +11,7 @@ from astropy.coordinates import SkyCoord
 
 from pyobs.events import FilterChangedEvent, OffsetsRaDecEvent
 from pyobs.interfaces import (
+    FiltersCapabilities,
     FilterState,
     FocuserState,
     IFilters,
@@ -183,7 +184,7 @@ class DummyTelescope(
         await self._change_motion_status(MotionStatus.IDLE)
 
         # publish initial states and capabilities
-        await self.comm.set_capabilities(IFilters.Capabilities(filters=self._filters))
+        await self.comm.set_capabilities(IFilters, FiltersCapabilities(filters=self._filters))
         await self.comm.set_state(IFocuser, FocuserState(focus=self._focus, focus_offset=0.0))
         await self.comm.set_state(IFilters, FilterState(filter=self._filter_name))
         await self.comm.set_state(

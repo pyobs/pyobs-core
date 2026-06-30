@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 
 from pyobs.events import NewImageEvent
 from pyobs.images import Image
-from pyobs.interfaces import IExposureTime, IImageType, IVideo
+from pyobs.interfaces import IExposureTime, IImageType, IVideo, VideoCapabilities
 from pyobs.mixins.fitsheader import ImageFitsHeaderMixin
 from pyobs.modules import Module, timeout
 from pyobs.utils.cache import DataCache
@@ -166,7 +166,7 @@ class BaseVideo(Module, ImageFitsHeaderMixin, IVideo, IImageType, metaclass=ABCM
         self._is_listening = True
 
         # publish video URL as capability
-        await self.comm.set_capabilities(IVideo.Capabilities(url=self._video_path))
+        await self.comm.set_capabilities(IVideo, VideoCapabilities(video=self._video_path))
 
     async def close(self) -> None:
         """Close server"""

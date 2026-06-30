@@ -55,7 +55,7 @@ class Proxy:
 
         # add interfaces as base classes
         cls = self.__class__
-        self.__class__ = cls.__class__("Proxy", tuple([cls] + interfaces), {})  # type: ignore
+        self.__class__ = type("Proxy", tuple([cls] + interfaces), {})
 
         # create methods
         self._methods = self._create_methods()

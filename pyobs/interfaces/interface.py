@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from typing import ClassVar
+from typing import Any, ClassVar
 
 
 class Interface(metaclass=ABCMeta):
@@ -10,7 +10,14 @@ class Interface(metaclass=ABCMeta):
     capabilities: ClassVar[type | None] = None
 
     __module__ = "pyobs.interfaces"
-    pass
+
+    def get_state(self, interface: "type[Interface]") -> Any | None:
+        """Return the last received state for the given interface, or None."""
+        return None
+
+    def get_capabilities(self, interface: "type[Interface]") -> Any | None:
+        """Return the capabilities for the given interface, or None."""
+        return None
 
 
 __all__ = ["Interface"]

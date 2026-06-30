@@ -174,11 +174,11 @@ class Proxy:
         """Clear all cached state. Called by Comm when the remote module disconnects."""
         self._state.clear()
 
-    def state(self, interface: type[Interface]) -> Any | None:
+    def get_state(self, interface: type[Interface]) -> Any | None:
         """Latest known state for the given interface, or None if nothing has arrived yet."""
         return self._state.get(interface)
 
-    def capabilities(self, interface: type[Interface]) -> Any | None:
+    def get_capabilities(self, interface: type[Interface]) -> Any | None:
         """Capabilities for the given interface, populated once at Proxy construction."""
         return self._capabilities.get(interface)
 

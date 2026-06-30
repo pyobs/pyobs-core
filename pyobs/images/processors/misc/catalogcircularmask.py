@@ -140,9 +140,9 @@ class CatalogCircularMask(ImageProcessor):
 
     def _get_center(self, image: Image) -> tuple[float, float]:
         if isinstance(self._center[0], str) and isinstance(self._center[1], str):
-            return image.header[self._center[0]], image.header[self._center[1]]
+            return image.header[self._center[0]], image.header[self._center[1]]  # type: ignore[return-value]
         else:
-            return self._center
+            return self._center  # type: ignore[return-value]
 
 
 __all__ = ["CatalogCircularMask"]

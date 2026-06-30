@@ -118,7 +118,7 @@ class Normalize(ImageProcessor):
             return image
 
         output_image = image.copy()
-        output_image.data = ((output_image.data - vmin) / (vmax - vmin) * 255.0).astype(np.uint8)
+        output_image.data = ((output_image.data - vmin) / (vmax - vmin) * 255.0).astype(np.uint8)  # type: ignore[assignment]
 
         return output_image
 

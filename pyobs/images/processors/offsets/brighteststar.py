@@ -126,7 +126,7 @@ class BrightestStarOffsets(Offsets):
 
     @staticmethod
     def _get_brightest_star_position(catalog: Table) -> tuple[float, float]:
-        brightest_star: Row = max(catalog, key=lambda row: row["flux"])
+        brightest_star: Row = max(catalog, key=lambda row: row["flux"])  # type: ignore[type-var]
         return brightest_star["x"], brightest_star["y"]
 
     @staticmethod

@@ -185,6 +185,7 @@ class XmppComm(Comm):
         self._state_node_handlers: dict[str, tuple[type[Interface], list[Callable[[Any], None]]]] = {}
         self._client_states: dict[str, tuple[ModuleState, str]] = {}  # jid -> (state, error_string)
         self._capabilities: dict[type, Any] = {}  # interface → Capabilities instance
+        self._own_states: dict[type, Any] = {}  # interface → last published state for this module
         self._presence_callbacks: dict[str, list[Callable[[ModuleState, str], None]]] = {}
 
     def _set_module(self, module: Module) -> None:
@@ -790,8 +791,12 @@ class XmppComm(Comm):
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
 
+    def _get_own_state(self, interface: type[Interface]) -> Any:
+        return self._own_states.get(interface)
+
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
-        node = self._state_node(self._module.name, interface)
+        self._own_states[interface] = state
+        node = self._state_node(self._module.name, interface)  # type: ignore[union-attr]
         stanza = StateStanza()
         stanza.xml = _dataclass_to_xml(state, self._state_namespace(interface))
         await self._safe_send(self.client["xep_0060"].publish, self._pubsub_service, node, payload=stanza)

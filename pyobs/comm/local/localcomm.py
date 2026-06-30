@@ -79,6 +79,10 @@ class LocalComm(Comm):
     # State
     # -------------------------------------------------------------------------
 
+    def _get_own_state(self, interface: type[Interface]) -> Any:
+        node = f"pyobs:state:{self._name}:{interface.__name__}:{interface.version}"
+        return self._states.get(node)
+
     async def _set_state(self, interface: type[Interface], state: Any) -> None:
         """Publish state locally and dispatch to subscribers."""
         node = f"pyobs:state:{self._name}:{interface.__name__}:{interface.version}"

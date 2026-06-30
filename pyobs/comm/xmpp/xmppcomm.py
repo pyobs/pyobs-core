@@ -274,7 +274,7 @@ class XmppComm(Comm):
 
         # connect
         await self._xmpp.connect(host=server, port=port)
-        self._xmpp.init_plugins()  # type: ignore
+        self._xmpp.init_plugins()
 
         # wait for connected
         if not await self._xmpp.wait_connect():
@@ -728,7 +728,7 @@ class XmppComm(Comm):
                 await asyncio.sleep(self._safe_send_wait)
 
         # never should reach this
-        raise slixmpp.exceptions.IqTimeout(iq)  # type: ignore
+        raise slixmpp.exceptions.IqTimeout(iq)
 
     def cast_to_simple_pre(self, value: Any, annotation: Any | None = None) -> tuple[bool, Any]:
         """Special treatment of single parameters when converting them to be sent via Comm.

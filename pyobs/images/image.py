@@ -404,7 +404,7 @@ class Image:
         import PIL.Image
 
         # copy data
-        data: NDArray[Any] = np.copy(self._data)  # type: ignore
+        data: NDArray[Any] = np.copy(self._data)
         if data is None:
             raise ValueError("No data in image.")
 

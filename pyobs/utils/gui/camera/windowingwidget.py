@@ -86,7 +86,7 @@ class WindowingWidget(QtWidgets.QGroupBox):
     def binning(self) -> tuple[int, int]:
         return self._binning
 
-    @QtCore.Slot(int, int)  # type: ignore
+    @QtCore.Slot(int, int)
     def set_binning(self, x: int, y: int) -> None:
         self._binning = (x, y)
         self._update_min_max()
@@ -100,14 +100,14 @@ class WindowingWidget(QtWidgets.QGroupBox):
     def binned_height(self) -> int:
         return self._max_height // self.binning[1]
 
-    @QtCore.Slot()  # type: ignore
+    @QtCore.Slot()
     def _update_min_max(self) -> None:
         self.spin_left.setMaximum(self.binned_width)
         self.spin_top.setMaximum(self.binned_height)
         self.spin_width.setMaximum(self.binned_width - self.spin_left.value())
         self.spin_height.setMaximum(self.binned_height - self.spin_top.value())
 
-    @QtCore.Slot()  # type: ignore
+    @QtCore.Slot()
     def full_frame(self) -> None:
         self.spin_left.setValue(0)
         self.spin_top.setValue(0)

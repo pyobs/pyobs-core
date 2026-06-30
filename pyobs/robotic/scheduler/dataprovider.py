@@ -43,7 +43,7 @@ class DataProvider:
     def night(self, time: Time) -> datetime.date:
         """Returns the time of the last sunset."""
         sunset = self.last_sunset(time)
-        return sunset.to_datetime().date()  # type: ignore
+        return sunset.to_datetime().date()
 
 
 __all__ = ["DataProvider"]

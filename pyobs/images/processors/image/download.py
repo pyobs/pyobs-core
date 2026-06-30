@@ -37,7 +37,7 @@ class EncodedImageConverter(ImageConverter):
                 # move axis
                 data = np.moveaxis(data, 2, 0)
 
-        image = Image(data=data)  # type: ignore
+        image = Image(data=data)
         image.header["DATE-OBS"] = datetime.now().isoformat()
         image.header["EXPTIME"] = 0
 

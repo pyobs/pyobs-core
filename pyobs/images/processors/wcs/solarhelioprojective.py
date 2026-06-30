@@ -115,7 +115,7 @@ class SolarHelioprojective(ImageProcessor):
         Returns:
             Image with new WCS.
         """
-        import sunpy.coordinates  # type: ignore
+        import sunpy.coordinates
 
         obs_time = Time(image.header["DATE-OBS"], scale="utc")
         cdelt = sunpy.coordinates.sun.angular_radius(obs_time).degree / image.header[self._keyword_radius]

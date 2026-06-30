@@ -307,7 +307,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # trigger?
         if self._trigger_on_task_started:
             # get ETA in minutes
-            eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0  # type: ignore[operator]
+            eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0
             log.info("Received task started event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
             # set it
@@ -351,7 +351,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return False
 
         # get ETA in minutes
-        eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0  # type: ignore[operator]
+        eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0
         log.info("Received good weather event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
         # set it

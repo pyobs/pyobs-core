@@ -94,7 +94,7 @@ class FlatFielder(Object):
         self._callback = callback
 
         # parse function
-        self._eval = ExpTimeEval(self._observer, functions)  # type: ignore[arg-type]
+        self._eval = ExpTimeEval(self._observer, functions)
 
         # abort event
         self._abort = asyncio.Event()

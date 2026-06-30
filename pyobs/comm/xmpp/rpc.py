@@ -272,7 +272,7 @@ class RPC:
         if issubclass(exception_class, exc.RemoteError):
             exception = exception_class(message=msg, module=sender)
         else:
-            exception = exception_class(msg)  # type: ignore[call-arg]
+            exception = exception_class(msg)
 
         if not future.done():
             future.set_exception(exc.InvocationError(module=sender, exception=exception))

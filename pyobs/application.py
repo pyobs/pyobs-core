@@ -89,9 +89,9 @@ class Application:
 
         # systemd journal handler?
         if syslog:
-            from logging_journald import JournaldLogHandler  # type: ignore[import-untyped]
+            from logging_journald import JournaldLogHandler
 
-            class PyobsJournaldLogHandler(JournaldLogHandler):  # type: ignore[misc]
+            class PyobsJournaldLogHandler(JournaldLogHandler):
                 """JournaldLogHandler that adds SYSLOG_IDENTIFIER=pyobs and PYOBS_MODULE per record."""
 
                 def __init__(self, **kw: Any) -> None:

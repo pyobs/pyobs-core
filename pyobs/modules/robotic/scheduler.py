@@ -197,7 +197,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         additional1 = list(set(ids1.keys()).difference(ids2.keys()))
         additional2 = list(set(ids2.keys()).difference(ids1.keys()))
 
-        return sorted(additional1), sorted(additional2)
+        return sorted(additional1), sorted(additional2)  # type: ignore[type-var]
 
     async def _schedule_worker(self) -> None:
         await asyncio.sleep(5)
@@ -224,7 +224,7 @@ class Scheduler(Module, IStartStop, IRunnable):
                     # do we have an observation running?
                     running_obs = await self._schedule.get_current_observation(self._task_archive)
                     if running_obs is not None and running_obs.end < start:
-                        start = running_obs.end
+                        start = Time(running_obs.end)
 
                     # clear future schedule
                     await self._schedule.clear_schedule(start)
@@ -307,7 +307,7 @@ class Scheduler(Module, IStartStop, IRunnable):
         # trigger?
         if self._trigger_on_task_started:
             # get ETA in minutes
-            eta = (event.eta - Time.now()).sec / 60
+            eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0  # type: ignore[operator]
             log.info("Received task started event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
             # set it
@@ -351,7 +351,7 @@ class Scheduler(Module, IStartStop, IRunnable):
             return False
 
         # get ETA in minutes
-        eta = (event.eta - Time.now()).sec / 60
+        eta = (event.eta - Time.now()).sec / 60 if event.eta is not None else 0.0  # type: ignore[operator]
         log.info("Received good weather event with ETA of %.0f minutes, triggering new scheduler run...", eta)
 
         # set it

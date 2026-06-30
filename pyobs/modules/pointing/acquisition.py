@@ -10,7 +10,17 @@ import numpy as np
 import pyobs.utils.exceptions as exc
 from pyobs.images.meta import OnSkyDistance
 from pyobs.images.meta.exptime import ExpTime
-from pyobs.interfaces import IAcquisition, IPointingAltAz, IPointingRaDec
+from pyobs.interfaces import (
+    AltAzOffsetState,
+    AltAzState,
+    IAcquisition,
+    IOffsetsAltAz,
+    IOffsetsRaDec,
+    IPointingAltAz,
+    IPointingRaDec,
+    RaDecOffsetState,
+    RaDecState,
+)
 from pyobs.mixins import CameraSettingsMixin
 from pyobs.modules import Module, raises, timeout
 from pyobs.utils.enums import ImageType
@@ -22,8 +32,6 @@ from ...interfaces import (
     IData,
     IExposureTime,
     IImageType,
-    IOffsetsAltAz,
-    IOffsetsRaDec,
     ITelescope,
 )
 from ._base import BasePointing
@@ -203,9 +211,11 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
     async def _create_log_and_return(self) -> dict[str, Any]:
         # get current Alt/Az
         async with self.proxy(self._telescope, IPointingAltAz) as telescope:
-            cur_alt, cur_az = await telescope.get_altaz()
+            altaz: AltAzState | None = telescope.get_state(IPointingAltAz)
+            cur_alt, cur_az = (altaz.alt, altaz.az) if altaz is not None else (0.0, 0.0)
         async with self.proxy(self._telescope, IPointingRaDec) as telescope:
-            cur_ra, cur_dec = await telescope.get_radec()
+            radec: RaDecState | None = telescope.get_state(IPointingRaDec)
+            cur_ra, cur_dec = (radec.ra, radec.dec) if radec is not None else (0.0, 0.0)
 
         # prepare log entry
         log_entry = {"datetime": Time.now().isot, "ra": cur_ra, "dec": cur_dec, "alt": cur_alt, "az": cur_az}
@@ -213,10 +223,14 @@ class Acquisition(BasePointing, CameraSettingsMixin, IAcquisition):
         # Alt/Az or RA/Dec?
         async with self.safe_proxy(self._telescope, IOffsetsRaDec) as telescope:
             if telescope:
-                log_entry["off_ra"], log_entry["off_dec"] = await telescope.get_offsets_radec()
+                s: RaDecOffsetState | None = telescope.get_state(IOffsetsRaDec)
+                if s is not None:
+                    log_entry["off_ra"], log_entry["off_dec"] = s.ra, s.dec
         async with self.safe_proxy(self._telescope, IOffsetsAltAz) as telescope:
             if telescope:
-                log_entry["off_alt"], log_entry["off_az"] = await telescope.get_offsets_altaz()
+                s2: AltAzOffsetState | None = telescope.get_state(IOffsetsAltAz)
+                if s2 is not None:
+                    log_entry["off_alt"], log_entry["off_az"] = s2.alt, s2.az
 
         # write log
         if self._publisher is not None:

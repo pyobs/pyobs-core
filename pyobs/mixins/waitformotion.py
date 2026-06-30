@@ -77,7 +77,7 @@ class WaitForMotionMixin:
             all_done = True
             for module in this.__wait_for_modules:
                 async with self.proxy(module, IMotion) as proxy:
-                    motion_state = await proxy.wait_for_state(IMotion, timeout=1.0)
+                    motion_state = await proxy.wait_for_state(IMotion, timeout=1.0)  # type: ignore[attr-defined]
                     status = motion_state.status if motion_state is not None else MotionStatus.UNKNOWN
                     if status not in this.__wait_for_states:
                         all_done = False

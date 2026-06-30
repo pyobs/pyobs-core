@@ -144,7 +144,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             List of available binnings as (x, y) tuples.
         """
         async with self.proxy(self._camera, IBinning) as proxy:
-            return await proxy.list_binnings()
+            cap = proxy.get_capabilities(IBinning)
+            return [(b.x, b.y) for b in cap.binnings] if cap is not None else []
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -166,7 +167,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             List of available filters.
         """
         async with self.proxy(self._filter_wheel, IFilters) as proxy:
-            return await proxy.list_filters()
+            cap = proxy.get_capabilities(IFilters)
+            return cap.filters if cap is not None else []
 
     async def set_filter(self, filter_name: str, **kwargs: Any) -> None:
         """Set the current filter.
@@ -209,7 +211,8 @@ class FlatField(Module, IFlatField, IBinning, IFilters):
             while state != FlatFielder.State.FINISHED:
                 async with self.proxy(self._telescope, ITelescope) as telescope:
                     # can we run?
-                    if not await telescope.is_ready():
+                    ready_state = telescope.get_state(IReady)
+                    if ready_state is None or not ready_state.ready:
                         log.error("Telescope not in valid state, aborting...")
                         return self._flat_fielder.image_count, self._flat_fielder.total_exptime
                     if self._abort.is_set():

@@ -403,10 +403,12 @@ class Image:
         # import PIL Image
         import PIL.Image
 
+        # check data
+        if self._data is None:
+            raise ValueError("No data in image.")
+
         # copy data
         data: NDArray[Any] = np.copy(self._data)
-        if data is None:
-            raise ValueError("No data in image.")
 
         # no vmin/vmax?
         if vmin is None or vmax is None:

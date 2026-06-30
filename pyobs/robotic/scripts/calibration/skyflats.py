@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from pyobs.interfaces import IBinning, IFilters, IFlatField, IRoof, ITelescope
+from pyobs.interfaces import IBinning, IFilters, IFlatField, IReady, IRoof, ITelescope
 from pyobs.robotic.scripts import Script
 from pyobs.robotic.utils.skyflats.priorities.base import SkyflatPriorities
 from pyobs.robotic.utils.skyflats.scheduler import Scheduler, SchedulerItem
@@ -53,11 +53,13 @@ class SkyFlatsScript(Script):
 
         # we need an open roof and a working telescope
         async with self.comm.proxy(self.roof, IRoof) as roof:
-            if not await roof.is_ready():
+            ready_state = roof.get_state(IReady)
+            if ready_state is None or not ready_state.ready:
                 self._cant_run_reason = "Roof not ready."
                 return False
         async with self.comm.proxy(self.telescope, ITelescope) as telescope:
-            if not await telescope.is_ready():
+            ready_state = telescope.get_state(IReady)
+            if ready_state is None or not ready_state.ready:
                 self._cant_run_reason = "Telescope not ready."
                 return False
 

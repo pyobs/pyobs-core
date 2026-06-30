@@ -58,8 +58,11 @@ class DarkBiasScript(Script):
         # set full frame
         async with self.comm.safe_proxy(self.camera, IWindow) as camera:
             if camera is not None:
-                full_frame = await camera.get_full_frame()
-                await camera.set_window(*full_frame)
+                cap = camera.get_capabilities(IWindow)
+                if cap is not None:
+                    await camera.set_window(
+                        cap.full_frame_x, cap.full_frame_y, cap.full_frame_width, cap.full_frame_height
+                    )
 
         # take image
         async with self.comm.proxy(self.camera, IExposureTime) as camera:

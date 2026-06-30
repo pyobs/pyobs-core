@@ -14,7 +14,6 @@ from astropy.modeling import models
 from astropy.table import Table
 from astropy.wcs import WCS
 from numpy.typing import NDArray
-from photutils.datasets import make_model_image, make_noise_image
 
 from pyobs.images import Image
 from pyobs.interfaces import (
@@ -185,6 +184,8 @@ class DummyCamera(BaseCamera, IWindow, IBinning, ICooling, IGain, IImageFormat):
         return -18.0
 
     def _simulate_image(self, exp_time: float, open_shutter: bool) -> NDArray[Any]:
+        from photutils.datasets import make_model_image, make_noise_image
+
         shape = (int(self._window[3]), int(self._window[2]))
         data = make_noise_image(shape, distribution="gaussian", mean=10, stddev=1.0)
 

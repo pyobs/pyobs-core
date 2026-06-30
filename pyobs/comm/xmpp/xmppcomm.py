@@ -658,7 +658,7 @@ class XmppComm(Comm):
                     interface, callbacks = self._state_node_handlers[node]
                     item_xml = items_xml.find(f"{{{pubsub_ns}}}item")
                     payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-                    if payload is not None:
+                    if payload is not None and interface.state is not None:
                         state_obj = _xml_to_dataclass(payload, interface.state)
                         for callback in callbacks:
                             callback(state_obj)
@@ -786,7 +786,7 @@ class XmppComm(Comm):
             items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
             item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None:
+            if payload is not None and interface.state is not None:
                 callback(_xml_to_dataclass(payload, interface.state))
         except (slixmpp.exceptions.IqError, slixmpp.exceptions.IqTimeout):
             pass
@@ -905,7 +905,7 @@ class XmppComm(Comm):
             items_xml = pubsub_xml.find(f"{{{pubsub_ns}}}items") if pubsub_xml is not None else None
             item_xml = items_xml.find(f"{{{pubsub_ns}}}item") if items_xml is not None else None
             payload = list(item_xml)[0] if item_xml is not None and len(item_xml) > 0 else None
-            if payload is not None and node in self._state_node_handlers:
+            if payload is not None and node in self._state_node_handlers and interface.state is not None:
                 _, callbacks = self._state_node_handlers[node]
                 state_obj = _xml_to_dataclass(payload, interface.state)
                 for cb in callbacks:

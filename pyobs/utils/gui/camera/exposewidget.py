@@ -64,13 +64,13 @@ class ExposeWidget(QtWidgets.QGroupBox):
     @QtCore.Slot()  # type: ignore
     def _button_clicked(self) -> None:
         if self._exposing:
-            self.abort_clicked.emit()
+            self.abort_clicked.emit()  # type: ignore[attr-defined]
         else:
             self._exposing = True
             self._exposures_left = self.spin_count.value()
             self.progress_bar.setValue(0)
             self._update_gui()
-            self.expose_clicked.emit(self.spin_count.value())
+            self.expose_clicked.emit(self.spin_count.value())  # type: ignore[attr-defined]
 
     @QtCore.Slot()  # type: ignore
     def set_exposures_left(self, exposures_left: int = 0) -> None:

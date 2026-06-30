@@ -75,10 +75,10 @@ class DataDisplayWidget(QtWidgets.QWidget):
     def set_data(self, data: fits.ImageHDU | fits.PrimaryHDU) -> None:
         """Show data."""
         self.button_save_to.setEnabled(True)
-        self.data = data
-        self.data.header["FNAME"] = f"image_{self._count:04d}.fits"
+        self.data = data  # type: ignore[assignment]
+        self.data.header["FNAME"] = f"image_{self._count:04d}.fits"  # type: ignore[union-attr]
         self._count += 1
-        self.fits_widget.display(self.data)
+        self.fits_widget.display(self.data)  # type: ignore[arg-type]
         self._show_fits_headers()
         if self.check_auto_save.isChecked():
             self._auto_save()

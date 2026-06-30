@@ -25,4 +25,4 @@ class ImageFormatWidget(QtWidgets.QGroupBox):
         return self._formats[self.combo_formats.currentIndex()]
 
     def _format_changed(self, index: int) -> None:
-        self.format_changed.emit(self._formats[index])
+        self.format_changed.emit(self._formats[index])  # type: ignore[attr-defined]

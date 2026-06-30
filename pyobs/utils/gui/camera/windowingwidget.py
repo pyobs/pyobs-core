@@ -115,6 +115,6 @@ class WindowingWidget(QtWidgets.QGroupBox):
         self.spin_height.setValue(self.binned_height)
 
     def _emit_signal(self) -> None:
-        self.window_changed.emit(
+        self.window_changed.emit(  # type: ignore[attr-defined]
             self.spin_left.value(), self.spin_top.value(), self.spin_width.value(), self.spin_height.value()
         )

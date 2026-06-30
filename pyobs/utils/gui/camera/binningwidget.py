@@ -19,4 +19,4 @@ class BinningWidget(QtWidgets.QGroupBox):
         layout.addRow("Binning:", self.combo_binnings)
 
     def _binning_changed(self, index: int) -> None:
-        self.binning_changed.emit(*self._binnings[index])
+        self.binning_changed.emit(*self._binnings[index])  # type: ignore[attr-defined]

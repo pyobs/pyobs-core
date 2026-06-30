@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     import lmfit
 
 from pyobs.events import Event, FilterChangedEvent, FocusFoundEvent
-from pyobs.interfaces import IFilters, IFocuser, IFocusModel, ITemperatures, IWeather
+from pyobs.interfaces import IFilters, IFocuser, IFocusModel, IReady, ITemperatures, IWeather
 from pyobs.modules import Module, timeout
 from pyobs.utils.enums import WeatherSensors
 from pyobs.utils.publisher import CsvPublisher
@@ -173,7 +173,8 @@ class FocusModel(Module, IFocusModel):
 
             # is focuser ready?
             async with self.proxy(self._focuser, IFocuser) as focuser:
-                if not await focuser.is_ready():
+                ready_state = focuser.get_state(IReady)
+                if ready_state is None or not ready_state.ready:
                     # log
                     if self._focuser_ready:
                         log.info("Focuser not ready, waiting for it...")
@@ -227,7 +228,8 @@ class FocusModel(Module, IFocusModel):
                 # need a filter name?
                 if filter_name is None:
                     async with self.proxy(self._filter_wheel, IFilters) as wheel:
-                        filter_name = await wheel.get_filter()
+                        filter_state = wheel.get_state(IFilters)
+                        filter_name = filter_state.filter if filter_state is not None else ""
 
                 # add offset
                 offset = self._filter_offsets[filter_name]
@@ -284,7 +286,10 @@ class FocusModel(Module, IFocusModel):
 
                 # get temperatures
                 async with self.proxy(cfg["module"], ITemperatures) as proxy:
-                    module_temps[cfg["module"]] = await proxy.get_temperatures()
+                    temp_state = proxy.get_state(ITemperatures)
+                    module_temps[cfg["module"]] = (
+                        {r.name: r.value for r in temp_state.readings} if temp_state is not None else {}
+                    )
 
                 # log
                 vals = ", ".join([f"{k}={v:.2f}" for k, v in module_temps[cfg["module"]].items()])
@@ -442,20 +447,20 @@ class FocusModel(Module, IFocusModel):
             # how do we fit?
             if self._default_filter is None:
                 # just fit it
-                mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+                mod = self._temp_model.evaluate({**x.valuesdict(), **row.to_dict()})
 
             else:
                 # do we want to fit filter offsets?
                 if self._filter_offsets:
                     # evaluate and add offset
-                    mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+                    mod = self._temp_model.evaluate({**x.valuesdict(), **row.to_dict()})
                     if row["filter"] != self._default_filter:
                         mod += x["off_" + row["filter"]]
 
                 else:
                     # no filter offsets, so ignore this row if, if wrong filter
                     if row["filter"] == self._default_filter:
-                        mod = self._temp_model.evaluate({**x.valuesdict(), **row})
+                        mod = self._temp_model.evaluate({**x.valuesdict(), **row.to_dict()})
                     else:
                         continue
 

@@ -139,6 +139,9 @@ class Proxy:
         for interface in self._interfaces:
             # loop all methods:
             for func_name, func in inspect.getmembers(interface, predicate=inspect.isfunction):
+                # skip base Interface infrastructure methods — Proxy provides its own implementations
+                if func_name in Interface.__dict__:
+                    continue
                 # set method
                 my_func = types.MethodType(self._remote_function_wrapper(func_name), self)
                 setattr(self, func_name, my_func)

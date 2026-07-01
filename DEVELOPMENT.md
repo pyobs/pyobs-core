@@ -1534,7 +1534,7 @@ Consolidated list of every 🔵 open item still standing elsewhere in this docum
 - 🔵 **`IFitsHeaderBefore`/`After` → `FitsHeaderResult`/`FitsHeaderEntry`** designed but not applied — both methods still return bare `dict[str, tuple[Any, str]]`. See [Appendix: State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 - 🔵 **`utils/types.py` cleanup pending.** The old XML-RPC cast pipeline is still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`, alongside the new serializer — leave in place until `LocalComm` and all backends are updated. See [Phase 4](#phase-4--other-backends-and-presence).
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
-- 🔵 **Phase 5 — `pyobs-gui`** status unknown, external repo, not checked as part of this pass. See [Phase 5](#phase-5--pyobs-gui).
+- 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
 
 ## Work Plan
@@ -1654,7 +1654,9 @@ The `<capability>` element pattern designed in [Capabilities / Discovery](#1-cap
 
 ### Phase 5 — `pyobs-gui`
 
-🔵 Status unknown — external repo, not checked as part of this pass. Update the Qt-based GUI (pyobs-gui) to consume 2.0 State, Discovery, and Presence rather than polling via `get_*` RPC calls. Widgets that currently call `get_cooling()` etc. should subscribe to state and update reactively. Depends on Phase 2.5 (✅ done) and Phase 3 (✅ mostly done, 3 interfaces remaining) — dependencies are far enough along that this phase could plausibly start, but `pyobs-gui` itself is a separate repo not checked as part of this pass.
+✅ **Mostly done, checked against `../pyobs-gui` on this pass.** Every widget (`coolingwidget.py`, `filterwidget.py`, `temperatureswidget.py`, `camerawidget.py`, `focuswidget.py`, `modewidget.py`, `roofwidget.py`, `videowidget.py`, `telescopewidget.py`, `spectrographwidget.py`) now consumes `comm.subscribe_state(...)`/`comm.get_capabilities(...)`/`comm.get_interfaces(...)` and `statuswidget.py` uses `comm.subscribe_presence(...)` — the reactive 2.0 model this phase called for, not `get_*` polling.
+
+🔵 **One leftover stale call site:** `compassmovewidget.py:45,54,58` still calls `p.get_altaz()`, `p.get_offsets_altaz()`, `p.get_offsets_radec()` (each `# type: ignore[attr-defined]`) against `IPointingAltAz`/`IOffsetsAltAz`/`IOffsetsRaDec` — all three interfaces now expose `state = AltAzState`/`AltAzOffsetState`/`RaDecOffsetState` with no `get_*` abstract method at all on `develop`. These calls will raise `AttributeError` at runtime; the widget needs migrating to `comm.get_state(...)` reads (or a live subscription) like every other widget in the repo.
 
 ### Phase 6 — External official `pyobs-*` hardware modules
 

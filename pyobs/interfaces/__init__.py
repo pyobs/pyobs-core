@@ -13,7 +13,7 @@ __title__ = "Interfaces"
 
 from .IAbortable import IAbortable
 from .IAcquisition import IAcquisition
-from .IAutoFocus import IAutoFocus
+from .IAutoFocus import AutoFocusPoint, AutoFocusResult, AutoFocusState, IAutoFocus
 from .IAutoGuiding import IAutoGuiding
 from .IAutonomous import IAutonomous
 from .IBinning import BinningCapabilities, BinningState, IBinning
@@ -65,6 +65,9 @@ __all__ = [
     "IAbortable",
     "IAcquisition",
     "IAutoFocus",
+    "AutoFocusResult",
+    "AutoFocusPoint",
+    "AutoFocusState",
     "IAutoGuiding",
     "IAutonomous",
     "IBinning",

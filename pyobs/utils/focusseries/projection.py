@@ -8,6 +8,7 @@ import numpy.typing as npt
 from scipy import ndimage
 
 from pyobs.images import Image
+from pyobs.interfaces import AutoFocusPoint
 from pyobs.utils.curvefit import fit_hyperbola
 from pyobs.utils.focusseries.base import FocusSeries
 
@@ -104,6 +105,10 @@ class ProjectionFocusSeries(FocusSeries):
                 "yerr": float(yfit.params["fwhm"].stderr),
             }
         )
+
+    def get_data_points(self) -> list[AutoFocusPoint]:
+        """Returns a list of data points."""
+        return [AutoFocusPoint(focus=d["focus"], value=(d["x"] + d["y"]) / 2.0) for d in self._data]
 
     def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pyobs.images import Image
+from pyobs.interfaces import AutoFocusPoint
 
 
 class FocusSeries:
@@ -20,6 +21,10 @@ class FocusSeries:
             focus_value: Value to fit along, e.g. focus value or its offset
         """
         raise NotImplementedError
+
+    def get_data_points(self) -> list[AutoFocusPoint]:
+        """Returns a list of data points."""
+        ...
 
     def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images

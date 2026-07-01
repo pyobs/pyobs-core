@@ -1,4 +1,4 @@
-# Towards pyobs 2.0 — v0.46 (2026-07-01, revised against `develop`)
+# Towards pyobs 2.0 — v0.47 (2026-07-01, 20:00)
 
 ## Status
 

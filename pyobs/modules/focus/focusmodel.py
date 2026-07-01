@@ -7,6 +7,8 @@ import numpy.typing as npt
 import pandas as pd
 from py_expression_eval import Parser
 
+from pyobs.interfaces.IFocusModel import OptimalFocusState
+
 if TYPE_CHECKING:
     import lmfit
 
@@ -102,8 +104,7 @@ class FocusModel(Module, IFocusModel):
         log.info("Found lmfit %s.", lmfit.__version__)
 
         # add thread func
-        if interval is not None and interval > 0:
-            self.add_background_task(self._update)
+        self.add_background_task(self._update)
 
         # store
         self._focuser = focuser
@@ -154,6 +155,9 @@ class FocusModel(Module, IFocusModel):
         if self._update_model:
             await self._calc_focus_model()
 
+        # publish initial states
+        await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+
     async def _update(self) -> None:
         # wait a little
         await asyncio.sleep(1)
@@ -165,10 +169,13 @@ class FocusModel(Module, IFocusModel):
                 await asyncio.sleep(1)
                 continue
 
+            # update states
+            await self.comm.set_state(IFocusModel, OptimalFocusState(focus=await self._get_optimal_focus()))
+
             # get focuser
             if not await self.has_proxy(self._focuser, IFocuser):
                 log.warning("Could not connect to focuser.")
-                await asyncio.sleep(10)
+                await asyncio.sleep(self._interval)
                 continue
 
             # is focuser ready?
@@ -181,7 +188,7 @@ class FocusModel(Module, IFocusModel):
                         self._focuser_ready = False
 
                     # sleep a little and continue
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(self._interval)
                     continue
 
             # came from not ready state?
@@ -195,7 +202,7 @@ class FocusModel(Module, IFocusModel):
                 await self.set_optimal_focus()
             except ValueError:
                 # something went wrong, wait a little and continue
-                await asyncio.sleep(10)
+                await asyncio.sleep(self._interval)
                 continue
 
             # sleep interval
@@ -242,17 +249,6 @@ class FocusModel(Module, IFocusModel):
         # set focus
         log.info("Found optimal focus of %.4f.", focus)
         return float(focus)
-
-    async def get_optimal_focus(self, **kwargs: Any) -> float:
-        """Returns the optimal focus.
-
-        Returns:
-            Optimum focus calculated from model.
-
-        Raises:
-            ValueError: If anything went wrong.
-        """
-        return await self._get_optimal_focus()
 
     async def _get_values(self) -> dict[str, Any]:
         """Retrieve all required values for the model.

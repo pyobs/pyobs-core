@@ -1,12 +1,10 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
-    # Raise pull requests for version updates
-    # to pip against the `develop` branch
+      day: "tuesday"
     target-branch: "develop"
-    # Labels on pull requests for version updates only
     labels:
       - "dependencies"

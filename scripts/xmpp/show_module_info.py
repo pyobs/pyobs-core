@@ -62,8 +62,8 @@ def _module_state_from_show(show: str, status: str) -> tuple[str, str]:
 
 
 def _interface_from_feature(feature: str) -> str | None:
-    if feature.startswith("pyobs:interface:"):
-        return feature[len("pyobs:interface:") :]
+    if feature.startswith("urn:pyobs:interface:"):
+        return feature[len("urn:pyobs:interface:") :]
     return None
 
 
@@ -169,7 +169,7 @@ async def inspect_module(client: slixmpp.ClientXMPP, module: str, domain: str, r
 
     # Other features
     print(h2("Other features"))
-    for f in sorted(f for f in features if not f.startswith("pyobs:")):
+    for f in sorted(f for f in features if not f.startswith("pyobs:") and not f.startswith("urn:pyobs:")):
         print(f"    {DIM}{f}{RESET}")
 
 

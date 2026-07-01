@@ -1,8 +1,8 @@
-# Towards pyobs 2.0 — v0.45 (2026-07-01 15:56 UTC)
+# Towards pyobs 2.0 — v0.46 (2026-07-01, revised against `develop`)
 
 ## Status
 
-Draft / discussion document. This captures a design exploration of pyobs's XMPP-based communication layer, identifies where the current architecture underuses XMPP's native capabilities, and proposes a path toward a richer, language-neutral wire protocol — driven in part by the needs of the new browser-based `pyobs-web-client`.
+Design exploration turned implementation log. Most of what this document proposed is now built and merged to `develop` (version, state, capabilities, presence, disco#info schema publication, RPC payload encoding 2.0, the `async with`-only `Proxy` redesign, the mixed-version-fleet diagnostic) — checked directly against the code while revising this pass, not just against the document's own earlier self-reported notes, several of which had gone stale. ✅ marks a point confirmed implemented; remaining unmarked items are genuinely still open. Two corrections surfaced during this pass, noted where relevant: there is no D-Bus `Comm` backend in `pyobs-core` (only `xmpp`, `local`, `dummy`), and `ILatLon`/`LatLonCapabilities` no longer exist in `pyobs.interfaces` — both are left as historical context where the reasoning still applies, corrected where it was stated as current fact.
 
 ## Table of Contents
 
@@ -140,6 +140,8 @@ Events
 
 ### 1. Capabilities / Discovery
 
+✅ **Implemented.**
+
 A module does not continuously publish its interfaces and commands — this is metadata that changes rarely, so XEP-0030 discovery is the right mechanism. On connect, a module advertises:
 
 ```
@@ -270,9 +272,9 @@ Each block is independently meaningful — a client that only cares about `ICool
 </pyobs:interface>
 ```
 
-A scalar capability is the same shape with no nested `<field>`s needed — `IModule.get_version` would just be `<capability name="version" type="string">2.0.1</capability>`. Same mechanism for `IModule.get_label`, `ILatLon.get_latlon`, and `IMultiFiber.get_fiber_count` from the [get_* to State Survey](#appendix-get_-to-state-survey)'s Discovery bucket — none of them need their own worked example, the pattern is identical.
+A scalar capability is the same shape with no nested `<field>`s needed — `IModule.get_version` would just be `<capability name="version" type="string">2.0.1</capability>`. Same mechanism for `IModule.get_label` and `IMultiFiber.get_fiber_count` from the [get_* to State Survey](#appendix-get_-to-state-survey)'s Discovery bucket — none of them need their own worked example, the pattern is identical. (`ILatLon`/`get_latlon`, cited here in the original draft, no longer exist in `pyobs.interfaces` — removed independently of this document.)
 
-Worth flagging the same consequence already noted for `ICooling.get_cooling` once `ICooling.state` exists: `get_full_frame` as a *remotely callable RPC method* becomes redundant once `full_frame` is a capability — a caller reads it straight from the disco#info reply it already fetched, no `await proxy.get_full_frame()` needed. Whether the abstract method itself gets removed from `IWindow` is a smaller, separate decision from whether it stays callable as ordinary internal Python.
+✅ **Resolved, further than proposed.** `get_full_frame` isn't just redundant once `full_frame` is a capability — on `develop` it's gone entirely: `IWindow` has no `get_full_frame` abstract method at all anymore, only `state = WindowState` and `capabilities = WindowCapabilities`. Same for `ICooling.get_cooling` — removed, not merely superseded.
 
 This means the script currently used to extract interface information for `pyobs-web-client` could be eliminated: the client could query disco#info directly instead of maintaining a separate extraction step.
 
@@ -281,6 +283,8 @@ This means the script currently used to extract interface information for `pyobs
 Existing RPC stays as-is: `await camera.expose(10)` continues to map onto an XMPP IQ round-trip. No changes are required here beyond what discovery already exposes.
 
 ### 3. State — the one new concept
+
+✅ **Implemented.**
 
 This is the significant addition. Today pyobs has no first-class concept of continuously-published, cached, latest-known values. The proposal:
 
@@ -328,6 +332,8 @@ State has no history — it answers only "what is the latest known value?" — d
 
 #### Handling state that isn't fully fixed by the interface
 
+✅ **Implemented** — `ITemperatures.state = TemperaturesState`, `readings: list[SensorReading]`, matching this design exactly.
+
 Not all state fits a fixed schema. A telescope's temperature sensors, for example, vary by hardware: different telescopes have sensors at different physical locations with different names. A strict "all state is defined by the interface" approach is too rigid for this. The recommended pattern is **extensible state with typed collections**, where the interface guarantees structure and semantics but not exact field names:
 
 ```python
@@ -372,9 +378,13 @@ class NewImageEvent(Event):
 
 `urn:pyobs:event:NewImageEvent:{version}` derives from the event class itself — mechanically identical to `Interface.version`, just answering a question ("what changed about this event's schema") that's genuinely independent of any one interface's command/state contract, because the event was never that interface's to version in the first place.
 
+✅ `Event.version: int = 1` exists on `develop`, same as `Interface.version`. 🔵 **Still not done:** the wire side — `add_feature(f"pyobs:event:{ev.__name__}")` in `xmppcomm.py` still publishes the bare pre-2.0 form, not `urn:pyobs:event:{name}:{version}`. Event schema publication in disco#info hasn't started either. This was deliberately left out of scope when the interface-feature versioning landed (see the mixed-version-fleet fix in Open Questions below) and is still open — see Phase 0/Phase 3 in the Work Plan.
+
 ## Wire Protocol
 
 ### Payload Encoding
+
+✅ **Implemented** — native XML, `pyobs/comm/xmpp/serializer.py`.
 
 A secondary question, raised once state-over-XMPP is on the table: what format should state payloads use, given XMPP itself is XML?
 
@@ -390,6 +400,8 @@ A secondary question, raised once state-over-XMPP is on the table: what format s
 Critically: **the dataclass should define the schema, and XML should be generated automatically from it.** Hand-maintaining the Python interface, the XMPP schema, and documentation as three separate sources of truth would be a maintenance trap.
 
 ### RPC Payload Encoding 2.0
+
+✅ **Implemented** — `pyobs/comm/xmpp/rpc.py`, `urn:pyobs:rpc:1`.
 
 XEP-0009 (Jabber-RPC) framing is kept — IQ request/response, `<methodCall>`, `<methodResponse>`, `<params>`, `<param>`, `<value>`, `<fault>` all stay unchanged and remain in the `jabber:iq:rpc` namespace. What changes is the content inside `<value>`: XML-RPC's type system (`<double>`, `<boolean>`, `<struct>`, `<array>`, ...) is replaced with pyobs-namespaced XML using the same type vocabulary and serializer already built for state. `urn:pyobs:rpc:1` scopes only the content elements inside `<value>` — never the envelope.
 
@@ -513,7 +525,11 @@ Two things this surfaced that the original illustrative list didn't account for:
 
 `datetime` is kept in the vocabulary even though nothing in current interface signatures uses it — not even the buried "time" entry inside `get_current_weather`'s untyped dict — because that's exactly the field a real `IWeather.State` would need once it exists. Reserved for when state schemas need it, not because anything requires it today.
 
+✅ **The predicted conversion mostly happened.** Of the 19 `tuple[...]`-returning methods this survey found, only 3 remain on `develop`: `IAutoFocus.auto_focus` (`-> tuple[float, float]`), `IFlatField.flat_field` (`-> tuple[int, float]`), and `IWeather.get_sensor_value` (`-> tuple[str, float]`) — the rest were converted to named dataclasses as designed. `IWeather` and `IAutoFocus` not yet having a `state =` assignment (see the Work Plan) is why their tuple returns are still standing; `IFlatField.flat_field` is a genuine RPC action result, not a State candidate, so it wasn't in scope for removal.
+
 ### Enums in RPC and State
+
+✅ Premise already true (all enums are `StrEnum`). 🔵 The `<types>` disco#info block itself is not yet implemented.
 
 The type vocabulary above includes `enum(CameraStatus)`, but an enum reference is only half the story — the set of valid values has to be declared somewhere too. Inlining the full value list at every command parameter and state field that uses it would duplicate information within a single discovery reply and make the schema harder to keep consistent.
 
@@ -545,6 +561,8 @@ This keeps two properties intact:
 What it deliberately does **not** do is de-duplicate enum definitions *across* interfaces — two interfaces on the same module that happen to use the same enum, or two different modules entirely, each carry their own copy of it. This is an acceptable trade-off: most pyobs enums (image format, exposure status, and similar) are conceptually scoped to one specific interface rather than being a global vocabulary, so there's little to gain from sharing at the protocol level, and real cost to introducing a dependency between otherwise-independent interface blocks. If a genuinely cross-cutting enum did emerge — used the same way by several unrelated interfaces — it would be a candidate for promotion into the shared type vocabulary described above (alongside `float64`, `int32`, `datetime`, ...) rather than living in any one interface's `<types>` block.
 
 ### Units
+
+✅ `Unit(StrEnum)` implemented in `pyobs/utils/enums.py`. 🔵 Annotation rollout in progress — 12 of ~19 applicable interface files annotated as of this pass.
 
 `float64` doesn't distinguish degrees from radians, or Celsius from Kelvin — surfaced by the C/Java thought experiment below, where there's no human reading every field to absorb a docstring's "RA in deg."
 
@@ -663,7 +681,11 @@ class Telescope(BaseTelescope):
 
 Deliberately stops at opt-in, not automatic for every method on every module (e.g. via `__init_subclass__`/metaclass wrapping), for three reasons: most of the 92 `**kwargs`-bearing methods never touch astropy at all and shouldn't be forced to unwrap a `Quantity` they didn't ask for; implicit, invisible type transformation is exactly the kind of magic this document has otherwise avoided in favor of explicit mechanisms (`Comm.set_state()` over auto-detection, `async with` over implicit cleanup); and an automatically-`Quantity`'d value that later gets passed on to another module's RPC call would need unwrapping again before re-serialization, which is easy to get right when it's one visible decorator and easy to get subtly wrong if it's invisible everywhere.
 
+🔵 Not implemented — `with_units`/`_interface_unit_hints` don't exist in `pyobs-core` yet. Flagged here as still optional, not a gap.
+
 ### Versioning
+
+✅ `Interface.version`/`Event.version` implemented; interface disco#info features versioned. 🔵 Event disco#info features and PubSub node paths for events are not yet.
 
 Where the version number actually lives: everything above settled the *shape* of versioned namespaces (`urn:pyobs:interface:ICamera:2`, with state and PubSub node paths inheriting the same number) but not where that number actually comes from. On `1.x` — the baseline this document describes and migrates from — nothing in `Interface` carries a version at all, so there's nowhere for a developer to even put a bump. (`develop` already has exactly this added, confirming the direction independently of this document.)
 
@@ -728,12 +750,14 @@ State and events translate more cleanly than RPC does. `.../state/ICooling/{vers
 
 ## Impact Analysis
 
-A key design goal is that these changes should be **mostly isolated to the XMPP communication layer** (`pyobs.comm.xmpp`), leaving module implementations and other `Comm` backends (D-Bus, Local) largely untouched.
+A key design goal is that these changes should be **mostly isolated to the XMPP communication layer** (`pyobs.comm.xmpp`), leaving module implementations and other `Comm` backends largely untouched.
+
+**Correction from the original draft: `pyobs-core` has no D-Bus `Comm` backend.** `pyobs/comm/` contains only `xmpp`, `local`, and `dummy` — D-Bus was analyzed here as a plausible future backend given how closely its native introspection/properties/signals map onto this design, not as an existing one. The analysis is left below since the reasoning still holds if a D-Bus backend is ever built, but there is nothing to migrate today; treat it as speculative, not a tracked work item.
 
 ```
 ICamera / ICooling / IModule        ← core interfaces: define what exists
         ↑
-   Comm layer (XMPP / D-Bus / Local) ← defines how it is transported
+   Comm layer (XMPP / Local / Dummy) ← defines how it is transported
         ↑
    transport + serialization
 ```
@@ -748,19 +772,17 @@ ICamera / ICooling / IModule        ← core interfaces: define what exists
 
 ### By Comm backend
 
-**XMPP backend**
+**XMPP backend** ✅ implemented
 - Interface discovery: extended introspection lives entirely in the disco#info handling.
 - RPC: no changes — `await camera.expose(10)` still becomes an IQ round-trip unchanged.
-- Events: no changes to delivery; only discovery-time schema publication is new.
-- State: new — a PubSub node per interface/module, with native XML payloads generated from the dataclass (see [Payload Encoding](#payload-encoding) and the [concrete implementation](#xmpp-backend-concrete-implementation)), pushed on update.
+- Events: no changes to delivery; 🔵 discovery-time schema publication for events is still not done (see [Events](#4-events--unchanged-at-the-api-level)).
+- State: a PubSub node per interface/module, with native XML payloads generated from the dataclass (see [Payload Encoding](#payload-encoding) and the [concrete implementation](#xmpp-backend-concrete-implementation)), pushed on update.
 
-**D-Bus backend**
-- Almost nothing changes — D-Bus already has native introspection XML, method signatures, and signals (its equivalent of events). D-Bus is, in some ways, already closer to the proposed model than XMPP is; pyobs interfaces could map onto D-Bus introspection nearly 1:1.
-- State maps naturally onto **D-Bus properties** (or the `PropertiesChanged` signal pattern) — both are well-established, idiomatic D-Bus concepts.
+**D-Bus backend — hypothetical, does not exist in `pyobs-core`** (see correction above)
+- Almost nothing would change — D-Bus already has native introspection XML, method signatures, and signals (its equivalent of events). D-Bus is, in some ways, already closer to the proposed model than XMPP is; pyobs interfaces could map onto D-Bus introspection nearly 1:1.
+- State would map naturally onto **D-Bus properties** (or the `PropertiesChanged` signal pattern) — both are well-established, idiomatic D-Bus concepts.
 
-**Local backend**
-- Typically direct Python calls with no serialization. It can ignore schema publication entirely, or optionally expose it for debugging.
-- State maps to a simple in-memory object update; pub/sub may not be needed at all.
+**Local backend** ✅ implemented — `LocalComm` already has `_set_state`, `_subscribe_state`, `_set_capabilities`, `_set_presence`, direct in-memory, no serialization.
 
 ### The one genuine cross-backend change
 
@@ -771,7 +793,7 @@ Comm.set_state(state)
 Comm.subscribe_state(interface, callback)
 ```
 
-Each backend implements this differently (PubSub for XMPP, properties/signals for D-Bus, in-memory updates for Local), but the abstraction itself — alongside the existing `call()`, `emit()`, `subscribe()` — needs to grow by exactly this much.
+Each backend implements this differently (PubSub for XMPP, in-memory updates for Local; properties/signals if a D-Bus backend is ever built), but the abstraction itself — alongside the existing `call()`, `emit()`, `subscribe()` — needs to grow by exactly this much. ✅ Done: `Comm.set_state`/`subscribe_state`/`unsubscribe_state` exist on `develop`, exactly as sketched.
 
 ### Important constraint
 
@@ -794,6 +816,8 @@ Leaking transport concepts into interfaces would make XMPP "special" and make ot
 This section sketches the concrete API surface for the `Comm` extension introduced above — `set_state`, `subscribe_state`, and `unsubscribe_state` — and how the consumption side can be hidden entirely inside `Proxy`, so that module authors never call any of the three themselves.
 
 ### `Comm`: three new abstract methods
+
+✅ **Implemented.**
 
 ```python
 class Comm(ABC):
@@ -842,6 +866,8 @@ Each backend maps these onto its native mechanism, exactly as outlined in [Impac
 The PubSub node path carries the same version segment as the interface namespace, for the same reason: a subscriber learns which node to subscribe to from disco#info (`urn:pyobs:interface:ICooling:1` → node `.../state/ICooling/1`), so if a module moves to `ICooling:2` it publishes to `.../state/ICooling/2` instead. Old subscribers still pointed at `/1` simply stop receiving updates rather than receiving a payload shaped for a contract they don't understand — the same graceful-degradation property the interface namespace already gives for free.
 
 ### `Proxy`: state hidden behind `update_state` and a `state` method
+
+✅ **Implemented, with one naming difference from this sketch.** The real `Proxy` methods are named `get_state(interface)`/`get_capabilities(interface)`, not the bare `state(interface)`/`capabilities(interface)` sketched below — otherwise the design (dict keyed by interface, `update_state`/`clear_state`, `wait_for_state` with timeout, capabilities populated synchronously at construction) matches as written.
 
 The consuming side never touches `subscribe_state` directly. Subscription can't happen in `Proxy.__init__` — `__init__` can't be `async` and `subscribe_state` is — so it belongs at the actual construction site instead: `Proxy` only ever gets built in one place, `Comm._get_client`, which is already `async def` and already gated by exactly the cache check that means it only runs once per actual new proxy (not on every `proxy()`/`safe_proxy()` call — most of those hit the cache and never reach this code at all). `_get_client` is the async factory; no separate method or new abstraction needed.
 
@@ -978,6 +1004,8 @@ The only new visible surface for module authors is the `.state(interface)` metho
 
 ### Lifecycle: piggyback on existing proxy eviction, no new `Proxy` API
 
+✅ **Implemented.**
+
 The original sketch above proposed an explicit `Proxy.close()` (or turning `Proxy` into an async context manager) to tear down its state subscription. Both would require touching every call site that currently does `camera = await self.proxy("camera", ICooling)`, since module authors would suddenly need to remember to close or `async with` something they previously just held onto.
 
 Checking the actual `Comm`/`Proxy` implementation in pyobs-core shows this isn't necessary. Two things already exist:
@@ -1015,9 +1043,11 @@ class Comm:
 
 `Proxy` stays simple from the consuming side's point of view — `subscribe_state` gets called once per State-bearing interface (`Comm._get_client` does the calling, not `Proxy.__init__`), and `Proxy` never calls `unsubscribe_state` itself, directly or indirectly. `Comm`'s abstract surface grows by three methods (`set_state`, `subscribe_state`, `unsubscribe_state`), each backend has to implement all three, and `Comm._client_disconnected` gets a few new lines. What stays at zero is `Proxy`'s public surface and every existing `self.proxy(...)` call site.
 
-**`cache_proxies` is real on `1.x`** — `Comm.__init__(self, cache_proxies: bool = True)`, `self._cache_proxies = cache_proxies`, and `_get_client`'s conditional is `if client not in self._proxies or not self._cache_proxies:`. It's already removed on `develop` (`Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`), matching this document's Phase 0 direction independently. `Interface.version: int = 1` and `Event.version: int = 1` (lowercase) also already exist on `develop` as class attributes, and are wired into state/capabilities namespaces — but disco#info interface/event feature strings themselves are not yet versioned, so `.version` has no effect on discovery or matching yet; see the Phase 0 note in the Work Plan. None of the `State`/`Comm` work or the `async with`-only `Proxy` redesign exists on either branch yet — that part of this document is still ahead of what's landed, not behind it. (Note for anyone checking claims like these directly: `1.x` is the branch this document migrates *from* and the right one to check baseline state against; `develop` already contains in-progress 2.0 work.)
+**`cache_proxies` was real on `1.x`, already removed on `develop`** — `Comm.__init__()` takes no parameters there, the conditional is just `if client not in self._proxies:`, matching this document's Phase 0 direction. ✅ **Update from later in this pass: the rest of this paragraph, as originally written, is now out of date.** It previously said none of the `State`/`Comm` work or the `async with`-only `Proxy` redesign existed yet on any branch — checked directly against `develop` during this revision, and all of it is there now: `Comm.set_state`/`subscribe_state`/`unsubscribe_state`, `Proxy.get_state`/`get_capabilities`/`wait_for_state`, `_ProxyContext`-based `proxy()`/`safe_proxy()` with `has_proxy()`, and interface-feature versioning (🔵 event-feature versioning is the one piece still open — see [Versioning](#versioning) and the Work Plan).
 
 ### Reconnect with a different interface set
+
+✅ Disconnect/reconnect handling implemented. 🔵 The stale-reference `callback(None)` refinement below is not.
 
 Tracing the actual disconnect/reconnect chain in the XMPP backend shows this is already handled by composing two existing mechanisms, with no new code needed beyond what's sketched above:
 
@@ -1031,7 +1061,11 @@ So a module that disconnects and reconnects with a different capability set reso
 
 The fix is small: have `unsubscribe_state`'s teardown push one final `callback(None)` before discarding it. For `Proxy.update_state`, that means an orphaned proxy's `.state` collapses to `None` — an explicit "I don't know anymore" — instead of quietly going stale. This costs nothing on the `subscribe_state` side and only touches the teardown path already being added.
 
+🔵 **Not implemented.** `XmppComm._unsubscribe_state` on `develop` removes the callback and (on last-subscriber) sends the PubSub unsubscribe IQ, but does not push a final `callback(None)`. A `Proxy` held past its module's disconnect currently keeps returning its last-known state rather than collapsing to `None` — the gap this paragraph describes is real and still open, not yet a solved edge case.
+
 ### Final decision: `async with` only — `await self.proxy()` is removed
+
+✅ **Implemented**, including `has_proxy()` and the `ProxyType`/`_ProxyContext` consolidation into `proxy.py`.
 
 The dual-mode design above (`await` *or* `async with`, kept for backward compatibility) was a reasonable middle ground, but it leaves the actual problem optional: module code can still hold a long-lived `camera = await self.proxy(...)` and reintroduce the stale-reference gotcha, ambiguous `None`, and all. The decision is to commit fully: **remove the `await self.proxy(...)` form entirely. `async with` becomes the only way to obtain a proxy.**
 
@@ -1204,6 +1238,8 @@ It's worth being explicit that `__aenter__`/`__aexit__` here are **not** an acqu
 
 ### Migration patterns from real call sites
 
+✅ **Migration complete** — no `await self.proxy(...)` call sites remain in `pyobs-core`.
+
 Three shapes that came up migrating actual `pyobs-core` code, beyond the single-proxy case above.
 
 **Multiple proxies resolved in a loop.** `async with` can't appear inside a comprehension at all — it's a statement, not an expression, so `[async with p as x for p in proxies]` is a hard `SyntaxError`, not just discouraged. The deeper issue with a pattern like `states = [await p.get_motion_status() for p in proxies]` is that `proxies` itself can no longer be a list of already-resolved `Proxy` objects held across time — that's exactly the pattern being closed off. It needs to become a list of *names*, resolved and used atomically per item:
@@ -1240,6 +1276,8 @@ async def do_exposure(self) -> None:
 
 
 ### XMPP backend: concrete implementation
+
+✅ **Implemented** — see Phase 1.5 in the Work Plan for how the real `serializer.py`/`rpc.py` split differs (cleaner) from the sketch below.
 
 **The lifecycle in one pass, before the detail below:** `set_state` publishes to a module-scoped node via XEP-0060. Incoming PubSub notifications are routed by a low-level `MatchXMLMask` handler registered directly on the XMPP client (not via slixmpp's `pubsub_publish` event, which requires plugin lazy-loading that never happens for live notifications — see below). That single handler dispatches both event and state messages: state nodes are identified by `node.startswith("pyobs:state:")` and dispatched to all registered callbacks for that node; everything else is the existing event path. `_subscribe_state` sends the ejabberd subscribe IQ only on the first subscriber for a node; subsequent calls append to the callback list without a second IQ. `_unsubscribe_state` is the mirror — removes the specific callback, sends the unsubscribe IQ only when the last callback is removed. On disconnect, `Comm._client_disconnected` calls `proxy.clear_state()` before eviction, then tears down PubSub subscriptions via `unsubscribe_state`.
 
@@ -1471,26 +1509,26 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 
 - The core architecture (RPC + interface discovery + events) is sound and should be retained.
 - pyobs currently **underuses** XMPP: Presence and PubSub (XEP-0060) are well-suited to information pyobs currently handles with bespoke mechanisms.
-- The one missing concept is **state**: continuously-published, cached, "what is true right now" data, distinct from both RPC-polled values and immutable events.
-- State should use **extensible, typed collections** (not fixed per-sensor fields) where hardware varies between installations.
-- Encoding should lean into XMPP-native **XML**, generated automatically from dataclass schemas — not hand-maintained in parallel.
-- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script.
-- Almost all of this is isolated to `pyobs.comm.xmpp`; D-Bus and Local backends require little to no change, except for implementing the new cross-backend `state` extension to the `Comm` abstraction.
-- `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) goes away too — already done independently on `develop`. A new `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check.
-- Versioning is settled: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. Events are versioned independently (`urn:pyobs:event:NewImageEvent:1`, its own `version` on the `Event` class) — not as an optimization, but because most events aren't owned by a single interface at all (`NewImageEvent` alone is fired by eight unrelated modules), so there's usually no one interface version to inherit from in the first place. A single `Interface.version` field (default `1`, lowercase — already added on `develop`, confirming the direction) is the one place a developer bumps it for commands/state; what counts as breaking is left entirely to developer judgment, by design.
-- Settled: tuple-returning methods and undocumented `Any`-typed methods both get converted to named dataclasses as part of the 2.0 migration — not accommodated in the wire vocabulary as-is. That's why `struct<...>` replaced `tuple<T1, T2, ...>` above; `IConfig`'s deliberately dynamic config values are the one exception, handled separately.
-- Settled: units are a fixed, frozen table (degrees for angles, Celsius for temperature, seconds for duration, ...) rather than a per-field wire annotation — already 100% consistent project-wide, so the fix is to write the existing convention down once, not invent a generic units system for a problem that doesn't exist. Carried on the Python side via a new `Unit(StrEnum)` (added to `pyobs/utils/enums.py` alongside the existing enums) and `Annotated[float, Unit.X]`, additive and introspectable the same way `Interface.version` is. `Unit` stays a closed six-member enum rather than raw `astropy.units` objects (which are open algebra, not a closed vocabulary), but bridges to astropy via `Unit.X.to_astropy()` for the 36 files already constructing `Quantity` objects internally.
+- ✅ The one missing concept was **state**: continuously-published, cached, "what is true right now" data, distinct from both RPC-polled values and immutable events. Implemented for 23 of ~26 State-bearing interfaces (see the Work Plan).
+- ✅ State uses **extensible, typed collections** (not fixed per-sensor fields) where hardware varies between installations — `ITemperatures.state = TemperaturesState(readings: list[SensorReading])` matches this exactly.
+- ✅ Encoding leans into XMPP-native **XML**, generated automatically from dataclass schemas (`pyobs/comm/xmpp/serializer.py`) — not hand-maintained in parallel.
+- Exposing interface/state/event schemas over the wire effectively turns pyobs's Python interfaces into a **language-neutral IDL**, directly enabling `pyobs-web-client` and any future non-Python bindings, and removing the need for a separate interface-extraction script. Interface/state/capability schemas are live in disco#info; 🔵 **event schema publication is not yet done** (see Events above), so the IDL is not fully complete on the wire yet.
+- Almost all of this is isolated to `pyobs.comm.xmpp`; Local backend required little to no change (✅ done). There is no D-Bus backend in `pyobs-core` to migrate — see the correction in Impact Analysis.
+- ✅ `await self.proxy(...)` is removed in favor of `async with self.proxy(...) as x:` as the only way to obtain a proxy, closing off the long-held-reference pattern that causes stale state at its source rather than just discouraging it. `cache_proxies` (real, on `1.x`) is gone. `has_proxy()` (plain `async def`, not `async with` — it returns `bool`, never a `Proxy`) covers the common case of using `proxy()` purely as an existence/type check. All migrated: no `await self.proxy(...)` call sites remain in `pyobs-core`.
+- ✅ Versioning is settled and implemented for interfaces: `urn:pyobs:interface:ICamera:2`, with state namespaces and PubSub node paths inheriting the interface's version — commands and state are one versioned contract. `Interface.version`/`Event.version` both exist. 🔵 **Not yet done:** events are versioned independently in principle (`urn:pyobs:event:NewImageEvent:1`) but the wire side hasn't landed — event disco#info features are still the unversioned `pyobs:event:{name}` form.
+- ✅ Mostly done: tuple-returning methods and undocumented `Any`-typed methods converted to named dataclasses. Only 3 of the original 19 tuple-returning methods remain (`IAutoFocus.auto_focus`, `IFlatField.flat_field`, `IWeather.get_sensor_value` — the first and third tied to the two interfaces not yet migrated to `state`). `IConfig`'s deliberately dynamic config values are handled separately as designed.
+- ✅ Units: `Unit(StrEnum)` exists in `pyobs/utils/enums.py` with `to_astropy()`. Annotation rollout is partial — 12 interface files use `Annotated[float, Unit.X]` so far, not yet exhaustive across every applicable field.
 
 ## Open Questions / Next Steps
 
-- ~~`Proxy.state(interface)` returning `None` still means two different things: "no state has ever arrived yet" and "this proxy went stale mid-block."~~ Closed — `None` means "not yet or stale, handle accordingly." The distinction doesn't matter to callers.
-- ~~`camera.state(ICooling)` repeats the same `ICooling` already passed a few lines up to `self.proxy("camera", ICooling)`.~~ Closed — `_ProxyView` (pre-scoped `.state` property) was considered but rejected: a proxy holds state for multiple interfaces when the requested interface inherits from other state-bearing ones, so a bare `.state` property has no way to know which you want. `camera.state(ICooling)` stays explicit.
-- ~~`IVideo.get_video` — Discovery vs. RPC, needs implementation check.~~ Settled — Discovery. Set once at module start, fixed for the module's lifetime, same as `ILatLon.get_latlon` and `IModule.get_label`.
-- ~~Decide what to do about the six interfaces returning genuinely undocumented `Any` (`IWeather.get_weather_status`/`get_current_weather`, `IAutoFocus.auto_focus_status`, `IAcquisition.acquire_target`, `IFitsHeaderBefore`/`After`) and `IConfig.get_config_value`/`set_config_value`.~~ All settled — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- ~~Most `get_*` methods across the interfaces are probably better served by `State` reads than by staying RPC calls — not yet surveyed systematically.~~ Done and reviewed — see the [get_* to State Survey](#appendix-get_-to-state-survey) and [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). All 47 methods settled: 34 `State`, 7 `Discovery`, 2 `Presence`, 4 `RPC`.
-- ~~Validate the automatic dataclass → XML schema generation approach against `pyobs-web-client`'s actual integration needs.~~ What it consumes today is narrower than "comprehensive": its one generic Shell view uses only per-method docstrings and an ordered `{name, type, optional}` param list (`type` ∈ `number | string | boolean`) — no return types, state, or event schemas are read anywhere yet. The current interface description is generated at *build time* by a Python script that imports `pyobs.interfaces` directly and bakes a static TS file into the bundle; XMPP disco#info is only used at runtime to match feature strings against that static file, not to fetch schema. Enums already demonstrate the gap this design closes: the build script collapses every `StrEnum` to a bare `"string"`, so enum params are free-text inputs today with no valid-value list — exactly what `<types>`/`enum(Name)` fixes. One concrete mismatch to reconcile when this gets wired up: the client's live feature-matching checks for bare `pyobs:interface:`/`pyobs:event:` prefixes (no `urn:`, no version) — needs updating to match the settled `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once this lands, but that's exactly the kind of change an early-stage client absorbs easily.
+- ✅ ~~`Proxy.state(interface)` returning `None` still means two different things: "no state has ever arrived yet" and "this proxy went stale mid-block."~~ Closed — `None` means "not yet or stale, handle accordingly." The distinction doesn't matter to callers.
+- ✅ ~~`camera.state(ICooling)` repeats the same `ICooling` already passed a few lines up to `self.proxy("camera", ICooling)`.~~ Closed — `_ProxyView` (pre-scoped `.state` property) was considered but rejected: a proxy holds state for multiple interfaces when the requested interface inherits from other state-bearing ones, so a bare `.state` property has no way to know which you want. `camera.get_state(ICooling)` (implemented under this name, not the bare `.state(...)` this was originally phrased as — see the Proxy section above) stays explicit.
+- ✅ ~~`IVideo.get_video` — Discovery vs. RPC, needs implementation check.~~ Settled — Discovery. Set once at module start, fixed for the module's lifetime, same as `IModule.get_label`. (`ILatLon.get_latlon`, cited here originally, no longer exists — see the note in Capabilities/Discovery above.)
+- ✅ ~~Decide what to do about the six interfaces returning genuinely undocumented `Any` (`IWeather.get_weather_status`/`get_current_weather`, `IAutoFocus.auto_focus_status`, `IAcquisition.acquire_target`, `IFitsHeaderBefore`/`After`) and `IConfig.get_config_value`/`set_config_value`.~~ All settled — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). Design settled; 🔵 `IWeather` and `IAutoFocus` still need the actual `state =` assignment applied (see Work Plan).
+- ✅ ~~Most `get_*` methods across the interfaces are probably better served by `State` reads than by staying RPC calls — not yet surveyed systematically.~~ Done and reviewed — see the [get_* to State Survey](#appendix-get_-to-state-survey) and [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). All 47 methods settled: 34 `State`, 8 `Discovery`, 2 `Presence`, 4 `RPC`. Implementation: 23 of the 26 State-bearing interfaces catalogued now have `state =` set on `develop` (🔵 `IFocusModel`, `IWeather`, `IAutoFocus` remain).
+- ~~Validate the automatic dataclass → XML schema generation approach against `pyobs-web-client`'s actual integration needs.~~ Still open, external repo — what it consumes today is narrower than "comprehensive": its one generic Shell view uses only per-method docstrings and an ordered `{name, type, optional}` param list (`type` ∈ `number | string | boolean`) — no return types, state, or event schemas are read anywhere yet. The current interface description is generated at *build time* by a Python script that imports `pyobs.interfaces` directly and bakes a static TS file into the bundle; XMPP disco#info is only used at runtime to match feature strings against that static file, not to fetch schema. Enums already demonstrate the gap this design closes: the build script collapses every `StrEnum` to a bare `"string"`, so enum params are free-text inputs today with no valid-value list — exactly what `<types>`/`enum(Name)` fixes. One concrete mismatch to reconcile when this gets wired up: the client's live feature-matching checks for bare `pyobs:interface:`/`pyobs:event:` prefixes (no `urn:`, no version) — needs updating to match the settled `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once this lands (`pyobs-core`'s own interface-feature side is done; event features and the `<types>` block are not — see Versioning/Events above), but that's exactly the kind of change an early-stage client absorbs easily.
 
-- ~~What happens when two modules on a mixed-version fleet expect different versions of the same interface?~~ Closed, scoped narrowly — **but depends on the Phase 0 gap above being fixed first.** As things stand on `develop` today, `add_feature` publishes unversioned `pyobs:interface:{name}` strings, so a version mismatch doesn't even surface as "interface not found" — it silently resolves, since nothing on the wire currently carries the version to mismatch on. The diagnostic-error fix below assumes `urn:pyobs:interface:{name}:{version}` feature strings are already being published and parsed; without that, there's nothing to scan. The scenario is real for distributed telescope networks — a control PC that's hard to reach or queued for maintenance can lag behind the rest of the fleet, so synchronized upgrades can't be assumed. Once versioned feature strings land, a version mismatch would surface as `_resolve_proxy` raising a generic "interface not found" `ValueError` — identical to the interface never having been implemented at all, which turns a version issue into a confusing support ticket. The fix stays cheap and local: the disco#info reply that failed to match is already in memory, so on failure, scan the other `urn:pyobs:interface:{name}:*` features already present and report the actual version found instead of a bare "not found":
+- ✅ ~~What happens when two modules on a mixed-version fleet expect different versions of the same interface?~~ Closed, scoped narrowly — **but depends on the Phase 0 gap above being fixed first.** As things stand on `develop` today, `add_feature` publishes unversioned `pyobs:interface:{name}` strings, so a version mismatch doesn't even surface as "interface not found" — it silently resolves, since nothing on the wire currently carries the version to mismatch on. The diagnostic-error fix below assumes `urn:pyobs:interface:{name}:{version}` feature strings are already being published and parsed; without that, there's nothing to scan. The scenario is real for distributed telescope networks — a control PC that's hard to reach or queued for maintenance can lag behind the rest of the fleet, so synchronized upgrades can't be assumed. Once versioned feature strings land, a version mismatch would surface as `_resolve_proxy` raising a generic "interface not found" `ValueError` — identical to the interface never having been implemented at all, which turns a version issue into a confusing support ticket. The fix stays cheap and local: the disco#info reply that failed to match is already in memory, so on failure, scan the other `urn:pyobs:interface:{name}:*` features already present and report the actual version found instead of a bare "not found":
 
   ```python
   except ValueError:
@@ -1518,27 +1556,25 @@ Ordered by dependency, not by section order above — several things only make s
 
 ### Phase 0 — Foundations
 
-Nothing here is interesting on its own, but everything later depends on it existing first.
+✅ **Done, except event-feature versioning.** Nothing here is interesting on its own, but everything later depends on it existing first.
 
-- `Interface.version`/`Event.version` (lowercase `version`, default `1`) — the class attribute is added on `develop` and already wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces, confirmed directly against `xmppcomm.py`. **Interface features: done.** `add_feature` now publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above for the consumer of this. **Still missing:** `Event` features — `add_feature(f"pyobs:event:{ev.__name__}")` still publishes the old pre-2.0 unversioned form, not `urn:pyobs:event:{name}:{version}`. Event versioning was deliberately out of scope for the interface-mismatch fix (events aren't owned by a single interface, see [Versioning](#versioning)), so this is still open on its own. See [Versioning](#versioning).
-- Convert `Comm.proxy()`/`Object.proxy()`/`Comm.safe_proxy()` from `async def` to the `async with`-only `_ProxyContext` (code in [Final decision](#final-decision-async-with-only--await-selfproxy-is-removed)), consolidating the three independent `ProxyType` `TypeVar` copies in `proxy.py`/`comm.py`/`object.py` into one shared one in `proxy.py` along the way, and adding `has_proxy()` for call sites that only need an existence/type check. This is the one genuinely disruptive mechanical change in the whole plan — every `x = await self.proxy(...)` call site in `pyobs-core` (and downstream: `pyobs-robotic-backend`, `pyobs-weather`, any scripts) needs rewriting to either `async with self.proxy(...) as x:` or `await self.has_proxy(...)`, depending on whether the resolved proxy is actually used. Doing this *before* any state-related work starts means the state plumbing in Phase 1 gets built against the final `Proxy` shape instead of being migrated twice. `cache_proxies` removal (real, on `1.x`) is already done on `develop` — confirm it's landed wherever the actual 2.0 branch work proceeds from rather than redoing it.
-- ~~All six project enums converting `Enum` → `StrEnum`~~ Already true today — nothing to do here. This is what the wire-vocabulary's `enum(Name)` design assumes. See [Type Vocabulary](#type-vocabulary).
-- Write the canonical-unit table down as part of the protocol spec, add the new `Unit(StrEnum)` to `pyobs/utils/enums.py`, and annotate existing interface signatures with `Annotated[float, Unit.X]`. Cheap now, before any wire schema ships; expensive to retrofit into disco#info payloads and generated clients after the fact. See [Units](#units).
+- ✅ `Interface.version`/`Event.version` (lowercase `version`, default `1`) — wired into state (`urn:pyobs:state:{name}:{version}`) and capabilities (`urn:pyobs:capabilities:{name}:{version}`) namespaces. **Interface features: done.** `add_feature` publishes `urn:pyobs:interface:{name}:{version}`, and `_get_interfaces`'s parsing filters to only the versioned form, so `.version` mismatches now actually exclude the interface from a resolved proxy instead of resolving silently — see the mixed-version-fleet diagnostic above. 🔵 **Still missing:** `Event` features — `add_feature(f"pyobs:event:{ev.__name__}")` still publishes the old pre-2.0 unversioned form, not `urn:pyobs:event:{name}:{version}`. See [Versioning](#versioning).
+- ✅ `Comm.proxy()`/`Object.proxy()`/`Comm.safe_proxy()` converted to the `async with`-only `_ProxyContext`, `ProxyType`/`_ProxyContext` consolidated into `proxy.py`, `has_proxy()` added. Migration complete: no `await self.proxy(...)` call sites remain in `pyobs-core`. `cache_proxies` removed.
+- ✅ ~~All six project enums converting `Enum` → `StrEnum`~~ Already true today — nothing to do here. This is what the wire-vocabulary's `enum(Name)` design assumes. See [Type Vocabulary](#type-vocabulary).
+- ✅ mostly. `Unit(StrEnum)` added to `pyobs/utils/enums.py` with `to_astropy()`. Annotation of existing interface signatures with `Annotated[float, Unit.X]` is in progress, not exhaustive — 12 interface files use it so far. See [Units](#units).
 
 ### Phase 1 — Walking skeleton: prove State end-to-end on one interface
 
-Deliberately narrow: one interface, fully working, before touching the other eighteen-plus. `ICooling` is the obvious pilot — it's the interface this document already worked out in full (`ICooling.state = CoolingState`, `set_setpoint`, the disco#info payload example, the PubSub node path).
+✅ **Done.** `ICooling` was the pilot as planned, and the pattern proved out — since generalized to 23 of ~26 State-bearing interfaces (Phase 3).
 
-- Add the three new `Comm` abstract methods (`set_state`, `subscribe_state`, `unsubscribe_state`) and implement them for the XMPP backend only: PubSub publish to `.../state/ICooling/{version}`, subscribe with "deliver the last item immediately" semantics, unsubscribe. See [`Comm`: three new abstract methods](#comm-three-new-abstract-methods).
-- Wire `Proxy.update_state`/`.state(interface)`/`wait_for_state(interface)`, the auto-subscribe loop in `Comm._get_client` (not `Proxy.__init__`, which can't be `async`) gated per-interface on `interface.state is not None`, and the `_state_subscriptions` tracking + teardown in `_client_disconnected`. See [`Proxy`: state hidden behind `update_state` and a `state` method](#proxy-state-hidden-behind-update_state-and-a-state-method) and [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
-- Extend disco#info for `ICamera`/`ICooling` only: versioned namespace, state schema block. Build the dataclass → XML auto-generation utility here, against this one schema, rather than designing it in the abstract — it's needed by both state publishing and disco#info schema publication, so this is also where that shared piece gets built. See [Capabilities / Discovery](#1-capabilities--discovery) and [Payload Encoding](#payload-encoding).
-- This phase is the one most likely to surface a wrong assumption — better to find that against one interface than after converting all of them.
+- ✅ The three `Comm` abstract methods (`set_state`, `subscribe_state`, `unsubscribe_state`) exist and are implemented for XMPP: PubSub publish/subscribe with "deliver the last item immediately" semantics, unsubscribe. See [`Comm`: three new abstract methods](#comm-three-new-abstract-methods).
+- ✅ `Proxy.update_state`/`get_state(interface)`/`wait_for_state(interface)` (named `get_state`, not the bare `.state(...)` originally sketched), the auto-subscribe loop in `Comm._get_client`, and `_state_subscriptions` tracking + teardown in `_client_disconnected` are all implemented. See [`Proxy`](#proxy-state-hidden-behind-update_state-and-a-state-method) and [Lifecycle](#lifecycle-piggyback-on-existing-proxy-eviction-no-new-proxy-api).
+- ✅ disco#info extended with versioned namespaces and state schema blocks; the dataclass ↔ XML auto-generation utility lives in `pyobs/comm/xmpp/serializer.py`, shared with RPC (Phase 1.5).
 
-**Validation and integration testing.** The natural test is: start a module implementing `ICooling`, then have a second module request its state via `proxy()`. Two paths to exercise deliberately — publish *before* the subscriber connects (tests the "deliver current value immediately" `get_items` branch in `_subscribe_state`) and live updates while the proxy is held open (tests `_handle_state_update`). Teardown via `_client_disconnected` is tested by killing the publishing module, not by exiting the `async with` block — the latter is intentional behaviour, not a bug. disco#info is worth checking independently: query A from B and confirm the versioned namespace and `<state>` schema block appear correctly, separate from the PubSub test.
-
-Integration tests go in `tests/integration/` following the existing pattern — skipped when `CI=true`, so they don't run in the regular `pytest.yml` workflow. They run via a separate `pytest-integration.yml` (currently triggered on release publish; a `develop`-push trigger is an option if more frequent runs are wanted). The XMPP tests need a real ejabberd instance, which in GitHub Actions means a service container:
+✅ **Validation and integration testing — implemented, mechanism differs slightly from the sketch below.** `.github/workflows/pytest-integration.yml` exists, triggered on release publish exactly as planned. Rather than an inline GitHub Actions `services:` block, it starts ejabberd via `docker compose -f tests/xmpp/docker-compose.yml up -d` and polls `docker compose ... ps` for a healthy container before running tests — same effect (a live ejabberd for `tests/integration/`), different mechanism (compose file instead of the native `services:` key). The original sketch is left below for the reasoning; the compose file itself is the source of truth for the actual container config.
 
 ```yaml
+# original sketch -- actual implementation uses tests/xmpp/docker-compose.yml instead
 services:
   ejabberd:
     image: ejabberd/ejabberd
@@ -1555,90 +1591,87 @@ services:
       --health-retries 12
 ```
 
-Test JIDs (`cooling@localhost`, `scheduler@localhost`, etc.) need to exist before tests run — add a pre-test step calling `ejabberdctl register <user> localhost <password>` for each, rather than enabling in-band registration. `mod_pubsub` is on by default, so `pubsub.localhost` registers automatically — this is also where node auto-create behaviour on first `publish` gets confirmed against a real server. Test fixtures read host/credentials from env vars (e.g. `PYOBS_TEST_XMPP_DOMAIN`, defaulting to `localhost`) so the same tests run locally against a dev ejabberd without changes.
-
 
 
 ### Phase 1.5 — RPC payload encoding 2.0
 
-Logically follows Phase 1 (state proven end-to-end), implemented after Phase 3 in practice — Phase 3 exposed the RPC shortcomings that make this necessary.
+✅ **Mostly done.**
 
-**Landed (verified on `develop`):**
-- `pyobs/comm/xmpp/serializer.py` — shared `value_to_xml`/`xml_to_value` core used by both state and RPC. Handles the full vocabulary: `bool`, `int`, `float`, `str`, `StrEnum`, `nil`, `list`, `tuple`, `dict`, dataclasses, `Annotated`/`Optional` unwrapping, ejabberd namespace-strip on round-trip. `_dataclass_to_xml`/`_xml_to_dataclass` delegate to `value_to_xml`/`xml_to_value` per field — cleaner than the document sketched.
-- `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
-- 21 of 34 State-bearing interfaces have standalone state dataclasses on `develop`.
+**Landed:**
+- ✅ `pyobs/comm/xmpp/serializer.py` — shared `value_to_xml`/`xml_to_value` core used by both state and RPC. Handles the full vocabulary: `bool`, `int`, `float`, `str`, `StrEnum`, `nil`, `list`, `tuple`, `dict`, dataclasses, `Annotated`/`Optional` unwrapping, ejabberd namespace-strip on round-trip. `_dataclass_to_xml`/`_xml_to_dataclass` delegate to `value_to_xml`/`xml_to_value` per field — cleaner than the document sketched.
+- ✅ `pyobs/comm/xmpp/rpc.py` — `RPC` class using `urn:pyobs:rpc:1`: `params_to_xml`/`xml_to_params` for arguments, `return_to_xml`/`xml_to_return` reading `return_annotation`, `fault_to_xml`/`xml_to_fault` for typed exception reconstruction. XEP-0009 envelope (`jabber:iq:rpc`) unchanged; `urn:pyobs:rpc:1` scopes only `<value>` content.
+- ✅ **`get_*` removal has gone much further than "still pending."** This isn't an intermediate step anymore for most interfaces — `ICooling.get_cooling`, `IWindow.get_full_frame`, `IModule.get_label`/`get_version`, `IMultiFiber.get_fiber_count`, `IVideo.get_video`, `IConfig.get_config_caps` and others are gone outright, not returning `State` as a transition shape. Only 7 `get_*`-prefixed abstract methods remain across all interfaces: `IConfig.get_config_value` (RPC by design), `IFitsHeaderBefore`/`After.get_fits_header_*` (RPC by design), `IFocusModel.get_optimal_focus`, and `IWeather`'s three (🔵 not yet migrated — see Phase 3). The `IWindow.get_full_frame` vs. Discovery discrepancy this section used to flag is moot: the method isn't there to be inconsistent anymore.
 
-**Still pending:**
+🔵 **Still pending:**
 - `utils/types.py` — still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`. Old cast path runs alongside the new serializer. Leave in place until `LocalComm` and all backends are updated (Phase 4).
-- Remaining 13 State interfaces to implement (Phase 3 completion).
-- `get_*` removal — methods still exist on all interfaces; many already return `State` objects (intermediate migration step). Remove once all 34 `State` classes are in place and verified — missed call sites become `AttributeError` / mypy errors immediately. Note the semantics change: `get_*` is a pull-on-demand RPC call; `state(interface)` is a local cache read. Removed methods no longer appear in disco#info `<command>` listings — correct, they're not commands anymore. External clients currently calling them via RPC need to read state instead — dependency for Phase 5. **One discrepancy to resolve first:** `IWindow.get_full_frame()` returns `IWindow.State` on `develop`, but the document classifies `get_full_frame` as Discovery — reconcile before removal.
+- 3 of the ~26 catalogued State-bearing interfaces remain: `IFocusModel`, `IWeather`, `IAutoFocus` (Phase 3 completion).
+- `ConfigValue = bool | int | float | str` was a settled design decision (Phase 2) but was never actually applied — `IConfig.get_config_value`/`set_config_value` still type as bare `Any` on `develop`.
 
 ### Phase 2 — Audit and design pass (no implementation yet)
 
-- ~~Systematic survey of every `get_*` method across all interfaces for State-read candidacy.~~ Done — see the [get_* to State Survey](#appendix-get_-to-state-survey). All 47 methods settled: 34 `State`, 7 `Discovery`, 2 `Presence`, 4 `RPC`.
-- ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces: `IWeather.get_weather_status`/`get_current_weather`, `IAutoFocus.auto_focus_status`, `IAcquisition.acquire_target`, `IFitsHeaderBefore`/`After`.~~ Done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately — this is a deliberately dynamic config system, not a missed dataclass, and needs its own answer rather than inheriting whichever pattern the six above land on.~~ Done — `ConfigValue = bool | int | float | str`; see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
-- ~~Design the named dataclasses for all 19 tuple-returning methods (`RaDec`, `AltAz`, `Binning`, `Window`, and the rest).~~ Done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+✅ **Done.**
+
+- ✅ ~~Systematic survey of every `get_*` method across all interfaces for State-read candidacy.~~ Done — see the [get_* to State Survey](#appendix-get_-to-state-survey). All 47 methods settled: 34 `State`, 8 `Discovery`, 2 `Presence`, 4 `RPC`.
+- ✅ ~~Design (not yet implement) the State dataclasses resolving the six genuinely-undocumented-`Any` interfaces.~~ Design done — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). 🔵 Implementation for `IWeather`/`IAutoFocus` still pending (Phase 3).
+- ~~Design the tagged-union approach for `IConfig.get_config_value`/`set_config_value` separately.~~ Design settled — `ConfigValue = bool | int | float | str` — 🔵 but never actually applied in code; `get_config_value`/`set_config_value` still type as `Any` on `develop`.
+- ✅ ~~Design the named dataclasses for all 19 tuple-returning methods (`RaDec`, `AltAz`, `Binning`, `Window`, and the rest).~~ Done and implemented — only 3 of the 19 remain (see [Type Vocabulary](#type-vocabulary)).
 
 ### Phase 2.5 — Discovery and Presence
 
-These 9 methods are blocking the `get_*` removal sweep at the end of Phase 3. They can't be replaced by State (they're not live values), and they can't simply be deleted without providing a replacement mechanism. Tackled before Phase 3 completes so the removal sweep is unblocked.
+✅ **Done.** These 8 methods were blocking the `get_*` removal sweep at the end of Phase 3 — done, and the sweep proceeded (see Phase 1.5/3).
 
-**Design decisions:**
+**Design decisions (as implemented):**
 
-- **`set_presence` is automatic, not explicit.** `ModuleState` changes happen at well-defined points inside `Module` (startup, error, shutdown). Requiring module authors to also call `set_presence` at each of those points is asking them to keep two things in sync manually. The hook belongs in `Module` itself — when `ModuleState` changes, presence is pushed automatically. Module authors declare state; the framework handles transport.
+- ✅ **`set_presence` is automatic, not explicit** — confirmed: `Module`'s `ModuleState` transitions call `Comm.set_presence` without module authors needing to call it themselves.
+- ✅ **Discovery goes into the XEP-0030 disco#info handler, not a dedicated IQ handler** — `XmppComm._get_disco_info` is registered as the `xep_0030` node handler for `get_info`, exactly as decided.
+- ✅ **Both Discovery and Presence implemented together.**
 
-- **Discovery goes into the XEP-0030 disco#info handler, not a dedicated IQ handler.** A separate handler would create a second discovery mechanism alongside the real one; `pyobs-web-client` and any standard XMPP client would need to know about both. The `xep_0030` plugin already supports custom info handlers — the cost is one-time and the result is one query, one response, everything in one place.
+**Discovery (7, was 8 in the original list — `ILatLon.get_latlon` no longer exists) — all now `capabilities =`, published in disco#info `<capability>`, `get_*` method removed:**
 
-- **Both Discovery and Presence implemented together.** Presence alone still leaves 7 `get_*` methods blocking removal. The implementation workstreams are independent (new `Comm` method for presence; disco#info extension for discovery), and Discovery's design is already complete enough to implement directly from this document — only Presence needs the short design pass below.
+| Method | Interface | Value | Status |
+|---|---|---|---|
+| `get_label()` | `IModule` | Human-readable module name | ✅ removed, `ModuleCapabilities` |
+| `get_version()` | `IModule` | Software version string | ✅ removed, `ModuleCapabilities` |
+| `get_fiber_count()` | `IMultiFiber` | Number of fibers (fixed hardware) | ✅ removed, `MultiFiberCapabilities` |
+| `get_full_frame()` | `IWindow` | Full CCD dimensions | ✅ removed, `WindowCapabilities` |
+| `get_config_caps()` | `IConfig` | Which config keys exist and are readable/writable | ✅ removed, `ConfigCapabilities` |
+| `get_video()` | `IVideo` | Stream URL/path | ✅ removed, `VideoCapabilities` |
 
-**Discovery (7) — static values, fixed for the module's lifetime, published in disco#info `<capability>`:**
-
-| Method | Interface | Value |
-|---|---|---|
-| `get_label()` | `IModule` | Human-readable module name |
-| `get_version()` | `IModule` | Software version string |
-| `get_latlon()` | `ILatLon` | Observatory latitude/longitude |
-| `get_fiber_count()` | `IMultiFiber` | Number of fibers (fixed hardware) |
-| `get_full_frame()` | `IWindow` | Full CCD dimensions |
-| `get_config_caps()` | `IConfig` | Which config keys exist and are readable/writable |
-| `get_video()` | `IVideo` | Stream URL/path |
-
-The `<capability>` element pattern is already designed in [Capabilities / Discovery](#1-capabilities--discovery) — one `<capability name="..." type="...">value</capability>` element per item, published inline in the module's disco#info response. No PubSub, no subscription. The Python-side mechanism is also now fully designed, mirroring `state` exactly: `Interface.capabilities: ClassVar[type | None] = None`, `IWindow.capabilities = WindowCapabilities`, `Proxy.capabilities(interface)` reads a dict populated synchronously from disco#info during `_get_client` — see [`Proxy`](#proxy-state-hidden-behind-update_state-and-a-state-method) and the [dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). Implementation is mechanical from here: populate `Module.capabilities` dict at module start, read it in the disco#info handler.
+The `<capability>` element pattern designed in [Capabilities / Discovery](#1-capabilities--discovery) is implemented as described — one `<capability name="..." type="...">value</capability>` element per item, published inline in the module's disco#info response, no PubSub, no subscription. `Interface.capabilities: ClassVar[type | None] = None`, `Proxy.get_capabilities(interface)` reads a dict populated synchronously from disco#info during `_get_client`. Capabilities coverage on `develop` is actually broader than this table: `IFilters`, `IImageFormat`, `IMode`, and `IBinning` also declare `capabilities =` now (e.g. `FiltersCapabilities`, `ImageFormatCapabilities`) — additions beyond what this document originally catalogued.
 
 **Presence (2) — module lifecycle, maps onto XMPP presence stanzas:**
 
-| Method | Interface | Value |
-|---|---|---|
-| `get_state()` | `IModule` | `ModuleState`: closed/ready/error/local |
-| `get_error_string()` | `IModule` | Current error message if state is error |
+| Method | Interface | Value | Status |
+|---|---|---|---|
+| `get_state()` | `IModule` | `ModuleState`: closed/ready/error/local | ✅ removed, `get_client_state()`/presence |
+| `get_error_string()` | `IModule` | Current error message if state is error | ✅ removed, rides as `<status>` text |
 
-These map naturally onto XMPP presence `<show>` and `<status>` rather than PubSub — every connected client sees presence updates automatically without subscribing, which is exactly the right delivery model for "is this module alive and healthy?". This needs a concrete design pass before it's implementable: `Comm.set_presence()` method sketch, how `ModuleState` maps onto XMPP `<show>` values, and whether `get_error_string` rides as `<status>` text or a separate element. Output of that design pass is a worked example like the `ICooling` one for State. Phase 4 then picks up the non-XMPP backends.
+✅ Implemented exactly as this section speculated it should be designed: `XmppComm._set_presence` maps `ModuleState.READY`→no `<show>`, `ERROR`→`dnd`, `LOCAL`→`away`, `CLOSED`→handled by disconnect; `error_string` rides as XMPP `<status>` text when `ERROR`.
 
 ### Phase 3 — Bulk rollout
 
-Mechanical once Phase 1 has proven the pattern and Phase 2 has produced the per-interface designs.
+✅ **Mostly done** — 🔵 3 interfaces and event schema publication remain.
 
-- Convert all 19 tuple-returning methods to the dataclasses designed in Phase 2.
-- Add `State` to every interface identified in Phase 2's `get_*` survey, plus the six former-`Any` interfaces.
-- Extend disco#info and PubSub state publishing to every interface now carrying a `State`.
-- Publish `urn:pyobs:event:Name:{version}` schemas for events as they're encountered — no code changes to event delivery itself, just the discovery-time schema publication. See [Events](#4-events--unchanged-at-the-api-level).
+- ✅ Tuple-returning methods converted to dataclasses — 16 of 19 done; the 3 remaining (`IAutoFocus.auto_focus`, `IFlatField.flat_field`, `IWeather.get_sensor_value`) are tied to the interfaces below.
+- Add `State` to every interface identified in Phase 2's `get_*` survey: **done for 23 of ~26**; `IFocusModel`, `IWeather`, `IAutoFocus` still have no `state =` assignment and still expose their original `get_*`/tuple-returning methods.
+- ✅ disco#info and PubSub state publishing extended to every interface now carrying a `State`.
+- 🔵 **Not done:** publishing `urn:pyobs:event:Name:{version}` schemas for events — event disco#info features remain unversioned (see [Events](#4-events--unchanged-at-the-api-level) and [Versioning](#versioning)), and no event schema block exists in disco#info at all yet.
 
 ### Phase 4 — Other backends and Presence
 
-Lower-risk, smaller, and not blocking anything else — can run in parallel with later phases once Phase 1's abstraction is stable.
+✅ Local done; D-Bus not applicable (no such backend); 🔵 `utils/types.py` cleanup still pending.
 
-- D-Bus backend: `set_state`/`subscribe_state`/`unsubscribe_state` via D-Bus properties and `PropertiesChanged`. Per the [Impact Analysis](#impact-analysis), this is close to a 1:1 mapping — D-Bus already has the native concepts.
-- Local backend: trivial in-memory mapping, possibly a no-op for subscriptions.
-- `utils/types.py` cleanup — remove the old XML-RPC cast pipeline (`cast_bound_arguments_to_real`, `cast_response_to_simple`, etc.) once `LocalComm` and D-Bus are updated to the new serializer.
+- ~~D-Bus backend: `set_state`/`subscribe_state`/`unsubscribe_state` via D-Bus properties and `PropertiesChanged`.~~ Not applicable — `pyobs-core` has no D-Bus `Comm` backend (see the correction in [Impact Analysis](#impact-analysis)). Nothing to migrate; this bullet only applies if a D-Bus backend is built in the future.
+- ✅ Local backend: `LocalComm` already implements `_set_state`, `_subscribe_state`, `_set_capabilities`, `_set_presence` as simple in-memory operations, matching this design.
+- 🔵 **Still pending:** `utils/types.py` cleanup — the old XML-RPC cast pipeline is still used in `proxy.py`, `module.py`, `parallel.py`, `localcomm.py`, alongside the new serializer.
 
 ### Phase 5 — `pyobs-gui`
 
-Update the Qt-based GUI (pyobs-gui) to consume 2.0 State, Discovery, and Presence rather than polling via `get_*` RPC calls. Widgets that currently call `get_cooling()` etc. should subscribe to state and update reactively. Depends on Phase 2.5 (Presence/Discovery landed) and Phase 3 (bulk State rollout) being complete.
+🔵 Status unknown — external repo, not checked as part of this pass. Update the Qt-based GUI (pyobs-gui) to consume 2.0 State, Discovery, and Presence rather than polling via `get_*` RPC calls. Widgets that currently call `get_cooling()` etc. should subscribe to state and update reactively. Depends on Phase 2.5 (✅ done) and Phase 3 (✅ mostly done, 3 interfaces remaining) — dependencies are far enough along that this phase could plausibly start, but `pyobs-gui` itself is a separate repo not checked as part of this pass.
 
 ### Phase 6 — External official `pyobs-*` hardware modules
 
-Migrate the official hardware-specific repos to implement the new State interfaces — call `set_state(Interface.State(...))` wherever they currently call `set_*` or implement `get_*`. Depends on Phase 3 complete and the `get_*` removal having happened so mypy flags any missed call sites immediately.
+🔵 Status unknown — external repos, not checked as part of this pass. Migrate the official hardware-specific repos to implement the new State interfaces — call `set_state(Interface.State(...))` wherever they currently call `set_*` or implement `get_*`. Depends on Phase 3 complete and the `get_*` removal having happened so mypy flags any missed call sites immediately. Not checked as part of this pass — these are separate repos.
 
 Hardware module repos in scope (13):
 
@@ -1662,9 +1695,9 @@ Out of scope for this phase (infrastructure, services, UIs handled in other phas
 
 ### Phase 7 — `pyobs-web-client` catch-up
 
-Explicitly last and lowest-priority: the client is early-stage by its own admission, was never a constraint on the design, and absorbs changes easily.
+🔵 Status unknown — external repo, not checked as part of this pass. Explicitly last and lowest-priority: the client is early-stage by its own admission, was never a constraint on the design, and absorbs changes easily.
 
-- Fix the live disco#info feature-matching to check `urn:pyobs:interface:...:{version}` / `urn:pyobs:event:...:{version}` instead of the current bare `pyobs:interface:`/`pyobs:event:` prefixes.
+- Fix the live disco#info feature-matching to check `urn:pyobs:interface:...:{version}` / `urn:pyobs:event:...:{version}` instead of the current bare `pyobs:interface:`/`pyobs:event:` prefixes. On the `pyobs-core` side, the interface half of this is now live (see Phase 0); the event half isn't yet, since event features are still unversioned.
 - Optionally retire `generate-interfaces.py`'s build-time extraction in favor of fetching schema live from disco#info, per the original motivation for this whole redesign.
 - Optionally render real dropdowns for `enum`-typed parameters using the `<types>` block, replacing today's free-text inputs.
 
@@ -1689,31 +1722,31 @@ Combining multiple methods into one `state` is right *within* a single interface
 
 **Pointing / position — all drift continuously, all clear `State`, each on its own interface already:** `IPointingRaDec.get_radec` → `RaDec`, `IPointingAltAz.get_altaz` → `AltAz`, `IPointingHGS.get_hgs_lon_lat`, `IPointingHelioprojective.get_helioprojective`, `IRotation.get_rotation`, `IOffsetsRaDec.get_offsets_radec`, `IOffsetsAltAz.get_offsets_altaz`.
 
-**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism.
+**Focuser:** `IFocuser.get_focus` and `IFocuser.get_focus_offset` — both `State`, on `IFocuser.State`. ✅ Implemented. `IFocusModel.get_optimal_focus` — `State`, on `IFocusModel.State(focus, focus_err)`. The 2.0 design adds `focus_err` alongside the existing `focus` value; the model recomputes continuously as conditions change, making push the right delivery mechanism. 🔵 **Not yet implemented** — `IFocusModel` still has no `state =` assignment on `develop`.
 
-**Weather — three methods, one `IWeather.State`, but only because all three are on `IWeather` itself:** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) plus `get_sensor_value(station: str, sensor: WeatherSensors) -> tuple[str, float]`. The third looks RPC-shaped (it takes parameters) but isn't: `sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are. Bounded enough for the same extensible-typed-collection pattern already designed for `ITemperatures` — `IWeather.State.readings: list[WeatherSensorReading]` (`station`, `sensor`, `value`, `unit` fields) lets all three collapse into one state object on the one interface that owns them.
+**Weather — three methods, one `IWeather.State`, but only because all three are on `IWeather` itself:** `get_weather_status` and `get_current_weather` (both already flagged as `Any`-interfaces) plus `get_sensor_value(station: str, sensor: WeatherSensors) -> tuple[str, float]`. The third looks RPC-shaped (it takes parameters) but isn't: `sensor` is a closed `StrEnum`, not an open key the way `IConfig`'s are. Bounded enough for the same extensible-typed-collection pattern already designed for `ITemperatures` — `IWeather.State.readings: list[WeatherSensorReading]` (`station`, `sensor`, `value`, `unit` fields) lets all three collapse into one state object on the one interface that owns them. 🔵 **Not yet implemented** — `IWeather` still has no `state =` assignment on `develop`; `get_sensor_value` remains a tuple-returning RPC method.
 
 **Multi-fiber, all on `IMultiFiber`:** `get_fiber`, `get_pixel_position`, `get_radius` → `State`. `get_fiber_count` → Discovery (fixed hardware count, not a live value).
 
 **Already resolved:** `ICooling.get_cooling` and `ITemperatures.get_temperatures`, both worked out earlier in this document.
 
-**Not state at all — static identity/capability, belongs in Discovery instead of either State or RPC:** `IModule.get_label`, `IModule.get_version`, `ILatLon.get_latlon`, `IMultiFiber.get_fiber_count`, `IWindow.get_full_frame`, `IConfig.get_config_caps`, `IVideo.get_video` — all fixed for the module's lifetime, all good fits for the `<capability>` element designed in [Capabilities / Discovery](#1-capabilities--discovery). Dataclasses: `ModuleCapabilities`, `LatLonCapabilities`, `MultiFiberCapabilities`, `WindowCapabilities`, `ConfigCapabilities`, `VideoCapabilities` — see the [State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Not state at all — static identity/capability, belongs in Discovery instead of either State or RPC:** `IModule.get_label`, `IModule.get_version`, `IMultiFiber.get_fiber_count`, `IWindow.get_full_frame`, `IConfig.get_config_caps`, `IVideo.get_video` — all fixed for the module's lifetime, all good fits for the `<capability>` element designed in [Capabilities / Discovery](#1-capabilities--discovery). ✅ Implemented, and all six `get_*` methods have been removed outright rather than just superseded. Dataclasses: `ModuleCapabilities`, `MultiFiberCapabilities`, `WindowCapabilities`, `ConfigCapabilities`, `VideoCapabilities` — see the [State and Capability dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue). (`ILatLon.get_latlon`/`LatLonCapabilities`, in this bucket originally, no longer exist — `ILatLon` was removed from `pyobs.interfaces`.)
 
-**Not State — maps onto Presence instead, a sharper version of an existing open item:** `IModule.get_state` (`ModuleState`: closed/ready/error/local) and `IModule.get_error_string`. `get_state`'s enum is functionally identical to what [Where XMPP is underused](#where-xmpp-is-underused) already proposed mapping onto XMPP Presence, not the State/PubSub mechanism this document designs for sensor-style continuous values. Since [Presence is already flagged in Phase 4](#phase-4--other-backends-and-presence) as needing its own design pass, this is the concrete worked example that pass should start from.
+**Not State — maps onto Presence instead:** `IModule.get_state` (`ModuleState`: closed/ready/error/local) and `IModule.get_error_string`. ✅ Implemented — both methods removed, replaced by `Comm.get_client_state()`/presence subscription, exactly as this section proposed.
 
-**Stays RPC:** `IConfig.get_config_value(name)` and `get_config_value_options(name)` — already the flagged open-key exception. `IFitsHeaderBefore`/`After.get_fits_header_*(namespaces)` — stays RPC: the `namespaces` filter is doing real work narrowing the response for a given FITS writer. Return type settled: `dict[str, tuple[Any, str]]` → `FitsHeaderResult` with `entries: dict[str, FitsHeaderEntry]`, where `FitsHeaderEntry(value: int | float | str, comment: str)` covers the full FITS value type set. See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Stays RPC:** `IConfig.get_config_value(name)` and `get_config_value_options(name)` — already the flagged open-key exception, still RPC as designed. `IFitsHeaderBefore`/`After.get_fits_header_*(namespaces)` — stays RPC, still present. Return type settled as `FitsHeaderResult`/`FitsHeaderEntry` in this document's catalogue, 🔵 but not applied — both methods still return bare `dict[str, tuple[Any, str]]` on `develop`.
 
-**Settled:** `IMode.get_mode(group: int)` — `State`, as `IMode.State(modes: list[ModeEntry])` where `ModeEntry(group: int, mode: str)` collapses all groups into one state object rather than one RPC call per group. `IMotion.get_motion_status(device: str | None)` — `State`, as `IMotion.State(status, devices: list[DeviceMotionStatus])`, already in the catalogue. `IConfig.get_config_value`/`set_config_value` — stays RPC, typed as `ConfigValue = bool | int | float | str`; `bool` must precede `int` in any isinstance dispatch since `bool` is a subclass of `int`. `get_config_value_options` returns `list[ConfigValue]`.
+**Settled:** `IMode.get_mode(group: int)` — ✅ implemented as `IMode.state = ModeState`. `IMotion.get_motion_status(device: str | None)` — ✅ implemented as `IMotion.state = MotionState`. `IConfig.get_config_value`/`set_config_value` — stays RPC as designed, 🔵 but the `ConfigValue = bool | int | float | str` type alias was never actually added; both still type as bare `Any`.
 
-**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above.
+**The `is_*` methods belong in this survey too, not as a footnote — `IReady.is_ready`, `IRunning.is_running`, `IWeather.is_weather_good` are all `State`,** each on its own interface's own state, same reasoning and same per-interface boundary as everything above. `IReady`/`IRunning` ✅ implemented; 🔵 `IWeather.is_weather_good` still pending along with the rest of `IWeather`.
 
-**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled — see the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
+**Tally** (44 `get_*` methods, plus the three `is_*` methods folded in, 47 total): **34 `State`, 8 `Discovery`, 2 `Presence`, 4 stay `RPC`**. All items settled at the design level. Implementation: 31 of 34 `State` items done (🔵 `IFocusModel`, `IWeather`, `IAutoFocus` remaining), all 8 `Discovery` done, both `Presence` done, 3 of 4 `RPC` items match their settled type (🔵 the fourth, `IConfig`'s `ConfigValue` alias, was never applied). See the [State dataclass catalogue](#appendix-state-and-capability-dataclass-catalogue).
 
 ## Appendix: State and Capability dataclass catalogue
 
 Every interface's state is a standalone dataclass assigned to `interface.state` — `ICooling.state = CoolingState`, etc. `Interface.state: ClassVar[type | None] = None` provides the default; all base classes agree on the type so module classes inheriting from multiple state-bearing interfaces don't cause `[inconsistent-inheritance]` errors. Supporting dataclasses used as list elements (`DeviceMotionStatus`, `SensorReading`, etc.) stay standalone since they're not `interface.state` targets themselves. `AutoFocusPoint` similarly stays standalone as a list element inside `AutoFocusStatus`.
 
-Capabilities follow the identical pattern via a second, independent ClassVar — `Interface.capabilities: ClassVar[type | None] = None`, `IModule.capabilities = ModuleCapabilities`, etc. — covering the 6 Discovery interfaces from the survey. Fixed-for-lifetime values, parsed once from disco#info rather than subscribed via PubSub; see [the "two independent ClassVars" note above](#proxy-state-hidden-behind-update_state-and-a-state-method) for why these stay separate from state rather than merging into one mechanism.
+Capabilities follow the identical pattern via a second, independent ClassVar — `Interface.capabilities: ClassVar[type | None] = None`, `IModule.capabilities = ModuleCapabilities`, etc. — covering the Discovery interfaces from the survey (`ILatLon`/`LatLonCapabilities`, listed in the survey's original count, no longer exist). Fixed-for-lifetime values, parsed once from disco#info rather than subscribed via PubSub; see [the "two independent ClassVars" note above](#proxy-state-hidden-behind-update_state-and-a-state-method) for why these stay separate from state rather than merging into one mechanism. ✅ Implemented, and broader on `develop` than this catalogue lists: `IFilters`, `IImageFormat`, `IMode`, and `IBinning` also declare `capabilities =` now (e.g. listing available filters/formats/modes/binning options) — additions made during implementation, not catalogued here in detail.
 
 **Migration pattern for existing tuple-returning methods.** The state object becomes the module's single source of truth; the tuple-returning RPC method unpacks from it rather than maintaining separate internal variables:
 
@@ -1904,11 +1937,17 @@ class RunningState:
 # ---- Sensors ----
 
 @dataclass
-class CoolingState:                 # Phase 1 reference implementation
+class CoolingState:                 # Phase 1 reference implementation, as originally sketched
     enabled: bool
     setpoint: Annotated[float, Unit.CELSIUS]
     power: float
     time: Time = field(default_factory=Time.now)
+
+# Actual develop shape differs: setpoint/power are Optional, power is Annotated[int,
+# Unit.PERCENT] (not float), and field order is setpoint/power/enabled/time -- confirmed
+# by reading pyobs/interfaces/ICooling.py directly. Representative of how the other
+# dataclasses in this catalogue may also have drifted in minor ways not individually
+# re-verified here; treat the interface source files as authoritative over this appendix.
 
 @dataclass
 class TemperaturesState:
@@ -1950,51 +1989,54 @@ class AutoFocusStatus:              # growing curve during autofocus run
 
 
 # ---- Interface.state assignments ----
+# ✅ = implemented on develop with this ClassVar set (field-level shape may differ
+# slightly from the dataclasses sketched above -- interface source is authoritative).
+# 🔵 = not yet implemented as of this pass.
 
 class Interface:
     state: ClassVar[type | None] = None
 
-class IBinning(Interface):          state = BinningState
-class IWindow(Interface):           state = WindowState
-class IExposureTime(Interface):     state = ExposureTimeState
-class IGain(Interface):             state = GainState
-class IFilters(Interface):          state = FilterState
-class IImageFormat(Interface):      state = ImageFormatState
-class IImageType(Interface):        state = ImageTypeState
-class IExposure(Interface):         state = ExposureState
-class IPointingRaDec(Interface):    state = RaDecState
-class IPointingAltAz(Interface):    state = AltAzState
-class IPointingHGS(Interface):      state = HGSState
-class IPointingHelioprojective(Interface): state = HelioprojectiveState
-class IOffsetsRaDec(Interface):     state = RaDecOffsetState
-class IOffsetsAltAz(Interface):     state = AltAzOffsetState
-class IRotation(Interface):         state = RotationState
-class IMotion(Interface):           state = MotionState
-class IFocuser(Interface):          state = FocuserState
-class IFocusModel(Interface):       state = OptimalFocusState
-class IReady(Interface):            state = ReadyState
-class IRunning(Interface):          state = RunningState
-class ICooling(Interface):          state = CoolingState
-class ITemperatures(Interface):     state = TemperaturesState
-class IWeather(Interface):          state = WeatherState
-class IMultiFiber(Interface):       state = MultiFiberState
-class IMode(Interface):             state = ModeState
-class IAutoFocus(Interface):        state = AutoFocusStatus
+class IBinning(Interface):          state = BinningState        # ✅
+class IWindow(Interface):           state = WindowState          # ✅
+class IExposureTime(Interface):     state = ExposureTimeState    # ✅
+class IGain(Interface):             state = GainState            # ✅
+class IFilters(Interface):          state = FilterState          # ✅
+class IImageFormat(Interface):      state = ImageFormatState     # ✅
+class IImageType(Interface):        state = ImageTypeState       # ✅
+class IExposure(Interface):         state = ExposureState        # ✅
+class IPointingRaDec(Interface):    state = RaDecState           # ✅
+class IPointingAltAz(Interface):    state = AltAzState           # ✅
+class IPointingHGS(Interface):      state = HGSState             # ✅
+class IPointingHelioprojective(Interface): state = HelioprojectiveState  # ✅
+class IOffsetsRaDec(Interface):     state = RaDecOffsetState     # ✅
+class IOffsetsAltAz(Interface):     state = AltAzOffsetState     # ✅
+class IRotation(Interface):         state = RotationState        # ✅
+class IMotion(Interface):           state = MotionState          # ✅
+class IFocuser(Interface):          state = FocuserState         # ✅
+class IFocusModel(Interface):       state = OptimalFocusState    # 🔵 not yet -- still get_optimal_focus() RPC
+class IReady(Interface):            state = ReadyState           # ✅
+class IRunning(Interface):          state = RunningState         # ✅
+class ICooling(Interface):          state = CoolingState         # ✅
+class ITemperatures(Interface):     state = TemperaturesState    # ✅
+class IWeather(Interface):          state = WeatherState         # 🔵 not yet -- still get_weather_status/get_current_weather/get_sensor_value RPC
+class IMultiFiber(Interface):       state = MultiFiberState      # ✅
+class IMode(Interface):             state = ModeState            # ✅
+class IAutoFocus(Interface):        state = AutoFocusStatus      # 🔵 not yet -- still auto_focus_status()/auto_focus() -> tuple RPC
 
 
 # ---- Capabilities: fixed-for-lifetime values, parsed once from disco#info ----
 # Separate ClassVar from state -- see the "two independent ClassVars" note above.
 # IWindow is the one interface with both: a live `window` and a fixed `full_frame`.
+# All of the below are ✅ implemented on develop. `ILatLon`/`LatLonCapabilities`
+# (originally listed here) no longer exist -- ILatLon was removed from pyobs.interfaces.
+# Also implemented but not in this original catalogue: FiltersCapabilities (IFilters),
+# ImageFormatCapabilities (IImageFormat), ModeCapabilities (IMode), BinningCapabilities
+# (IBinning) -- added during implementation, field shapes not audited here.
 
 @dataclass
 class ModuleCapabilities:           # IModule.get_label + get_version folded into one
     label: str
     version: str
-
-@dataclass
-class LatLonCapabilities:
-    lat: Annotated[float, Unit.DEGREES]
-    lon: Annotated[float, Unit.DEGREES]
 
 @dataclass
 class WindowCapabilities:           # IWindow.get_full_frame -- fixed CCD dimensions
@@ -2016,7 +2058,6 @@ class VideoCapabilities:
     video: str                      # stream URL/path
 
 class IModule(Interface):           capabilities = ModuleCapabilities
-class ILatLon(Interface):           capabilities = LatLonCapabilities
 class IConfig(Interface):           capabilities = ConfigCapabilities
 class IVideo(Interface):            capabilities = VideoCapabilities
 
@@ -2032,9 +2073,13 @@ class IVideo(Interface):            capabilities = VideoCapabilities
 
 
 # ---- RPC result types (not State) ----
+# 🔵 Neither of the two below has actually been applied yet: IAcquisition.acquire_target
+# still returns bare dict[str, Any], and IFitsHeaderBefore/After.get_fits_header_*
+# still return bare dict[str, tuple[Any, str]], confirmed by reading both interfaces.
+# Designs settled, implementation still pending.
 
 @dataclass
-class AcquisitionResult:            # IAcquisition.acquire_target return type
+class AcquisitionResult:            # IAcquisition.acquire_target return type -- 🔵 not yet applied
     time: Time
     ra: Annotated[float, Unit.DEGREES]
     dec: Annotated[float, Unit.DEGREES]
@@ -2048,11 +2093,12 @@ class AcquisitionResult:            # IAcquisition.acquire_target return type
     off_az: Annotated[float, Unit.DEGREES] | None = None
 
 @dataclass
-class FitsHeaderResult:             # IFitsHeaderBefore/After return type
+class FitsHeaderResult:             # IFitsHeaderBefore/After return type -- 🔵 not yet applied
     entries: dict[str, FitsHeaderEntry] = field(default_factory=dict)
 
 
 # ---- Config (dynamic, not a State -- typed alias for get/set_config_value) ----
+# 🔵 Not yet applied -- get_config_value/set_config_value still type as bare Any on develop.
 
 ConfigValue = bool | int | float | str  # closed primitive set; bool before int (subclass)
 ```

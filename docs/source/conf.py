@@ -57,6 +57,13 @@ intersphinx_mapping = {
     "pyobs_sbig": ("https://docs.pyobs.org/projects/pyobs-sbig/en/latest/", None),
     "pyobs_asi": ("https://docs.pyobs.org/projects/pyobs-asi/en/latest/", None),
     "pyobs_aravis": ("https://docs.pyobs.org/projects/pyobs-aravis/en/latest/", None),
+    "pyobs_fli": ("https://docs.pyobs.org/projects/pyobs-fli/en/latest/", None),
+    "pyobs_flipro": ("https://docs.pyobs.org/projects/pyobs-flipro/en/latest/", None),
+    "pyobs_qhyccd": ("https://docs.pyobs.org/projects/pyobs-qhyccd/en/latest/", None),
+    "pyobs_v4l": ("https://docs.pyobs.org/projects/pyobs-v4l/en/latest/", None),
+    "pyobs_zaber": ("https://docs.pyobs.org/projects/pyobs-zaber/en/latest/", None),
+    "pyobs_zwoeaf": ("https://docs.pyobs.org/projects/pyobs-zwoeaf/en/latest/", None),
+    "pyobs_brot": ("https://docs.pyobs.org/projects/pyobs-brot/en/latest/", None),
 }
 
 # napoleon settings

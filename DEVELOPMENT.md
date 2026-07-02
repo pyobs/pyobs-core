@@ -1524,7 +1524,7 @@ Tested end-to-end against a real ejabberd server: the dataclass↔XML round-trip
 Consolidated list of every 🔵 open item still standing elsewhere in this document — the single place to check what's left, rather than scanning each section.
 
 - 🔵 **`pyobs-web-client` validation and feature-string update** — external repo, not checked as part of this pass. Its live feature-matching still checks bare `pyobs:interface:`/`pyobs:event:` prefixes and needs updating to the versioned `urn:pyobs:interface:ICamera:2` / `urn:pyobs:event:ExposureFinished:1` schemes once event-feature versioning lands (`pyobs-core`'s own interface-feature side is already done). See [Phase 7](#phase-7--pyobs-web-client-catch-up).
-- 🔵 **Phase 5 — `pyobs-gui`: one stale call site.** `compassmovewidget.py` still calls the removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods on interfaces that now only expose `state =`; will raise `AttributeError` at runtime. Everything else in the repo is already migrated to `subscribe_state`/`get_capabilities`/`subscribe_presence`. See [Phase 5](#phase-5--pyobs-gui).
+- ✅ ~~**Phase 5 — `pyobs-gui`: one stale call site.**~~ `compassmovewidget.py` updated to use `wait_for_state` instead of removed `get_altaz()`/`get_offsets_altaz()`/`get_offsets_radec()` RPC methods.
 - 🔵 **Phase 6 — official hardware modules** status unknown, external repos, not checked as part of this pass. See [Phase 6](#phase-6--external-official-pyobs--hardware-modules).
 
 ## Work Plan

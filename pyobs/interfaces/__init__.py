@@ -19,7 +19,7 @@ from .IAutonomous import IAutonomous
 from .IBinning import BinningCapabilities, BinningState, IBinning
 from .ICalibrate import ICalibrate
 from .ICamera import ICamera
-from .IConfig import ConfigCapabilities, IConfig
+from .IConfig import ConfigCapabilities, ConfigScalar, ConfigValue, IConfig
 from .ICooling import CoolingState, ICooling
 from .IData import IData
 from .IDome import IDome
@@ -78,6 +78,8 @@ __all__ = [
     "ICamera",
     "IConfig",
     "ConfigCapabilities",
+    "ConfigScalar",
+    "ConfigValue",
     "ICooling",
     "CoolingState",
     "IDome",

@@ -11,7 +11,7 @@ import packaging.version
 from py_expression_eval import Parser
 
 from pyobs.events import Event, ModuleOpenedEvent
-from pyobs.interfaces import ConfigCapabilities, IConfig, IModule, Interface, ModuleCapabilities
+from pyobs.interfaces import ConfigCapabilities, ConfigValue, IConfig, IModule, Interface, ModuleCapabilities
 from pyobs.object import Object
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ModuleState
@@ -391,7 +391,7 @@ class Module(Object, IModule, IConfig):
         """
         return self._config_caps
 
-    async def get_config_value(self, name: str, **kwargs: Any) -> Any:
+    async def get_config_value(self, name: str, **kwargs: Any) -> ConfigValue:
         """Returns current value of config item with given name.
 
         Args:
@@ -437,7 +437,7 @@ class Module(Object, IModule, IConfig):
         options = getattr(self, "_get_config_options_" + name)
         return cast(list[str], await options())
 
-    async def set_config_value(self, name: str, value: Any, **kwargs: Any) -> None:
+    async def set_config_value(self, name: str, value: ConfigValue, **kwargs: Any) -> None:
         """Sets value of config item with given name.
 
         Args:

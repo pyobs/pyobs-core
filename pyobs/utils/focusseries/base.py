@@ -24,7 +24,7 @@ class FocusSeries:
 
     def get_data_points(self) -> list[AutoFocusPoint]:
         """Returns a list of data points."""
-        ...
+        raise NotImplementedError
 
     def fit_focus(self) -> tuple[float, float]:
         """Fit focus from analysed images

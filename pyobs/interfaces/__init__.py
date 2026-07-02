@@ -30,7 +30,7 @@ from .IFitsHeaderAfter import IFitsHeaderAfter
 from .IFitsHeaderBefore import IFitsHeaderBefore
 from .IFlatField import IFlatField
 from .IFocuser import FocuserState, IFocuser
-from .IFocusModel import IFocusModel
+from .IFocusModel import IFocusModel, OptimalFocusState
 from .IGain import GainState, IGain
 from .IImageFormat import IImageFormat, ImageFormatCapabilities, ImageFormatState
 from .IImageType import IImageType, ImageTypeState
@@ -91,6 +91,7 @@ __all__ = [
     "IFitsHeaderBefore",
     "IFlatField",
     "IFocusModel",
+    "OptimalFocusState",
     "IFocuser",
     "FocuserState",
     "IGain",
